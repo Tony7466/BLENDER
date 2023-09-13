@@ -10,7 +10,7 @@ namespace blender::nodes::node_fn_string_to_float_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::String>("String");
-  b.add_output<decl::Float>("Value");
+  b.add_output<decl::Float>("Float");
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)

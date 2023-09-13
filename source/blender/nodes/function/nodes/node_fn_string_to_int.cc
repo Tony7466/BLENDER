@@ -10,13 +10,13 @@ namespace blender::nodes::node_fn_string_to_int_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::String>("String");
-  b.add_output<decl::Int>("Value");
+  b.add_output<decl::Int>("Integer");
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto to_int_fn = mf::build::SI1_SO<std::string, int>(
-      "String To Int", [](const std::string &a) {
+      "String To Integer", [](const std::string &a) {
         std::stringstream stream;
         stream << a;
         int i;
@@ -32,7 +32,7 @@ static void node_register()
 {
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_STRING_TO_INT, "String to Int", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_STRING_TO_INT, "String to Integer", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);

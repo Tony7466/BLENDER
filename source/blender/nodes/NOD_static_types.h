@@ -289,7 +289,7 @@ DefNode(FunctionNode, FN_NODE_ROTATION_TO_QUATERNION, 0, "ROTATION_TO_QUATERNION
 DefNode(FunctionNode, FN_NODE_SLICE_STRING, 0, "SLICE_STRING", SliceString, "Slice String", "")
 DefNode(FunctionNode, FN_NODE_STRING_LENGTH, 0, "STRING_LENGTH", StringLength, "String Length", "")
 DefNode(FunctionNode, FN_NODE_STRING_TO_FLOAT, 0, "STRING_TO_FLOAT", StringToFloat, "String to Float", "")
-DefNode(FunctionNode, FN_NODE_STRING_TO_INT, 0, "STRING_TO_INT", StringToInt, "String to Int", "")
+DefNode(FunctionNode, FN_NODE_STRING_TO_INT, 0, "STRING_TO_INT", StringToInt, "String to Integer", "")
 DefNode(FunctionNode, FN_NODE_VALUE_TO_STRING, 0, "VALUE_TO_STRING", ValueToString, "Value to String", "")
 
 DefNode(GeometryNode, GEO_NODE_ACCUMULATE_FIELD, 0, "ACCUMULATE_FIELD", AccumulateField, "Accumulate Field", "Add the values of an evaluated field together and output the running total for each element")
