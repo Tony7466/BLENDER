@@ -214,8 +214,8 @@ ccl_device_forceinline float3 microfacet_ggx_sample_vndf(const float3 wi,
 ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf *bsdf,
                                                const float cos_theta_i,
                                                ccl_private float *r_cos_theta_r,
-                                               ccl_private Spectrum *r_reflection,
-                                               ccl_private Spectrum *r_transmission)
+                                               ccl_private Spectrum *r_reflectance,
+                                               ccl_private Spectrum *r_transmittance)
 {
   /* Whether the closure has reflective or transmissive lobes. */
   const bool has_reflection = !CLOSURE_IS_REFRACTION(bsdf->type);
@@ -223,20 +223,20 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
 
   if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC) {
     const Spectrum F = make_spectrum(fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r));
-    *r_reflection = F;
-    *r_transmission = one_spectrum() - F;
+    *r_reflectance = F;
+    *r_transmittance = one_spectrum() - F;
   }
   else if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC_TINT) {
     ccl_private FresnelDielectricTint *fresnel = (ccl_private FresnelDielectricTint *)
                                                      bsdf->fresnel;
     const float F = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r);
-    *r_reflection = F * fresnel->reflection_tint;
-    *r_transmission = (1.0f - F) * fresnel->transmission_tint;
+    *r_reflectance = F * fresnel->reflection_tint;
+    *r_transmittance = (1.0f - F) * fresnel->transmission_tint;
   }
   else if (bsdf->fresnel_type == MicrofacetFresnel::CONDUCTOR) {
     ccl_private FresnelConductor *fresnel = (ccl_private FresnelConductor *)bsdf->fresnel;
-    *r_reflection = fresnel_conductor(cos_theta_i, fresnel->n, fresnel->k);
-    *r_transmission = zero_spectrum();
+    *r_reflectance = fresnel_conductor(cos_theta_i, fresnel->n, fresnel->k);
+    *r_transmittance = zero_spectrum();
   }
   else if (bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
@@ -254,8 +254,8 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
       const float cosT_sq = 1.0f - (1.0f - sqr(cos_theta_i)) / sqr(bsdf->ior);
       if (cosT_sq <= 0.0f) {
         /* Total internal reflection */
-        *r_reflection = fresnel->reflection_tint * (float)has_reflection;
-        *r_transmission = zero_spectrum();
+        *r_reflectance = fresnel->reflection_tint * (float)has_reflection;
+        *r_transmittance = zero_spectrum();
         return;
       }
       const float cosT = safe_sqrtf(cosT_sq);
@@ -268,22 +268,22 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
       s = powf(1.0f - ((bsdf->ior < 1.0f) ? *r_cos_theta_r : cos_theta_i), fresnel->exponent);
     }
     const Spectrum F = mix(fresnel->f0, fresnel->f90, s);
-    *r_reflection = F * fresnel->reflection_tint;
-    *r_transmission = (one_spectrum() - F) * fresnel->transmission_tint;
+    *r_reflectance = F * fresnel->reflection_tint;
+    *r_transmittance = (one_spectrum() - F) * fresnel->transmission_tint;
   }
   else {
     kernel_assert(bsdf->fresnel_type == MicrofacetFresnel::NONE);
     /* No Fresnel used, this is either purely reflective or purely refractive closure. */
-    *r_reflection = *r_transmission = one_spectrum();
+    *r_reflectance = *r_transmittance = one_spectrum();
 
     /* Exclude total internal reflection. */
     if (has_transmission && fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r) == 1.0f) {
-      *r_transmission = zero_spectrum();
+      *r_transmittance = zero_spectrum();
     }
   }
 
-  *r_reflection *= (float)has_reflection;
-  *r_transmission *= (float)has_transmission;
+  *r_reflectance *= (float)has_reflection;
+  *r_transmittance *= (float)has_transmission;
 }
 
 ccl_device_inline void microfacet_ggx_preserve_energy(KernelGlobals kg,
