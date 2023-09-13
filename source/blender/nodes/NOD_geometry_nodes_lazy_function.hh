@@ -30,8 +30,8 @@
 
 #include "BLI_compute_context.hh"
 
+#include "BKE_bake_items.hh"
 #include "BKE_node_tree_zones.hh"
-#include "BKE_simulation_state.hh"
 
 struct Object;
 struct Depsgraph;
@@ -57,7 +57,7 @@ struct PassThrough {
  */
 struct OutputCopy {
   float delta_time;
-  bke::BakeStateRef state;
+  bke::bake::BakeStateRef state;
 };
 
 /**
@@ -66,7 +66,7 @@ struct OutputCopy {
  */
 struct OutputMove {
   float delta_time;
-  bke::BakeState state;
+  bke::bake::BakeState state;
 };
 
 using Behavior = std::variant<PassThrough, OutputCopy, OutputMove>;
@@ -77,25 +77,25 @@ using Behavior = std::variant<PassThrough, OutputCopy, OutputMove>;
 namespace sim_output {
 
 /**
- * The data is just passed through the node. Data that is incompatible with simulations (like
- * anonymous attributes), is removed though.
+ * Output the data that comes from the corresponding simulation input node, ignoring the nodes in
+ * the zone.
  */
 struct PassThrough {
 };
 
 /**
- * Same as above, but also calls the given function with the data that is passed through the node.
- * This allows the caller of geometry nodes (e.g. the modifier), to cache the new simulation state.
+ * Computes the simulation step and calls the given function to cache the new simulation state.
+ * The new simulation state is the output of the node.
  */
-struct StoreAndPassThrough {
-  std::function<void(bke::BakeState state)> store_fn;
+struct StoreNewState {
+  std::function<void(bke::bake::BakeState state)> store_fn;
 };
 
 /**
  * The inputs are not evaluated, instead the given cached items are output directly.
  */
 struct ReadSingle {
-  bke::BakeStateRef state;
+  bke::bake::BakeStateRef state;
 };
 
 /**
@@ -104,11 +104,11 @@ struct ReadSingle {
 struct ReadInterpolated {
   /** Factor between 0 and 1 that determines the influence of the two simulation states. */
   float mix_factor;
-  bke::BakeStateRef prev_state;
-  bke::BakeStateRef next_state;
+  bke::bake::BakeStateRef prev_state;
+  bke::bake::BakeStateRef next_state;
 };
 
-using Behavior = std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
+using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterpolated>;
 
 }  // namespace sim_output
 
