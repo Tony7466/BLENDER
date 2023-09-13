@@ -411,14 +411,23 @@ typedef struct bNodeTreeInterface {
   /** Callback for every ID pointer in the interface data. */
   void foreach_id(LibraryForeachIDData *cb);
 
+  /** True if the items cache is ready to use. */
+  bool items_cache_is_available() const;
+
   /** Ensure the items cache can be accessed. */
   void ensure_items_cache() const;
+
+  /** True if any runtime change flag is set. */
+  bool is_changed() const;
 
   /**
    * Tag runtime data and invalidate the cache.
    * Must be called after any direct change to interface DNA data.
    */
   void tag_items_changed();
+
+  /** Reset runtime flags after updates have been processed. */
+  void reset_changed_flags();
 
  protected:
   void tag_missing_runtime_data();

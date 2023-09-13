@@ -552,19 +552,19 @@ inline void bNodeTree::ensure_interface_cache() const
 
 inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_inputs() const
 {
-  BLI_assert(this->tree_interface.runtime->items_cache_is_available());
+  BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->inputs();
 }
 
 inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_outputs() const
 {
-  BLI_assert(this->tree_interface.runtime->items_cache_is_available());
+  BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->outputs();
 }
 
 inline blender::Span<bNodeTreeInterfaceItem *> bNodeTree::interface_items() const
 {
-  BLI_assert(this->tree_interface.runtime->items_cache_is_available());
+  BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->items();
 }
 

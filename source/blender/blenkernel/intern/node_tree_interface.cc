@@ -1333,60 +1333,34 @@ void bNodeTreeInterface::foreach_id(LibraryForeachIDData *cb)
   item_types::item_foreach_id(cb, root_panel.item);
 }
 
+bool bNodeTreeInterface::items_cache_is_available() const
+{
+  return !this->runtime->items_cache_mutex_.is_dirty();
+}
+
 void bNodeTreeInterface::ensure_items_cache() const
 {
-  this->runtime->ensure_items_cache(*this);
-}
+  blender::bke::bNodeTreeInterfaceRuntime &runtime = *this->runtime;
 
-void bNodeTreeInterface::tag_missing_runtime_data()
-{
-  this->runtime->tag_changed_flag(NODE_INTERFACE_CHANGED_ALL);
-}
-
-void bNodeTreeInterface::tag_items_changed()
-{
-  this->runtime->tag_changed_flag(NODE_INTERFACE_CHANGED_ITEMS);
-}
-
-namespace blender::bke {
-
-void bNodeTreeInterfaceRuntime::tag_changed_flag(uint32_t flag)
-{
-  changed_flag_ |= flag;
-  items_cache_mutex_.tag_dirty();
-}
-
-bool bNodeTreeInterfaceRuntime::is_changed() const
-{
-  return changed_flag_ != NODE_INTERFACE_CHANGED_NOTHING;
-}
-
-bool bNodeTreeInterfaceRuntime::items_cache_is_available() const
-{
-  return !items_cache_mutex_.is_dirty();
-}
-
-void bNodeTreeInterfaceRuntime::ensure_items_cache(const bNodeTreeInterface &interface)
-{
-  items_cache_mutex_.ensure([&]() {
+  runtime.items_cache_mutex_.ensure([&]() {
     /* Rebuild draw-order list of interface items for linear access. */
-    items_.clear();
-    inputs_.clear();
-    outputs_.clear();
+    runtime.items_.clear();
+    runtime.inputs_.clear();
+    runtime.outputs_.clear();
 
     /* Items in the cache are mutable pointers, but node tree update considers ID data to be
      * immutable when caching. DNA ListBase pointers can be mutable even if their container is
      * const, but the items returned by #foreach_item inherit qualifiers from the container. */
-    bNodeTreeInterface &mutable_interface = const_cast<bNodeTreeInterface &>(interface);
+    bNodeTreeInterface &mutable_self = const_cast<bNodeTreeInterface &>(*this);
 
-    mutable_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
-      items_.append(&item);
+    mutable_self.foreach_item([&](bNodeTreeInterfaceItem &item) {
+      runtime.items_.append(&item);
       if (bNodeTreeInterfaceSocket *socket = get_item_as<bNodeTreeInterfaceSocket>(&item)) {
         if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
-          inputs_.append(socket);
+          runtime.inputs_.append(socket);
         }
         if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-          outputs_.append(socket);
+          runtime.outputs_.append(socket);
         }
       }
       return true;
@@ -1394,9 +1368,24 @@ void bNodeTreeInterfaceRuntime::ensure_items_cache(const bNodeTreeInterface &int
   });
 }
 
-void bNodeTreeInterfaceRuntime::reset_changed_flags()
+void bNodeTreeInterface::tag_missing_runtime_data()
 {
-  changed_flag_ = NODE_INTERFACE_CHANGED_NOTHING;
+  this->runtime->changed_flag_ |= NODE_INTERFACE_CHANGED_ALL;
+  this->runtime->items_cache_mutex_.tag_dirty();
 }
 
-}  // namespace blender::bke
+bool bNodeTreeInterface::is_changed() const
+{
+  return this->runtime->changed_flag_ != NODE_INTERFACE_CHANGED_NOTHING;
+}
+
+void bNodeTreeInterface::tag_items_changed()
+{
+  this->runtime->changed_flag_ |= NODE_INTERFACE_CHANGED_ITEMS;
+  this->runtime->items_cache_mutex_.tag_dirty();
+}
+
+void bNodeTreeInterface::reset_changed_flags()
+{
+  this->runtime->changed_flag_ = NODE_INTERFACE_CHANGED_NOTHING;
+}

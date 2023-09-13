@@ -21,8 +21,7 @@ namespace blender::bke {
 class NodeTreeMainUpdater;
 
 class bNodeTreeInterfaceRuntime {
-  friend struct bNodeTreeInterface;
-  friend class NodeTreeMainUpdater;
+  friend bNodeTreeInterface;
 
  private:
   /**
@@ -45,18 +44,6 @@ class bNodeTreeInterfaceRuntime {
   Vector<bNodeTreeInterfaceSocket *> outputs_;
 
  public:
-  /* Add update tag and invalidate the cache. */
-  void tag_changed_flag(uint32_t flag);
-
-  /* True if any #changed_flag is set. */
-  bool is_changed() const;
-
-  /* True if the items cache is ready to use. */
-  bool items_cache_is_available() const;
-
-  /* Rebuild items lists from the interface. */
-  void ensure_items_cache(const bNodeTreeInterface &tree_interface);
-
   blender::Span<bNodeTreeInterfaceItem *> items() const
   {
     return items_;
@@ -69,10 +56,6 @@ class bNodeTreeInterfaceRuntime {
   {
     return outputs_;
   }
-
- protected:
-  /* Reset #changed_flag after updates have been processed. */
-  void reset_changed_flags();
 };
 
 namespace node_interface {

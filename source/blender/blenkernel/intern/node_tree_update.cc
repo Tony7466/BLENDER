@@ -165,8 +165,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
 /* Check both the tree's own tags and the interface tags. */
 static bool is_tree_changed(const bNodeTree &tree)
 {
-  return tree.runtime->changed_flag != NTREE_CHANGED_NOTHING ||
-         tree.tree_interface.runtime->is_changed();
+  return tree.runtime->changed_flag != NTREE_CHANGED_NOTHING || tree.tree_interface.is_changed();
 }
 
 using TreeNodePair = std::pair<bNodeTree *, bNode *>;
@@ -509,7 +508,7 @@ class NodeTreeMainUpdater {
       ntreeTexCheckCyclics(&ntree);
     }
 
-    if (ntree.tree_interface.runtime->is_changed()) {
+    if (ntree.tree_interface.is_changed()) {
       result.interface_changed = true;
     }
 
@@ -583,7 +582,7 @@ class NodeTreeMainUpdater {
       /* Currently we have no way to tell if a node needs to be updated when a link changed. */
       return true;
     }
-    if (ntree.tree_interface.runtime->is_changed()) {
+    if (ntree.tree_interface.is_changed()) {
       if (ELEM(node.type, NODE_GROUP_INPUT, NODE_GROUP_OUTPUT)) {
         return true;
       }
@@ -1247,7 +1246,7 @@ class NodeTreeMainUpdater {
       }
     }
 
-    ntree.tree_interface.runtime->reset_changed_flags();
+    ntree.tree_interface.reset_changed_flags();
   }
 };
 
