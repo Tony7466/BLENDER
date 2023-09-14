@@ -489,7 +489,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
              wm->file_saved ? "" : "*",
              filepath[0] ? filepath : IFACE_("(Unsaved)"),
              G_MAIN->recovered ? " (Recovered)" : "",
-             BKE_blender_version_string());
+             BKE_blender_version_string_compact());
     GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
