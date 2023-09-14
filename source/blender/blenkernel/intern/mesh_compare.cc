@@ -15,18 +15,6 @@
 
 namespace blender::bke::mesh {
 
-enum class MeshMismatch : int8_t {
-  NumVerts = 0,         /* The number of vertices is different. */
-  NumEdges = 1,         /* The number of edges is different. */
-  NumCorners = 2,       /* The number of corners is different. */
-  NumFaces = 3,         /* The number of faces is different. */
-  VertexAttributes = 4, /* The values of the vertex attributes are different. */
-  EdgeAttributes = 5,   /* The values of the edge attributes are different. */
-  FaceAttributes = 6,   /* The values of the face attributes are different. */
-  EdgeTopology = 7,     /* The edge topology is different. */
-  FaceTopology = 8,     /* The face topology is different. */
-};
-
 static bool edges_equal(const int2 e1,
                         const int2 e2,
                         const Span<int> verts1,
@@ -88,11 +76,10 @@ template<typename T> static void sort_indices(MutableSpan<int> indices, const Sp
  *  - The mapping preserves all vertex attributes, i.e. if attr is some vertex attribute on mesh1,
  * then for every vertex v of mesh1, attr(v) = attr(f(v)).
  *
- * Returns false if no such mapping could be constructed.
+ * \returns the type of mismatch that occured if the mapping couldn't be constructed.
  */
-static bool construct_vertex_mapping(const Mesh &mesh1,
-                                     const Mesh &mesh2,
-                                     MutableSpan<int> r_verts1_to_verts2_map)
+static std::optional<MeshMismatch> construct_vertex_mapping(
+    const Mesh &mesh1, const Mesh &mesh2, MutableSpan<int> r_verts1_to_verts2_map)
 {
   /* At first we don't have any information on which vertices correspond. We try to iteratively
    * narrow down groups of vertices which could correspond. As a first step, we use the vertex
@@ -118,8 +105,7 @@ static bool construct_vertex_mapping(const Mesh &mesh1,
     float3 pos2 = vert_positions2[verts2[i]];
     if (!compare_v3v3_relative(pos1, pos2, FLT_EPSILON, 64)) {
       /* After sorting, the vertices should have the same positions. */
-      std::cout << "POSITIONS WENT WRONG!" << std::endl;
-      return false;
+      return MeshMismatch::VertexAttributes;
     }
     if (!compare_v3v3_relative(pos1, previous_pos, FLT_EPSILON, 64)) {
       /* Different from the previous one, so in a new group. */
@@ -189,60 +175,13 @@ static bool construct_vertex_mapping(const Mesh &mesh1,
      * form a new group.)*/
 
     if (!matching_vertex_found) {
-      std::cout << "EDGES WENT WRONG!" << std::endl;
-      return false;
-    }
-  }
-
-  const GroupedSpan<int> vert_to_corner_map1 = mesh1.vert_to_corner_map();
-  const GroupedSpan<int> vert_to_corner_map2 = mesh2.vert_to_corner_map();
-  /* Analogously to the previous check, we now check if we can match vertices based on the corner
-   * topology map. */
-  for (const int i : IndexRange(mesh1.totvert)) {
-    const int v1 = verts1[i];
-    const Span<int> corners1 = vert_to_corner_map1[v1];
-    bool matching_vertex_found = false;
-    /* Try to find a matching vertex. We know that if it exists, it is in the same group. */
-    for (const int group_i : IndexRange(group_sizes[i])) {
-      const int v2 = verts2[group_i + group_ids[i]];
-      const Span<int> corners2 = vert_to_corner_map2[v2];
-      if (corners1.size() != corners2.size()) {
-        continue;
-      }
-      matching_vertex_found = true;
-      for (const int c1 : corners1) {
-        bool found_matching_corner = false;
-        for (const int c2 : corners2) {
-          if (edges_equal(mesh1.edges()[mesh1.corner_edges()[c1]],
-                          mesh2.edges()[mesh2.corner_edges()[c2]],
-                          verts1,
-                          verts2,
-                          group_ids))
-          {
-            found_matching_corner = true;
-            break;
-          }
-        }
-        if (!found_matching_corner) {
-          matching_vertex_found = false;
-          break;
-        }
-      }
-      if (matching_vertex_found) {
-        break;
-      }
-    }
-
-    /* TODO: use which vertices matched to reduce groups even further. (All the vertices that match
-     * form a new group.)*/
-
-    if (!matching_vertex_found) {
-      std::cout << "CORNERS WENT WRONG!" << std::endl;
-      return false;
+      return MeshMismatch::EdgeTopology;
     }
   }
 
   /* Finally we check the faces. */
+  const GroupedSpan<int> vert_to_corner_map1 = mesh1.vert_to_corner_map();
+  const GroupedSpan<int> vert_to_corner_map2 = mesh2.vert_to_corner_map();
   const Array<int> corner_to_face_map1 = mesh1.corner_to_face_map();
   const Array<int> corner_to_face_map2 = mesh2.corner_to_face_map();
 
@@ -291,23 +230,28 @@ static bool construct_vertex_mapping(const Mesh &mesh1,
      * form a new group.)*/
 
     if (!matching_vertex_found) {
-      std::cout << "FACES WENT WRONG!" << std::endl;
-      return false;
+      return MeshMismatch::FaceTopology;
     }
   }
 
-  return true;
+  return {};
 }
 
-bool meshes_isomorphic(const Mesh &mesh1, const Mesh &mesh2)
+std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mesh2)
 {
 
   /* These will be assumed implicitly later on. */
-  if (mesh1.totvert != mesh2.totvert || mesh1.totedge != mesh2.totedge ||
-      mesh1.totloop != mesh2.totloop || mesh1.totvert != mesh2.totvert)
-  {
-    std::cout << "DIMENSIONS WENT WRONG!" << std::endl;
-    return false;
+  if (mesh1.totvert != mesh2.totvert) {
+    return MeshMismatch::NumVerts;
+  }
+  if (mesh1.totedge != mesh2.totedge) {
+    return MeshMismatch::NumEdges;
+  }
+  if (mesh1.totloop != mesh2.totloop) {
+    return MeshMismatch::NumCorners;
+  }
+  if (mesh1.faces_num != mesh2.faces_num) {
+    return MeshMismatch::NumFaces;
   }
 
   /* We first try to construct a bijection between the vertices, since edges, corners and faces are
