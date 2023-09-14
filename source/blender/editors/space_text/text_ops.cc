@@ -1083,7 +1083,7 @@ static void txt_copy_clipboard(Text *text)
   char *buf;
 
   if (!txt_has_sel(text)) {
-    buf = static_cast<char *>(MEM_mallocN(text->curl->len + 1, "Clipboard"));
+    buf = MEM_cnew_array<char>(text->curl->len + 1, AT);
     BLI_strncpy(buf, text->curl->line, text->curl->len + 1);
   }
   else {
