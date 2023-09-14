@@ -70,6 +70,7 @@ set(SRC
   algorithms/intern/smaa.cc
   algorithms/intern/summed_area_table.cc
   algorithms/intern/symmetric_separable_blur.cc
+  algorithms/intern/transform.cc
 
   algorithms/COM_algorithm_morphological_distance.hh
   algorithms/COM_algorithm_morphological_distance_feather.hh
@@ -78,6 +79,7 @@ set(SRC
   algorithms/COM_algorithm_smaa.hh
   algorithms/COM_algorithm_summed_area_table.hh
   algorithms/COM_algorithm_symmetric_separable_blur.hh
+  algorithms/COM_algorithm_transform.hh
 
   cached_resources/intern/cached_mask.cc
   cached_resources/intern/cached_texture.cc

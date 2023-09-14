@@ -21,39 +21,6 @@
 
 namespace blender::realtime_compositor {
 
-Domain compute_realized_transformation_domain(const Domain &domain,
-                                              bool realize_rotation,
-                                              bool realize_scale)
-{
-  if (!realize_rotation && !realize_scale) {
-    return domain;
-  }
-
-  math::AngleRadian rotation;
-  float2 translation, scale;
-  float2 size = float2(domain.size);
-  math::to_loc_rot_scale(domain.transformation, translation, rotation, scale);
-
-  /* Set the rotation to zero and expand the domain size to fit the bounding box of the rotated
-   * result. */
-  if (realize_rotation) {
-    const float sine = math::abs(math::sin(rotation));
-    const float cosine = math::abs(math::cos(rotation));
-    size = float2(size.x * sine + size.y * cosine, size.x * cosine + size.y * sine);
-    rotation = 0.0f;
-  }
-
-  /* Set the scale to 1 and scale the domain size to adapt to the new domain. */
-  if (realize_scale) {
-    size *= scale;
-    scale = float2(1.0f);
-  }
-
-  const float3x3 transformation = math::from_loc_rot_scale<float3x3>(translation, rotation, scale);
-
-  return Domain(math::min(int2(math::ceil(size)), int2(GPU_max_texture_size())), transformation);
-}
-
 static const char *get_realization_shader(Result &input,
                                           const RealizationOptions &realization_options)
 {

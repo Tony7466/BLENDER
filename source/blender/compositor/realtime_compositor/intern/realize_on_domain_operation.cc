@@ -74,38 +74,4 @@ SimpleOperation *RealizeOnDomainOperation::construct_if_needed(
   return new RealizeOnDomainOperation(context, operation_domain, input_descriptor.type);
 }
 
-/* ------------------------------------------------------------------------------------------------
- * Realize Transformation Operation
- */
-
-SimpleOperation *RealizeTransformationOperation::construct_if_needed(
-    Context &context, const Result &input_result, const InputDescriptor &input_descriptor)
-{
-  /* The input expects a single value and if no single value is provided, it will be ignored and a
-   * default value will be used, so no need to realize it and the operation is not needed. */
-  if (input_descriptor.expects_single_value) {
-    return nullptr;
-  }
-
-  /* Input result is a single value and does not need realization, the operation is not needed. */
-  if (input_result.is_single_value()) {
-    return nullptr;
-  }
-
-  const Domain target_domain = compute_realized_transformation_domain(
-      input_result.domain(),
-      input_descriptor.realization_options.realize_rotation,
-      input_descriptor.realization_options.realize_scale);
-
-  /* The input have an identical domain to the target domain, either because the input doesn't need
-   * to realize its transformations or because it has identity transformations, so no need to
-   * realize it and the operation is not needed. */
-  if (target_domain == input_result.domain()) {
-    return nullptr;
-  }
-
-  /* Otherwise, realization on the target domain is needed. */
-  return new RealizeOnDomainOperation(context, target_domain, input_descriptor.type);
-}
-
 }  // namespace blender::realtime_compositor
