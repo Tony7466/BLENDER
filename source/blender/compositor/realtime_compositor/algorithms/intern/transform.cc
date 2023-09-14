@@ -20,11 +20,12 @@
 
 namespace blender::realtime_compositor {
 
-/* Given a potentially transformed domain, compute a domain such that the transformations specified
- * in the given realization options become identity and the size of the domain is increased/reduced
- * to adapt to the new transformation. For instance, if realize_rotation is true and the domain is
- * rotated, the returned domain will have zero rotation but expanded size to account for the
- * bounding box of the domain after rotation. */
+/* Given a potentially transformed domain, compute a domain such that its rotation and scale become
+ * identity and the size of the domain is increased/reduced to adapt to the new transformation. For
+ * instance, if the domain is rotated, the returned domain will have zero rotation but expanded
+ * size to account for the bounding box of the domain after rotation. The size of the returned
+ * domain is bound and clipped by the maximum possible GPU texture size to avoid allocations that
+ * surpass hardware limits, which is typically 16k. */
 static Domain compute_realized_transformation_domain(const Domain &domain)
 {
   math::AngleRadian rotation;
@@ -58,6 +59,7 @@ void transform(Context &context,
   float2 translation, scale;
   math::to_loc_rot_scale(transformation, translation, rotation, scale);
 
+  /* Rotation and scale transformations are immediately realized. */
   if (rotation != 0.0f || scale != float2(1.0f)) {
     RealizationOptions realization_options = input.get_realization_options();
     realization_options.interpolation = interpolation;
