@@ -189,6 +189,8 @@ class ShadowModule {
  private:
   Instance &inst_;
 
+  ShadowSceneData &data_;
+
   /** Map of shadow casters to track deletion & update of intersected shadows. */
   Map<ObjectKey, ShadowObject> objects_;
 
@@ -289,7 +291,7 @@ class ShadowModule {
   bool enabled_ = true;
 
  public:
-  ShadowModule(Instance &inst);
+  ShadowModule(Instance &inst, ShadowSceneData &data);
   ~ShadowModule(){};
 
   void init();

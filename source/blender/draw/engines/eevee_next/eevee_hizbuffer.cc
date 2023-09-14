@@ -17,11 +17,6 @@ namespace blender::eevee {
 
 void HiZBuffer::sync()
 {
-  /* TODO(fclem): Move to shadow module. */
-  data_.shadow.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
-  data_.shadow.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
-  data_.shadow.normal_bias = max_ff(inst_.scene->eevee.shadow_normal_bias, 0.0f);
-
   RenderBuffers &render_buffers = inst_.render_buffers;
 
   int2 render_extent = inst_.film.render_extent_get();
@@ -36,7 +31,6 @@ void HiZBuffer::sync()
   GPU_texture_mipmap_mode(hiz_tx_, true, false);
 
   data_.uv_scale = float2(render_extent) / float2(hiz_extent);
-  data_.push_update();
 
   {
     hiz_update_ps_.init();

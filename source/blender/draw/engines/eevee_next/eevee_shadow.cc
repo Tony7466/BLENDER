@@ -688,7 +688,7 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, float lod_b
  *
  * \{ */
 
-ShadowModule::ShadowModule(Instance &inst) : inst_(inst)
+ShadowModule::ShadowModule(Instance &inst, ShadowSceneData &data) : inst_(inst), data_(data)
 {
   for (int i = 0; i < statistics_buf_.size(); i++) {
     UNUSED_VARS(i);
@@ -708,6 +708,10 @@ void ShadowModule::init()
       light.initialized = false;
     }
   }
+
+  data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
+  data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
+  data_.normal_bias = max_ff(inst_.scene->eevee.shadow_normal_bias, 0.0f);
 
   /* Pool size is in MBytes. */
   const size_t pool_byte_size = enabled_ ? scene.eevee.shadow_pool_size * square_i(1024) : 1;
@@ -843,6 +847,7 @@ void ShadowModule::begin_sync()
       sub.push_constant("pixel_world_radius", &pixel_world_radius_);
       sub.push_constant("fb_resolution", &usage_tag_fb_resolution_);
       sub.push_constant("fb_lod", &usage_tag_fb_lod_);
+      inst_.bind_uniform_data(&sub);
       inst_.hiz_buffer.bind_resources(&sub);
       inst_.lights.bind_resources(&sub);
 
@@ -1044,6 +1049,7 @@ void ShadowModule::end_sync()
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
+      inst_.bind_uniform_data(&sub);
       inst_.hiz_buffer.bind_resources(&sub);
       inst_.sampling.bind_resources(&sub);
       inst_.lights.bind_resources(&sub);
@@ -1184,6 +1190,7 @@ void ShadowModule::debug_end_sync()
   debug_draw_ps_.push_constant("debug_tilemap_index", light.tilemap_index);
   debug_draw_ps_.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
   debug_draw_ps_.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
+  inst_.bind_uniform_data(&debug_draw_ps_);
   inst_.hiz_buffer.bind_resources(&debug_draw_ps_);
   inst_.lights.bind_resources(&debug_draw_ps_);
   inst_.shadows.bind_resources(&debug_draw_ps_);

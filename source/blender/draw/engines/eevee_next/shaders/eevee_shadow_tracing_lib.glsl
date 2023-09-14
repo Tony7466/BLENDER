@@ -401,7 +401,7 @@ ShadowEvalResult shadow_eval(
 #  endif
   vec3 random_shadow_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
   random_shadow_3d += sampling_rng_3D_get(SAMPLING_SHADOW_U);
-  float normal_offset = hiz_buf.shadow.normal_bias;
+  float normal_offset = uniform_buf.shadow.normal_bias;
 #else
   /* Case of surfel light eval. */
   vec3 random_shadow_3d = vec3(0.5);
