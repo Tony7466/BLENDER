@@ -1,2 +1,3 @@
 Referenced by commit e86211cded5d992d0d15aaa5cf216de248dc7b26, Cleanup: Remove unnecessary search item in texture node add menu
 Referenced by issue #112107, No "Search" option in the shortcut menu in the compositor
+Referenced by issue #112362, Command search prefilled with single "s"
