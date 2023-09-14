@@ -429,13 +429,27 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
     return;
   }
 
-  node_tree->ensure_topology_cache();
+  node_tree->ensure_interface_cache();
   int input_index = 0;
   for (bNodeTreeInterfaceSocket *io_socket : node_tree->interface_inputs()) {
     draw_property_for_socket(
         *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, input_index);
     ++input_index;
   }
+}
+
+static bool run_node_ui_poll(wmOperatorType * /*ot*/, PointerRNA *ptr)
+{
+  bool result = false;
+  RNA_STRUCT_BEGIN (ptr, prop) {
+    int flag = RNA_property_flag(prop);
+    if ((flag & PROP_HIDDEN) == 0) {
+      result = true;
+      break;
+    }
+  }
+  RNA_STRUCT_END;
+  return result;
 }
 
 static std::string run_node_group_get_name(wmOperatorType * /*ot*/, PointerRNA *ptr)
@@ -459,6 +473,7 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   ot->exec = run_node_group_exec;
   ot->get_description = run_node_group_get_description;
   ot->ui = run_node_group_ui;
+  ot->ui_poll = run_node_ui_poll;
   ot->get_name = run_node_group_get_name;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
