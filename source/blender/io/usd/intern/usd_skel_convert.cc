@@ -1298,9 +1298,6 @@ void export_deform_verts(const Mesh *mesh,
   for (const int i : dverts.index_range()) {
     const MDeformVert &vert = dverts[i];
 
-    /* Sum of the weights, for normalizing. */
-    float sum_weights = 0.0f;
-
     for (int j = 0; j < element_size; ++j, ++offset) {
 
       if (offset >= joint_indices.size()) {
@@ -1333,17 +1330,6 @@ void export_deform_verts(const Mesh *mesh,
       float w = vert.dw[j].weight;
 
       joint_weights[offset] = w;
-
-      sum_weights += w;
-    }
-
-    if (sum_weights > .000001f) {
-      /* Run over the elements again to normalize the weights. */
-      float inv_sum_weights = 1.0f / sum_weights;
-      offset -= element_size;
-      for (int k = 0; k < element_size; ++k, ++offset) {
-        joint_weights[offset] *= inv_sum_weights;
-      }
     }
   }
 
@@ -1351,6 +1337,8 @@ void export_deform_verts(const Mesh *mesh,
     printf("WARNING: There were %d deform verts with out of bounds deform group numbers.\n",
            num_out_of_bounds);
   }
+
+  pxr::UsdSkelNormalizeWeights(joint_weights, element_size);
 
   skel_api.CreateJointIndicesPrimvar(false, element_size).GetAttr().Set(joint_indices);
   skel_api.CreateJointWeightsPrimvar(false, element_size).GetAttr().Set(joint_weights);
