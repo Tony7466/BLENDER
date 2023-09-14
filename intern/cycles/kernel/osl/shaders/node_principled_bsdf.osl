@@ -80,6 +80,9 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   closure color TransmissionBSDF = 0;
   if (Metallic < 1.0 && Transmission > 0.0) {
     float eta = max(IOR, 1e-5);
+    if (backfacing()) {
+      eta = 1.0 / eta;
+    }
 
     color f0 = F0_from_ior(eta) * SpecularTint;
     color f90 = color(1.0);
