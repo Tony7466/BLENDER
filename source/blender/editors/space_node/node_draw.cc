@@ -772,6 +772,8 @@ static void node_update_basis_from_socket_lists(
   /* Output sockets. */
   bool add_output_space = false;
 
+  node_update_basis_buttons(C, ntree, node, block, locy);
+
   for (bNodeSocket *socket : node.output_sockets()) {
     /* Clear flag, conventional drawing does not support panels. */
     socket->flag &= ~SOCK_PANEL_COLLAPSED;
@@ -788,7 +790,7 @@ static void node_update_basis_from_socket_lists(
     locy -= NODE_DY / 4;
   }
 
-  node_update_basis_buttons(C, ntree, node, block, locy);
+  // node_update_basis_buttons(C, ntree, node, block, locy);
 
   /* Input sockets. */
   for (bNodeSocket *socket : node.input_sockets()) {
