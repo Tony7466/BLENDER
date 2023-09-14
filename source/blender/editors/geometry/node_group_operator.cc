@@ -672,13 +672,13 @@ MenuType node_group_operator_assets_menu()
   return type;
 }
 
-static void catalog_assets_draw_uncategorized(const bContext *C, Menu *menu)
+static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
 {
   asset::AssetItemTree *tree = get_static_item_tree(*C);
   if (!tree) {
     return;
   }
-  for (const asset_system::AssetRepresentation *asset : tree->uncategorized_assets) {
+  for (const asset_system::AssetRepresentation *asset : tree->unassigned_assets) {
     wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
     PointerRNA props_ptr;
     uiItemFullO_ptr(menu->layout,
@@ -693,12 +693,12 @@ static void catalog_assets_draw_uncategorized(const bContext *C, Menu *menu)
   }
 }
 
-MenuType node_group_operator_assets_menu_uncategorized()
+MenuType node_group_operator_assets_menu_unassigned()
 {
   MenuType type{};
-  STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets_uncategorized");
+  STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets_unassigned");
   type.poll = asset_menu_poll;
-  type.draw = catalog_assets_draw_uncategorized;
+  type.draw = catalog_assets_draw_unassigned;
   type.listener = asset::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   type.description = N_(
@@ -764,9 +764,9 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
     }
   });
 
-  if (!tree->uncategorized_assets.is_empty()) {
+  if (!tree->unassigned_assets.is_empty()) {
     uiItemM(&layout,
-            "GEO_MT_node_operator_catalog_assets_uncategorized",
+            "GEO_MT_node_operator_catalog_assets_unassigned",
             IFACE_("No Catalog"),
             ICON_NONE);
   }

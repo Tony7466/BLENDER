@@ -122,10 +122,10 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   });
 }
 
-static void uncategorized_assets_draw(const bContext * /*C*/, Menu *menu)
+static void unassigned_assets_draw(const bContext * /*C*/, Menu *menu)
 {
   asset::AssetItemTree &tree = *get_static_item_tree();
-  for (const asset_system::AssetRepresentation *asset : tree.uncategorized_assets) {
+  for (const asset_system::AssetRepresentation *asset : tree.unassigned_assets) {
     wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
     PointerRNA props_ptr;
     uiItemFullO_ptr(menu->layout,
@@ -193,10 +193,9 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
     }
   });
 
-  if (!tree.uncategorized_assets.is_empty()) {
+  if (!tree.unassigned_assets.is_empty()) {
     uiItemS(layout);
-    uiItemM(
-        layout, "OBJECT_MT_add_modifier_uncategorized_assets", IFACE_("No Catalog"), ICON_NONE);
+    uiItemM(layout, "OBJECT_MT_add_modifier_unassigned_assets", IFACE_("No Catalog"), ICON_NONE);
   }
 }
 
@@ -283,11 +282,11 @@ static void OBJECT_OT_modifier_add_asset(wmOperatorType *ot)
   asset::operator_asset_reference_props_register(*ot->srna);
 }
 
-static MenuType modifier_add_uncategorized_assets_menu_type()
+static MenuType modifier_add_unassigned_assets_menu_type()
 {
   MenuType type{};
-  STRNCPY(type.idname, "OBJECT_MT_add_modifier_uncategorized_assets");
-  type.draw = uncategorized_assets_draw;
+  STRNCPY(type.idname, "OBJECT_MT_add_modifier_unassigned_assets");
+  type.draw = unassigned_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   type.description = N_(
@@ -319,7 +318,7 @@ static MenuType modifier_add_root_catalogs_menu_type()
 void object_modifier_add_asset_register()
 {
   WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_catalog_assets_menu_type()));
-  WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_uncategorized_assets_menu_type()));
+  WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_root_catalogs_menu_type()));
   WM_operatortype_append(OBJECT_OT_modifier_add_asset);
 }

@@ -49,7 +49,7 @@ struct AssetItemTree {
   MultiValueMap<asset_system::AssetCatalogPath, asset_system::AssetRepresentation *>
       assets_per_path;
   /** Assets not added to a catalog, not part of #assets_per_path. */
-  Vector<asset_system::AssetRepresentation *> uncategorized_assets;
+  Vector<asset_system::AssetRepresentation *> unassigned_assets;
 };
 
 asset_system::AssetCatalogTree build_filtered_catalog_tree(

@@ -107,7 +107,7 @@ AssetItemTree build_filtered_all_catalog_tree(
 {
   MultiValueMap<asset_system::AssetCatalogPath, asset_system::AssetRepresentation *>
       assets_per_path;
-  Vector<asset_system::AssetRepresentation *> uncategorized_assets;
+  Vector<asset_system::AssetRepresentation *> unassigned_assets;
 
   ED_assetlist_storage_fetch(&library_ref, &C);
   ED_assetlist_ensure_previews_job(&library_ref, &C);
@@ -126,7 +126,7 @@ AssetItemTree build_filtered_all_catalog_tree(
     }
 
     if (BLI_uuid_is_nil(meta_data.catalog_id)) {
-      uncategorized_assets.append(&asset);
+      unassigned_assets.append(&asset);
       return true;
     }
 
@@ -155,7 +155,7 @@ AssetItemTree build_filtered_all_catalog_tree(
 
   return {std::move(catalogs_with_node_assets),
           std::move(assets_per_path),
-          std::move(uncategorized_assets)};
+          std::move(unassigned_assets)};
 }
 
 }  // namespace blender::ed::asset
