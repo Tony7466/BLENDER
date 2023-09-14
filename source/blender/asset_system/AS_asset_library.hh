@@ -193,8 +193,6 @@ AssetLibraryReference all_library_reference();
 blender::asset_system::AssetLibrary *AS_asset_library_load(
     const Main *bmain, const AssetLibraryReference &library_reference);
 
-void AS_asset_library_rebuild_all();
-
 std::string AS_asset_library_root_path_from_library_ref(
     const AssetLibraryReference &library_reference);
 

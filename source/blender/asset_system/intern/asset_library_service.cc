@@ -197,7 +197,9 @@ static void rebuild_all_library_ex(AssetLibrary &all_library, const bool reload_
 
 void AssetLibraryService::rebuild_all_library()
 {
-  rebuild_all_library_ex(*all_library_, true);
+  if (all_library_) {
+    rebuild_all_library_ex(*all_library_, true);
+  }
 }
 
 AssetLibrary *AssetLibraryService::get_asset_library_all(const Main *bmain)

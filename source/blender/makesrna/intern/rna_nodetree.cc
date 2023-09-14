@@ -30,7 +30,6 @@
 #include "DNA_texture_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_asset.h"
 #include "BKE_attribute.h"
 #include "BKE_cryptomatte.h"
 #include "BKE_geometry_set.hh"
