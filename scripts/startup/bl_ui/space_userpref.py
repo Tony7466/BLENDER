@@ -397,32 +397,32 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
         col = flow.column()
-        col.prop(edit, "use_duplicate_action", text="Action")
-        col.prop(edit, "use_duplicate_armature", text="Armature")
-        col.prop(edit, "use_duplicate_camera", text="Camera")
-        col.prop(edit, "use_duplicate_curve", text="Curve")
+        col.prop(edit, "use_duplicate_action", text="Action", icon="ACTION")
+        col.prop(edit, "use_duplicate_armature", text="Armature", icon="OUTLINER_DATA_ARMATURE")
+        col.prop(edit, "use_duplicate_camera", text="Camera", icon="OUTLINER_DATA_CAMERA")
+        col.prop(edit, "use_duplicate_curve", text="Curve", icon="OUTLINER_DATA_CURVE")
         # col.prop(edit, "use_duplicate_fcurve", text="F-Curve")  # Not implemented.
-        col.prop(edit, "use_duplicate_curves", text="Curves")
-        col.prop(edit, "use_duplicate_grease_pencil", text="Grease Pencil")
-        col.prop(edit, "use_duplicate_lattice", text="Lattice")
+        col.prop(edit, "use_duplicate_curves", text="Curves", icon="OUTLINER_DATA_CURVES")
+        col.prop(edit, "use_duplicate_grease_pencil", text="Grease Pencil", icon="OUTLINER_OB_GREASEPENCIL")
+        col.prop(edit, "use_duplicate_lattice", text="Lattice", icon="OUTLINER_DATA_LATTICE")
 
         col = flow.column()
-        col.prop(edit, "use_duplicate_light", text="Light")
-        col.prop(edit, "use_duplicate_lightprobe", text="Light Probe")
-        col.prop(edit, "use_duplicate_material", text="Material")
-        col.prop(edit, "use_duplicate_mesh", text="Mesh")
-        col.prop(edit, "use_duplicate_metaball", text="Metaball")
-        col.prop(edit, "use_duplicate_node_tree", text="Node Tree")
-        col.prop(edit, "use_duplicate_particle", text="Particle")
+        col.prop(edit, "use_duplicate_light", text="Light", icon="OUTLINER_DATA_LIGHT")
+        col.prop(edit, "use_duplicate_lightprobe", text="Light Probe", icon="OUTLINER_DATA_LIGHTPROBE")
+        col.prop(edit, "use_duplicate_material", text="Material", icon="MATERIAL_DATA")
+        col.prop(edit, "use_duplicate_mesh", text="Mesh", icon="OUTLINER_DATA_MESH")
+        col.prop(edit, "use_duplicate_metaball", text="Metaball", icon="OUTLINER_DATA_META")
+        col.prop(edit, "use_duplicate_node_tree", text="Node Tree", icon="NODETREE")
+        col.prop(edit, "use_duplicate_particle", text="Particle", icon="PARTICLES")
 
         col = flow.column()
         if hasattr(edit, "use_duplicate_pointcloud"):
-            col.prop(edit, "use_duplicate_pointcloud", text="Point Cloud")
-        col.prop(edit, "use_duplicate_speaker", text="Speaker")
-        col.prop(edit, "use_duplicate_surface", text="Surface")
-        col.prop(edit, "use_duplicate_text", text="Text")
-        # col.prop(edit, "use_duplicate_texture", text="Texture")  # Not implemented.
-        col.prop(edit, "use_duplicate_volume", text="Volume", text_ctxt=i18n_contexts.id_id)
+            col.prop(edit, "use_duplicate_pointcloud", text="Point Cloud", icon="OUTLINER_DATA_POINTCLOUD")
+        col.prop(edit, "use_duplicate_speaker", text="Speaker", icon="OUTLINER_DATA_SPEAKER")
+        col.prop(edit, "use_duplicate_surface", text="Surface", icon="OUTLINER_DATA_SURFACE")
+        col.prop(edit, "use_duplicate_text", text="Text", icon="OUTLINER_DATA_FONT")
+        # col.prop(edit, "use_duplicate_texture", text="Texture")  # Not implemented, icon="OUTLINER_OB_".
+        col.prop(edit, "use_duplicate_volume", text="Volume", text_ctxt=i18n_contexts.id_id, icon="OUTLINER_DATA_VOLUME")
 
 
 class USERPREF_PT_edit_cursor(EditingPanel, CenterAlignMixIn, Panel):
@@ -432,9 +432,9 @@ class USERPREF_PT_edit_cursor(EditingPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         edit = prefs.edit
 
-        col = layout.column()
-        col.prop(edit, "use_mouse_depth_cursor")
-        col.prop(edit, "use_cursor_lock_adjust")
+        col = layout.column(heading="Cursor")
+        col.prop(edit, "use_mouse_depth_cursor", text="Surface Project")
+        col.prop(edit, "use_cursor_lock_adjust", text="Lock Adjust")
 
 
 class USERPREF_PT_edit_gpencil(EditingPanel, CenterAlignMixIn, Panel):
@@ -472,7 +472,7 @@ class USERPREF_PT_edit_weight_paint(EditingPanel, CenterAlignMixIn, Panel):
 
         layout.use_property_split = False
 
-        layout.prop(view, "use_weight_color_range", text="Use Custom Colors")
+        layout.prop(view, "use_weight_color_range", text="Custom Gradient")
 
         col = layout.column()
         col.active = view.use_weight_color_range
@@ -498,10 +498,14 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         edit = prefs.edit
 
-        col = layout.column()
-        col.prop(edit, "node_use_insert_offset", text="Auto-Offset")
-        col.prop(edit, "node_margin", text="Auto-Offset Margin")
-        col.prop(edit, "node_preview_resolution", text="Preview Resolution")
+        col = layout.column(heading="Auto-Offset")
+        row = col.row()
+        row.prop(edit, "node_use_insert_offset", text="")
+        subrow = row.row()
+        subrow.prop(edit, "node_margin", text="")
+        subrow.active = edit.node_use_insert_offset
+
+        layout.prop(edit, "node_preview_resolution", text="Preview Resolution")
 
 
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
@@ -720,10 +724,13 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         col = layout.column(heading="Text Info Overlay")
         col.prop(view, "show_object_info", text="Object Info")
         col.prop(view, "show_view_name", text="View Name")
-        col.prop(view, "show_playback_fps", text="Playback Frame Rate (FPS)")
+
+        col = layout.column(heading="Playback Frame Rate (FPS)")
         row = col.row()
-        row.active = view.show_playback_fps
-        row.prop(view, "playback_fps_samples", text="Frame Rate Samples")
+        row.prop(view, "show_playback_fps", text="")
+        subrow = row.row()
+        subrow.active = view.show_playback_fps
+        subrow.prop(view, "playback_fps_samples", text="")
 
         layout.separator()
 
@@ -1395,6 +1402,7 @@ class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
 
 class USERPREF_PT_file_paths_render(FilePathsPanel, Panel):
     bl_label = "Render"
+    bl_parent_id = "USERPREF_PT_file_paths_data"
 
     def draw(self, context):
         layout = self.layout
@@ -1417,6 +1425,7 @@ class USERPREF_PT_text_editor_presets(PresetPanel, Panel):
 
 class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
     bl_label = "Applications"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1453,6 +1462,7 @@ class USERPREF_PT_text_editor(FilePathsPanel, Panel):
 
 class USERPREF_PT_file_paths_development(FilePathsPanel, Panel):
     bl_label = "Development"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -1624,7 +1634,27 @@ class USERPREF_PT_saveload_blend(SaveLoadPanel, CenterAlignMixIn, Panel):
 
         col = layout.column(heading="Save")
         col.prop(view, "use_save_prompt")
-        col.prop(paths, "file_preview_type")
+
+        col = layout.column()
+        col.prop(paths, "save_version")
+        col.prop(paths, "recent_files")
+
+        layout.separator()
+
+        col = layout.column(heading="Auto-Save")
+        row = col.row()
+        row.prop(paths, "use_auto_save_temporary_files", text="")
+        subrow = row.row()
+        subrow.active = paths.use_auto_save_temporary_files
+        subrow.prop(paths, "auto_save_time", text="Timer (Minutes)")
+
+        layout.separator()
+
+        layout.prop(paths, "file_preview_type")
+
+        layout.separator()
+
+        layout.separator()
 
         col = layout.column(heading="Default To")
         col.prop(paths, "use_relative_paths")
@@ -1633,29 +1663,6 @@ class USERPREF_PT_saveload_blend(SaveLoadPanel, CenterAlignMixIn, Panel):
 
         col = layout.column(heading="Text Files")
         col.prop(paths, "use_tabs_as_spaces")
-
-        col = layout.column()
-        col.prop(paths, "save_version")
-        col.prop(paths, "recent_files")
-
-
-class USERPREF_PT_saveload_blend_autosave(SaveLoadPanel, CenterAlignMixIn, Panel):
-    bl_label = "Auto Save"
-    bl_parent_id = "USERPREF_PT_saveload_blend"
-
-    def draw_header(self, context):
-        prefs = context.preferences
-        paths = prefs.filepaths
-
-        self.layout.prop(paths, "use_auto_save_temporary_files", text="")
-
-    def draw_centered(self, context, layout):
-        prefs = context.preferences
-        paths = prefs.filepaths
-
-        col = layout.column()
-        col.active = paths.use_auto_save_temporary_files
-        col.prop(paths, "auto_save_time", text="Timer (Minutes)")
 
 
 class USERPREF_PT_saveload_file_browser(SaveLoadPanel, CenterAlignMixIn, Panel):
@@ -1704,11 +1711,16 @@ class USERPREF_PT_input_mouse(InputPanel, CenterAlignMixIn, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.prop(inputs, "use_mouse_emulate_3_button")
-        if sys.platform[:3] != "win":
-            rowsub = flow.row()
-            rowsub.active = inputs.use_mouse_emulate_3_button
-            rowsub.prop(inputs, "mouse_emulate_3_button_modifier")
+        if sys.platform[:3] == "win":
+            flow.prop(inputs, "use_mouse_emulate_3_button")
+        else:
+            col = flow.column(heading="Emulate 3 Button Mouse")
+            row = col.row()
+            row.prop(inputs, "use_mouse_emulate_3_button", text="")
+            subrow = row.row()
+            subrow.prop(inputs, "mouse_emulate_3_button_modifier", text="")
+            subrow.active = inputs.use_mouse_emulate_3_button
+
         flow.prop(inputs, "use_mouse_continuous")
         flow.prop(inputs, "use_drag_immediately")
         flow.prop(inputs, "mouse_double_click_time", text="Double Click Speed")
@@ -2605,17 +2617,16 @@ classes = (
     USERPREF_PT_theme_strip_colors,
 
     USERPREF_PT_file_paths_data,
-    USERPREF_PT_file_paths_script_directories,
     USERPREF_PT_file_paths_render,
+    USERPREF_PT_file_paths_asset_libraries,
+    USERPREF_PT_file_paths_script_directories,
     USERPREF_PT_file_paths_applications,
     USERPREF_PT_text_editor,
     USERPREF_PT_text_editor_presets,
     USERPREF_PT_file_paths_development,
-    USERPREF_PT_file_paths_asset_libraries,
     USERPREF_PT_file_paths_extension_repos,
 
     USERPREF_PT_saveload_blend,
-    USERPREF_PT_saveload_blend_autosave,
     USERPREF_PT_saveload_autorun,
     USERPREF_PT_saveload_file_browser,
 
