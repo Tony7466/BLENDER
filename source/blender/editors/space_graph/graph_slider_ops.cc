@@ -2109,6 +2109,8 @@ static int push_pull_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = push_pull_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  ED_slider_factor_bounds_set(gso->slider, 0, 2);
+  ED_slider_factor_set(gso->slider, 1);
   common_draw_status_header(C, gso, "Push Pull Keys");
 
   return invoke_result;
@@ -2151,12 +2153,12 @@ void GRAPH_OT_push_pull(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.5f,
+                       1.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
                        "Control how far to push or pull the keys",
                        0.0f,
-                       1.0f);
+                       2.0f);
 }
 /** \} */

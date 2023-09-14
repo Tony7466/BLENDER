@@ -903,8 +903,7 @@ void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
 
     const float delta = fcu->bezt[i].vec[1][1] - linear;
 
-    /* The factor is multiplied by 2 just to increase the effect. */
-    const float key_y_value = linear + delta * factor * 2;
+    const float key_y_value = linear + delta * factor;
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }
