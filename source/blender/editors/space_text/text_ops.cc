@@ -1083,15 +1083,15 @@ static void txt_copy_clipboard(Text *text)
   char *buf;
 
   if (!txt_has_sel(text)) {
-    return;
+    buf = static_cast<char *>(MEM_mallocN(text->curl->len + 1, "Clipboard"));
+    BLI_strncpy(buf, text->curl->line, text->curl->len + 1);
+  }
+  else {
+    buf = txt_sel_to_buf(text, nullptr);
   }
 
-  buf = txt_sel_to_buf(text, nullptr);
-
-  if (buf) {
-    WM_clipboard_text_set(buf, false);
-    MEM_freeN(buf);
-  }
+  WM_clipboard_text_set(buf, false);
+  MEM_freeN(buf);
 }
 
 static int text_copy_exec(bContext *C, wmOperator * /*op*/)
@@ -1131,6 +1131,12 @@ static int text_cut_exec(bContext *C, wmOperator * /*op*/)
   txt_copy_clipboard(text);
 
   ED_text_undo_push_init(C);
+  if (!txt_has_sel(text)) {
+    /* Select the current line */
+    text->curl = text->curl->prev;
+    text->curc = text->curl->len;
+    text->selc = text->sell->len;
+  }
   txt_delete_selected(text);
 
   text_update_cursor_moved(C);
