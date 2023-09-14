@@ -32,6 +32,8 @@ def setup():
     eevee.use_volumetric_shadows = True
     eevee.volumetric_tile_size = '2'
 
+    eevee.use_motion_blur = True
+
     for mat in bpy.data.materials:
         # This needs to be enabled case by case,
         # otherwise we loose SSR and GTAO everywhere.
