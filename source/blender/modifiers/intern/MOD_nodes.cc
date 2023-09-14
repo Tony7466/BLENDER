@@ -420,6 +420,56 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
 
+void MOD_nodes_id_mapping_refresh(Main &bmain, Object &object, NodesModifierData &nmd)
+{
+  if (nmd.runtime->id_mapping_issues.missing_mappings.is_empty()) {
+    return;
+  }
+  const int new_mappings_num = nmd.id_mappings_num +
+                               nmd.runtime->id_mapping_issues.missing_mappings.size();
+  nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
+      MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
+
+  int new_mapping_i = nmd.id_mappings_num;
+  for (const auto &item : nmd.runtime->id_mapping_issues.missing_mappings) {
+    char id_name[MAX_NAME];
+    char lib_name[MAX_NAME];
+    item.first.id_name.copy(id_name);
+    item.first.lib_name.copy(lib_name);
+    ID *id = BKE_libblock_find_name_with_lib(
+        &bmain, id_name, lib_name[0] == '\0' ? nullptr : lib_name);
+
+    NodesModifierIDMapping &mapping = nmd.id_mappings[new_mapping_i++];
+    memset(&mapping, 0, sizeof(NodesModifierIDMapping));
+    if (!item.first.id_name.is_empty()) {
+      mapping.id_name = BLI_strdupn(item.first.id_name.data(), item.first.id_name.size());
+    }
+    if (!item.first.lib_name.is_empty()) {
+      mapping.lib_name = BLI_strdupn(item.first.lib_name.data(), item.first.lib_name.size());
+    }
+    mapping.id_type = item.second;
+    mapping.id = id;
+    id_us_plus(id);
+  }
+
+  nmd.runtime->id_mapping_issues.missing_mappings.clear();
+  nmd.id_mappings_num = new_mappings_num;
+
+  CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
+
+  if (nmd.runtime->cache) {
+    std::lock_guard lock{nmd.runtime->cache->mutex};
+    for (std::unique_ptr<bake::NodeCache> &node_cache : nmd.runtime->cache->cache_by_id.values()) {
+      if (node_cache->cache_status != bake::CacheStatus::Baked) {
+        node_cache->reset();
+      }
+    }
+  }
+
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(&bmain);
+}
+
 namespace blender {
 
 static void find_side_effect_nodes_for_viewer_path(
