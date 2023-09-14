@@ -2723,8 +2723,8 @@ static void widget_state_menu_item(uiWidgetType *wt,
   if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_ACTIVE)) {
     /* Hovering over disabled item. */
     wt->wcol.text[3] = 128;
-    color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.5f);
-    wt->wcol.inner[3] = 64;
+    copy_v3_v3_uchar(wt->wcol.inner, wt->wcol.text);
+    wt->wcol.inner[3] = 20;
   }
   else if (state->but_flag & UI_BUT_DISABLED) {
     /* Regular disabled. */
@@ -2733,8 +2733,8 @@ static void widget_state_menu_item(uiWidgetType *wt,
   else if (state->but_flag & UI_BUT_INACTIVE) {
     /* Inactive. */
     if (state->but_flag & UI_ACTIVE) {
-      color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
-      wt->wcol.inner[3] = 255;
+      copy_v3_v3_uchar(wt->wcol.inner, wt->wcol.text);
+      wt->wcol.inner[3] = 20;
     }
     color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
   }
@@ -2752,9 +2752,9 @@ static void widget_state_menu_item(uiWidgetType *wt,
   }
   else if (state->but_flag & UI_ACTIVE) {
     /* Regular hover. */
-    color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+    copy_v3_v3_uchar(wt->wcol.inner, wt->wcol.text);
     copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
-    wt->wcol.inner[3] = 255;
+    wt->wcol.inner[3] = 20;
     wt->wcol.text[3] = 255;
   }
 }
