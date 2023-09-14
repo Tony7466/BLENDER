@@ -2174,7 +2174,8 @@ void uiItemFullR(uiLayout *layout,
             icon = (enum_value & value) ? ICON_CHECKBOX_HLT : ICON_CHECKBOX_DEHLT;
           }
           else {
-            icon = (enum_value == value) ? ICON_CHECKBOX_HLT : ICON_CHECKBOX_DEHLT;
+            /* Only a single value can be chosen, so display as radio buttons. */
+            icon = (enum_value == value) ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF;
           }
         }
       }
