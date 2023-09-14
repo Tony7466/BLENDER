@@ -434,7 +434,7 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     return;
   }
 
-  if (ELEM(interp, pxr::UsdGeomTokens->constant, pxr::UsdGeomTokens->uniform)) {
+  if (ELEM(interp, pxr::UsdGeomTokens->constant)) {
     /* For situations where there's only a single item, flood fill the object. */
     color_data.span.fill(
         ColorGeometry4f(usd_colors[0][0], usd_colors[0][1], usd_colors[0][2], 1.0f));
