@@ -391,6 +391,7 @@ static void triangulate_ngons(const Span<float3> positions,
                               reinterpret_cast<uint(*)[3]>(map.data()),
                               data.arena,
                               data.heap);
+        BLI_memarena_clear(data.arena);
       }
     }
 
