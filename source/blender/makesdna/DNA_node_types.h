@@ -1581,9 +1581,26 @@ typedef struct NodeGeometryMeshLine {
 } NodeGeometryMeshLine;
 
 typedef struct NodeSwitch {
-  /** #NodeSwitch. */
+  /** #eNodeSocketDatatype. */
   uint8_t input_type;
 } NodeSwitch;
+
+typedef struct NodeMenuSwitchEnumItem {
+  char *name;
+  char *description;
+  /* Immutable unique identifier. */
+  uint32_t identifier;
+  char _pad[4];
+} NodeMenuSwitchEnumItem;
+
+typedef struct NodeMenuSwitch {
+  /* User-defined enum items owned and managed by this node. */
+  NodeMenuSwitchEnumItem **items;
+  int num_items;
+  /** #eNodeSocketDatatype. */
+  uint8_t input_type;
+  char _pad[3];
+} NodeMenuSwitch;
 
 typedef struct NodeGeometryCurveSplineType {
   /** #GeometryNodeSplineType. */

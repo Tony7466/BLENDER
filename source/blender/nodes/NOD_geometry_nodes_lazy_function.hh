@@ -338,6 +338,7 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     const bNode &node,
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
+std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &node);
 
 struct FoundNestedNodeID {
   int id;
