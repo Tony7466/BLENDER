@@ -544,6 +544,14 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
   return get_static_item_tree(eContextObjectMode(CTX_data_mode_enum(&C)));
 }
 
+void clear_operator_asset_trees()
+{
+  for (const int mode : IndexRange(CTX_MODE_NUM)) {
+    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
+      *tree = {};
+  }
+}
+
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
@@ -677,12 +685,39 @@ MenuType node_group_operator_assets_menu()
   return type;
 }
 
-void clear_operator_asset_trees()
+static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
 {
-  for (const int mode : IndexRange(CTX_MODE_NUM)) {
-    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
-      *tree = {};
+  asset::AssetItemTree *tree = get_static_item_tree(*C);
+  if (!tree) {
+    return;
   }
+  for (const asset_system::AssetRepresentation *asset : tree->unassigned_assets) {
+    wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
+    PointerRNA props_ptr;
+    uiItemFullO_ptr(menu->layout,
+                    ot,
+                    IFACE_(asset->get_name().c_str()),
+                    ICON_NONE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    UI_ITEM_NONE,
+                    &props_ptr);
+    asset::operator_asset_reference_props_set(*asset, props_ptr);
+  }
+}
+
+MenuType node_group_operator_assets_menu_unassigned()
+{
+  MenuType type{};
+  STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets_unassigned");
+  type.poll = asset_menu_poll;
+  type.draw = catalog_assets_draw_unassigned;
+  type.listener = asset::asset_reading_region_listen_fn;
+  type.flag = MenuTypeFlag::ContextDependent;
+  type.description = N_(
+      "Tool node group assets not assigned to a catalog.\n"
+      "Catalogs can be assigned in the Asset Browser.");
+  return type;
 }
 
 void ui_template_node_operator_asset_menu_items(uiLayout &layout,
@@ -727,9 +762,6 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (tree->assets_per_path.size() == 0) {
     *tree = build_catalog_tree(C);
   }
-  if (tree->catalogs.is_empty()) {
-    return;
-  }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
       asset_system::all_library_reference());
@@ -746,6 +778,13 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
     }
   });
+
+  if (!tree->unassigned_assets.is_empty()) {
+    uiItemM(&layout,
+            "GEO_MT_node_operator_catalog_assets_unassigned",
+            IFACE_("No Catalog"),
+            ICON_NONE);
+  }
 }
 
 /** \} */
