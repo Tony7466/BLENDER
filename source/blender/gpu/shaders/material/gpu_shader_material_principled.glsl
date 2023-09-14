@@ -84,7 +84,7 @@ void node_bsdf_principled(vec4 base_color,
   coat_data.N = CN;
   coat_data.roughness = coat_roughness;
   float coat_NV = dot(coat_data.N, V);
-  float reflectance = btdf_lut(coat_NV, coat_data.roughness, coat_ior, 0.0).y;
+  float reflectance = bsdf_lut(coat_NV, coat_data.roughness, coat_ior, 0.0).x;
   coat_data.weight = weight * coat * reflectance;
   coat_data.color = vec3(1.0);
   /* Attenuate lower layers */
@@ -109,10 +109,11 @@ void node_bsdf_principled(vec4 base_color,
   ClosureReflection reflection_data;
   reflection_data.N = N;
   reflection_data.roughness = roughness;
-  vec2 split_sum = brdf_lut(NV, roughness);
+
   if (true) {
     vec3 f0 = base_color.rgb;
     vec3 f90 = vec3(1.0);
+    vec2 split_sum = brdf_lut(NV, roughness);
     vec3 metallic_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
                                                     F_brdf_single_scatter(f0, f90, split_sum);
     reflection_data.color = weight * metallic * metallic_brdf;
@@ -143,17 +144,14 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Specular component */
   if (true) {
-    vec3 f0 = vec3(F0_from_ior(ior));
-    /* Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid harsh
-     * transition at `IOR == 1`. */
-    vec3 f90 = sqrt(saturate(f0 / 0.02));
-    f0 *= 2.0 * specular * reflection_tint;
-    /* TODO: use bsdf_lut(). */
-    vec3 specular_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
-                                                    F_brdf_single_scatter(f0, f90, split_sum);
-    reflection_data.color += weight * specular_brdf;
+    vec3 F0 = vec3(F0_from_ior(ior)) * 2.0 * specular * reflection_tint;
+    vec3 F90 = vec3(1.0);
+    vec3 reflectance, unused;
+    bsdf_lut(F0, F90, vec3(0.0), NV, roughness, ior, do_multiscatter, reflectance, unused);
+
+    reflection_data.color += weight * reflectance;
     /* Attenuate lower layers */
-    weight *= (1.0 - max_v3(specular_brdf));
+    weight *= (1.0 - max_v3(reflectance));
   }
 
   /* Diffuse component */

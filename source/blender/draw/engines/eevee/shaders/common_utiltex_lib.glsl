@@ -125,6 +125,11 @@ void bsdf_lut(vec3 F0,
   if (ior > 1.0) {
     split_sum = brdf_lut(cos_theta, roughness);
     transmission_factor = sample_3D_texture(utilTex, lut_coords_btdf(cos_theta, roughness, ior)).a;
+    /* Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid harsh
+     * transition at `IOR == 1`. */
+    if (all(equal(F90, vec3(1.0)))) {
+      F90 = vec3(saturate(2.33 / 0.33 * (ior - 1.0) / (ior + 1.0)));
+    }
   }
   else {
     vec3 bsdf = sample_3D_texture(utilTex, lut_coords_bsdf(cos_theta, roughness, ior)).rgb;
@@ -132,60 +137,34 @@ void bsdf_lut(vec3 F0,
     transmission_factor = bsdf.b;
   }
 
-  /* TODO: Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid
-   * harsh transition at `IOR == 1`. */
   reflectance = F_brdf_single_scatter(F0, F90, split_sum);
   transmittance = (vec3(1.0) - F0) * transmission_factor * transmission_tint;
 
   if (do_multiscatter) {
     float real_F0 = F0_from_ior(ior);
     float Ess = real_F0 * split_sum.x + split_sum.y + (1.0 - real_F0) * transmission_factor;
-    reflectance /= Ess;
-    transmittance /= Ess;
+    float Ems = 1.0 - Ess;
+    /* Assume that the transmissive tint makes up most of the overall color if it's not zero. */
+    vec3 Favg = all(equal(transmission_tint, vec3(0.0))) ? F0 + (F90 - F0) / 21.0 :
+                                                           transmission_tint;
+
+    vec3 scale = 1.0 / (1.0 - Ems * Favg);
+    reflectance *= scale;
+    transmittance *= scale;
   }
 
   return;
 }
 
-/* Returns GGX BTDF in first component and fresnel in second. */
-/* TODO: delete this function. */
-vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
+/* Computes the reflectance and transmittance based on the BSDF LUT. */
+vec2 bsdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
 {
-  if (ior <= 1e-5) {
-    return vec2(0.0, 1.0);
-  }
-
-  float f0 = F0_from_ior(ior);
-
-  if (ior >= 1.0) {
-    vec2 split_sum = brdf_lut(cos_theta, roughness);
-    /* Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid harsh
-     * transition at `IOR == 1`. */
-    float f90 = fast_sqrt(saturate(f0 / 0.02));
-
-    float brdf = F_brdf_multi_scatter(vec3(f0), vec3(f90), split_sum).r;
-    /* Energy conservation. */
-    float btdf = 1.0 - brdf;
-    /* Assuming the energy loss caused by single-scattering is distributed proportionally in the
-     * reflection and refraction lobes. */
-    return vec2(btdf, brdf) * ((do_multiscatter == 0.0) ? sum(split_sum) : 1.0);
-  }
-
-  vec3 coords = lut_coords_btdf(cos_theta, roughness, ior);
-  vec3 scale_bias_transmittance = sample_3D_texture(utilTex, coords).rgb;
-
-  float f90 = 1.0;
-  float brdf = f0 * scale_bias_transmittance.x + f90 * scale_bias_transmittance.y;
-  float btdf = scale_bias_transmittance.z * (f90 - f0);
-  vec2 btdf_brdf = vec2(btdf, brdf);
-
-  if (do_multiscatter != 0.0) {
-    /* For energy-conserving BSDF the reflection and refraction lobes should sum to one. Assuming
-     * the energy loss of single-scattering is distributed proportionally in the two lobes. */
-    btdf_brdf /= (btdf_brdf.x + btdf_brdf.y);
-  }
-
-  return btdf_brdf;
+  float F0 = F0_from_ior(ior);
+  vec3 color = vec3(1.0);
+  vec3 reflectance, transmittance;
+  bsdf_lut(
+      F0, color, color, cos_theta, roughness, ior, do_multiscatter, reflectance, transmittance);
+  return vec2(reflectance.r, transmittance.r);
 }
 
 /** \} */
