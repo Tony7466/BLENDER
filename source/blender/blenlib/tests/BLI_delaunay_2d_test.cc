@@ -28,9 +28,9 @@
 namespace blender::meshintersect {
 
 template<typename T> struct InputStorage {
-  Array<VecBase<T, 2>> vert;
+  Array<vec2<T>> vert;
   Array<std::pair<int, int>> edge;
-  Array<int> faces;
+  Array<int> face;
   Vector<int> face_vert_indices;
 };
 
@@ -54,7 +54,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   }
   r_storage.vert.reinitialize(nverts);
   r_storage.edge.reinitialize(nedges);
-  r_storage.faces.reinitialize(nfaces + 1);
+  r_storage.face.reinitialize(nfaces + 1);
   int i = 0;
   while (i < nverts && getline(ss, line)) {
     std::istringstream iss(line);
@@ -62,7 +62,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     iss >> dp0 >> dp1;
     T p0(dp0);
     T p1(dp1);
-    r_storage.vert[i] = VecBase<T, 2>(p0, p1);
+    r_storage.vert[i] = vec2<T>(p0, p1);
     i++;
   }
   i = 0;
@@ -75,7 +75,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   }
   i = 0;
   while (i < nfaces && getline(ss, line)) {
-    r_storage.faces[i] = r_storage.face_vert_indices.size();
+    r_storage.face[i] = r_storage.face_vert_indices.size();
     std::istringstream fss(line);
     int v;
     while (fss >> v) {
@@ -83,12 +83,12 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     }
     i++;
   }
-  r_storage.faces.last() = r_storage.face_vert_indices.size();
+  r_storage.face.last() = r_storage.face_vert_indices.size();
 
   CDT_input<T> ans;
   ans.vert = r_storage.vert;
   ans.edge = r_storage.edge;
-  ans.faces = r_storage.faces.as_span();
+  ans.face = r_storage.face.as_span();
   ans.face_vert_indices = r_storage.face_vert_indices;
 #ifdef WITH_GMP
   if (std::is_same<mpq_class, T>::value) {
@@ -276,7 +276,7 @@ static bool draw_append = false; /* Will be set to true after first call. */
 
 template<typename T>
 void graph_draw(const std::string &label,
-                const Array<VecBase<T, 2>> &verts,
+                const Array<vec2<T>> &verts,
                 const Array<std::pair<int, int>> &edges,
                 const GroupedSpan<int> faces)
 {
@@ -300,7 +300,7 @@ void graph_draw(const std::string &label,
   }
   double2 vmin(1e10, 1e10);
   double2 vmax(-1e10, -1e10);
-  for (const VecBase<T, 2> &v : verts) {
+  for (const vec2<T> &v : verts) {
     for (int i = 0; i < 2; ++i) {
       double dvi = math_to_double(v[i]);
       if (dvi < vmin[i]) {
@@ -353,15 +353,15 @@ void graph_draw(const std::string &label,
   for (const int i : faces.index_range()) {
     f << "<polygon fill=\"azure\" stroke=\"none\"\n  points=\"";
     for (int vi : faces[i]) {
-      const VecBase<T, 2> &co = verts[vi];
+      const vec2<T> &co = verts[vi];
       f << SX(co[0]) << "," << SY(co[1]) << " ";
     }
     f << "\"\n  />\n";
   }
 
   for (const std::pair<int, int> &e : edges) {
-    const VecBase<T, 2> &uco = verts[e.first];
-    const VecBase<T, 2> &vco = verts[e.second];
+    const vec2<T> &uco = verts[e.first];
+    const vec2<T> &vco = verts[e.second];
     int strokew = thin_line;
     f << R"(<line fill="none" stroke="black" stroke-width=")" << strokew << "\" x1=\""
       << SX(uco[0]) << "\" y1=\"" << SY(uco[1]) << "\" x2=\"" << SX(vco[0]) << "\" y2=\""
@@ -376,7 +376,7 @@ void graph_draw(const std::string &label,
   }
 
   int i = 0;
-  for (const VecBase<T, 2> &vco : verts) {
+  for (const vec2<T> &vco : verts) {
     f << R"(<circle fill="black" cx=")" << SX(vco[0]) << "\" cy=\"" << SY(vco[1]) << "\" r=\""
       << vert_radius << "\">\n";
     f << "  <title>[" << i << "]" << vco << "</title>\n";
@@ -396,8 +396,7 @@ void graph_draw(const std::string &label,
 /* Should tests draw their output to an html file? */
 constexpr bool DO_DRAW = false;
 
-template<typename T>
-void expect_coord_near(const VecBase<T, 2> &testco, const VecBase<T, 2> &refco);
+template<typename T> void expect_coord_near(const vec2<T> &testco, const vec2<T> &refco);
 
 #ifdef WITH_GMP
 template<>
@@ -440,7 +439,7 @@ template<typename T> void onept_test()
   EXPECT_EQ(out.edge.size(), 0);
   EXPECT_EQ(out.faces().size(), 0);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[0], VecBase<T, 2>(0, 0));
+    expect_coord_near<T>(out.vert[0], vec2<T>(0, 0));
   }
 }
 
@@ -462,8 +461,8 @@ template<typename T> void twopt_test()
   EXPECT_NE(v1_out, -1);
   EXPECT_NE(v0_out, v1_out);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[v0_out], VecBase<T, 2>(0.0, -0.75));
-    expect_coord_near<T>(out.vert[v1_out], VecBase<T, 2>(0.0, 0.75));
+    expect_coord_near<T>(out.vert[v0_out], vec2<T>(0.0, -0.75));
+    expect_coord_near<T>(out.vert[v1_out], vec2<T>(0.0, 0.75));
   }
   int e0_out = get_output_edge_index(out, v0_out, v1_out);
   EXPECT_EQ(e0_out, 0);
@@ -799,7 +798,7 @@ template<typename T> void crosssegs_test()
     }
     EXPECT_NE(v_intersect, -1);
     if (v_intersect != -1) {
-      expect_coord_near<T>(out.vert[v_intersect], VecBase<T, 2>(0, 0));
+      expect_coord_near<T>(out.vert[v_intersect], vec2<T>(0, 0));
     }
   }
   if (DO_DRAW) {
@@ -1168,8 +1167,8 @@ template<typename T> void overlapfaces_test()
       v_int1 = 13;
       v_int2 = 12;
     }
-    expect_coord_near<T>(out.vert[v_int1], VecBase<T, 2>(1, 0.5));
-    expect_coord_near<T>(out.vert[v_int2], VecBase<T, 2>(0.5, 1));
+    expect_coord_near<T>(out.vert[v_int1], vec2<T>(1, 0.5));
+    expect_coord_near<T>(out.vert[v_int2], vec2<T>(0.5, 1));
     EXPECT_EQ(out.orig_verts()[v_int1].size(), 0);
     EXPECT_EQ(out.orig_verts()[v_int2].size(), 0);
     int f0_out = get_output_tri_index(out, v_out[1], v_int1, v_out[4]);
@@ -1845,7 +1844,7 @@ void rand_delaunay_test(int test_kind,
         }
       }
 
-      Array<VecBase<T, 2>> verts(npts);
+      Array<vec2<T>> verts(npts);
       Array<std::pair<int, int>> edges(nedges);
       Vector<int> face_offsets;
       Vector<int> face_vert_indices;
@@ -1933,7 +1932,7 @@ void rand_delaunay_test(int test_kind,
       CDT_input<T> in;
       in.vert = verts;
       in.edge = edges;
-      in.faces = face_offsets.as_span();
+      in.face = face_offsets.as_span();
       in.face_vert_indices = face_vert_indices;
 
       /* Run the test. */

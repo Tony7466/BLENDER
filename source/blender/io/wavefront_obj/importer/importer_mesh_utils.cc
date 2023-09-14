@@ -54,7 +54,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
 
   CDT_input<double> input;
   input.vert = verts;
-  input.faces = face_offsets.as_span();
+  input.face = face_offsets.as_span();
   input.face_vert_indices = face_vert_indices;
   input.epsilon = 1.0e-6f;
   input.need_ids = true;

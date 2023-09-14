@@ -113,21 +113,21 @@ template<typename T> inline SymEdge<T> *prev(const SymEdge<T> *se)
 
 template<typename T> struct FatCo {
   vec2<T> exact;
-  double2 approx;
-  double2 abs_approx;
+  vec2<double> approx;
+  vec2<double> abs_approx;
 
   FatCo();
 #ifdef WITH_GMP
   FatCo(const vec2<mpq_class> &v);
 #endif
-  FatCo(const double2 &v);
+  FatCo(const vec2<double> &v);
 };
 
 #ifdef WITH_GMP
 template<> struct FatCo<mpq_class> {
   vec2<mpq_class> exact;
-  double2 approx;
-  double2 abs_approx;
+  vec2<double> approx;
+  vec2<double> abs_approx;
 
   FatCo()
       : exact(vec2<mpq_class>(0, 0)), approx(vec2<double>(0, 0)), abs_approx(vec2<double>(0, 0))
@@ -2199,7 +2199,7 @@ static int power_of_10_greater_equal_to(int x)
  * that starts with cdt->face_edge_offset, and continues with the edges in
  * order around each face in turn. And then the next face starts at
  * cdt->face_edge_offset beyond the start for the previous face.
- * Return the number of faces added, which may be less than input face amount
+ * Return the number of faces added, which may be less than input.face.size()
  * in the case that some faces have less than 3 sides.
  */
 template<typename T>
@@ -2208,11 +2208,12 @@ int add_face_constraints(CDT_state<T> *cdt_state,
                          CDT_output_type output_type)
 {
   int nv = input.vert.size();
+  int nf = input.face.size();
   SymEdge<T> *face_symedge0 = nullptr;
   CDTArrangement<T> *cdt = &cdt_state->cdt;
   int maxflen = 0;
-  for (const int f : input.faces.index_range()) {
-    maxflen = max_ii(maxflen, input.faces[f].size());
+  for (int f = 0; f < nf; f++) {
+    maxflen = max_ii(maxflen, input.face[f].size());
   }
   /* For convenience in debugging, make face_edge_offset be a power of 10. */
   cdt_state->face_edge_offset = power_of_10_greater_equal_to(
@@ -2221,10 +2222,10 @@ int add_face_constraints(CDT_state<T> *cdt_state,
    * If we really have that many faces and that large a max face length that when multiplied
    * together the are >= INT_MAX, then the Delaunay calculation will take unreasonably long anyway.
    */
-  BLI_assert(INT_MAX / cdt_state->face_edge_offset > input.faces.size());
+  BLI_assert(INT_MAX / cdt_state->face_edge_offset > nf);
   int faces_added = 0;
-  for (const int f : input.faces.index_range()) {
-    int flen = input.faces[f].size();
+  for (int f = 0; f < nf; f++) {
+    int flen = input.face[f].size();
     if (flen <= 2) {
       /* Ignore faces with fewer than 3 vertices. */
       continue;
@@ -2232,8 +2233,8 @@ int add_face_constraints(CDT_state<T> *cdt_state,
     int fedge_start = (f + 1) * cdt_state->face_edge_offset;
     for (int i = 0; i < flen; i++) {
       int face_edge_id = fedge_start + i;
-      int iv1 = input.faces[f][i];
-      int iv2 = input.faces[f][(i + 1) % flen];
+      int iv1 = input.face[f][i];
+      int iv2 = input.face[f][(i + 1) % flen];
       if (iv1 < 0 || iv1 >= nv || iv2 < 0 || iv2 >= nv) {
         /* Ignore face edges with invalid vertices. */
         continue;
@@ -2656,7 +2657,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   CDT_output_type oty = output_type;
   prepare_cdt_for_output(cdt_state, oty);
   CDT_result<T> result;
-  const CDTArrangement<T> *cdt = &cdt_state->cdt;
+  CDTArrangement<T> *cdt = &cdt_state->cdt;
   result.face_edge_offset = cdt_state->face_edge_offset;
 
   /* All verts without a merge_to_index will be output.
@@ -2681,7 +2682,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
    * list of the merge target if they were an original input id. */
   if (nv < verts_size) {
     for (int i = 0; i < verts_size; ++i) {
-      const CDTVert<T> *v = cdt->verts[i];
+      CDTVert<T> *v = cdt->verts[i];
       if (v->merge_to_index != -1) {
         if (cdt_state->need_ids) {
           if (i < cdt_state->input_vert_num) {
@@ -2711,7 +2712,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   int i_out = 0;
   for (int i = 0; i < verts_size; ++i) {
-    const CDTVert<T> *v = cdt->verts[i];
+    CDTVert<T> *v = cdt->verts[i];
     if (v->merge_to_index == -1) {
       result.vert[i_out] = v->co.exact;
       if (cdt_state->need_ids) {
@@ -2764,11 +2765,11 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
 
   /* All non-deleted, non-outer faces will be output. */
-  int new_face_count = 0;
+  int nf = 0;
   int new_face_vert_count = 0;
   for (const CDTFace<T> *f : cdt->faces) {
     if (!f->deleted && f != cdt->outer_face) {
-      new_face_count++;
+      nf++;
       const SymEdge<T> *se = f->symedge;
       const SymEdge<T> *se_start = se;
       do {
@@ -2779,9 +2780,8 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
 
   if (cdt_state->need_ids) {
-    result.face_orig_offsets = Array<int>(new_face_count + 1, 0);
+    result.face_orig_offsets = Array<int>(nf + 1, 0);
     result.face_vert_indices.reinitialize(new_face_vert_count);
-    result.face_orig_offsets.reinitialize(new_face_count + 1);
     int f_out = 0;
     for (const int i : cdt->faces.index_range()) {
       const CDTFace<T> *f = cdt->faces[i];
@@ -2795,13 +2795,13 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   int face_vert_out = 0;
   int f_out = 0;
-  result.face_offsets.reinitialize(new_face_count + 1);
+  result.face_offsets.reinitialize(nf + 1);
   for (const CDTFace<T> *f : cdt->faces) {
     if (!f->deleted && f != cdt->outer_face) {
       result.face_offsets[f_out] = face_vert_out;
-      const SymEdge<T> *se = f->symedge;
+      SymEdge<T> *se = f->symedge;
       BLI_assert(se != nullptr);
-      const SymEdge<T> *se_start = se;
+      SymEdge<T> *se_start = se;
       do {
         result.face_vert_indices[face_vert_out] = vert_to_output_map[se->vert->index];
         face_vert_out++;
@@ -2837,7 +2837,7 @@ CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_ty
 {
   int nv = input.vert.size();
   int ne = input.edge.size();
-  int nf = input.faces.size();
+  int nf = input.face.size();
   CDT_state<T> cdt_state(nv, ne, nf, input.epsilon, input.need_ids);
   add_input_verts(&cdt_state, input);
   initial_triangulation(&cdt_state.cdt);

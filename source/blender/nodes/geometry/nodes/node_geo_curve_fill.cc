@@ -60,7 +60,7 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
 
   meshintersect::CDT_input<double> input;
   input.vert = verts;
-  input.faces = curves.evaluated_points_by_curve();
+  input.face = curves.evaluated_points_by_curve();
   input.face_vert_indices = face_vert_indices;
   input.need_ids = false;
   return delaunay_2d_calc(input, output_type);
@@ -110,7 +110,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
   Mesh *mesh = cdt_to_mesh(results);
 
   geometry_set.replace_mesh(mesh);
-  geometry_set.remove<CurveComponent>();
+  geometry_set.replace_curves(nullptr);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

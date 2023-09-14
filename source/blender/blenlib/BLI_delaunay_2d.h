@@ -141,7 +141,7 @@ template<typename Arith_t> class CDT_input {
  public:
   Span<vec2<Arith_t>> vert;
   Span<std::pair<int, int>> edge;
-  OffsetIndices<int> faces;
+  OffsetIndices<int> face;
   Span<int> face_vert_indices;
   Arith_t epsilon{0};
   bool need_ids{true};

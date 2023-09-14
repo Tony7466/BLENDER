@@ -1785,7 +1785,8 @@ static void do_cdt(CDT_data &cd)
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = cd.vert;
   cdt_in.edge = cd.edge;
-  cdt_in.faces = cd.face_offsets.as_span();
+  cdt_in.face = cd.face_offsets.as_span();
+  cdt_in.face_vert_indices = cd.face_vert_indices;
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
     for (int i : cdt_in.vert.index_range()) {
@@ -1798,10 +1799,10 @@ static void do_cdt(CDT_data &cd)
                 << ")\n";
     }
     std::cout << "Tris\n";
-    for (int f : cdt_in.faces.index_range()) {
+    for (int f : cdt_in.face.index_range()) {
       std::cout << "f" << f << ": ";
-      for (int j : cdt_in.faces[f].index_range()) {
-        std::cout << cdt_in.face_vert_indices.slice(cdt_in.faces[f])[j] << " ";
+      for (int j : cdt_in.face[f].index_range()) {
+        std::cout << cdt_in.face_vert_indices.slice(cdt_in.face[f])[j] << " ";
       }
       std::cout << "\n";
     }
@@ -2121,7 +2122,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
 
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = verts;
-  cdt_in.faces = face_offsets.as_span();
+  cdt_in.face = face_offsets.as_span();
   cdt_in.face_vert_indices = face_vert_indices;
 
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
@@ -2136,7 +2137,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
     bool needs_steiner = false;
     for (int i = 0; i < 3; ++i) {
       i_v_out[i] = cdt_out.face_vert_indices[t * 3 + i];
-      if (orig_verts[i_v_out[i]].size() == 0) {
+      if (orig_verts[i_v_out[i]].is_empty()) {
         needs_steiner = true;
         break;
       }
