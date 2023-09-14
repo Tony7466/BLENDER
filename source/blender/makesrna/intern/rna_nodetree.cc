@@ -9393,6 +9393,112 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void rna_def_menu_switch_enum_item(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+
+  StructRNA *srna = RNA_def_struct(brna, "MenuSwitchEnumItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Enum Item", "");
+  RNA_def_struct_sdna(srna, "NodeMenuSwitchEnumItem");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "rna_RepeatItem_name_set");
+  RNA_def_property_ui_text(prop, "Name", "");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_RepeatItem_socket_type_itemf");
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
+
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_RepeatItem_color_get", nullptr, nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Color", "Color of the corresponding socket type in the node editor");
+}
+
+static void rna_def_menu_switch_enum_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *parm;
+  FunctionRNA *func;
+
+  srna = RNA_def_struct(brna, "NodeMenuSwitchEnumItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of repeat items");
+
+  func = RNA_def_function(srna, "new", "rna_NodeMenuSwitch_enum_items_new");
+  RNA_def_function_ui_description(func, "Add a item to this menu switch");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_enum(func,
+                      "socket_type",
+                      rna_enum_node_socket_data_type_items,
+                      SOCK_GEOMETRY,
+                      "Socket Type",
+                      "Socket type of the item");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_NodeGeometryRepeatOutput_items_remove");
+  RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", "rna_NodeGeometryRepeatOutput_items_clear");
+  RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+
+  func = RNA_def_function(srna, "move", "rna_NodeGeometryRepeatOutput_items_move");
+  RNA_def_function_ui_description(func, "Move an item to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
+static void def_geo_menu_switch(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeMenuSwitch", "storage");
+
+  prop = RNA_def_property(srna, "enum_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
+  RNA_def_property_struct_type(prop, "MenuSwitchEnumItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeMenuSwitchEnumItems");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "RepeatItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeGeometryRepeatOutput_active_item_get",
+                                 "rna_NodeGeometryRepeatOutput_active_item_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+}
+
 static void rna_def_shader_node(BlenderRNA *brna)
 {
   StructRNA *srna;

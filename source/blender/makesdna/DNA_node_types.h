@@ -1596,7 +1596,8 @@ typedef struct NodeMenuSwitchEnumItem {
 typedef struct NodeMenuSwitch {
   /* User-defined enum items owned and managed by this node. */
   NodeMenuSwitchEnumItem **items_array;
-  int num_items;
+  uint16_t items_num;
+  uint16_t active_index;
   /** #eNodeSocketDatatype. */
   uint8_t input_type;
   char _pad[3];
@@ -1604,6 +1605,13 @@ typedef struct NodeMenuSwitch {
 #ifdef __cplusplus
   blender::Span<NodeMenuSwitchEnumItem *> items() const;
   blender::MutableSpan<NodeMenuSwitchEnumItem *> items_for_write();
+
+  NodeMenuSwitchEnumItem *add_item(blender::StringRef name);
+  bool remove_item(NodeMenuSwitchEnumItem &item);
+  void clear_items();
+  bool move_item(uint16_t from_index, uint16_t to_index);
+
+  void set_item_name(NodeMenuSwitchEnumItem &item, const char *name);
 #endif
 } NodeMenuSwitch;
 
