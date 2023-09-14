@@ -296,7 +296,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   NodeItem subsurface = get_input_value("Subsurface", NodeItem::Type::Float);
   NodeItem subsurface_radius = get_input_value("Subsurface Radius", NodeItem::Type::Color3);
-  NodeItem subsurface_color = get_input_value("Subsurface Color", NodeItem::Type::Color3);
+  NodeItem subsurface_scale = get_input_value("Subsurface Scale", NodeItem::Type::Float);
 
   NodeItem metallic = get_input_value("Metallic", NodeItem::Type::Float);
   NodeItem specular = get_input_value("Specular", NodeItem::Type::Float);
@@ -311,8 +311,8 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem sheen = get_input_value("Sheen", NodeItem::Type::Float);
   // sheen_tint = get_input_value("Sheen Tint");
 
-  NodeItem clearcoat = get_input_value("Clearcoat", NodeItem::Type::Float);
-  NodeItem clearcoat_roughness = get_input_value("Clearcoat Roughness", NodeItem::Type::Float);
+  NodeItem coat = get_input_value("Coat", NodeItem::Type::Float);
+  NodeItem coat_roughness = get_input_value("Coat Roughness", NodeItem::Type::Float);
 
   NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
 
@@ -325,8 +325,10 @@ NODE_SHADER_MATERIALX_BEGIN
   // transparency = 1.0 - alpha
 
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
-  NodeItem clearcoat_normal = get_input_link("Clearcoat Normal", NodeItem::Type::Vector3);
+  NodeItem coat_normal = get_input_link("Coat Normal", NodeItem::Type::Vector3);
   NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
+
+  subsurface_radius = subsurface_radius * subsurface_scale;
 
   /* Creating standard_surface */
   NodeItem res = create_node("standard_surface", NodeItem::Type::SurfaceShader);
@@ -353,7 +355,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("transmission_extra_roughness", roughness);
 
   res.set_input("subsurface", subsurface);
-  res.set_input("subsurface_color", subsurface_color);
+  res.set_input("subsurface_color", base_color);
   res.set_input("subsurface_radius", subsurface_radius);
   res.set_input("subsurface_anisotropy", anisotropic);
 
@@ -361,14 +363,14 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("sheen_color", base_color);
   res.set_input("sheen_roughness", roughness);
 
-  res.set_input("coat", clearcoat);
+  res.set_input("coat", coat);
   res.set_input("coat_color", base_color);
-  res.set_input("coat_roughness", clearcoat_roughness);
+  res.set_input("coat_roughness", coat_roughness);
   res.set_input("coat_IOR", ior);
   res.set_input("coat_anisotropy", anisotropic);
   res.set_input("coat_rotation", anisotropic_rotation);
-  if (clearcoat_normal) {
-    res.set_input("coat_normal", clearcoat_normal);
+  if (coat_normal) {
+    res.set_input("coat_normal", coat_normal);
   }
 
   res.set_input("emission", emission_strength);
