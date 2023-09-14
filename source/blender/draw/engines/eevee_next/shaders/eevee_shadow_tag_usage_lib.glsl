@@ -108,6 +108,9 @@ void shadow_tag_usage_tilemap_punctual(
     }
   }
 
+  /* TODO(fclem): 3D shift for jittered soft shadows. */
+  lP += vec3(0.0, 0.0, -light.shadow_projection_shift);
+
   /* How much a shadow map pixel covers a final image pixel.
    * We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
