@@ -5930,7 +5930,7 @@ const char *UI_but_placeholder_get(uiBut *but)
     else if (but->type == UI_BTYPE_TEXT) {
       const char *identifier = RNA_property_identifier(but->rnaprop);
       if (STR_ELEM(identifier, "search_filter", "filter_text", "filter_search")) {
-        placeholder = "Search";
+        placeholder = N_("Search");
       }
     }
   }
