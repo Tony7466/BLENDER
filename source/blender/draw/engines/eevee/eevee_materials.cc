@@ -194,8 +194,8 @@ static void eevee_init_util_texture()
       for (int y = 0; y < 64; y++) {
         texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_ggx[j][y][x][0];
         texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_ggx[j][y][x][1];
-        texels_layer[y * 64 + x][2] = 0.0; /* UNUSED */
-        texels_layer[y * 64 + x][3] = 0.0; /* UNUSED */
+        texels_layer[y * 64 + x][2] = blender::eevee::lut::bsdf_ggx[j][y][x][2];
+        texels_layer[y * 64 + x][3] = blender::eevee::lut::btdf_ggx[j][y][x][0];
       }
     }
     texels_layer += 64 * 64;
