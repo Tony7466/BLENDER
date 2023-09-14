@@ -2515,7 +2515,20 @@ static bool rna_SpaceNodeEditor_node_tree_poll(PointerRNA *ptr, const PointerRNA
   bNodeTree *ntree = (bNodeTree *)value.data;
 
   /* node tree type must match the selected type in node editor */
-  return (STREQ(snode->tree_idname, ntree->idname));
+  if (!STREQ(snode->tree_idname, ntree->idname)) {
+    return false;
+  }
+  if (ntree->type == NTREE_GEOMETRY) {
+    if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
+      if (!ntree->id.asset_data) {
+        return false;
+      }
+      if ((ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 static void rna_SpaceNodeEditor_node_tree_update(const bContext *C, PointerRNA * /*ptr*/)
