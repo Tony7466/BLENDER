@@ -163,7 +163,7 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       complete_string += std::string("\n") + N_("This file is offline.");
     }
     if (file->attributes & FILE_ATTR_READONLY) {
-      complete_string += std::string("\n") + N_("This file is Read-Only.");
+      complete_string += std::string("\n") + N_("This file is read-only.");
     }
     if (file->attributes & (FILE_ATTR_SYSTEM | FILE_ATTR_RESTRICTED)) {
       complete_string += std::string("\n") + N_("This is a restricted system file.");
@@ -219,7 +219,7 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       {
         complete_string += std::string("\n") + N_("Frames") + ": ";
         complete_string += value1 + std::string(" @ ") + value2 + " " + N_("FPS");
-        complete_string += std::string(" (") + value3 + " " + N_("Seconds") ") ";
+        complete_string += std::string(" (") + value3 + " " + N_("seconds") ") ";
       }
       IMB_freeImBuf(thumb);
     }
@@ -241,7 +241,7 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       BLI_str_format_uint64_grouped(size_full, file->size);
       complete_string += std::string("\n") + N_("Size") + std::string(": ") + std::string(size) +
                          std::string(" (") + std::string(size_full) + std::string(" ") +
-                         N_("Bytes") + std::string(")");
+                         N_("bytes") + std::string(")");
     }
   }
 
