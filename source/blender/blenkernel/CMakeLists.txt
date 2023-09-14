@@ -200,6 +200,7 @@ set(SRC
   intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
   intern/mesh_convert.cc
+  intern/mesh_compare.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
@@ -437,6 +438,7 @@ set(SRC
   BKE_mesh.h
   BKE_mesh.hh
   BKE_mesh_boolean_convert.hh
+  BKE_mesh_compare.hh
   BKE_mesh_fair.hh
   BKE_mesh_iterators.hh
   BKE_mesh_legacy_convert.hh
