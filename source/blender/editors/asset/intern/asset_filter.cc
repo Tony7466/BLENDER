@@ -133,6 +133,9 @@ AssetItemTree build_filtered_all_catalog_tree(
     const asset_system::AssetCatalog *catalog = library->catalog_service->find_catalog(
         meta_data.catalog_id);
     if (catalog == nullptr) {
+      /* Also include assets with catalogs we're unable to find (e.g. the catalog was deleted) in
+       * the "Unassigned" list. */
+      unassigned_assets.append(&asset);
       return true;
     }
     assets_per_path.add(catalog->path, &asset);
