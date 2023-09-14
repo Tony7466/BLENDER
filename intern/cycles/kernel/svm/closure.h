@@ -326,7 +326,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
         if (bsdf && fresnel) {
           bsdf->N = valid_reflection_N;
-          bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
+          bsdf->ior = eta;
           bsdf->T = T;
           bsdf->alpha_x = alpha_x;
           bsdf->alpha_y = alpha_y;
