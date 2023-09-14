@@ -441,7 +441,7 @@ bool BKE_id_supports_vertex_groups(const ID *id)
   if (id == nullptr) {
     return false;
   }
-  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY, ID_CV);
+  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY);
 }
 
 bool BKE_object_supports_vertex_groups(const Object *ob)
