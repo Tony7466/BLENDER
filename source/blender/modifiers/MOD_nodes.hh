@@ -4,8 +4,13 @@
 
 #pragma once
 
+struct ARegion;
+struct bContext;
+struct ListBase;
 struct NodesModifierData;
 struct Object;
+struct Panel;
+struct PointerRNA;
 
 namespace blender::bke::bake {
 struct ModifierCache;
@@ -36,5 +41,16 @@ struct NodesModifierRuntime {
    */
   std::shared_ptr<bke::bake::ModifierCache> cache;
 };
+
+/** Add instances of child panels. */
+void MOD_nodes_add_child_panel_instances(NodesModifierData *nmd,
+                                         bContext *C,
+                                         ARegion *region,
+                                         const char *parent_idname,
+                                         ListBase *child_panels,
+                                         PointerRNA *custom_data);
+
+/** Test if child panels match expectation. */
+bool MOD_nodes_child_panel_instances_match_data(NodesModifierData *nmd, const Panel *parent);
 
 }  // namespace blender

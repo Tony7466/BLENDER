@@ -481,12 +481,14 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
   return panel_type;
 }
 
-PanelType *modifier_subpanel_register(ARegionType *region_type,
-                                      const char *name,
-                                      const char *label,
-                                      PanelDrawFn draw_header,
-                                      PanelDrawFn draw,
-                                      PanelType *parent)
+PanelType *modifier_subpanel_register_ex(ARegionType *region_type,
+                                         const char *name,
+                                         const char *label,
+                                         PanelPollFn poll,
+                                         PanelDrawFn draw_header,
+                                         PanelDrawFn draw,
+                                         PanelType *parent,
+                                         int flag)
 {
   PanelType *panel_type = MEM_cnew<PanelType>(__func__);
 
@@ -498,8 +500,8 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
 
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
-  panel_type->poll = modifier_ui_poll;
-  panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
+  panel_type->poll = poll;
+  panel_type->flag = flag;
 
   BLI_assert(parent != nullptr);
   STRNCPY(panel_type->parent_id, parent->idname);
@@ -508,6 +510,23 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
   BLI_addtail(&region_type->paneltypes, panel_type);
 
   return panel_type;
+}
+
+PanelType *modifier_subpanel_register(ARegionType *region_type,
+                                      const char *name,
+                                      const char *label,
+                                      PanelDrawFn draw_header,
+                                      PanelDrawFn draw,
+                                      PanelType *parent)
+{
+  return modifier_subpanel_register_ex(region_type,
+                                       name,
+                                       label,
+                                       modifier_ui_poll,
+                                       draw_header,
+                                       draw,
+                                       parent,
+                                       PANEL_TYPE_DEFAULT_CLOSED);
 }
 
 /** \} */

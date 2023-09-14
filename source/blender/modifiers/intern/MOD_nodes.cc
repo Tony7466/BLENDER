@@ -67,7 +67,7 @@
 
 #include "BLT_translation.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -1384,13 +1384,13 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
 /* Drawing the properties manually with #uiItemR instead of #uiDefAutoButsRNA allows using
  * the node socket identifier for the property names, since they are unique, but also having
  * the correct label displayed in the UI. */
-static void draw_property_for_socket(const bContext &C,
-                                     uiLayout *layout,
-                                     NodesModifierData *nmd,
-                                     PointerRNA *bmain_ptr,
-                                     PointerRNA *md_ptr,
-                                     const bNodeTreeInterfaceSocket &socket,
-                                     const int socket_index)
+static void draw_property_for_input(const bContext &C,
+                                    uiLayout *layout,
+                                    NodesModifierData *nmd,
+                                    PointerRNA *bmain_ptr,
+                                    PointerRNA *md_ptr,
+                                    const bNodeTreeInterfaceSocket &socket,
+                                    const int socket_index)
 {
   const StringRefNull identifier = socket.identifier;
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
@@ -1473,10 +1473,83 @@ static void draw_property_for_output_socket(const bContext &C,
   add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
 }
 
+static NodesModifierData *get_modifier_from_panel(Panel *panel)
+{
+  if (const PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr)) {
+    return static_cast<NodesModifierData *>(ptr->data);
+  }
+  return nullptr;
+}
+
+static const bNodeTreeInterfacePanel *find_panel_interface(const NodesModifierData *nmd,
+                                                           Panel *panel)
+{
+  if (!nmd || !nmd->node_group) {
+    return nullptr;
+  }
+  const int identifier = panel->runtime.custom_data_int[0];
+
+  const bNodeTreeInterfacePanel *result = nullptr;
+  nmd->node_group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+    if (item.item_type == NODE_INTERFACE_PANEL) {
+      const bNodeTreeInterfacePanel &panel_item =
+          reinterpret_cast<const bNodeTreeInterfacePanel &>(item);
+      if (panel_item.identifier == identifier) {
+        result = &panel_item;
+        return false;
+      }
+    }
+    return true;
+  });
+  return result;
+}
+
+static void draw_panel_content(const bContext *C,
+                               NodesModifierData *nmd,
+                               const bNodeTreeInterfacePanel *panel_iface,
+                               uiLayout *layout,
+                               PointerRNA *md_ptr)
+{
+  PointerRNA bmain_ptr = RNA_main_pointer_create(CTX_data_main(C));
+
+  /* Find the start index of inputs in this panel. */
+  int input_index = 0;
+  nmd->node_group->tree_interface.foreach_item(
+      [panel_iface, &input_index](const bNodeTreeInterfaceItem &item) {
+        if (item.item_type == NODE_INTERFACE_SOCKET) {
+          const bNodeTreeInterfaceSocket &socket_item =
+              reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
+          if (socket_item.flag & NODE_INTERFACE_SOCKET_INPUT) {
+            ++input_index;
+          }
+        }
+        else if (item.item_type == NODE_INTERFACE_PANEL) {
+          /* Only count sockets up to the panel start. */
+          if (&item == &panel_iface->item) {
+            return false;
+          }
+        }
+        return true;
+      },
+      /*include_root=*/true);
+
+  for (const bNodeTreeInterfaceItem *item : panel_iface->items()) {
+    if (item->item_type == NODE_INTERFACE_SOCKET) {
+      const bNodeTreeInterfaceSocket *socket_item =
+          reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
+      if (socket_item->flag & NODE_INTERFACE_SOCKET_INPUT) {
+        if (!(socket_item->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
+          draw_property_for_input(*C, layout, nmd, &bmain_ptr, md_ptr, *socket_item, input_index);
+        }
+        ++input_index;
+      }
+    }
+  }
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
-  Main *bmain = CTX_data_main(C);
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
@@ -1501,16 +1574,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   /* Draw sockets that have no panel. */
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
-
-    nmd->node_group->ensure_interface_cache();
-
-    for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
-      const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[socket_index];
-      if (!(socket->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
-        draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
-      }
-    }
+    draw_panel_content(C, nmd, &nmd->node_group->tree_interface.root_panel, layout, ptr);
   }
 
   /* Draw node warnings. */
@@ -1642,52 +1706,30 @@ static bool child_panel_poll(const bContext *C, PanelType * /*panel_type*/)
 
 static void node_panel_draw_header(const bContext * /*C*/, Panel *panel)
 {
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-
-  const int node_panel_index = panel->runtime.custom_data_int[0];
-  const bNodePanel *node_panel = nmd->node_group->panels().get(node_panel_index, nullptr);
-  if (node_panel == nullptr) {
+  NodesModifierData *nmd = get_modifier_from_panel(panel);
+  const bNodeTreeInterfacePanel *panel_iface = find_panel_interface(nmd, panel);
+  if (panel_iface == nullptr) {
     return;
   }
 
-  uiItemL(layout, node_panel->name, ICON_NONE);
+  uiLayout *layout = panel->layout;
+  uiItemL(layout, panel_iface->name, ICON_NONE);
 }
 
 static void node_panel_draw(const bContext *C, Panel *panel)
 {
+  NodesModifierData *nmd = get_modifier_from_panel(panel);
+  const bNodeTreeInterfacePanel *panel_iface = find_panel_interface(nmd, panel);
+  if (panel_iface == nullptr) {
+    return;
+  }
   uiLayout *layout = panel->layout;
-
-  PointerRNA bmain_ptr;
-  RNA_main_pointer_create(CTX_data_main(C), &bmain_ptr);
-
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-  if (nmd->node_group == nullptr) {
-    return;
-  }
 
-  const int node_panel_index = panel->runtime.custom_data_int[0];
-  const bNodePanel *node_panel = nmd->node_group->panels().get(node_panel_index, nullptr);
-  if (node_panel == nullptr) {
-    return;
-  }
-
-  for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
-    const bNodeSocket *socket = nmd->node_group->interface_inputs()[socket_index];
-    if (socket->panel != node_panel) {
-      continue;
-    }
-    if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
-      continue;
-    }
-
-    draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
-  }
+  draw_panel_content(C, nmd, panel_iface, layout, ptr);
 }
 
+static void panel_register(ARegionType *region_type)
 {
   using namespace blender;
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
@@ -1717,15 +1759,13 @@ static void node_panel_draw(const bContext *C, Panel *panel)
                                 PANEL_TYPE_INSTANCED);
 }
 
-static void addChildPanelInstances(ModifierData *md,
-                                   bContext *C,
-                                   ARegion *region,
-                                   const char *parent_idname,
-                                   ListBase *child_panels,
-                                   PointerRNA *custom_data)
+void MOD_nodes_add_child_panel_instances(NodesModifierData *nmd,
+                                         bContext *C,
+                                         ARegion *region,
+                                         const char *parent_idname,
+                                         ListBase *child_panels,
+                                         PointerRNA *custom_data)
 {
-  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-
   if (nmd->node_group == nullptr) {
     return;
   }
@@ -1743,11 +1783,14 @@ static void addChildPanelInstances(ModifierData *md,
                   parent_idname,
                   "_internal_dependencies");
 
-  if (U.experimental.use_node_panels) {
-    for (const int node_panel_index : nmd->node_group->panels().index_range()) {
+  nmd->node_group->ensure_interface_cache();
+  for (const bNodeTreeInterfaceItem *item : nmd->node_group->interface_items()) {
+    if (item->item_type == NODE_INTERFACE_PANEL) {
+      const bNodeTreeInterfacePanel *panel_iface =
+          reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
       Panel *panel = UI_panel_add_instanced(
           C, region, child_panels, node_panel_idname, custom_data);
-      panel->runtime.custom_data_int[0] = node_panel_index;
+      panel->runtime.custom_data_int[0] = panel_iface->identifier;
     }
   }
 
@@ -1755,16 +1798,14 @@ static void addChildPanelInstances(ModifierData *md,
   UI_panel_add_instanced(C, region, child_panels, internal_dependencies_panel_idname, custom_data);
 }
 
-static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
+bool MOD_nodes_child_panel_instances_match_data(NodesModifierData *nmd, const Panel *parent)
 {
-  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-
   if (nmd->node_group == nullptr) {
     return BLI_listbase_is_empty(&parent->children);
   }
 
   char parent_idname[MAX_NAME];
-  BKE_modifier_type_panel_id(ModifierType(md->type), parent_idname);
+  BKE_modifier_type_panel_id(ModifierType(nmd->modifier.type), parent_idname);
 
   char node_panel_idname[MAX_NAME];
   char output_attributes_panel_idname[MAX_NAME];
@@ -1780,15 +1821,17 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
                   "_internal_dependencies");
 
   const Panel *current_subpanel = static_cast<const Panel *>(parent->children.first);
-  if (U.experimental.use_node_panels) {
-    for (const int node_panel_index : nmd->node_group->panels().index_range()) {
+  for (const bNodeTreeInterfaceItem *item : nmd->node_group->interface_items()) {
+    if (item->item_type == NODE_INTERFACE_PANEL) {
+      const bNodeTreeInterfacePanel *panel_iface =
+          reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
       if (current_subpanel == nullptr || !STREQ(node_panel_idname, current_subpanel->type->idname))
       {
         /* Fewer panels than expected. */
         return false;
       }
-      if (current_subpanel->runtime.custom_data_int[0] != node_panel_index) {
-        /* Panel has wrong index. */
+      if (current_subpanel->runtime.custom_data_int[0] != panel_iface->identifier) {
+        /* Panel has wrong identifier. */
         return false;
       }
       current_subpanel = current_subpanel->next;
@@ -1964,6 +2007,4 @@ ModifierTypeInfo modifierType_Nodes = {
     /*panel_register*/ blender::panel_register,
     /*blend_write*/ blender::blend_write,
     /*blend_read*/ blender::blend_read,
-    /*addChildPanelInstances*/ blender::addChildPanelInstances,
-    /*childPanelInstancesMatchData*/ blender::childPanelInstancesMatchData,
 };
