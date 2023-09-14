@@ -326,6 +326,7 @@ struct Bone *ED_armature_pick_bone_from_selectbuffer(struct Base **bases,
                                                      short hits,
                                                      bool findunsel,
                                                      bool do_nearest,
+                                                     bool deepbone,
                                                      struct Base **r_base);
 
 /** \} */

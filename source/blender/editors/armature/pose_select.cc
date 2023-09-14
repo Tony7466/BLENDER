@@ -261,7 +261,8 @@ bool ED_armature_pose_select_pick_with_buffer(const Scene *scene,
                                               const GPUSelectResult *buffer,
                                               const short hits,
                                               const SelectPick_Params *params,
-                                              bool do_nearest)
+                                              bool do_nearest,
+                                              bool deepbone)
 {
   Object *ob = base->object;
   Bone *nearBone;
@@ -272,8 +273,9 @@ bool ED_armature_pose_select_pick_with_buffer(const Scene *scene,
 
   /* Callers happen to already get the active base */
   Base *base_dummy = nullptr;
+  bool findunsel = params->sel_op != SEL_OP_XOR;
   nearBone = ED_armature_pick_bone_from_selectbuffer(
-      &base, 1, buffer, hits, true, do_nearest, &base_dummy);
+      &base, 1, buffer, hits, findunsel, do_nearest, deepbone, &base_dummy);
 
   return ED_armature_pose_select_pick_bone(scene, view_layer, v3d, ob, nearBone, params);
 }

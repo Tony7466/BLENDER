@@ -166,7 +166,7 @@ bool ED_armature_edit_select_pick_bone(
 /**
  * Bone selection picking for armature edit-mode in the view3d.
  */
-bool ED_armature_edit_select_pick(bContext *C, const int mval[2], const SelectPick_Params *params);
+bool ED_armature_edit_select_pick(bContext *C, const int mval[2], const SelectPick_Params *params, bool deepbone);
 /**
  * Perform a selection operation on elements which have been 'touched',
  * use for lasso & border select but can be used elsewhere too.
@@ -303,7 +303,8 @@ bool ED_armature_pose_select_pick_with_buffer(const Scene *scene,
                                               const GPUSelectResult *buffer,
                                               short hits,
                                               const SelectPick_Params *params,
-                                              bool do_nearest);
+                                              bool do_nearest,
+                                              bool deepbone);
 /**
  * While in weight-paint mode, a single pose may be active as well.
  * While not common, it's possible we have multiple armatures deforming a mesh.

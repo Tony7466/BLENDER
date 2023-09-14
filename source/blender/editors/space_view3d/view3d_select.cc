@@ -2166,6 +2166,7 @@ static int mixed_bones_object_selectbuffer_extended(ViewContext *vc,
                                                     eV3DSelectObjectFilter select_filter,
                                                     bool use_cycle,
                                                     bool enumerate,
+                                                    bool deepbone,
                                                     bool *r_do_nearest)
 {
   bool do_nearest = false;
@@ -2185,11 +2186,16 @@ static int mixed_bones_object_selectbuffer_extended(ViewContext *vc,
     }
   }
 
+  if (deepbone) {
+    do_nearest = false;
+  }
+
   if (r_do_nearest) {
     *r_do_nearest = do_nearest;
   }
 
   do_nearest = do_nearest && !enumerate;
+
 
   int hits = mixed_bones_object_selectbuffer(
       vc, buffer, buffer_len, mval, select_filter, do_nearest, true, false);
@@ -2584,6 +2590,7 @@ static bool ed_object_select_pick(bContext *C,
                                   const SelectPick_Params *params,
                                   const bool center,
                                   const bool enumerate,
+                                  const bool deepbone,
                                   const bool object_only)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -2634,6 +2641,7 @@ static bool ed_object_select_pick(bContext *C,
                                                          select_filter,
                                                          true,
                                                          enumerate,
+                                                         deepbone,
                                                          &gpu->do_nearest);
     gpu->has_bones = (object_only && gpu->hits > 0) ?
                          false :
@@ -2777,7 +2785,8 @@ static bool ed_object_select_pick(bContext *C,
                                                         gpu->buffer,
                                                         gpu->hits,
                                                         params,
-                                                        gpu->do_nearest))
+                                                        gpu->do_nearest,
+                                                        deepbone))
       {
 
         changed_pose = true;
@@ -3278,6 +3287,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
 
   bool center = RNA_boolean_get(op->ptr, "center");
   bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
+  bool deepbone = RNA_boolean_get(op->ptr, "deepbone");
   /* Only force object select for edit-mode to support vertex parenting,
    * or paint-select to allow pose bone select with vert/face select. */
   bool object_only = (RNA_boolean_get(op->ptr, "object") &&
@@ -3328,7 +3338,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
         changed = bone_mouse_select_menu(C, buffer, hits, true, &params);
       }
       if (!changed) {
-        changed = ED_armature_edit_select_pick(C, mval, &params);
+        changed = ED_armature_edit_select_pick(C, mval, &params, deepbone);
       }
     }
     else if (obedit->type == OB_LATTICE) {
@@ -3360,7 +3370,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
     changed = ed_wpaint_vertex_select_pick(C, mval, &params, obact);
   }
   else {
-    changed = ed_object_select_pick(C, mval, &params, center, enumerate, object_only);
+    changed = ed_object_select_pick(C, mval, &params, center, enumerate, deepbone, object_only);
   }
 
   /* Pass-through flag may be cleared, see #WM_operator_flag_only_pass_through_on_press. */
@@ -3417,6 +3427,12 @@ void VIEW3D_OT_select(wmOperatorType *ot)
                          false,
                          "Enumerate",
                          "List objects under the mouse (object mode only)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna,
+                         "deepbone",
+                         false,
+                         "Deep Bone",
+                         "Select the deepest bone under the mouse cursor.");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
       ot->srna, "object", false, "Object", "Use object selection (edit mode only)");

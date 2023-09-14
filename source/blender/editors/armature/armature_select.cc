@@ -161,6 +161,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
                                                           const short hits,
                                                           bool findunsel,
                                                           bool do_nearest,
+                                                          bool deepbone,
                                                           Base **r_base)
 {
   bPoseChannel *pchan;
@@ -171,7 +172,11 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
   bool takeNext = false;
   int minsel = 0xffffffff, minunsel = 0xffffffff;
 
-  for (short i = 0; i < hits; i++) {
+  short i = deepbone ? hits - 1 : 0;
+  short di = deepbone ? -1 : 1;
+  short endval = deepbone ? -1 : hits;
+
+  while (i != endval) {
     hitresult = buffer[i].id;
 
     if (hitresult & BONESEL_ANY) { /* to avoid including objects in selection */
@@ -187,7 +192,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
             sel = (pchan->bone->flag & BONE_SELECTED);
           }
           else {
-            sel = !(pchan->bone->flag & BONE_SELECTED);
+            sel = true;
           }
 
           data = pchan;
@@ -247,6 +252,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
         }
       }
     }
+    i += di;
   }
 
   if (firstunSel) {
@@ -267,7 +273,7 @@ EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
 {
   const bool is_editmode = true;
   return static_cast<EditBone *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, false, r_base));
 }
 
 bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
@@ -276,11 +282,12 @@ bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
                                                        const short hits,
                                                        bool findunsel,
                                                        bool do_nearest,
+                                                       bool deepbone,
                                                        Base **r_base)
 {
   const bool is_editmode = false;
   return static_cast<bPoseChannel *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, deepbone, r_base));
 }
 
 Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
@@ -289,10 +296,11 @@ Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
                                               const short hits,
                                               bool findunsel,
                                               bool do_nearest,
+                                              bool deepbone,
                                               Base **r_base)
 {
   bPoseChannel *pchan = ED_armature_pick_pchan_from_selectbuffer(
-      bases, bases_len, buffer, hits, findunsel, do_nearest, r_base);
+      bases, bases_len, buffer, hits, findunsel, do_nearest, deepbone, r_base);
   return pchan ? pchan->bone : nullptr;
 }
 
@@ -352,7 +360,7 @@ static void *ed_armature_pick_bone_impl(
     }
 
     void *bone = ed_armature_pick_bone_from_selectbuffer_impl(
-        is_editmode, bases, bases_len, buffer, hits, findunsel, true, r_base);
+        is_editmode, bases, bases_len, buffer, hits, findunsel, true, false, r_base);
 
     MEM_freeN(bases);
 
@@ -644,7 +652,7 @@ static int selectbuffer_ret_hits_5(GPUSelectResult *buffer, const int hits12, co
 /* does bones and points */
 /* note that BONE ROOT only gets drawn for root bones (or without IK) */
 static EditBone *get_nearest_editbonepoint(
-    ViewContext *vc, bool findunsel, bool use_cycle, Base **r_base, int *r_selmask)
+    ViewContext *vc, bool findunsel, bool use_cycle, bool deepbone, Base **r_base, int *r_selmask)
 {
   GPUSelectResult buffer[MAXPICKELEMS];
   struct Result {
@@ -674,7 +682,7 @@ static EditBone *get_nearest_editbonepoint(
     use_cycle = !WM_cursor_test_motion_and_update(vc->mval);
   }
 
-  const bool do_nearest = !(XRAY_ACTIVE(vc->v3d) || use_cycle);
+  const bool do_nearest = !(XRAY_ACTIVE(vc->v3d) || use_cycle || deepbone);
 
   /* matching logic from 'mixed_bones_object_selectbuffer' */
   int hits = 0;
@@ -779,7 +787,11 @@ cache_end:
         cycle_order.best.as_u32 = 0;
       }
 
-      for (int i = 0; i < hits; i++) {
+      int i = deepbone ? hits - 1 : 0;
+      int di = deepbone ? -1 : 1;
+      int endval = deepbone ? -1 : hits;
+
+      while (i != endval) {
         const uint hitresult = buffer[i].id;
 
         Base *base = nullptr;
@@ -852,7 +864,12 @@ cache_end:
            * Otherwise ensure the value is the smallest it can be,
            * relative to the active bone, as long as it's not the active bone. */
           if ((cycle_order.best.as_u32 == 0) ||
-              (cycle_order.test.as_u32 && (cycle_order.test.as_u32 < cycle_order.best.as_u32)))
+              (cycle_order.test.as_u32 &&
+                ((!deepbone && cycle_order.test.as_u32 < cycle_order.best.as_u32) ||
+                  (deepbone && cycle_order.test.as_u32 > cycle_order.best.as_u32)
+                )
+              )
+             )
           {
             cycle_order.best = cycle_order.test;
             result_cycle.hitresult = hitresult;
@@ -860,6 +877,7 @@ cache_end:
             result_cycle.ebone = ebone;
           }
         }
+        i += di;
       }
     }
 
@@ -1139,7 +1157,7 @@ bool ED_armature_edit_select_pick_bone(
   return changed || found;
 }
 
-bool ED_armature_edit_select_pick(bContext *C, const int mval[2], const SelectPick_Params *params)
+bool ED_armature_edit_select_pick(bContext *C, const int mval[2], const SelectPick_Params *params, bool deepbone)
 
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -1152,7 +1170,10 @@ bool ED_armature_edit_select_pick(bContext *C, const int mval[2], const SelectPi
   vc.mval[0] = mval[0];
   vc.mval[1] = mval[1];
 
-  nearBone = get_nearest_editbonepoint(&vc, true, true, &basact, &selmask);
+  bool findunsel = params->sel_op != SEL_OP_XOR;
+  bool use_cycle = findunsel;
+
+  nearBone = get_nearest_editbonepoint(&vc, findunsel, use_cycle, deepbone, &basact, &selmask);
   return ED_armature_edit_select_pick_bone(C, basact, nearBone, selmask, params);
 }
 
