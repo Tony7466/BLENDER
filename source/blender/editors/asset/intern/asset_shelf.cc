@@ -476,9 +476,12 @@ void ED_asset_shelf_header_region(const bContext *C, ARegion *region)
 
 int ED_asset_shelf_header_region_size()
 {
-  /* The asset shelf tends to look like a separate area. Making the shelf header smaller than a
-   * normal header helps a bit. */
-  return ED_area_headersize() * 0.85f;
+  /* Use a height that lets widgets sit just on top of the separator line drawn at the lower edge
+   * of the region (widgets will be centered).
+   *
+   * Note that this is usually a bit less than the header size. The asset shelf tends to look like
+   * a separate area, so making the shelf header smaller than a header helps. */
+  return UI_UNIT_Y + (UI_BUTTON_SECTION_SEPERATOR_LINE_WITH * 2);
 }
 
 void ED_asset_shelf_region_blend_read_data(BlendDataReader *reader, ARegion *region)

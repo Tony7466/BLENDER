@@ -145,7 +145,7 @@ static void ui_draw_button_sections_alignment_separator(const ARegion *region,
                                                         const uiButtonSectionsAlign align,
                                                         const float corner_radius)
 {
-  const int separator_line_width = 2 * U.pixelsize;
+  const int separator_line_width = UI_BUTTON_SECTION_SEPERATOR_LINE_WITH;
 
   float bg_color[4];
   UI_GetThemeColor4fv(colorid, bg_color);

@@ -838,6 +838,8 @@ void UI_block_lock_set(uiBlock *block, bool val, const char *lockstr);
 void UI_block_lock_clear(uiBlock *block);
 
 #define UI_BUTTON_SECTION_MERGE_DISTANCE (UI_UNIT_X * 3)
+/* Separator line between regions if the #uiButtonSectionsAlign is not #None. */
+#define UI_BUTTON_SECTION_SEPERATOR_LINE_WITH (U.pixelsize * 2)
 
 enum class uiButtonSectionsAlign : int16_t { None, Top, Bottom };
 /**
