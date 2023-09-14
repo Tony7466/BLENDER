@@ -740,6 +740,7 @@ ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
     ccl_private FresnelGeneralizedSchlick *fresnel,
     const bool preserve_energy)
 {
+  fresnel->f0 = saturate(fresnel->f0);
   bsdf->fresnel_type = MicrofacetFresnel::GENERALIZED_SCHLICK;
   bsdf->fresnel = fresnel;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true));
