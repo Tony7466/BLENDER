@@ -820,7 +820,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       if (node_cache.prev_cache->frame < current_frame_) {
         /* Do a simulation step. */
         const float delta_frames = std::min(
-            max_delta_frames, float(node_cache.prev_cache->frame) - float(current_frame_));
+            max_delta_frames, float(current_frame_) - float(node_cache.prev_cache->frame));
         auto &output_move_info = zone_behavior.input.emplace<sim_input::OutputMove>();
         output_move_info.delta_time = delta_frames / fps_;
         output_move_info.state = std::move(node_cache.prev_cache->state);
@@ -889,6 +889,11 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     zone_behavior.input.emplace<sim_input::PassThrough>();
   }
 
+  void output_pass_through(nodes::SimulationZoneBehavior &zone_behavior) const
+  {
+    zone_behavior.output.emplace<sim_output::PassThrough>();
+  }
+
   void output_store_frame_cache(bake::NodeCache &node_cache,
                                 nodes::SimulationZoneBehavior &zone_behavior) const
   {
@@ -944,20 +949,15 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
             *frame_indices.prev, *frame_indices.next, node_cache, zone_behavior);
       }
       else {
-        this->read_empty(zone_behavior);
+        this->output_pass_through(zone_behavior);
       }
     }
     else if (frame_indices.prev) {
       this->read_single(*frame_indices.prev, node_cache, zone_behavior);
     }
     else {
-      this->read_empty(zone_behavior);
+      this->output_pass_through(zone_behavior);
     }
-  }
-
-  void read_empty(nodes::SimulationZoneBehavior &zone_behavior) const
-  {
-    zone_behavior.output.emplace<sim_output::ReadSingle>();
   }
 
   void read_single(const int frame_index,
