@@ -111,9 +111,9 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
                 sub.prop(light, "size", text="Size X")
                 sub.prop(light, "size_y", text="Y")
 
-        col.separator()
-
         if context.engine == 'BLENDER_EEVEE_NEXT':
+            col.separator()
+
             col.prop(light, "use_shadow", text="Cast Shadow")
 
 
