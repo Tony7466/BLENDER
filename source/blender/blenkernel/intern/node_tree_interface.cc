@@ -1031,7 +1031,7 @@ static bNodeTreeInterfacePanel *make_panel(const int uid,
 void bNodeTreeInterface::init_data()
 {
   this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
-  tag_missing_runtime_data();
+  this->tag_missing_runtime_data();
 
   /* Root panel is allowed to contain child panels. */
   root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
@@ -1043,7 +1043,7 @@ void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
   this->active_index = src.active_index;
 
   this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
-  tag_missing_runtime_data();
+  this->tag_missing_runtime_data();
 }
 
 void bNodeTreeInterface::free_data()
@@ -1066,7 +1066,7 @@ void bNodeTreeInterface::read_data(BlendDataReader *reader)
   item_types::item_read_data(reader, this->root_panel.item);
 
   this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
-  tag_missing_runtime_data();
+  this->tag_missing_runtime_data();
 }
 
 bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
@@ -1130,7 +1130,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRefNull 
     parent->add_item(new_socket->item);
   }
 
-  tag_items_changed();
+  this->tag_items_changed();
   return new_socket;
 }
 
@@ -1152,7 +1152,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(blender::StringRefNu
     parent->insert_item(new_socket->item, position);
   }
 
-  tag_items_changed();
+  this->tag_items_changed();
   return new_socket;
 }
 
@@ -1176,7 +1176,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRefNull na
     parent->add_item(new_panel->item);
   }
 
-  tag_items_changed();
+  this->tag_items_changed();
   return new_panel;
 }
 
@@ -1201,7 +1201,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRefNull
     parent->insert_item(new_panel->item, position);
   }
 
-  tag_items_changed();
+  this->tag_items_changed();
   return new_panel;
 }
 
@@ -1225,7 +1225,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->add_item(*citem);
 
-  tag_items_changed();
+  this->tag_items_changed();
   return citem;
 }
 
@@ -1250,7 +1250,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->insert_item(*citem, position);
 
-  tag_items_changed();
+  this->tag_items_changed();
   return citem;
 }
 
@@ -1269,7 +1269,7 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_con
     }
   }
   if (parent->remove_item(item, true)) {
-    tag_items_changed();
+    this->tag_items_changed();
     return true;
   }
 
@@ -1279,7 +1279,7 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_con
 void bNodeTreeInterface::clear_items()
 {
   root_panel.clear(true);
-  tag_items_changed();
+  this->tag_items_changed();
 }
 
 bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_position)
@@ -1290,7 +1290,7 @@ bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_p
   }
 
   if (parent->move_item(item, new_position)) {
-    tag_items_changed();
+    this->tag_items_changed();
     return true;
   }
   return false;
@@ -1312,7 +1312,7 @@ bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
   }
   if (parent == new_parent) {
     if (parent->move_item(item, new_position)) {
-      tag_items_changed();
+      this->tag_items_changed();
       return true;
     }
   }
@@ -1321,7 +1321,7 @@ bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
      * change the desired target position! */
     if (parent->remove_item(item, false)) {
       new_parent->insert_item(item, new_position);
-      tag_items_changed();
+      this->tag_items_changed();
       return true;
     }
   }
