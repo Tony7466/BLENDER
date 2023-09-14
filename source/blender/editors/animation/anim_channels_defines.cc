@@ -5380,7 +5380,7 @@ static void draw_setting_widget(bAnimContext *ac,
     case ACHANNEL_SETTING_MOD_OFF:
       /* Deactivate the button when there are no FCurve modifiers. */
       if (ale->datatype == ALE_FCURVE) {
-        FCurve *fcu = ale->key_data;
+        const FCurve *fcu = static_cast<const FCurve *>(ale->key_data);
         if (BLI_listbase_is_empty(&fcu->modifiers)) {
           UI_but_flag_enable(but, UI_BUT_INACTIVE);
         }
