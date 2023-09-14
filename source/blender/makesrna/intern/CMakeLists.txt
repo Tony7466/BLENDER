@@ -214,13 +214,6 @@ set(SRC_RNA_INC
   ../RNA_types.hh
 )
 
-# XXX Extra sources to fix undefined symbols - can this be avoided? - Lukas
-set(SRC_BLENLIB
-#   ../../blenlib/intern/generic_virtual_array.cc
-#   ../../blenlib/intern/volume.cc
-#   ../../blenkernel/intern/cpp_types.cc
-)
-
 set(SRC
   makesrna.cc
   rna_define.cc
@@ -414,6 +407,10 @@ if(WITH_OPENVDB)
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    bf_intern_openvdb
+    ${OPENVDB_LIBRARIES}
+  )
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
   if(WITH_OPENVDB_BLOSC)
     add_definitions(-DWITH_OPENVDB_BLOSC)
@@ -447,7 +444,7 @@ endif()
 # Build makesrna executable
 add_cc_flags_custom_test(makesrna)
 
-add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC} ${SRC_BLENLIB})
+add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
 setup_platform_linker_flags(makesrna)
 setup_platform_linker_libs(makesrna)
 blender_target_include_dirs(makesrna ${INC})

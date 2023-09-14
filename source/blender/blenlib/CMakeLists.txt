@@ -160,7 +160,7 @@ set(SRC
   intern/vector.cc
   intern/virtual_array.cc
   intern/virtual_grid.cc
-  intern/volume.cc
+  intern/wolume.cc
   intern/voronoi_2d.c
   intern/voxel.c
   intern/winstuff.c

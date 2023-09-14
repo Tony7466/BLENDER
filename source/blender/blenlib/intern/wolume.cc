@@ -12,6 +12,7 @@
 #include "BLI_math_base.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_span.hh"
+#include "BLI_volume.hh"
 #include "BLI_volume_openvdb.hh"
 
 #ifdef WITH_OPENVDB
@@ -114,85 +115,6 @@ const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)
   volume::grid_to_static_type(grid,
                               [&](auto &typed_grid) { type = &grid_attribute_type(typed_grid); });
   return *type;
-}
-
-GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase &grid)
-{
-  const uint32_t num_voxels = 1 << 3 * log2dim;
-
-  GVArray result = {};
-  grid_to_static_type(grid, [&](auto &typed_grid) {
-    using GridType = typename std::decay<decltype(typed_grid)>::type;
-    using TreeType = typename GridType::TreeType;
-    using Accessor = typename GridType::ConstAccessor;
-    using Converter = volume::grid_types::Converter<GridType>;
-    using AttributeValueType = typename Converter::AttributeValueType;
-
-    Accessor accessor = typed_grid.getAccessor();
-    result = VArray<AttributeValueType>::ForFunc(
-        num_voxels, [log2dim, origin, accessor](const int64_t index) {
-          const openvdb::Coord xyz = volume::offset_to_global_coord(
-              log2dim, origin, int32_t(index));
-          return Converter::single_value_to_attribute(accessor.getValue(xyz));
-        });
-  });
-  return result;
-}
-
-void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
-{
-  BLI_assert(dst.is_grid());
-  volume::grid_to_static_type(*dst.get_internal_grid(), [&](auto &typed_dst) {
-    using GridType = typename std::decay<decltype(typed_dst)>::type;
-    using GridValueType = typename GridType::ValueType;
-    using TreeType = typename GridType::TreeType;
-    using Converter = volume::grid_types::Converter<GridType>;
-    using AttributeValueType = typename Converter::AttributeValueType;
-    using LeafNode = typename TreeType::LeafNodeType;
-    using LeafBuffer = typename LeafNode::Buffer;
-    using StorageType = typename LeafBuffer::StorageType;
-
-    //    EvalPerLeafOp<GridType, MaskGridType> func(
-    // field_context_inputs, procedure_executor, mask_grid);
-    openvdb::tools::foreach (
-        typed_dst.tree().beginLeaf(),
-        [&src](const typename TreeType::LeafIter &leaf_iter) {
-          LeafNode &leaf = *leaf_iter;
-          if (leaf.isEmpty() || !leaf.isAllocated()) {
-            return;
-          }
-
-          GVArray src_varray = src.get_varray_for_leaf(leaf.LOG2DIM, int3(leaf.origin().data()));
-          for (typename LeafNode::ValueOnIter iter = leaf.beginValueOn();
-               iter != leaf.endValueOn();
-               ++iter) {
-            StorageType value;
-            src_varray.get(iter.offset(), &value);
-            iter.setValue(std::move(value));
-          }
-
-          //MutableSpan<StorageType> leaf_span(leaf.buffer().data(), LeafNode::NUM_VOXELS);
-          //const IndexMask index_mask(LeafNode::NUM_VOXELS);
-          //if (!leaf.isDense()) {
-          //  /* TODO any way to make this more efficient and copy only active values?
-          //   * There does not seem to be direct access to the mask buffer,
-          //   * so index_mask would do a linear copy of the mask first, only to then
-          //   * evaluate this again to copy the actual buffer... */
-          //  // leaf.getValueMask()
-          //  // index_mask = IndexMask::from_...
-          //}
-          //array_utils::copy(src_varray, index_mask, leaf_span);
-        },
-        /*threaded=*/true,
-        /*shareOp=*/false);
-    // Accessor accessor = typed_dst.getAccessor();
-    // result = VArray<AttributeValueType>::ForFunc(
-    //    num_voxels, [log2dim, origin, accessor](const int64_t index) {
-    //      const openvdb::Coord xyz = volume::offset_to_global_coord(
-    //          log2dim, origin, int32_t(index));
-    //      return Converter::single_value_to_attribute(accessor.getValue(xyz));
-    //    });
-  });
 }
 
 // int64_t GVGrid::voxel_count() const
@@ -369,3 +291,88 @@ void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
 #endif
 
 }  // namespace blender::volume
+
+blender::GVArray get_varray_for_leaf(uint32_t log2dim,
+                                     const blender::int3 &origin,
+                                     const openvdb::GridBase &grid)
+{
+  using namespace blender;
+
+  const uint32_t num_voxels = 1 << 3 * log2dim;
+
+  GVArray result = {};
+  volume::grid_to_static_type(grid, [&](auto &typed_grid) {
+    using GridType = typename std::decay<decltype(typed_grid)>::type;
+    using TreeType = typename GridType::TreeType;
+    using Accessor = typename GridType::ConstAccessor;
+    using Converter = volume::grid_types::Converter<GridType>;
+    using AttributeValueType = typename Converter::AttributeValueType;
+
+    Accessor accessor = typed_grid.getAccessor();
+    result = VArray<AttributeValueType>::ForFunc(
+        num_voxels, [log2dim, origin, accessor](const int64_t index) {
+          const openvdb::Coord xyz = volume::offset_to_global_coord(
+              log2dim, origin, int32_t(index));
+          return Converter::single_value_to_attribute(accessor.getValue(xyz));
+        });
+  });
+  return result;
+}
+
+void materialize_to_grid(blender::GVMutableGrid &dst, const blender::GVGridImpl &src)
+{
+  using namespace blender;
+
+  BLI_assert(dst.is_grid());
+  volume::grid_to_static_type(*dst.get_internal_grid(), [&](auto &typed_dst) {
+    using GridType = typename std::decay<decltype(typed_dst)>::type;
+    using GridValueType = typename GridType::ValueType;
+    using TreeType = typename GridType::TreeType;
+    using Converter = volume::grid_types::Converter<GridType>;
+    using AttributeValueType = typename Converter::AttributeValueType;
+    using LeafNode = typename TreeType::LeafNodeType;
+    using LeafBuffer = typename LeafNode::Buffer;
+    using StorageType = typename LeafBuffer::StorageType;
+
+    //    EvalPerLeafOp<GridType, MaskGridType> func(
+    // field_context_inputs, procedure_executor, mask_grid);
+    openvdb::tools::foreach (
+        typed_dst.tree().beginLeaf(),
+        [&src](const typename TreeType::LeafIter &leaf_iter) {
+          LeafNode &leaf = *leaf_iter;
+          if (leaf.isEmpty() || !leaf.isAllocated()) {
+            return;
+          }
+
+          GVArray src_varray = src.get_varray_for_leaf(leaf.LOG2DIM, int3(leaf.origin().data()));
+          for (typename LeafNode::ValueOnIter iter = leaf.beginValueOn();
+               iter != leaf.endValueOn();
+               ++iter) {
+            StorageType value;
+            src_varray.get(iter.offset(), &value);
+            iter.setValue(std::move(value));
+          }
+
+          // MutableSpan<StorageType> leaf_span(leaf.buffer().data(), LeafNode::NUM_VOXELS);
+          // const IndexMask index_mask(LeafNode::NUM_VOXELS);
+          // if (!leaf.isDense()) {
+          //  /* TODO any way to make this more efficient and copy only active values?
+          //   * There does not seem to be direct access to the mask buffer,
+          //   * so index_mask would do a linear copy of the mask first, only to then
+          //   * evaluate this again to copy the actual buffer... */
+          //  // leaf.getValueMask()
+          //  // index_mask = IndexMask::from_...
+          //}
+          // array_utils::copy(src_varray, index_mask, leaf_span);
+        },
+        /*threaded=*/true,
+        /*shareOp=*/false);
+    // Accessor accessor = typed_dst.getAccessor();
+    // result = VArray<AttributeValueType>::ForFunc(
+    //    num_voxels, [log2dim, origin, accessor](const int64_t index) {
+    //      const openvdb::Coord xyz = volume::offset_to_global_coord(
+    //          log2dim, origin, int32_t(index));
+    //      return Converter::single_value_to_attribute(accessor.getValue(xyz));
+    //    });
+  });
+}
