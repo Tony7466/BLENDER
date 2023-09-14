@@ -25,7 +25,7 @@ uniform sampler2DArray utilTex;
 #define NOISE_LAYER 2
 #define LTC_DISK_LAYER 3 /* UNUSED */
 
-/* Layers 4 to 20 are for BTDF Lut. */
+/* Layers 4 to 20 are for BTDF LUT. */
 #define lut_btdf_layer_first 4.0
 #define lut_btdf_layer_count 16.0
 
@@ -73,11 +73,11 @@ vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
   return coords;
 }
 
-/* Returns GGX BTDF in first component and fresnel in second. */
-vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
+/* Returns GGX transmittance in first component and reflectance in second. */
+vec2 bsdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
 {
   if (ior <= 1e-5) {
-    return vec2(0.0);
+    return vec2(0.0, 1.0);
   }
 
   if (ior >= 1.0) {
