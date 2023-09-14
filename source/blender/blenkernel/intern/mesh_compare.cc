@@ -60,10 +60,104 @@ static bool faces_equal(const IndexRange f1,
 /**
  * Sort the indices using the values.
  */
-template<typename T> static void sort_indices(MutableSpan<int> indices, const Span<T> &values)
+template<typename T> static void sort_indices(MutableSpan<int> indices, const VArray<T> &values)
 {
   std::stable_sort(
       indices.begin(), indices.end(), [&](int i1, int i2) { return values[i1] < values[i2]; });
+}
+
+static std::optional<MeshMismatch> sort_vertices_using_attributes(
+    const Mesh &mesh1,
+    const Mesh &mesh2,
+    MutableSpan<int> r_verts1_to_set,
+    MutableSpan<int> r_verts2_to_set,
+    MutableSpan<int> r_vertex_set_ids,
+    MutableSpan<int> r_vertex_set_sizes)
+{
+  /* At the start, all the vertices are in the same set. */
+  std::iota(r_verts1_to_set.begin(), r_verts1_to_set.end(), 0);
+  std::iota(r_verts2_to_set.begin(), r_verts2_to_set.end(), 0);
+  r_vertex_set_ids.fill(0);
+  r_vertex_set_sizes.fill(r_vertex_set_ids.size());
+
+  AttributeAccessor mesh1_attributes = mesh1.attributes();
+  AttributeAccessor mesh2_attributes = mesh2.attributes();
+  Set<AttributeIDRef> mesh1_attribute_ids = mesh1_attributes.all_ids();
+  Set<AttributeIDRef> mesh2_attribute_ids = mesh2_attributes.all_ids();
+  if (mesh1_attribute_ids != mesh2_attribute_ids) {
+    return MeshMismatch::Attributes;
+  }
+  for (const AttributeIDRef &id : mesh1_attribute_ids) {
+    GAttributeReader reader1 = mesh1_attributes.lookup(id);
+    GAttributeReader reader2 = mesh2_attributes.lookup(id);
+    if (reader1.domain != reader2.domain || reader1.varray.type() != reader2.varray.type()) {
+      return MeshMismatch::AttributeTypes;
+    }
+    if (reader1.domain != ATTR_DOMAIN_POINT) {
+      /* We only look at vertex attributes here. */
+      continue;
+    }
+
+    std::optional<MeshMismatch> mismatch = {};
+
+    attribute_math::convert_to_static_type(reader1.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArray<T> values1 = reader1.varray.typed<T>();
+      const VArray<T> values2 = reader2.varray.typed<T>();
+      /* Sort the elements in each set based on the attribute values. */
+      int i = 0;
+      while (i < mesh1.totvert) {
+        const int set_size = r_vertex_set_sizes[i];
+        if (set_size == 1) {
+          /* No need to sort anymore. */
+          i += 1;
+          continue;
+        }
+        /* TODO: doesn't work for Quaternions!. */
+        sort_indices(r_verts1_to_set.slice(IndexRange(i, set_size)), values1);
+        sort_indices(r_verts2_to_set.slice(IndexRange(i, set_size)), values2);
+        i += set_size;
+      }
+
+      /* Update set ids. */
+      T previous = values1[0];
+      int set_id = 0;
+      for (const int i : IndexRange(mesh1.totvert)) {
+        const T value1 = values1[i];
+        const T value2 = values2[i];
+        if (value1 != value2) {
+          /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+          /* They should be the same after sorting. */
+          mismatch = MeshMismatch::VertexAttributes;
+          return;
+        }
+        if (value1 != previous) {
+          /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+          /* Different, so a new set. */
+          set_id = 0;
+        }
+        r_vertex_set_ids[i] = set_id;
+        set_id += 1;
+      }
+
+      /* Update set sizes. */
+      int i = mesh1.totvert - 1;
+      while (i >= 0) {
+        /* The size of the set is the index of its last element + 1. */
+        int set_size = r_vertex_set_ids[i] + 1;
+        /* Set the set size for each element in the set. */
+        for (int k = i - set_size + 1; k <= i; k++) {
+          r_vertex_set_sizes[k] = set_size;
+        }
+        i -= set_size;
+      }
+    });
+
+    if (mismatch) {
+      return mismatch;
+    }
+  }
+  return {};
 }
 
 /**
@@ -91,8 +185,8 @@ static std::optional<MeshMismatch> construct_vertex_mapping(
   Span<float3> vert_positions2 = mesh2.vert_positions();
   std::iota(verts1.begin(), verts1.end(), 0);
   std::iota(verts2.begin(), verts2.end(), 0);
-  sort_indices(verts1, vert_positions1);
-  sort_indices(verts2, vert_positions2);
+  // sort_indices(verts1, vert_positions1);
+  // sort_indices(verts2, vert_positions2);
 
   /* We can now narrow down the vertices into groups based on their positions.*/
 
@@ -253,6 +347,13 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
   if (mesh1.faces_num != mesh2.faces_num) {
     return MeshMismatch::NumFaces;
   }
+
+  Array<int> verts1_to_set(mesh1.totvert);
+  Array<int> verts2_to_set(mesh1.totvert);
+  Array<int> vertex_set_ids(mesh1.totvert);
+  Array<int> vertex_set_sizes(mesh1.totvert);
+  sort_vertices_using_attributes(
+      mesh1, mesh2, verts1_to_set, verts2_to_set, vertex_set_ids, vertex_set_sizes);
 
   /* We first try to construct a bijection between the vertices, since edges, corners and faces are
    * dependent on vertex indices. */
