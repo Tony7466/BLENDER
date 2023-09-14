@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -134,7 +135,7 @@ struct FramebufferBind {
 };
 
 struct ResourceBind {
-  eGPUSamplerState sampler;
+  GPUSamplerState sampler;
   int slot;
   bool is_reference;
 
@@ -191,9 +192,9 @@ struct ResourceBind {
       : slot(slot_), is_reference(false), type(Type::Image), texture(draw::as_texture(res)){};
   ResourceBind(int slot_, draw::Image **res)
       : slot(slot_), is_reference(true), type(Type::Image), texture_ref(draw::as_texture(res)){};
-  ResourceBind(int slot_, GPUTexture *res, eGPUSamplerState state)
+  ResourceBind(int slot_, GPUTexture *res, GPUSamplerState state)
       : sampler(state), slot(slot_), is_reference(false), type(Type::Sampler), texture(res){};
-  ResourceBind(int slot_, GPUTexture **res, eGPUSamplerState state)
+  ResourceBind(int slot_, GPUTexture **res, GPUSamplerState state)
       : sampler(state), slot(slot_), is_reference(true), type(Type::Sampler), texture_ref(res){};
   ResourceBind(int slot_, GPUVertBuf *res)
       : slot(slot_), is_reference(false), type(Type::BufferSampler), vertex_buf(res){};

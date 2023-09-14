@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -29,7 +31,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLI_linklist.h"
 #include "BLI_string.h"
@@ -125,8 +127,11 @@ extern Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
 extern Object *bc_get_assigned_armature(Object *ob);
 extern bool bc_has_object_type(LinkNode *export_set, short obtype);
 
-extern const char *bc_CustomData_get_layer_name(const CustomData *data, int type, int n);
-extern const char *bc_CustomData_get_active_layer_name(const CustomData *data, int type);
+extern const char *bc_CustomData_get_layer_name(const CustomData *data,
+                                                eCustomDataType type,
+                                                int n);
+extern const char *bc_CustomData_get_active_layer_name(const CustomData *data,
+                                                       eCustomDataType type);
 
 extern void bc_bubble_sort_by_Object_name(LinkNode *export_set);
 /**
@@ -188,7 +193,7 @@ extern std::string bc_replace_string(std::string data,
                                      const std::string &replacement);
 extern std::string bc_url_encode(std::string data);
 /**
- * Calculate a rescale factor such that the imported scene's scale
+ * Calculate a re-scale factor such that the imported scene's scale
  * is preserved. I.e. 1 meter in the import will also be
  * 1 meter in the current scene.
  */

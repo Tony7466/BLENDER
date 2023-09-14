@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * 2D Culling pass for lights.
@@ -18,7 +21,7 @@ struct CullingTile {
   vec4 bounds;
 };
 
-/* Corners are expected to be in viewspace so that the cone is starting from the origin.
+/* Corners are expected to be in view-space so that the cone is starting from the origin.
  * Corner order does not matter. */
 vec4 tile_bound_cone(vec3 v00, vec3 v01, vec3 v10, vec3 v11)
 {
@@ -34,7 +37,7 @@ vec4 tile_bound_cone(vec3 v00, vec3 v01, vec3 v10, vec3 v11)
   return vec4(center, angle_cosine);
 }
 
-/* Corners are expected to be in viewspace. Returns Z-aligned bounding cylinder.
+/* Corners are expected to be in view-space. Returns Z-aligned bounding cylinder.
  * Corner order does not matter. */
 vec4 tile_bound_cylinder(vec3 v00, vec3 v01, vec3 v10, vec3 v11)
 {
@@ -156,7 +159,7 @@ void main()
 
     switch (light.type) {
       case LIGHT_SPOT:
-        /* Only for < ~170° Cone due to plane extraction precision. */
+        /* Only for < ~170 degree Cone due to plane extraction precision. */
         if (light.spot_tan < 10.0) {
           Pyramid pyramid = shape_pyramid_non_oblique(
               vP,
@@ -166,15 +169,17 @@ void main()
           intersect_tile = intersect_tile && intersect(tile, pyramid);
           break;
         }
-        /* Fallthrough to the hemispheric case. */
+        /* Fall-through to the hemispheric case. */
       case LIGHT_RECT:
-      case LIGHT_ELLIPSE:
+      case LIGHT_ELLIPSE: {
         vec3 v000 = vP - v_right * radius - v_up * radius;
         vec3 v100 = v000 + v_right * (radius * 2.0);
         vec3 v010 = v000 + v_up * (radius * 2.0);
         vec3 v001 = v000 - v_back * radius;
         Box bbox = shape_box(v000, v100, v010, v001);
         intersect_tile = intersect_tile && intersect(tile, bbox);
+        break;
+      }
       default:
         break;
     }

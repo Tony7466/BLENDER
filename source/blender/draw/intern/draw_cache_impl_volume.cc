@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -31,8 +32,8 @@
 
 #include "DRW_render.h"
 
-#include "draw_cache.h"      /* own include */
-#include "draw_cache_impl.h" /* own include */
+#include "draw_cache.h"       /* own include */
+#include "draw_cache_impl.hh" /* own include */
 
 static void volume_batch_cache_clear(Volume *volume);
 
@@ -318,7 +319,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
      * GL_MAX_3D_TEXTURE_SIZE. */
     if (cache_grid->texture != nullptr) {
       GPU_texture_swizzle_set(cache_grid->texture, (channels == 3) ? "rgb1" : "rrr1");
-      GPU_texture_wrap_mode(cache_grid->texture, false, false);
+      GPU_texture_extend_mode(cache_grid->texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
       BKE_volume_dense_float_grid_clear(&dense_grid);
     }
     else {

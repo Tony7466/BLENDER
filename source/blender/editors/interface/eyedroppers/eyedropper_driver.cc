@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -22,16 +23,16 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
 #include "eyedropper_intern.hh"
 #include "interface_intern.hh"
@@ -54,7 +55,8 @@ static bool driverdropper_init(bContext *C, wmOperator *op)
 
   if ((ddr->ptr.data == nullptr) || (ddr->prop == nullptr) ||
       (RNA_property_editable(&ddr->ptr, ddr->prop) == false) ||
-      (RNA_property_animateable(&ddr->ptr, ddr->prop) == false) || (but->flag & UI_BUT_DRIVEN)) {
+      (RNA_property_animateable(&ddr->ptr, ddr->prop) == false) || (but->flag & UI_BUT_DRIVEN))
+  {
     MEM_freeN(ddr);
     return false;
   }

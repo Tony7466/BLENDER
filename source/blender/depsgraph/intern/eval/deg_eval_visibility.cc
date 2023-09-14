@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -12,6 +13,7 @@
 #include "DNA_object_types.h"
 
 #include "BLI_assert.h"
+#include "BLI_listbase.h"
 #include "BLI_stack.h"
 
 #include "DEG_depsgraph.h"
@@ -126,7 +128,7 @@ void deg_graph_flush_visibility_flags(Depsgraph *graph)
     op_node->custom_flags = 0;
     op_node->num_links_pending = 0;
     for (Relation *rel : op_node->outlinks) {
-      if ((rel->from->type == NodeType::OPERATION) && (rel->flag & RELATION_FLAG_CYCLIC) == 0) {
+      if ((rel->to->type == NodeType::OPERATION) && (rel->flag & RELATION_FLAG_CYCLIC) == 0) {
         ++op_node->num_links_pending;
       }
     }

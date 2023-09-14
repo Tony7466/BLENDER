@@ -1,11 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Adapted from code copyright 2009-2010 NVIDIA Corporation
- * Modifications Copyright 2011-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
 
 #ifndef __BVH_PARAMS_H__
 #define __BVH_PARAMS_H__
 
 #include "util/boundbox.h"
+#include "util/vector.h"
 
 #include "kernel/types.h"
 
@@ -183,9 +187,7 @@ class BVHParams {
 
 class BVHReference {
  public:
-  __forceinline BVHReference()
-  {
-  }
+  __forceinline BVHReference() {}
 
   __forceinline BVHReference(const BoundBox &bounds_,
                              int prim_index_,
@@ -307,9 +309,7 @@ struct BVHSpatialBin {
   int enter;
   int exit;
 
-  __forceinline BVHSpatialBin()
-  {
-  }
+  __forceinline BVHSpatialBin() {}
 };
 
 /* BVH Spatial Storage

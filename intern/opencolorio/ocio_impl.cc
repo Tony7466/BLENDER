@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cassert>
 #include <iostream>
@@ -20,7 +21,6 @@ using namespace OCIO_NAMESPACE;
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_math_color.h"
 #include "BLI_math_matrix.h"
 
@@ -477,14 +477,16 @@ void OCIOImpl::colorSpaceIsBuiltin(OCIO_ConstConfigRcPtr *config_,
 
     /* Make sure that there is no channel crosstalk. */
     if (fabsf(cR[1]) > 1e-5f || fabsf(cR[2]) > 1e-5f || fabsf(cG[0]) > 1e-5f ||
-        fabsf(cG[2]) > 1e-5f || fabsf(cB[0]) > 1e-5f || fabsf(cB[1]) > 1e-5f) {
+        fabsf(cG[2]) > 1e-5f || fabsf(cB[0]) > 1e-5f || fabsf(cB[1]) > 1e-5f)
+    {
       is_scene_linear = false;
       is_srgb = false;
       break;
     }
     /* Make sure that the three primaries combine linearly. */
     if (!compare_floats(cR[0], cW[0], 1e-6f, 64) || !compare_floats(cG[1], cW[1], 1e-6f, 64) ||
-        !compare_floats(cB[2], cW[2], 1e-6f, 64)) {
+        !compare_floats(cB[2], cW[2], 1e-6f, 64))
+    {
       is_scene_linear = false;
       is_srgb = false;
       break;
@@ -500,7 +502,7 @@ void OCIOImpl::colorSpaceIsBuiltin(OCIO_ConstConfigRcPtr *config_,
     if (!compare_floats(v, out_v, 1e-6f, 64)) {
       is_scene_linear = false;
     }
-    if (!compare_floats(srgb_to_linearrgb(v), out_v, 1e-6f, 64)) {
+    if (!compare_floats(srgb_to_linearrgb(v), out_v, 1e-4f, 64)) {
       is_srgb = false;
     }
   }
@@ -585,6 +587,11 @@ void OCIOImpl::cpuProcessorApply_predivide(OCIO_ConstCPUProcessorRcPtr *cpu_proc
   catch (Exception &exception) {
     OCIO_reportException(exception);
   }
+}
+
+bool OCIOImpl::cpuProcessorIsNoOp(OCIO_ConstCPUProcessorRcPtr *cpu_processor)
+{
+  return (*(ConstCPUProcessorRcPtr *)cpu_processor)->isNoOp();
 }
 
 void OCIOImpl::cpuProcessorApplyRGB(OCIO_ConstCPUProcessorRcPtr *cpu_processor, float *pixel)

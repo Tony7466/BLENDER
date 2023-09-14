@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -15,8 +16,8 @@
 
 #include "DNA_ID.h"
 
-#include "RNA_access.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_types.hh"
 
 struct ID;
 struct PropertyRNA;
@@ -188,6 +189,9 @@ struct PersistentOperationKey : public OperationKey {
 
 struct RNAPathKey {
   RNAPathKey(ID *id, const char *path, RNAPointerSource source);
+  RNAPathKey(const PointerRNA &target_prop,
+             const char *rna_path_from_target_prop,
+             RNAPointerSource source);
   RNAPathKey(ID *id, const PointerRNA &ptr, PropertyRNA *prop, RNAPointerSource source);
 
   string identifier() const;

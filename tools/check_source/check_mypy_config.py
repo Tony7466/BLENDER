@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
@@ -51,13 +53,12 @@ PATHS_EXCLUDE = set(
         "tools/utils/blender_keyconfig_export_permutations.py",
         "tools/utils/blender_merge_format_changes.py",
         "tools/utils/blender_theme_as_c.py",
-        "tools/utils/credits_git_gen.py",
         "tools/utils/cycles_commits_sync.py",
         "tools/utils/cycles_timeit.py",
         "tools/utils/gdb_struct_repr_c99.py",
-        "tools/utils/git_log.py",
         "tools/utils/git_log_review_commits.py",
         "tools/utils/git_log_review_commits_advanced.py",
+        "tools/utils/gitea_inactive_developers.py",
         "tools/utils/make_cursor_gui.py",
         "tools/utils/make_gl_stipple_from_xpm.py",
         "tools/utils/make_shape_2d_from_blend.py",

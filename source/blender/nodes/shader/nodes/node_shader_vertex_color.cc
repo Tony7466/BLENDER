@@ -1,21 +1,25 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
 #include "BKE_context.h"
 
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_vertex_color_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Color>(N_("Color"));
-  b.add_output<decl::Float>(N_("Alpha"));
+  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Float>("Alpha");
 }
 
 static void node_shader_buts_vertex_color(uiLayout *layout, bContext *C, PointerRNA *ptr)

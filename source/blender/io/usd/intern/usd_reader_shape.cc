@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Nvidia. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Nvidia. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
@@ -12,7 +13,7 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "usd_reader_shape.h"
 
@@ -124,7 +125,7 @@ bool USDShapeReader::read_mesh_values(double motionSampleTime,
   return false;
 }
 
-Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
+Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
                                 const USDMeshReadParams params,
                                 const char ** /*err_str*/)
 {
@@ -142,23 +143,18 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
     return existing_mesh;
   }
 
-  MutableSpan<MPoly> polys = active_mesh->polys_for_write();
-  MutableSpan<int> corner_verts = active_mesh->corner_verts_for_write();
+  MutableSpan<int> face_offsets = active_mesh->face_offsets_for_write();
+  for (const int i : IndexRange(active_mesh->faces_num)) {
+    face_offsets[i] = face_counts[i];
+  }
+  offset_indices::accumulate_counts_to_offsets(face_offsets);
 
   /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
   BKE_mesh_smooth_flag_set(active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
 
-  int loop_index = 0;
-  for (int i = 0; i < face_counts.size(); i++) {
-    const int face_size = face_counts[i];
-
-    MPoly &poly = polys[i];
-    poly.loopstart = loop_index;
-    poly.totloop = face_size;
-
-    for (int f = 0; f < face_size; ++f, ++loop_index) {
-      corner_verts[loop_index] = face_indices[loop_index];
-    }
+  MutableSpan<int> corner_verts = active_mesh->corner_verts_for_write();
+  for (const int i : corner_verts.index_range()) {
+    corner_verts[i] = face_indices[i];
   }
 
   BKE_mesh_calc_edges(active_mesh, false, false);
@@ -176,7 +172,7 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
     return existing_mesh;
   }
 
-  const bool poly_counts_match = existing_mesh ? face_counts.size() == existing_mesh->totpoly :
+  const bool poly_counts_match = existing_mesh ? face_counts.size() == existing_mesh->faces_num :
                                                  false;
   const bool position_counts_match = existing_mesh ? positions.size() == existing_mesh->totvert :
                                                      false;
@@ -184,7 +180,7 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
   Mesh *active_mesh = nullptr;
   if (!position_counts_match || !poly_counts_match) {
     active_mesh = BKE_mesh_new_nomain_from_template(
-        existing_mesh, positions.size(), 0, face_indices.size(), face_counts.size());
+        existing_mesh, positions.size(), 0, face_counts.size(), face_indices.size());
   }
   else {
     active_mesh = existing_mesh;

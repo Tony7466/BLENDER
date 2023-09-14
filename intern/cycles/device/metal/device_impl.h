@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -50,7 +51,7 @@ class MetalDevice : public Device {
   int max_threads_per_threadgroup;
 
   int mtlDevId = 0;
-  bool first_error = true;
+  bool has_error = false;
 
   struct MetalMem {
     device_memory *mem = nullptr;
@@ -81,7 +82,6 @@ class MetalDevice : public Device {
   /* BLAS encoding & lookup */
   id<MTLArgumentEncoder> mtlBlasArgEncoder = nil;
   id<MTLBuffer> blas_buffer = nil;
-  id<MTLBuffer> blas_lookup_buffer = nil;
 
   bool use_metalrt = false;
   MetalPipelineType kernel_specialization_level = PSO_GENERIC;
@@ -100,7 +100,7 @@ class MetalDevice : public Device {
 
   virtual void cancel() override;
 
-  virtual BVHLayoutMask get_bvh_layout_mask() const override;
+  virtual BVHLayoutMask get_bvh_layout_mask(uint /*kernel_features*/) const override;
 
   void set_error(const string &error) override;
 

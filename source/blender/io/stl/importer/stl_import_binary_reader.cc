@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup stl
@@ -29,7 +31,7 @@ struct STLBinaryTriangle {
 };
 #pragma pack(pop)
 
-Mesh *read_stl_binary(FILE *file, Main *bmain, char *mesh_name, bool use_custom_normals)
+Mesh *read_stl_binary(FILE *file, const bool use_custom_normals)
 {
   const int chunk_size = 1024;
   uint32_t num_tris = 0;
@@ -40,7 +42,7 @@ Mesh *read_stl_binary(FILE *file, Main *bmain, char *mesh_name, bool use_custom_
   }
 
   if (num_tris == 0) {
-    return BKE_mesh_add(bmain, mesh_name);
+    return BKE_mesh_new_nomain(0, 0, 0, 0);
   }
 
   Array<STLBinaryTriangle> tris_buf(chunk_size);
@@ -57,7 +59,7 @@ Mesh *read_stl_binary(FILE *file, Main *bmain, char *mesh_name, bool use_custom_
     }
   }
 
-  return stl_mesh.to_mesh(bmain, mesh_name);
+  return stl_mesh.to_mesh();
 }
 
 }  // namespace blender::io::stl

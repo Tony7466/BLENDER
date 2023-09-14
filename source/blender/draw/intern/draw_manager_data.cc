@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -17,13 +18,13 @@
 #include "BKE_image.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 #include "BKE_volume.h"
 
 /* For debug cursor position. */
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #include "DNA_curve_types.h"
 #include "DNA_mesh_types.h"
@@ -169,7 +170,7 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
                                           int loc,
                                           DRWUniformType type,
                                           const void *value,
-                                          eGPUSamplerState sampler_state,
+                                          GPUSamplerState sampler_state,
                                           int length,
                                           int arraysize)
 {
@@ -183,7 +184,7 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
   /* Happens on first uniform or if chunk is full. */
   if (!unichunk || unichunk->uniform_used == unichunk->uniform_len) {
     unichunk = static_cast<DRWUniformChunk *>(BLI_memblock_alloc(DST.vmempool->uniforms));
-    unichunk->uniform_len = ARRAY_SIZE(shgroup->uniforms->uniforms);
+    unichunk->uniform_len = BOUNDED_ARRAY_TYPE_SIZE<decltype(shgroup->uniforms->uniforms)>();
     unichunk->uniform_used = 0;
     BLI_LINKS_PREPEND(shgroup->uniforms, unichunk);
   }
@@ -247,13 +248,13 @@ static void drw_shgroup_uniform(DRWShadingGroup *shgroup,
                    DRW_UNIFORM_TEXTURE_REF));
   int location = GPU_shader_get_uniform(shgroup->shader, name);
   drw_shgroup_uniform_create_ex(
-      shgroup, location, type, value, GPU_SAMPLER_DEFAULT, length, arraysize);
+      shgroup, location, type, value, GPUSamplerState::default_sampler(), length, arraysize);
 }
 
 void DRW_shgroup_uniform_texture_ex(DRWShadingGroup *shgroup,
                                     const char *name,
                                     const GPUTexture *tex,
-                                    eGPUSamplerState sampler_state)
+                                    GPUSamplerState sampler_state)
 {
   BLI_assert(tex != nullptr);
   int loc = GPU_shader_get_sampler_binding(shgroup->shader, name);
@@ -262,13 +263,13 @@ void DRW_shgroup_uniform_texture_ex(DRWShadingGroup *shgroup,
 
 void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex)
 {
-  DRW_shgroup_uniform_texture_ex(shgroup, name, tex, GPU_SAMPLER_MAX);
+  DRW_shgroup_uniform_texture_ex(shgroup, name, tex, GPUSamplerState::internal_sampler());
 }
 
 void DRW_shgroup_uniform_texture_ref_ex(DRWShadingGroup *shgroup,
                                         const char *name,
                                         GPUTexture **tex,
-                                        eGPUSamplerState sampler_state)
+                                        GPUSamplerState sampler_state)
 {
   BLI_assert(tex != nullptr);
   int loc = GPU_shader_get_sampler_binding(shgroup->shader, name);
@@ -277,14 +278,15 @@ void DRW_shgroup_uniform_texture_ref_ex(DRWShadingGroup *shgroup,
 
 void DRW_shgroup_uniform_texture_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex)
 {
-  DRW_shgroup_uniform_texture_ref_ex(shgroup, name, tex, GPU_SAMPLER_MAX);
+  DRW_shgroup_uniform_texture_ref_ex(shgroup, name, tex, GPUSamplerState::internal_sampler());
 }
 
 void DRW_shgroup_uniform_image(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex)
 {
   BLI_assert(tex != nullptr);
   int loc = GPU_shader_get_sampler_binding(shgroup->shader, name);
-  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_IMAGE, tex, GPU_SAMPLER_DEFAULT, 0, 1);
+  drw_shgroup_uniform_create_ex(
+      shgroup, loc, DRW_UNIFORM_IMAGE, tex, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_uniform_image_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex)
@@ -292,7 +294,7 @@ void DRW_shgroup_uniform_image_ref(DRWShadingGroup *shgroup, const char *name, G
   BLI_assert(tex != nullptr);
   int loc = GPU_shader_get_sampler_binding(shgroup->shader, name);
   drw_shgroup_uniform_create_ex(
-      shgroup, loc, DRW_UNIFORM_IMAGE_REF, tex, GPU_SAMPLER_DEFAULT, 0, 1);
+      shgroup, loc, DRW_UNIFORM_IMAGE_REF, tex, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_uniform_block_ex(DRWShadingGroup *shgroup,
@@ -313,7 +315,8 @@ void DRW_shgroup_uniform_block_ex(DRWShadingGroup *shgroup,
 #endif
     return;
   }
-  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_BLOCK, ubo, GPU_SAMPLER_DEFAULT, 0, 1);
+  drw_shgroup_uniform_create_ex(
+      shgroup, loc, DRW_UNIFORM_BLOCK, ubo, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_uniform_block_ref_ex(DRWShadingGroup *shgroup,
@@ -335,7 +338,7 @@ void DRW_shgroup_uniform_block_ref_ex(DRWShadingGroup *shgroup,
     return;
   }
   drw_shgroup_uniform_create_ex(
-      shgroup, loc, DRW_UNIFORM_BLOCK_REF, ubo, GPU_SAMPLER_DEFAULT, 0, 1);
+      shgroup, loc, DRW_UNIFORM_BLOCK_REF, ubo, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_storage_block_ex(DRWShadingGroup *shgroup,
@@ -358,7 +361,7 @@ void DRW_shgroup_storage_block_ex(DRWShadingGroup *shgroup,
     return;
   }
   drw_shgroup_uniform_create_ex(
-      shgroup, loc, DRW_UNIFORM_STORAGE_BLOCK, ssbo, GPU_SAMPLER_DEFAULT, 0, 1);
+      shgroup, loc, DRW_UNIFORM_STORAGE_BLOCK, ssbo, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_storage_block_ref_ex(DRWShadingGroup *shgroup,
@@ -381,7 +384,7 @@ void DRW_shgroup_storage_block_ref_ex(DRWShadingGroup *shgroup,
     return;
   }
   drw_shgroup_uniform_create_ex(
-      shgroup, loc, DRW_UNIFORM_STORAGE_BLOCK_REF, ssbo, GPU_SAMPLER_DEFAULT, 0, 1);
+      shgroup, loc, DRW_UNIFORM_STORAGE_BLOCK_REF, ssbo, GPUSamplerState::default_sampler(), 0, 1);
 }
 
 void DRW_shgroup_uniform_bool(DRWShadingGroup *shgroup,
@@ -530,8 +533,13 @@ void DRW_shgroup_uniform_mat4_copy(DRWShadingGroup *shgroup,
    * and array-size used to determine the number of elements
    * copied in draw_update_uniforms. */
   for (int i = 0; i < 4; i++) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, location, DRW_UNIFORM_FLOAT_COPY, &value[i], GPU_SAMPLER_DEFAULT, 4, 4);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  location,
+                                  DRW_UNIFORM_FLOAT_COPY,
+                                  &value[i],
+                                  GPUSamplerState::default_sampler(),
+                                  4,
+                                  4);
   }
 }
 
@@ -555,7 +563,7 @@ void DRW_shgroup_vertex_buffer_ex(DRWShadingGroup *shgroup,
                                 location,
                                 DRW_UNIFORM_VERTEX_BUFFER_AS_STORAGE,
                                 vertex_buffer,
-                                GPU_SAMPLER_DEFAULT,
+                                GPUSamplerState::default_sampler(),
                                 0,
                                 1);
 }
@@ -580,7 +588,7 @@ void DRW_shgroup_vertex_buffer_ref_ex(DRWShadingGroup *shgroup,
                                 location,
                                 DRW_UNIFORM_VERTEX_BUFFER_AS_STORAGE_REF,
                                 vertex_buffer,
-                                GPU_SAMPLER_DEFAULT,
+                                GPUSamplerState::default_sampler(),
                                 0,
                                 1);
 }
@@ -597,7 +605,7 @@ void DRW_shgroup_buffer_texture(DRWShadingGroup *shgroup,
                                 location,
                                 DRW_UNIFORM_VERTEX_BUFFER_AS_TEXTURE,
                                 vertex_buffer,
-                                GPU_SAMPLER_DEFAULT,
+                                GPUSamplerState::default_sampler(),
                                 0,
                                 1);
 }
@@ -614,7 +622,7 @@ void DRW_shgroup_buffer_texture_ref(DRWShadingGroup *shgroup,
                                 location,
                                 DRW_UNIFORM_VERTEX_BUFFER_AS_TEXTURE_REF,
                                 vertex_buffer,
-                                GPU_SAMPLER_DEFAULT,
+                                GPUSamplerState::default_sampler(),
                                 0,
                                 1);
 }
@@ -1213,7 +1221,7 @@ static float sculpt_debug_colors[9][4] = {
 
 static void sculpt_draw_cb(DRWSculptCallbackData *scd,
                            PBVHBatches *batches,
-                           PBVH_GPU_Args *pbvh_draw_args)
+                           const PBVH_GPU_Args &pbvh_draw_args)
 {
   if (!batches) {
     return;
@@ -1262,10 +1270,10 @@ void DRW_sculpt_debug_cb(
 
 #if 0 /* Nodes hierarchy. */
   if (flag & PBVH_Leaf) {
-    DRW_debug_bbox(&bb, (float[4]){0.0f, 1.0f, 0.0f, 1.0f});
+    DRW_debug_bbox(&bb, blender::float4{0.0f, 1.0f, 0.0f, 1.0f});
   }
   else {
-    DRW_debug_bbox(&bb, (float[4]){0.5f, 0.5f, 0.5f, 0.6f});
+    DRW_debug_bbox(&bb, blender::float4{0.5f, 0.5f, 0.5f, 0.6f});
   }
 #else /* Color coded leaf bounds. */
   if (flag & (PBVH_Leaf | PBVH_TexLeaf)) {
@@ -1357,7 +1365,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
                    update_only_visible,
                    &update_frustum,
                    &draw_frustum,
-                   (void (*)(void *, PBVHBatches *, PBVH_GPU_Args *))sculpt_draw_cb,
+                   (void (*)(void *, PBVHBatches *, const PBVH_GPU_Args &))sculpt_draw_cb,
                    scd,
                    scd->use_mats,
                    scd->attrs,
@@ -1390,10 +1398,8 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
   scd.use_mats = false;
   scd.use_mask = use_mask;
 
-  PBVHAttrReq attrs[16];
+  PBVHAttrReq attrs[16] = {};
   int attrs_num = 0;
-
-  memset(attrs, 0, sizeof(attrs));
 
   /* NOTE: these are NOT #eCustomDataType, they are extended values, ASAN may warn about this. */
   attrs[attrs_num++].type = (eCustomDataType)CD_PBVH_CO_TYPE;
@@ -1418,19 +1424,19 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
       attrs[attrs_num].type = eCustomDataType(layer->type);
       attrs[attrs_num].domain = domain;
 
-      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
+      attrs[attrs_num].name = layer->name;
       attrs_num++;
     }
   }
 
   if (use_uv) {
-    int layer_i = CustomData_get_active_layer_index(&me->ldata, CD_PROP_FLOAT2);
+    int layer_i = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_FLOAT2);
     if (layer_i != -1) {
-      CustomDataLayer *layer = me->ldata.layers + layer_i;
+      CustomDataLayer *layer = me->loop_data.layers + layer_i;
 
       attrs[attrs_num].type = CD_PROP_FLOAT2;
       attrs[attrs_num].domain = ATTR_DOMAIN_CORNER;
-      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
+      attrs[attrs_num].name = layer->name;
 
       attrs_num++;
     }
@@ -1476,7 +1482,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
 
     attrs[attrs_i].type = req->cd_type;
     attrs[attrs_i].domain = req->domain;
-    BLI_strncpy(attrs[attrs_i].name, req->attribute_name, sizeof(PBVHAttrReq::name));
+    attrs[attrs_i].name = req->attribute_name;
     attrs_i++;
   }
 
@@ -1485,13 +1491,13 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
 
   for (uint i = 0; i < 32; i++) {
     if (cd_needed.uv & (1 << i)) {
-      int layer_i = CustomData_get_layer_index_n(&me->ldata, CD_PROP_FLOAT2, i);
-      CustomDataLayer *layer = layer_i != -1 ? me->ldata.layers + layer_i : nullptr;
+      int layer_i = CustomData_get_layer_index_n(&me->loop_data, CD_PROP_FLOAT2, i);
+      CustomDataLayer *layer = layer_i != -1 ? me->loop_data.layers + layer_i : nullptr;
 
       if (layer) {
         attrs[attrs_i].type = CD_PROP_FLOAT2;
         attrs[attrs_i].domain = ATTR_DOMAIN_CORNER;
-        BLI_strncpy(attrs[attrs_i].name, layer->name, sizeof(PBVHAttrReq::name));
+        attrs[attrs_i].name = layer->name;
         attrs_i++;
       }
     }
@@ -1653,23 +1659,43 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   }
 
   if (chunkid_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, chunkid_location, DRW_UNIFORM_RESOURCE_CHUNK, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  chunkid_location,
+                                  DRW_UNIFORM_RESOURCE_CHUNK,
+                                  nullptr,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
   }
 
   if (resourceid_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, resourceid_location, DRW_UNIFORM_RESOURCE_ID, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  resourceid_location,
+                                  DRW_UNIFORM_RESOURCE_ID,
+                                  nullptr,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
   }
 
   if (baseinst_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, baseinst_location, DRW_UNIFORM_BASE_INSTANCE, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  baseinst_location,
+                                  DRW_UNIFORM_BASE_INSTANCE,
+                                  nullptr,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
   }
 
   if (model_ubo_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, model_ubo_location, DRW_UNIFORM_BLOCK_OBMATS, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  model_ubo_location,
+                                  DRW_UNIFORM_BLOCK_OBMATS,
+                                  nullptr,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
   }
   else {
     /* NOTE: This is only here to support old hardware fallback where uniform buffer is still
@@ -1677,23 +1703,33 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
     int model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
     int modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
     if (model != -1) {
-      drw_shgroup_uniform_create_ex(
-          shgroup, model, DRW_UNIFORM_MODEL_MATRIX, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+      drw_shgroup_uniform_create_ex(shgroup,
+                                    model,
+                                    DRW_UNIFORM_MODEL_MATRIX,
+                                    nullptr,
+                                    GPUSamplerState::default_sampler(),
+                                    0,
+                                    1);
     }
     if (modelinverse != -1) {
       drw_shgroup_uniform_create_ex(shgroup,
                                     modelinverse,
                                     DRW_UNIFORM_MODEL_MATRIX_INVERSE,
                                     nullptr,
-                                    GPU_SAMPLER_DEFAULT,
+                                    GPUSamplerState::default_sampler(),
                                     0,
                                     1);
     }
   }
 
   if (info_ubo_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, info_ubo_location, DRW_UNIFORM_BLOCK_OBINFOS, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  info_ubo_location,
+                                  DRW_UNIFORM_BLOCK_OBINFOS,
+                                  nullptr,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
 
     /* Abusing this loc to tell shgroup we need the obinfos. */
     shgroup->objectinfo = 1;
@@ -1703,8 +1739,13 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   }
 
   if (view_ubo_location != -1) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, view_ubo_location, DRW_UNIFORM_BLOCK, G_draw.view_ubo, GPU_SAMPLER_DEFAULT, 0, 1);
+    drw_shgroup_uniform_create_ex(shgroup,
+                                  view_ubo_location,
+                                  DRW_UNIFORM_BLOCK,
+                                  G_draw.view_ubo,
+                                  GPUSamplerState::default_sampler(),
+                                  0,
+                                  1);
   }
 
   if (clipping_ubo_location != -1) {
@@ -1712,7 +1753,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
                                   clipping_ubo_location,
                                   DRW_UNIFORM_BLOCK,
                                   G_draw.clipping_ubo,
-                                  GPU_SAMPLER_DEFAULT,
+                                  GPUSamplerState::default_sampler(),
                                   0,
                                   1);
   }
@@ -1767,7 +1808,7 @@ static DRWShadingGroup *drw_shgroup_material_create_ex(GPUPass *gpupass, DRWPass
 static void drw_shgroup_material_texture(DRWShadingGroup *grp,
                                          GPUTexture *gputex,
                                          const char *name,
-                                         eGPUSamplerState state)
+                                         GPUSamplerState state)
 {
   DRW_shgroup_uniform_texture_ex(grp, name, gputex, state);
 
@@ -1788,16 +1829,13 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
       ImageUser *iuser = tex->iuser_available ? &tex->iuser : nullptr;
       if (tex->tiled_mapping_name[0]) {
         gputex = BKE_image_get_gpu_tiles(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(
-            grp, gputex, tex->sampler_name, eGPUSamplerState(tex->sampler_state));
+        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
         gputex = BKE_image_get_gpu_tilemap(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(
-            grp, gputex, tex->tiled_mapping_name, eGPUSamplerState(tex->sampler_state));
+        drw_shgroup_material_texture(grp, gputex, tex->tiled_mapping_name, tex->sampler_state);
       }
       else {
         gputex = BKE_image_get_gpu_texture(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(
-            grp, gputex, tex->sampler_name, eGPUSamplerState(tex->sampler_state));
+        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
       }
     }
     else if (tex->colorband) {
@@ -1806,8 +1844,7 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
     }
     else if (tex->sky) {
       /* Sky */
-      DRW_shgroup_uniform_texture_ex(
-          grp, tex->sampler_name, *tex->sky, eGPUSamplerState(tex->sampler_state));
+      DRW_shgroup_uniform_texture_ex(grp, tex->sampler_name, *tex->sky, tex->sampler_state);
     }
   }
 
@@ -1820,14 +1857,14 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
   if (uattrs != nullptr) {
     int loc = GPU_shader_get_ubo_binding(grp->shader, GPU_ATTRIBUTE_UBO_BLOCK_NAME);
     drw_shgroup_uniform_create_ex(
-        grp, loc, DRW_UNIFORM_BLOCK_OBATTRS, uattrs, GPU_SAMPLER_DEFAULT, 0, 1);
+        grp, loc, DRW_UNIFORM_BLOCK_OBATTRS, uattrs, GPUSamplerState::default_sampler(), 0, 1);
     grp->uniform_attrs = uattrs;
   }
 
   if (GPU_material_layer_attributes(material) != nullptr) {
     int loc = GPU_shader_get_ubo_binding(grp->shader, GPU_LAYER_ATTRIBUTE_UBO_BLOCK_NAME);
     drw_shgroup_uniform_create_ex(
-        grp, loc, DRW_UNIFORM_BLOCK_VLATTRS, nullptr, GPU_SAMPLER_DEFAULT, 0, 1);
+        grp, loc, DRW_UNIFORM_BLOCK_VLATTRS, nullptr, GPUSamplerState::default_sampler(), 0, 1);
   }
 }
 
@@ -1872,8 +1909,13 @@ DRWShadingGroup *DRW_shgroup_transform_feedback_create(GPUShader *shader,
   BLI_assert(tf_target != nullptr);
   DRWShadingGroup *shgroup = drw_shgroup_create_ex(shader, pass);
   drw_shgroup_init(shgroup, shader);
-  drw_shgroup_uniform_create_ex(
-      shgroup, 0, DRW_UNIFORM_TFEEDBACK_TARGET, tf_target, GPU_SAMPLER_DEFAULT, 0, 1);
+  drw_shgroup_uniform_create_ex(shgroup,
+                                0,
+                                DRW_UNIFORM_TFEEDBACK_TARGET,
+                                tf_target,
+                                GPUSamplerState::default_sampler(),
+                                0,
+                                1);
   return shgroup;
 }
 
@@ -1964,7 +2006,7 @@ static void draw_frustum_boundbox_calc(const float (*viewinv)[4],
 
 #if 0 /* Equivalent to this but it has accuracy problems. */
   BKE_boundbox_init_from_minmax(
-      &bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
+      &bbox, blender::float3{-1.0f, -1.0f, -1.0f}, blender::float3{1.0f, 1.0f, 1.0f});
   for (int i = 0; i < 8; i++) {
     mul_project_m4_v3(projinv, bbox.vec[i]);
   }
@@ -2267,18 +2309,18 @@ void DRW_view_update(DRWView *view,
 #ifdef DRW_DEBUG_CULLING
   if (G.debug_value != 0) {
     DRW_debug_sphere(
-        view->frustum_bsphere.center, view->frustum_bsphere.radius, (const float[4]){1, 1, 0, 1});
-    DRW_debug_bbox(&view->frustum_corners, (const float[4]){1, 1, 0, 1});
+        view->frustum_bsphere.center, view->frustum_bsphere.radius, blender::float4{1, 1, 0, 1});
+    DRW_debug_bbox(&view->frustum_corners, blender::float4{1, 1, 0, 1});
   }
 #endif
 }
 
-const DRWView *DRW_view_default_get(void)
+const DRWView *DRW_view_default_get()
 {
   return DST.view_default;
 }
 
-void DRW_view_reset(void)
+void DRW_view_reset()
 {
   DST.view_default = nullptr;
   DST.view_active = nullptr;
@@ -2371,7 +2413,7 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
   DRWPass *pass = static_cast<DRWPass *>(BLI_memblock_alloc(DST.vmempool->passes));
   pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
   if (G.debug & G_DEBUG_GPU) {
-    BLI_strncpy(pass->name, name, MAX_PASS_NAME);
+    STRNCPY(pass->name, name);
   }
 
   pass->shgroups.first = nullptr;
@@ -2415,11 +2457,11 @@ bool DRW_pass_is_empty(DRWPass *pass)
 }
 
 void DRW_pass_foreach_shgroup(DRWPass *pass,
-                              void (*callback)(void *userData, DRWShadingGroup *shgrp),
-                              void *userData)
+                              void (*callback)(void *user_data, DRWShadingGroup *shgrp),
+                              void *user_data)
 {
   LISTBASE_FOREACH (DRWShadingGroup *, shgroup, &pass->shgroups) {
-    callback(userData, shgroup);
+    callback(user_data, shgroup);
   }
 }
 

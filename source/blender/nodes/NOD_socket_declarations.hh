@@ -1,12 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include "NOD_node_declaration.hh"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_color.hh"
+#include "BLI_math_euler_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::nodes::decl {
@@ -134,6 +137,27 @@ class ColorBuilder : public SocketDeclarationBuilder<Color> {
   ColorBuilder &default_value(const ColorGeometry4f value);
 };
 
+class RotationBuilder;
+
+class Rotation : public SocketDeclaration {
+ public:
+  math::EulerXYZ default_value;
+
+  friend RotationBuilder;
+
+  using Builder = RotationBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class RotationBuilder : public SocketDeclarationBuilder<Rotation> {
+ public:
+  RotationBuilder &default_value(const math::EulerXYZ &value);
+};
+
 class StringBuilder;
 
 class String : public SocketDeclaration {
@@ -158,6 +182,12 @@ class StringBuilder : public SocketDeclarationBuilder<String> {
 class IDSocketDeclaration : public SocketDeclaration {
  public:
   const char *idname;
+  /**
+   * Get the default ID pointer for this socket. This is a function to avoid dangling pointers,
+   * since bNode::id pointers are remapped as ID pointers change, but pointers in socket
+   * declarations are not managed the same way.
+   */
+  std::function<ID *(const bNode &node)> default_value_fn;
 
  public:
   IDSocketDeclaration(const char *idname);
@@ -240,6 +270,7 @@ class ExtendBuilder : public SocketDeclarationBuilder<Extend> {
 class Custom : public SocketDeclaration {
  public:
   const char *idname_;
+  std::function<void(bNode &node, bNodeSocket &socket, const char *data_path)> init_socket_fn;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
   bool matches(const bNodeSocket &socket) const override;
@@ -380,33 +411,35 @@ inline StringBuilder &StringBuilder::default_value(std::string value)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #IDSocketDeclaration and Children Inline Methods
+/** \name #RotationBuilder Inline Methods
  * \{ */
 
-inline IDSocketDeclaration::IDSocketDeclaration(const char *idname) : idname(idname)
+inline RotationBuilder &RotationBuilder::default_value(const math::EulerXYZ &value)
 {
-}
-
-inline Object::Object() : IDSocketDeclaration("NodeSocketObject")
-{
-}
-
-inline Material::Material() : IDSocketDeclaration("NodeSocketMaterial")
-{
-}
-
-inline Collection::Collection() : IDSocketDeclaration("NodeSocketCollection")
-{
-}
-
-inline Texture::Texture() : IDSocketDeclaration("NodeSocketTexture")
-{
-}
-
-inline Image::Image() : IDSocketDeclaration("NodeSocketImage")
-{
+  decl_->default_value = value;
+  return *this;
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #IDSocketDeclaration and Children Inline Methods
+ * \{ */
+
+inline IDSocketDeclaration::IDSocketDeclaration(const char *idname) : idname(idname) {}
+
+inline Object::Object() : IDSocketDeclaration("NodeSocketObject") {}
+
+inline Material::Material() : IDSocketDeclaration("NodeSocketMaterial") {}
+
+inline Collection::Collection() : IDSocketDeclaration("NodeSocketCollection") {}
+
+inline Texture::Texture() : IDSocketDeclaration("NodeSocketTexture") {}
+
+inline Image::Image() : IDSocketDeclaration("NodeSocketImage") {}
+
+/** \} */
+
+SocketDeclarationPtr create_extend_declaration(const eNodeSocketInOut in_out);
 
 }  // namespace blender::nodes::decl

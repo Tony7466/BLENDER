@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Header, Menu
 
@@ -7,8 +10,7 @@ class CONSOLE_HT_header(Header):
     bl_space_type = 'CONSOLE'
 
     def draw(self, context):
-        layout = self.layout.row()
-
+        layout = self.layout
         layout.template_header()
 
         CONSOLE_MT_editor_menus.draw_collapsible(context, layout)

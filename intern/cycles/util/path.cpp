@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "util/path.h"
 #include "util/algorithm.h"
@@ -80,9 +81,7 @@ class directory_iterator {
     const WIN32_FIND_DATAW &find_data_;
   };
 
-  directory_iterator() : path_info_("", find_data_), h_find_(INVALID_HANDLE_VALUE)
-  {
-  }
+  directory_iterator() : path_info_("", find_data_), h_find_(INVALID_HANDLE_VALUE) {}
 
   explicit directory_iterator(const string &path) : path_(path), path_info_(path, find_data_)
   {
@@ -163,9 +162,7 @@ class directory_iterator {
  public:
   class path_info {
    public:
-    explicit path_info(const string &path) : path_(path), entry_(NULL)
-    {
-    }
+    explicit path_info(const string &path) : path_(path), entry_(NULL) {}
 
     string path()
     {
@@ -182,9 +179,7 @@ class directory_iterator {
     const struct dirent *entry_;
   };
 
-  directory_iterator() : path_info_(""), name_list_(NULL), num_entries_(-1), cur_entry_(-1)
-  {
-  }
+  directory_iterator() : path_info_(""), name_list_(NULL), num_entries_(-1), cur_entry_(-1) {}
 
   explicit directory_iterator(const string &path) : path_(path), path_info_(path_), cur_entry_(0)
   {
@@ -242,7 +237,8 @@ class directory_iterator {
   bool skip_dots()
   {
     while (strcmp(name_list_[cur_entry_]->d_name, ".") == 0 ||
-           strcmp(name_list_[cur_entry_]->d_name, "..") == 0) {
+           strcmp(name_list_[cur_entry_]->d_name, "..") == 0)
+    {
       if (!step()) {
         return false;
       }
@@ -484,12 +480,14 @@ static string path_unc_to_short(const string &path)
 {
   size_t len = path.size();
   if ((len > 3) && (path[0] == DIR_SEP) && (path[1] == DIR_SEP) && (path[2] == '?') &&
-      ((path[3] == DIR_SEP) || (path[3] == DIR_SEP_ALT))) {
+      ((path[3] == DIR_SEP) || (path[3] == DIR_SEP_ALT)))
+  {
     if ((len > 5) && (path[5] == ':')) {
       return path.substr(4, len - 4);
     }
     else if ((len > 7) && (path.substr(4, 3) == "UNC") &&
-             ((path[7] == DIR_SEP) || (path[7] == DIR_SEP_ALT))) {
+             ((path[7] == DIR_SEP) || (path[7] == DIR_SEP_ALT)))
+    {
       return "\\\\" + path.substr(8, len - 8);
     }
   }
@@ -743,8 +741,34 @@ static string path_source_replace_includes_recursive(const string &source,
                                                      const string &source_filepath,
                                                      SourceReplaceState *state);
 
+static string line_directive(const SourceReplaceState &state,
+                             const string &path,
+                             const size_t line_number)
+{
+  string unescaped_path = path;
+  /* First we make path relative. */
+  if (string_startswith(unescaped_path, state.base.c_str())) {
+    const string base_file = path_filename(state.base);
+    const size_t base_len = state.base.length();
+    unescaped_path = base_file +
+                     unescaped_path.substr(base_len, unescaped_path.length() - base_len);
+  }
+  /* Second, we replace all unsafe characters. */
+  const size_t length = unescaped_path.length();
+  string escaped_path = "";
+  for (size_t i = 0; i < length; ++i) {
+    const char ch = unescaped_path[i];
+    if (strchr("\"\'\?\\", ch) != nullptr) {
+      escaped_path += "\\";
+    }
+    escaped_path += ch;
+  }
+  return "#line " + std::to_string(line_number) + '"' + escaped_path + '"';
+}
+
 static string path_source_handle_preprocessor(const string &preprocessor_line,
                                               const string &source_filepath,
+                                              const size_t line_number,
                                               SourceReplaceState *state)
 {
   string result = preprocessor_line;
@@ -766,7 +790,8 @@ static string path_source_handle_preprocessor(const string &preprocessor_line,
       if (path_read_text(filepath, text)) {
         text = path_source_replace_includes_recursive(text, filepath, state);
         /* Use line directives for better error messages. */
-        return "\n" + text + "\n";
+        result = line_directive(*state, filepath, 1) + "\n" + text + "\n" +
+                 line_directive(*state, source_filepath, line_number + 1);
       }
     }
   }
@@ -835,7 +860,8 @@ static string path_source_replace_includes_recursive(const string &_source,
 
     if (ch == '\n') {
       if (inside_preprocessor) {
-        string block = path_source_handle_preprocessor(preprocessor_line, source_filepath, state);
+        string block = path_source_handle_preprocessor(
+            preprocessor_line, source_filepath, line_number, state);
 
         if (!block.empty()) {
           result += block;
@@ -876,7 +902,8 @@ static string path_source_replace_includes_recursive(const string &_source,
     result.append(source, token_start, token_length);
   }
   if (inside_preprocessor) {
-    result += path_source_handle_preprocessor(preprocessor_line, source_filepath, state);
+    result += path_source_handle_preprocessor(
+        preprocessor_line, source_filepath, line_number, state);
   }
   /* Store result for further reuse. */
   state->processed_files[source_filepath] = result;
