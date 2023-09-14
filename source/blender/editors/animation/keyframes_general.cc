@@ -1153,10 +1153,41 @@ void sample_fcurve_segment(FCurve *fcu,
   }
 }
 
+static void remove_fcurve_key_range(FCurve *fcu,
+                                    const blender::int2 range,
+                                    const BakeCurveRemove removal_mode)
+{
+  /* Iterating backwards to not cause issues because the bezt array is modified during the
+   * loop. */
+  for (int i = fcu->totvert - 1; i >= 0; i--) {
+    BezTriple key = fcu->bezt[i];
+    switch (removal_mode) {
+      case BakeCurveRemove::REMOVE_ALL:
+        BKE_fcurve_delete_key(fcu, i);
+        break;
+
+      case BakeCurveRemove::REMOVE_IN_RANGE:
+        if (key.vec[1][0] >= range[0] && key.vec[1][0] <= range[1]) {
+          BKE_fcurve_delete_key(fcu, i);
+        }
+        break;
+
+      case BakeCurveRemove::REMOVE_OUT_RANGE:
+        if (key.vec[1][0] < range[0] || key.vec[1][0] > range[1]) {
+          BKE_fcurve_delete_key(fcu, i);
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+}
+
 void bake_fcurve(FCurve *fcu,
                  const blender::int2 range,
                  const float step,
-                 const bool remove_existing)
+                 const BakeCurveRemove remove_existing)
 {
   const int sample_count = (range[1] - range[0]) / step;
   float *samples = static_cast<float *>(
@@ -1164,19 +1195,8 @@ void bake_fcurve(FCurve *fcu,
   const float sample_rate = 1.0f / step;
   sample_fcurve_segment(fcu, range[0], sample_rate, samples, sample_count);
 
-  if (remove_existing) {
-    /* Iterating backwards to not cause issues because the bezt array is modified during the
-     * loop. */
-    for (int i = fcu->totvert - 1; i >= 0; i--) {
-      BezTriple key = fcu->bezt[i];
-      if (key.vec[1][0] < range[0]) {
-        break;
-      }
-      if (key.vec[1][0] > range[1]) {
-        continue;
-      }
-      BKE_fcurve_delete_key(fcu, i);
-    }
+  if (remove_existing != BakeCurveRemove::REMOVE_NONE) {
+    remove_fcurve_key_range(fcu, range, remove_existing);
   }
 
   for (int i = 0; i < sample_count; i++) {

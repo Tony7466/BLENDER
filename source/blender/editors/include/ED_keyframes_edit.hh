@@ -495,7 +495,8 @@ void bake_fcurve_segments(FCurve *fcu);
 void sample_fcurve_segment(
     FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
 
-void bake_fcurve(FCurve *fcu, blender::int2 range, float step, bool remove_existing);
+enum class BakeCurveRemove { REMOVE_NONE, REMOVE_IN_RANGE, REMOVE_OUT_RANGE, REMOVE_ALL };
+void bake_fcurve(FCurve *fcu, blender::int2 range, float step, BakeCurveRemove remove_existing);
 
 /* ----------- */
 
