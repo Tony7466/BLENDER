@@ -1054,7 +1054,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
 }
 
 /* Change the action strip (if a NLA strip is preset) to HOLD instead of HOLD FORWARD to maintain
- * backwards compatibility.*/
+ * backwards compatibility. */
 static void version_nla_action_strip_hold(Main *bmain)
 {
   ID *id;
@@ -1070,9 +1070,8 @@ static void version_nla_action_strip_hold(Main *bmain)
     if (BKE_nlatrack_has_strips(&adt->nla_tracks)) {
       adt->act_extendmode = NLASTRIP_EXTEND_HOLD;
     }
-
-    FOREACH_MAIN_ID_END;
   }
+  FOREACH_MAIN_ID_END;
 }
 
 void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
@@ -1171,8 +1170,7 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
                      SOCK_OBJECT,
                      SOCK_COLLECTION,
                      SOCK_TEXTURE,
-                     SOCK_MATERIAL))
-            {
+                     SOCK_MATERIAL)) {
               link->tosock = link->tosock->next;
             }
           }
@@ -2719,8 +2717,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 300, 17)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size"))
-    {
+            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -2786,8 +2783,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 300, 18)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref"))
-    {
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
