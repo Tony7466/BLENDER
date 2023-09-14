@@ -47,6 +47,29 @@ static int node_shader_gpu_bsdf_sheen(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_bsdf_sheen", in, out);
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  if (to_type_ != NodeItem::Type::BSDF) {
+    return empty();
+  }
+
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Float);
+  NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
+
+  NodeItem res = create_node("sheen_bsdf", NodeItem::Type::BSDF);
+  res.set_input("color", color);
+  res.set_input("weight", roughness);
+  res.set_input("roughness", roughness);
+  if (normal) {
+    res.set_input("normal", normal);
+  }
+  return res;
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_bsdf_sheen_cc
 
 /* node type definition */
@@ -62,6 +85,7 @@ void register_node_type_sh_bsdf_sheen()
   ntype.initfunc = file_ns::node_shader_init_sheen;
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_sheen;
   ntype.draw_buttons = file_ns::node_shader_buts_sheen;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
