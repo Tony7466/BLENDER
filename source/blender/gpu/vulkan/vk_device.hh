@@ -75,6 +75,9 @@ class VKDevice : public NonCopyable {
 
   Vector<std::pair<VkImage, VmaAllocation>> discarded_images_;
   Vector<std::pair<VkBuffer, VmaAllocation>> discarded_buffers_;
+  Vector<VkRenderPass> discarded_render_passes_;
+  Vector<VkFramebuffer> discarded_frame_buffers_;
+  Vector<VkImageView> discarded_image_views_;
 
  public:
   VkPhysicalDevice physical_device_get() const
@@ -181,7 +184,10 @@ class VKDevice : public NonCopyable {
   }
 
   void discard_image(VkImage vk_image, VmaAllocation vma_allocation);
+  void discard_image_view(VkImageView vk_image_view);
   void discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation);
+  void discard_render_pass(VkRenderPass vk_render_pass);
+  void discard_frame_buffer(VkFramebuffer vk_framebuffer);
   void destroy_discarded_resources();
 
   /** \} */
