@@ -2075,3 +2075,96 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
               128);
 }
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Scale from Left Operator
+ * \{ */
+
+static void scale_from_left_graph_keys(bAnimContext *ac, const float factor)
+{
+  apply_fcu_segment_function(ac, factor, scale_from_left_fcurve_segment);
+}
+
+static void scale_from_left_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  common_draw_status_header(C, gso, "Scale from Left Keys");
+}
+
+static void scale_from_left_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+
+  scale_from_left_draw_status_header(C, gso);
+
+  /* Reset keyframes to the state at invoke. */
+  reset_bezts(gso);
+  const float factor = slider_factor_get_and_remember(op);
+  scale_from_left_graph_keys(&gso->ac, factor);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int scale_from_left_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+  gso->modal_update = scale_from_left_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  scale_from_left_draw_status_header(C, gso);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
+
+  return invoke_result;
+}
+
+static int scale_from_left_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const float factor = RNA_float_get(op->ptr, "factor");
+
+  scale_from_left_graph_keys(&ac, factor);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_scale_from_left(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Scale from Left Keyframes";
+  ot->idname = "GRAPH_OT_scale_from_left";
+  ot->description =
+      "Increase or decrease the value of selected keys \n\
+  in relationship to the left neighboring one";
+
+  /* API callbacks. */
+  ot->invoke = scale_from_left_invoke;
+  ot->modal = graph_slider_modal;
+  ot->exec = scale_from_left_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_X;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       0.0f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Factor",
+                       "The factor to scale keys with",
+                       -1.0f,
+                       1.0f);
+}

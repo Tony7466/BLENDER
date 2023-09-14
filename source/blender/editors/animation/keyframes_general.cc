@@ -888,7 +888,7 @@ void scale_from_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const f
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const float delta = fcu->bezt[i].vec[1][1] - left_key->vec[1][1];
     const float key_y_value = fcu->bezt[i].vec[1][1] + delta * factor;
-    move_key(&fcu->bezt[i], key_y_value);
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }
 
