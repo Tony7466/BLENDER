@@ -429,7 +429,7 @@ typedef struct bNodeTreeInterface {
   /** Reset runtime flags after updates have been processed. */
   void reset_changed_flags();
 
- protected:
+ private:
   void tag_missing_runtime_data();
 
 #endif
