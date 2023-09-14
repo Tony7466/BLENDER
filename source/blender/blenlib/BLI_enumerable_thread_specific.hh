@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -54,9 +56,7 @@ template<typename T> class EnumerableThreadSpecific : NonCopyable, NonMovable {
 
   EnumerableThreadSpecific() = default;
 
-  template<typename F> EnumerableThreadSpecific(F initializer) : values_(std::move(initializer))
-  {
-  }
+  template<typename F> EnumerableThreadSpecific(F initializer) : values_(std::move(initializer)) {}
 
   T &local()
   {
@@ -86,9 +86,7 @@ template<typename T> class EnumerableThreadSpecific : NonCopyable, NonMovable {
  public:
   using iterator = typename Map<int, std::reference_wrapper<T>>::MutableValueIterator;
 
-  EnumerableThreadSpecific() : initializer_([](void *buffer) { new (buffer) T(); })
-  {
-  }
+  EnumerableThreadSpecific() : initializer_([](void *buffer) { new (buffer) T(); }) {}
 
   template<typename F>
   EnumerableThreadSpecific(F initializer)

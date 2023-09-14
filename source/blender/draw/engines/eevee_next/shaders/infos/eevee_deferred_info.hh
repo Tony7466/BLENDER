@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
@@ -24,24 +26,45 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_base)
     /* Combined pass output. */
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
-    /* Light pass output. */
-    .image_array_out(RBUFS_LIGHT_SLOT, Qualifier::READ_WRITE, GPU_RGBA16F, "rp_light_img")
     /* Chaining to next pass. */
-    .image_out(2, Qualifier::READ_WRITE, GPU_RGBA16F, "out_diffuse_light_img")
-    .image_out(3, Qualifier::READ_WRITE, GPU_RGBA16F, "out_specular_light_img");
+    .image_out(2, Qualifier::WRITE, GPU_RGBA16F, "out_diffuse_light_img")
+    .image_out(3, Qualifier::WRITE, GPU_RGBA16F, "out_specular_light_img");
 
-GPU_SHADER_CREATE_INFO(eevee_deferred_light)
+GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
     .fragment_source("eevee_deferred_light_frag.glsl")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "gbuffer_color_tx")
+    .image(4,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_reflection_img")
+    .image(5,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_refraction_img")
+    .define("SSS_TRANSMITTANCE")
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
+                     "eevee_sampling_data",
                      "eevee_light_data",
+                     "eevee_reflection_probe_data",
+                     "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_deferred_base",
                      "eevee_hiz_data",
+                     "eevee_render_pass_out",
                      "draw_view",
-                     "draw_fullscreen")
+                     "draw_fullscreen");
+
+GPU_SHADER_CREATE_INFO(eevee_deferred_light)
+    .additional_info("eevee_deferred_light_base")
+    .define("DO_REFLECTION_PROBES")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_deferred_light_diffuse)
+    .additional_info("eevee_deferred_light_base")
     .do_static_compilation(true);
 
 #undef image_array_out

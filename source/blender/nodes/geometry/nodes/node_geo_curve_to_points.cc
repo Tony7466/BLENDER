@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_math_matrix.hh"
@@ -11,8 +13,10 @@
 
 #include "GEO_resample_curves.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -22,29 +26,29 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveToPoints)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curve")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_input<decl::Int>(N_("Count"))
+  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Int>("Count")
       .default_value(10)
       .min(2)
       .field_on_all()
       .max(100000)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_COUNT; });
-  b.add_input<decl::Float>(N_("Length"))
+  b.add_input<decl::Float>("Length")
       .default_value(0.1f)
       .min(0.001f)
       .subtype(PROP_DISTANCE)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_LENGTH; });
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
-  b.add_output<decl::Vector>(N_("Tangent")).field_on_all();
-  b.add_output<decl::Vector>(N_("Normal")).field_on_all();
-  b.add_output<decl::Vector>(N_("Rotation")).field_on_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
+  b.add_output<decl::Vector>("Tangent").field_on_all();
+  b.add_output<decl::Vector>("Normal").field_on_all();
+  b.add_output<decl::Vector>("Rotation").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -63,8 +67,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *count_socket = static_cast<bNodeSocket *>(node->inputs.first)->next;
   bNodeSocket *length_socket = count_socket->next;
 
-  nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
-  nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
+  bke::nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
+  bke::nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
 }
 
 static void fill_rotation_attribute(const Span<float3> tangents,
@@ -82,20 +86,21 @@ static void fill_rotation_attribute(const Span<float3> tangents,
 static void copy_curve_domain_attributes(const AttributeAccessor curve_attributes,
                                          MutableAttributeAccessor point_attributes)
 {
-  curve_attributes.for_all([&](const bke::AttributeIDRef &id,
-                               const bke::AttributeMetaData &meta_data) {
-    if (curve_attributes.is_builtin(id)) {
-      return true;
-    }
-    if (meta_data.domain != ATTR_DOMAIN_CURVE) {
-      return true;
-    }
-    point_attributes.add(id,
-                         ATTR_DOMAIN_POINT,
-                         meta_data.data_type,
-                         bke::AttributeInitVArray(curve_attributes.lookup(id, ATTR_DOMAIN_POINT)));
-    return true;
-  });
+  curve_attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData &meta_data) {
+        if (curve_attributes.is_builtin(id)) {
+          return true;
+        }
+        if (meta_data.domain != ATTR_DOMAIN_CURVE) {
+          return true;
+        }
+        point_attributes.add(
+            id,
+            ATTR_DOMAIN_POINT,
+            meta_data.data_type,
+            bke::AttributeInitVArray(*curve_attributes.lookup(id, ATTR_DOMAIN_POINT)));
+        return true;
+      });
 }
 
 static PointCloud *pointcloud_from_curves(bke::CurvesGeometry curves,
@@ -108,8 +113,8 @@ static PointCloud *pointcloud_from_curves(bke::CurvesGeometry curves,
 
   if (rotation_id) {
     MutableAttributeAccessor attributes = curves.attributes_for_write();
-    const VArraySpan<float3> tangents = attributes.lookup<float3>(tangent_id, ATTR_DOMAIN_POINT);
-    const VArraySpan<float3> normals = attributes.lookup<float3>(normal_id, ATTR_DOMAIN_POINT);
+    const VArraySpan tangents = *attributes.lookup<float3>(tangent_id, ATTR_DOMAIN_POINT);
+    const VArraySpan normals = *attributes.lookup<float3>(normal_id, ATTR_DOMAIN_POINT);
     SpanAttributeWriter<float3> rotations = attributes.lookup_or_add_for_write_only_span<float3>(
         rotation_id, ATTR_DOMAIN_POINT);
     fill_rotation_attribute(tangents, normals, rotations.span);
@@ -134,13 +139,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
 
-  AutoAnonymousAttributeID rotation_anonymous_id =
+  AnonymousAttributeIDPtr rotation_anonymous_id =
       params.get_output_anonymous_attribute_id_if_needed("Rotation");
   const bool need_tangent_and_normal = bool(rotation_anonymous_id);
-  AutoAnonymousAttributeID tangent_anonymous_id =
+  AnonymousAttributeIDPtr tangent_anonymous_id =
       params.get_output_anonymous_attribute_id_if_needed("Tangent", need_tangent_and_normal);
-  AutoAnonymousAttributeID normal_anonymous_id =
-      params.get_output_anonymous_attribute_id_if_needed("Normal", need_tangent_and_normal);
+  AnonymousAttributeIDPtr normal_anonymous_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Normal", need_tangent_and_normal);
 
   geometry::ResampleCurvesOutputAttributeIDs resample_attributes;
   resample_attributes.tangent_id = tangent_anonymous_id.get();
@@ -150,7 +155,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
       Field<int> count = params.extract_input<Field<int>>("Count");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_count(
               src_curves, fn::make_constant_field<bool>(true), count, resample_attributes);
@@ -167,7 +172,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GEO_NODE_CURVE_RESAMPLE_LENGTH: {
       Field<float> length = params.extract_input<Field<float>>("Length");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_length(
               src_curves, fn::make_constant_field<bool>(true), length, resample_attributes);
@@ -183,7 +188,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     case GEO_NODE_CURVE_RESAMPLE_EVALUATED:
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(
               src_curves, fn::make_constant_field<bool>(true), resample_attributes);
@@ -199,38 +204,55 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   params.set_output("Points", std::move(geometry_set));
-  if (tangent_anonymous_id) {
-    params.set_output("Tangent",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(tangent_anonymous_id), params.attribute_producer_name()));
-  }
-  if (normal_anonymous_id) {
-    params.set_output("Normal",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(normal_anonymous_id), params.attribute_producer_name()));
-  }
-  if (rotation_anonymous_id) {
-    params.set_output("Rotation",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(rotation_anonymous_id), params.attribute_producer_name()));
-  }
 }
 
-}  // namespace blender::nodes::node_geo_curve_to_points_cc
-
-void register_node_type_geo_curve_to_points()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_curve_to_points_cc;
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_RESAMPLE_EVALUATED,
+       "EVALUATED",
+       0,
+       "Evaluated",
+       "Create points from the curve's evaluated points, based on the resolution attribute for "
+       "NURBS and Bezier splines"},
+      {GEO_NODE_CURVE_RESAMPLE_COUNT,
+       "COUNT",
+       0,
+       "Count",
+       "Sample each spline by evenly distributing the specified number of points"},
+      {GEO_NODE_CURVE_RESAMPLE_LENGTH,
+       "LENGTH",
+       0,
+       "Length",
+       "Sample each spline by splitting it into segments with the specified length"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "How to generate points from the input curve",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_CURVE_RESAMPLE_COUNT);
+}
+
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_CURVE_TO_POINTS, "Curve to Points", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   node_type_storage(
       &ntype, "NodeGeometryCurveToPoints", node_free_standard_storage, node_copy_standard_storage);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_to_points_cc

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -28,6 +29,12 @@ typedef struct Global {
    * Otherwise access via #G_MAIN.
    */
   struct Main *main;
+
+  /**
+   * Preview main is stored to avoid loading the preview file in multiple scenarios.
+   * It is actually shared between shader node previews and asset previews.
+   */
+  struct Main *pr_main;
 
   /** Last saved location for images. */
   char ima[1024]; /* 1024 = FILE_MAX */
@@ -159,7 +166,7 @@ enum {
   G_FLAG_USERPREF_NO_SAVE_ON_EXIT = (1 << 4),
 
   G_FLAG_SCRIPT_AUTOEXEC = (1 << 13),
-  /** When this flag is set ignore the prefs #USER_SCRIPT_AUTOEXEC_DISABLE. */
+  /** When this flag is set ignore the preferences #USER_SCRIPT_AUTOEXEC_DISABLE. */
   G_FLAG_SCRIPT_OVERRIDE_PREF = (1 << 14),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL = (1 << 15),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET = (1 << 16),
@@ -201,11 +208,12 @@ enum {
   G_DEBUG_IO = (1 << 17),                     /* IO Debugging (for Collada, ...). */
   G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 18),  /* force gpu workarounds bypassing detections. */
   G_DEBUG_GPU_FORCE_DISABLE_SSBO = (1 << 19), /* force disabling usage of SSBO's */
-  G_DEBUG_XR = (1 << 20),                     /* XR/OpenXR messages */
-  G_DEBUG_XR_TIME = (1 << 21),                /* XR/OpenXR timing messages */
+  G_DEBUG_GPU_RENDERDOC = (1 << 20),          /* Enable RenderDoc integration. */
+  G_DEBUG_XR = (1 << 21),                     /* XR/OpenXR messages */
+  G_DEBUG_XR_TIME = (1 << 22),                /* XR/OpenXR timing messages */
 
-  G_DEBUG_GHOST = (1 << 22),  /* Debug GHOST module. */
-  G_DEBUG_WINTAB = (1 << 23), /* Debug Wintab. */
+  G_DEBUG_GHOST = (1 << 23),  /* Debug GHOST module. */
+  G_DEBUG_WINTAB = (1 << 24), /* Debug Wintab. */
 };
 
 #define G_DEBUG_ALL \
@@ -265,7 +273,7 @@ enum {
   G_TRANSFORM_CURSOR = (1 << 5),
 };
 
-/** Defined in blender.c */
+/** Defined in `blender.cc` */
 extern Global G;
 
 /**

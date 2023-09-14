@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from bpy.types import Menu, Panel, UIList, ViewLayer
+from bpy.app.translations import contexts as i18n_contexts
 
 from rna_prop_ui import PropertyPanel
 
@@ -30,8 +34,7 @@ class VIEWLAYER_PT_layer(ViewLayerButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -49,7 +52,7 @@ class VIEWLAYER_PT_layer(ViewLayerButtonsPanel, Panel):
 
 class VIEWLAYER_PT_layer_passes(ViewLayerButtonsPanel, Panel):
     bl_label = "Passes"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     def draw(self, context):
         pass
@@ -100,11 +103,11 @@ class VIEWLAYER_PT_eevee_next_layer_passes_data(ViewLayerButtonsPanel, Panel):
         sub.prop(view_layer, "use_pass_vector")
 
 
-class VIEWLAYER_PT_eevee_next_layer_passes_data(ViewLayerButtonsPanel, Panel):
+class VIEWLAYER_PT_workbench_layer_passes_data(ViewLayerButtonsPanel, Panel):
     bl_label = "Data"
     bl_parent_id = "VIEWLAYER_PT_layer_passes"
 
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -140,7 +143,7 @@ class VIEWLAYER_PT_eevee_layer_passes_light(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer, "use_pass_glossy_direct", text="Light")
         col.prop(view_layer, "use_pass_glossy_color", text="Color")
 
-        col = layout.column(heading="Volume", align=True)
+        col = layout.column(heading="Volume", heading_ctxt=i18n_contexts.id_id, align=True)
         col.prop(view_layer_eevee, "use_pass_volume_direct", text="Light")
 
         col = layout.column(heading="Other", align=True)
@@ -170,6 +173,9 @@ class VIEWLAYER_PT_eevee_layer_passes_effects(ViewLayerButtonsPanel, Panel):
         col = layout.column()
         col.prop(view_layer_eevee, "use_pass_bloom", text="Bloom")
         col.active = scene_eevee.use_bloom
+
+        col = layout.column()
+        col.prop(view_layer_eevee, "use_pass_transparent")
 
 
 class ViewLayerAOVPanel(ViewLayerButtonsPanel, Panel):
@@ -286,8 +292,9 @@ classes = (
     VIEWLAYER_MT_lightgroup_sync,
     VIEWLAYER_PT_layer,
     VIEWLAYER_PT_layer_passes,
-    VIEWLAYER_PT_eevee_next_layer_passes_data,
+    VIEWLAYER_PT_workbench_layer_passes_data,
     VIEWLAYER_PT_eevee_layer_passes_data,
+    VIEWLAYER_PT_eevee_next_layer_passes_data,
     VIEWLAYER_PT_eevee_layer_passes_light,
     VIEWLAYER_PT_eevee_layer_passes_effects,
     VIEWLAYER_PT_layer_passes_cryptomatte,

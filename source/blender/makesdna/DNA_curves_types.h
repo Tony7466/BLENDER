@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,10 +12,6 @@
 #include "DNA_customdata_types.h"
 
 #include "BLI_utildefines.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef __cplusplus
 namespace blender::bke {
@@ -106,6 +104,9 @@ typedef struct CurvesGeometry {
    *
    * Every curve offset must be at least one larger than the previous. In other words, every curve
    * must have at least one point. The first value is 0 and the last value is #point_num.
+   *
+   * This array is shared based on the bke::CurvesGeometryRuntime::curve_offsets_sharing_info.
+   * Avoid accessing directly when possible.
    *
    * \note This is *not* stored as an attribute because its size is one larger than #curve_num.
    */
@@ -210,7 +211,3 @@ ENUM_OPERATORS(eCurvesSymmetryType, CURVES_SYMMETRY_Z)
 
 /* Only one material supported currently. */
 #define CURVES_MATERIAL_NR 1
-
-#ifdef __cplusplus
-}
-#endif

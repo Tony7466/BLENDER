@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Deferred lighting evaluation: Lighting is evaluated in a separate pass.
@@ -10,6 +13,7 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
@@ -28,6 +32,9 @@ vec4 closure_to_rgba(Closure cl)
 
 void main()
 {
+  /* Clear AOVs first. In case the material renders to them. */
+  clear_aovs();
+
   init_globals();
 
   float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).r;
@@ -64,14 +71,17 @@ void main()
   ivec2 out_texel = ivec2(gl_FragCoord.xy);
 #ifdef MAT_RENDER_PASS_SUPPORT /* Needed because node_tree isn't present in test shaders. */
   /* Some render pass can be written during the gbuffer pass. Light passes are written later. */
-  vec4 cryptomatte_output = vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
-  imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
-  imageStore(rp_normal_img, out_texel, vec4(out_normal, 1.0));
-  /* TODO(fclem): For now, just don't do anything. In the future all render passes should be in an
-   * array texture and have a UBO with indirection to the correct layer. */
-  // imageStore(rp_diffuse_color_img, out_texel, vec4(g_diffuse_data.color, 1.0));
-  imageStore(rp_specular_color_img, out_texel, vec4(specular_color, 1.0));
-  imageStore(rp_emission_img, out_texel, vec4(g_emission, 1.0));
+  if (imageSize(rp_cryptomatte_img).x > 1) {
+    vec4 cryptomatte_output = vec4(
+        cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
+    imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
+  }
+  output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(out_normal, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.position_id, vec4(g_data.P, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.diffuse_color_id,
+                          vec4(g_diffuse_data.color, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.specular_color_id, vec4(specular_color, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.emission_id, vec4(g_emission, 1.0));
 #endif
 
   /* ----- GBuffer output ----- */
@@ -123,7 +133,7 @@ void main()
     /* SubSurface Scattering. */
     vec4 closure;
     closure.xyz = gbuffer_sss_radii_pack(g_diffuse_data.sss_radius);
-    closure.w = gbuffer_object_id_unorm16_pack(g_diffuse_data.sss_id);
+    closure.w = gbuffer_object_id_unorm16_pack(g_diffuse_data.sss_id > 0 ? uint(resource_id) : 0);
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 2), closure);
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -21,7 +22,9 @@ class BVHMetal : public BVH {
 
   API_AVAILABLE(macos(11.0))
   vector<id<MTLAccelerationStructure>> blas_array;
-  vector<uint32_t> blas_lookup;
+
+  API_AVAILABLE(macos(11.0))
+  vector<id<MTLAccelerationStructure>> unique_blas_array;
 
   bool motion_blur = false;
 

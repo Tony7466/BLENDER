@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -10,6 +13,7 @@ from bpy.app.translations import (
     pgettext_iface as iface_,
     pgettext_tip as tip_,
 )
+from bl_ui.utils import PresetPanel
 
 
 # -----------------------------------------------------------------------------
@@ -418,7 +422,7 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
         col.prop(edit, "use_duplicate_surface", text="Surface")
         col.prop(edit, "use_duplicate_text", text="Text")
         # col.prop(edit, "use_duplicate_texture", text="Texture")  # Not implemented.
-        col.prop(edit, "use_duplicate_volume", text="Volume")
+        col.prop(edit, "use_duplicate_volume", text="Volume", text_ctxt=i18n_contexts.id_id)
 
 
 class USERPREF_PT_edit_cursor(EditingPanel, CenterAlignMixIn, Panel):
@@ -486,6 +490,20 @@ class USERPREF_PT_edit_text_editor(EditingPanel, CenterAlignMixIn, Panel):
         layout.prop(edit, "use_text_edit_auto_close")
 
 
+class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Node Editor"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        col = layout.column()
+        col.prop(edit, "node_use_insert_offset", text="Auto-Offset")
+        col.prop(edit, "node_margin", text="Auto-Offset Margin")
+        col.prop(edit, "node_preview_resolution", text="Preview Resolution")
+
+
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
     bl_label = "Miscellaneous"
     bl_options = {'DEFAULT_CLOSED'}
@@ -496,7 +514,6 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
 
         col = layout.column()
         col.prop(edit, "sculpt_paint_overlay_color", text="Sculpt Overlay Color")
-        col.prop(edit, "node_margin", text="Node Auto-Offset Margin")
 
 
 # -----------------------------------------------------------------------------
@@ -607,27 +624,6 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
             del addon
 
 
-class USERPREF_PT_system_gpu_backend(SystemPanel, CenterAlignMixIn, Panel):
-    bl_label = "GPU Backend"
-
-    @classmethod
-    def poll(cls, _context):
-        # Only for Apple so far
-        import sys
-        return sys.platform == "darwin"
-
-    def draw_centered(self, context, layout):
-        import gpu
-        prefs = context.preferences
-        system = prefs.system
-
-        col = layout.column()
-        col.prop(system, "gpu_backend")
-
-        if system.gpu_backend != gpu.platform.backend_type_get():
-            layout.label(text="Requires a restart of Blender to take effect", icon='INFO')
-
-
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Operating System Settings"
 
@@ -638,11 +634,16 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
         return sys.platform[:3] == "win"
 
     def draw_centered(self, _context, layout):
-        layout.label(text="Make this installation your default Blender")
-        split = layout.split(factor=0.4)
-        split.alignment = 'RIGHT'
-        split.label(text="")
-        split.operator("preferences.associate_blend", text="Make Default")
+        if _context.preferences.system.is_microsoft_store_install:
+            layout.label(text="Microsoft Store installation")
+            layout.label(text="Use Windows 'Default Apps' to associate with blend files")
+        else:
+            layout.label(text="Open blend files with this Blender version")
+            split = layout.split(factor=0.5)
+            split.alignment = 'LEFT'
+            split.operator("preferences.associate_blend", text="Register")
+            split.operator("preferences.unassociate_blend", text="Unregister")
+            layout.prop(bpy.context.preferences.system, "register_all_users", text="For All Users")
 
 
 class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
@@ -720,6 +721,9 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_object_info", text="Object Info")
         col.prop(view, "show_view_name", text="View Name")
         col.prop(view, "show_playback_fps", text="Playback Frame Rate (FPS)")
+        row = col.row()
+        row.active = view.show_playback_fps
+        row.prop(view, "playback_fps_samples", text="Frame Rate Samples")
 
         layout.separator()
 
@@ -737,6 +741,10 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
 
         if view.mini_axis_type == 'GIZMO':
             col.prop(view, "gizmo_size_navigate_v3d", text="Size")
+
+        layout.separator()
+        col = layout.column(heading="Fresnel")
+        col.prop(view, "use_fresnel_edit")
 
 
 class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):
@@ -915,23 +923,23 @@ class USERPREF_PT_theme_interface_state(ThemePanel, CenterAlignMixIn, Panel):
 
         col = flow.column(align=True)
         col.prop(ui_state, "inner_anim")
-        col.prop(ui_state, "inner_anim_sel")
+        col.prop(ui_state, "inner_anim_sel", text="Selected")
 
         col = flow.column(align=True)
         col.prop(ui_state, "inner_driven")
-        col.prop(ui_state, "inner_driven_sel")
+        col.prop(ui_state, "inner_driven_sel", text="Selected")
 
         col = flow.column(align=True)
         col.prop(ui_state, "inner_key")
-        col.prop(ui_state, "inner_key_sel")
+        col.prop(ui_state, "inner_key_sel", text="Selected")
 
         col = flow.column(align=True)
         col.prop(ui_state, "inner_overridden")
-        col.prop(ui_state, "inner_overridden_sel")
+        col.prop(ui_state, "inner_overridden_sel", text="Selected")
 
         col = flow.column(align=True)
         col.prop(ui_state, "inner_changed")
-        col.prop(ui_state, "inner_changed_sel")
+        col.prop(ui_state, "inner_changed_sel", text="Selected")
 
         col = flow.column(align=True)
         col.prop(ui_state, "blend")
@@ -948,14 +956,19 @@ class USERPREF_PT_theme_interface_styles(ThemePanel, CenterAlignMixIn, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.prop(ui, "menu_shadow_fac")
-        flow.prop(ui, "menu_shadow_width")
-        flow.prop(ui, "icon_alpha")
-        flow.prop(ui, "icon_saturation")
-        flow.prop(ui, "editor_outline")
-        flow.prop(ui, "widget_text_cursor")
-        flow.prop(ui, "widget_emboss")
-        flow.prop(ui, "panel_roundness")
+        col = flow.column(align=True)
+        col.prop(ui, "menu_shadow_fac")
+        col.prop(ui, "menu_shadow_width", text="Shadow Width")
+
+        col = flow.column(align=True)
+        col.prop(ui, "icon_alpha")
+        col.prop(ui, "icon_saturation", text="Saturation")
+
+        col = flow.column()
+        col.prop(ui, "widget_text_cursor")
+        col.prop(ui, "editor_outline")
+        col.prop(ui, "widget_emboss")
+        col.prop(ui, "panel_roundness")
 
 
 class USERPREF_PT_theme_interface_transparent_checker(ThemePanel, CenterAlignMixIn, Panel):
@@ -970,9 +983,12 @@ class USERPREF_PT_theme_interface_transparent_checker(ThemePanel, CenterAlignMix
         flow = layout.grid_flow(
             row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.prop(ui, "transparent_checker_primary")
-        flow.prop(ui, "transparent_checker_secondary")
-        flow.prop(ui, "transparent_checker_size")
+        col = flow.column(align=True)
+        col.prop(ui, "transparent_checker_primary")
+        col.prop(ui, "transparent_checker_secondary")
+
+        col = flow.column()
+        col.prop(ui, "transparent_checker_size")
 
 
 class USERPREF_PT_theme_interface_gizmos(ThemePanel, CenterAlignMixIn, Panel):
@@ -993,12 +1009,12 @@ class USERPREF_PT_theme_interface_gizmos(ThemePanel, CenterAlignMixIn, Panel):
 
         col = flow.column()
         col.prop(ui, "gizmo_primary")
-        col.prop(ui, "gizmo_secondary")
-        col.prop(ui, "gizmo_view_align")
+        col.prop(ui, "gizmo_secondary", text="Secondary")
+        col.prop(ui, "gizmo_view_align", text="View Align")
 
         col = flow.column()
         col.prop(ui, "gizmo_a")
-        col.prop(ui, "gizmo_b")
+        col.prop(ui, "gizmo_b", text="B")
 
 
 class USERPREF_PT_theme_interface_icons(ThemePanel, CenterAlignMixIn, Panel):
@@ -1029,7 +1045,7 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
     @staticmethod
     def _ui_font_style(layout, font_style):
         layout.use_property_split = True
-        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
         col = flow.column()
         col.prop(font_style, "points")
@@ -1038,10 +1054,10 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
         col.prop(font_style, "shadow_offset_x", text="Shadow Offset X")
         col.prop(font_style, "shadow_offset_y", text="Y")
 
-        col = flow.column()
+        col = flow.column(align=True)
         col.prop(font_style, "shadow")
-        col.prop(font_style, "shadow_alpha")
-        col.prop(font_style, "shadow_value")
+        col.prop(font_style, "shadow_alpha", text="Alpha")
+        col.prop(font_style, "shadow_value", text="Brightness")
 
     def draw_header(self, _context):
         layout = self.layout
@@ -1082,10 +1098,10 @@ class USERPREF_PT_theme_bone_color_sets(ThemePanel, CenterAlignMixIn, Panel):
         for i, ui in enumerate(theme.bone_color_sets, 1):
             layout.label(text=iface_("Color Set %d") % i, translate=False)
 
-            flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+            flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
             flow.prop(ui, "normal")
-            flow.prop(ui, "select")
+            flow.prop(ui, "select", text="Selected")
             flow.prop(ui, "active")
             flow.prop(ui, "show_colored_constraints")
 
@@ -1104,7 +1120,7 @@ class USERPREF_PT_theme_collection_colors(ThemePanel, CenterAlignMixIn, Panel):
 
         layout.use_property_split = True
 
-        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+        flow = layout.grid_flow(row_major=False, columns=2, even_columns=True, even_rows=False, align=False)
         for i, ui in enumerate(theme.collection_color, 1):
             flow.prop(ui, "color", text=iface_("Color %d") % i, translate=False)
 
@@ -1123,7 +1139,7 @@ class USERPREF_PT_theme_strip_colors(ThemePanel, CenterAlignMixIn, Panel):
 
         layout.use_property_split = True
 
-        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+        flow = layout.grid_flow(row_major=False, columns=2, even_columns=True, even_rows=False, align=False)
         for i, ui in enumerate(theme.strip_color, 1):
             flow.prop(ui, "color", text=iface_("Color %d") % i, translate=False)
 
@@ -1209,28 +1225,26 @@ class ThemeGenericClassGenerator:
     @staticmethod
     def generate_panel_classes_for_wcols():
         wcols = [
+            ("Box", "wcol_box"),
+            ("List Item", "wcol_list_item"),
+            ("Menu", "wcol_menu"),
+            ("Menu Background", "wcol_menu_back"),
+            ("Menu Item", "wcol_menu_item"),
+            ("Number Field", "wcol_num"),
+            ("Option", "wcol_option"),
+            ("Pie Menu", "wcol_pie_menu"),
+            ("Progress Bar", "wcol_progress"),
+            ("Pulldown", "wcol_pulldown"),
+            ("Radio Buttons", "wcol_radio"),
             ("Regular", "wcol_regular"),
+            ("Scroll Bar", "wcol_scroll"),
+            ("Tab", "wcol_tab"),
+            ("Text", "wcol_text"),
+            ("Toggle", "wcol_toggle"),
             ("Tool", "wcol_tool"),
             ("Toolbar Item", "wcol_toolbar_item"),
-            ("Radio Buttons", "wcol_radio"),
-            ("Text", "wcol_text"),
-            ("Option", "wcol_option"),
-            ("Toggle", "wcol_toggle"),
-            ("Number Field", "wcol_num"),
-            ("Value Slider", "wcol_numslider"),
-            ("Box", "wcol_box"),
-            ("Menu", "wcol_menu"),
-            ("Pie Menu", "wcol_pie_menu"),
-            ("Pulldown", "wcol_pulldown"),
-            ("Menu Back", "wcol_menu_back"),
             ("Tooltip", "wcol_tooltip"),
-            ("Menu Item", "wcol_menu_item"),
-            ("Scroll Bar", "wcol_scroll"),
-            ("Progress Bar", "wcol_progress"),
-            ("List Item", "wcol_list_item"),
-            # Not used yet, so hide this from the UI.
-            # ("Data-View Item", "wcol_view_item"),
-            ("Tab", "wcol_tab"),
+            ("Value Slider", "wcol_numslider"),
         ]
 
         for (name, wcol) in wcols:
@@ -1333,9 +1347,50 @@ class USERPREF_PT_file_paths_data(FilePathsPanel, Panel):
         col = self.layout.column()
         col.prop(paths, "font_directory", text="Fonts")
         col.prop(paths, "texture_directory", text="Textures")
-        col.prop(paths, "script_directory", text="Scripts")
         col.prop(paths, "sound_directory", text="Sounds")
         col.prop(paths, "temporary_directory", text="Temporary Files")
+
+
+class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
+    bl_label = "Script Directories"
+
+    def draw(self, context):
+        layout = self.layout
+
+        paths = context.preferences.filepaths
+
+        if len(paths.script_directories) == 0:
+            layout.operator("preferences.script_directory_add", text="Add", icon='ADD')
+            return
+
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        box = layout.box()
+        split = box.split(factor=0.35)
+        name_col = split.column()
+        path_col = split.column()
+
+        row = name_col.row(align=True)  # Padding
+        row.separator()
+        row.label(text="Name")
+
+        row = path_col.row(align=True)  # Padding
+        row.separator()
+        row.label(text="Path", text_ctxt=i18n_contexts.editor_filebrowser)
+
+        row.operator("preferences.script_directory_add", text="", icon='ADD', emboss=False)
+
+        for i, script_directory in enumerate(paths.script_directories):
+            row = name_col.row()
+            row.alert = not script_directory.name
+            row.prop(script_directory, "name", text="")
+
+            row = path_col.row()
+            subrow = row.row()
+            subrow.alert = not script_directory.directory
+            subrow.prop(script_directory, "directory", text="")
+            row.operator("preferences.script_directory_remove", text="", icon='X', emboss=False).index = i
 
 
 class USERPREF_PT_file_paths_render(FilePathsPanel, Panel):
@@ -1353,6 +1408,13 @@ class USERPREF_PT_file_paths_render(FilePathsPanel, Panel):
         col.prop(paths, "render_cache_directory", text="Render Cache")
 
 
+class USERPREF_PT_text_editor_presets(PresetPanel, Panel):
+    bl_label = "Text Editor Presets"
+    preset_subdir = "text_editor"
+    preset_operator = "script.execute_preset"
+    preset_add_operator = "text_editor.preset_add"
+
+
 class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
     bl_label = "Applications"
 
@@ -1368,6 +1430,25 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
         col.prop(paths, "animation_player_preset", text="Animation Player")
         if paths.animation_player_preset == 'CUSTOM':
             col.prop(paths, "animation_player", text="Player")
+
+
+class USERPREF_PT_text_editor(FilePathsPanel, Panel):
+    bl_label = "Text Editor"
+    bl_parent_id = "USERPREF_PT_file_paths_applications"
+
+    def draw_header_preset(self, _context):
+        USERPREF_PT_text_editor_presets.draw_panel_header(self.layout)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        paths = context.preferences.filepaths
+
+        col = layout.column()
+        col.prop(paths, "text_editor", text="Program")
+        col.prop(paths, "text_editor_args", text="Arguments")
 
 
 class USERPREF_PT_file_paths_development(FilePathsPanel, Panel):
@@ -1442,14 +1523,19 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         props = col.operator("preferences.asset_library_remove", text="", icon='REMOVE')
         props.index = active_library_index
 
-        if active_library_index < 0:
+        try:
+            active_library = None if active_library_index < 0 else paths.asset_libraries[active_library_index]
+        except IndexError:
+            active_library = None
+
+        if active_library is None:
             return
 
         layout.separator()
 
-        active_library = paths.asset_libraries[active_library_index]
         layout.prop(active_library, "path")
         layout.prop(active_library, "import_method", text="Import Method")
+        layout.prop(active_library, "use_relative_path")
 
 
 class USERPREF_UL_asset_libraries(bpy.types.UIList):
@@ -1461,6 +1547,62 @@ class USERPREF_UL_asset_libraries(bpy.types.UIList):
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(asset_library, "name", text="", emboss=False)
+
+
+class USERPREF_PT_file_paths_extension_repos(FilePathsPanel, Panel):
+    bl_label = "Extension Repositories"
+
+    @classmethod
+    def poll(cls, context):
+        return context.preferences.experimental.use_extension_repos
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
+
+        paths = context.preferences.filepaths
+        active_library_index = paths.active_extension_repo
+
+        row = layout.row()
+
+        row.template_list(
+            "USERPREF_UL_extension_repos", "user_extension_repos",
+            paths, "extension_repos",
+            paths, "active_extension_repo"
+        )
+
+        col = row.column(align=True)
+        col.operator("preferences.extension_repo_add", text="", icon='ADD')
+        props = col.operator("preferences.extension_repo_remove", text="", icon='REMOVE')
+        props.index = active_library_index
+
+        try:
+            active_repo = None if active_library_index < 0 else paths.extension_repos[active_library_index]
+        except IndexError:
+            active_repo = None
+
+        if active_repo is None:
+            return
+
+        layout.separator()
+
+        layout.prop(active_repo, "directory")
+        layout.prop(active_repo, "remote_path")
+        row = layout.row()
+        row.prop(active_repo, "use_cache")
+        row.prop(active_repo, "module")
+
+
+class USERPREF_UL_extension_repos(bpy.types.UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        repo = item
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(repo, "name", text="", emboss=False)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.prop(repo, "name", text="", emboss=False)
 
 
 # -----------------------------------------------------------------------------
@@ -1878,7 +2020,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         if not user_addon_paths:
             for path in (
                     bpy.utils.script_path_user(),
-                    bpy.utils.script_path_pref(),
+                    *bpy.utils.script_paths_pref(),
             ):
                 if path is not None:
                     user_addon_paths.append(os.path.join(path, "addons"))
@@ -1910,7 +2052,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         addon_user_dirs = tuple(
             p for p in (
-                os.path.join(prefs.filepaths.script_directory, "addons"),
+                *[os.path.join(pref_p, "addons") for pref_p in bpy.utils.script_paths_pref()],
                 bpy.utils.user_resource('SCRIPTS', path="addons"),
             )
             if p
@@ -2050,9 +2192,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                         split.label(text="  " + info["warning"], icon='ERROR')
 
                     user_addon = USERPREF_PT_addons.is_user_addon(mod, user_addon_paths)
-                    tot_row = bool(info["doc_url"]) + bool(user_addon)
-
-                    if tot_row:
+                    if info["doc_url"] or info.get("tracker_url"):
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Internet:")
                         sub = split.row()
@@ -2076,10 +2216,13 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                             )
                             props.type = 'BUG_ADDON'
                             props.id = addon_info
-                        if user_addon:
-                            sub.operator(
-                                "preferences.addon_remove", text="Remove", icon='CANCEL',
-                            ).module = mod.__name__
+
+                    if user_addon:
+                        split = colsub.row().split(factor=0.15)
+                        split.label(text="User:")
+                        split.operator(
+                            "preferences.addon_remove", text="Remove", icon='CANCEL',
+                        ).module = mod.__name__
 
                     # Show addon user preferences
                     if is_enabled:
@@ -2093,7 +2236,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                                 addon_preferences_class.layout = box_prefs
                                 try:
                                     draw(context)
-                                except:
+                                except BaseException:
                                     import traceback
                                     traceback.print_exc()
                                     box_prefs.label(text="Error (see console)", icon='ERROR')
@@ -2164,12 +2307,12 @@ class StudioLightPanelMixin:
 
         row.template_icon(layout.icon(studio_light), scale=3.0)
         col = row.column()
-        op = col.operator("preferences.studiolight_uninstall", text="", icon='REMOVE')
-        op.index = studio_light.index
+        props = col.operator("preferences.studiolight_uninstall", text="", icon='REMOVE')
+        props.index = studio_light.index
 
         if studio_light.type == 'STUDIO':
-            op = col.operator("preferences.studiolight_copy_settings", text="", icon='IMPORT')
-            op.index = studio_light.index
+            props = col.operator("preferences.studiolight_copy_settings", text="", icon='IMPORT')
+            props.index = studio_light.index
 
         box.label(text=studio_light.name)
 
@@ -2206,9 +2349,9 @@ class USERPREF_PT_studiolight_lights(StudioLightPanel, StudioLightPanelMixin, Pa
 
     def draw_header_preset(self, _context):
         layout = self.layout
-        op = layout.operator("preferences.studiolight_install", icon='IMPORT', text="Install...")
-        op.type = 'STUDIO'
-        op.filter_glob = ".sl"
+        props = layout.operator("preferences.studiolight_install", icon='IMPORT', text="Install...")
+        props.type = 'STUDIO'
+        props.filter_glob = ".sl"
         layout.separator()
 
     def get_error_message(self):
@@ -2335,6 +2478,8 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
+                ({"property": "use_node_group_operators"}, ("/blender/blender/issues/101778", "#101778")),
+                ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
         )
 
@@ -2348,9 +2493,11 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_new_curves_tools"}, ("blender/blender/issues/68981", "#68981")),
                 ({"property": "use_new_point_cloud_type"}, ("blender/blender/issues/75717", "#75717")),
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
-                ({"property": "use_full_frame_compositor"}, ("blender/blender/issues/88150", "#88150")),
+                ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
-                ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
+                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
+                ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
+                ({"property": "use_extension_repos"}, ("/blender/blender/issues/106254", "#106254")),
             ),
         )
 
@@ -2388,6 +2535,7 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),
                 ({"property": "use_viewport_debug"}, None),
+                ({"property": "use_eevee_debug"}, None),
             ),
         )
 
@@ -2431,6 +2579,7 @@ classes = (
     USERPREF_PT_edit_weight_paint,
     USERPREF_PT_edit_gpencil,
     USERPREF_PT_edit_text_editor,
+    USERPREF_PT_edit_node_editor,
     USERPREF_PT_edit_misc,
 
     USERPREF_PT_animation_timeline,
@@ -2438,7 +2587,6 @@ classes = (
     USERPREF_PT_animation_fcurves,
 
     USERPREF_PT_system_cycles_devices,
-    USERPREF_PT_system_gpu_backend,
     USERPREF_PT_system_os_settings,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,
@@ -2446,21 +2594,25 @@ classes = (
 
     USERPREF_MT_interface_theme_presets,
     USERPREF_PT_theme,
+    USERPREF_PT_theme_interface_gizmos,
+    USERPREF_PT_theme_interface_icons,
     USERPREF_PT_theme_interface_state,
     USERPREF_PT_theme_interface_styles,
-    USERPREF_PT_theme_interface_gizmos,
     USERPREF_PT_theme_interface_transparent_checker,
-    USERPREF_PT_theme_interface_icons,
     USERPREF_PT_theme_text_style,
     USERPREF_PT_theme_bone_color_sets,
     USERPREF_PT_theme_collection_colors,
     USERPREF_PT_theme_strip_colors,
 
     USERPREF_PT_file_paths_data,
+    USERPREF_PT_file_paths_script_directories,
     USERPREF_PT_file_paths_render,
     USERPREF_PT_file_paths_applications,
+    USERPREF_PT_text_editor,
+    USERPREF_PT_text_editor_presets,
     USERPREF_PT_file_paths_development,
     USERPREF_PT_file_paths_asset_libraries,
+    USERPREF_PT_file_paths_extension_repos,
 
     USERPREF_PT_saveload_blend,
     USERPREF_PT_saveload_blend_autosave,
@@ -2498,6 +2650,7 @@ classes = (
 
     # UI lists
     USERPREF_UL_asset_libraries,
+    USERPREF_UL_extension_repos,
 
     # Add dynamically generated editor theme panels last,
     # so they show up last in the theme section.

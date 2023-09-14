@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_realize_instances.hh"
 
@@ -9,6 +11,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
@@ -64,9 +67,7 @@ struct AttributeFallbacksArray {
    */
   Array<const void *> array;
 
-  AttributeFallbacksArray(int size) : array(size, nullptr)
-  {
-  }
+  AttributeFallbacksArray(int size) : array(size, nullptr) {}
 };
 
 struct PointCloudRealizeInfo {
@@ -95,15 +96,15 @@ struct RealizePointCloudTask {
 struct MeshElementStartIndices {
   int vertex = 0;
   int edge = 0;
-  int poly = 0;
+  int face = 0;
   int loop = 0;
 };
 
 struct MeshRealizeInfo {
   const Mesh *mesh = nullptr;
   Span<float3> positions;
-  Span<MEdge> edges;
-  Span<MPoly> polys;
+  Span<int2> edges;
+  OffsetIndices<int> faces;
   Span<int> corner_verts;
   Span<int> corner_edges;
 
@@ -205,6 +206,7 @@ struct AllMeshesInfo {
 
   /** True if we know that there are no loose edges in any of the input meshes. */
   bool no_loose_edges_hint = false;
+  bool no_loose_verts_hint = false;
 };
 
 struct AllCurvesInfo {
@@ -229,8 +231,8 @@ struct GatherTasks {
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
-  UserCounter<const VolumeComponent> first_volume;
-  UserCounter<const GeometryComponentEditData> first_edit_data;
+  ImplicitSharingPtr<const bke::VolumeComponent> first_volume;
+  ImplicitSharingPtr<const bke::GeometryComponentEditData> first_edit_data;
 };
 
 /** Current offsets while during the gather operation. */
@@ -375,7 +377,7 @@ static void create_result_ids(const RealizeInstancesOptions &options,
 
 /* Forward declaration. */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           const GeometrySet &geometry_set,
+                                           const bke::GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context);
 
@@ -430,12 +432,13 @@ static void foreach_geometry_in_reference(
     const InstanceReference &reference,
     const float4x4 &base_transform,
     const uint32_t id,
-    FunctionRef<void(const GeometrySet &geometry_set, const float4x4 &transform, uint32_t id)> fn)
+    FunctionRef<void(const bke::GeometrySet &geometry_set, const float4x4 &transform, uint32_t id)>
+        fn)
 {
   switch (reference.type()) {
     case InstanceReference::Type::Object: {
       const Object &object = reference.object();
-      const GeometrySet object_geometry_set = object_get_evaluated_geometry_set(object);
+      const bke::GeometrySet object_geometry_set = object_get_evaluated_geometry_set(object);
       fn(object_geometry_set, base_transform, id);
       break;
     }
@@ -445,7 +448,7 @@ static void foreach_geometry_in_reference(
       offset_matrix.location() -= collection.instance_offset;
       int index = 0;
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (&collection, object) {
-        const GeometrySet object_geometry_set = object_get_evaluated_geometry_set(*object);
+        const bke::GeometrySet object_geometry_set = object_get_evaluated_geometry_set(*object);
         const float4x4 matrix = base_transform * offset_matrix *
                                 float4x4_view(object->object_to_world);
         const int sub_id = noise::hash(id, index);
@@ -456,7 +459,7 @@ static void foreach_geometry_in_reference(
       break;
     }
     case InstanceReference::Type::GeometrySet: {
-      const GeometrySet &instance_geometry_set = reference.geometry_set();
+      const bke::GeometrySet &instance_geometry_set = reference.geometry_set();
       fn(instance_geometry_set, base_transform, id);
       break;
     }
@@ -524,7 +527,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     foreach_geometry_in_reference(reference,
                                   new_base_transform,
                                   instance_id,
-                                  [&](const GeometrySet &instance_geometry_set,
+                                  [&](const bke::GeometrySet &instance_geometry_set,
                                       const float4x4 &transform,
                                       const uint32_t id) {
                                     instance_context.id = id;
@@ -540,16 +543,17 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
  * Gather tasks for all geometries in the #geometry_set.
  */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           const GeometrySet &geometry_set,
+                                           const bke::GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context)
 {
-  for (const GeometryComponent *component : geometry_set.get_components_for_read()) {
-    const GeometryComponentType type = component->type();
+  for (const bke::GeometryComponent *component : geometry_set.get_components()) {
+    const bke::GeometryComponent::Type type = component->type();
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
-        const MeshComponent &mesh_component = *static_cast<const MeshComponent *>(component);
-        const Mesh *mesh = mesh_component.get_for_read();
+      case bke::GeometryComponent::Type::Mesh: {
+        const bke::MeshComponent &mesh_component = *static_cast<const bke::MeshComponent *>(
+            component);
+        const Mesh *mesh = mesh_component.get();
         if (mesh != nullptr && mesh->totvert > 0) {
           const int mesh_index = gather_info.meshes.order.index_of(mesh);
           const MeshRealizeInfo &mesh_info = gather_info.meshes.realize_info[mesh_index];
@@ -561,14 +565,14 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           gather_info.r_offsets.mesh_offsets.vertex += mesh->totvert;
           gather_info.r_offsets.mesh_offsets.edge += mesh->totedge;
           gather_info.r_offsets.mesh_offsets.loop += mesh->totloop;
-          gather_info.r_offsets.mesh_offsets.poly += mesh->totpoly;
+          gather_info.r_offsets.mesh_offsets.face += mesh->faces_num;
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
-        const PointCloudComponent &pointcloud_component =
-            *static_cast<const PointCloudComponent *>(component);
-        const PointCloud *pointcloud = pointcloud_component.get_for_read();
+      case bke::GeometryComponent::Type::PointCloud: {
+        const auto &pointcloud_component = *static_cast<const bke::PointCloudComponent *>(
+            component);
+        const PointCloud *pointcloud = pointcloud_component.get();
         if (pointcloud != nullptr && pointcloud->totpoint > 0) {
           const int pointcloud_index = gather_info.pointclouds.order.index_of(pointcloud);
           const PointCloudRealizeInfo &pointcloud_info =
@@ -582,9 +586,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
-        const CurveComponent &curve_component = *static_cast<const CurveComponent *>(component);
-        const Curves *curves = curve_component.get_for_read();
+      case bke::GeometryComponent::Type::Curve: {
+        const auto &curve_component = *static_cast<const bke::CurveComponent *>(component);
+        const Curves *curves = curve_component.get();
         if (curves != nullptr && curves->geometry.curve_num > 0) {
           const int curve_index = gather_info.curves.order.index_of(curves);
           const RealizeCurveInfo &curve_info = gather_info.curves.realize_info[curve_index];
@@ -598,31 +602,34 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
-        const InstancesComponent &instances_component = *static_cast<const InstancesComponent *>(
-            component);
-        const Instances *instances = instances_component.get_for_read();
+      case bke::GeometryComponent::Type::Instance: {
+        const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
+        const Instances *instances = instances_component.get();
         if (instances != nullptr && instances->instances_num() > 0) {
           gather_realize_tasks_for_instances(
               gather_info, *instances, base_transform, base_instance_context);
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
-        const VolumeComponent *volume_component = static_cast<const VolumeComponent *>(component);
+      case bke::GeometryComponent::Type::Volume: {
+        const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
-          volume_component->user_add();
+          volume_component->add_user();
           gather_info.r_tasks.first_volume = volume_component;
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
-        const GeometryComponentEditData *edit_component =
-            static_cast<const GeometryComponentEditData *>(component);
+      case bke::GeometryComponent::Type::Edit: {
+        const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
+            component);
         if (!gather_info.r_tasks.first_edit_data) {
-          edit_component->user_add();
+          edit_component->add_user();
           gather_info.r_tasks.first_edit_data = edit_component;
         }
+        break;
+      }
+      case bke::GeometryComponent::Type::GreasePencil: {
+        /* TODO. Do nothing for now. */
         break;
       }
     }
@@ -636,20 +643,20 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
  * \{ */
 
 static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
-    const GeometrySet &in_geometry_set,
+    const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
     bool &r_create_radii,
     bool &r_create_id)
 {
-  Vector<GeometryComponentType> src_component_types;
-  src_component_types.append(GEO_COMPONENT_TYPE_POINT_CLOUD);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::PointCloud);
   if (options.realize_instance_attributes) {
-    src_component_types.append(GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                    bke::GeometryComponent::Type::PointCloud,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
@@ -664,22 +671,22 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
   return ordered_attributes;
 }
 
-static void gather_pointclouds_to_realize(const GeometrySet &geometry_set,
+static void gather_pointclouds_to_realize(const bke::GeometrySet &geometry_set,
                                           VectorSet<const PointCloud *> &r_pointclouds)
 {
-  if (const PointCloud *pointcloud = geometry_set.get_pointcloud_for_read()) {
+  if (const PointCloud *pointcloud = geometry_set.get_pointcloud()) {
     if (pointcloud->totpoint > 0) {
       r_pointclouds.add(pointcloud);
     }
   }
-  if (const Instances *instances = geometry_set.get_instances_for_read()) {
-    instances->foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+  if (const Instances *instances = geometry_set.get_instances()) {
+    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
       gather_pointclouds_to_realize(instance_geometry_set, r_pointclouds);
     });
   }
 }
 
-static AllPointCloudsInfo preprocess_pointclouds(const GeometrySet &geometry_set,
+static AllPointCloudsInfo preprocess_pointclouds(const bke::GeometrySet &geometry_set,
                                                  const RealizeInstancesOptions &options)
 {
   AllPointCloudsInfo info;
@@ -701,7 +708,7 @@ static AllPointCloudsInfo preprocess_pointclouds(const GeometrySet &geometry_set
       const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
       const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
       if (attributes.contains(attribute_id)) {
-        GVArray attribute = attributes.lookup_or_default(attribute_id, domain, data_type);
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
         pointcloud_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }
@@ -712,9 +719,9 @@ static AllPointCloudsInfo preprocess_pointclouds(const GeometrySet &geometry_set
       }
     }
     if (info.create_radius_attribute) {
-      pointcloud_info.radii = attributes.lookup_or_default("radius", ATTR_DOMAIN_POINT, 0.01f);
+      pointcloud_info.radii = *attributes.lookup_or_default("radius", ATTR_DOMAIN_POINT, 0.01f);
     }
-    const VArray<float3> position_attribute = attributes.lookup_or_default<float3>(
+    const VArray<float3> position_attribute = *attributes.lookup_or_default<float3>(
         "position", ATTR_DOMAIN_POINT, float3(0));
     pointcloud_info.positions = position_attribute.get_internal_span();
   }
@@ -762,7 +769,7 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
                                              const AllPointCloudsInfo &all_pointclouds_info,
                                              const Span<RealizePointCloudTask> tasks,
                                              const OrderedAttributes &ordered_attributes,
-                                             GeometrySet &r_realized_geometry)
+                                             bke::GeometrySet &r_realized_geometry)
 {
   if (tasks.is_empty()) {
     return;
@@ -774,10 +781,13 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
 
   /* Allocate new point cloud. */
   PointCloud *dst_pointcloud = BKE_pointcloud_new_nomain(tot_points);
-  PointCloudComponent &dst_component =
-      r_realized_geometry.get_component_for_write<PointCloudComponent>();
-  dst_component.replace(dst_pointcloud);
+  r_realized_geometry.replace_pointcloud(dst_pointcloud);
   bke::MutableAttributeAccessor dst_attributes = dst_pointcloud->attributes_for_write();
+
+  const RealizePointCloudTask &first_task = tasks.first();
+  const PointCloud &first_pointcloud = *first_task.pointcloud_info->pointcloud;
+  dst_pointcloud->mat = static_cast<Material **>(MEM_dupallocN(first_pointcloud.mat));
+  dst_pointcloud->totcol = first_pointcloud.totcol;
 
   SpanAttributeWriter<float3> positions = dst_attributes.lookup_or_add_for_write_only_span<float3>(
       "position", ATTR_DOMAIN_POINT);
@@ -832,24 +842,25 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
  * \{ */
 
 static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
-    const GeometrySet &in_geometry_set,
+    const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
     bool &r_create_id,
     bool &r_create_material_index)
 {
-  Vector<GeometryComponentType> src_component_types;
-  src_component_types.append(GEO_COMPONENT_TYPE_MESH);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Mesh);
   if (options.realize_instance_attributes) {
-    src_component_types.append(GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    GEO_COMPONENT_TYPE_MESH,
+                                                    bke::GeometryComponent::Type::Mesh,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
+  attributes_to_propagate.remove(".edge_verts");
   attributes_to_propagate.remove(".corner_vert");
   attributes_to_propagate.remove(".corner_edge");
   r_create_id = attributes_to_propagate.pop_try("id").has_value();
@@ -862,22 +873,22 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
   return ordered_attributes;
 }
 
-static void gather_meshes_to_realize(const GeometrySet &geometry_set,
+static void gather_meshes_to_realize(const bke::GeometrySet &geometry_set,
                                      VectorSet<const Mesh *> &r_meshes)
 {
-  if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
     if (mesh->totvert > 0) {
       r_meshes.add(mesh);
     }
   }
-  if (const Instances *instances = geometry_set.get_instances_for_read()) {
-    instances->foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+  if (const Instances *instances = geometry_set.get_instances()) {
+    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
       gather_meshes_to_realize(instance_geometry_set, r_meshes);
     });
   }
 }
 
-static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
+static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
                                        const RealizeInstancesOptions &options)
 {
   AllMeshesInfo info;
@@ -905,7 +916,7 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
     mesh_info.mesh = mesh;
     mesh_info.positions = mesh->vert_positions();
     mesh_info.edges = mesh->edges();
-    mesh_info.polys = mesh->polys();
+    mesh_info.faces = mesh->faces();
     mesh_info.corner_verts = mesh->corner_verts();
     mesh_info.corner_edges = mesh->corner_edges();
 
@@ -930,7 +941,7 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
       const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
       const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
       if (attributes.contains(attribute_id)) {
-        GVArray attribute = attributes.lookup_or_default(attribute_id, domain, data_type);
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
         mesh_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }
@@ -940,13 +951,17 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
         mesh_info.stored_vertex_ids = ids_attribute.varray.get_internal_span().typed<int>();
       }
     }
-    mesh_info.material_indices = attributes.lookup_or_default<int>(
+    mesh_info.material_indices = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_FACE, 0);
   }
 
   info.no_loose_edges_hint = std::all_of(
       info.order.begin(), info.order.end(), [](const Mesh *mesh) {
         return mesh->runtime->loose_edges_cache.is_cached() && mesh->loose_edges().count == 0;
+      });
+  info.no_loose_verts_hint = std::all_of(
+      info.order.begin(), info.order.end(), [](const Mesh *mesh) {
+        return mesh->runtime->loose_verts_cache.is_cached() && mesh->loose_verts().count == 0;
       });
 
   return info;
@@ -957,8 +972,8 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
                                       const OrderedAttributes &ordered_attributes,
                                       MutableSpan<GSpanAttributeWriter> dst_attribute_writers,
                                       MutableSpan<float3> all_dst_positions,
-                                      MutableSpan<MEdge> all_dst_edges,
-                                      MutableSpan<MPoly> all_dst_polys,
+                                      MutableSpan<int2> all_dst_edges,
+                                      MutableSpan<int> all_dst_face_offsets,
                                       MutableSpan<int> all_dst_corner_verts,
                                       MutableSpan<int> all_dst_corner_edges,
                                       MutableSpan<int> all_dst_vertex_ids,
@@ -968,19 +983,19 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
   const Mesh &mesh = *mesh_info.mesh;
 
   const Span<float3> src_positions = mesh_info.positions;
-  const Span<MEdge> src_edges = mesh_info.edges;
-  const Span<MPoly> src_polys = mesh_info.polys;
+  const Span<int2> src_edges = mesh_info.edges;
+  const OffsetIndices src_faces = mesh_info.faces;
   const Span<int> src_corner_verts = mesh_info.corner_verts;
   const Span<int> src_corner_edges = mesh_info.corner_edges;
 
   const IndexRange dst_vert_range(task.start_indices.vertex, src_positions.size());
   const IndexRange dst_edge_range(task.start_indices.edge, src_edges.size());
-  const IndexRange dst_poly_range(task.start_indices.poly, src_polys.size());
+  const IndexRange dst_face_range(task.start_indices.face, src_faces.size());
   const IndexRange dst_loop_range(task.start_indices.loop, src_corner_verts.size());
 
   MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_vert_range);
-  MutableSpan<MEdge> dst_edges = all_dst_edges.slice(dst_edge_range);
-  MutableSpan<MPoly> dst_polys = all_dst_polys.slice(dst_poly_range);
+  MutableSpan<int2> dst_edges = all_dst_edges.slice(dst_edge_range);
+  MutableSpan<int> dst_face_offsets = all_dst_face_offsets.slice(dst_face_range);
   MutableSpan<int> dst_corner_verts = all_dst_corner_verts.slice(dst_loop_range);
   MutableSpan<int> dst_corner_edges = all_dst_corner_edges.slice(dst_loop_range);
 
@@ -991,11 +1006,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
   });
   threading::parallel_for(src_edges.index_range(), 1024, [&](const IndexRange edge_range) {
     for (const int i : edge_range) {
-      const MEdge &src_edge = src_edges[i];
-      MEdge &dst_edge = dst_edges[i];
-      dst_edge = src_edge;
-      dst_edge.v1 += task.start_indices.vertex;
-      dst_edge.v2 += task.start_indices.vertex;
+      dst_edges[i] = src_edges[i] + task.start_indices.vertex;
     }
   });
   threading::parallel_for(src_corner_verts.index_range(), 1024, [&](const IndexRange loop_range) {
@@ -1008,17 +1019,14 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
       dst_corner_edges[i] = src_corner_edges[i] + task.start_indices.edge;
     }
   });
-  threading::parallel_for(src_polys.index_range(), 1024, [&](const IndexRange poly_range) {
-    for (const int i : poly_range) {
-      const MPoly &src_poly = src_polys[i];
-      MPoly &dst_poly = dst_polys[i];
-      dst_poly = src_poly;
-      dst_poly.loopstart += task.start_indices.loop;
+  threading::parallel_for(src_faces.index_range(), 1024, [&](const IndexRange face_range) {
+    for (const int i : face_range) {
+      dst_face_offsets[i] = src_faces[i].start() + task.start_indices.loop;
     }
   });
   if (!all_dst_material_indices.is_empty()) {
     const Span<int> material_index_map = mesh_info.material_index_map;
-    MutableSpan<int> dst_material_indices = all_dst_material_indices.slice(dst_poly_range);
+    MutableSpan<int> dst_material_indices = all_dst_material_indices.slice(dst_face_range);
     if (mesh.totcol == 0) {
       /* The material index map contains the index of the null material in the result. */
       dst_material_indices.fill(material_index_map.first());
@@ -1031,8 +1039,8 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
       }
       else {
         VArraySpan<int> indices_span(mesh_info.material_indices);
-        threading::parallel_for(src_polys.index_range(), 1024, [&](const IndexRange poly_range) {
-          for (const int i : poly_range) {
+        threading::parallel_for(src_faces.index_range(), 1024, [&](const IndexRange face_range) {
+          for (const int i : face_range) {
             const int src_index = indices_span[i];
             const bool valid = IndexRange(mesh.totcol).contains(src_index);
             dst_material_indices[i] = valid ? material_index_map[src_index] : 0;
@@ -1060,7 +1068,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
           case ATTR_DOMAIN_EDGE:
             return dst_edge_range;
           case ATTR_DOMAIN_FACE:
-            return dst_poly_range;
+            return dst_face_range;
           case ATTR_DOMAIN_CORNER:
             return dst_loop_range;
           default:
@@ -1076,7 +1084,7 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
                                        const Span<RealizeMeshTask> tasks,
                                        const OrderedAttributes &ordered_attributes,
                                        const VectorSet<Material *> &ordered_materials,
-                                       GeometrySet &r_realized_geometry)
+                                       bke::GeometrySet &r_realized_geometry)
 {
   if (tasks.is_empty()) {
     return;
@@ -1087,15 +1095,14 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   const int tot_vertices = last_task.start_indices.vertex + last_mesh.totvert;
   const int tot_edges = last_task.start_indices.edge + last_mesh.totedge;
   const int tot_loops = last_task.start_indices.loop + last_mesh.totloop;
-  const int tot_poly = last_task.start_indices.poly + last_mesh.totpoly;
+  const int tot_faces = last_task.start_indices.face + last_mesh.faces_num;
 
-  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_loops, tot_poly);
-  MeshComponent &dst_component = r_realized_geometry.get_component_for_write<MeshComponent>();
-  dst_component.replace(dst_mesh);
+  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_faces, tot_loops);
+  r_realized_geometry.replace_mesh(dst_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
   MutableSpan<float3> dst_positions = dst_mesh->vert_positions_for_write();
-  MutableSpan<MEdge> dst_edges = dst_mesh->edges_for_write();
-  MutableSpan<MPoly> dst_polys = dst_mesh->polys_for_write();
+  MutableSpan<int2> dst_edges = dst_mesh->edges_for_write();
+  MutableSpan<int> dst_face_offsets = dst_mesh->face_offsets_for_write();
   MutableSpan<int> dst_corner_verts = dst_mesh->corner_verts_for_write();
   MutableSpan<int> dst_corner_edges = dst_mesh->corner_edges_for_write();
 
@@ -1145,7 +1152,7 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
                                 dst_attribute_writers,
                                 dst_positions,
                                 dst_edges,
-                                dst_polys,
+                                dst_face_offsets,
                                 dst_corner_verts,
                                 dst_corner_edges,
                                 vertex_ids.span,
@@ -1161,7 +1168,10 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   material_indices.finish();
 
   if (all_meshes_info.no_loose_edges_hint) {
-    dst_mesh->loose_edges_tag_none();
+    dst_mesh->tag_loose_edges_none();
+  }
+  if (all_meshes_info.no_loose_verts_hint) {
+    dst_mesh->tag_loose_verts_none();
   }
 }
 
@@ -1172,17 +1182,19 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
  * \{ */
 
 static OrderedAttributes gather_generic_curve_attributes_to_propagate(
-    const GeometrySet &in_geometry_set, const RealizeInstancesOptions &options, bool &r_create_id)
+    const bke::GeometrySet &in_geometry_set,
+    const RealizeInstancesOptions &options,
+    bool &r_create_id)
 {
-  Vector<GeometryComponentType> src_component_types;
-  src_component_types.append(GEO_COMPONENT_TYPE_CURVE);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Curve);
   if (options.realize_instance_attributes) {
-    src_component_types.append(GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    GEO_COMPONENT_TYPE_CURVE,
+                                                    bke::GeometryComponent::Type::Curve,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
@@ -1201,22 +1213,22 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
   return ordered_attributes;
 }
 
-static void gather_curves_to_realize(const GeometrySet &geometry_set,
+static void gather_curves_to_realize(const bke::GeometrySet &geometry_set,
                                      VectorSet<const Curves *> &r_curves)
 {
-  if (const Curves *curves = geometry_set.get_curves_for_read()) {
+  if (const Curves *curves = geometry_set.get_curves()) {
     if (curves->geometry.curve_num != 0) {
       r_curves.add(curves);
     }
   }
-  if (const Instances *instances = geometry_set.get_instances_for_read()) {
-    instances->foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+  if (const Instances *instances = geometry_set.get_instances()) {
+    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
       gather_curves_to_realize(instance_geometry_set, r_curves);
     });
   }
 }
 
-static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
+static AllCurvesInfo preprocess_curves(const bke::GeometrySet &geometry_set,
                                        const RealizeInstancesOptions &options)
 {
   AllCurvesInfo info;
@@ -1239,7 +1251,7 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
       const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
       const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
       if (attributes.contains(attribute_id)) {
-        GVArray attribute = attributes.lookup_or_default(attribute_id, domain, data_type);
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
         curve_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }
@@ -1252,12 +1264,12 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
 
     if (attributes.contains("radius")) {
       curve_info.radius =
-          attributes.lookup<float>("radius", ATTR_DOMAIN_POINT).get_internal_span();
+          attributes.lookup<float>("radius", ATTR_DOMAIN_POINT).varray.get_internal_span();
       info.create_radius_attribute = true;
     }
     if (attributes.contains("nurbs_weight")) {
       curve_info.nurbs_weight =
-          attributes.lookup<float>("nurbs_weight", ATTR_DOMAIN_POINT).get_internal_span();
+          attributes.lookup<float>("nurbs_weight", ATTR_DOMAIN_POINT).varray.get_internal_span();
       info.create_nurbs_weight_attribute = true;
     }
     curve_info.resolution = curves.resolution();
@@ -1266,9 +1278,9 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
     }
     if (attributes.contains("handle_right")) {
       curve_info.handle_left =
-          attributes.lookup<float3>("handle_left", ATTR_DOMAIN_POINT).get_internal_span();
+          attributes.lookup<float3>("handle_left", ATTR_DOMAIN_POINT).varray.get_internal_span();
       curve_info.handle_right =
-          attributes.lookup<float3>("handle_right", ATTR_DOMAIN_POINT).get_internal_span();
+          attributes.lookup<float3>("handle_right", ATTR_DOMAIN_POINT).varray.get_internal_span();
       info.create_handle_postion_attributes = true;
     }
   }
@@ -1372,7 +1384,7 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
                                         const AllCurvesInfo &all_curves_info,
                                         const Span<RealizeCurveTask> tasks,
                                         const OrderedAttributes &ordered_attributes,
-                                        GeometrySet &r_realized_geometry)
+                                        bke::GeometrySet &r_realized_geometry)
 {
   if (tasks.is_empty()) {
     return;
@@ -1387,8 +1399,7 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
   Curves *dst_curves_id = bke::curves_new_nomain(points_num, curves_num);
   bke::CurvesGeometry &dst_curves = dst_curves_id->geometry.wrap();
   dst_curves.offsets_for_write().last() = points_num;
-  CurveComponent &dst_component = r_realized_geometry.get_component_for_write<CurveComponent>();
-  dst_component.replace(dst_curves_id);
+  r_realized_geometry.replace_curves(dst_curves_id);
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
   /* Copy settings from the first input geometry set with curves. */
@@ -1483,16 +1494,17 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \name Realize Instances
  * \{ */
 
-static void remove_id_attribute_from_instances(GeometrySet &geometry_set)
+static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
 {
-  geometry_set.modify_geometry_sets([&](GeometrySet &sub_geometry) {
+  geometry_set.modify_geometry_sets([&](bke::GeometrySet &sub_geometry) {
     if (Instances *instances = sub_geometry.get_instances_for_write()) {
       instances->custom_data_attributes().remove("id");
     }
   });
 }
 
-GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOptions &options)
+bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
+                                   const RealizeInstancesOptions &options)
 {
   /* The algorithm works in three steps:
    * 1. Preprocess each unique geometry that is instanced (e.g. each `Mesh`).
@@ -1526,7 +1538,7 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
   InstanceContext attribute_fallbacks(gather_info);
   gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
 
-  GeometrySet new_geometry_set;
+  bke::GeometrySet new_geometry_set;
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
