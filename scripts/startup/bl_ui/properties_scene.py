@@ -324,7 +324,7 @@ class SCENE_PT_simulation(SceneButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(scene, "use_custom_simulation_range", text="Simulation Range")
-        subcol = col.column()
+        subcol = col.column(align=True)
         subcol.active = scene.use_custom_simulation_range
         subcol.prop(scene, "simulation_frame_start", text="Start")
         subcol.prop(scene, "simulation_frame_end", text="End")
