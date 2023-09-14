@@ -15,3 +15,4 @@ Referenced by issue #109060, Regression: Crash when enabling Mask modifier Smoot
 Referenced by issue #109161, Baking UDIM multires freezes (or crashes)
 Referenced by commit ef9d9c6856d9e85f5dff30870898c206e5ffe103, Fix unnecessary corner edge computation in multires bake
 Referenced by issue #112335, The color attribute from Particle Instance Modifier is incorrect
+Referenced by commit 726bd3887fed69a7e6c60bf9d95fc9de6d0914dc, Fix #112335: particle instance modifier outputs wrong attributes
