@@ -484,11 +484,19 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
   else if (win->ghostwin) {
     char str[sizeof(Main::filepath) + 24];
     const char *filepath = BKE_main_blendfile_path_from_global();
+    char basepath[FILE_MAXDIR] = {0};
+    char filename[FILE_MAXFILE] = {0};
+    std::string location;
+    if (filepath[0]) {
+      BLI_path_split_dir_file(filepath, basepath, sizeof(basepath), filename, sizeof(filename));
+      location = " [" + std::string(basepath) + "]";
+    }
     SNPRINTF(str,
-             "%s%s%s - Blender %s",
+             "%s %s%s%s - Blender %s",
              wm->file_saved ? "" : "*",
-             filepath[0] ? filepath : IFACE_("(Unsaved)"),
+             filename[0] ? filename : IFACE_("(Unsaved)"),
              G_MAIN->recovered ? " (Recovered)" : "",
+             basepath[0] ? location.c_str() : "",
              BKE_blender_version_string_compact());
     GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
