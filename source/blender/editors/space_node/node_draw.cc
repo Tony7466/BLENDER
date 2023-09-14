@@ -652,6 +652,13 @@ static void node_update_basis_from_declaration(
     bke::bNodePanelRuntime *runtime;
   };
   Stack<PanelUpdate> panel_updates;
+
+  if (!buttons_drawn) {
+    buttons_drawn = true;
+    need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+  }
+
+
   /* Only true for the first item in the layout. */
   bool is_first = true;
 
