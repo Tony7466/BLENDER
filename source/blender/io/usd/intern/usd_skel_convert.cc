@@ -1292,9 +1292,6 @@ void export_deform_verts(const Mesh *mesh,
   /* Current offset into the indices and weights arrays. */
   int offset = 0;
 
-  /* Record number of out of bounds vert group indices, for error reporting. */
-  int num_out_of_bounds = 0;
-
   for (const int i : dverts.index_range()) {
     const MDeformVert &vert = dverts[i];
 
@@ -1311,31 +1308,18 @@ void export_deform_verts(const Mesh *mesh,
 
       int def_nr = static_cast<int>(vert.dw[j].def_nr);
 
-      /* This out of bounds check is necessary because in the past we've encountered
-       * cases where MDeformVert.totweight can be larger than the number of groups,
-       * possibly due to a Blender bug. */
       if (def_nr >= joint_index.size()) {
-        ++num_out_of_bounds;
+        BLI_assert_unreachable();
         continue;
       }
 
-      int bone_idx = joint_index[def_nr];
-
-      if (bone_idx == -1) {
+      if (joint_index[def_nr] == -1) {
         continue;
       }
 
-      joint_indices[offset] = bone_idx;
-
-      float w = vert.dw[j].weight;
-
-      joint_weights[offset] = w;
+      joint_indices[offset] = joint_index[def_nr];
+      joint_weights[offset] = vert.dw[j].weight;
     }
-  }
-
-  if (num_out_of_bounds > 0) {
-    printf("WARNING: There were %d deform verts with out of bounds deform group numbers.\n",
-           num_out_of_bounds);
   }
 
   pxr::UsdSkelNormalizeWeights(joint_weights, element_size);
