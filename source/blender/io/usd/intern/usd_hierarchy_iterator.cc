@@ -189,16 +189,16 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(
 void USDHierarchyIterator::add_usd_skel_export_mapping(const Object *obj, const pxr::SdfPath &path)
 {
   if (params_.export_shapekeys && is_mesh_with_shape_keys(obj)) {
-    shape_key_mesh_export_map_.insert(std::make_pair(obj, path));
+    shape_key_mesh_export_map_.add(obj, path);
   }
 
   if (params_.export_armatures && obj->type == OB_ARMATURE) {
-    armature_export_map_.insert(std::make_pair(obj, path));
+    armature_export_map_.add(obj, path);
   }
 
   if (params_.export_armatures && obj->type == OB_MESH && can_export_skinned_mesh(obj, depsgraph_))
   {
-    skinned_mesh_export_map_.insert(std::make_pair(obj, path));
+    skinned_mesh_export_map_.add(obj, path);
   }
 }
 

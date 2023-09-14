@@ -1123,9 +1123,9 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
                                 const Depsgraph *depsgraph)
 {
   /* Finish creating skinned mesh bindings. */
-  for (const auto &kv : skinned_mesh_export_map) {
-    const Object *mesh_obj = kv.first;
-    const pxr::SdfPath &mesh_path = kv.second;
+  for (const auto &item : skinned_mesh_export_map.items()) {
+    const Object *mesh_obj = item.key;
+    const pxr::SdfPath &mesh_path = item.value;
 
     /* Get the mesh prim from the stage. */
     pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
@@ -1148,8 +1148,8 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
       continue;
     }
     /* Look up the USD skeleton correpsoning to the armature object. */
-    ObjExportMap::const_iterator map_iter = armature_export_map.find(arm_obj);
-    if (map_iter == armature_export_map.end()) {
+    const pxr::SdfPath *path = armature_export_map.lookup_ptr(arm_obj);
+    if (!path) {
       WM_reportf(RPT_WARNING,
                  "%s: No export map entry for armature object %s",
                  __func__,
@@ -1157,7 +1157,7 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
       continue;
     }
     /* Get the skeleton prim. */
-    pxr::UsdPrim skel_prim = stage->GetPrimAtPath(pxr::SdfPath(map_iter->second));
+    pxr::UsdPrim skel_prim = stage->GetPrimAtPath(*path);
     pxr::UsdSkelSkeleton skel(skel_prim);
     if (!skel) {
       WM_reportf(RPT_WARNING,
@@ -1181,9 +1181,9 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
   std::vector<pxr::UsdPrim> mesh_prims;
 
   /* Finish creating blend shape bindings. */
-  for (const auto &kv : shape_key_mesh_export_map) {
-    const Object *mesh_obj = kv.first;
-    const pxr::SdfPath &mesh_path = kv.second;
+  for (const auto &item : shape_key_mesh_export_map.items()) {
+    const Object *mesh_obj = item.key;
+    const pxr::SdfPath &mesh_path = item.value;
 
     /* Get the mesh prim from the stage. */
     pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
@@ -1242,22 +1242,19 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
 
 void export_deform_verts(const Mesh *mesh,
                          const pxr::UsdSkelBindingAPI &skel_api,
-                         const std::vector<std::string> &bone_names)
+                         const Vector<std::string> &bone_names)
 {
-  if (!mesh || !skel_api) {
-    return;
-  }
+  BLI_assert(mesh);
+  BLI_assert(skel_api);
 
   /* Map a deform vertex group index to the
    * index of the corresponding joint.  I.e.,
    * joint_index[n] is the joint index of the
    * n-th vertex group. */
-  std::vector<int> joint_index;
+  Vector<int> joint_index;
 
   /* Build the index mapping. */
-  for (const bDeformGroup *def = (const bDeformGroup *)mesh->vertex_group_names.first; def;
-       def = def->next)
-  {
+  LISTBASE_FOREACH (const bDeformGroup *, def, &mesh->vertex_group_names) {
     int bone_idx = -1;
     /* For now, n-squared search is acceptable. */
     for (int i = 0; i < bone_names.size(); ++i) {
@@ -1267,14 +1264,14 @@ void export_deform_verts(const Mesh *mesh,
       }
     }
 
-    joint_index.push_back(bone_idx);
+    joint_index.append(bone_idx);
   }
 
-  if (joint_index.empty()) {
+  if (joint_index.is_empty()) {
     return;
   }
 
-  const blender::Span<MDeformVert> dverts = mesh->deform_verts();
+  const Span<MDeformVert> dverts = mesh->deform_verts();
 
   int max_totweight = 1;
   for (const int i : dverts.index_range()) {
@@ -1307,7 +1304,7 @@ void export_deform_verts(const Mesh *mesh,
     for (int j = 0; j < element_size; ++j, ++offset) {
 
       if (offset >= joint_indices.size()) {
-        printf("Programmer error: out of bounds joint indices array offset.\n");
+        BLI_assert_unreachable();
         return;
       }
 
@@ -1317,9 +1314,9 @@ void export_deform_verts(const Mesh *mesh,
 
       int def_nr = static_cast<int>(vert.dw[j].def_nr);
 
-      /* This out of bounds check is necessary because MDeformVert.totweight can be
-       * larger than the number of bDeformGroup structs in Object.defbase. It appears to be
-       * a Blender bug that can cause this scenario. */
+      /* This out of bounds check is necessary because in the past we've encountered
+       * cases where MDeformVert.totweight can be larger than the number of groups,
+       * possibly due to a Blender bug. */
       if (def_nr >= joint_index.size()) {
         ++num_out_of_bounds;
         continue;

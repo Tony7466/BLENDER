@@ -37,7 +37,9 @@
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
@@ -78,14 +80,14 @@ struct BlendShapeMergeInfo {
  * Attempt to add the given name to the 'names' set as a unique entry, modifying
  * the name with a numerical suffix if necessary, and return the unique name that
  * was added to the set. */
-std::string add_unique_name(std::set<std::string> &names, const std::string &name)
+std::string add_unique_name(blender::Set<std::string> &names, const std::string &name)
 {
   std::string unique_name = name;
   int suffix = 2;
-  while (names.find(unique_name) != names.end()) {
+  while (names.contains(unique_name)) {
     unique_name = name + std::to_string(suffix++);
   }
-  names.insert(unique_name);
+  names.add(unique_name);
   return unique_name;
 }
 
@@ -188,7 +190,9 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
 
 const Key *get_mesh_shape_key(const Object *obj)
 {
-  if (!obj || !obj->data || obj->type != OB_MESH) {
+  BLI_assert(obj);
+
+  if (!obj->data || obj->type != OB_MESH) {
     return nullptr;
   }
 
@@ -239,7 +243,7 @@ void create_blend_shapes(pxr::UsdStageRefPtr stage,
     }
 
     if (kb == basis_key) {
-      // Skip the basis.
+      /* Skip the basis. */
       continue;
     }
 
@@ -401,14 +405,14 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
     return;
   }
 
-  std::vector<BlendShapeMergeInfo> merge_info;
+  Vector<BlendShapeMergeInfo> merge_info;
 
   /* We are merging blend shape names and weighs from multiple
    * meshes to a single animation. In case of name collisions,
    * we must generate unique blend shape names for the merged
    * result.  This set keeps track of the unique names that will
    * be combined on the animation. */
-  std::set<std::string> merged_names;
+  Set<std::string> merged_names;
 
   /* Iterate over all the meshes, generate unique blend shape names in case of name
    * collisions and set up the information we will need to merge the results. */
@@ -457,13 +461,13 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
     }
 
     /* Generate information we will need to merge the weight samples below. */
-    merge_info.push_back(BlendShapeMergeInfo());
-    merge_info.back().src_blend_shapes = unique_names;
-    merge_info.back().src_weights_attr = temp_weights_attr;
+    merge_info.append(BlendShapeMergeInfo());
+    merge_info.last().src_blend_shapes = unique_names;
+    merge_info.last().src_weights_attr = temp_weights_attr;
   }
 
-  if (merged_names.empty()) {
-    /* No blend shape names were collecte. Shouldn't usually happen. */
+  if (merged_names.is_empty()) {
+    /* No blend shape names were collected. Shouldn't usually happen. */
     return;
   }
 
@@ -485,7 +489,7 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
 
   /* Merge the weight time samples. */
   std::vector<double> times;
-  merge_info.front().src_weights_attr.GetTimeSamples(&times);
+  merge_info.first().src_weights_attr.GetTimeSamples(&times);
 
   if (times.empty()) {
     /* Times may be empty if there is only a default value for the weights,
@@ -534,8 +538,7 @@ Mesh *get_shape_key_basis_mesh(Object *obj)
   }
 
   /* Make a copy of the mesh so we can update the verts to the basis shape. */
-  Mesh *temp_mesh = reinterpret_cast<Mesh *>(
-      BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));
+  Mesh *temp_mesh = BKE_mesh_copy_for_eval(mesh);
 
   /* Update the verts. */
   BKE_keyblock_convert_to_mesh(

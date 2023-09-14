@@ -819,10 +819,10 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
     return;
   }
 
-  std::vector<std::string> bone_names;
+  Vector<std::string> bone_names;
   get_armature_bone_names(arm_obj, bone_names);
 
-  if (bone_names.empty()) {
+  if (bone_names.is_empty()) {
     WM_reportf(RPT_WARNING,
                "%s: no armature bones for skinned mesh %s\n",
                __func__,

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_function_ref.hh"
 #include "BLI_vector.hh"
 
 #include <pxr/base/tf/token.h>
@@ -25,7 +26,7 @@ namespace blender::io::usd {
  * \param ob_arm: The armature object
  * \param visitor: The function to invoke on each bone
  */
-void visit_bones(const Object *ob_arm, std::function<void(const Bone *)> visitor);
+void visit_bones(const Object *ob_arm, FunctionRef<void(const Bone *)> visitor);
 
 /**
  * Return in 'r_names' the names of the given armature object's bones.
@@ -33,7 +34,7 @@ void visit_bones(const Object *ob_arm, std::function<void(const Bone *)> visitor
  * \param ob_arm: The armature object
  * \param r_names: The returned list of bone names
  */
-void get_armature_bone_names(const Object *ob_arm, std::vector<std::string> &r_names);
+void get_armature_bone_names(const Object *ob_arm, Vector<std::string> &r_names);
 
 /**
  * Return the USD joint path corresponding to the given bone. For example, for the bone

@@ -13,10 +13,10 @@
 
 #include "WM_api.hh"
 
-using namespace blender::io::usd;
+namespace blender::io::usd {
 
 /* Recursively invoke the 'visitor' function on the given bone and its children. */
-static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visitor)
+static void visit_bones(const Bone *bone, blender::FunctionRef<void(const Bone *)> visitor)
 {
   if (!(bone && visitor)) {
     return;
@@ -24,7 +24,7 @@ static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visi
 
   visitor(bone);
 
-  for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
+  LISTBASE_FOREACH (const Bone *, child, &bone->childbase) {
     visit_bones(child, visitor);
   }
 }
@@ -33,9 +33,9 @@ static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visi
  * Return the modifier of the given type enabled for the given dependency graph's
  * evaluation mode (viewport or render).
  */
-static ModifierData *get_enabled_modifier(const Object *obj,
-                                          ModifierType type,
-                                          const Depsgraph *depsgraph)
+static const ModifierData *get_enabled_modifier(const Object *obj,
+                                                ModifierType type,
+                                                const Depsgraph *depsgraph)
 {
   BLI_assert(obj);
   BLI_assert(depsgraph);
@@ -59,17 +59,16 @@ static ModifierData *get_enabled_modifier(const Object *obj,
 
 /* Return the armature modifier on the given object.  Return null if no armature modifier
  * can be found. */
-static ArmatureModifierData *get_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
+static const ArmatureModifierData *get_armature_modifier(const Object *obj,
+                                                         const Depsgraph *depsgraph)
 {
   BLI_assert(obj);
-  ArmatureModifierData *mod = reinterpret_cast<ArmatureModifierData *>(
+  const ArmatureModifierData *mod = reinterpret_cast<const ArmatureModifierData *>(
       get_enabled_modifier(obj, eModifierType_Armature, depsgraph));
   return mod;
 }
 
-namespace blender::io::usd {
-
-void visit_bones(const Object *ob_arm, std::function<void(const Bone *)> visitor)
+void visit_bones(const Object *ob_arm, FunctionRef<void(const Bone *)> visitor)
 {
   if (!(ob_arm && ob_arm->type == OB_ARMATURE && ob_arm->data)) {
     return;
@@ -82,13 +81,9 @@ void visit_bones(const Object *ob_arm, std::function<void(const Bone *)> visitor
   }
 }
 
-void get_armature_bone_names(const Object *ob_arm, std::vector<std::string> &r_names)
+void get_armature_bone_names(const Object *ob_arm, Vector<std::string> &r_names)
 {
-  auto visitor = [&r_names](const Bone *bone) {
-    if (bone) {
-      r_names.push_back(bone->name);
-    }
-  };
+  auto visitor = [&r_names](const Bone *bone) { r_names.append(bone->name); };
 
   visit_bones(ob_arm, visitor);
 }
@@ -144,7 +139,7 @@ bool is_armature_modifier_bone_name(const Object *obj,
     return false;
   }
 
-  bArmature *arm = (bArmature *)arm_mod->object->data;
+  bArmature *arm = static_cast<bArmature *>(arm_mod->object->data);
 
   return BKE_armature_find_bone_name(arm, name);
 }

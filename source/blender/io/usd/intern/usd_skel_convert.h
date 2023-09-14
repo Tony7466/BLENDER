@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
+#include "BLI_map.hh"
+#include "BLI_vector.hh"
+
 #include <map>
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usdGeom/xformCache.h>
@@ -74,7 +77,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
 /**
  * Map an object to its USD prim export path.
  */
-using ObjExportMap = std::map<const Object *, pxr::SdfPath>;
+using ObjExportMap = Map<const Object *, pxr::SdfPath>;
 
 /**
  * This function is called after the USD writers are invoked, to
@@ -82,7 +85,7 @@ using ObjExportMap = std::map<const Object *, pxr::SdfPath>;
  * meshes to skeletons or to set blend shape animation data.
  *
  * \param stage: The stage
- * \param armature_export_map: Map armature objects to USD skeleton paths
+ * \param armature_export_map: Map armature objects to USD skeletons
  * \param skinned_mesh_export_map: Map mesh objects to USD skinned meshes
  * \param shape_key_export_map: Map mesh objects with shape keye to USD meshes
  *                              with blend shape targets
@@ -128,6 +131,6 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
  */
 void export_deform_verts(const Mesh *mesh,
                          const pxr::UsdSkelBindingAPI &skel_api,
-                         const std::vector<std::string> &bone_names);
+                         const Vector<std::string> &bone_names);
 
 }  // namespace blender::io::usd
