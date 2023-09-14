@@ -180,42 +180,66 @@ void ui_but_pie_dir(RadialDirection dir, float vec[2])
 
 static bool ui_but_isect_pie_seg(const uiBlock *block, const uiBut *but)
 {
-  /* Plus/minus 45 degrees: `cosf(DEG2RADF(45)) == M_SQRT1_2` */
-  const float angle_range_cos = M_SQRT1_2;
-  float vec[2];
-
   if (block->pie_data.flags & UI_PIE_INVALID_DIR) {
     return false;
   }
 
-  ui_but_pie_dir(but->pie_dir, vec);
+  /* Plus/minus 45 degrees: `cosf(DEG2RADF(45)) == M_SQRT1_2`. */
+  const float angle_4th_cos = M_SQRT1_2;
+  /* Plus/minus 22.5 degrees: `cosf(DEG2RADF(22.5))`. */
+  const float angle_8th_cos = 0.9238795325112867;
 
-  const float angle_but_cos = dot_v2v2(vec, block->pie_data.pie_dir);
-  if (angle_but_cos > angle_range_cos) {
-    /* Check adjacent exist and are closer. */
-    if ((block->pie_data.flags & UI_PIE_DEGREES_RANGE_LARGE) == 0) {
-      const RadialDirection dir_adjacent[2] = {
-          UI_RADIAL_DIRECTION_PREV(but->pie_dir),
-          UI_RADIAL_DIRECTION_NEXT(but->pie_dir),
-      };
-      LISTBASE_FOREACH_BACKWARD (uiBut *, but, &block->buttons) {
-        if (!ELEM(but->pie_dir, dir_adjacent[0], dir_adjacent[1])) {
-          continue;
-        }
-        if (ELEM(but->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE)) {
-          continue;
-        }
-        ui_but_pie_dir(but->pie_dir, vec);
-        /* The adjacent button is closer, ignore this button. */
-        if (dot_v2v2(vec, block->pie_data.pie_dir) > angle_but_cos) {
-          return false;
-        }
-      }
-    }
+  /* Use a large bias so edge-cases fall back to comparing with the adjacent direction. */
+  const float eps_bias = 1e-4;
+
+  float but_dir[2];
+  ui_but_pie_dir(but->pie_dir, but_dir);
+
+  const float angle_but_cos = dot_v2v2(but_dir, block->pie_data.pie_dir);
+  /* Outside range (with bias). */
+  if (angle_but_cos < angle_4th_cos - eps_bias) {
+    return false;
+  }
+  /* Inside range (with bias). */
+  if (angle_but_cos > angle_8th_cos + eps_bias) {
     return true;
   }
 
-  return false;
+  /* Check if adjacent direction is closer (with tie breaker). */
+  RadialDirection dir_adjacent_8th, dir_adjacent_4th;
+  if (angle_signed_v2v2(but_dir, block->pie_data.pie_dir) < 0.0f) {
+    dir_adjacent_8th = UI_RADIAL_DIRECTION_PREV(but->pie_dir);
+    dir_adjacent_4th = UI_RADIAL_DIRECTION_PREV(dir_adjacent_8th);
+  }
+  else {
+    dir_adjacent_8th = UI_RADIAL_DIRECTION_NEXT(but->pie_dir);
+    dir_adjacent_4th = UI_RADIAL_DIRECTION_NEXT(dir_adjacent_8th);
+  }
+
+  bool has_8th_adjacent = false;
+  if ((block->pie_data.flags & UI_PIE_DEGREES_RANGE_LARGE) == 0) {
+    LISTBASE_FOREACH_BACKWARD (uiBut *, but, &block->buttons) {
+      if (but->pie_dir == dir_adjacent_8th) {
+        if (!ELEM(but->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE)) {
+          has_8th_adjacent = true;
+        }
+        break;
+      }
+    }
+  }
+
+  /* Compare with the adjacent direction (even if there is no button). */
+  const RadialDirection dir_adjacent = has_8th_adjacent ? dir_adjacent_8th : dir_adjacent_4th;
+  float but_dir_adjacent[2];
+  ui_but_pie_dir(dir_adjacent, but_dir_adjacent);
+
+  const float angle_adjacent_cos = dot_v2v2(but_dir_adjacent, block->pie_data.pie_dir);
+
+  /* Tie breaker, so one of the buttons is always selected. */
+  if (UNLIKELY(angle_but_cos == angle_adjacent_cos)) {
+    return but->pie_dir > dir_adjacent;
+  }
+  return angle_but_cos > angle_adjacent_cos;
 }
 
 bool ui_but_contains_pt(const uiBut *but, float mx, float my)
