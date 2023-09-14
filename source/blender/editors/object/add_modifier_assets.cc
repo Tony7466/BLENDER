@@ -196,7 +196,7 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
   if (!tree.uncategorized_assets.is_empty()) {
     uiItemS(layout);
     uiItemM(
-        layout, "OBJECT_MT_add_modifier_uncategorized_assets", IFACE_("Uncategorized"), ICON_NONE);
+        layout, "OBJECT_MT_add_modifier_uncategorized_assets", IFACE_("No Catalog"), ICON_NONE);
   }
 }
 
@@ -290,6 +290,9 @@ static MenuType modifier_add_uncategorized_assets_menu_type()
   type.draw = uncategorized_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
+  type.description = N_(
+      "Modifier node group assets not assigned to a catalog.\n"
+      "Catalogs can be assigned in the Asset Browser.");
   return type;
 }
 

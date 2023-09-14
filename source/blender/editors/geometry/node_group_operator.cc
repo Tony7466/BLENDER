@@ -701,6 +701,9 @@ MenuType node_group_operator_assets_menu_uncategorized()
   type.draw = catalog_assets_draw_uncategorized;
   type.listener = asset::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
+  type.description = N_(
+      "Tool node group assets not assigned to a catalog.\n"
+      "Catalogs can be assigned in the Asset Browser.");
   return type;
 }
 
@@ -764,7 +767,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (!tree->uncategorized_assets.is_empty()) {
     uiItemM(&layout,
             "GEO_MT_node_operator_catalog_assets_uncategorized",
-            IFACE_("Uncategorized"),
+            IFACE_("No Catalog"),
             ICON_NONE);
   }
 }
