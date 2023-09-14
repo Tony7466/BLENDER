@@ -1364,7 +1364,7 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 7)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 13)) {
     version_nla_action_strip_hold(bmain);
   }
 
