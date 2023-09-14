@@ -380,7 +380,7 @@ static bool seq_edit_split_effect_inputs_intersect(const Scene *scene,
 }
 
 static bool seq_edit_split_operation_permitted_check(const Scene *scene,
-                                                     blender::VectorSet<Sequence *> &strips,
+                                                     blender::Span<Sequence *> strips,
                                                      const int timeline_frame,
                                                      const char **r_error)
 {

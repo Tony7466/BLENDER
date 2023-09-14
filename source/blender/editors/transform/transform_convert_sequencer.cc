@@ -271,7 +271,7 @@ static void free_transform_custom_data(TransCustomData *custom_data)
 }
 
 /* Canceled, need to update the strips display. */
-static void seq_transform_cancel(TransInfo *t, blender::VectorSet<Sequence *> &transformed_strips)
+static void seq_transform_cancel(TransInfo *t, blender::Span<Sequence *> transformed_strips)
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(t->scene));
 
@@ -290,7 +290,7 @@ static ListBase *seqbase_active_get(const TransInfo *t)
   return SEQ_active_seqbase_get(ed);
 }
 
-static bool seq_transform_check_overlap(blender::VectorSet<Sequence *> &transformed_strips)
+static bool seq_transform_check_overlap(blender::Span<Sequence *> transformed_strips)
 {
   for (Sequence *seq : transformed_strips) {
     if (seq->flag & SEQ_OVERLAP) {
@@ -320,7 +320,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
     return;
   }
 
-  blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
+  blender::VectorSet transformed_strips = seq_transform_collection_from_transdata(tc);
   SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), transformed_strips, SEQ_query_strip_effect_chain);
 
@@ -429,7 +429,7 @@ static void query_time_dependent_strips_strips(
    * If any 2-input effect changes position because handles were moved, animation should be offset.
    * With single input effect, it is less likely desirable to move animation. */
 
-  blender::VectorSet<Sequence *> selected_strips = SEQ_query_selected_strips(seqbase);
+  blender::VectorSet selected_strips = SEQ_query_selected_strips(seqbase);
   SEQ_iterator_set_expand(t->scene, seqbase, selected_strips, SEQ_query_strip_effect_chain);
   for (Sequence *seq : selected_strips) {
     /* Check only 2 input effects. */
@@ -631,7 +631,7 @@ static void flushTransSeq(TransInfo *t)
 
   /* need to do the overlap check in a new loop otherwise adjacent strips
    * will not be updated and we'll get false positives */
-  blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
+  blender::VectorSet transformed_strips = seq_transform_collection_from_transdata(tc);
   SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), transformed_strips, SEQ_query_strip_effect_chain);
 

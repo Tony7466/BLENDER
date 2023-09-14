@@ -1812,7 +1812,7 @@ static const EnumPropertyItem sequencer_prop_select_grouped_types[] = {
 
 #define SEQ_CHANNEL_CHECK(_seq, _chan) ELEM((_chan), 0, (_seq)->machine)
 
-static bool select_grouped_type(blender::VectorSet<Sequence *> strips,
+static bool select_grouped_type(blender::Span<Sequence *> strips,
                                 ListBase * /*seqbase*/,
                                 Sequence *actseq,
                                 const int channel)
@@ -1829,7 +1829,7 @@ static bool select_grouped_type(blender::VectorSet<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_type_basic(blender::VectorSet<Sequence *> strips,
+static bool select_grouped_type_basic(blender::Span<Sequence *> strips,
                                       ListBase * /*seqbase*/,
                                       Sequence *actseq,
                                       const int channel)
@@ -1847,7 +1847,7 @@ static bool select_grouped_type_basic(blender::VectorSet<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_type_effect(blender::VectorSet<Sequence *> strips,
+static bool select_grouped_type_effect(blender::Span<Sequence *> strips,
                                        ListBase * /*seqbase*/,
                                        Sequence *actseq,
                                        const int channel)
@@ -1866,7 +1866,7 @@ static bool select_grouped_type_effect(blender::VectorSet<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
+static bool select_grouped_data(blender::Span<Sequence *> strips,
                                 ListBase * /*seqbase*/,
                                 Sequence *actseq,
                                 const int channel)
@@ -1920,7 +1920,7 @@ static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_effect(blender::VectorSet<Sequence *> strips,
+static bool select_grouped_effect(blender::Span<Sequence *> strips,
                                   ListBase * /*seqbase*/,
                                   Sequence *actseq,
                                   const int channel)
@@ -1959,7 +1959,7 @@ static bool select_grouped_effect(blender::VectorSet<Sequence *> strips,
 }
 
 static bool select_grouped_time_overlap(const Scene *scene,
-                                        blender::VectorSet<Sequence *> strips,
+                                        blender::Span<Sequence *> strips,
                                         ListBase * /*seqbase*/,
                                         Sequence *actseq)
 {

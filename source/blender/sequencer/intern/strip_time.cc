@@ -395,7 +395,7 @@ void SEQ_timeline_boundbox(const Scene *scene, const ListBase *seqbase, rctf *re
 }
 
 static bool strip_exists_at_frame(const Scene *scene,
-                                  blender::VectorSet<Sequence *> &strips,
+                                  blender::Span<Sequence *> strips,
                                   const int timeline_frame)
 {
   for (Sequence *seq : strips) {

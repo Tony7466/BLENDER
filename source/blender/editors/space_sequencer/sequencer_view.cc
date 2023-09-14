@@ -272,7 +272,7 @@ void SEQUENCER_OT_view_zoom_ratio(wmOperatorType *ot)
  * \{ */
 
 static void seq_view_collection_rect_preview(Scene *scene,
-                                             blender::VectorSet<Sequence *> &strips,
+                                             blender::Span<Sequence *> strips,
                                              rctf *rect)
 {
   float min[2], max[2];
@@ -295,7 +295,7 @@ static void seq_view_collection_rect_preview(Scene *scene,
 }
 
 static void seq_view_collection_rect_timeline(Scene *scene,
-                                              blender::VectorSet<Sequence *> &strips,
+                                              blender::Span<Sequence *> strips,
                                               rctf *rect)
 {
   int xmin = MAXFRAME * 2;

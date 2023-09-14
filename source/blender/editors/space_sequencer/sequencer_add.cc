@@ -367,7 +367,7 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
 
 /* In this alternative version we only check for overlap, but do not do anything about them. */
 static bool seq_load_apply_generic_options_only_test_overlap(
-    bContext *C, wmOperator *op, Sequence *seq, blender::VectorSet<Sequence *> &strip_col)
+    bContext *C, wmOperator *op, Sequence *seq)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -380,8 +380,6 @@ static bool seq_load_apply_generic_options_only_test_overlap(
     seq->flag |= SELECT;
     SEQ_select_active_set(scene, seq);
   }
-
-  strip_col.add(seq);
 
   return SEQ_transform_test_overlap(scene, ed->seqbasep, seq);
 }
@@ -775,7 +773,7 @@ static IMB_Proxy_Size seq_get_proxy_size_flags(bContext *C)
   return proxy_sizes;
 }
 
-static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> &movie_strips)
+static void seq_build_proxy(bContext *C, blender::Span<Sequence *> movie_strips)
 {
   if (U.sequencer_proxy_setup != USER_SEQ_PROXY_SETUP_AUTOMATIC) {
     return;
@@ -824,7 +822,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
   bool overlap_shuffle_override = RNA_boolean_get(op->ptr, "overlap") == false &&
                                   RNA_boolean_get(op->ptr, "overlap_shuffle_override");
   bool has_seq_overlap = false;
-  blender::VectorSet<Sequence *> strip_col;
+  blender::VectorSet<Sequence *> added_strips;
 
   RNA_BEGIN (op->ptr, itemptr, "files") {
     char dir_only[FILE_MAX];
@@ -845,10 +843,12 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       if (RNA_boolean_get(op->ptr, "sound")) {
         seq_sound = SEQ_add_sound_strip(bmain, scene, ed->seqbasep, load_data);
         sequencer_add_movie_clamp_sound_strip_length(scene, seq_movie, seq_sound);
+        added_strips.add(seq_movie);
 
         if (seq_sound) {
           /* The video has sound, shift the video strip up a channel to make room for the sound
            * strip. */
+          added_strips.add(seq_sound);
           seq_movie->machine++;
         }
       }
@@ -857,9 +857,9 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
                                 SEQ_time_left_handle_frame_get(scene, seq_movie);
       if (overlap_shuffle_override) {
         has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_sound, strip_col);
+            C, op, seq_sound);
         has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_movie, strip_col);
+            C, op, seq_movie);
       }
       else {
         seq_load_apply_generic_options(C, op, seq_sound);
@@ -875,7 +875,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       ScrArea *area = CTX_wm_area(C);
       const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag &
                                      SEQ_MARKER_TRANS) != 0;
-      SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
+      SEQ_transform_handle_overlap(scene, ed->seqbasep, added_strips, use_sync_markers);
     }
   }
 }
@@ -891,6 +891,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
 
   Sequence *seq_movie = nullptr;
   Sequence *seq_sound = nullptr;
+  blender::VectorSet<Sequence *> added_strips;
 
   seq_movie = SEQ_add_movie_strip(bmain, scene, ed->seqbasep, load_data);
 
@@ -901,7 +902,10 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   if (RNA_boolean_get(op->ptr, "sound")) {
     seq_sound = SEQ_add_sound_strip(bmain, scene, ed->seqbasep, load_data);
     sequencer_add_movie_clamp_sound_strip_length(scene, seq_movie, seq_sound);
+    added_strips.add(seq_movie);
+
     if (seq_sound) {
+      added_strips.add(seq_sound);
       /* The video has sound, shift the video strip up a channel to make room for the sound
        * strip. */
       seq_movie->machine++;
@@ -911,19 +915,18 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   bool overlap_shuffle_override = RNA_boolean_get(op->ptr, "overlap") == false &&
                                   RNA_boolean_get(op->ptr, "overlap_shuffle_override");
   if (overlap_shuffle_override) {
-    blender::VectorSet<Sequence *> strip_col;
     bool has_seq_overlap = false;
 
     has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_sound, strip_col);
+        C, op, seq_sound);
     has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_movie, strip_col);
+        C, op, seq_movie);
 
     if (has_seq_overlap) {
       ScrArea *area = CTX_wm_area(C);
       const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag &
                                      SEQ_MARKER_TRANS) != 0;
-      SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
+      SEQ_transform_handle_overlap(scene, ed->seqbasep, added_strips, use_sync_markers);
     }
   }
   else {

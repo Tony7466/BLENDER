@@ -397,7 +397,7 @@ static bool seq_prefetch_seq_has_disk_cache(PrefetchJob *pfjob,
 static bool seq_prefetch_scene_strip_is_rendered(PrefetchJob *pfjob,
                                                  ListBase *channels,
                                                  ListBase *seqbase,
-                                                 blender::VectorSet<Sequence *> &scene_strips,
+                                                 blender::Span<Sequence *> scene_strips,
                                                  bool is_recursive_check)
 {
   float cfra = seq_prefetch_cfra(pfjob);

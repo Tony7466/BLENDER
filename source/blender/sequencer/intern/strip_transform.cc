@@ -203,7 +203,7 @@ static bool shuffle_seq_test_overlap(const Scene *scene,
 }
 
 static int shuffle_seq_time_offset_get(const Scene *scene,
-                                       blender::VectorSet<Sequence *> &strips_to_shuffle,
+                                       blender::Span<Sequence *> strips_to_shuffle,
                                        ListBase *seqbasep,
                                        char dir)
 {
@@ -246,7 +246,7 @@ static int shuffle_seq_time_offset_get(const Scene *scene,
   return offset;
 }
 
-bool SEQ_transform_seqbase_shuffle_time(blender::VectorSet<Sequence *> &strips_to_shuffle,
+bool SEQ_transform_seqbase_shuffle_time(blender::Span<Sequence *> strips_to_shuffle,
                                         ListBase *seqbasep,
                                         Scene *evil_scene,
                                         ListBase *markers,
@@ -257,8 +257,8 @@ bool SEQ_transform_seqbase_shuffle_time(blender::VectorSet<Sequence *> &strips_t
       strips_to_shuffle, empty_set, seqbasep, evil_scene, markers, use_sync_markers);
 }
 
-bool SEQ_transform_seqbase_shuffle_time(blender::VectorSet<Sequence *> &strips_to_shuffle,
-                                        blender::VectorSet<Sequence *> &time_dependent_strips,
+bool SEQ_transform_seqbase_shuffle_time(blender::Span<Sequence *> strips_to_shuffle,
+                                        blender::Span<Sequence *> time_dependent_strips,
                                         ListBase *seqbasep,
                                         Scene *evil_scene,
                                         ListBase *markers,
@@ -294,7 +294,7 @@ bool SEQ_transform_seqbase_shuffle_time(blender::VectorSet<Sequence *> &strips_t
 }
 
 static blender::VectorSet<Sequence *> extract_standalone_strips(
-    blender::VectorSet<Sequence *> &transformed_strips)
+    blender::Span<Sequence *> transformed_strips)
 {
   blender::VectorSet<Sequence *> standalone_strips;
 
@@ -310,8 +310,8 @@ static blender::VectorSet<Sequence *> extract_standalone_strips(
 static blender::VectorSet<Sequence *> query_right_side_strips(
     const Scene *scene,
     ListBase *seqbase,
-    blender::VectorSet<Sequence *> &transformed_strips,
-    blender::VectorSet<Sequence *> &time_dependent_strips)
+    blender::Span<Sequence *> transformed_strips,
+    blender::Span<Sequence *> time_dependent_strips)
 {
   int minframe = MAXFRAME;
   {
@@ -341,8 +341,8 @@ static blender::VectorSet<Sequence *> query_right_side_strips(
 static void seq_transform_handle_expand_to_fit(
     Scene *scene,
     ListBase *seqbasep,
-    blender::VectorSet<Sequence *> &transformed_strips,
-    blender::VectorSet<Sequence *> &time_dependent_strips,
+    blender::Span<Sequence *> transformed_strips,
+    blender::Span<Sequence *> time_dependent_strips,
     bool use_sync_markers)
 {
   ListBase *markers = &scene->markers;
@@ -372,7 +372,7 @@ static void seq_transform_handle_expand_to_fit(
 }
 
 static blender::VectorSet<Sequence *> query_overwrite_targets(
-    const Scene *scene, ListBase *seqbasep, blender::VectorSet<Sequence *> &transformed_strips)
+    const Scene *scene, ListBase *seqbasep, blender::Span<Sequence *> transformed_strips)
 {
   blender::VectorSet<Sequence *> overwrite_targets = SEQ_query_unselected_strips(seqbasep);
 
@@ -502,7 +502,7 @@ static void seq_transform_handle_overwrite_trim(Scene *scene,
 
 static void seq_transform_handle_overwrite(Scene *scene,
                                            ListBase *seqbasep,
-                                           blender::VectorSet<Sequence *> &transformed_strips)
+                                           blender::Span<Sequence *> transformed_strips)
 {
   blender::VectorSet targets = query_overwrite_targets(scene, seqbasep, transformed_strips);
   blender::VectorSet<Sequence *> strips_to_delete;
@@ -540,8 +540,8 @@ static void seq_transform_handle_overwrite(Scene *scene,
 static void seq_transform_handle_overlap_shuffle(
     Scene *scene,
     ListBase *seqbasep,
-    blender::VectorSet<Sequence *> &transformed_strips,
-    blender::VectorSet<Sequence *> &time_dependent_strips,
+    blender::Span<Sequence *> transformed_strips,
+    blender::Span<Sequence *> time_dependent_strips,
     bool use_sync_markers)
 {
   ListBase *markers = &scene->markers;
@@ -554,7 +554,7 @@ static void seq_transform_handle_overlap_shuffle(
 
 void SEQ_transform_handle_overlap(Scene *scene,
                                   ListBase *seqbasep,
-                                  blender::VectorSet<Sequence *> &transformed_strips,
+                                  blender::Span<Sequence *> transformed_strips,
                                   bool use_sync_markers)
 {
   blender::VectorSet<Sequence *> empty_set;
@@ -563,8 +563,8 @@ void SEQ_transform_handle_overlap(Scene *scene,
 
 void SEQ_transform_handle_overlap(Scene *scene,
                                   ListBase *seqbasep,
-                                  blender::VectorSet<Sequence *> &transformed_strips,
-                                  blender::VectorSet<Sequence *> &time_dependent_strips,
+                                  blender::Span<Sequence *> transformed_strips,
+                                  blender::Span<Sequence *> time_dependent_strips,
                                   bool use_sync_markers)
 {
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
@@ -741,7 +741,7 @@ void SEQ_image_preview_unit_from_px(const Scene *scene, const float co_src[2], f
 }
 
 void SEQ_image_transform_bounding_box_from_collection(Scene *scene,
-                                                      blender::VectorSet<Sequence *> &strips,
+                                                      blender::Span<Sequence *> strips,
                                                       bool apply_rotation,
                                                       float r_min[2],
                                                       float r_max[2])

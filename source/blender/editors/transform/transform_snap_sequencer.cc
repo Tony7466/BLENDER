@@ -42,13 +42,13 @@ struct TransSeqSnapData {
 /** \name Snap sources
  * \{ */
 
-static int seq_get_snap_source_points_len(blender::VectorSet<Sequence *> &snap_sources)
+static int seq_get_snap_source_points_len(blender::Span<Sequence *> snap_sources)
 {
   return snap_sources.size() * 2;
 }
 
 static void seq_snap_source_points_alloc(TransSeqSnapData *snap_data,
-                                         blender::VectorSet<Sequence *> &snap_sources)
+                                         blender::Span<Sequence *> snap_sources)
 {
   const size_t point_count = seq_get_snap_source_points_len(snap_sources);
   snap_data->source_snap_points = static_cast<int *>(
@@ -64,7 +64,7 @@ static int cmp_fn(const void *a, const void *b)
 
 static void seq_snap_source_points_build(const Scene *scene,
                                          TransSeqSnapData *snap_data,
-                                         blender::VectorSet<Sequence *> &snap_sources)
+                                         blender::Span<Sequence *> snap_sources)
 {
   int i = 0;
   for (Sequence *seq : snap_sources) {
@@ -115,7 +115,7 @@ static void query_strip_effects_fn(const Scene *scene,
 }
 
 static blender::VectorSet<Sequence *> query_snap_targets(
-    Scene *scene, blender::VectorSet<Sequence *> &snap_sources, bool exclude_selected)
+    Scene *scene, blender::Span<Sequence *> snap_sources, bool exclude_selected)
 {
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
@@ -151,7 +151,7 @@ static blender::VectorSet<Sequence *> query_snap_targets(
 }
 
 static int seq_get_snap_target_points_count(short snap_mode,
-                                            blender::VectorSet<Sequence *> &snap_targets)
+                                            blender::Span<Sequence *> snap_targets)
 {
   int count = 2; /* Strip start and end are always used. */
 
@@ -170,7 +170,7 @@ static int seq_get_snap_target_points_count(short snap_mode,
 
 static void seq_snap_target_points_alloc(short snap_mode,
                                          TransSeqSnapData *snap_data,
-                                         blender::VectorSet<Sequence *> &snap_targets)
+                                         blender::Span<Sequence *> snap_targets)
 {
   const size_t point_count = seq_get_snap_target_points_count(snap_mode, snap_targets);
   snap_data->target_snap_points = static_cast<int *>(
@@ -182,7 +182,7 @@ static void seq_snap_target_points_alloc(short snap_mode,
 static void seq_snap_target_points_build(Scene *scene,
                                          short snap_mode,
                                          TransSeqSnapData *snap_data,
-                                         blender::VectorSet<Sequence *> &snap_targets)
+                                         blender::Span<Sequence *> snap_targets)
 {
   int i = 0;
 
