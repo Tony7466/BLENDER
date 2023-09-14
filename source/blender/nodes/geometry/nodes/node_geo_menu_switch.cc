@@ -18,58 +18,106 @@ namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree &tree,
+                                 const bNode &node,
+                                 NodeDeclaration &declaration)
 {
+  const NodeMenuSwitch &storage = node_storage(node);
+  const eNodeSocketDatatype input_type = eNodeSocketDatatype(storage.input_type);
+
+  /* Remove outdated sockets. */
+  declaration.skip_updating_sockets = false;
+  /* Allow the node group interface to define the socket order. */
+  declaration.use_custom_socket_order = true;
+
+  NodeDeclarationBuilder b(declaration);
+
+  const bool fields_type = ELEM(storage.input_type,
+                                SOCK_FLOAT,
+                                SOCK_INT,
+                                SOCK_BOOLEAN,
+                                SOCK_VECTOR,
+                                SOCK_RGBA,
+                                SOCK_STRING,
+                                SOCK_ROTATION);
+
   // TODO implement the Enum socket type
-  // b.add_input<decl::Enum>("Switch").default_value(false).supports_field();
-  // b.add_input<decl::Enum>("Switch", "Switch_001").default_value(false);
+  auto sb = b.add_input_output<decl::Bool>("Switch").default_value(false);
+  if (fields_type) {
+    sb.supports_field();
+  }
 
-  b.add_input<decl::Float>("False").supports_field();
-  b.add_input<decl::Float>("True").supports_field();
-  b.add_input<decl::Int>("False", "False_001").min(-100000).max(100000).supports_field();
-  b.add_input<decl::Int>("True", "True_001").min(-100000).max(100000).supports_field();
-  b.add_input<decl::Bool>("False", "False_002").default_value(false).hide_value().supports_field();
-  b.add_input<decl::Bool>("True", "True_002").default_value(true).hide_value().supports_field();
-  b.add_input<decl::Vector>("False", "False_003").supports_field();
-  b.add_input<decl::Vector>("True", "True_003").supports_field();
+  for (const NodeMenuSwitchEnumItem *enum_item : storage.items()) {
+    StringRef name = enum_item->name;
 
-  b.add_input<decl::Color>("False", "False_004")
-      .default_value({0.8f, 0.8f, 0.8f, 1.0f})
-      .supports_field();
-  b.add_input<decl::Color>("True", "True_004")
-      .default_value({0.8f, 0.8f, 0.8f, 1.0f})
-      .supports_field();
-  b.add_input<decl::String>("False", "False_005").supports_field();
-  b.add_input<decl::String>("True", "True_005").supports_field();
-
-  b.add_input<decl::Geometry>("False", "False_006");
-  b.add_input<decl::Geometry>("True", "True_006");
-  b.add_input<decl::Object>("False", "False_007");
-  b.add_input<decl::Object>("True", "True_007");
-  b.add_input<decl::Collection>("False", "False_008");
-  b.add_input<decl::Collection>("True", "True_008");
-  b.add_input<decl::Texture>("False", "False_009");
-  b.add_input<decl::Texture>("True", "True_009");
-  b.add_input<decl::Material>("False", "False_010");
-  b.add_input<decl::Material>("True", "True_010");
-  b.add_input<decl::Image>("False", "False_011");
-  b.add_input<decl::Image>("True", "True_011");
-  b.add_input<decl::Rotation>("False", "False_012").supports_field();
-  b.add_input<decl::Rotation>("True", "True_012").supports_field();
-
-  b.add_output<decl::Float>("Output").dependent_field().reference_pass_all();
-  b.add_output<decl::Int>("Output", "Output_001").dependent_field().reference_pass_all();
-  b.add_output<decl::Bool>("Output", "Output_002").dependent_field().reference_pass_all();
-  b.add_output<decl::Vector>("Output", "Output_003").dependent_field().reference_pass_all();
-  b.add_output<decl::Color>("Output", "Output_004").dependent_field().reference_pass_all();
-  b.add_output<decl::String>("Output", "Output_005").dependent_field().reference_pass_all();
-  b.add_output<decl::Geometry>("Output", "Output_006").propagate_all();
-  b.add_output<decl::Object>("Output", "Output_007");
-  b.add_output<decl::Collection>("Output", "Output_008");
-  b.add_output<decl::Texture>("Output", "Output_009");
-  b.add_output<decl::Material>("Output", "Output_010");
-  b.add_output<decl::Image>("Output", "Output_011");
-  b.add_output<decl::Rotation>("Output", "Output_012").propagate_all().reference_pass_all();
+    switch (input_type) {
+      case SOCK_CUSTOM:
+        break;
+      case SOCK_FLOAT:
+        b.add_input_output<decl::Float>(name)
+            .supports_field()
+            .dependent_field()
+            .reference_pass_all();
+        break;
+      case SOCK_VECTOR:
+        b.add_input_output<decl::Vector>(name)
+            .supports_field()
+            .dependent_field()
+            .reference_pass_all();
+        break;
+      case SOCK_RGBA:
+        b.add_input_output<decl::Color>(name)
+            .default_value({0.8f, 0.8f, 0.8f, 1.0f})
+            .supports_field();
+        break;
+      case SOCK_SHADER:
+        b.add_input_output<decl::Shader>(name);
+        break;
+      case SOCK_BOOLEAN:
+        b.add_input_output<decl::Bool>(name)
+            .default_value(false)
+            .hide_value()
+            .supports_field()
+            .dependent_field()
+            .reference_pass_all();
+        break;
+      case SOCK_INT:
+        b.add_input_output<decl::Int>(name)
+            .min(-100000)
+            .max(100000)
+            .supports_field()
+            .dependent_field()
+            .reference_pass_all();
+        break;
+      case SOCK_STRING:
+        b.add_input_output<decl::String>(name)
+            .supports_field()
+            .dependent_field()
+            .reference_pass_all();
+        break;
+      case SOCK_OBJECT:
+        b.add_input_output<decl::Object>(name);
+        break;
+      case SOCK_IMAGE:
+        b.add_input_output<decl::Image>(name);
+        break;
+      case SOCK_GEOMETRY:
+        b.add_input_output<decl::Geometry>(name).propagate_all();
+        break;
+      case SOCK_COLLECTION:
+        b.add_input_output<decl::Collection>(name);
+        break;
+      case SOCK_TEXTURE:
+        b.add_input_output<decl::Texture>(name);
+        break;
+      case SOCK_MATERIAL:
+        b.add_input_output<decl::Material>(name);
+        break;
+      case SOCK_ROTATION:
+        b.add_input_output<decl::Rotation>(name).dependent_field().reference_pass_all();
+        break;
+    }
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -84,36 +132,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const NodeMenuSwitch &storage = node_storage(*node);
-  int index = 0;
-  bNodeSocket *field_switch = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *non_field_switch = static_cast<bNodeSocket *>(field_switch->next);
-
-  const bool fields_type = ELEM(storage.input_type,
-                                SOCK_FLOAT,
-                                SOCK_INT,
-                                SOCK_BOOLEAN,
-                                SOCK_VECTOR,
-                                SOCK_RGBA,
-                                SOCK_STRING,
-                                SOCK_ROTATION);
-
-  bke::nodeSetSocketAvailability(ntree, field_switch, fields_type);
-  bke::nodeSetSocketAvailability(ntree, non_field_switch, !fields_type);
-
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &node->inputs, index) {
-    if (index <= 1) {
-      continue;
-    }
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == storage.input_type);
-  }
-
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == storage.input_type);
-  }
-}
+static void node_update(bNodeTree *ntree, bNode *node) {}
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
@@ -312,7 +331,7 @@ static void register_node()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MENU_SWITCH, "Menu Switch", NODE_CLASS_CONVERTER);
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   node_type_storage(
@@ -337,3 +356,13 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &no
 }
 
 }  // namespace blender::nodes
+
+blender::Span<NodeMenuSwitchEnumItem *> NodeMenuSwitch::items() const
+{
+  return {this->items_array, this->num_items};
+}
+
+blender::MutableSpan<NodeMenuSwitchEnumItem *> NodeMenuSwitch::items_for_write()
+{
+  return {this->items_array, this->num_items};
+}

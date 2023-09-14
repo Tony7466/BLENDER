@@ -1595,11 +1595,16 @@ typedef struct NodeMenuSwitchEnumItem {
 
 typedef struct NodeMenuSwitch {
   /* User-defined enum items owned and managed by this node. */
-  NodeMenuSwitchEnumItem **items;
+  NodeMenuSwitchEnumItem **items_array;
   int num_items;
   /** #eNodeSocketDatatype. */
   uint8_t input_type;
   char _pad[3];
+
+#ifdef __cplusplus
+  blender::Span<NodeMenuSwitchEnumItem *> items() const;
+  blender::MutableSpan<NodeMenuSwitchEnumItem *> items_for_write();
+#endif
 } NodeMenuSwitch;
 
 typedef struct NodeGeometryCurveSplineType {
