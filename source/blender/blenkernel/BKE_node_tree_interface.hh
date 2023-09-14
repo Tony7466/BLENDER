@@ -22,6 +22,7 @@ class NodeTreeMainUpdater;
 
 class bNodeTreeInterfaceRuntime {
   friend bNodeTreeInterface;
+  friend bNodeTree;
 
  private:
   /**
@@ -42,20 +43,6 @@ class bNodeTreeInterfaceRuntime {
   /* Socket-only lists for input/output access by index. */
   Vector<bNodeTreeInterfaceSocket *> inputs_;
   Vector<bNodeTreeInterfaceSocket *> outputs_;
-
- public:
-  blender::Span<bNodeTreeInterfaceItem *> items() const
-  {
-    return items_;
-  }
-  blender::Span<bNodeTreeInterfaceSocket *> inputs() const
-  {
-    return inputs_;
-  }
-  blender::Span<bNodeTreeInterfaceSocket *> outputs() const
-  {
-    return outputs_;
-  }
 };
 
 namespace node_interface {
