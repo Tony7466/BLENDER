@@ -42,7 +42,7 @@ extern "C" {
 /** User readable version string. */
 const char *BKE_blender_version_string(void);
 
-/** As above but does not show patch if zero. */
+/** As above but does not show patch version. */
 const char *BKE_blender_version_string_compact(void);
 
 /** Returns true when version cycle is alpha, otherwise (beta, rc) returns false. */

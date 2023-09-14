@@ -123,10 +123,9 @@ static void blender_version_init()
            version_cycle);
 
   SNPRINTF(blender_version_string_compact,
-           "%d.%01d%s%s",
+           "%d.%01d%s",
            BLENDER_VERSION / 100,
            BLENDER_VERSION % 100,
-           BLENDER_VERSION_PATCH > 0 ? "." STRINGIFY(BLENDER_VERSION_PATCH) : "",
            version_cycle);
 }
 
