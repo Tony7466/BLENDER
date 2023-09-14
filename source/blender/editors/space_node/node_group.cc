@@ -1035,10 +1035,6 @@ static void node_group_make_insert_selected(const bContext &C,
   /* Add all outputs first. */
   for (bNode *node : nodes_to_move) {
     for (bNodeSocket *output_socket : node->output_sockets()) {
-      if (!output_socket->is_available() || output_socket->is_hidden()) {
-        continue;
-      }
-
       for (bNodeLink *link : output_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1061,7 +1057,8 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
         }
       }
-      if (expose_visible && !output_socket->is_directly_linked()) {
+
+      if (expose_visible && output_socket->is_visible() && !output_socket->is_directly_linked()) {
         bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
             group, *node, *output_socket);
         if (io_socket) {
@@ -1073,10 +1070,6 @@ static void node_group_make_insert_selected(const bContext &C,
   /* Now add all inputs. */
   for (bNode *node : nodes_to_move) {
     for (bNodeSocket *input_socket : node->input_sockets()) {
-      if (!input_socket->is_available() || input_socket->is_hidden()) {
-        continue;
-      }
-
       for (bNodeLink *link : input_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1097,7 +1090,8 @@ static void node_group_make_insert_selected(const bContext &C,
           info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
       }
-      if (expose_visible && !input_socket->is_directly_linked()) {
+
+      if (expose_visible && input_socket->is_visible() && !input_socket->is_directly_linked()) {
         bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
             group, *node, *input_socket);
         if (io_socket) {
