@@ -8,12 +8,7 @@
 
 #pragma once
 
-#include "DNA_customdata_types.h"
-#include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_sys_types.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Ordered Selection Storage
@@ -53,11 +48,11 @@ enum {
  * any changes to the underlying mesh invalidate the #MLoopTri array,
  * which will need to be re-calculated.
  *
- * Users normally access this via #BKE_mesh_runtime_looptri_ensure.
- * In rare cases its calculated directly, with #BKE_mesh_recalc_looptri.
+ * Users normally access this via #Mesh::looptris().
+ * In rare cases its calculated directly, with #bke::mesh::looptris_calc.
  *
  * Typical usage includes:
- * - OpenGL drawing.
+ * - Viewport drawing.
  * - #BVHTree creation.
  * - Physics/collision detection.
  *
@@ -87,15 +82,15 @@ enum {
  *
  * #MLoopTri's are allocated in an array, where each polygon's #MLoopTri's are stored contiguously,
  * the number of triangles for each polygon is guaranteed to be the corner count - 2,
- * even for degenerate geometry. See #ME_POLY_TRI_TOT macro.
+ * even for degenerate geometry. See #bke::mesh::face_triangles_num macro.
  *
- * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given poly).
+ * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given face).
  *
  * \code{.c}
  * // loop over all looptri's for a given polygon: i
- * const IndexRange poly = polys[i];
- * MLoopTri *lt = &looptri[poly_to_tri_count(i, poly.start())];
- * int j, lt_tot = ME_POLY_TRI_TOT(poly.size());
+ * const IndexRange face = faces[i];
+ * MLoopTri *lt = &looptri[poly_to_tri_count(i, face.start())];
+ * int j, lt_tot = bke::mesh::face_triangles_num(face.size());
  *
  * for (j = 0; j < lt_tot; j++, lt++) {
  *     int vtri[3] = {
@@ -327,25 +322,6 @@ enum {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Utility Macros
- * \{ */
-
-/** Number of tri's that make up this polygon once tessellated. */
-#define ME_POLY_TRI_TOT(size) (size - 2)
-
-/**
- * Check out-of-bounds material, note that this is nearly always prevented,
- * yet its still possible in rare cases.
- * So usage such as array lookup needs to check.
- */
-#define ME_MAT_NR_TEST(mat_nr, totmat) \
-  (CHECK_TYPE_ANY(mat_nr, short, const short), \
-   CHECK_TYPE_ANY(totmat, short, const short), \
-   (LIKELY(mat_nr < totmat) ? mat_nr : 0))
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Deprecated Structs
  * \{ */
 
@@ -359,7 +335,7 @@ enum {
 typedef struct MEdge {
   /** Un-ordered vertex indices (cannot match). */
   unsigned int v1, v2;
-  /** Deprecated edge crease, now located in #CD_CREASE, except for file read and write. */
+  /** Deprecated edge crease, now located in `edge_crease`, except for file read and write. */
   char crease_legacy;
   /**
    * Deprecated bevel weight storage, now located in #CD_BWEIGHT, except for file read and write.
@@ -386,7 +362,7 @@ enum {
  * This only stores the polygon size & flags, the vertex & edge indices are stored in the "corner
  * edges" array.
  *
- * Typically accessed with #Mesh.polys().
+ * Typically accessed with #Mesh.faces().
  */
 typedef struct MPoly {
   /** Offset into loop array and number of loops in the face. */
@@ -464,7 +440,7 @@ typedef struct MLoop {
 #endif
 
 /**
- * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::polys() for face data stored in the
+ * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::faces() for face data stored in the
  * blend file. Use for reading old files and in a handful of cases which should be removed
  * eventually.
  */
@@ -498,35 +474,13 @@ typedef struct MCol {
   unsigned char a, r, g, b;
 } MCol;
 
-#define MESH_MLOOPCOL_FROM_MCOL(_mloopcol, _mcol) \
-  { \
-    MLoopCol *mloopcol__tmp = _mloopcol; \
-    const MCol *mcol__tmp = _mcol; \
-    mloopcol__tmp->r = mcol__tmp->b; \
-    mloopcol__tmp->g = mcol__tmp->g; \
-    mloopcol__tmp->b = mcol__tmp->r; \
-    mloopcol__tmp->a = mcol__tmp->a; \
-  } \
-  (void)0
-
-#define MESH_MLOOPCOL_TO_MCOL(_mloopcol, _mcol) \
-  { \
-    const MLoopCol *mloopcol__tmp = _mloopcol; \
-    MCol *mcol__tmp = _mcol; \
-    mcol__tmp->b = mloopcol__tmp->r; \
-    mcol__tmp->g = mloopcol__tmp->g; \
-    mcol__tmp->r = mloopcol__tmp->b; \
-    mcol__tmp->a = mloopcol__tmp->a; \
-  } \
-  (void)0
+#ifdef DNA_DEPRECATED_ALLOW
 
 /** Old game engine recast navigation data, while unused 2.7x files may contain this. */
 typedef struct MRecast {
   int i;
 } MRecast;
 
-/** \} */
-
-#ifdef __cplusplus
-}
 #endif
+
+/** \} */

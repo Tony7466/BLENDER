@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -55,8 +57,7 @@ class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout

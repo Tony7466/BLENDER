@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* CPU Embree implementation of ray-scene intersection. */
 
@@ -297,7 +298,7 @@ ccl_device_forceinline void kernel_embree_filter_intersection_func_impl(
   }
 
 #ifdef __SHADOW_LINKING__
-  if (intersection_skip_shadow_link(kg, cray, kernel_embree_get_hit_object(hit))) {
+  if (intersection_skip_shadow_link(kg, cray->self, kernel_embree_get_hit_object(hit))) {
     *args->valid = 0;
     return;
   }
@@ -338,7 +339,7 @@ ccl_device_forceinline void kernel_embree_filter_occluded_shadow_all_func_impl(
   }
 
 #ifdef __SHADOW_LINKING__
-  if (intersection_skip_shadow_link(kg, cray, current_isect.object)) {
+  if (intersection_skip_shadow_link(kg, cray->self, current_isect.object)) {
     *args->valid = 0;
     return;
   }

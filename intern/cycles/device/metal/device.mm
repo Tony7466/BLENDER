@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -59,13 +60,19 @@ void device_metal_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = vendor == METAL_GPU_APPLE;
     info.has_light_tree = vendor != METAL_GPU_AMD;
+    info.has_mnee = vendor != METAL_GPU_AMD;
 
-    info.use_hardware_raytracing = vendor != METAL_GPU_INTEL;
-    if (info.use_hardware_raytracing) {
-      if (@available(macos 11.0, *)) {
+    info.use_hardware_raytracing = false;
+
+    /* MetalRT now uses features exposed in Xcode versions corresponding to macOS 14+, so don't
+     * expose it in builds from older Xcode versions. */
+#  if defined(MAC_OS_VERSION_14_0)
+    if (vendor != METAL_GPU_INTEL) {
+      if (@available(macos 14.0, *)) {
         info.use_hardware_raytracing = device.supportsRaytracing;
       }
     }
+#  endif
 
     devices.push_back(info);
     device_index++;

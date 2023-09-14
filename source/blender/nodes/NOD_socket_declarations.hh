@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,10 @@
 
 #include "NOD_node_declaration.hh"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_color.hh"
+#include "BLI_math_euler_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::nodes::decl {
@@ -136,6 +137,27 @@ class ColorBuilder : public SocketDeclarationBuilder<Color> {
   ColorBuilder &default_value(const ColorGeometry4f value);
 };
 
+class RotationBuilder;
+
+class Rotation : public SocketDeclaration {
+ public:
+  math::EulerXYZ default_value;
+
+  friend RotationBuilder;
+
+  using Builder = RotationBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class RotationBuilder : public SocketDeclarationBuilder<Rotation> {
+ public:
+  RotationBuilder &default_value(const math::EulerXYZ &value);
+};
+
 class StringBuilder;
 
 class String : public SocketDeclaration {
@@ -248,6 +270,7 @@ class ExtendBuilder : public SocketDeclarationBuilder<Extend> {
 class Custom : public SocketDeclaration {
  public:
   const char *idname_;
+  std::function<void(bNode &node, bNodeSocket &socket, const char *data_path)> init_socket_fn;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
   bool matches(const bNodeSocket &socket) const override;
@@ -382,6 +405,18 @@ inline ColorBuilder &ColorBuilder::default_value(const ColorGeometry4f value)
 inline StringBuilder &StringBuilder::default_value(std::string value)
 {
   decl_->default_value = std::move(value);
+  return *this;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #RotationBuilder Inline Methods
+ * \{ */
+
+inline RotationBuilder &RotationBuilder::default_value(const math::EulerXYZ &value)
+{
+  decl_->default_value = value;
   return *this;
 }
 

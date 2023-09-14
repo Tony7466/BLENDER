@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
@@ -22,8 +25,7 @@ class DATA_PT_context_speaker(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -44,8 +46,7 @@ class DATA_PT_speaker(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -71,8 +72,7 @@ class DATA_PT_distance(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -100,8 +100,7 @@ class DATA_PT_cone(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -127,8 +126,7 @@ class DATA_PT_custom_props_speaker(DataButtonsPanel, PropertyPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
     _context_path = "object.data"
     _property_type = bpy.types.Speaker
 

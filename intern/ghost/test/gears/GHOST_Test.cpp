@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Copyright (C) 2001 NaN Technologies B.V.
@@ -601,8 +602,9 @@ bool Application::processEvent(GHOST_IEvent *event)
 
     case GHOST_kEventWindowUpdate: {
       GHOST_IWindow *window2 = event->getWindow();
-      if (!m_system->validWindow(window2))
+      if (!m_system->validWindow(window2)) {
         break;
+      }
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

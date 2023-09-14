@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
  */
+
+#include "GHOST_C-api.h"
 
 #include "gpu_capabilities_private.hh"
 #include "gpu_platform_private.hh"
@@ -88,14 +90,13 @@ void VKBackend::detect_workarounds(VKDevice &device)
 void VKBackend::platform_exit()
 {
   GPG.clear();
-}
-
-void VKBackend::delete_resources()
-{
-  if (device_.is_initialized()) {
-    device_.deinit();
+  VKDevice &device = VKBackend::get().device_;
+  if (device.is_initialized()) {
+    device.deinit();
   }
 }
+
+void VKBackend::delete_resources() {}
 
 void VKBackend::samplers_update() {}
 
@@ -121,7 +122,22 @@ void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
 
 Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
 {
-  return new VKContext(ghost_window, ghost_context);
+  if (ghost_window) {
+    BLI_assert(ghost_context == nullptr);
+    ghost_context = GHOST_GetDrawingContext((GHOST_WindowHandle)ghost_window);
+  }
+
+  BLI_assert(ghost_context != nullptr);
+  if (!device_.is_initialized()) {
+    device_.init(ghost_context);
+  }
+
+  VKContext *context = new VKContext(ghost_window, ghost_context);
+  device_.context_register(*context);
+  GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
+                                      VKContext::swap_buffers_pre_callback,
+                                      VKContext::swap_buffers_post_callback);
+  return context;
 }
 
 Batch *VKBackend::batch_alloc()
@@ -203,8 +219,11 @@ void VKBackend::capabilities_init(VKDevice &device)
   /* Reset all capabilities from previous context. */
   GCaps = {};
   GCaps.compute_shader_support = true;
+  GCaps.geometry_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
+  GCaps.shader_draw_parameters_support =
+      device.physical_device_vulkan_11_features_get().shaderDrawParameters;
 
   GCaps.max_texture_size = max_ii(limits.maxImageDimension1D, limits.maxImageDimension2D);
   GCaps.max_texture_3d_size = limits.maxImageDimension3D;

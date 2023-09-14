@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -258,12 +258,9 @@ class CurvesGeometry : public ::CurvesGeometry {
   MutableSpan<float2> surface_uv_coords_for_write();
 
   /**
-   * Calculate the largest and smallest position values, only including control points
-   * (rather than evaluated points). The existing values of `min` and `max` are taken into account.
-   *
-   * \return Whether there are any points. If the curve is empty, the inputs will be unaffected.
+   * The largest and smallest position values of evaluated points.
    */
-  bool bounds_min_max(float3 &min, float3 &max) const;
+  std::optional<Bounds<float3>> bounds_min_max() const;
 
  private:
   /* --------------------------------------------------------------------
@@ -396,9 +393,22 @@ class CurvesGeometry : public ::CurvesGeometry {
   /* --------------------------------------------------------------------
    * File Read/Write.
    */
-
   void blend_read(BlendDataReader &reader);
-  void blend_write(BlendWriter &writer, ID &id);
+  /**
+   * Helper struct for `CurvesGeometry::blend_write_*` functions.
+   */
+  struct BlendWriteData {
+    /* The point custom data layers to be written. */
+    Vector<CustomDataLayer, 16> point_layers;
+    /* The curve custom data layers to be written. */
+    Vector<CustomDataLayer, 16> curve_layers;
+  };
+  /**
+   * This function needs to be called before `blend_write` and before the `CurvesGeometry` struct
+   * is written because it can mutate the `CustomData` struct.
+   */
+  BlendWriteData blend_write_prepare();
+  void blend_write(BlendWriter &writer, ID &id, const BlendWriteData &write_data);
 };
 
 static_assert(sizeof(blender::bke::CurvesGeometry) == sizeof(::CurvesGeometry));

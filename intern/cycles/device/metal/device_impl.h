@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -81,7 +82,6 @@ class MetalDevice : public Device {
   /* BLAS encoding & lookup */
   id<MTLArgumentEncoder> mtlBlasArgEncoder = nil;
   id<MTLBuffer> blas_buffer = nil;
-  id<MTLBuffer> blas_lookup_buffer = nil;
 
   bool use_metalrt = false;
   MetalPipelineType kernel_specialization_level = PSO_GENERIC;

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -1898,7 +1900,7 @@ class CLIP_MT_view_pie(Menu):
     def poll(cls, context):
         space = context.space_data
 
-        # View operators are not yet implemented in Dopesheet mode.
+        # View operators are not yet implemented in Dope-sheet mode.
         return space.view != 'DOPESHEET'
 
     def draw(self, context):

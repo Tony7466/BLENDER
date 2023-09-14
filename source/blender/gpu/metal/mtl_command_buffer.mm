@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_userdef_types.h"
 
@@ -24,9 +26,10 @@ int MTLCommandBufferManager::num_active_cmd_bufs = 0;
 /** \name MTLCommandBuffer initialization and render coordination.
  * \{ */
 
-void MTLCommandBufferManager::prepare(bool supports_render)
+void MTLCommandBufferManager::prepare(bool /*supports_render*/)
 {
   render_pass_state_.reset_state();
+  compute_state_.reset_state();
 }
 
 void MTLCommandBufferManager::register_encoder_counters()
@@ -113,7 +116,7 @@ bool MTLCommandBufferManager::submit(bool wait)
   id<MTLCommandBuffer> cmd_buffer_ref = active_command_buffer_;
   [cmd_buffer_ref retain];
 
-  [cmd_buffer_ref addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+  [cmd_buffer_ref addCompletedHandler:^(id<MTLCommandBuffer> /*cb*/) {
     /* Upon command buffer completion, decrement MTLSafeFreeList reference count
      * to allow buffers no longer in use by this CommandBuffer to be freed. */
     cmd_free_buffer_list->decrement_reference();
@@ -497,7 +500,7 @@ bool MTLCommandBufferManager::do_break_submission()
  * \{ */
 
 /* Debug. */
-void MTLCommandBufferManager::push_debug_group(const char *name, int index)
+void MTLCommandBufferManager::push_debug_group(const char *name, int /*index*/)
 {
   /* Only perform this operation if capturing. */
   MTLCaptureManager *capture_manager = [MTLCaptureManager sharedCaptureManager];
@@ -983,7 +986,7 @@ void MTLComputeState::bind_compute_buffer(id<MTLBuffer> buffer,
       [rec setBufferOffset:buffer_offset atIndex:index];
     }
     else {
-      /* Bind Fragment Buffer */
+      /* Bind Compute Buffer */
       [rec setBuffer:buffer offset:buffer_offset atIndex:index];
     }
     [rec useResource:buffer
@@ -1007,6 +1010,11 @@ void MTLRenderPassState::bind_vertex_bytes(void *bytes, uint64_t length, uint in
   if (length < MTL_MAX_SET_BYTES_SIZE) {
     id<MTLRenderCommandEncoder> rec = this->cmd.get_active_render_command_encoder();
     [rec setVertexBytes:bytes length:length atIndex:index];
+
+    /* Update Bind-state cache */
+    this->cached_vertex_buffer_bindings[index].is_bytes = true;
+    this->cached_vertex_buffer_bindings[index].metal_buffer = nil;
+    this->cached_vertex_buffer_bindings[index].offset = -1;
   }
   else {
     /* We have run over the setBytes limit, bind buffer instead. */
@@ -1015,11 +1023,6 @@ void MTLRenderPassState::bind_vertex_bytes(void *bytes, uint64_t length, uint in
     memcpy(range.data, bytes, length);
     this->bind_vertex_buffer(range.metal_buffer, range.buffer_offset, index);
   }
-
-  /* Update Bind-state cache */
-  this->cached_vertex_buffer_bindings[index].is_bytes = true;
-  this->cached_vertex_buffer_bindings[index].metal_buffer = nil;
-  this->cached_vertex_buffer_bindings[index].offset = -1;
 }
 
 void MTLRenderPassState::bind_fragment_bytes(void *bytes, uint64_t length, uint index)
@@ -1032,6 +1035,11 @@ void MTLRenderPassState::bind_fragment_bytes(void *bytes, uint64_t length, uint 
   if (length < MTL_MAX_SET_BYTES_SIZE) {
     id<MTLRenderCommandEncoder> rec = this->cmd.get_active_render_command_encoder();
     [rec setFragmentBytes:bytes length:length atIndex:index];
+
+    /* Update Bind-state cache. */
+    this->cached_fragment_buffer_bindings[index].is_bytes = true;
+    this->cached_fragment_buffer_bindings[index].metal_buffer = nil;
+    this->cached_fragment_buffer_bindings[index].offset = -1;
   }
   else {
     /* We have run over the setBytes limit, bind buffer instead. */
@@ -1040,11 +1048,6 @@ void MTLRenderPassState::bind_fragment_bytes(void *bytes, uint64_t length, uint 
     memcpy(range.data, bytes, length);
     this->bind_fragment_buffer(range.metal_buffer, range.buffer_offset, index);
   }
-
-  /* Update Bind-state cache. */
-  this->cached_fragment_buffer_bindings[index].is_bytes = true;
-  this->cached_fragment_buffer_bindings[index].metal_buffer = nil;
-  this->cached_fragment_buffer_bindings[index].offset = -1;
 }
 
 void MTLComputeState::bind_compute_bytes(void *bytes, uint64_t length, uint index)
@@ -1057,6 +1060,11 @@ void MTLComputeState::bind_compute_bytes(void *bytes, uint64_t length, uint inde
   if (length < MTL_MAX_SET_BYTES_SIZE) {
     id<MTLComputeCommandEncoder> rec = this->cmd.get_active_compute_command_encoder();
     [rec setBytes:bytes length:length atIndex:index];
+
+    /* Update Bind-state cache. */
+    this->cached_compute_buffer_bindings[index].is_bytes = true;
+    this->cached_compute_buffer_bindings[index].metal_buffer = nil;
+    this->cached_compute_buffer_bindings[index].offset = -1;
   }
   else {
     /* We have run over the setBytes limit, bind buffer instead. */
@@ -1065,11 +1073,6 @@ void MTLComputeState::bind_compute_bytes(void *bytes, uint64_t length, uint inde
     memcpy(range.data, bytes, length);
     this->bind_compute_buffer(range.metal_buffer, range.buffer_offset, index);
   }
-
-  /* Update Bind-state cache. */
-  this->cached_compute_buffer_bindings[index].is_bytes = true;
-  this->cached_compute_buffer_bindings[index].metal_buffer = nil;
-  this->cached_compute_buffer_bindings[index].offset = -1;
 }
 
 void MTLComputeState::bind_pso(id<MTLComputePipelineState> pso)

@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Menu, Panel, UIList
 from bpy.app.translations import contexts as i18n_contexts
@@ -65,8 +68,7 @@ class MATERIAL_PT_custom_props(MaterialButtonsPanel, PropertyPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
     _context_path = "material"
     _property_type = bpy.types.Material
 
@@ -75,7 +77,7 @@ class EEVEE_MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
     bl_label = ""
     bl_context = "material"
     bl_options = {'HIDE_HEADER'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
