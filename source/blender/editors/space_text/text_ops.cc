@@ -1132,7 +1132,7 @@ static int text_cut_exec(bContext *C, wmOperator * /*op*/)
 
   ED_text_undo_push_init(C);
   if (!txt_has_sel(text)) {
-    /* Select the current line */
+    /* Select the current line. */
     text->curl = text->curl->prev;
     text->curc = text->curl->len;
     text->selc = text->sell->len;
