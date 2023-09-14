@@ -89,7 +89,7 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
     mean_of_squared_color[i] /= quadrant_pixel_count[i];
     float4 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
 
-    float variance = math::dot(color_variance, float4(1.0f));
+    float variance = math::dot(color_variance.xyz(), float3(1.0f));
     if (variance < min_var) {
       min_var = variance;
       min_index = i;
@@ -176,7 +176,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
       mean_of_squared_color[i] /= quadrant_pixel_count[i];
       float4 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
 
-      float variance = math::dot(color_variance, float4(1.0f));
+      float variance = math::dot(color_variance.xyz(), float3(1.0f));
       if (variance < min_var) {
         min_var = variance;
         min_index = i;
