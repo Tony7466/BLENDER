@@ -1751,6 +1751,10 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetActive(update_col, has_missing_mappings);
   uiItemO(update_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
 
+  if (has_missing_mappings) {
+    uiItemL(col, N_("Missing data-block mappings"), ICON_INFO);
+  }
+
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
     return;
   }
