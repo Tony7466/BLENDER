@@ -2287,6 +2287,8 @@ void ED_spacetype_view3d()
 
   WM_menutype_add(
       MEM_new<MenuType>(__func__, blender::ed::geometry::node_group_operator_assets_menu()));
+  WM_menutype_add(MEM_new<MenuType>(
+      __func__, blender::ed::geometry::node_group_operator_assets_menu_uncategorized()));
 
   BKE_spacetype_register(st);
 }
