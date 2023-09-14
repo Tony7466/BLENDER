@@ -326,7 +326,7 @@ class GRAPH_MT_key_blending(Menu):
         layout.operator("graph.match_slope", text="Match Slope")
         layout.operator("graph.shear", text="Shear Keys")
         layout.operator("graph.scale_average", text="Scale Average")
-        layout.operator("graph.scale_from_left", text="Scale from Left")
+        layout.operator("graph.scale_from_neighbor", text="Scale from Neighbor")
 
 
 class GRAPH_MT_key_smoothing(Menu):

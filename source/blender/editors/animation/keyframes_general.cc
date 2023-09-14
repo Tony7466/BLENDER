@@ -881,13 +881,21 @@ void shear_fcurve_segment(FCurve *fcu,
 
 /* ---------------- */
 
-void scale_from_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+void scale_from_fcurve_segment_neighbor(FCurve *fcu,
+                                        FCurveSegment *segment,
+                                        const float factor,
+                                        const FCurveSegmentAnchor anchor)
 {
-  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *reference_key;
+  if (anchor == FCurveSegmentAnchor::LEFT) {
+    reference_key = fcurve_segment_start_get(fcu, segment->start_index);
+  }
+  else {
+    reference_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+  }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const float delta = fcu->bezt[i].vec[1][1] - left_key->vec[1][1];
-    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * factor;
+    const float key_y_value = interpf(fcu->bezt[i].vec[1][1], reference_key->vec[1][1], factor);
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }

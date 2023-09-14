@@ -431,9 +431,12 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
 void blend_to_neighbor_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void scale_average_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
-void scale_from_left_fcurve_segment(struct FCurve *fcu,
-                                    struct FCurveSegment *segment,
-                                    float factor);
+/* Used for operators that need a reference key of the segment to work. */
+enum class FCurveSegmentAnchor { LEFT, RIGHT };
+void scale_from_fcurve_segment_neighbor(struct FCurve *fcu,
+                                        struct FCurveSegment *segment,
+                                        float factor,
+                                        FCurveSegmentAnchor anchor);
 /**
  * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
  * \param sigma: The shape of the gauss distribution.
