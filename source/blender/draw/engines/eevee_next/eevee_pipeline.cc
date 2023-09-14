@@ -498,20 +498,29 @@ void DeferredLayer::render(View &main_view,
   bool do_screen_space_reflection = (closure_bits_ & CLOSURE_REFLECTION);
 
   if (do_screen_space_reflection) {
+    /* TODO(fclem): Verify if GPU_TEXTURE_USAGE_ATTACHMENT is needed for the copy and the clear. */
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
     if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage)) {
       radiance_feedback_tx_.clear(float4(0.0));
       radiance_feedback_persmat_ = render_view.persmat();
     }
   }
+  else {
+    /* Dummy texture. Will not be used. */
+    radiance_feedback_tx_.ensure_2d(rb.color_format, int2(1), GPU_TEXTURE_USAGE_SHADER_READ);
+  }
 
   if (do_screen_space_refraction) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
-
+    /* TODO(fclem): Verify if GPU_TEXTURE_USAGE_ATTACHMENT is needed for the copy. */
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
     radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
     GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
+  }
+  else {
+    /* Dummy texture. Will not be used. */
+    radiance_behind_tx_.ensure_2d(rb.color_format, int2(1), GPU_TEXTURE_USAGE_SHADER_READ);
   }
 
   GPU_framebuffer_bind(prepass_fb);
