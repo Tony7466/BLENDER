@@ -225,7 +225,7 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
                                    struct bNodeExecData *execdata,
                                    struct GPUNodeStack *in,
                                    struct GPUNodeStack *out);
-typedef void (*NodeMaterialXExecFunction)(void *data,
+typedef void (*NodeMaterialXFunction)(void *data,
                                           struct bNode *node,
                                           struct bNodeSocket *out);
 
@@ -343,7 +343,7 @@ typedef struct bNodeType {
   /* gpu */
   NodeGPUExecFunction gpu_fn;
   /* MaterialX */
-  NodeMaterialXExecFunction materialx_fn;
+  NodeMaterialXFunction materialx_fn;
 
   /* Get an instance of this node's compositor operation. Freeing the instance is the
    * responsibility of the caller. */

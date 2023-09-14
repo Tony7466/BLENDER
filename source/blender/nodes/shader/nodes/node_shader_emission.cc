@@ -25,6 +25,7 @@ static int node_shader_gpu_emission(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   if (to_type_ != NodeItem::Type::EDF) {
     return empty();
@@ -37,6 +38,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("color", color * strength);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_emission_cc

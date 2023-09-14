@@ -443,6 +443,7 @@ static void sh_node_map_range_build_multi_function(NodeMultiFunctionBuilder &bui
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: Implement steps */
 
@@ -483,6 +484,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("doclamp", val(bool(map_range->clamp)));
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_map_range_cc

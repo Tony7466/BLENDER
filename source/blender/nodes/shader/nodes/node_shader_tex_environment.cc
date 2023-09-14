@@ -128,10 +128,12 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: Implement */
   return empty();
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_tex_environment_cc

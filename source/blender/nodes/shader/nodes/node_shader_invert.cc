@@ -27,11 +27,13 @@ static int gpu_shader_invert(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem fac = get_input_value("Fac", NodeItem::Type::Float);
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
   return fac.blend(color, fac.val(1.0f) - color);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_invert_cc

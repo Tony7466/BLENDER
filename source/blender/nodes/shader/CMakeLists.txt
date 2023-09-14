@@ -16,6 +16,7 @@ set(INC
   ../../makesrna
   ../../render
   ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/sky/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -24,8 +25,7 @@ set(INC
 if(WITH_HYDRA)
   list(APPEND INC
     ../../io/usd
-    ../../../../intern/clog
-)
+  )
   add_definitions(-DWITH_HYDRA)
 endif()
 
@@ -145,6 +145,7 @@ set(LIB
 )
 
 if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
   list(APPEND SRC
     materialx/material.cc
     materialx/node_item.cc

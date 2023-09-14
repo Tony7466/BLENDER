@@ -24,6 +24,7 @@ static int gpu_shader_brightcontrast(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
   NodeItem bright = get_input_value("Bright", NodeItem::Type::Float);
@@ -32,6 +33,7 @@ NODE_SHADER_MATERIALX_BEGIN
   /* This formula was given from OSL shader code in Cycles. */
   return (bright + color * (contrast + val(1.0f)) - contrast * val(0.5f)).max(val(0.0f));
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_brightness_cc

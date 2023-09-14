@@ -91,11 +91,13 @@ static void sh_node_sepxyz_build_multi_function(NodeMultiFunctionBuilder &builde
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
   int index = STREQ(socket_out_->name, "X") ? 0 : STREQ(socket_out_->name, "Y") ? 1 : 2;
   return vector.extract(index);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_sepcomb_xyz_cc::sep
@@ -145,6 +147,7 @@ static void sh_node_combxyz_build_multi_function(NodeMultiFunctionBuilder &build
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem x = get_input_value("X", NodeItem::Type::Float);
   NodeItem y = get_input_value("Y", NodeItem::Type::Float);
@@ -156,6 +159,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("in3", z);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_sepcomb_xyz_cc::comb

@@ -137,10 +137,12 @@ static void sh_node_valtorgb_build_multi_function(nodes::NodeMultiFunctionBuilde
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: Implement */
   return empty();
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_color_ramp_cc

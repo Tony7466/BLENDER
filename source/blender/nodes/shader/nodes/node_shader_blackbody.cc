@@ -32,6 +32,7 @@ static int node_shader_gpu_blackbody(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: This node doesn't have an implementation in MaterialX 1.38.6.
    * It's added in MaterialX 1.38.8. Uncomment this code after switching to 1.38.8.
@@ -43,6 +44,7 @@ NODE_SHADER_MATERIALX_BEGIN
    * return res; */
   return empty();
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_blackbody_cc

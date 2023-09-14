@@ -110,10 +110,12 @@ static void sh_node_curve_vec_build_multi_function(NodeMultiFunctionBuilder &bui
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: implement */
   return get_input_value("Value", NodeItem::Type::Vector3);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_curves_cc::vec
@@ -260,10 +262,12 @@ static void sh_node_curve_rgb_build_multi_function(NodeMultiFunctionBuilder &bui
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: implement */
   return get_input_value("Color", NodeItem::Type::Color4);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_curves_cc::rgb
@@ -386,10 +390,12 @@ static void sh_node_curve_float_build_multi_function(NodeMultiFunctionBuilder &b
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: implement */
   return get_input_value("Value", NodeItem::Type::Float);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_curves_cc::flt

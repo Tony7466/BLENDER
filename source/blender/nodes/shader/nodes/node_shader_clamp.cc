@@ -71,6 +71,7 @@ static void sh_node_clamp_build_multi_function(NodeMultiFunctionBuilder &builder
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   auto type = node_->custom1;
   NodeItem value = get_input_value("Value", NodeItem::Type::Float);
@@ -87,6 +88,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_clamp_cc

@@ -103,6 +103,7 @@ static void sh_node_tex_checker_build_multi_function(NodeMultiFunctionBuilder &b
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector2);
   if (!vector) {
@@ -120,6 +121,7 @@ NODE_SHADER_MATERIALX_BEGIN
   return (vector.extract(0).floor() + vector.extract(1).floor())
       .if_else(NodeItem::CompareOp::Eq, val(1.0f), value1, value2);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_tex_checker_cc

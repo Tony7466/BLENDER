@@ -254,6 +254,7 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   if (to_type_ != NodeItem::Type::SurfaceShader) {
     /* TODO: implement for BSDF and EDF */
@@ -344,6 +345,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_bsdf_principled_cc

@@ -210,6 +210,7 @@ if(WITH_OPENVDB)
 endif()
 
 if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
   list(APPEND LIB MaterialXCore)
 endif()
 

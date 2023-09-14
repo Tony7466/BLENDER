@@ -178,6 +178,7 @@ static void sh_node_math_build_multi_function(NodeMultiFunctionBuilder &builder)
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   CLG_LogRef *LOG_MATERIALX_SHADER = materialx::LOG_MATERIALX_SHADER;
 
@@ -339,6 +340,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_math_cc

@@ -12,8 +12,10 @@
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usdImaging/usdImaging/materialParamUtils.h>
 
-#include <pxr/usd/usdMtlx/reader.h>
-#include <pxr/usd/usdMtlx/utils.h>
+#ifdef WITH_MATERIALX
+#  include <pxr/usd/usdMtlx/reader.h>
+#  include <pxr/usd/usdMtlx/utils.h>
+#endif
 
 #include "MEM_guardedalloc.h"
 
@@ -33,8 +35,9 @@
 
 #include "intern/usd_exporter_context.h"
 #include "intern/usd_writer_material.h"
-#include "shader/materialx/material.h"
-
+#ifdef WITH_MATERIALX
+#  include "shader/materialx/material.h"
+#endif
 namespace blender::io::hydra {
 
 MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
@@ -73,6 +76,7 @@ void MaterialData::init()
                                          image_cache_file_path()};
   /* Create USD material. */
   pxr::UsdShadeMaterial usd_material;
+#ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
         scene_delegate_->depsgraph, (Material *)id);
@@ -84,7 +88,9 @@ void MaterialData::init()
       }
     }
   }
-  else {
+  else
+#endif
+  {
     usd_material = usd::create_usd_material(export_context, material_path, (Material *)id, "st");
   }
 

@@ -25,6 +25,7 @@ static int node_shader_gpu_light_falloff(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem strength = get_input_value("Strength", NodeItem::Type::Float);
   NodeItem smooth = get_input_value("Smooth", NodeItem::Type::Float);
@@ -33,6 +34,7 @@ NODE_SHADER_MATERIALX_BEGIN
    * node_light_falloff.osl. Considered ray_length=1.0f. */
   return strength * val(1.0f) / (smooth + val(1.0f));
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_light_falloff_cc

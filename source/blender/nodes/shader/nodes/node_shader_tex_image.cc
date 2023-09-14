@@ -177,6 +177,7 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem res = val(MaterialX::Color4(1.0f, 0.0f, 1.0f, 1.0f));
 
@@ -243,6 +244,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_tex_image_cc

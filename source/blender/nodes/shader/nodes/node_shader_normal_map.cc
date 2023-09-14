@@ -123,6 +123,7 @@ static int gpu_shader_normal_map(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeShaderNormalMap *normal_map_node = static_cast<NodeShaderNormalMap *>(node_->storage);
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
@@ -152,6 +153,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("space", val(space));
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_normal_map_cc

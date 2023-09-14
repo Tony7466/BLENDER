@@ -69,6 +69,7 @@ static int gpu_shader_sepcolor(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   int mode = static_cast<NodeCombSepColor *>(node_->storage)->mode;
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
@@ -91,6 +92,7 @@ NODE_SHADER_MATERIALX_BEGIN
   int index = STREQ(socket_out_->name, "Red") ? 0 : STREQ(socket_out_->name, "Green") ? 1 : 2;
   return convert.extract(index);
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_separate_color_cc
@@ -163,6 +165,7 @@ static int gpu_shader_combcolor(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   int mode = static_cast<NodeCombSepColor *>(node_->storage)->mode;
   NodeItem red = get_input_value("Red", NodeItem::Type::Float);
@@ -190,6 +193,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_combine_color_cc

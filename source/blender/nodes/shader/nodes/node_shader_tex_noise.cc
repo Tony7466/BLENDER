@@ -258,6 +258,7 @@ static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
   NodeItem detail = get_input_value("Detail", NodeItem::Type::Float);
@@ -274,6 +275,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("lacunarity", lacunarity);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_tex_noise_cc

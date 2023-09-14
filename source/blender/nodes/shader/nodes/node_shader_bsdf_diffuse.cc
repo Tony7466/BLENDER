@@ -35,6 +35,7 @@ static int node_shader_gpu_bsdf_diffuse(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   if (to_type_ != NodeItem::Type::BSDF) {
     return empty();
@@ -52,6 +53,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_bsdf_diffuse_cc

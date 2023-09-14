@@ -23,11 +23,13 @@ static int node_shader_gpu_gamma(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_gamma", in, out);
 }
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
   NodeItem gamma = get_input_value("Gamma", NodeItem::Type::Float);
   return color ^ gamma;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_gamma_cc

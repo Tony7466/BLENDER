@@ -28,6 +28,7 @@ static int gpu_shader_rgbtobw(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
 
@@ -35,6 +36,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("in", color);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_rgb_to_bw_cc

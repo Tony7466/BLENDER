@@ -151,10 +151,12 @@ static void sh_node_mix_rgb_build_multi_function(NodeMultiFunctionBuilder &build
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: Implement */
   return empty();
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_mix_rgb_cc

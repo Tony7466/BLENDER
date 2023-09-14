@@ -24,6 +24,7 @@ static int node_shader_gpu_mix_shader(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem res = empty();
   switch (to_type_) {
@@ -60,6 +61,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_mix_shader_cc

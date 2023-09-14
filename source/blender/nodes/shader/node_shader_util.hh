@@ -22,7 +22,12 @@
 
 #include "node_shader_register.hh"
 
-#include "materialx/node_parser.h"
+#ifdef WITH_MATERIALX
+#  include "materialx/node_parser.h"
+#else
+#  define NODE_SHADER_MATERIALX_BEGIN NodeMaterialXFunction node_shader_materialx = nullptr;
+#  define NODE_SHADER_MATERIALX_END
+#endif
 
 struct bContext;
 typedef struct bContext bContext;

@@ -44,6 +44,7 @@ static int node_shader_gpu_output_material(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   NodeItem bsdf = get_input_link("Surface", NodeItem::Type::BSDF);
   NodeItem edf = get_input_link("Surface", NodeItem::Type::EDF);
@@ -64,6 +65,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("surfaceshader", surface);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_output_material_cc

@@ -31,6 +31,7 @@ static int gpu_shader_hue_sat(GPUMaterial *mat,
 }
 
 NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
 {
   /* TODO: implement fac */
   NodeItem hue = get_input_value("Hue", NodeItem::Type::Float);
@@ -52,6 +53,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("amount", combine);
   return res;
 }
+#endif
 NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_hueSatVal_cc
