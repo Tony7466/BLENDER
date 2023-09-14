@@ -27,6 +27,8 @@
 #include "eevee_shader_shared.hh"
 #include "eevee_velocity.hh"
 
+#include "draw_common.hh"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -100,7 +102,9 @@ void VelocityModule::step_sync(eVelocityStep step, float time)
   step_ = step;
   object_steps_usage[step_] = 0;
   step_camera_sync();
+  draw::hair_init();
   DRW_render_object_iter(&inst_, inst_.render, inst_.depsgraph, step_object_sync_render);
+  draw::hair_update(*std::make_unique<draw::Manager>());
   geometry_steps_fill();
 }
 
@@ -163,7 +167,12 @@ bool VelocityModule::step_object_sync(Object *ob,
     auto add_cb = [&]() {
       VelocityGeometryData data;
       if (particle_sys) {
-        data.pos_buf = DRW_hair_pos_buffer_get(ob, particle_sys, modifier_data);
+        if (inst_.is_viewport()) {
+          data.pos_buf = DRW_hair_pos_buffer_get(ob, particle_sys, modifier_data);
+        }
+        else {
+          data.pos_buf = draw::hair_pos_buffer_get(inst_.scene, ob, particle_sys, modifier_data);
+        }
         return data;
       }
       switch (ob->type) {
