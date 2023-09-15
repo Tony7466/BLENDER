@@ -180,28 +180,6 @@ static void graph_bezt_get_transform_selection(const TransInfo *t,
   *r_right_handle = right;
 }
 
-static void graph_key_shortest_dist(
-    TransInfo *t, FCurve *fcu, TransData *td_start, TransData *td, int cfra, bool use_handle)
-{
-  int j = 0;
-  TransData *td_iter = td_start;
-  bool sel_key, sel_left, sel_right;
-
-  td->dist = FLT_MAX;
-  for (; j < fcu->totvert; j++) {
-    BezTriple *bezt = fcu->bezt + j;
-    if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
-      graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
-
-      if (sel_left || sel_key || sel_right) {
-        td->dist = td->rdist = min_ff(td->dist, fabs(td_iter->center[0] - td->center[0]));
-      }
-
-      td_iter += 3;
-    }
-  }
-}
-
 /**
  * It is important to note that this doesn't always act on the selection (like it's usually done),
  * it acts on a subset of it. E.g. the selection code may leave a hint that we just dragged on a
@@ -555,65 +533,6 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 
     /* Sets handles based on the selection */
     testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-  }
-
-  if (is_prop_edit) {
-    /* loop 2: build transdata arrays */
-    td = tc->data;
-
-    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-      AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
-      FCurve *fcu = (FCurve *)ale->key_data;
-      TransData *td_start = td;
-      float cfra;
-
-      /* F-Curve may not have any keyframes */
-      if (fcu->bezt == nullptr || (ale->tag == 0)) {
-        continue;
-      }
-
-      /* convert current-frame to action-time (slightly less accurate, especially under
-       * higher scaling ratios, but is faster than converting all points)
-       */
-      if (adt) {
-        cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
-      }
-      else {
-        cfra = float(scene->r.cfra);
-      }
-
-      for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
-        /* only include BezTriples whose 'keyframe' occurs on the
-         * same side of the current frame as mouse (if applicable) */
-        if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
-          graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
-
-          if (sel_left || sel_key) {
-            td->dist = td->rdist = 0.0f;
-          }
-          else {
-            graph_key_shortest_dist(t, fcu, td_start, td, cfra, use_handle);
-          }
-          td++;
-
-          if (sel_key) {
-            td->dist = td->rdist = 0.0f;
-          }
-          else {
-            graph_key_shortest_dist(t, fcu, td_start, td, cfra, use_handle);
-          }
-          td++;
-
-          if (sel_right || sel_key) {
-            td->dist = td->rdist = 0.0f;
-          }
-          else {
-            graph_key_shortest_dist(t, fcu, td_start, td, cfra, use_handle);
-          }
-          td++;
-        }
-      }
-    }
   }
 
   /* cleanup temp list */

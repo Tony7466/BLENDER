@@ -170,10 +170,45 @@ static void sort_trans_data_selected_first(TransInfo *t)
   }
 }
 
+static void prop_dist_get_loc(const TransDataContainer *tc,
+                              const TransData *td,
+                              const bool use_island,
+                              const float aspect[3],
+                              const float proj_vec[3],
+                              float r_vec[3])
+{
+  if (use_island) {
+    if (tc->use_local_mat) {
+      mul_v3_m4v3(r_vec, tc->mat, td->iloc);
+    }
+    else {
+      mul_v3_m3v3(r_vec, td->mtx, td->iloc);
+    }
+  }
+  else {
+    if (tc->use_local_mat) {
+      mul_v3_m4v3(r_vec, tc->mat, td->center);
+    }
+    else {
+      mul_v3_m3v3(r_vec, td->mtx, td->center);
+    }
+  }
+
+  if (aspect) {
+    mul_v3_v3(r_vec, aspect);
+  }
+
+  if (proj_vec) {
+    float vec_p[3];
+    project_v3_v3v3(vec_p, r_vec, proj_vec);
+    sub_v3_v3(r_vec, vec_p);
+  }
+}
+
 /**
  * Distance calculated from not-selected vertex to nearest selected vertex.
  */
-static void set_prop_dist(TransInfo *t, const bool with_dist)
+static void set_prop_dist(TransInfo *t, const bool with_dist, const bool use_aspect = false)
 {
   int a;
 
@@ -223,28 +258,7 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
         float vec[3];
         td->rdist = 0.0f;
 
-        if (use_island) {
-          if (tc->use_local_mat) {
-            mul_v3_m4v3(vec, tc->mat, td->iloc);
-          }
-          else {
-            mul_v3_m3v3(vec, td->mtx, td->iloc);
-          }
-        }
-        else {
-          if (tc->use_local_mat) {
-            mul_v3_m4v3(vec, tc->mat, td->center);
-          }
-          else {
-            mul_v3_m3v3(vec, td->mtx, td->center);
-          }
-        }
-
-        if (proj_vec) {
-          float vec_p[3];
-          project_v3_v3v3(vec_p, vec, proj_vec);
-          sub_v3_v3(vec, vec_p);
-        }
+        prop_dist_get_loc(tc, td, use_island, use_aspect ? t->aspect : nullptr, proj_vec, vec);
 
         BLI_kdtree_3d_insert(td_tree, td_table_index, vec);
         td_table[td_table_index++] = td;
@@ -266,28 +280,7 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
       if ((td->flag & TD_SELECTED) == 0) {
         float vec[3];
 
-        if (use_island) {
-          if (tc->use_local_mat) {
-            mul_v3_m4v3(vec, tc->mat, td->iloc);
-          }
-          else {
-            mul_v3_m3v3(vec, td->mtx, td->iloc);
-          }
-        }
-        else {
-          if (tc->use_local_mat) {
-            mul_v3_m4v3(vec, tc->mat, td->center);
-          }
-          else {
-            mul_v3_m3v3(vec, td->mtx, td->center);
-          }
-        }
-
-        if (proj_vec) {
-          float vec_p[3];
-          project_v3_v3v3(vec_p, vec, proj_vec);
-          sub_v3_v3(vec, vec_p);
-        }
+        prop_dist_get_loc(tc, td, use_island, use_aspect ? t->aspect : nullptr, proj_vec, vec);
 
         KDTreeNearest_3d nearest;
         const int td_index = BLI_kdtree_3d_find_nearest(td_tree, vec, &nearest);
@@ -756,7 +749,7 @@ static void init_proportional_edit(TransInfo *t)
       sort_trans_data_selected_first(t);
     }
 
-    if (ELEM(t->data_type, &TransConvertType_Action, &TransConvertType_Graph)) {
+    if (ELEM(t->data_type, &TransConvertType_Action)) {
       /* Distance has already been set. */
     }
     else if (ELEM(t->data_type,
@@ -777,6 +770,9 @@ static void init_proportional_edit(TransInfo *t)
     else if (ELEM(t->data_type, &TransConvertType_Curve, &TransConvertType_Curves)) {
       BLI_assert(t->obedit_type == OB_CURVES_LEGACY || t->obedit_type == OB_CURVES);
       set_prop_dist(t, false);
+    }
+    else if (t->data_type == &TransConvertType_Graph) {
+      set_prop_dist(t, true, true);
     }
     else {
       set_prop_dist(t, true);

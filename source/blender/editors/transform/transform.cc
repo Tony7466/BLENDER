@@ -131,7 +131,10 @@ void setTransformViewAspect(TransInfo *t, float r_aspect[3])
     }
   }
   else if (t->spacetype == SPACE_GRAPH) {
-    /* Depends on context of usage. */
+    View2D *v2d = &t->region->v2d;
+    float xscale, yscale;
+    UI_view2d_scale_get(v2d, &xscale, &yscale);
+    r_aspect[1] = yscale / xscale;
   }
 }
 
