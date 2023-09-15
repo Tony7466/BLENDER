@@ -774,7 +774,7 @@ int view3d_opengl_select_with_id_filter(ViewContext *vc,
                                         eV3DSelectObjectFilter select_filter,
                                         uint select_id)
 {
-  const uint64_t start = buffer->size();
+  const int64_t start = buffer->size();
   int hits = view3d_opengl_select(vc, buffer, input, select_mode, select_filter);
 
   /* Selection sometimes uses -1 for an invalid selection ID, remove these as they

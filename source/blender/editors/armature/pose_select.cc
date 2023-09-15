@@ -258,7 +258,7 @@ bool ED_armature_pose_select_pick_with_buffer(const Scene *scene,
                                               View3D *v3d,
                                               Base *base,
                                               const GPUSelectResult *buffer,
-                                              const short hits,
+                                              const int hits,
                                               const SelectPick_Params *params,
                                               bool do_nearest)
 {

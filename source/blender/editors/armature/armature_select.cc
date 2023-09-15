@@ -153,34 +153,33 @@ Base *ED_armature_base_and_bone_from_select_buffer(Base **bases,
 
 /* See if there are any selected bones in this buffer */
 /* only bones from base are checked on */
-static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode,
-                                                          Base **bases,
-                                                          uint bases_len,
-                                                          const GPUSelectResult *buffer,
-                                                          const short hits,
-                                                          bool findunsel,
-                                                          bool do_nearest,
-                                                          Base **r_base)
+static void *ed_armature_pick_bone_from_selectbuffer_impl(
+    const bool is_editmode,
+    Base **bases,
+    uint bases_len,
+    blender::Span<GPUSelectResult> hit_results,
+    bool findunsel,
+    bool do_nearest,
+    Base **r_base)
 {
   bPoseChannel *pchan;
   EditBone *ebone;
   void *firstunSel = nullptr, *firstSel = nullptr, *data;
   Base *firstunSel_base = nullptr, *firstSel_base = nullptr;
-  uint hitresult;
   bool takeNext = false;
   int minsel = 0xffffffff, minunsel = 0xffffffff;
 
-  for (short i = 0; i < hits; i++) {
-    hitresult = buffer[i].id;
+  for (const GPUSelectResult &result : hit_results) {
+    uint hit_id = result.id;
 
-    if (hitresult & BONESEL_ANY) { /* to avoid including objects in selection */
+    if (hit_id & BONESEL_ANY) { /* to avoid including objects in selection */
       Base *base = nullptr;
       bool sel;
 
-      hitresult &= ~BONESEL_ANY;
+      hit_id &= ~BONESEL_ANY;
       /* Determine what the current bone is */
       if (is_editmode == false) {
-        base = ED_armature_base_and_pchan_from_select_buffer(bases, bases_len, hitresult, &pchan);
+        base = ED_armature_base_and_pchan_from_select_buffer(bases, bases_len, hit_id, &pchan);
         if (pchan != nullptr) {
           if (findunsel) {
             sel = (pchan->bone->flag & BONE_SELECTED);
@@ -197,7 +196,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
         }
       }
       else {
-        base = ED_armature_base_and_ebone_from_select_buffer(bases, bases_len, hitresult, &ebone);
+        base = ED_armature_base_and_ebone_from_select_buffer(bases, bases_len, hit_id, &ebone);
         if (findunsel) {
           sel = (ebone->flag & BONE_SELECTED);
         }
@@ -211,10 +210,10 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
       if (data) {
         if (sel) {
           if (do_nearest) {
-            if (minsel > buffer[i].depth) {
+            if (minsel > result.depth) {
               firstSel = data;
               firstSel_base = base;
-              minsel = buffer[i].depth;
+              minsel = result.depth;
             }
           }
           else {
@@ -227,10 +226,10 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
         }
         else {
           if (do_nearest) {
-            if (minunsel > buffer[i].depth) {
+            if (minunsel > result.depth) {
               firstunSel = data;
               firstunSel_base = base;
-              minunsel = buffer[i].depth;
+              minunsel = result.depth;
             }
           }
           else {
@@ -259,33 +258,33 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode
 EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
                                                    uint bases_len,
                                                    const GPUSelectResult *buffer,
-                                                   const short hits,
+                                                   const int hits,
                                                    bool findunsel,
                                                    bool do_nearest,
                                                    Base **r_base)
 {
   const bool is_editmode = true;
   return static_cast<EditBone *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, {buffer, hits}, findunsel, do_nearest, r_base));
 }
 
 bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
                                                        uint bases_len,
                                                        const GPUSelectResult *buffer,
-                                                       const short hits,
+                                                       const int hits,
                                                        bool findunsel,
                                                        bool do_nearest,
                                                        Base **r_base)
 {
   const bool is_editmode = false;
   return static_cast<bPoseChannel *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, buffer, hits, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, {buffer, hits}, findunsel, do_nearest, r_base));
 }
 
 Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
                                               uint bases_len,
                                               const GPUSelectResult *buffer,
-                                              const short hits,
+                                              const int hits,
                                               bool findunsel,
                                               bool do_nearest,
                                               Base **r_base)
@@ -318,7 +317,7 @@ static void *ed_armature_pick_bone_impl(
   ViewContext vc;
   rcti rect;
   GPUSelectBuffer buffer;
-  short hits;
+  int hits;
 
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
   BLI_assert((vc.obedit != nullptr) == is_editmode);
@@ -346,7 +345,7 @@ static void *ed_armature_pick_bone_impl(
     }
 
     void *bone = ed_armature_pick_bone_from_selectbuffer_impl(
-        is_editmode, bases, bases_len, buffer.data(), hits, findunsel, true, r_base);
+        is_editmode, bases, bases_len, buffer.as_span().take_front(hits), findunsel, true, r_base);
 
     MEM_freeN(bases);
 
