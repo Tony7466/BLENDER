@@ -630,7 +630,7 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
                         const bool display_warning)
 {
 #define PUSH_VKLAYER(name, name2) \
-  if (vklayer_config_exist("VkLayer_" #name ".json") && \
+  if (/*vklayer_config_exist("VkLayer_" #name ".json") && */ \
       checkLayerSupport(layers_available, "VK_LAYER_" #name2)) \
   { \
     layers_enabled.push_back("VK_LAYER_" #name2); \
