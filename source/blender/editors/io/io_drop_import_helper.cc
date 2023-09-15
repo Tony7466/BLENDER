@@ -125,14 +125,16 @@ static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEve
   for (auto *file_handler : file_handlers) {
     wmOperatorType *ot = WM_operatortype_find(file_handler->import_operator, false);
     PointerRNA op_props = copy_file_properties_to_operator_type_pointer(op, ot);
+    char *import_label = BLI_sprintfN("Import %s", file_handler->label);
     uiItemFullO_ptr(layout,
                     ot,
-                    file_handler->label,
+                    import_label,
                     ICON_NONE,
                     static_cast<IDProperty *>(op_props.data),
                     WM_OP_INVOKE_DEFAULT,
                     UI_ITEM_NONE,
                     nullptr);
+    MEM_freeN(import_label);
   }
 
   UI_popup_menu_end(C, pup);
@@ -205,7 +207,7 @@ static char *tooltip(bContext *C, wmDrag *drag, const int /*xy*/[2], wmDropBox *
     return nullptr;
   }
   if (file_handlers.size() == 1) {
-    return BLI_strdup(file_handlers[0]->label);
+    return BLI_sprintfN("Import %s", file_handlers[0]->label);
   }
 
   return BLI_strdup("Multiple operators can handle this file(s), drop to pick which to use");

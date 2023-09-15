@@ -3501,7 +3501,7 @@ class WM_OT_drop_blend_file(Operator):
 
 class WM_FH_alembic(bpy.types.FileHandler):
     bl_idname = "WM_FH_alembic"
-    bl_label = "Import Alembic"
+    bl_label = "Alembic"
     bl_import_operator = "WM_OT_alembic_import"
     bl_file_extensions = [{"extension": ".abc"}]
 
@@ -3512,7 +3512,7 @@ class WM_FH_alembic(bpy.types.FileHandler):
 
 class WM_FH_collada(bpy.types.FileHandler):
     bl_idname = "WM_FH_collada"
-    bl_label = "Import COLLADA"
+    bl_label = "COLLADA"
     bl_import_operator = "WM_OT_collada_import"
     bl_file_extensions = [{"extension": ".dae"}]
 
@@ -3523,7 +3523,7 @@ class WM_FH_collada(bpy.types.FileHandler):
 
 class WM_FH_gpencil(bpy.types.FileHandler):
     bl_idname = "WM_FH_gpencil"
-    bl_label = "Import gpencil"
+    bl_label = "gpencil"
     bl_import_operator = "WM_OT_gpencil_import_svg"
     bl_file_extensions = [{"extension": ".svg"}]
 
@@ -3534,7 +3534,7 @@ class WM_FH_gpencil(bpy.types.FileHandler):
 
 class WM_FH_obj(bpy.types.FileHandler):
     bl_idname = "WM_FH_obj"
-    bl_label = "Import Wavefront OBJ"
+    bl_label = "Wavefront OBJ"
     bl_import_operator = "WM_OT_obj_import"
     bl_file_extensions = [{"extension": ".obj"}]
 
@@ -3545,7 +3545,7 @@ class WM_FH_obj(bpy.types.FileHandler):
 
 class WM_FH_ply(bpy.types.FileHandler):
     bl_idname = "WM_FH_ply"
-    bl_label = "Import PLY"
+    bl_label = "PLY"
     bl_import_operator = "WM_OT_ply_import"
     bl_file_extensions = [{"extension": ".ply"}]
 
@@ -3556,7 +3556,7 @@ class WM_FH_ply(bpy.types.FileHandler):
 
 class WM_FH_stl(bpy.types.FileHandler):
     bl_idname = "WM_FH_stl"
-    bl_label = "Import STL (experimental)"
+    bl_label = "STL (experimental)"
     bl_import_operator = "WM_OT_stl_import"
     bl_file_extensions = [{"extension": ".stl"}]
 
@@ -3567,7 +3567,7 @@ class WM_FH_stl(bpy.types.FileHandler):
 
 class WM_FH_import_mesh_stl(bpy.types.FileHandler):
     bl_idname = "WM_FH_import_mesh_stl"
-    bl_label = "Import STL"
+    bl_label = "STL"
     bl_import_operator = "import_mesh.stl"
     bl_file_extensions = [{"extension": ".stl"}]
 
@@ -3578,7 +3578,7 @@ class WM_FH_import_mesh_stl(bpy.types.FileHandler):
 
 class WM_FH_usd(bpy.types.FileHandler):
     bl_idname = "WM_FH_usd"
-    bl_label = "Import USD"
+    bl_label = "USD"
     bl_import_operator = "WM_OT_usd_import"
     bl_file_extensions = [{"extension": ".usd"}]
 

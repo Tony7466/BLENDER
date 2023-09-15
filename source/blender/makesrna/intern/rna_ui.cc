@@ -1321,8 +1321,8 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
                                            StructFreeFunc free)
 {
 
-  FileHandlerType dummy_file_handler_type = {};
-  FileHandler dummy_file_handler = {};
+  FileHandlerType dummy_file_handler_type{};
+  FileHandler dummy_file_handler{};
 
   dummy_file_handler.type = &dummy_file_handler_type;
 
@@ -2263,7 +2263,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "bl_import_operator", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "type->import_operator");
-  RNA_def_property_flag(prop, PROP_REGISTER);
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   RNA_def_property_ui_text(
       prop,
       "Operator",
