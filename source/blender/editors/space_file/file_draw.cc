@@ -33,7 +33,7 @@
 
 #include "BLF_api.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -108,30 +108,11 @@ void ED_file_path_button(bScreen *screen,
   UI_block_func_set(block, nullptr, nullptr, nullptr);
 }
 
-static void file_draw_tooltip_func(bContext * /*C*/, struct uiTooltipData *data, void *argN)
+/* Dummy helper - we need dynamic tooltips here. */
+static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
-  char *path = (char *)argN;
-
-  UI_tooltip_text_field_add(
-      data, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN, true);
-  UI_tooltip_text_field_add(
-      data, BLI_strdup("Blender: 3.0"), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, true);
-  UI_tooltip_text_field_add(data,
-                            BLI_strdup("Modified 25 Apr 2021 13:24"),
-                            nullptr,
-                            UI_TIP_STYLE_NORMAL,
-                            UI_TIP_LC_NORMAL,
-                            false);
-  UI_tooltip_text_field_add(data,
-                            BLI_strdup("Size: 99.4 MiB (104,203,114 bytes)"),
-                            nullptr,
-                            UI_TIP_STYLE_NORMAL,
-                            UI_TIP_LC_NORMAL,
-                            false);
-
-  ImBuf *img = UI_icon_alert_imbuf_get(ALERT_ICON_BLENDER);
-  UI_tooltip_image_field_add(data, img, 128 * UI_SCALE_FAC, 128 * UI_SCALE_FAC);
-  IMB_freeImBuf(img);
+  char *dyn_tooltip = static_cast<char *>(argN);
+  return BLI_strdup(dyn_tooltip);
 }
 
 static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
@@ -214,7 +195,7 @@ static uiBut *file_add_icon_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_custom_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
+    UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
   }
 
   return but;
@@ -354,7 +335,7 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_custom_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
+    UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
   }
 }
 
