@@ -298,6 +298,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   }
 
   BLI_assert(callback_data->messageIdNumber != 0x47172512);
+  BLI_assert(callback_data->messageIdNumber != 0x2ba3a98e);
 
   return VK_FALSE;
 };

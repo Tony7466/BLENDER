@@ -343,7 +343,7 @@ void Instance::render_sample()
   capture_view.render_world();
   capture_view.render_probes();
 
-  // main_view.render();
+  main_view.render();
 
   motion_blur.step();
   GPU_debug_capture_end();
