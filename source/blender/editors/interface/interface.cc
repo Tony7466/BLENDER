@@ -5926,17 +5926,18 @@ const char *UI_but_placeholder_get(uiBut *but)
       const short idcode = RNA_type_to_ID_code(type);
       if (idcode != 0) {
         RNA_enum_name(rna_enum_id_type_items, idcode, &placeholder);
+        placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_ID, placeholder);
       }
     }
     else if (but->type == UI_BTYPE_TEXT) {
       const char *identifier = RNA_property_identifier(but->rnaprop);
       if (STR_ELEM(identifier, "search_filter", "filter_text", "filter_search")) {
-        placeholder = N_("Search");
+        placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, "Search");
       }
     }
   }
 
-  return IFACE_(placeholder);
+  return placeholder;
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)

@@ -109,6 +109,7 @@ static void rna_uiItemR(uiLayout *layout,
 
   /* Get translated name (label). */
   name = rna_translate_ui_text(name, text_ctxt, nullptr, prop, translate);
+  placeholder = rna_translate_ui_text(placeholder, text_ctxt, nullptr, prop, translate);
 
   if (slider) {
     flag |= UI_ITEM_R_SLIDER;
