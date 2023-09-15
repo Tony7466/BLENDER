@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_assert.h"
+
 #include "IMB_colormanagement.h"
 
 #include "GPU_shader.h"
@@ -42,6 +44,9 @@ static Result detect_edges(Context &context,
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       break;
     }
+    default:
+      BLI_assert_unreachable();
+      break;
   }
 
   GPU_shader_uniform_1f(shader, "smaa_threshold", threshold);

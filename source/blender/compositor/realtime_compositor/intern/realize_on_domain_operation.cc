@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_assert.h"
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_matrix_types.hh"
@@ -98,6 +99,9 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
         return shader_manager().get("compositor_realize_on_domain_bicubic_vector");
       case ResultType::Float:
         return shader_manager().get("compositor_realize_on_domain_bicubic_float");
+      default:
+        BLI_assert_unreachable();
+        return nullptr;
     }
   }
   else {
@@ -108,6 +112,9 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
         return shader_manager().get("compositor_realize_on_domain_vector");
       case ResultType::Float:
         return shader_manager().get("compositor_realize_on_domain_float");
+      default:
+        BLI_assert_unreachable();
+        return nullptr;
     }
   }
 
