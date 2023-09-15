@@ -322,15 +322,15 @@ static void sort_small_groups(const OffsetIndices<int> groups,
 
 static void atomic_a_swap_b(int &a, int &b)
 {
-  int prew_a_state = a;
+  int prev_a_state = a;
   while (true) {
-    const int result = atomic_cas_int32(&a, prew_a_state, b);
+    const int result = atomic_cas_int32(&a, prev_a_state, b);
     if (result == b) {
       break;
     }
-    prew_a_state = result;
+    prev_a_state = result;
   }
-  b = prew_a_state;
+  b = prev_a_state;
 }
 
 static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
