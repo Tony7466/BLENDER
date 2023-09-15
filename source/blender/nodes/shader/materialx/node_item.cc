@@ -13,6 +13,9 @@ NodeItem::NodeItem(MaterialX::GraphElement *graph) : graph_(graph) {}
 
 NodeItem::Type NodeItem::type(const std::string &type_str)
 {
+  if (type_str == "multioutput") {
+    return Type::Multioutput;
+  }
   if (type_str == "string") {
     return Type::String;
   }
@@ -64,6 +67,8 @@ std::string NodeItem::type(Type type)
   switch (type) {
     case Type::Any:
       return "";
+    case Type::Multioutput:
+      return "multioutput";
     case Type::String:
       return "string";
     case Type::Filename:

@@ -42,6 +42,51 @@ static int node_shader_gpu_bsdf_glass(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_bsdf_glass", in, out, GPU_constant(&use_multi_scatter));
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  if (to_type_ != NodeItem::Type::BSDF) {
+    return empty();
+  }
+
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Vector2);
+  NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
+  NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
+
+  NodeItem dielectric = create_node("dielectric_bsdf", NodeItem::Type::BSDF);
+  if (normal) {
+    dielectric.set_input("normal", normal);
+  }
+  dielectric.set_input("tint", color);
+  dielectric.set_input("roughness", roughness);
+  dielectric.set_input("ior", ior);
+  dielectric.set_input("scatter_mode", val(std::string("RT")));
+
+  NodeItem artistic_ior = create_node("artistic_ior", NodeItem::Type::Multioutput);
+  artistic_ior.add_output("ior", NodeItem::Type::Color3);
+  artistic_ior.add_output("extinction", NodeItem::Type::Color3);
+  artistic_ior.set_input("reflectivity", color);
+  artistic_ior.set_input("edge_color", color);
+
+  NodeItem conductor = create_node("conductor_bsdf", NodeItem::Type::BSDF);
+  if (normal) {
+    conductor.set_input("normal", normal);
+  }
+  conductor.set_input_output("ior", artistic_ior, "ior");
+  conductor.set_input_output("extinction", artistic_ior, "extinction");
+  conductor.set_input("roughness", roughness);
+
+  NodeItem res = create_node("mix", NodeItem::Type::BSDF);
+  res.set_input("fg", dielectric);
+  res.set_input("bg", conductor);
+  res.set_input("mix", val(0.5f));
+
+  return res ;
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_bsdf_glass_cc
 
 /* node type definition */
@@ -57,6 +102,7 @@ void register_node_type_sh_bsdf_glass()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_shader_init_glass;
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_glass;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

@@ -16,7 +16,7 @@ class NodeItem {
   enum class Type {
     Any = 0,
     Empty,
-
+    Multioutput,
     /* Value types */
     String,
     Filename,

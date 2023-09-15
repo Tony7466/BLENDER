@@ -56,6 +56,41 @@ static int node_shader_gpu_bsdf_glossy(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_bsdf_glossy", in, out, GPU_constant(&use_multi_scatter));
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  if (to_type_ != NodeItem::Type::BSDF) {
+    return empty();
+  }
+
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Vector2);
+  NodeItem anisotropy = get_input_value("Anisotropy", NodeItem::Type::Color3);
+  NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
+  NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
+
+  NodeItem artistic_ior = create_node("artistic_ior", NodeItem::Type::Multioutput);
+  artistic_ior.add_output("ior", NodeItem::Type::Color3);
+  artistic_ior.add_output("extinction", NodeItem::Type::Color3);
+  artistic_ior.set_input("reflectivity", color);
+  artistic_ior.set_input("edge_color", color);
+
+  NodeItem res = create_node("conductor_bsdf", NodeItem::Type::BSDF);
+  if (normal) {
+    res.set_input("normal", normal);
+  }
+  if (tangent) {
+    res.set_input("tangent", tangent);
+  }
+  res.set_input_output("ior", artistic_ior, "ior");
+  res.set_input_output("extinction", artistic_ior, "extinction");
+  res.set_input("roughness", roughness);
+
+  return res;
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_bsdf_glossy_cc
 
 /* node type definition */
@@ -72,6 +107,7 @@ void register_node_type_sh_bsdf_glossy()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_shader_init_glossy;
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_glossy;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 
