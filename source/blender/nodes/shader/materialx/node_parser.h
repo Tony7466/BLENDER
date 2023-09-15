@@ -42,6 +42,8 @@ class NodeParser {
   NodeItem create_node(const std::string &category, NodeItem::Type type);
   NodeItem get_input_default(const std::string &name, NodeItem::Type to_type);
   NodeItem get_input_default(int index, NodeItem::Type to_type);
+  NodeItem get_output_default(const std::string &name, NodeItem::Type to_type);
+  NodeItem get_output_default(int index, NodeItem::Type to_type);
   NodeItem get_input_link(const std::string &name, NodeItem::Type to_type);
   NodeItem get_input_link(int index, NodeItem::Type to_type);
   NodeItem get_input_value(const std::string &name, NodeItem::Type to_type);
@@ -51,7 +53,7 @@ class NodeParser {
   NodeItem texcoord_node();
 
  private:
-  NodeItem get_input_default(const bNodeSocket &socket, NodeItem::Type to_type);
+  NodeItem get_default(const bNodeSocket &socket, NodeItem::Type to_type);
   NodeItem get_input_link(const bNodeSocket &socket, NodeItem::Type to_type);
   NodeItem get_input_value(const bNodeSocket &socket, NodeItem::Type to_type);
 };

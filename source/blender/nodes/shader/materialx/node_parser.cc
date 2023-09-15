@@ -33,20 +33,18 @@ NodeItem NodeParser::compute_full()
 
   /* Checking if node was already computed */
   res.node = graph_->getNode(node_name());
-  if (res.node) {
-    return res;
-  }
+  if (!res.node) {
+    CLOG_INFO(LOG_MATERIALX_SHADER,
+              1,
+              "%s [%d] => %s",
+              node_->name,
+              node_->typeinfo->type,
+              NodeItem::type(to_type_).c_str());
 
-  CLOG_INFO(LOG_MATERIALX_SHADER,
-            1,
-            "%s [%d] => %s",
-            node_->name,
-            node_->typeinfo->type,
-            NodeItem::type(to_type_).c_str());
-
-  res = compute();
-  if (res.node) {
-    res.node->setName(node_name());
+    res = compute();
+    if (res.node) {
+      res.node->setName(node_name());
+    }
   }
   if (NodeItem::is_arithmetic(to_type_)) {
     res = res.convert(to_type_);
@@ -73,12 +71,12 @@ NodeItem NodeParser::create_node(const std::string &category, NodeItem::Type typ
 
 NodeItem NodeParser::get_input_default(const std::string &name, NodeItem::Type to_type)
 {
-  return get_input_default(node_->input_by_identifier(name), to_type);
+  return get_default(node_->input_by_identifier(name), to_type);
 }
 
 NodeItem NodeParser::get_input_default(int index, NodeItem::Type to_type)
 {
-  return get_input_default(node_->input_socket(index), to_type);
+  return get_default(node_->input_socket(index), to_type);
 }
 
 NodeItem NodeParser::get_input_link(const std::string &name, NodeItem::Type to_type)
@@ -101,6 +99,16 @@ NodeItem NodeParser::get_input_value(int index, NodeItem::Type to_type)
   return get_input_value(node_->input_socket(index), to_type);
 }
 
+NodeItem NodeParser::get_output_default(const std::string &name, NodeItem::Type to_type)
+{
+  return get_default(node_->output_by_identifier(name), to_type);
+}
+
+NodeItem NodeParser::get_output_default(int index, NodeItem::Type to_type)
+{
+  return get_default(node_->output_socket(index), to_type);
+}
+
 NodeItem NodeParser::empty() const
 {
   return NodeItem(graph_);
@@ -117,7 +125,7 @@ NodeItem NodeParser::texcoord_node()
   return res;
 }
 
-NodeItem NodeParser::get_input_default(const bNodeSocket &socket, NodeItem::Type to_type)
+NodeItem NodeParser::get_default(const bNodeSocket &socket, NodeItem::Type to_type)
 {
   NodeItem res = empty();
   switch (socket.type) {
@@ -180,7 +188,7 @@ NodeItem NodeParser::get_input_value(const bNodeSocket &socket, NodeItem::Type t
 {
   NodeItem res = get_input_link(socket, to_type);
   if (!res) {
-    res = get_input_default(socket, to_type);
+    res = get_default(socket, to_type);
   }
   return res;
 }
