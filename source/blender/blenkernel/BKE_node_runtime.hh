@@ -794,14 +794,14 @@ inline bool bNodeSocket::is_panel_collapsed() const
   return (this->flag & SOCK_PANEL_COLLAPSED) != 0;
 }
 
-inline bool bNodeSocket::is_visible() const
+inline bool bNodeSocket::is_visible_or_panel_collapsed() const
 {
   return !this->is_hidden() && this->is_available();
 }
 
-inline bool bNodeSocket::is_icon_visible() const
+inline bool bNodeSocket::is_visible() const
 {
-  return this->is_visible() && !this->is_panel_collapsed();
+  return this->is_visible_or_panel_collapsed() && !this->is_panel_collapsed();
 }
 
 inline bNode &bNodeSocket::owner_node()
