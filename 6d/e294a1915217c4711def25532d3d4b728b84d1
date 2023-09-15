@@ -1,1 +1,2 @@
 Referenced by commit 3f9a15bc307a2496b2611e4a4823df55d5e7a5e6, Fix #112052: Theme access asserts on startup
+Referenced by commit 8d62b7c01c579ec9e452d13e602d0aca8961cd3b, Fix fast-path addon_utils._initialize_once not being used on startup
