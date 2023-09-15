@@ -320,6 +320,19 @@ static void sort_small_groups(const OffsetIndices<int> groups,
   });
 }
 
+static void atomic_a_swap_b(int &a, int &b)
+{
+  int prew_a_state = a;
+  while (true) {
+    const int result = atomic_cas_int32(&a, prew_a_state, b);
+    if (result == b) {
+      break;
+    }
+    prew_a_state = result;
+  }
+  b = prew_a_state;
+}
+
 static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
                                             const OffsetIndices<int> offsets)
 {
@@ -329,21 +342,37 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
   BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
 
-  /* `counts` keeps track of how many elements have been added to each group, and is incremented
-   * atomically by many threads in parallel. `calloc` can be measurably faster than a parallel fill
-   * of zero. Alternatively the offsets could be copied and incremented directly, but the cost of
-   * the copy is slightly higher than the cost of `calloc`. */
-  int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
-  BLI_SCOPED_DEFER([&]() { MEM_freeN(counts); })
-  Array<int> results(group_indices.size());
+  constexpr const int list_start = -1;
+  Array<int> lists_ends(offsets.size(), list_start);
+  Array<int> group_lists(group_indices.size());
+  /* Construction of a multiple single-linked lists.
+   * Each element point on previous one or list_start. Length the same as group size.
+   * End of each groups is contained in lists_ends array. */
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
       const int group_index = group_indices[i];
-      const int index_in_group = atomic_fetch_and_add_int32(&counts[group_index], 1);
-      results[offsets[group_index][index_in_group]] = int(i);
+      group_lists[i] = int(i);
+      /* Swap current index with any other in list head. */
+      atomic_a_swap_b(lists_ends[group_index], group_lists[i]);
     }
   });
-  sort_small_groups(offsets, 1024, results);
+
+  BLI_assert(!lists_ends.as_span().contains(list_start));
+
+  Array<int> results(group_indices.size());
+  threading::parallel_for(lists_ends.index_range(), 128, [&](const IndexRange range) {
+    for (const int64_t group_v : range) {
+      MutableSpan<int> dst_results = results.as_mutable_span().slice(offsets[group_v]);
+      int next_index = lists_ends[group_v];
+      dst_results.first() = next_index;
+      for (int &result_value : dst_results.drop_front(1)) {
+        next_index = group_lists[next_index];
+        result_value = next_index;
+      }
+    }
+  });
+
+  sort_small_groups(offsets, 128, results);
   return results;
 }
 
