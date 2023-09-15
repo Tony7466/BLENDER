@@ -231,7 +231,9 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps.max_textures = limits.maxDescriptorSetSampledImages;
   GCaps.max_textures_vert = limits.maxPerStageDescriptorSampledImages;
   GCaps.max_textures_geom = limits.maxPerStageDescriptorSampledImages;
-  GCaps.max_textures_frag = limits.maxPerStageDescriptorSampledImages;
+  /* Eevee next reorder textures based on this number, but vulkan uses this also to offset images.
+   * TODO: change the state manager to use none-indexed bindings. */
+  GCaps.max_textures_frag = min_ii(limits.maxPerStageDescriptorSampledImages, 12);
   GCaps.max_samplers = limits.maxSamplerAllocationCount;
   for (int i = 0; i < 3; i++) {
     GCaps.max_work_group_count[i] = limits.maxComputeWorkGroupCount[i];

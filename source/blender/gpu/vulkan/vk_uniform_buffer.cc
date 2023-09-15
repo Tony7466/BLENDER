@@ -46,8 +46,7 @@ void VKUniformBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindTyp
   /* Upload attached data, during bind time. */
   if (data_) {
     buffer_.update(data_);
-    MEM_freeN(data_);
-    data_ = nullptr;
+    MEM_SAFE_FREE(data_);
   }
 
   VKContext &context = *VKContext::get();
