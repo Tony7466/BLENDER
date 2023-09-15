@@ -46,7 +46,10 @@ static Domain compute_realized_transformation_domain(const Domain &domain)
 
   const float3x3 transformation = math::from_loc_rot_scale<float3x3>(translation, rotation, scale);
 
-  return Domain(math::min(int2(math::ceil(size)), int2(GPU_max_texture_size())), transformation);
+  const int2 domain_size = math::clamp(
+      int2(math::round(size)), int2(1), int2(GPU_max_texture_size()));
+
+  return Domain(domain_size, transformation);
 }
 
 void transform(Context &context,
