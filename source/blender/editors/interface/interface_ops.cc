@@ -1057,13 +1057,12 @@ static void ui_context_selected_bones_via_pose(bContext *C, ListBase *r_lb)
 
 static void ui_context_fcurve_modifiers_via_fcurve(bContext *C, ListBase *r_lb, FModifier *source)
 {
-  ListBase lb;
-  lb = CTX_data_collection_get(C, "selected_editable_fcurves");
-  if (BLI_listbase_is_empty(&lb)) {
+  ListBase /* CollectionPointerLink */ fcurve_links;
+  fcurve_links = CTX_data_collection_get(C, "selected_editable_fcurves");
+  if (BLI_listbase_is_empty(&fcurve_links)) {
     return;
   }
-  blender::Vector<CollectionPointerLink *> pointers_to_free;
-  LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
+  LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, &fcurve_links) {
     FCurve *fcu = static_cast<FCurve *>(link->ptr.data);
     bool found_modifier = false;
     LISTBASE_FOREACH (FModifier *, mod, &fcu->modifiers) {
@@ -1076,16 +1075,11 @@ static void ui_context_fcurve_modifiers_via_fcurve(bContext *C, ListBase *r_lb, 
     }
     if (!found_modifier) {
       /* FCurves that don't have a modifier named the same must be removed to avoid segfaults. */
-      BLI_remlink(&lb, link);
-      pointers_to_free.append(link);
+      BLI_freelinkN(&fcurve_links, link);
     }
   }
 
-  for (CollectionPointerLink *link : pointers_to_free) {
-    MEM_freeN(link);
-  }
-
-  *r_lb = lb;
+  *r_lb = fcurve_links;
 }
 
 bool UI_context_copy_to_selected_list(bContext *C,
