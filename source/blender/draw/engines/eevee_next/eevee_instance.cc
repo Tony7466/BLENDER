@@ -327,6 +327,7 @@ bool Instance::do_probe_sync() const
  **/
 void Instance::render_sample()
 {
+  GPU_debug_capture_begin();
   if (sampling.finished_viewport()) {
     film.display();
     return;
@@ -340,11 +341,12 @@ void Instance::render_sample()
   sampling.step();
 
   capture_view.render_world();
-  // capture_view.render_probes();
+  capture_view.render_probes();
 
   // main_view.render();
 
   motion_blur.step();
+  GPU_debug_capture_end();
 }
 
 void Instance::render_read_result(RenderLayer *render_layer, const char *view_name)

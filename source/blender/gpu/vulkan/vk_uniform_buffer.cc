@@ -43,6 +43,13 @@ void VKUniformBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindTyp
     allocate();
   }
 
+  /* Upload attached data, during bind time. */
+  if (data_) {
+    buffer_.update(data_);
+    MEM_freeN(data_);
+    data_ = nullptr;
+  }
+
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();

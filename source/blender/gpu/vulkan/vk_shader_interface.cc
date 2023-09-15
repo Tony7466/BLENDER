@@ -153,6 +153,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   uint32_t descriptor_set_location = 0;
   for (ShaderCreateInfo::Resource &res : all_resources) {
     const ShaderInput *input = shader_input_get(res);
+    BLI_assert(input);
     descriptor_set_location_update(input, descriptor_set_location++);
   }
 
@@ -217,8 +218,16 @@ const ShaderInput *VKShaderInterface::shader_input_get(
     const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const
 {
   switch (bind_type) {
-    case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
-      return texture_get(binding + image_offset_);
+    case shader::ShaderCreateInfo::Resource::BindType::IMAGE: {
+      /* Not really nice, but the binding namespace between OpenGL and Vulkan don't match. To fix
+       * this we need to check if one of both cases return a binding.
+       * TODO: we might want to introduce a different API to fix this.  */
+      const ShaderInput *result = texture_get(binding + image_offset_);
+      if (!result) {
+        result = texture_get(binding);
+      }
+      return result;
+    }
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
       return texture_get(binding);
     case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
