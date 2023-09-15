@@ -117,33 +117,35 @@ void ED_file_path_button(bScreen *screen,
 typedef struct file_tooltip_data {
   const SpaceFile *sfile;
   const FileDirEntry *file;
-  const ImBuf *preview;
 } file_tooltip_data;
 
 static file_tooltip_data *file_tooltip_data_create(const SpaceFile *sfile,
-                                                   const FileDirEntry *file,
-                                                   const ImBuf *preview)
+                                                   const FileDirEntry *file)
 {
   file_tooltip_data *data = (file_tooltip_data *)MEM_mallocN(sizeof(file_tooltip_data),
                                                              "tooltip_data");
   data->sfile = sfile;
   data->file = file;
-  data->preview = preview;
   return data;
 }
 
-static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
+static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData *tip, void *argN)
 {
-  file_tooltip_data *data = static_cast<file_tooltip_data *>(argN);
-  const SpaceFile *sfile = data->sfile;
+  file_tooltip_data *file_data = static_cast<file_tooltip_data *>(argN);
+  const SpaceFile *sfile = file_data->sfile;
   const FileList *files = sfile->files;
   const FileSelectParams *params = ED_fileselect_get_active_params(sfile);
-  const FileDirEntry *file = data->file;
+  const FileDirEntry *file = file_data->file;
 
   if (file->asset) {
-    return nullptr;
+    return;
   }
-  std::string complete_string(file->name);
+
+  UI_tooltip_text_field_add(
+      tip, BLI_strdup(file->name), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+
+  /* Add pad variable to the very next field only. */
+  bool pad = true;
 
   if (!(file->typeflag & FILE_TYPE_BLENDERLIB)) {
 
@@ -153,20 +155,42 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
     if (params->recursion_level > 0) {
       char root[FILE_MAX];
       BLI_path_split_dir_part(full_path, root, FILE_MAX);
-      complete_string += std::string("\n") + root;
+      UI_tooltip_text_field_add(
+          tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, pad);
+      pad = false;
     }
 
     if (file->redirection_path) {
-      complete_string += '\n' + std::string("\n") + N_("Link target:") + file->redirection_path;
+      UI_tooltip_text_field_add(tip,
+                                BLI_sprintfN("%s: %s", N_("Link target"), file->redirection_path),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_NORMAL, pad);
+      pad = false;
     }
     if (file->attributes & FILE_ATTR_OFFLINE) {
-      complete_string += std::string("\n") + N_("This file is offline.");
+      UI_tooltip_text_field_add(tip,
+                                BLI_strdup(N_("This file is offline")),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_ALERT, pad);
+      pad = false;
     }
     if (file->attributes & FILE_ATTR_READONLY) {
-      complete_string += std::string("\n") + N_("This file is read-only.");
+      UI_tooltip_text_field_add(tip,
+                                BLI_strdup(N_("This file is read-only")),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_ALERT, pad);
+      pad = false;
     }
     if (file->attributes & (FILE_ATTR_SYSTEM | FILE_ATTR_RESTRICTED)) {
-      complete_string += std::string("\n") + N_("This is a restricted system file.");
+      UI_tooltip_text_field_add(tip,
+                                BLI_strdup(N_("This is a restricted system file")),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_ALERT, pad);
+      pad = false;
     }
 
     if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP) &&
@@ -175,8 +199,12 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       /* Load Blender version directly from the file. */
       short version = BLO_version_from_file(full_path);
       if (version != 0) {
-        complete_string += std::string("\n") + "Blender: " + std::to_string(version / 100) + "." +
-                           std::to_string(version % 100);
+        UI_tooltip_text_field_add(tip,
+                                  BLI_sprintfN("Blender: %d.%01d", version / 100, version % 100),
+                                  nullptr,
+                                  UI_TIP_STYLE_NORMAL,
+                                  UI_TIP_LC_NORMAL, pad);
+        pad = false;
       }
     }
 
@@ -189,8 +217,13 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       if (IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Width", value1, sizeof(value1)) &&
           IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
       {
-        complete_string += std::string("\n") + N_("Dimensions") + ": ";
-        complete_string += std::string(value1) + " \u00D7 " + std::string(value2);
+        UI_tooltip_text_field_add(
+            tip,
+            BLI_sprintfN("%s: %s \u00D7 %s", N_("Dimensions"), value1, value2),
+            nullptr,
+            UI_TIP_STYLE_NORMAL,
+            UI_TIP_LC_NORMAL, pad);
+        pad = false;
       }
       IMB_freeImBuf(thumb);
     }
@@ -202,50 +235,75 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
       char value1[128];
       char value2[128];
       char value3[128];
-      if (IMB_metadata_get_field(thumb->metadata, "Codec", value1, sizeof(value1)))
-      {
-        complete_string += std::string("\n") + N_("Codec") + ": ";
-        complete_string += std::string(value1);
-      }
       if (IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Width", value1, sizeof(value1)) &&
           IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
       {
-        complete_string += std::string("\n") + N_("Dimensions") + ": ";
-        complete_string += std::string(value1) + " \u00D7 " + std::string(value2);
+        UI_tooltip_text_field_add(
+            tip,
+            BLI_sprintfN("%s: %s \u00D7 %s", N_("Dimensions"), value1, value2),
+            nullptr,
+            UI_TIP_STYLE_NORMAL,
+            UI_TIP_LC_NORMAL, pad);
+        pad = false;
       }
       if (IMB_metadata_get_field(thumb->metadata, "Frames", value1, sizeof(value1)) &&
           IMB_metadata_get_field(thumb->metadata, "FPS", value2, sizeof(value2)) &&
           IMB_metadata_get_field(thumb->metadata, "Duration", value3, sizeof(value3)))
       {
-        complete_string += std::string("\n") + N_("Frames") + ": ";
-        complete_string += value1 + std::string(" @ ") + value2 + " " + N_("FPS");
-        complete_string += std::string(" (") + value3 + " " + N_("seconds") ") ";
+        UI_tooltip_text_field_add(tip,
+                                  BLI_sprintfN("%s: %s @ %s %s (%s %s)",
+                                               N_("Frames"),
+                                               value1,
+                                               value2,
+                                               N_("FPS"),
+                                               value3,
+                                               N_("seconds")),
+                                  nullptr,
+                                  UI_TIP_STYLE_NORMAL,
+                                  UI_TIP_LC_NORMAL, pad);
+        pad = false;
+      }
+      if (IMB_metadata_get_field(thumb->metadata, "Codec", value1, sizeof(value1)))
+      {
+        UI_tooltip_text_field_add(tip,
+                                  BLI_sprintfN("%s: %s", N_("Codec"), value1),
+                                  nullptr,
+                                  UI_TIP_STYLE_NORMAL,
+                                  UI_TIP_LC_NORMAL, pad);
+        pad = false;
       }
       IMB_freeImBuf(thumb);
     }
 
     char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
     bool is_today, is_yesterday;
+    std::string day_string = ("");
     BLI_filelist_entry_datetime_to_string(
         NULL, file->time, false, time_st, date_st, &is_today, &is_yesterday);
-    complete_string += std::string("\n") + N_("Modified") + std::string(": ");
     if (is_today || is_yesterday) {
-      complete_string += (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
+      day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
     }
-    complete_string += date_st + std::string(" ") + time_st;
+    UI_tooltip_text_field_add(
+        tip,
+        BLI_sprintfN("%s: %s%s %s", N_("Modified"), day_string.c_str(), date_st, time_st),
+        nullptr,
+        UI_TIP_STYLE_NORMAL,
+        UI_TIP_LC_NORMAL, pad);
+    pad = false;
 
     if (!(file->typeflag & FILE_TYPE_DIR) && file->size > 0) {
       char size[16];
       char size_full[16];
       BLI_filelist_entry_size_to_string(NULL, file->size, false, size);
       BLI_str_format_uint64_grouped(size_full, file->size);
-      complete_string += std::string("\n") + N_("Size") + std::string(": ") + std::string(size) +
-                         std::string(" (") + std::string(size_full) + std::string(" ") +
-                         N_("bytes") + std::string(")");
+      UI_tooltip_text_field_add(
+          tip,
+          BLI_sprintfN("%s: %s (%s %s)", N_("Size"), size, size_full, N_("bytes")),
+          nullptr,
+          UI_TIP_STYLE_NORMAL,
+          UI_TIP_LC_NORMAL);
     }
   }
-
-  return BLI_strdupn(complete_string.c_str(), complete_string.size());
 }
 
 static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
@@ -328,8 +386,8 @@ static uiBut *file_add_icon_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_set(
-        but, file_draw_tooltip_func, file_tooltip_data_create(sfile, file, NULL), MEM_freeN);
+    UI_but_func_tooltip_custom_set(
+        but, file_draw_tooltip_custom_func, file_tooltip_data_create(sfile, file), MEM_freeN);
   }
 
   return but;
@@ -469,10 +527,8 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_set(but,
-                            file_draw_tooltip_func,
-                            file_tooltip_data_create(sfile, file, preview_image),
-                            MEM_freeN);
+    UI_but_func_tooltip_custom_set(
+        but, file_draw_tooltip_custom_func, file_tooltip_data_create(sfile, file), MEM_freeN);
   }
 }
 
