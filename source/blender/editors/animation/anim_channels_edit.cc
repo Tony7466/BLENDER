@@ -4397,6 +4397,10 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
     if (!fcu->bezt) {
       continue;
     }
+    AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
+    blender::int2 nla_mapped_range;
+    nla_mapped_range[0] = int(BKE_nla_tweakedit_remap(adt, frame_range[0], NLATIME_CONVERT_UNMAP));
+    nla_mapped_range[1] = int(BKE_nla_tweakedit_remap(adt, frame_range[1], NLATIME_CONVERT_UNMAP));
     /* Save current state of modifier flags so they can be reapplied after baking. */
     blender::Vector<short> modifier_flags;
     if (!bake_modifiers) {
@@ -4406,7 +4410,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
       }
     }
 
-    bake_fcurve(fcu, frame_range, step, remove_existing);
+    bake_fcurve(fcu, nla_mapped_range, step, remove_existing);
 
     if (bake_modifiers) {
       free_fmodifiers(&fcu->modifiers);
