@@ -1493,6 +1493,82 @@ struct RepeatBodyIndices {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+struct RepeatEvalStorage {
+  LinearAllocator<> allocator;
+  lf::Graph graph;
+  std::optional<lf::GraphExecutor> graph_executor;
+  std::optional<LazyFunctionForLogicalOr> or_function;
+  void *graph_executor_storage = nullptr;
+  bool multi_threading_enabled = false;
+  Vector<int> input_index_map;
+  Vector<int> output_index_map;
+};
+
+class ParamsForRepeatZoneGraph : public lf::Params {
+ private:
+  lf::Params &zone_params_;
+  RepeatEvalStorage &eval_storage_;
+
+ public:
+  ParamsForRepeatZoneGraph(RepeatEvalStorage &eval_storage, lf::Params &zone_params)
+      : lf::Params(*eval_storage.graph_executor, eval_storage.multi_threading_enabled),
+        zone_params_{zone_params},
+        eval_storage_(eval_storage)
+  {
+  }
+
+  int map_input_index(const int index) const
+  {
+    return eval_storage_.input_index_map[index];
+  }
+
+  int map_output_index(const int index) const
+  {
+    return eval_storage_.output_index_map[index];
+  }
+
+  void *try_get_input_data_ptr_impl(const int index) const
+  {
+    return zone_params_.try_get_input_data_ptr(this->map_input_index(index));
+  }
+
+  void *try_get_input_data_ptr_or_request_impl(const int index)
+  {
+    return zone_params_.try_get_input_data_ptr_or_request(this->map_input_index(index));
+  }
+  void *get_output_data_ptr_impl(const int index)
+  {
+    return zone_params_.get_output_data_ptr(this->map_output_index(index));
+  }
+  void output_set_impl(const int index)
+  {
+    return zone_params_.output_set(this->map_output_index(index));
+  }
+  bool output_was_set_impl(const int index) const
+  {
+    return zone_params_.output_was_set(this->map_output_index(index));
+  }
+  lf::ValueUsage get_output_usage_impl(const int index) const
+  {
+    return zone_params_.get_output_usage(this->map_output_index(index));
+  }
+  void set_input_unused_impl(const int index)
+  {
+    return zone_params_.set_input_unused(this->map_input_index(index));
+  }
+  bool try_enable_multi_threading_impl()
+  {
+    if (eval_storage_.multi_threading_enabled) {
+      return true;
+    }
+    if (zone_params_.try_enable_multi_threading()) {
+      eval_storage_.multi_threading_enabled = true;
+      return true;
+    }
+    return false;
+  }
+};
+
 class LazyFunctionForRepeatZone : public LazyFunction {
  private:
   const bNodeTreeZone &zone_;
@@ -1557,191 +1633,185 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     }
   }
 
+  void *init_storage(LinearAllocator<> &allocator) const override
+  {
+    return allocator.construct<RepeatEvalStorage>().release();
+  }
+
+  void destruct_storage(void *storage) const override
+  {
+    RepeatEvalStorage *s = static_cast<RepeatEvalStorage *>(storage);
+    if (s->graph_executor_storage) {
+      s->graph_executor->destruct_storage(s->graph_executor_storage);
+    }
+    std::destroy_at(s);
+  }
+
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-
     const NodeGeometryRepeatOutput &node_storage = *static_cast<const NodeGeometryRepeatOutput *>(
         repeat_output_bnode_.storage);
+    RepeatEvalStorage &eval_storage = *static_cast<RepeatEvalStorage *>(context.storage);
+
+    if (!eval_storage.graph_executor) {
+      this->initialize_execution_graph(params, eval_storage, node_storage);
+    }
+
+    ParamsForRepeatZoneGraph eval_graph_params{eval_storage, params};
+    lf::Context eval_graph_context{
+        eval_storage.graph_executor_storage, context.user_data, context.local_user_data};
+    eval_storage.graph_executor->execute(eval_graph_params, eval_graph_context);
+  }
+
+  void initialize_execution_graph(lf::Params &params,
+                                  RepeatEvalStorage &eval_storage,
+                                  const NodeGeometryRepeatOutput &node_storage) const
+  {
+    const int num_repeat_items = node_storage.items_num;
+    const int num_border_links = body_indices_.border_link_inputs.size();
 
     /* Number of iterations to evaluate. */
     const int iterations = std::max<int>(
         0, params.get_input<ValueOrField<int>>(zone_info_.main_input_indices[0]).as_value());
+    /* Take iterations input into account. */
+    const int main_inputs_offset = 1;
 
-    const int repeat_items_num = node_storage.items_num;
-    /* Gather data types of the repeat items. */
-    Array<const CPPType *> repeat_item_types(repeat_items_num);
-    for (const int i : body_indices_.main_inputs.index_range()) {
-      const int input_i = body_indices_.main_inputs[i];
-      const CPPType &type = *body_fn_.inputs()[input_i].type;
-      repeat_item_types[i] = &type;
+    lf::Graph &lf_graph = eval_storage.graph;
+
+    Vector<const CPPType *> input_types(inputs_.size());
+    for (const int i : inputs_.index_range()) {
+      input_types[i] = inputs_[i].type;
+    }
+    lf::DummyNode &lf_input_node = lf_graph.add_dummy({}, input_types);
+
+    Vector<const CPPType *> output_types(outputs_.size());
+    for (const int i : outputs_.index_range()) {
+      output_types[i] = outputs_[i].type;
+    }
+    lf::DummyNode &lf_output_node = lf_graph.add_dummy(output_types, {});
+
+    /* Create body nodes. */
+    Array<lf::FunctionNode *> lf_body_nodes(iterations);
+    for (const int i : IndexRange(iterations)) {
+      lf::FunctionNode &lf_node = lf_graph.add_function(body_fn_);
+      lf_body_nodes[i] = &lf_node;
     }
 
-    LinearAllocator<> allocator;
-    Array<void *, 64> repeat_item_values((iterations + 1) * repeat_items_num, nullptr);
-    /* Allocate memory for the looped values. */
-    for (const int iteration : IndexRange(iterations)) {
-      MutableSpan<void *> item_values = repeat_item_values.as_mutable_span().slice(
-          (iteration + 1) * repeat_items_num, repeat_items_num);
-      for (const int item_i : IndexRange(repeat_items_num)) {
-        const CPPType &type = *repeat_item_types[item_i];
-        void *buffer = allocator.allocate(type.size(), type.alignment());
-        item_values[item_i] = buffer;
+    /* Create nodes for combining border link usages. */
+    Array<lf::FunctionNode *> lf_border_link_usage_or_nodes(num_border_links);
+    eval_storage.or_function.emplace(iterations);
+    for (const int i : IndexRange(num_border_links)) {
+      lf::FunctionNode &lf_node = lf_graph.add_function(*eval_storage.or_function);
+      lf_border_link_usage_or_nodes[i] = &lf_node;
+    }
+
+    /* Handle body nodes one by one. */
+    for (const int iter_i : lf_body_nodes.index_range()) {
+      lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
+      for (const int i : IndexRange(num_border_links)) {
+        lf_graph.add_link(lf_input_node.output(zone_info_.border_link_input_indices[i]),
+                          lf_node.input(body_indices_.border_link_inputs[i]));
+        lf_graph.add_link(lf_node.output(body_indices_.border_link_usages[i]),
+                          lf_border_link_usage_or_nodes[i]->input(iter_i));
       }
-    }
-
-    /* Load the inputs of the first repeat iteration. */
-    MutableSpan<void *> first_item_values = repeat_item_values.as_mutable_span().take_front(
-        repeat_items_num);
-    for (const int i : IndexRange(repeat_items_num)) {
-      /* +1 because of the iterations input. */
-      const int input_index = zone_info_.main_input_indices[i + 1];
-      void *value = params.try_get_input_data_ptr(input_index);
-      BLI_assert(value != nullptr);
-      first_item_values[i] = value;
-    }
-
-    /* Load border link values. */
-    const int border_links_num = zone_info_.border_link_input_indices.size();
-    Array<void *> border_link_input_values(border_links_num, nullptr);
-    for (const int i : IndexRange(border_links_num)) {
-      const int input_index = zone_info_.border_link_input_indices[i];
-      void *value = params.try_get_input_data_ptr(input_index);
-      BLI_assert(value != nullptr);
-      border_link_input_values[i] = value;
-    }
-
-    /* Load attribute sets that are needed to propagate attributes correctly in the zone. */
-    Map<int, bke::AnonymousAttributeSet *> attribute_set_by_field_source_index;
-    Map<int, bke::AnonymousAttributeSet *> attribute_set_by_caller_propagation_index;
-    for (const auto item : zone_info_.attribute_set_input_by_field_source_index.items()) {
-      bke::AnonymousAttributeSet &attribute_set = params.get_input<bke::AnonymousAttributeSet>(
-          item.value);
-      attribute_set_by_field_source_index.add_new(item.key, &attribute_set);
-    }
-    for (const auto item : zone_info_.attribute_set_input_by_caller_propagation_index.items()) {
-      bke::AnonymousAttributeSet &attribute_set = params.get_input<bke::AnonymousAttributeSet>(
-          item.value);
-      attribute_set_by_caller_propagation_index.add_new(item.key, &attribute_set);
-    }
-
-    const int body_inputs_num = body_fn_.inputs().size();
-    const int body_outputs_num = body_fn_.outputs().size();
-    /* Evaluate the repeat zone eagerly, one iteration at a time.
-     * This can be made more lazy as a separate step. */
-    for (const int iteration : IndexRange(iterations)) {
-      /* Prepare all data that has to be passed into the evaluation of the repeat zone body. */
-      Array<GMutablePointer> inputs(body_inputs_num);
-      Array<GMutablePointer> outputs(body_outputs_num);
-      Array<std::optional<lf::ValueUsage>> input_usages(body_inputs_num);
-      Array<lf::ValueUsage> output_usages(body_outputs_num, lf::ValueUsage::Used);
-      Array<bool> set_outputs(body_outputs_num, false);
-
-      /* Prepare pointers to the main input and output values of the repeat zone,
-       * as well as their usages. */
-      Array<bool> tmp_main_input_usages(repeat_items_num);
-      for (const int i : IndexRange(repeat_items_num)) {
-        const CPPType &type = *repeat_item_types[i];
-        void *prev_value = repeat_item_values[iteration * repeat_items_num + i];
-        void *next_value = repeat_item_values[(iteration + 1) * repeat_items_num + i];
-        inputs[body_indices_.main_inputs[i]] = {type, prev_value};
-        outputs[body_indices_.main_outputs[i]] = {type, next_value};
-        outputs[body_indices_.main_input_usages[i]] = &tmp_main_input_usages[i];
-      }
-      static bool static_true = true;
-      for (const int input_index : body_indices_.main_output_usages) {
-        /* All main outputs are used currently. */
-        inputs[input_index] = &static_true;
-      }
-      /* Prepare border link values for the repeat body. */
-      Array<bool> tmp_border_link_usages(border_links_num);
-      for (const int i : IndexRange(border_links_num)) {
-        const int input_index = body_indices_.border_link_inputs[i];
-        const int usage_index = body_indices_.border_link_usages[i];
-        const CPPType &type = *body_fn_.inputs()[input_index].type;
-        /* Need to copy because a lazy function is allowed to modify the input (e.g. move from
-         * it). */
-        void *value_copy = allocator.allocate(type.size(), type.alignment());
-        type.copy_construct(border_link_input_values[i], value_copy);
-        inputs[input_index] = {type, value_copy};
-        outputs[usage_index] = &tmp_border_link_usages[i];
-      }
-
-      /* Prepare attribute sets that are passed into the repeat body. */
       for (const auto item : body_indices_.attribute_set_input_by_field_source_index.items()) {
-        bke::AnonymousAttributeSet &attribute_set =
-            *allocator
-                 .construct<bke::AnonymousAttributeSet>(
-                     *attribute_set_by_field_source_index.lookup(item.key))
-                 .release();
-        inputs[item.value] = &attribute_set;
+        lf_graph.add_link(
+            lf_input_node.output(
+                zone_info_.attribute_set_input_by_field_source_index.lookup(item.key)),
+            lf_node.input(item.value));
       }
       for (const auto item : body_indices_.attribute_set_input_by_caller_propagation_index.items())
       {
-        bke::AnonymousAttributeSet &attribute_set =
-            *allocator
-                 .construct<bke::AnonymousAttributeSet>(
-                     *attribute_set_by_caller_propagation_index.lookup(item.key))
-                 .release();
-        inputs[item.value] = &attribute_set;
-      }
-
-      /* Prepare evaluation context for the repeat body. */
-      bke::RepeatZoneComputeContext body_compute_context{
-          user_data.compute_context, repeat_output_bnode_, iteration};
-      GeoNodesLFUserData body_user_data = user_data;
-      body_user_data.compute_context = &body_compute_context;
-      if (user_data.modifier_data && user_data.modifier_data->socket_log_contexts) {
-        body_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
-            body_compute_context.hash());
-      }
-      GeoNodesLFLocalUserData body_local_user_data{body_user_data};
-      void *body_storage = body_fn_.init_storage(allocator);
-      lf::Context body_context{body_storage, &body_user_data, &body_local_user_data};
-
-      lf::BasicParams body_params{
-          body_fn_, inputs, outputs, input_usages, output_usages, set_outputs};
-      /* Actually evaluate the repeat body. */
-      body_fn_.execute(body_params, body_context);
-
-      /* Destruct values that are not needed after the evaluation anymore. */
-      body_fn_.destruct_storage(body_storage);
-      for (const int i : body_indices_.border_link_inputs) {
-        inputs[i].destruct();
-      }
-      for (const int i : body_indices_.attribute_set_input_by_field_source_index.values()) {
-        inputs[i].destruct();
-      }
-      for (const int i : body_indices_.attribute_set_input_by_caller_propagation_index.values()) {
-        inputs[i].destruct();
+        lf_graph.add_link(
+            lf_input_node.output(
+                zone_info_.attribute_set_input_by_caller_propagation_index.lookup(item.key)),
+            lf_node.input(item.value));
       }
     }
 
-    /* Set outputs of the repeat zone. */
-    for (const int i : IndexRange(repeat_items_num)) {
-      void *computed_value = repeat_item_values[iterations * repeat_items_num + i];
-      const int output_index = zone_info_.main_output_indices[i];
-      void *r_value = params.get_output_data_ptr(output_index);
-      const CPPType &type = *repeat_item_types[i];
-      type.move_construct(computed_value, r_value);
-      params.output_set(output_index);
-    }
-    for (const int i : zone_info_.main_input_usage_indices) {
-      params.set_output(i, true);
-    }
-    for (const int i : IndexRange(border_links_num)) {
-      params.set_output(zone_info_.border_link_input_usage_indices[i], true);
-    }
-
-    /* Destruct remaining values. */
-    for (const int iteration : IndexRange(iterations)) {
-      MutableSpan<void *> item_values = repeat_item_values.as_mutable_span().slice(
-          (iteration + 1) * repeat_items_num, repeat_items_num);
-      for (const int item_i : IndexRange(repeat_items_num)) {
-        const CPPType &type = *repeat_item_types[item_i];
-        type.destruct(item_values[item_i]);
+    /* Handle body nodes pair-wise. */
+    for (const int iter_i : lf_body_nodes.index_range().drop_back(1)) {
+      lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
+      lf::FunctionNode &lf_next_node = *lf_body_nodes[iter_i + 1];
+      for (const int i : IndexRange(num_repeat_items)) {
+        lf_graph.add_link(lf_node.output(body_indices_.main_outputs[i]),
+                          lf_next_node.input(body_indices_.main_inputs[i]));
+        /* TODO: Check for cyclic dependencies. */
+        lf_graph.add_link(lf_next_node.output(body_indices_.main_input_usages[i]),
+                          lf_node.input(body_indices_.main_output_usages[i]));
       }
     }
+
+    /* Handle border link usage outputs. */
+    for (const int i : IndexRange(num_border_links)) {
+      lf_graph.add_link(lf_border_link_usage_or_nodes[i]->output(0),
+                        lf_output_node.input(zone_info_.border_link_input_usage_indices[i]));
+    }
+
+    if (iterations > 0) {
+      {
+        lf::FunctionNode &lf_first_body_node = *lf_body_nodes[0];
+        for (const int i : IndexRange(num_repeat_items)) {
+          lf_graph.add_link(
+              lf_input_node.output(zone_info_.main_input_indices[i + main_inputs_offset]),
+              lf_first_body_node.input(body_indices_.main_inputs[i]));
+          lf_graph.add_link(
+              lf_first_body_node.output(body_indices_.main_input_usages[i]),
+              lf_output_node.input(zone_info_.main_input_usage_indices[i + main_inputs_offset]));
+        }
+      }
+      {
+        lf::FunctionNode &lf_last_body_node = *lf_body_nodes.last();
+        for (const int i : IndexRange(num_repeat_items)) {
+          lf_graph.add_link(lf_last_body_node.output(body_indices_.main_outputs[i]),
+                            lf_output_node.input(zone_info_.main_output_indices[i]));
+          lf_graph.add_link(lf_input_node.output(zone_info_.main_output_usage_indices[i]),
+                            lf_last_body_node.input(body_indices_.main_output_usages[i]));
+        }
+      }
+    }
+    else {
+      for (const int i : IndexRange(num_repeat_items)) {
+        lf_graph.add_link(
+            lf_input_node.output(zone_info_.main_input_indices[i + main_inputs_offset]),
+            lf_output_node.input(zone_info_.main_output_indices[i]));
+        lf_graph.add_link(
+            lf_input_node.output(zone_info_.main_output_usage_indices[i]),
+            lf_output_node.input(zone_info_.main_input_usage_indices[i + main_inputs_offset]));
+      }
+      for (const int i : IndexRange(num_border_links)) {
+        static bool static_false = false;
+        lf_output_node.input(zone_info_.border_link_input_usage_indices[i])
+            .set_default_value(&static_false);
+      }
+    }
+
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+
+    eval_storage.input_index_map.reinitialize(inputs_.size() - 1);
+    eval_storage.output_index_map.reinitialize(outputs_.size() - 1);
+
+    std::iota(eval_storage.input_index_map.begin(), eval_storage.input_index_map.end(), 1);
+    Vector<const lf::OutputSocket *> lf_graph_inputs = lf_input_node.outputs().drop_front(1);
+
+    const int iteration_usage_index = zone_info_.main_input_usage_indices[0];
+    std::iota(eval_storage.output_index_map.begin(),
+              eval_storage.output_index_map.begin() + iteration_usage_index,
+              0);
+    std::iota(eval_storage.output_index_map.begin() + iteration_usage_index,
+              eval_storage.output_index_map.end(),
+              iteration_usage_index + 1);
+    Vector<const lf::InputSocket *> lf_graph_outputs = lf_output_node.inputs().take_front(
+        iteration_usage_index);
+    lf_graph_outputs.extend(lf_output_node.inputs().drop_front(iteration_usage_index + 1));
+
+    lf_graph.update_node_indices();
+
+    eval_storage.graph_executor.emplace(
+        lf_graph, lf_graph_inputs, lf_graph_outputs, nullptr, nullptr);
+    eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
+        eval_storage.allocator);
   }
 
   std::string input_name(const int i) const override
