@@ -1504,7 +1504,12 @@ class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper 
                     const lf::Context &context) const
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    const int iteration = ordered_function_nodes_.index_of(&node);
+    const int iteration = ordered_function_nodes_.index_of_try(&node);
+    const LazyFunction &fn = node.function();
+    if (iteration == -1) {
+      fn.execute(params, context);
+      return;
+    }
 
     bke::RepeatZoneComputeContext body_compute_context{
         user_data.compute_context, *repeat_output_bnode_, iteration};
@@ -1517,7 +1522,7 @@ class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper 
 
     GeoNodesLFLocalUserData body_local_user_data{body_user_data};
     lf::Context body_context{context.storage, &body_user_data, &body_local_user_data};
-    node.function().execute(params, body_context);
+    fn.execute(params, body_context);
   }
 };
 
