@@ -1835,9 +1835,11 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       for (const int i : IndexRange(num_repeat_items)) {
         lf_graph.add_link(lf_node.output(body_indices_.main_outputs[i]),
                           lf_next_node.input(body_indices_.main_inputs[i]));
-        /* TODO: Check for cyclic dependencies. */
-        lf_graph.add_link(lf_next_node.output(body_indices_.main_input_usages[i]),
-                          lf_node.input(body_indices_.main_output_usages[i]));
+        /* TODO: Add back-link after being able to check for cyclic dependencies. */
+        // lf_graph.add_link(lf_next_node.output(body_indices_.main_input_usages[i]),
+        //                   lf_node.input(body_indices_.main_output_usages[i]));
+        static bool static_true = true;
+        lf_node.input(body_indices_.main_output_usages[i]).set_default_value(&static_true);
       }
     }
 
