@@ -1809,6 +1809,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build()
   {
     btree_.ensure_topology_cache();
+    btree_.ensure_interface_cache();
 
     mapping_ = &lf_graph_info_->mapping;
     conversions_ = &bke::get_implicit_type_conversions();
@@ -3852,6 +3853,7 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
     const bNodeTree &btree)
 {
   btree.ensure_topology_cache();
+  btree.ensure_interface_cache();
   if (btree.has_available_link_cycle()) {
     return nullptr;
   }
