@@ -103,6 +103,8 @@ struct uiTooltipData {
   int toth, lineh;
 };
 
+BLI_STATIC_ASSERT(int(UI_TIP_LC_MAX) == int(UI_TIP_LC_ALERT) + 1, "invalid lc-max");
+
 static uiTooltipField *text_field_add_only(uiTooltipData *data)
 {
   data->fields_len += 1;
@@ -376,8 +378,7 @@ static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData *data,
                                   BLI_sprintfN(TIP_("Shortcut: %s"), found ? buf : "None"),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL,
-                                  false);
+                                  UI_TIP_LC_NORMAL);
       }
 
       /* Python. */
@@ -387,8 +388,7 @@ static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData *data,
                                   BLI_sprintfN(TIP_("Python: %s"), str),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_PYTHON,
-                                  false);
+                                  UI_TIP_LC_PYTHON);
         MEM_freeN(str);
       }
     }
@@ -848,12 +848,8 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
        * can already provide more accurate and specific tool-tip content. */
       !but->tip_func)
   {
-    UI_tooltip_text_field_add(data,
-                              BLI_strdup(but_label.strinfo),
-                              nullptr,
-                              UI_TIP_STYLE_HEADER,
-                              UI_TIP_LC_NORMAL,
-                              false);
+    UI_tooltip_text_field_add(
+        data, BLI_strdup(but_label.strinfo), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
   }
 
   /* Tip */
@@ -864,16 +860,14 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                   BLI_sprintfN("%s:  ", but_tip.strinfo),
                                   BLI_strdup(enum_label.strinfo),
                                   UI_TIP_STYLE_HEADER,
-                                  UI_TIP_LC_NORMAL,
-                                  false);
+                                  UI_TIP_LC_NORMAL);
       }
       else {
         UI_tooltip_text_field_add(data,
                                   BLI_sprintfN("%s.", but_tip.strinfo),
                                   nullptr,
                                   UI_TIP_STYLE_HEADER,
-                                  UI_TIP_LC_NORMAL,
-                                  false);
+                                  UI_TIP_LC_NORMAL);
       }
     }
 
@@ -883,24 +877,19 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                 BLI_strdup(TIP_("(Shift-Click/Drag to select multiple)")),
                                 nullptr,
                                 UI_TIP_STYLE_NORMAL,
-                                UI_TIP_LC_NORMAL,
-                                false);
+                                UI_TIP_LC_NORMAL);
     }
   }
   /* When there is only an enum label (no button label or tip), draw that as header. */
   else if (enum_label.strinfo && !(but_label.strinfo && but_label.strinfo[0])) {
-    UI_tooltip_text_field_add(data,
-                              BLI_strdup(enum_label.strinfo),
-                              nullptr,
-                              UI_TIP_STYLE_HEADER,
-                              UI_TIP_LC_NORMAL,
-                              false);
+    UI_tooltip_text_field_add(
+        data, BLI_strdup(enum_label.strinfo), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
   }
 
   /* Enum field label & tip. */
   if (enum_tip.strinfo) {
     UI_tooltip_text_field_add(
-        data, BLI_strdup(enum_tip.strinfo), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, false);
+        data, BLI_strdup(enum_tip.strinfo), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE);
   }
 
   /* Operator shortcut. */
@@ -951,8 +940,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                   BLI_sprintfN(TIP_("Radians: %f"), value),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_VALUE,
-                                  false);
+                                  UI_TIP_LC_VALUE);
       }
     }
 
@@ -962,8 +950,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                   BLI_sprintfN(TIP_("Expression: %s"), buf),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL,
-                                  false);
+                                  UI_TIP_LC_NORMAL);
       }
     }
 
@@ -974,8 +961,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                   BLI_sprintfN(TIP_("Library: %s"), id->lib->filepath),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL,
-                                  false);
+                                  UI_TIP_LC_NORMAL);
       }
     }
   }
@@ -1028,8 +1014,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                                 BLI_sprintfN(TIP_("Disabled: %s"), disabled_msg),
                                 nullptr,
                                 UI_TIP_STYLE_NORMAL,
-                                UI_TIP_LC_ALERT,
-                                false);
+                                UI_TIP_LC_ALERT);
     }
     if (disabled_msg_free) {
       MEM_freeN((void *)disabled_msg);
@@ -1056,8 +1041,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                       RNA_path_full_struct_py(&but->rnapoin),
           nullptr,
           UI_TIP_STYLE_MONO,
-          UI_TIP_LC_PYTHON,
-          false);
+          UI_TIP_LC_PYTHON);
     }
   }
 

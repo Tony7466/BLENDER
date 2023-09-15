@@ -1779,7 +1779,7 @@ void UI_tooltip_text_field_add(struct uiTooltipData *data,
                                char *suffix,
                                const UiTooltipStyle style,
                                const UiTooltipColor color,
-                               const bool is_pad);
+                               const bool is_pad = false);
 
 void UI_tooltip_image_field_add(struct uiTooltipData *data,
                                 struct ImBuf *image,
