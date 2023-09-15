@@ -1730,7 +1730,6 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
     const NodeGeometryRepeatOutput &node_storage = *static_cast<const NodeGeometryRepeatOutput *>(
         repeat_output_bnode_.storage);
     RepeatEvalStorage &eval_storage = *static_cast<RepeatEvalStorage *>(context.storage);
