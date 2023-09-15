@@ -1025,16 +1025,18 @@ bool WM_operator_ui_poll(wmOperatorType *ot, PointerRNA *ptr)
     return true;
   }
 
+  bool result = false;
   PointerRNA op_ptr;
   WM_operator_properties_create_ptr(&op_ptr, ot);
   RNA_STRUCT_BEGIN (&op_ptr, prop) {
     int flag = RNA_property_flag(prop);
     if ((flag & PROP_HIDDEN) == 0) {
-      return true;
+      result = true;
+      break;
     }
   }
   RNA_STRUCT_END;
-  return false;
+  return result;
 }
 
 void WM_operator_region_active_win_set(bContext *C)
@@ -5668,7 +5670,9 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
         event.utf8_buf[0] = '\0';
       }
       else {
-        if (event.utf8_buf[0] < 32 && event.utf8_buf[0] > 0) {
+        /* Check for ASCII control characters.
+         * Inline `iscntrl` because the users locale must not change behavior. */
+        if ((event.utf8_buf[0] < 32 && event.utf8_buf[0] > 0) || (event.utf8_buf[0] == 127)) {
           event.utf8_buf[0] = '\0';
         }
       }
