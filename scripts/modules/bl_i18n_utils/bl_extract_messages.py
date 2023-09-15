@@ -588,7 +588,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
                   ),
         "message": (),
         "heading": (),
-        "placeholder": (),
+        "placeholder": ((("text_ctxt",), _ctxt_to_ctxt),),
     }
 
     context_kw_set = {}
