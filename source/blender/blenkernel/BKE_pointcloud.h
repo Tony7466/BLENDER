@@ -15,6 +15,7 @@
 #  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_shared_cache.hh"
+#  include "BLI_volume.hh"
 
 #  include "DNA_pointcloud_types.h"
 
@@ -46,6 +47,12 @@ struct PointCloudRuntime {
    * See #SharedCache comments.
    */
   mutable SharedCache<Bounds<float3>> bounds_cache;
+
+#  ifdef WITH_OPENVDB
+  /* Optional OpenVDB grid representation of the point cloud. */
+  using PointDataGridPtr = std::shared_ptr<openvdb::points::PointDataGrid>;
+  mutable SharedCache<PointDataGridPtr> point_data_grid_cache;
+#  endif
 
   MEM_CXX_CLASS_ALLOC_FUNCS("PointCloudRuntime");
 };
