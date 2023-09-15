@@ -1186,6 +1186,7 @@ enum uiMenuItemSeparatorType {
 /**
  * Helper call to draw a menu item without a button.
  *
+ * \param use_unpadded: TODO (LEON): Document what these are for!
  * \param but_flag: Button flags (#uiBut.flag) indicating the state of the item, typically
  *                  #UI_ACTIVE, #UI_BUT_DISABLED, #UI_BUT_INACTIVE.
  * \param separator_type: The kind of separator which controls if and how the string is clipped.
@@ -1194,6 +1195,9 @@ enum uiMenuItemSeparatorType {
  */
 void ui_draw_menu_item(const uiFontStyle *fstyle,
                        rcti *rect,
+                       rcti *back_rect,
+				               float zoom,
+				               bool use_unpadded,
                        const char *name,
                        int iconid,
                        int but_flag,
@@ -1201,6 +1205,7 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
                        int *r_xmax);
 void ui_draw_preview_item(const uiFontStyle *fstyle,
                           rcti *rect,
+                          float zoom,
                           const char *name,
                           int iconid,
                           int but_flag,
