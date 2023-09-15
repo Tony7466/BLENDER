@@ -358,7 +358,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   });
 
   Array<int> results(group_indices.size());
-  threading::parallel_for(lists_ends.index_range(), 128, [&](const IndexRange range) {
+  threading::parallel_for(lists_ends.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t group_v : range) {
       MutableSpan<int> dst_results = results.as_mutable_span().slice(offsets[group_v]);
       int next_index = lists_ends[group_v];
@@ -370,7 +370,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
     }
   });
 
-  sort_small_groups(offsets, 128, results);
+  sort_small_groups(offsets, 1024, results);
   return results;
 }
 
