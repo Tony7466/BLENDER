@@ -285,7 +285,6 @@ void VelocityModule::geometry_steps_fill()
  */
 void VelocityModule::step_swap()
 {
-
   auto swap_steps = [&](eVelocityStep step_a, eVelocityStep step_b) {
     std::swap(object_steps[step_a], object_steps[step_b]);
     std::swap(geometry_steps[step_a], geometry_steps[step_b]);

@@ -443,17 +443,15 @@ void DRW_hair_free()
 
 namespace blender::draw {
 
-static PassSimple *g_pass;
+static PassSimple *g_pass = nullptr;
 
 void hair_init()
 {
   if (!g_pass) {
-    g_pass = new PassSimple("Update Hair Pass");
+    g_pass = MEM_new<PassSimple>("drw_hair g_pass", "Update Hair Pass");
   }
   g_pass->init();
   g_pass->state_set(DRW_STATE_NO_DRAW);
-
-  drw_hair_ensure_vbo();
 }
 
 static ParticleHairCache *hair_particle_cache_get(Object *object,
@@ -521,8 +519,8 @@ void hair_update(Manager &manager)
 
 void hair_free()
 {
-  GPU_VERTBUF_DISCARD_SAFE(g_dummy_vbo);
-  MEM_delete(g_dummy_curves_info);
+  MEM_delete(g_pass);
+  g_pass = nullptr;
 }
 
 template<typename PassT>
@@ -533,6 +531,8 @@ GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
                                              ModifierData *md,
                                              GPUMaterial *gpu_material)
 {
+  /** NOTE: This still relies on the old DRW_hair implementation. */
+
   int subdiv = scene->r.hair_subdiv;
   int thickness_res = (scene->r.hair_type == SCE_HAIR_SHAPE_STRAND) ? 1 : 2;
   ParticleHairCache *hair_cache = drw_hair_particle_cache_get(
