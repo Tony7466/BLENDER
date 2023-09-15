@@ -39,7 +39,7 @@
 #include "BKE_nla.h"
 #include "BKE_sound.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -1090,10 +1090,8 @@ void BKE_nlameta_flush_transforms(NlaStrip *mstrip)
   LISTBASE_FOREACH (NlaStrip *, strip, &mstrip->strips) {
     /* only if scale changed, need to perform RNA updates */
     if (scaleChanged) {
-      PointerRNA ptr;
-
       /* use RNA updates to compute scale properly */
-      RNA_pointer_create(nullptr, &RNA_NlaStrip, strip, &ptr);
+      PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NlaStrip, strip);
 
       RNA_float_set(&ptr, "frame_start", strip->start);
       RNA_float_set(&ptr, "frame_end", strip->end);
@@ -1221,6 +1219,24 @@ bool BKE_nlatrack_has_space(NlaTrack *nlt, float start, float end)
 
   /* check if there's any space left in the track for a strip of the given length */
   return BKE_nlastrips_has_space(&nlt->strips, start, end);
+}
+
+bool BKE_nlatrack_has_strips(ListBase *tracks)
+{
+  /* sanity checks */
+  if (BLI_listbase_is_empty(tracks)) {
+    return false;
+  }
+
+  /* Check each track for NLA strips. */
+  LISTBASE_FOREACH (NlaTrack *, track, tracks) {
+    if (BLI_listbase_count(&track->strips) > 0) {
+      return true;
+    }
+  }
+
+  /* none found */
+  return false;
 }
 
 void BKE_nlatrack_sort_strips(NlaTrack *nlt)
@@ -2304,7 +2320,7 @@ void BKE_nla_tweakmode_exit(AnimData *adt)
         BKE_nlastrip_recalculate_bounds_sync_action(strip);
       }
 
-      /* clear tweakuser flag */
+      /* Clear tweak-user flag. */
       strip->flag &= ~NLASTRIP_FLAG_TWEAKUSER;
     }
   }
@@ -2357,37 +2373,6 @@ static void blend_data_read_nla_strips(BlendDataReader *reader, ListBase *strips
   }
 }
 
-static void blend_lib_read_nla_strips(BlendLibReader *reader, ID *id, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check strip's children */
-    blend_lib_read_nla_strips(reader, id, &strip->strips);
-
-    /* check strip's F-Curves */
-    BKE_fcurve_blend_read_lib(reader, id, &strip->fcurves);
-
-    /* reassign the counted-reference to action */
-    BLO_read_id_address(reader, id, &strip->act);
-  }
-}
-
-static void blend_read_expand_nla_strips(BlendExpander *expander, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check child strips */
-    blend_read_expand_nla_strips(expander, &strip->strips);
-
-    /* check F-Curves */
-    BKE_fcurve_blend_read_expand(expander, &strip->fcurves);
-
-    /* check F-Modifiers */
-    BKE_fmodifiers_blend_read_expand(expander, &strip->modifiers);
-
-    /* relink referenced action */
-    BLO_expand(expander, strip->act);
-  }
-}
-
 void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
 {
   /* write all the tracks */
@@ -2413,21 +2398,5 @@ void BKE_nla_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *tr
 
     /* relink strip data */
     blend_data_read_nla_strips(reader, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *tracks)
-{
-  /* we only care about the NLA strips inside the tracks */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    blend_lib_read_nla_strips(reader, id, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_expand(BlendExpander *expander, ListBase *tracks)
-{
-  /* nla-data - referenced actions */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    blend_read_expand_nla_strips(expander, &nlt->strips);
   }
 }

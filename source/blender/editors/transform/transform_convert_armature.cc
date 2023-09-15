@@ -25,6 +25,7 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "BIK_api.h"
 
@@ -36,6 +37,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "ANIM_bone_collections.h"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -96,7 +99,7 @@ static void autokeyframe_pose(
   ListBase nla_cache = {nullptr, nullptr};
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, float(scene->r.cfra));
+      depsgraph, BKE_scene_frame_get(scene));
   eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* flag is initialized from UserPref keyframing settings
@@ -412,7 +415,7 @@ static short pose_grab_with_ik(Main *bmain, Object *ob)
   /* Rule: allow multiple Bones
    * (but they must be selected, and only one ik-solver per chain should get added) */
   LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-    if (BKE_pose_is_layer_visible(arm, pchan)) {
+    if (BKE_pose_is_bonecoll_visible(arm, pchan)) {
       if (pchan->bone->flag & (BONE_SELECTED | BONE_TRANSFORM_MIRROR)) {
         /* Rule: no IK for solitary (unconnected) bones. */
         for (bonec = static_cast<Bone *>(pchan->bone->childbase.first); bonec; bonec = bonec->next)
@@ -819,7 +822,8 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
     const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
     const bool is_mirror_relative = ((pose->flag & POSE_MIRROR_RELATIVE) != 0);
 
-    tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
+    /* We also allow non-active objects to be transformed, in weight-paint. */
+    tc->poseobj = ob;
 
     /* init trans data */
     td = tc->data = static_cast<TransData *>(
@@ -1299,7 +1303,7 @@ static void recalcData_edit_armature(TransInfo *t)
 
 /**
  * if pose bone (partial) selected, copy data.
- * context; posemode armature, with mirror editing enabled.
+ * context; pose-mode armature, with mirror editing enabled.
  */
 static void pose_transform_mirror_update(TransInfo *t, TransDataContainer *tc, Object *ob)
 {
@@ -1437,7 +1441,7 @@ static void recalcData_pose(TransInfo *t)
         }
       }
       else if (ob->mode == OB_MODE_POSE) {
-        /* actually support TFM_BONESIZE in posemode as well */
+        /* Actually support #TFM_BONESIZE in pose-mode as well. */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
         bPose *pose = ob->pose;
         if (arm->flag & ARM_MIRROR_EDIT || pose->flag & POSE_MIRROR_EDIT) {

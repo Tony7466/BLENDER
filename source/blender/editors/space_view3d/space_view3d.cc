@@ -81,7 +81,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -202,13 +202,13 @@ void ED_view3d_init_mats_rv3d_gl(const Object *ob, RegionView3D *rv3d)
 }
 
 #ifdef DEBUG
-void ED_view3d_clear_mats_rv3d(struct RegionView3D *rv3d)
+void ED_view3d_clear_mats_rv3d(RegionView3D *rv3d)
 {
   zero_m4(rv3d->viewmatob);
   zero_m4(rv3d->persmatob);
 }
 
-void ED_view3d_check_mats_rv3d(struct RegionView3D *rv3d)
+void ED_view3d_check_mats_rv3d(RegionView3D *rv3d)
 {
   BLI_ASSERT_ZERO_M4(rv3d->viewmatob);
   BLI_ASSERT_ZERO_M4(rv3d->persmatob);
@@ -336,8 +336,9 @@ static void view3d_free(SpaceLink *sl)
 
   MEM_SAFE_FREE(vd->runtime.local_stats);
 
-  if (vd->runtime.properties_storage) {
-    MEM_freeN(vd->runtime.properties_storage);
+  if (vd->runtime.properties_storage_free) {
+    vd->runtime.properties_storage_free(vd->runtime.properties_storage);
+    vd->runtime.properties_storage_free = nullptr;
   }
 
   if (vd->shading.prop) {
@@ -398,85 +399,89 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
   /* object ops. */
 
   /* important to be before Pose keymap since they can both be enabled at once */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Face Mask (Weight, Vertex, Texture)", 0, 0);
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Paint Face Mask (Weight, Vertex, Texture)", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Vertex Selection (Weight, Vertex)", 0, 0);
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Paint Vertex Selection (Weight, Vertex)", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Before 'Weight/Vertex Paint' so adding curve points is not overridden. */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Curve", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Curve", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Before 'Pose' so weight paint menus aren't overridden by pose menus. */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Weight Paint", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Weight Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Vertex Paint", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Vertex Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* pose is not modal, operator poll checks for this */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Pose", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Pose", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Object Mode", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Object Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Curve", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Curve", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Curves", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image Paint", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Mesh", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Mesh", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Armature", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Armature", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Metaball", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Metaball", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Lattice", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Lattice", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Particle", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Particle", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt Curves", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Note: Grease Pencil handlers used to be added using `ED_KEYMAP_GPENCIL` in
    * `ed_default_handlers` because it needed to be added to multiple editors (as other editors use
    * annotations.). But for OB_GREASE_PENCIL, we only need it to register the keymaps for the
    * 3D View. */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Edit Mode", 0, 0);
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Edit Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Paint Mode", 0, 0);
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Paint Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Edit-font key-map swallows almost all (because of text input). */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Font", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Font", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Object Non-modal", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Object Non-modal", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Frames", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Frames", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* own keymap, last so modes can override it */
-  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "3D View", SPACE_VIEW3D, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "3D View", SPACE_VIEW3D, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* add drop boxes */
@@ -910,6 +915,13 @@ static void view3d_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
+  RNA_boolean_set(drop->ptr, "show_datablock_in_modifier", (drag->type != WM_DRAG_ASSET));
+}
+
+static void view3d_geometry_nodes_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
+{
+  view3d_id_drop_copy(C, drag, drop);
+  RNA_boolean_set(drop->ptr, "show_datablock_in_modifier", (drag->type != WM_DRAG_ASSET));
 }
 
 static void view3d_id_drop_copy_with_type(bContext *C, wmDrag *drag, wmDropBox *drop)
@@ -1007,7 +1019,7 @@ static void view3d_dropboxes()
   WM_dropbox_add(lb,
                  "OBJECT_OT_drop_geometry_nodes",
                  view3d_geometry_nodes_drop_poll,
-                 view3d_id_drop_copy,
+                 view3d_geometry_nodes_drop_copy,
                  WM_drag_free_imported_drag_ID,
                  view3d_geometry_nodes_drop_tooltip);
   WM_dropbox_add(lb,
@@ -1219,6 +1231,7 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
       switch (wmn->data) {
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_TRANSFORM:
         case ND_POSE:
         case ND_DRAW:
@@ -1561,7 +1574,8 @@ static void view3d_main_region_cursor(wmWindow *win, ScrArea *area, ARegion *reg
 /* add handlers, stuff you only do once or on area/region changes */
 static void view3d_header_region_init(wmWindowManager *wm, ARegion *region)
 {
-  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(
+      wm->defaultconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
@@ -1596,8 +1610,30 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
       }
       break;
     case NC_SPACE:
-      if (wmn->data == ND_SPACE_VIEW3D) {
-        ED_region_tag_redraw(region);
+      switch (wmn->data) {
+        case ND_SPACE_VIEW3D:
+          ED_region_tag_redraw(region);
+          break;
+        case ND_SPACE_ASSET_PARAMS:
+          blender::ed::geometry::clear_operator_asset_trees();
+          ED_region_tag_redraw(region);
+          break;
+      }
+      break;
+    case NC_ASSET:
+      switch (wmn->data) {
+        case ND_ASSET_LIST_READING:
+          blender::ed::geometry::clear_operator_asset_trees();
+          ED_region_tag_redraw(region);
+          break;
+      }
+      break;
+    case NC_NODE:
+      switch (wmn->data) {
+        case ND_NODE_ASSET_DATA:
+          blender::ed::geometry::clear_operator_asset_trees();
+          ED_region_tag_redraw(region);
+          break;
       }
       break;
     case NC_GPENCIL:
@@ -1610,6 +1646,11 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
       break;
     case NC_BRUSH:
       ED_region_tag_redraw(region);
+      break;
+    case NC_GEOM:
+      if (wmn->data == ND_VERTEX_GROUP) {
+        ED_region_tag_redraw(region);
+      }
       break;
   }
 
@@ -1672,7 +1713,7 @@ static void view3d_buttons_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -1839,6 +1880,7 @@ static void view3d_buttons_region_listener(const wmRegionListenerParams *params)
       switch (wmn->data) {
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_TRANSFORM:
         case ND_POSE:
         case ND_DRAW:
@@ -1908,7 +1950,7 @@ static void view3d_tools_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -1921,7 +1963,8 @@ static void view3d_tools_region_draw(const bContext *C, ARegion *region)
 /* add handlers, stuff you only do once or on area/region changes */
 static void view3d_asset_shelf_region_init(wmWindowManager *wm, ARegion *region)
 {
-  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "3D View Generic", SPACE_VIEW3D, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(
+      wm->defaultconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   ED_asset_shelf_region_init(wm, region);
@@ -2130,20 +2173,6 @@ static void view3d_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   BKE_viewer_path_blend_read_data(reader, &v3d->viewer_path);
 }
 
-static void view3d_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  View3D *v3d = (View3D *)sl;
-
-  BLO_read_id_address(reader, parent_id, &v3d->camera);
-  BLO_read_id_address(reader, parent_id, &v3d->ob_center);
-
-  if (v3d->localvd) {
-    BLO_read_id_address(reader, parent_id, &v3d->localvd->camera);
-  }
-
-  BKE_viewer_path_blend_read_lib(reader, parent_id, &v3d->viewer_path);
-}
-
 static void view3d_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   View3D *v3d = (View3D *)sl;
@@ -2181,7 +2210,7 @@ void ED_spacetype_view3d()
   st->id_remap = view3d_id_remap;
   st->foreach_id = view3d_foreach_id;
   st->blend_read_data = view3d_space_blend_read_data;
-  st->blend_read_lib = view3d_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = view3d_space_blend_write;
 
   /* regions: main window */
@@ -2286,6 +2315,8 @@ void ED_spacetype_view3d()
 
   WM_menutype_add(
       MEM_new<MenuType>(__func__, blender::ed::geometry::node_group_operator_assets_menu()));
+  WM_menutype_add(MEM_new<MenuType>(
+      __func__, blender::ed::geometry::node_group_operator_assets_menu_unassigned()));
 
   BKE_spacetype_register(st);
 }
