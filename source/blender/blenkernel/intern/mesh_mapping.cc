@@ -357,8 +357,6 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
     }
   });
 
-  BLI_assert(!lists_ends.as_span().contains(list_start));
-
   Array<int> results(group_indices.size());
   threading::parallel_for(lists_ends.index_range(), 128, [&](const IndexRange range) {
     for (const int64_t group_v : range) {
