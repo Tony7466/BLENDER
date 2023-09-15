@@ -668,15 +668,16 @@ struct bFileExtension {
 };
 struct FileHandlerType {
 
-  char idname[BKE_ST_MAXNAME]; /* unique name */
+  char idname[BKE_ST_MAXNAME]; /* Unique name. */
 
-  char label[BKE_ST_MAXNAME]; /* label */
+  char label[BKE_ST_MAXNAME]; /* For UI text. */
 
-  char import_operator[BKE_ST_MAXNAME]; /* import operator name */
+  char import_operator[BKE_ST_MAXNAME]; /* Import operator name, same as #OP_MAX_TYPENAME. */
 
-  /** TODO */
+  /* Check if file handler can be used in a context. */
   bool (*poll)(const struct bContext *C, FileHandlerType *file_handle_type);
 
+  /* List of file extensions supported by the file handler. */
   blender::Vector<bFileExtension> extensions;
 
   /** Equivalent to datablocks ID properties. */

@@ -3501,9 +3501,9 @@ class WM_OT_drop_blend_file(Operator):
 
 class WM_FH_alembic(bpy.types.FileHandler):
     bl_idname = "WM_FH_alembic"
-    bl_label = "alembic"
+    bl_label = "Import Alembic"
     bl_import_operator = "WM_OT_alembic_import"
-    bl_extensions = [{"name": ".abc"}, {"name": ".abc"}, {"name": ".abc"}]
+    bl_file_extensions = [{"extension": ".abc"}]
 
     @classmethod
     def poll(cls, context):
@@ -3512,9 +3512,9 @@ class WM_FH_alembic(bpy.types.FileHandler):
 
 class WM_FH_collada(bpy.types.FileHandler):
     bl_idname = "WM_FH_collada"
-    bl_label = "collada"
+    bl_label = "Import COLLADA"
     bl_import_operator = "WM_OT_collada_import"
-    bl_extensions = [{"name": ".dae"}]
+    bl_file_extensions = [{"extension": ".dae"}]
 
     @classmethod
     def poll(cls, context):
@@ -3523,9 +3523,9 @@ class WM_FH_collada(bpy.types.FileHandler):
 
 class WM_FH_gpencil(bpy.types.FileHandler):
     bl_idname = "WM_FH_gpencil"
-    bl_label = "gpencil"
+    bl_label = "Import gpencil"
     bl_import_operator = "WM_OT_gpencil_import_svg"
-    bl_extensions = [{"name": ".svg"}]
+    bl_file_extensions = [{"extension": ".svg"}]
 
     @classmethod
     def poll(cls, context):
@@ -3534,9 +3534,9 @@ class WM_FH_gpencil(bpy.types.FileHandler):
 
 class WM_FH_obj(bpy.types.FileHandler):
     bl_idname = "WM_FH_obj"
-    bl_label = "obj"
+    bl_label = "Import Wavefront OBJ"
     bl_import_operator = "WM_OT_obj_import"
-    bl_extensions = [{"name": ".obj"}]
+    bl_file_extensions = [{"extension": ".obj"}]
 
     @classmethod
     def poll(cls, context):
@@ -3545,9 +3545,9 @@ class WM_FH_obj(bpy.types.FileHandler):
 
 class WM_FH_ply(bpy.types.FileHandler):
     bl_idname = "WM_FH_ply"
-    bl_label = "ply"
+    bl_label = "Import PLY"
     bl_import_operator = "WM_OT_ply_import"
-    bl_extensions = [{"name": ".ply"}]
+    bl_file_extensions = [{"extension": ".ply"}]
 
     @classmethod
     def poll(cls, context):
@@ -3556,9 +3556,9 @@ class WM_FH_ply(bpy.types.FileHandler):
 
 class WM_FH_stl(bpy.types.FileHandler):
     bl_idname = "WM_FH_stl"
-    bl_label = "stl"
+    bl_label = "Import STL (experimental)"
     bl_import_operator = "WM_OT_stl_import"
-    bl_extensions = [{"name": ".stl"}]
+    bl_file_extensions = [{"extension": ".stl"}]
 
     @classmethod
     def poll(cls, context):
@@ -3567,9 +3567,9 @@ class WM_FH_stl(bpy.types.FileHandler):
 
 class WM_FH_import_mesh_stl(bpy.types.FileHandler):
     bl_idname = "WM_FH_import_mesh_stl"
-    bl_label = "stl"
+    bl_label = "Import STL"
     bl_import_operator = "import_mesh.stl"
-    bl_extensions = [{"name": ".stl"}]
+    bl_file_extensions = [{"extension": ".stl"}]
 
     @classmethod
     def poll(cls, context):
@@ -3578,9 +3578,9 @@ class WM_FH_import_mesh_stl(bpy.types.FileHandler):
 
 class WM_FH_usd(bpy.types.FileHandler):
     bl_idname = "WM_FH_usd"
-    bl_label = "usd"
+    bl_label = "Import USD"
     bl_import_operator = "WM_OT_usd_import"
-    bl_extensions = [{"name": ".usd"}]
+    bl_file_extensions = [{"extension": ".usd"}]
 
     @classmethod
     def poll(cls, context):
