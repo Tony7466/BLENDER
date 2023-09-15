@@ -39,6 +39,7 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_listbase.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
@@ -735,13 +736,15 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
   ID *data = get_evaluated_object_data_with_materials(ob);
   const short *tot_slots_data_ptr = BKE_id_material_len_p(data);
   const int tot_slots_data = tot_slots_data_ptr ? *tot_slots_data_ptr : 0;
+  const int tot_slot_object = ob->totcol;
+  const int tot_slot = blender::math::max<int>(tot_slots_data, tot_slot_object);
 
-  if (tot_slots_data == 0) {
+  if (tot_slot == 0) {
     return nullptr;
   }
 
   /* Clamp to number of slots if index is out of range, same convention as used for rendering. */
-  const int slot_index = clamp_i(act - 1, 0, tot_slots_data - 1);
+  const int slot_index = clamp_i(act - 1, 0, tot_slot - 1);
   const int tot_slots_object = ob->totcol;
 
   Material ***materials_data_ptr = BKE_id_material_array_p(data);
@@ -760,7 +763,7 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
     }
   }
   /* Otherwise use data from object-data. */
-  if (slot_index < tot_slots_data) {
+  if (slot_index < tot_slot) {
     Material *material = materials_data[slot_index];
     return material;
   }
@@ -776,7 +779,8 @@ int BKE_object_material_count_eval(const Object *ob)
   BLI_assert(ob->data != nullptr);
   const ID *id = get_evaluated_object_data_with_materials(const_cast<Object *>(ob));
   const short *len_p = BKE_id_material_len_p(const_cast<ID *>(id));
-  return len_p ? *len_p : 0;
+  const int tot_slot_object = ob->totcol;
+  return blender::math::max<int>(len_p ? *len_p : 0, tot_slot_object);
 }
 
 void BKE_id_material_eval_assign(ID *id, int slot, Material *material)
