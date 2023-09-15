@@ -56,10 +56,19 @@ class GraphExecutorSideEffectProvider {
   virtual Vector<const FunctionNode *> get_nodes_with_side_effects(const Context &context) const;
 };
 
+class GraphExecutorNodeExecuteWrapper {
+ public:
+  virtual ~GraphExecutorNodeExecuteWrapper() = default;
+  virtual void execute_node(const FunctionNode &node,
+                            Params &params,
+                            const Context &context) const = 0;
+};
+
 class GraphExecutor : public LazyFunction {
  public:
   using Logger = GraphExecutorLogger;
   using SideEffectProvider = GraphExecutorSideEffectProvider;
+  using NodeExecuteWrapper = GraphExecutorNodeExecuteWrapper;
 
  private:
   /**
@@ -81,6 +90,8 @@ class GraphExecutor : public LazyFunction {
    */
   const SideEffectProvider *side_effect_provider_;
 
+  const NodeExecuteWrapper *node_execute_wrapper_;
+
   friend class Executor;
 
  public:
@@ -88,7 +99,8 @@ class GraphExecutor : public LazyFunction {
                 Span<const OutputSocket *> graph_inputs,
                 Span<const InputSocket *> graph_outputs,
                 const Logger *logger,
-                const SideEffectProvider *side_effect_provider);
+                const SideEffectProvider *side_effect_provider,
+                const NodeExecuteWrapper *node_execute_wrapper);
 
   void *init_storage(LinearAllocator<> &allocator) const override;
   void destruct_storage(void *storage) const override;

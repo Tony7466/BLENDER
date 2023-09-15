@@ -1008,7 +1008,8 @@ class LazyFunctionForGroupNode : public LazyFunction {
                             std::move(graph_inputs),
                             std::move(graph_outputs),
                             &*lf_logger_,
-                            &*lf_side_effect_provider_);
+                            &*lf_side_effect_provider_,
+                            nullptr);
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
@@ -1493,11 +1494,40 @@ struct RepeatBodyIndices {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper {
+ public:
+  const bNode *repeat_output_bnode_;
+  VectorSet<const lf::FunctionNode *> ordered_function_nodes_;
+
+  void execute_node(const lf::FunctionNode &node,
+                    lf::Params &params,
+                    const lf::Context &context) const
+  {
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    const int iteration = ordered_function_nodes_.index_of(&node);
+
+    bke::RepeatZoneComputeContext body_compute_context{
+        user_data.compute_context, *repeat_output_bnode_, iteration};
+    GeoNodesLFUserData body_user_data = user_data;
+    body_user_data.compute_context = &body_compute_context;
+    if (user_data.modifier_data && user_data.modifier_data->socket_log_contexts) {
+      body_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
+          body_compute_context.hash());
+    }
+
+    GeoNodesLFLocalUserData body_local_user_data{body_user_data};
+    lf::Context body_context{context.storage, &body_user_data, &body_local_user_data};
+    node.function().execute(params, body_context);
+  }
+};
+
 struct RepeatEvalStorage {
   LinearAllocator<> allocator;
   lf::Graph graph;
-  std::optional<lf::GraphExecutor> graph_executor;
   std::optional<LazyFunctionForLogicalOr> or_function;
+  std::optional<GeometryNodesLazyFunctionSideEffectProvider> side_effect_provider;
+  std::optional<RepeatBodyNodeExecuteWrapper> body_execute_wrapper;
+  std::optional<lf::GraphExecutor> graph_executor;
   void *graph_executor_storage = nullptr;
   bool multi_threading_enabled = false;
   Vector<int> input_index_map;
@@ -1808,8 +1838,19 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     lf_graph.update_node_indices();
 
-    eval_storage.graph_executor.emplace(
-        lf_graph, lf_graph_inputs, lf_graph_outputs, nullptr, nullptr);
+    eval_storage.body_execute_wrapper.emplace();
+    eval_storage.body_execute_wrapper->repeat_output_bnode_ = &repeat_output_bnode_;
+    for (const lf::FunctionNode *lf_node : lf_body_nodes) {
+      eval_storage.body_execute_wrapper->ordered_function_nodes_.add(lf_node);
+    }
+    eval_storage.side_effect_provider.emplace();
+
+    eval_storage.graph_executor.emplace(lf_graph,
+                                        lf_graph_inputs,
+                                        lf_graph_outputs,
+                                        nullptr,
+                                        &*eval_storage.side_effect_provider,
+                                        &*eval_storage.body_execute_wrapper);
     eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
         eval_storage.allocator);
   }
@@ -2091,7 +2132,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
 
     const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(
-        lf_graph, lf_zone_inputs, lf_zone_outputs, &logger, &side_effect_provider);
+        lf_graph, lf_zone_inputs, lf_zone_outputs, &logger, &side_effect_provider, nullptr);
     const auto &zone_function = scope_.construct<LazyFunctionForSimulationZone>(*zone.output_node,
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
@@ -2219,7 +2260,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     auto &logger = scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_);
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
     LazyFunction &body_graph_fn = scope_.construct<lf::GraphExecutor>(
-        lf_body_graph, lf_body_inputs, lf_body_outputs, &logger, &side_effect_provider);
+        lf_body_graph, lf_body_inputs, lf_body_outputs, &logger, &side_effect_provider, nullptr);
 
     // std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
