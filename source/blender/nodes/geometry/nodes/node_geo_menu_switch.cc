@@ -305,143 +305,143 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   }
 };
 
-static NodeMenuSwitchEnumItem *rna_enum_items_new(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
-{
-  NodeMenuSwitch &storage = node_storage(*node);
-  NodeMenuSwitchEnumItem *item = storage.add_item(name);
-  if (item == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create item");
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-
-  return item;
-}
-
-static void rna_enum_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeMenuSwitchEnumItem *item)
-{
-  NodeMenuSwitch &storage = node_storage(*node);
-  if (!storage.remove_item(*item)) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from node", item->name);
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-}
-
-static void rna_enum_items_clear(ID *id, bNode *node, Main *bmain)
-{
-  NodeMenuSwitch &storage = node_storage(*node);
-  storage.clear_items();
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static void rna_enum_items_move(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int from_index, int to_index)
-{
-  NodeMenuSwitch &storage = node_storage(*node);
-
-  if (!storage.move_item(from_index, to_index)) {
-    BKE_reportf(
-        reports, RPT_ERROR, "Unable to move item from index %d to index %d", from_index, to_index);
-    return;
-  }
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static PointerRNA rna_active_item_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  const NodeMenuSwitch &storage = node_storage(*node);
-  NodeMenuSwitchEnumItem *item = storage.items().get(storage.active_index, nullptr);
-  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryMenuSwitchEnumItem, item);
-  return r_ptr;
-}
-
-static void rna_active_item_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeMenuSwitch &storage = node_storage(*node);
-  NodeMenuSwitchEnumItem *item = static_cast<NodeMenuSwitchEnumItem *>(value.data);
-  storage.active_index = storage.items().first_index_try(item);
-}
-
-static void rna_enum_items_api(StructRNA *srna)
-{
-  PropertyRNA *prop;
-  PropertyRNA *parm;
-  FunctionRNA *func;
-
-  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "active_index");
-  RNA_def_property_ui_text(prop, "Active Index", "Index of the active item");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE, nullptr);
-
-  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "NodeMenuSwitchEnumItem");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, "rna_active_get", "rna_active_set", nullptr, nullptr);
-  RNA_def_property_ui_text(prop, "Active", "Active item");
-  RNA_def_property_update(prop, NC_NODE, nullptr);
-
-  func = RNA_def_function(srna, "new", "rna_NodeGeometryRepeatOutput_items_new");
-  RNA_def_function_ui_description(func, "Add a item to this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_enum(func,
-                      "socket_type",
-                      rna_enum_node_socket_data_type_items,
-                      SOCK_GEOMETRY,
-                      "Socket Type",
-                      "Socket type of the item");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  /* return value */
-  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
-  RNA_def_function_return(func, parm);
-
-  func = RNA_def_function(srna, "remove", "rna_NodeGeometryRepeatOutput_items_remove");
-  RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-
-  func = RNA_def_function(srna, "clear", "rna_NodeGeometryRepeatOutput_items_clear");
-  RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "move", "rna_NodeGeometryRepeatOutput_items_move");
-  RNA_def_function_ui_description(func, "Move an item to another position");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-  parm = RNA_def_int(
-      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-}
+//static NodeMenuSwitchEnumItem *rna_enum_items_new(
+//    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
+//{
+//  NodeMenuSwitch &storage = node_storage(*node);
+//  NodeMenuSwitchEnumItem *item = storage.add_item(name);
+//  if (item == nullptr) {
+//    BKE_report(reports, RPT_ERROR, "Unable to create item");
+//  }
+//  else {
+//    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+//    BKE_ntree_update_tag_node_property(ntree, node);
+//    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+//    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+//  }
+//
+//  return item;
+//}
+//
+//static void rna_enum_items_remove(
+//    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeMenuSwitchEnumItem *item)
+//{
+//  NodeMenuSwitch &storage = node_storage(*node);
+//  if (!storage.remove_item(*item)) {
+//    BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from node", item->name);
+//  }
+//  else {
+//    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+//    BKE_ntree_update_tag_node_property(ntree, node);
+//    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+//    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+//  }
+//}
+//
+//static void rna_enum_items_clear(ID *id, bNode *node, Main *bmain)
+//{
+//  NodeMenuSwitch &storage = node_storage(*node);
+//  storage.clear_items();
+//
+//  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+//  BKE_ntree_update_tag_node_property(ntree, node);
+//  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+//  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+//}
+//
+//static void rna_enum_items_move(
+//    ID *id, bNode *node, Main *bmain, ReportList *reports, int from_index, int to_index)
+//{
+//  NodeMenuSwitch &storage = node_storage(*node);
+//
+//  if (!storage.move_item(from_index, to_index)) {
+//    BKE_reportf(
+//        reports, RPT_ERROR, "Unable to move item from index %d to index %d", from_index, to_index);
+//    return;
+//  }
+//
+//  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+//  BKE_ntree_update_tag_node_property(ntree, node);
+//  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+//  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+//}
+//
+//static PointerRNA rna_active_item_get(PointerRNA *ptr)
+//{
+//  bNode *node = static_cast<bNode *>(ptr->data);
+//  const NodeMenuSwitch &storage = node_storage(*node);
+//  NodeMenuSwitchEnumItem *item = storage.items().get(storage.active_index, nullptr);
+//  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryMenuSwitchEnumItem, item);
+//  return r_ptr;
+//}
+//
+//static void rna_active_item_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
+//{
+//  bNode *node = static_cast<bNode *>(ptr->data);
+//  NodeMenuSwitch &storage = node_storage(*node);
+//  NodeMenuSwitchEnumItem *item = static_cast<NodeMenuSwitchEnumItem *>(value.data);
+//  storage.active_index = storage.items().first_index_try(item);
+//}
+//
+//static void rna_enum_items_api(StructRNA *srna)
+//{
+//  PropertyRNA *prop;
+//  PropertyRNA *parm;
+//  FunctionRNA *func;
+//
+//  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+//  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+//  RNA_def_property_ui_text(prop, "Active Index", "Index of the active item");
+//  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+//  RNA_def_property_update(prop, NC_NODE, nullptr);
+//
+//  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+//  RNA_def_property_struct_type(prop, "NodeMenuSwitchEnumItem");
+//  RNA_def_property_flag(prop, PROP_EDITABLE);
+//  RNA_def_property_pointer_funcs(prop, "rna_active_get", "rna_active_set", nullptr, nullptr);
+//  RNA_def_property_ui_text(prop, "Active", "Active item");
+//  RNA_def_property_update(prop, NC_NODE, nullptr);
+//
+//  func = RNA_def_function(srna, "new", "rna_NodeGeometryRepeatOutput_items_new");
+//  RNA_def_function_ui_description(func, "Add a item to this repeat zone");
+//  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+//  parm = RNA_def_enum(func,
+//                      "socket_type",
+//                      rna_enum_node_socket_data_type_items,
+//                      SOCK_GEOMETRY,
+//                      "Socket Type",
+//                      "Socket type of the item");
+//  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+//  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+//  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+//  /* return value */
+//  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
+//  RNA_def_function_return(func, parm);
+//
+//  func = RNA_def_function(srna, "remove", "rna_NodeGeometryRepeatOutput_items_remove");
+//  RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
+//  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+//  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
+//  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+//
+//  func = RNA_def_function(srna, "clear", "rna_NodeGeometryRepeatOutput_items_clear");
+//  RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
+//  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+//
+//  func = RNA_def_function(srna, "move", "rna_NodeGeometryRepeatOutput_items_move");
+//  RNA_def_function_ui_description(func, "Move an item to another position");
+//  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+//  parm = RNA_def_int(
+//      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
+//  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+//  parm = RNA_def_int(
+//      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+//  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+//}
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
+  //PropertyRNA *prop;
 
   // prop = RNA_def_property(srna, "enum_items", PROP_COLLECTION, PROP_NONE);
   // RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
@@ -449,7 +449,7 @@ static void node_rna(StructRNA *srna)
   // RNA_def_property_struct_type(prop, "NodeMenuSwitchEnumItem");
   // RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   // RNA_def_property_ui_text(prop, "Enum Items", "Declaration of enum values");
-  rna_enum_items_api(srna);
+  //rna_enum_items_api(srna);
 
   RNA_def_node_enum(
       srna,
@@ -512,31 +512,31 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &no
 
 }  // namespace blender::nodes
 
-blender::Span<NodeMenuSwitchEnumItem *> NodeMenuSwitch::items() const
+blender::Span<NodeEnumItem *> NodeEnumDefinition::items() const
 {
   return {this->items_array, this->items_num};
 }
 
-blender::MutableSpan<NodeMenuSwitchEnumItem *> NodeMenuSwitch::items_for_write()
+blender::MutableSpan<NodeEnumItem *> NodeEnumDefinition::items_for_write()
 {
   return {this->items_array, this->items_num};
 }
 
-void NodeMenuSwitch::set_item_name(NodeMenuSwitchEnumItem &item, const char *name)
+void NodeEnumDefinition::set_item_name(NodeEnumItem &item, const char *name)
 {
   char unique_name[MAX_NAME + 4];
   STRNCPY(unique_name, name);
 
   struct Args {
-    NodeMenuSwitch *storage;
-    const NodeMenuSwitchEnumItem *item;
+    NodeEnumDefinition *storage;
+    const NodeEnumItem *item;
   } args = {this, &item};
 
-  const char *default_name = nodeStaticSocketLabel(this->input_type, 0);
+  const char *default_name = items().is_empty() ? "Item" : items().last()->name;
   BLI_uniquename_cb(
       [](void *arg, const char *name) {
         const Args &args = *static_cast<Args *>(arg);
-        for (const NodeMenuSwitchEnumItem *item : args.storage->items()) {
+        for (const NodeEnumItem *item : args.storage->items()) {
           if (item != args.item) {
             if (STREQ(item->name, name)) {
               return true;

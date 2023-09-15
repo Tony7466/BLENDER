@@ -1585,37 +1585,43 @@ typedef struct NodeSwitch {
   uint8_t input_type;
 } NodeSwitch;
 
-typedef struct NodeMenuSwitchEnumItem {
+typedef struct NodeEnumItem {
   char *name;
   char *description;
   /* Immutable unique identifier. */
   uint32_t identifier;
   char _pad[4];
-} NodeMenuSwitchEnumItem;
+} NodeEnumItem;
 
-typedef struct NodeMenuSwitch {
+typedef struct NodeEnumDefinition {
   /* User-defined enum items owned and managed by this node. */
-  NodeMenuSwitchEnumItem **items_array;
+  NodeEnumItem **items_array;
   uint16_t items_num;
   uint16_t active_index;
-  /** #eNodeSocketDatatype. */
-  uint8_t input_type;
-  char _pad[3];
+  char _pad[4];
 
 #ifdef __cplusplus
-  blender::Span<NodeMenuSwitchEnumItem *> items() const;
-  blender::MutableSpan<NodeMenuSwitchEnumItem *> items_for_write();
+  blender::Span<NodeEnumItem *> items() const;
+  blender::MutableSpan<NodeEnumItem *> items_for_write();
 
-  NodeMenuSwitchEnumItem *add_item(blender::StringRef name);
-  bool remove_item(NodeMenuSwitchEnumItem &item);
+  NodeEnumItem *add_item(blender::StringRef name);
+  bool remove_item(NodeEnumItem &item);
   void clear_items();
   bool move_item(uint16_t from_index, uint16_t to_index);
 
-  void set_item_name(NodeMenuSwitchEnumItem &item, const char *name);
+  void set_item_name(NodeEnumItem &item, const char *name);
 #endif
+} NodeEnumDefinition;
+
+typedef struct NodeMenuSwitch {
+  NodeEnumDefinition enum_definition;
+
+  /** #eNodeSocketDatatype. */
+  uint8_t input_type;
+  char _pad[3];
 } NodeMenuSwitch;
 
-typedef struct NodeGeometryCurveSplineType {
+  typedef struct NodeGeometryCurveSplineType {
   /** #GeometryNodeSplineType. */
   uint8_t spline_type;
 } NodeGeometryCurveSplineType;
