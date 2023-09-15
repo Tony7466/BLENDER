@@ -128,6 +128,11 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
+struct GeoNodesSideEffectNodes {
+  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> nodes_by_context;
+  MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> iterations_by_repeat_zone;
+};
+
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
  */
@@ -145,7 +150,7 @@ struct GeoNodesModifierData {
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
    * the node groups they are contained in).
    */
-  const MultiValueMap<ComputeContextHash, const lf::FunctionNode *> *side_effect_nodes = nullptr;
+  const GeoNodesSideEffectNodes *side_effect_nodes = nullptr;
   /**
    * Controls in which compute contexts we want to log socket values. Logging them in all contexts
    * can result in slowdowns. In the majority of cases, the logged socket values are freed without
