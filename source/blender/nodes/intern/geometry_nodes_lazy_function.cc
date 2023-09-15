@@ -1495,23 +1495,29 @@ struct RepeatBodyIndices {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+/**
+ * Wraps the execution of a repeat loop body. The purpose is to setup the correct #ComputeContext
+ * inside of the loop body.
+ */
 class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper {
  public:
   const bNode *repeat_output_bnode_ = nullptr;
-  VectorSet<const lf::FunctionNode *> *ordered_function_nodes_ = nullptr;
+  VectorSet<lf::FunctionNode *> *lf_body_nodes_ = nullptr;
 
   void execute_node(const lf::FunctionNode &node,
                     lf::Params &params,
                     const lf::Context &context) const
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    const int iteration = ordered_function_nodes_->index_of_try(&node);
+    const int iteration = lf_body_nodes_->index_of_try(const_cast<lf::FunctionNode *>(&node));
     const LazyFunction &fn = node.function();
     if (iteration == -1) {
+      /* The node is not a loop body node, just execute it normally. */
       fn.execute(params, context);
       return;
     }
 
+    /* Setup context for the loop body evaluation. */
     bke::RepeatZoneComputeContext body_compute_context{
         user_data.compute_context, *repeat_output_bnode_, iteration};
     GeoNodesLFUserData body_user_data = user_data;
@@ -1520,17 +1526,21 @@ class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper 
       body_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
           body_compute_context.hash());
     }
-
     GeoNodesLFLocalUserData body_local_user_data{body_user_data};
     lf::Context body_context{context.storage, &body_user_data, &body_local_user_data};
+
+    /* Actually execute the loop body. */
     fn.execute(params, body_context);
   }
 };
 
+/**
+ * Knows which iterations of the loop evaluation have side effects.
+ */
 class RepeatZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider {
  public:
   const bNode *repeat_output_bnode_ = nullptr;
-  Span<const lf::FunctionNode *> body_nodes_;
+  Span<lf::FunctionNode *> lf_body_nodes_;
 
   Vector<const lf::FunctionNode *> get_nodes_with_side_effects(
       const lf::Context &context) const override
@@ -1543,12 +1553,14 @@ class RepeatZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider 
       return {};
     }
     const ComputeContextHash &context_hash = user_data.compute_context->hash();
-    const Span<int> indices = user_data.modifier_data->side_effect_nodes->iterations_by_repeat_zone
-                                  .lookup({context_hash, repeat_output_bnode_->identifier});
+    const Span<int> iterations_with_side_effects =
+        user_data.modifier_data->side_effect_nodes->iterations_by_repeat_zone.lookup(
+            {context_hash, repeat_output_bnode_->identifier});
+
     Vector<const lf::FunctionNode *> lf_nodes;
-    for (const int i : indices) {
-      if (i >= 0 && i < body_nodes_.size()) {
-        lf_nodes.append(body_nodes_[i]);
+    for (const int i : iterations_with_side_effects) {
+      if (i >= 0 && i < lf_body_nodes_.size()) {
+        lf_nodes.append(lf_body_nodes_[i]);
       }
     }
     return lf_nodes;
@@ -1557,7 +1569,7 @@ class RepeatZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider 
 
 struct RepeatEvalStorage {
   LinearAllocator<> allocator;
-  VectorSet<const lf::FunctionNode *> body_nodes;
+  VectorSet<lf::FunctionNode *> lf_body_nodes;
   lf::Graph graph;
   std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<RepeatZoneSideEffectProvider> side_effect_provider;
@@ -1725,19 +1737,30 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     const int iterations_usage_index = zone_info_.main_input_usage_indices[0];
     if (params.output_was_set(iterations_usage_index)) {
+      /* The iterations input is always used. */
       params.set_output(iterations_usage_index, true);
     }
 
     if (!eval_storage.graph_executor) {
+      /* Create the execution graph in the first evaluation. */
       this->initialize_execution_graph(params, eval_storage, node_storage);
     }
 
+    /* Execute the graph for the repeat zone. */
     ParamsForRepeatZoneGraph eval_graph_params{eval_storage, params};
     lf::Context eval_graph_context{
         eval_storage.graph_executor_storage, context.user_data, context.local_user_data};
     eval_storage.graph_executor->execute(eval_graph_params, eval_graph_context);
   }
 
+  /**
+   * Generate a lazy-function graph that contains contains the loop body (`body_fn_`) as many times
+   * as there are iterations. Since this graph depends on the number of iterations, it can't be
+   * reused in general. We could consider caching a version of this graph per number of iterations,
+   * but right now that doesn't seem worth it. In practice, it takes much less time to create the
+   * graph than to execute it (for intended use cases of this generic implementation, more special
+   * case repeat loop evaluations could be implemented separately).
+   */
   void initialize_execution_graph(lf::Params &params,
                                   RepeatEvalStorage &eval_storage,
                                   const NodeGeometryRepeatOutput &node_storage) const
@@ -1766,14 +1789,14 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     lf::DummyNode &lf_output_node = lf_graph.add_dummy(output_types, {});
 
     /* Create body nodes. */
-    Array<lf::FunctionNode *> lf_body_nodes(iterations);
-    for (const int i : IndexRange(iterations)) {
+    VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
+    for ([[maybe_unused]] const int i : IndexRange(iterations)) {
       lf::FunctionNode &lf_node = lf_graph.add_function(body_fn_);
-      lf_body_nodes[i] = &lf_node;
-      eval_storage.body_nodes.add_new(&lf_node);
+      eval_storage.lf_body_nodes.add_new(&lf_node);
     }
 
-    /* Create nodes for combining border link usages. */
+    /* Create nodes for combining border link usages. A border link is used when any of the loop
+     * bodies uses the border link, so an "or" node is necessary. */
     Array<lf::FunctionNode *> lf_border_link_usage_or_nodes(num_border_links);
     eval_storage.or_function.emplace(iterations);
     for (const int i : IndexRange(num_border_links)) {
@@ -1826,6 +1849,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     if (iterations > 0) {
       {
+        /* Link first body node to input/output nodes. */
         lf::FunctionNode &lf_first_body_node = *lf_body_nodes[0];
         for (const int i : IndexRange(num_repeat_items)) {
           lf_graph.add_link(
@@ -1837,7 +1861,8 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         }
       }
       {
-        lf::FunctionNode &lf_last_body_node = *lf_body_nodes.last();
+        /* Link last body node to input/output nodes. */
+        lf::FunctionNode &lf_last_body_node = *lf_body_nodes.as_span().last();
         for (const int i : IndexRange(num_repeat_items)) {
           lf_graph.add_link(lf_last_body_node.output(body_indices_.main_outputs[i]),
                             lf_output_node.input(zone_info_.main_output_indices[i]));
@@ -1847,6 +1872,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       }
     }
     else {
+      /* There are no iterations, just link the input directly to the output. */
       for (const int i : IndexRange(num_repeat_items)) {
         lf_graph.add_link(
             lf_input_node.output(zone_info_.main_input_indices[i + main_inputs_offset]),
@@ -1862,9 +1888,15 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       }
     }
 
+    /* The graph is ready, update the node indices which are required by the executor. */
+    lf_graph.update_node_indices();
+
     // std::cout << "\n\n" << iterations << "\n\n";
     // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
+    /* Create a mapping from parameter indices inside of this graph to parameters of the repeat
+     * zone. The main complexity below stems from the fact that the iterations input is handled
+     * outside of this graph. */
     eval_storage.input_index_map.reinitialize(inputs_.size() - 1);
     eval_storage.output_index_map.reinitialize(outputs_.size() - 1);
 
@@ -1882,14 +1914,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         iteration_usage_index);
     lf_graph_outputs.extend(lf_output_node.inputs().drop_front(iteration_usage_index + 1));
 
-    lf_graph.update_node_indices();
-
     eval_storage.body_execute_wrapper.emplace();
     eval_storage.body_execute_wrapper->repeat_output_bnode_ = &repeat_output_bnode_;
-    eval_storage.body_execute_wrapper->ordered_function_nodes_ = &eval_storage.body_nodes;
+    eval_storage.body_execute_wrapper->lf_body_nodes_ = &lf_body_nodes;
     eval_storage.side_effect_provider.emplace();
     eval_storage.side_effect_provider->repeat_output_bnode_ = &repeat_output_bnode_;
-    eval_storage.side_effect_provider->body_nodes_ = eval_storage.body_nodes;
+    eval_storage.side_effect_provider->lf_body_nodes_ = lf_body_nodes;
 
     eval_storage.graph_executor.emplace(lf_graph,
                                         lf_graph_inputs,

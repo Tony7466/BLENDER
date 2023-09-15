@@ -56,9 +56,19 @@ class GraphExecutorSideEffectProvider {
   virtual Vector<const FunctionNode *> get_nodes_with_side_effects(const Context &context) const;
 };
 
+/**
+ * Can be used to pass extra context into the execution of a function. The main alternative to this
+ * is to create a wrapper `LazyFunction` for the `FunctionNode`s. Using this light weight wrapper
+ * is preferable if possible.
+ */
 class GraphExecutorNodeExecuteWrapper {
  public:
   virtual ~GraphExecutorNodeExecuteWrapper() = default;
+
+  /**
+   * Is expected to run `node.function().execute(params, context)` but might do some extra work,
+   * like adjusting the context.
+   */
   virtual void execute_node(const FunctionNode &node,
                             Params &params,
                             const Context &context) const = 0;
@@ -89,7 +99,9 @@ class GraphExecutor : public LazyFunction {
    * during evaluation.
    */
   const SideEffectProvider *side_effect_provider_;
-
+  /**
+   * Optional wrapper for node execution functions.
+   */
   const NodeExecuteWrapper *node_execute_wrapper_;
 
   friend class Executor;

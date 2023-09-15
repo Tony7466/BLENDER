@@ -555,7 +555,7 @@ static void find_side_effect_nodes_for_viewer_path(
   }
   local_side_effect_nodes.nodes_by_context.add(compute_context_builder.hash(), lf_viewer_node);
 
-  /* Successfully found all compute contexts for the viewer. */
+  /* Successfully found all side effect nodes for the viewer path. */
   for (const auto item : local_side_effect_nodes.nodes_by_context.items()) {
     r_side_effect_nodes.nodes_by_context.add_multiple(item.key, item.value);
   }
