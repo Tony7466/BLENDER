@@ -102,9 +102,17 @@ void VelocityModule::step_sync(eVelocityStep step, float time)
   step_ = step;
   object_steps_usage[step_] = 0;
   step_camera_sync();
+
   draw::hair_init();
+  draw::curves_init();
+
   DRW_render_object_iter(&inst_, inst_.render, inst_.depsgraph, step_object_sync_render);
-  draw::hair_update(*std::make_unique<draw::Manager>());
+
+  draw::hair_update(*inst_.manager);
+  draw::curves_update(*inst_.manager);
+  draw::hair_free();
+  draw::curves_free();
+
   geometry_steps_fill();
 }
 
@@ -177,7 +185,12 @@ bool VelocityModule::step_object_sync(Object *ob,
       }
       switch (ob->type) {
         case OB_CURVES:
-          data.pos_buf = DRW_curves_pos_buffer_get(ob);
+          if (inst_.is_viewport()) {
+            data.pos_buf = DRW_curves_pos_buffer_get(ob);
+          }
+          else {
+            data.pos_buf = draw::curves_pos_buffer_get(inst_.scene, ob);
+          }
           break;
         case OB_POINTCLOUD:
           data.pos_buf = DRW_pointcloud_position_and_radius_buffer_get(ob);

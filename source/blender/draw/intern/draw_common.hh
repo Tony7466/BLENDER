@@ -36,6 +36,11 @@ GPUBatch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
                               ModifierData *md,
                               GPUMaterial *gpu_material = nullptr);
 
+void curves_init();
+GPUVertBuf *curves_pos_buffer_get(Scene *scene, Object *object);
+void curves_update(Manager &manager);
+void curves_free();
+
 GPUBatch *curves_sub_pass_setup(PassMain::Sub &ps,
                                 const Scene *scene,
                                 Object *ob,
