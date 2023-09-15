@@ -9,7 +9,6 @@
 
 #include "BLI_virtual_array.hh"
 
-#include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
@@ -35,14 +34,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .translation_context(BLT_I18NCONTEXT_ID_ID)
       .supported_type(GeometryComponent::Type::Volume);
   b.add_output<decl::Vector>(N_("Vector")).dependent_field({1});
-}
-
-static void search_node_add_ops(GatherAddNodeSearchParams &params)
-{
-  if (!U.experimental.use_new_volume_nodes) {
-    return;
-  }
-  blender::nodes::search_node_add_ops_for_basic_node(params);
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)
@@ -242,7 +233,6 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_VOLUME_GRADIENT, "Gradient", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.gather_link_search_ops = file_ns::search_link_ops;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
