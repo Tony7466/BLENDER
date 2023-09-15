@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -19,7 +19,7 @@ set(INC_SYS
 )
 
 set(SRC
-  space_statusbar.c
+  space_statusbar.cc
 )
 
 set(LIB

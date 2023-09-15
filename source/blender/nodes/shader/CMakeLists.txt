@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021 Blender Foundation
+# SPDX-FileCopyrightText: 2021 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,6 +21,8 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
   nodes/node_shader_add_shader.cc
@@ -37,10 +39,10 @@ set(SRC
   nodes/node_shader_bsdf_hair_principled.cc
   nodes/node_shader_bsdf_principled.cc
   nodes/node_shader_bsdf_refraction.cc
+  nodes/node_shader_bsdf_sheen.cc
   nodes/node_shader_bsdf_toon.cc
   nodes/node_shader_bsdf_translucent.cc
   nodes/node_shader_bsdf_transparent.cc
-  nodes/node_shader_bsdf_velvet.cc
   nodes/node_shader_bump.cc
   nodes/node_shader_camera.cc
   nodes/node_shader_clamp.cc

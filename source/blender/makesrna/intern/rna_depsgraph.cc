@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,15 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -29,9 +31,8 @@
 #  endif
 
 #  include "BLI_iterator.h"
-#  include "BLI_math.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_duplilist.h"
 #  include "BKE_object.h"
@@ -154,7 +155,7 @@ static int rna_DepsgraphObjectInstance_random_id_get(PointerRNA *ptr)
   RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
   if (deg_iter->dupli_object_current != nullptr) {
-    return (int)deg_iter->dupli_object_current->random_id;
+    return int(deg_iter->dupli_object_current->random_id);
   }
   else {
     return 0;
@@ -512,8 +513,7 @@ static PointerRNA rna_Depsgraph_scene_get(PointerRNA *ptr)
 {
   Depsgraph *depsgraph = (Depsgraph *)ptr->data;
   Scene *scene = DEG_get_input_scene(depsgraph);
-  PointerRNA newptr;
-  RNA_pointer_create(&scene->id, &RNA_Scene, scene, &newptr);
+  PointerRNA newptr = RNA_pointer_create(&scene->id, &RNA_Scene, scene);
   return newptr;
 }
 
@@ -522,8 +522,7 @@ static PointerRNA rna_Depsgraph_view_layer_get(PointerRNA *ptr)
   Depsgraph *depsgraph = (Depsgraph *)ptr->data;
   Scene *scene = DEG_get_input_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
-  PointerRNA newptr;
-  RNA_pointer_create(&scene->id, &RNA_ViewLayer, view_layer, &newptr);
+  PointerRNA newptr = RNA_pointer_create(&scene->id, &RNA_ViewLayer, view_layer);
   return newptr;
 }
 
@@ -531,8 +530,7 @@ static PointerRNA rna_Depsgraph_scene_eval_get(PointerRNA *ptr)
 {
   Depsgraph *depsgraph = (Depsgraph *)ptr->data;
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-  PointerRNA newptr;
-  RNA_pointer_create(&scene_eval->id, &RNA_Scene, scene_eval, &newptr);
+  PointerRNA newptr = RNA_pointer_create(&scene_eval->id, &RNA_Scene, scene_eval);
   return newptr;
 }
 
@@ -541,8 +539,7 @@ static PointerRNA rna_Depsgraph_view_layer_eval_get(PointerRNA *ptr)
   Depsgraph *depsgraph = (Depsgraph *)ptr->data;
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer_eval = DEG_get_evaluated_view_layer(depsgraph);
-  PointerRNA newptr;
-  RNA_pointer_create(&scene_eval->id, &RNA_ViewLayer, view_layer_eval, &newptr);
+  PointerRNA newptr = RNA_pointer_create(&scene_eval->id, &RNA_ViewLayer, view_layer_eval);
   return newptr;
 }
 

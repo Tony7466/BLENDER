@@ -33,10 +33,6 @@ using GeometrySetHandle = blender::bke::GeometrySet;
 typedef struct GeometrySetHandle GeometrySetHandle;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct AnimData;
 struct BoundBox;
 struct Collection;
@@ -761,7 +757,7 @@ enum {
 /** #Base::flag_legacy (also used for #Object::flag). */
 enum {
   BA_WAS_SEL = (1 << 1),
-  /* NOTE: BA_HAS_RECALC_DATA can be re-used later if freed in readfile.c. */
+  /* NOTE: BA_HAS_RECALC_DATA can be re-used later if freed in `readfile.cc`. */
   // BA_HAS_RECALC_OB = 1 << 2, /* DEPRECATED */
   // BA_HAS_RECALC_DATA = 1 << 3, /* DEPRECATED */
   /** DEPRECATED, was runtime only, but was reusing an older flag. */
@@ -879,7 +875,3 @@ typedef enum ObjectModifierFlag {
 } ObjectModifierFlag;
 
 #define MAX_DUPLI_RECUR 8
-
-#ifdef __cplusplus
-}
-#endif

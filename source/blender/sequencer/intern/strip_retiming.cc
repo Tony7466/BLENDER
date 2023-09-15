@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,8 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -796,8 +797,11 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
       }
     }
     else {
+      const int range_start = max_ii(0, range.start);
+      const int range_end = max_ii(0, range.end);
+
       BKE_sound_set_scene_sound_pitch_constant_range(
-          seq->scene_sound, range.start, range.end, range.speed);
+          seq->scene_sound, range_start, range_end, range.speed);
     }
   }
 }

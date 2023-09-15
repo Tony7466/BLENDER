@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,10 +7,10 @@ set(INC
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
+  ../../bmesh
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -20,10 +20,10 @@ set(INC_SYS
 )
 
 set(SRC
-  buttons_context.c
-  buttons_ops.c
+  buttons_context.cc
+  buttons_ops.cc
   buttons_texture.cc
-  space_buttons.c
+  space_buttons.cc
 
   buttons_intern.h
 )
