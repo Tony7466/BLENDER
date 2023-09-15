@@ -1,1 +1,2 @@
 Referenced by commit 2c28f87230ceab2bac411da8607e612bcb9d17db, Fix missing weight-paint overlay popover when mixing pose & weight-paint
+Referenced by issue #111624, UI: Split mode overlays into its own popover
