@@ -1055,6 +1055,39 @@ static void ui_context_selected_bones_via_pose(bContext *C, ListBase *r_lb)
   *r_lb = lb;
 }
 
+static void ui_context_fcurve_modifiers_via_fcurve(bContext *C, ListBase *r_lb, FModifier *source)
+{
+  ListBase lb;
+  lb = CTX_data_collection_get(C, "selected_editable_fcurves");
+  if (BLI_listbase_is_empty(&lb)) {
+    return;
+  }
+  blender::Vector<CollectionPointerLink *> pointers_to_free;
+  LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
+    FCurve *fcu = static_cast<FCurve *>(link->ptr.data);
+    bool found_modifier = false;
+    LISTBASE_FOREACH (FModifier *, mod, &fcu->modifiers) {
+      if (STREQ(mod->name, source->name) && mod->type == source->type) {
+        link->ptr = RNA_pointer_create(link->ptr.owner_id, &RNA_FModifier, mod);
+        found_modifier = true;
+        /* Since names are unique it is safe to break here. */
+        break;
+      }
+    }
+    if (!found_modifier) {
+      /* FCurves that don't have a modifier named the same must be removed to avoid segfaults. */
+      BLI_remlink(&lb, link);
+      pointers_to_free.append(link);
+    }
+  }
+
+  for (CollectionPointerLink *link : pointers_to_free) {
+    MEM_freeN(link);
+  }
+
+  *r_lb = lb;
+}
+
 bool UI_context_copy_to_selected_list(bContext *C,
                                       PointerRNA *ptr,
                                       PropertyRNA *prop,
@@ -1183,6 +1216,10 @@ bool UI_context_copy_to_selected_list(bContext *C,
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_FCurve)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_fcurves");
+  }
+  else if (RNA_struct_is_a(ptr->type, &RNA_FModifier)) {
+    FModifier *mod = static_cast<FModifier *>(ptr->data);
+    ui_context_fcurve_modifiers_via_fcurve(C, r_lb, mod);
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Keyframe)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_keyframes");
