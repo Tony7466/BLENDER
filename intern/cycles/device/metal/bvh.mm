@@ -573,6 +573,12 @@ bool BVHMetal::build_BLAS_hair(Progress &progress,
 
     return true;
   }
+#  else  /* MAC_OS_VERSION_14_0 */
+  (void)progress;
+  (void)device;
+  (void)queue;
+  (void)geom;
+  (void)(refit);
 #  endif /* MAC_OS_VERSION_14_0 */
   return false;
 }
@@ -1145,8 +1151,7 @@ bool BVHMetal::build_TLAS(Progress &progress,
 
     unique_blas_array.clear();
     unique_blas_array.reserve(all_blas.count);
-    [all_blas enumerateObjectsUsingBlock:^(
-                  id<MTLAccelerationStructure> blas, NSUInteger, BOOL *) {
+    [all_blas enumerateObjectsUsingBlock:^(id<MTLAccelerationStructure> blas, NSUInteger, BOOL *) {
       unique_blas_array.push_back(blas);
     }];
 
