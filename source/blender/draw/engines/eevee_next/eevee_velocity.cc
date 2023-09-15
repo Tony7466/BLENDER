@@ -146,7 +146,7 @@ bool VelocityModule::step_object_sync(Object *ob,
   VelocityObjectData &vel = velocity_map.lookup_or_add_default(object_key);
   vel.obj.ofs[step_] = object_steps_usage[step_]++;
   vel.obj.resource_id = resource_handle.resource_index();
-  vel.id = particle_sys ? &particle_sys->part->id : &ob->id;
+  vel.id = object_key.hash_value;
   object_steps[step_]->get_or_resize(vel.obj.ofs[step_]) = float4x4_view(ob->object_to_world);
   if (step_ == STEP_CURRENT) {
     /* Replace invalid steps. Can happen if object was hidden in one of those steps. */
@@ -260,7 +260,7 @@ void VelocityModule::geometry_steps_fill()
     vel.geo.len[step_] = geom.len;
     vel.geo.ofs[step_] = geom.ofs;
     /* Avoid reuse. */
-    vel.id = nullptr;
+    vel.id = 0;
   }
 
   geometry_map.clear();
