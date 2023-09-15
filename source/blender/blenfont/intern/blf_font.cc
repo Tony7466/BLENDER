@@ -411,11 +411,6 @@ BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(FontBLF *font,
   return g;
 }
 
-BLI_INLINE ft_pix blf_pen_advance(FontBLF *font, ft_pix v, ft_pix step)
-{
-  return v + step;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -447,7 +442,7 @@ static void blf_font_draw_ex(FontBLF *font,
     }
     /* do not return this loop if clipped, we want every character tested */
     blf_glyph_draw(font, gc, g, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
-    pen_x = blf_pen_advance(font, pen_x, g->advance_x);
+    pen_x += g->advance_x;
   }
 
   blf_batch_draw_end();
@@ -642,7 +637,7 @@ static void blf_font_draw_buffer_ex(FontBLF *font,
       continue;
     }
     blf_glyph_draw_buffer(buf_info, g, pen_x, pen_y_basis);
-    pen_x = blf_pen_advance(font, pen_x, g->advance_x);
+    pen_x += g->advance_x;
   }
 
   if (r_info) {
@@ -674,8 +669,7 @@ static bool blf_font_width_to_strlen_glyph_process(
   if (UNLIKELY(g == nullptr)) {
     return false; /* continue the calling loop. */
   }
-  *pen_x += blf_kerning(font, g_prev, g);
-  *pen_x = blf_pen_advance(font, *pen_x, g->advance_x);
+  *pen_x += blf_kerning(font, g_prev, g) + g->advance_x;
 
   /* When true, break the calling loop. */
   return (ft_pix_to_int(*pen_x) >= width_i);
@@ -781,7 +775,7 @@ static void blf_font_boundbox_ex(FontBLF *font,
     if (UNLIKELY(g == nullptr)) {
       continue;
     }
-    const ft_pix pen_x_next = blf_pen_advance(font, pen_x, g->advance_x);
+    const ft_pix pen_x_next = pen_x + g->advance_x;
 
     const ft_pix gbox_xmin = pen_x;
     const ft_pix gbox_xmax = pen_x_next;
@@ -942,7 +936,7 @@ void blf_font_boundbox_foreach_glyph(FontBLF *font,
     if (user_fn(str, i_curr, &bounds, user_data) == false) {
       break;
     }
-    pen_x = blf_pen_advance(font, pen_x, g->advance_x);
+    pen_x += g->advance_x;
   }
 
   blf_glyph_cache_release(font);
@@ -1088,7 +1082,7 @@ static void blf_font_wrap_apply(FontBLF *font,
      *
      * This is _only_ done when we know for sure the character is ascii (newline or a space).
      */
-    pen_x_next = blf_pen_advance(font, pen_x, g->advance_x);
+    pen_x_next = pen_x + g->advance_x;
     if (UNLIKELY((pen_x_next >= wrap.wrap_width) && (wrap.start != wrap.last[0]))) {
       do_draw = true;
     }
