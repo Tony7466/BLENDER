@@ -70,7 +70,7 @@ void BKE_blender_free()
   }
 
   BKE_spacetypes_free(); /* after free main, it uses space callbacks */
-
+  BKE_file_handlers_free();
   IMB_exit();
   BKE_cachefiles_exit();
   DEG_free_node_types();

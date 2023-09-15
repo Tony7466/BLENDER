@@ -139,9 +139,6 @@ typedef struct SpaceType {
   /** Asset shelf type definitions. */
   ListBase asset_shelf_types; /* #AssetShelfType */
 
-  /** File drop type definitions. */
-  ListBase file_drop_types; /* #FileDropType */
-
   /* read and write... */
 
   /** Default key-maps to add. */
@@ -479,28 +476,6 @@ typedef struct AssetShelfType {
   ExtensionRNA rna_ext;
 } AssetShelfType;
 
-typedef struct FileDropType {
-  struct FileDropType *next, *prev;
-
-  char idname[BKE_ST_MAXNAME]; /* unique name */
-
-  char op_name[BKE_ST_MAXNAME]; /* operator name */
-
-  int space_type;
-
-  /** Determine if the operator can handle a specific file extension. */
-  bool (*poll_extension)(const struct bContext *C,
-                         FileDropType *file_drop_type,
-                         const char *extension);
-
-  /* RNA integration */
-  ExtensionRNA rna_ext;
-} FileDropType;
-
-typedef struct FileDrop {
-  struct FileDropType *type; /* runtime */
-} FileDrop;
-
 /* Space-types. */
 
 struct SpaceType *BKE_spacetype_from_id(int spaceid);
@@ -684,4 +659,36 @@ bool BKE_screen_blend_read_data(struct BlendDataReader *reader, struct bScreen *
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+
+struct bFileExtension {
+  char extension[64];
+};
+struct FileHandlerType {
+
+  char idname[BKE_ST_MAXNAME]; /* unique name */
+
+  char label[BKE_ST_MAXNAME]; /* label */
+
+  char import_operator[BKE_ST_MAXNAME]; /* import operator name */
+
+  /** TODO */
+  bool (*poll)(const struct bContext *C, FileHandlerType *file_handle_type);
+
+  blender::Vector<bFileExtension> extensions;
+
+  /** Equivalent to datablocks ID properties. */
+  struct IDProperty *id_properties;
+
+  /* RNA integration */
+  ExtensionRNA rna_ext;
+};
+
+void BKE_file_handlers_free(void);
+blender::Span<FileHandlerType *> BKE_file_handlers();
+void BKE_file_handler_add(FileHandlerType *file_handler);
+void BKE_file_handler_remove(FileHandlerType *file_handler);
+
 #endif

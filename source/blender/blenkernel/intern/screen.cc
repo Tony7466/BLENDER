@@ -231,7 +231,6 @@ static void spacetype_free(SpaceType *st)
 
   BLI_freelistN(&st->regiontypes);
   BLI_freelistN(&st->asset_shelf_types);
-  BLI_freelistN(&st->file_drop_types);
 }
 
 void BKE_spacetypes_free()
@@ -1338,4 +1337,41 @@ void BKE_screen_area_blend_read_after_liblink(BlendLibReader *reader, ID *parent
 
     regions_remove_invalid(space_type, regionbase);
   }
+}
+
+static blender::Vector<FileHandlerType *> file_handlers{};
+
+void file_handler_free(FileHandlerType *file_handler)
+{
+  if (file_handler->id_properties) {
+    IDP_FreeProperty(file_handler->id_properties);
+  }
+  MEM_delete(file_handler);
+}
+
+void BKE_file_handlers_free()
+{
+  for (auto *file_handler : file_handlers) {
+    if (file_handler->rna_ext.free) {
+      file_handler->rna_ext.free(file_handler->rna_ext.data);
+    }
+    file_handler_free(file_handler);
+  }
+  file_handlers.clear_and_shrink();
+}
+
+blender::Span<FileHandlerType *> BKE_file_handlers()
+{
+  return file_handlers.as_span();
+}
+
+void BKE_file_handler_add(FileHandlerType *file_handler)
+{
+  file_handlers.append(file_handler);
+}
+
+void BKE_file_handler_remove(FileHandlerType *file_handler)
+{
+  file_handlers.remove(file_handlers.first_index_of(file_handler));
+  file_handler_free(file_handler);
 }

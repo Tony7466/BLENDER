@@ -22,24 +22,33 @@
 
 #include "io_drop_import_helper.hh"
 
+static bool poll_extension(blender::Span<bFileExtension> file_extensions, const char *extension)
+{
+  for (auto &file_extension : file_extensions) {
+    if (STREQ(extension, file_extension.extension)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static blender::Vector<wmOperatorType *> poll_operators_for_extension(const bContext *C,
                                                                       const char *extension)
 {
-  const ScrArea *area = CTX_wm_area(C);
-  const SpaceType *st = area->type;
-
   blender::Vector<wmOperatorType *> operators;
-
-  LISTBASE_FOREACH (FileDropType *, file_drop_test, &st->file_drop_types) {
-    if (file_drop_test->poll_extension &&
-        file_drop_test->poll_extension(C, file_drop_test, extension)) {
-      wmOperatorType *test_operator = WM_operatortype_find(file_drop_test->op_name, false);
-      if (!test_operator) {
-        continue;
-      }
-      operators.append(test_operator);
+  for (auto *file_handler : BKE_file_handlers()) {
+    if (!poll_extension(file_handler->extensions, extension)) {
+      continue;
     }
-  };
+    if (!(file_handler->poll && file_handler->poll(C, file_handler))) {
+      continue;
+    }
+    wmOperatorType *test_operator = WM_operatortype_find(file_handler->import_operator, false);
+    if (!test_operator) {
+      continue;
+    }
+    operators.append(test_operator);
+  }
   return operators;
 }
 

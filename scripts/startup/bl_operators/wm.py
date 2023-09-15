@@ -3499,82 +3499,92 @@ class WM_OT_drop_blend_file(Operator):
         col.operator("wm.append", text="Append...", icon='APPEND_BLEND').filepath = self.filepath
 
 
-class WM_FDT_alembic(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_alembic"
-    bl_operator = "WM_OT_alembic_import"
+class WM_FH_alembic(bpy.types.FileHandler):
+    bl_idname = "WM_FH_alembic"
+    bl_label = "alembic"
+    bl_import_operator = "WM_OT_alembic_import"
+    bl_extensions = [{"name": ".abc"}, {"name": ".abc"}, {"name": ".abc"}]
 
     @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".abc"
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
 
 
-class WM_FDT_collada(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_collada"
-    bl_operator = "WM_OT_collada_import"
-
-    @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".dae"
-
-
-class WM_FDT_gpencil(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_gpencil"
-    bl_operator = "WM_OT_gpencil_import_svg"
+class WM_FH_collada(bpy.types.FileHandler):
+    bl_idname = "WM_FH_collada"
+    bl_label = "collada"
+    bl_import_operator = "WM_OT_collada_import"
+    bl_extensions = [{"name": ".dae"}]
 
     @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".svg"
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
 
 
-class WM_FDT_obj(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_obj"
-    bl_operator = "WM_OT_obj_import"
-
-    @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".obj"
-
-
-class WM_FDT_ply(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_ply"
-    bl_operator = "WM_OT_ply_import"
+class WM_FH_gpencil(bpy.types.FileHandler):
+    bl_idname = "WM_FH_gpencil"
+    bl_label = "gpencil"
+    bl_import_operator = "WM_OT_gpencil_import_svg"
+    bl_extensions = [{"name": ".svg"}]
 
     @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".ply"
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
 
 
-class WM_FDT_stl(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_stl"
-    bl_operator = "WM_OT_stl_import"
-
-    @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".stl"
-
-class WM_FDT_import_mesh_stl(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_import_mesh_stl"
-    bl_operator = "import_mesh.stl"
+class WM_FH_obj(bpy.types.FileHandler):
+    bl_idname = "WM_FH_obj"
+    bl_label = "obj"
+    bl_import_operator = "WM_OT_obj_import"
+    bl_extensions = [{"name": ".obj"}]
 
     @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".stl"
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
 
-class WM_FDT_usd(bpy.types.FileDrop):
-    bl_space_type = "VIEW_3D"
-    bl_idname = "WM_FDT_usd"
-    bl_operator = "WM_OT_usd_import"
+
+class WM_FH_ply(bpy.types.FileHandler):
+    bl_idname = "WM_FH_ply"
+    bl_label = "ply"
+    bl_import_operator = "WM_OT_ply_import"
+    bl_extensions = [{"name": ".ply"}]
 
     @classmethod
-    def poll_extension(cls, context, extension):
-        return extension == ".usd"
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
+
+
+class WM_FH_stl(bpy.types.FileHandler):
+    bl_idname = "WM_FH_stl"
+    bl_label = "stl"
+    bl_import_operator = "WM_OT_stl_import"
+    bl_extensions = [{"name": ".stl"}]
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
+
+
+class WM_FH_import_mesh_stl(bpy.types.FileHandler):
+    bl_idname = "WM_FH_import_mesh_stl"
+    bl_label = "stl"
+    bl_import_operator = "import_mesh.stl"
+    bl_extensions = [{"name": ".stl"}]
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
+
+
+class WM_FH_usd(bpy.types.FileHandler):
+    bl_idname = "WM_FH_usd"
+    bl_label = "usd"
+    bl_import_operator = "WM_OT_usd_import"
+    bl_extensions = [{"name": ".usd"}]
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == "VIEW_3D"
 
 
 classes = (
@@ -3624,12 +3634,12 @@ classes = (
     WM_MT_splash_about,
     WM_MT_region_toggle_pie,
 
-    WM_FDT_alembic,
-    WM_FDT_collada,
-    WM_FDT_gpencil,
-    WM_FDT_obj,
-    WM_FDT_ply,
-    WM_FDT_stl,
-    WM_FDT_import_mesh_stl,
-    WM_FDT_usd,
+    WM_FH_alembic,
+    WM_FH_collada,
+    WM_FH_gpencil,
+    WM_FH_obj,
+    WM_FH_ply,
+    WM_FH_stl,
+    WM_FH_import_mesh_stl,
+    WM_FH_usd,
 )
