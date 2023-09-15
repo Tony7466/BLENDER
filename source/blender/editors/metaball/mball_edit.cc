@@ -773,7 +773,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
   int a, hits;
-  GPUSelectResult buffer[MAXPICKELEMS];
+  GPUSelectBuffer buffer;
   rcti rect;
   bool found = false;
 
@@ -782,8 +782,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
   BLI_rcti_init_pt_radius(&rect, mval, 12);
 
   hits = view3d_opengl_select(&vc,
-                              buffer,
-                              ARRAY_SIZE(buffer),
+                              &buffer,
                               &rect,
                               use_cycle ? VIEW3D_SELECT_PICK_ALL : VIEW3D_SELECT_PICK_NEAREST,
                               VIEW3D_SELECT_FILTER_NOP);

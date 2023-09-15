@@ -569,7 +569,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   rcti rect;
   /* Almost certainly overkill, but allow for many custom gizmos. */
-  GPUSelectResult buffer[MAXPICKELEMS];
+  GPUSelectBuffer buffer;
   short hits;
 
   BLI_rcti_init_pt_radius(&rect, co, hotspot);
@@ -582,14 +582,14 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
   /* TODO: waiting for the GPU in the middle of the event loop for every
    * mouse move is bad for performance, we need to find a solution to not
    * use the GPU or draw something once. (see #61474) */
-  GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
+  GPU_select_begin(&buffer, &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
   /* do the drawing */
   gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
 
   hits = GPU_select_end();
 
   if (hits > 0) {
-    GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_SECOND_PASS, hits);
+    GPU_select_begin(&buffer, &rect, GPU_SELECT_NEAREST_SECOND_PASS, hits);
     gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
     GPU_select_end();
   }
@@ -608,7 +608,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
 
     GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d_origin);
 
-    GPUSelectResult *buf_iter = buffer;
+    GPUSelectResult *buf_iter = buffer.data();
     int hit_found = -1;
     float dot_best = FLT_MAX;
 
@@ -632,7 +632,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
     return hit_found;
   }
 
-  const GPUSelectResult *hit_near = GPU_select_buffer_near(buffer, hits);
+  const GPUSelectResult *hit_near = GPU_select_buffer_near(buffer.as_span().take_front(hits));
   return hit_near ? hit_near->id : -1;
 }
 

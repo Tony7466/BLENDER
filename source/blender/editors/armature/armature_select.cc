@@ -317,7 +317,7 @@ static void *ed_armature_pick_bone_impl(
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
   rcti rect;
-  GPUSelectResult buffer[MAXPICKELEMS];
+  GPUSelectBuffer buffer;
   short hits;
 
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
@@ -328,13 +328,8 @@ static void *ed_armature_pick_bone_impl(
   /* Don't use hits with this ID, (armature drawing uses this). */
   const int select_id_ignore = -1;
 
-  hits = view3d_opengl_select_with_id_filter(&vc,
-                                             buffer,
-                                             ARRAY_SIZE(buffer),
-                                             &rect,
-                                             VIEW3D_SELECT_PICK_NEAREST,
-                                             VIEW3D_SELECT_FILTER_NOP,
-                                             select_id_ignore);
+  hits = view3d_opengl_select_with_id_filter(
+      &vc, &buffer, &rect, VIEW3D_SELECT_PICK_NEAREST, VIEW3D_SELECT_FILTER_NOP, select_id_ignore);
 
   *r_base = nullptr;
 
@@ -351,7 +346,7 @@ static void *ed_armature_pick_bone_impl(
     }
 
     void *bone = ed_armature_pick_bone_from_selectbuffer_impl(
-        is_editmode, bases, bases_len, buffer, hits, findunsel, true, r_base);
+        is_editmode, bases, bases_len, buffer.data(), hits, findunsel, true, r_base);
 
     MEM_freeN(bases);
 
@@ -628,15 +623,18 @@ void ARMATURE_OT_select_linked_pick(wmOperatorType *ot)
  * \{ */
 
 /* utility function for get_nearest_editbonepoint */
-static int selectbuffer_ret_hits_12(GPUSelectResult * /*buffer*/, const int hits12)
+static int selectbuffer_ret_hits_12(blender::MutableSpan<GPUSelectResult> /*results*/,
+                                    const int hits12)
 {
   return hits12;
 }
 
-static int selectbuffer_ret_hits_5(GPUSelectResult *buffer, const int hits12, const int hits5)
+static int selectbuffer_ret_hits_5(blender::MutableSpan<GPUSelectResult> results,
+                                   const int hits12,
+                                   const int hits5)
 {
   const int ofs = hits12;
-  memcpy(buffer, buffer + ofs, hits5 * sizeof(*buffer));
+  results.copy_from(results.slice(ofs, hits5)); /* Shift results to beginning. */
   return hits5;
 }
 
@@ -645,7 +643,7 @@ static int selectbuffer_ret_hits_5(GPUSelectResult *buffer, const int hits12, co
 static EditBone *get_nearest_editbonepoint(
     ViewContext *vc, bool findunsel, bool use_cycle, Base **r_base, int *r_selmask)
 {
-  GPUSelectResult buffer[MAXPICKELEMS];
+  GPUSelectBuffer buffer;
   struct Result {
     uint hitresult;
     Base *base;
@@ -689,16 +687,11 @@ static EditBone *get_nearest_editbonepoint(
 
     rcti rect;
     BLI_rcti_init_pt_radius(&rect, vc->mval, 12);
-    const int hits12 = view3d_opengl_select_with_id_filter(vc,
-                                                           buffer,
-                                                           ARRAY_SIZE(buffer),
-                                                           &rect,
-                                                           eV3DSelectMode(select_mode),
-                                                           select_filter,
-                                                           select_id_ignore);
+    const int hits12 = view3d_opengl_select_with_id_filter(
+        vc, &buffer, &rect, eV3DSelectMode(select_mode), select_filter, select_id_ignore);
 
     if (hits12 == 1) {
-      hits = selectbuffer_ret_hits_12(buffer, hits12);
+      hits = selectbuffer_ret_hits_12(buffer.as_mutable_span(), hits12);
       goto cache_end;
     }
     else if (hits12 > 0) {
@@ -706,25 +699,20 @@ static EditBone *get_nearest_editbonepoint(
 
       ofs = hits12;
       BLI_rcti_init_pt_radius(&rect, vc->mval, 5);
-      const int hits5 = view3d_opengl_select_with_id_filter(vc,
-                                                            buffer + ofs,
-                                                            ARRAY_SIZE(buffer) - ofs,
-                                                            &rect,
-                                                            eV3DSelectMode(select_mode),
-                                                            select_filter,
-                                                            select_id_ignore);
+      const int hits5 = view3d_opengl_select_with_id_filter(
+          vc, &buffer, &rect, eV3DSelectMode(select_mode), select_filter, select_id_ignore);
 
       if (hits5 == 1) {
-        hits = selectbuffer_ret_hits_5(buffer, hits12, hits5);
+        hits = selectbuffer_ret_hits_5(buffer.as_mutable_span(), hits12, hits5);
         goto cache_end;
       }
 
       if (hits5 > 0) {
-        hits = selectbuffer_ret_hits_5(buffer, hits12, hits5);
+        hits = selectbuffer_ret_hits_5(buffer.as_mutable_span(), hits12, hits5);
         goto cache_end;
       }
       else {
-        hits = selectbuffer_ret_hits_12(buffer, hits12);
+        hits = selectbuffer_ret_hits_12(buffer.as_mutable_span(), hits12);
         goto cache_end;
       }
     }
@@ -740,7 +728,7 @@ cache_end:
   /* See if there are any selected bones in this group */
   if (hits > 0) {
     if (hits == 1) {
-      result_bias.hitresult = buffer->id;
+      result_bias.hitresult = buffer[0].id;
       result_bias.base = ED_armature_base_and_ebone_from_select_buffer(
           bases, bases_len, result_bias.hitresult, &result_bias.ebone);
     }
