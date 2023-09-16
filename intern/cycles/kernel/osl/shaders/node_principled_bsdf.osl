@@ -94,8 +94,8 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   if (Metallic > 0.0) {
     color f0 = BaseColor;
     color f90 = color(1.0);
-    MetallicBSDF = generalized_schlick_bsdf(
-        Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, 5.0, distribution);
+    MetallicBSDF = microfacet_f82_tint(
+        distribution, Normal, T, alpha_x, alpha_y, f0, SpecularTint);
     BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
   }
 
