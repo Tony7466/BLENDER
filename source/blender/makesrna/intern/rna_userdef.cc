@@ -1280,6 +1280,34 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Points", "Font size in points");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
+	prop = RNA_def_property(srna, "character_weight", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_range(prop, -1.0f, 1.0f);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Character Weight", "Change to the weight of the characters");
+  RNA_def_property_update(prop, 0, "rna_userdef_text_update");
+
+  prop = RNA_def_property(srna, "character_slant", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_range(prop, -1.0f, 1.0f);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Character Slant", "Change to the slant of the characters");
+  RNA_def_property_update(prop, 0, "rna_userdef_text_update");
+
+  prop = RNA_def_property(srna, "character_width", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_range(prop, -1.0f, 1.0f);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Character Width", "Change to the width of the characters");
+  RNA_def_property_update(prop, 0, "rna_userdef_text_update");
+
+  prop = RNA_def_property(srna, "character_spacing", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_range(prop, -1.0f, 1.0f);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Character Spacing", "Change to the spacing of the characters");
+  RNA_def_property_update(prop, 0, "rna_userdef_text_update");
+
   prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 0, 5);
   RNA_def_property_ui_text(prop, "Shadow Size", "Shadow size (0, 3 and 5 supported)");

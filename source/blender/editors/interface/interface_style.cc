@@ -489,6 +489,10 @@ static void fontstyle_set_ex(const uiFontStyle *fs, const float dpi_fac)
   uiFont *font = uifont_to_blfont(fs->uifont_id);
 
   BLF_size(font->blf_id, fs->points * dpi_fac);
+  BLF_character_weight(fs->uifont_id, fs->character_weight);
+  BLF_character_slant(fs->uifont_id, fs->character_slant);
+  BLF_character_width(fs->uifont_id, fs->character_width);
+  BLF_character_spacing(fs->uifont_id, fs->character_spacing);
 }
 
 void UI_fontstyle_set(const uiFontStyle *fs)

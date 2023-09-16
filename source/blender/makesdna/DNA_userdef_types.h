@@ -82,6 +82,10 @@ typedef struct uiFontStyle {
   /** 1 value, typically white or black anyway. */
   float shadowcolor;
   char _pad2[4];
+  float character_weight;
+  float character_slant;
+  float character_width;
+  float character_spacing;
 } uiFontStyle;
 
 /* this is fed to the layout engine and widget code */
