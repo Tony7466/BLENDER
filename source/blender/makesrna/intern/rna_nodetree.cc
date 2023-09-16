@@ -14,6 +14,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
+#include "BLI_volume.hh"
 
 #include "BLF_api.h"
 
@@ -10527,5 +10528,28 @@ void RNA_def_nodetree(BlenderRNA *brna)
 
 /* clean up macro definition */
 #  undef NODE_DEFINE_SUBTYPES
+
+/* Hack: with MSVC these functions cause unresolved external symbol errors.
+ * No idea why, this has eaten too much of my time - Lukas */
+#  ifdef _MSC_VER
+namespace blender {
+
+GVArrayCommon::~GVArrayCommon() {}
+
+namespace volume {
+
+GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
+                            const int3 & /*origin*/,
+                            const openvdb::GridBase & /*grid*/)
+{
+  return {};
+}
+
+void materialize_to_grid(GVMutableGrid &/*dst*/, const GVGridImpl &/*src*/) {}
+
+}
+
+}
+#  endif
 
 #endif

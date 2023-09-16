@@ -329,16 +329,10 @@ openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type,
                                                 const float4x4 &transform,
                                                 const void *value = nullptr);
 
+GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase &grid);
+
+void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src);
+
 #endif
 
 }  // namespace blender::volume
-
-#ifdef WITH_OPENVDB
-
-blender::GVArray get_varray_for_leaf(uint32_t log2dim,
-                                     const blender::int3 &origin,
-                                     const openvdb::GridBase &grid);
-
-void materialize_to_grid(blender::GVMutableGrid &dst, const blender::GVGridImpl &src);
-
-#endif

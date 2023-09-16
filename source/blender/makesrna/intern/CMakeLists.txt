@@ -407,10 +407,6 @@ if(WITH_OPENVDB)
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
-  list(APPEND LIB
-    bf_intern_openvdb
-    ${OPENVDB_LIBRARIES}
-  )
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
   if(WITH_OPENVDB_BLOSC)
     add_definitions(-DWITH_OPENVDB_BLOSC)

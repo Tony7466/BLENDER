@@ -245,53 +245,6 @@ const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)
 //   return type;
 // }
 
-#else
-
-// GGrid::operator bool() const
-//{
-//   return false;
-// }
-//
-// int64_t GGrid::voxel_count() const
-//{
-//   return 0;
-// }
-//
-// bool GGrid::is_empty() const
-//{
-//   return true;
-// }
-//
-// const CPPType *GGrid::value_type() const
-//{
-//   return nullptr;
-// }
-//
-// GGrid GGrid::create(ResourceScope & /*scope*/,
-//                     const CPPType & /*type*/,
-//                     const void * /*background_value*/)
-//{
-//   return GGrid{};
-// }
-//
-// GGrid GGrid::create(ResourceScope & /*scope*/, const CPPType & /*type*/)
-//{
-//   return GGrid{};
-// }
-//
-// GGrid GGrid::create(ResourceScope & /*scope*/,
-//                     const CPPType & /*type*/,
-//                     const GridMask & /*mask*/,
-//                     const void * /*inactive_value*/,
-//                     const void * /*active_value*/)
-//{
-//   return GGrid{};
-// }
-
-#endif
-
-}  // namespace blender::volume
-
 blender::GVArray get_varray_for_leaf(uint32_t log2dim,
                                      const blender::int3 &origin,
                                      const openvdb::GridBase &grid)
@@ -376,3 +329,50 @@ void materialize_to_grid(blender::GVMutableGrid &dst, const blender::GVGridImpl 
     //    });
   });
 }
+
+#else
+
+// GGrid::operator bool() const
+//{
+//   return false;
+// }
+//
+// int64_t GGrid::voxel_count() const
+//{
+//   return 0;
+// }
+//
+// bool GGrid::is_empty() const
+//{
+//   return true;
+// }
+//
+// const CPPType *GGrid::value_type() const
+//{
+//   return nullptr;
+// }
+//
+// GGrid GGrid::create(ResourceScope & /*scope*/,
+//                     const CPPType & /*type*/,
+//                     const void * /*background_value*/)
+//{
+//   return GGrid{};
+// }
+//
+// GGrid GGrid::create(ResourceScope & /*scope*/, const CPPType & /*type*/)
+//{
+//   return GGrid{};
+// }
+//
+// GGrid GGrid::create(ResourceScope & /*scope*/,
+//                     const CPPType & /*type*/,
+//                     const GridMask & /*mask*/,
+//                     const void * /*inactive_value*/,
+//                     const void * /*active_value*/)
+//{
+//   return GGrid{};
+// }
+
+#endif
+
+}  // namespace blender::volume

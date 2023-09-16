@@ -53,7 +53,7 @@ class GVGridImpl {
   virtual void materialize(GVMutableGrid &dst) const
   {
 #ifdef WITH_OPENVDB
-    materialize_to_grid(dst, *this);
+    volume::materialize_to_grid(dst, *this);
 #else
     UNUSED_VARS(dst);
 #endif
@@ -452,7 +452,7 @@ class GVGridImpl_For_Grid : public GVMutableGridImpl {
 
   inline GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
   {
-    return ::get_varray_for_leaf(log2dim, origin, *grid_);
+    return volume::get_varray_for_leaf(log2dim, origin, *grid_);
   }
 
  protected:
