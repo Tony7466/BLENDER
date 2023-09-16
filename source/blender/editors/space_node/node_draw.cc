@@ -2980,6 +2980,10 @@ static void node_draw_basis(const bContext &C,
       UI_GetThemeColor4fv(TH_NODE_ZONE_REPEAT, color_outline);
       color_outline[3] = 1.0f;
     }
+    else if (ELEM(node.type, GEO_NODE_FOR_EACH_INPUT, GEO_NODE_FOR_EACH_OUTPUT)) {
+      UI_GetThemeColor4fv(TH_NODE_ZONE_FOR_EACH, color_outline);
+      color_outline[3] = 1.0f;
+    }
     else {
       UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color_outline);
     }
@@ -3719,7 +3723,10 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
       return TH_NODE_ZONE_SIMULATION;
     }
-    return TH_NODE_ZONE_REPEAT;
+    if (node->type == GEO_NODE_REPEAT_OUTPUT) {
+      return TH_NODE_ZONE_REPEAT;
+    }
+    return TH_NODE_ZONE_FOR_EACH;
   };
 
   const uint pos = GPU_vertformat_attr_add(

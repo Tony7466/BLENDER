@@ -28,6 +28,9 @@ bool NOD_geometry_simulation_input_pair_with_output(const bNodeTree *node_tree,
 bool NOD_geometry_repeat_input_pair_with_output(const bNodeTree *node_tree,
                                                 bNode *repeat_input_node,
                                                 const bNode *repeat_output_node);
+bool NOD_geometry_foreach_input_pair_with_output(const bNodeTree *node_tree,
+                                                 bNode *foreach_input_node,
+                                                 const bNode *foreach_output_node);
 
 /** \} */
 

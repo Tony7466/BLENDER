@@ -3247,6 +3247,16 @@ static PointerRNA rna_NodeGeometryRepeatInput_paired_output_get(PointerRNA *ptr)
   return r_ptr;
 }
 
+static PointerRNA rna_NodeGeometryForEachInput_paired_output_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometryForEachInput *storage = static_cast<NodeGeometryForEachInput *>(node->storage);
+  bNode *output_node = ntree->node_by_id(storage->output_node_id);
+  PointerRNA r_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, output_node);
+  return r_ptr;
+}
+
 static bool rna_GeometryNodeSimulationInput_pair_with_output(
     ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
 {
@@ -3277,6 +3287,27 @@ static bool rna_GeometryNodeRepeatInput_pair_with_output(
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to pair repeat input node %s with output node %s",
+                node->name,
+                output_node->name);
+    return false;
+  }
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return true;
+}
+
+static bool rna_GeometryNodeForEachInput_pair_with_output(
+    ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+
+  if (!NOD_geometry_foreach_input_pair_with_output(ntree, node, output_node)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Failed to pair for-each input node %s with output node %s",
                 node->name,
                 output_node->name);
     return false;
@@ -8898,6 +8929,35 @@ static void def_geo_repeat_input(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func, "output_node", "GeometryNode", "Output Node", "Repeat output node to pair with");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_boolean(
+      func, "result", false, "Result", "True if pairing the node was successful");
+  RNA_def_function_return(func, parm);
+}
+
+static void def_geo_foreach_input(StructRNA *srna)
+{
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryForEachInput", "storage");
+
+  prop = RNA_def_property(srna, "paired_output", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Node");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeGeometryForEachInput_paired_output_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Paired Output", "For-each output node that this input node is paired with");
+
+  func = RNA_def_function(
+      srna, "pair_with_output", "rna_GeometryNodeForEachInput_pair_with_output");
+  RNA_def_function_ui_description(func, "Pair a for-each input node with an output node.");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+  parm = RNA_def_pointer(
+      func, "output_node", "GeometryNode", "Output Node", "For-each output node to pair with");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
   parm = RNA_def_boolean(

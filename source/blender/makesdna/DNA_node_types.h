@@ -1835,6 +1835,11 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct NodeGeometryForEachInput {
+  /** bNode.identifier of the corresponding output node. */
+  int output_node_id;
+} NodeGeometryForEachInput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;

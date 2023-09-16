@@ -1853,6 +1853,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->build_repeat_zone_function(zone);
           break;
         }
+        case GEO_NODE_FOR_EACH_OUTPUT: {
+          /* TODO */
+          BLI_assert_unreachable();
+          break;
+        }
         default: {
           BLI_assert_unreachable();
           break;
@@ -3863,6 +3868,10 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   for (const std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
     if (zone->input_node == nullptr || zone->output_node == nullptr) {
       /* Simulations and repeats need input and output nodes. */
+      return nullptr;
+    }
+    if (zone->output_node->type == GEO_NODE_FOR_EACH_OUTPUT) {
+      /* Not yet supported. */
       return nullptr;
     }
   }

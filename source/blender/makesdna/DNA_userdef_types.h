@@ -349,7 +349,7 @@ typedef struct ThemeSpace {
 
   unsigned char node_zone_simulation[4];
   unsigned char node_zone_repeat[4];
-  unsigned char _pad9[4];
+  unsigned char node_zone_foreach[4];
   unsigned char simulated_frames[4];
 
   /** For sequence editor. */

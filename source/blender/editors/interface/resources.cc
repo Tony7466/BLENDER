@@ -666,6 +666,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_NODE_ZONE_REPEAT:
           cp = ts->node_zone_repeat;
           break;
+        case TH_NODE_ZONE_FOR_EACH:
+          cp = ts->node_zone_foreach;
+          break;
         case TH_SIMULATED_FRAMES:
           cp = ts->simulated_frames;
           break;

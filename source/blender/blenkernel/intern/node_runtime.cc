@@ -307,6 +307,17 @@ static Vector<const bNode *> get_implicit_origin_nodes(const bNodeTree &ntree, b
       }
     }
   }
+  if (node.type == GEO_NODE_FOR_EACH_OUTPUT) {
+    for (const bNode *foreach_input_node :
+         ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeForEachInput")))
+    {
+      const auto &storage = *static_cast<const NodeGeometryForEachInput *>(
+          foreach_input_node->storage);
+      if (storage.output_node_id == node.identifier) {
+        origin_nodes.append(foreach_input_node);
+      }
+    }
+  }
   return origin_nodes;
 }
 
@@ -323,6 +334,12 @@ static Vector<const bNode *> get_implicit_target_nodes(const bNodeTree &ntree, b
     const auto &storage = *static_cast<const NodeGeometryRepeatInput *>(node.storage);
     if (const bNode *repeat_output_node = ntree.node_by_id(storage.output_node_id)) {
       target_nodes.append(repeat_output_node);
+    }
+  }
+  if (node.type == GEO_NODE_FOR_EACH_INPUT) {
+    const auto &storage = *static_cast<const NodeGeometryForEachInput *>(node.storage);
+    if (const bNode *foreach_output_node = ntree.node_by_id(storage.output_node_id)) {
+      target_nodes.append(foreach_output_node);
     }
   }
   return target_nodes;
