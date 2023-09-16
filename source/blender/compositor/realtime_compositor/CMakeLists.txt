@@ -80,6 +80,7 @@ set(SRC
   cached_resources/intern/cached_mask.cc
   cached_resources/intern/cached_texture.cc
   cached_resources/intern/distortion_grid.cc
+  cached_resources/intern/keying_screen.cc
   cached_resources/intern/morphological_distance_feather_weights.cc
   cached_resources/intern/ocio_color_space_conversion_shader.cc
   cached_resources/intern/smaa_precomputed_textures.cc
@@ -90,6 +91,7 @@ set(SRC
   cached_resources/COM_cached_resource.hh
   cached_resources/COM_cached_texture.hh
   cached_resources/COM_distortion_grid.hh
+  cached_resources/COM_keying_screen.hh
   cached_resources/COM_morphological_distance_feather_weights.hh
   cached_resources/COM_ocio_color_space_conversion_shader.hh
   cached_resources/COM_smaa_precomputed_textures.hh
