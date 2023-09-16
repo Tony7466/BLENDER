@@ -162,6 +162,42 @@ template<typename T> struct QuaternionBase {
     return (a.w == b.w) && (a.x == b.x) && (a.y == b.y) && (a.z == b.z);
   }
 
+  friend bool operator!=(const QuaternionBase &a, const QuaternionBase &b)
+  {
+    return !(a == b);
+  }
+
+  friend bool operator<(const QuaternionBase &a, const QuaternionBase &b)
+  {
+    if (a.x != b.x) {
+      return a.x < b.x;
+    }
+    else if (a.y != b.y) {
+      return a.y < b.y;
+    }
+    else if (a.z != b.z) {
+      return a.z < b.z;
+    }
+    return a.w < b.w;
+  }
+
+  friend bool operator<=(const QuaternionBase &a, const QuaternionBase &b)
+  {
+    if (a.x != b.x) {
+      return a.x < b.x;
+    }
+    else if (a.y != b.y) {
+      return a.y < b.y;
+    }
+    else if (a.z != b.z) {
+      return a.z < b.z;
+    }
+    else if (a.w != b.w) {
+      return a.w < b.w;
+    }
+    return true;
+  }
+
   uint64_t hash() const
   {
     return VecBase<T, 4>(*this).hash();
