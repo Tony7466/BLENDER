@@ -111,6 +111,7 @@ void RayTraceModule::sync()
     pass.bind_image("ray_data_img", &ray_data_tx_);
     pass.bind_image("ray_time_img", &ray_time_tx_);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
+    pass.bind_texture("depth_tx", &depth_tx);
     inst_.bind_uniform_data(&pass);
     inst_.reflection_probes.bind_resources(&pass);
     pass.dispatch(ray_dispatch_buf_);
