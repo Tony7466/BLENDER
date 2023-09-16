@@ -104,6 +104,18 @@ class GraphExecutor : public LazyFunction {
    */
   const NodeExecuteWrapper *node_execute_wrapper_;
 
+  /**
+   * When a graph is executed, various things have to be allocated (e.g. the state of all nodes).
+   * Instead of doing many small allocations, a single bigger allocation is done. This struct
+   * contains the preprocessed offsets into that bigger buffer.
+   */
+  struct {
+    int node_states_array_offset;
+    int loaded_inputs_array_offset;
+    Array<int> node_states_offsets;
+    int total_size;
+  } init_buffer_info_;
+
   friend class Executor;
 
  public:
