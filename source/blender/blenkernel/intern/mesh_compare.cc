@@ -66,6 +66,79 @@ template<typename T> static void sort_indices(MutableSpan<int> indices, const VA
       indices.begin(), indices.end(), [&](int i1, int i2) { return values[i1] < values[i2]; });
 }
 
+/* Sort the elements in each set based on the attribute values. */
+template<typename T>
+static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
+                                             MutableSpan<int> map1,
+                                             MutableSpan<int> map2,
+                                             const VArray<T> &values1,
+                                             const VArray<T> &values2)
+{
+  int i = 0;
+  while (i < map1.size()) {
+    const int set_size = set_sizes[i];
+    if (set_size == 1) {
+      /* No need to sort anymore. */
+      i += 1;
+      continue;
+    }
+
+    sort_indices(map1.slice(IndexRange(i, set_size)), values1);
+    sort_indices(map2.slice(IndexRange(i, set_size)), values2);
+    i += set_size;
+  }
+}
+
+/**
+ * Split the sets into smaller sets based on the sorted attribute values.
+ *
+ * \returns false if the attributes don't line up.
+ */
+template<typename T>
+static bool update_set_ids(MutableSpan<int> set_ids,
+                           const VArray<T> &values1,
+                           const VArray<T> &values2)
+{
+  T previous = values1[0];
+  int set_id = 0;
+  for (const int i : values1.index_range()) {
+    const T value1 = values1[i];
+    const T value2 = values2[i];
+    if (value1 != value2) {
+      /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+      /* They should be the same after sorting. */
+      return false;
+    }
+    if (value1 != previous || set_ids[i] == i) {
+      /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+      /* Different value, or this was already a different set. */
+      set_id = i;
+      previous = value1;
+    }
+    set_ids[i] = set_id;
+  }
+
+  return true;
+}
+
+/**
+ * Update set sizes, using the updated set ids.
+ */
+static void update_set_sizes(const Span<int> set_ids, MutableSpan<int> set_sizes)
+{
+  int i = set_ids.size() - 1;
+  while (i >= 0) {
+    /* The id of a set is the index of its first element, so the size can be computed as the index
+     * of the last element minus the id (== index of first element) + 1. */
+    int set_size = i - set_ids[i] + 1;
+    /* Set the set size for each element in the set. */
+    for (int k = i - set_size + 1; k <= i; k++) {
+      set_sizes[k] = set_size;
+    }
+    i -= set_size;
+  }
+}
+
 static std::optional<MeshMismatch> sort_vertices_using_attributes(
     const Mesh &mesh1,
     const Mesh &mesh2,
@@ -104,53 +177,16 @@ static std::optional<MeshMismatch> sort_vertices_using_attributes(
       using T = decltype(dummy);
       const VArray<T> values1 = reader1.varray.typed<T>();
       const VArray<T> values2 = reader2.varray.typed<T>();
-      /* Sort the elements in each set based on the attribute values. */
-      int i = 0;
-      while (i < mesh1.totvert) {
-        const int set_size = r_vertex_set_sizes[i];
-        if (set_size == 1) {
-          /* No need to sort anymore. */
-          i += 1;
-          continue;
-        }
-        /* TODO: doesn't work for Quaternions!. */
-        sort_indices(r_verts1_to_set.slice(IndexRange(i, set_size)), values1);
-        sort_indices(r_verts2_to_set.slice(IndexRange(i, set_size)), values2);
-        i += set_size;
-      }
 
-      /* Update set ids. */
-      T previous = values1[0];
-      int set_id = 0;
-      for (const int i : IndexRange(mesh1.totvert)) {
-        const T value1 = values1[i];
-        const T value2 = values2[i];
-        if (value1 != value2) {
-          /* TODO: use compare function based on type (like compare_v3v3_relative)*/
-          /* They should be the same after sorting. */
-          mismatch = MeshMismatch::VertexAttributes;
-          return;
-        }
-        if (value1 != previous) {
-          /* TODO: use compare function based on type (like compare_v3v3_relative)*/
-          /* Different, so a new set. */
-          set_id = 0;
-        }
-        r_vertex_set_ids[i] = set_id;
-        set_id += 1;
-      }
+      sort_per_set_based_on_attributes(
+          r_vertex_set_sizes, r_verts1_to_set, r_verts2_to_set, values1, values2);
 
-      /* Update set sizes. */
-      int i = mesh1.totvert - 1;
-      while (i >= 0) {
-        /* The size of the set is the index of its last element + 1. */
-        int set_size = r_vertex_set_ids[i] + 1;
-        /* Set the set size for each element in the set. */
-        for (int k = i - set_size + 1; k <= i; k++) {
-          r_vertex_set_sizes[k] = set_size;
-        }
-        i -= set_size;
+      const bool attributes_line_up = update_set_ids(r_vertex_set_ids, values1, values2);
+      if (!attributes_line_up) {
+        mismatch = MeshMismatch::VertexAttributes;
+        return;
       }
+      update_set_sizes(r_vertex_set_ids, r_vertex_set_sizes);
     });
 
     if (mismatch) {
