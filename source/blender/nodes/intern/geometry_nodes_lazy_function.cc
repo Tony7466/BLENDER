@@ -1753,7 +1753,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 
   /**
-   * Generate a lazy-function graph that contains contains the loop body (`body_fn_`) as many times
+   * Generate a lazy-function graph that contains the loop body (`body_fn_`) as many times
    * as there are iterations. Since this graph depends on the number of iterations, it can't be
    * reused in general. We could consider caching a version of this graph per number of iterations,
    * but right now that doesn't seem worth it. In practice, it takes much less time to create the
@@ -1791,7 +1791,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
     for ([[maybe_unused]] const int i : IndexRange(iterations)) {
       lf::FunctionNode &lf_node = lf_graph.add_function(body_fn_);
-      eval_storage.lf_body_nodes.add_new(&lf_node);
+      lf_body_nodes.add_new(&lf_node);
     }
 
     /* Create nodes for combining border link usages. A border link is used when any of the loop
