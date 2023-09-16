@@ -222,6 +222,88 @@ static void edges_from_vertex_sets(const Span<int2> edges,
     r_edges[i] = OrderedEdge(vertex_set_ids[verts_to_set[e.x]], vertex_set_ids[verts_to_set[e.y]]);
   }
 }
+static bool sort_edges(const Span<int2> edges1,
+                       const Span<int2> edges2,
+                       const Span<int> verts1_to_set,
+                       const Span<int> verts2_to_set,
+                       const Span<int> vertex_set_ids,
+                       MutableSpan<int> edges1_to_set,
+                       MutableSpan<int> edges2_to_set,
+                       MutableSpan<int> edge_set_ids,
+                       MutableSpan<int> edge_set_sizes)
+{
+  /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
+  Array<OrderedEdge> ordered_edges1(edges1.size(), NoInitialization());
+  Array<OrderedEdge> ordered_edges2(edges2.size(), NoInitialization());
+  edges_from_vertex_sets(edges1, verts1_to_set, vertex_set_ids, ordered_edges1);
+  edges_from_vertex_sets(edges1, verts2_to_set, vertex_set_ids, ordered_edges2);
+  sort_per_set_based_on_attributes(edge_set_sizes,
+                                   edges1_to_set,
+                                   edges2_to_set,
+                                   ordered_edges1.as_span(),
+                                   ordered_edges2.as_span());
+  const bool edges_match = update_set_ids(
+      edge_set_ids, ordered_edges1.as_span(), ordered_edges2.as_span());
+  if (!edges_match) {
+    return false;
+  }
+  update_set_sizes(edge_set_ids, edge_set_sizes);
+  return true;
+}
+
+static bool sort_corners_based_on_edges(const Span<int> corner_edges1,
+                                        const Span<int> corner_edges2,
+                                        const Span<int> edges1_to_set,
+                                        const Span<int> edges2_to_set,
+                                        const Span<int> edge_set_ids,
+                                        MutableSpan<int> corners1_to_set,
+                                        MutableSpan<int> corners2_to_set,
+                                        MutableSpan<int> corner_set_ids,
+                                        MutableSpan<int> corner_set_sizes)
+{
+  sort_per_set_with_id_maps(corner_set_ids,
+                            corners1_to_set,
+                            corners2_to_set,
+                            corner_edges1,
+                            corner_edges2,
+                            edges1_to_set,
+                            edges2_to_set,
+                            edge_set_ids);
+  const bool corners_line_up = update_set_ids_with_id_maps(
+      corner_set_ids, corner_edges1, corner_edges2, edges1_to_set, edges2_to_set, edge_set_ids);
+  if (!corners_line_up) {
+    return false;
+  }
+  update_set_sizes(corner_set_ids, corner_set_sizes);
+  return true;
+}
+
+static bool sort_corners_based_on_verts(const Span<int> corner_verts1,
+                                        const Span<int> corner_verts2,
+                                        const Span<int> verts1_to_set,
+                                        const Span<int> verts2_to_set,
+                                        const Span<int> vertex_set_ids,
+                                        MutableSpan<int> corners1_to_set,
+                                        MutableSpan<int> corners2_to_set,
+                                        MutableSpan<int> corner_set_ids,
+                                        MutableSpan<int> corner_set_sizes)
+{
+  sort_per_set_with_id_maps(corner_set_ids,
+                            corners1_to_set,
+                            corners2_to_set,
+                            corner_verts1,
+                            corner_verts2,
+                            verts1_to_set,
+                            verts2_to_set,
+                            vertex_set_ids);
+  const bool corners_line_up = update_set_ids_with_id_maps(
+      corner_set_ids, corner_verts1, corner_verts2, verts1_to_set, verts2_to_set, vertex_set_ids);
+  if (!corners_line_up) {
+    return false;
+  }
+  update_set_sizes(corner_set_ids, corner_set_sizes);
+  return true;
+}
 
 static std::optional<MeshMismatch> verify_attributes_compatible(
     const AttributeAccessor &mesh1_attributes, const AttributeAccessor &mesh2_attributes)
@@ -532,20 +614,19 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
   std::iota(edges2_to_set.begin(), edges2_to_set.end(), 0);
   edge_set_ids.fill(0);
   edge_set_sizes.fill(edge_set_ids.size());
-
-  /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
-  Array<OrderedEdge> edges1(mesh1.totedge, NoInitialization());
-  Array<OrderedEdge> edges2(mesh2.totedge, NoInitialization());
-  edges_from_vertex_sets(mesh1.edges(), verts1_to_set, vertex_set_ids, edges1);
-  edges_from_vertex_sets(mesh2.edges(), verts2_to_set, vertex_set_ids, edges2);
-  sort_indices(edges1_to_set, edges1.as_span());
-  sort_indices(edges2_to_set, edges2.as_span());
-  bool attributes_line_up = update_set_ids(edge_set_ids, edges1.as_span(), edges2.as_span());
-  if (!attributes_line_up) {
-    return MeshMismatch::EdgeAttributes;
+  if (!sort_edges(mesh1.edges(),
+                  mesh2.edges(),
+                  verts1_to_set,
+                  verts2_to_set,
+                  vertex_set_ids,
+                  edges1_to_set,
+                  edges2_to_set,
+                  edge_set_ids,
+                  edge_set_sizes))
+  {
+    return MeshMismatch::EdgeTopology;
   }
 
-  update_set_sizes(edge_set_ids, edge_set_sizes);
   mismatch = sort_domain_using_attributes(mesh1_attributes,
                                           mesh2_attributes,
                                           ATTR_DOMAIN_EDGE,
@@ -567,36 +648,31 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
   corner_set_ids.fill(0);
   corner_set_sizes.fill(corner_set_ids.size());
 
-  /* Sort based on corner vertices. */
-  const Span<int> corner_verts1 = mesh1.corner_verts();
-  const Span<int> corner_verts2 = mesh2.corner_verts();
-  sort_indices_with_id_maps(corners1_to_set, corner_verts1, verts1_to_set, vertex_set_ids);
-  sort_indices_with_id_maps(corners2_to_set, corner_verts2, verts2_to_set, vertex_set_ids);
-  attributes_line_up = update_set_ids_with_id_maps(
-      corner_set_ids, corner_verts1, corner_verts2, verts1_to_set, verts2_to_set, vertex_set_ids);
-  if (!attributes_line_up) {
-    return MeshMismatch::CornerAttributes;
+  if (!sort_corners_based_on_verts(mesh1.corner_verts(),
+                                   mesh2.corner_verts(),
+                                   verts1_to_set,
+                                   verts2_to_set,
+                                   vertex_set_ids,
+                                   corners1_to_set,
+                                   corners2_to_set,
+                                   corner_set_ids,
+                                   corner_set_sizes))
+  {
+    return MeshMismatch::FaceTopology;
   }
-  update_set_sizes(corner_set_ids, corner_set_sizes);
 
-  /* Sort based on corner edges. */
-  const Span<int> corner_edges1 = mesh1.corner_edges();
-  const Span<int> corner_edges2 = mesh2.corner_edges();
-
-  sort_per_set_with_id_maps(corner_set_ids,
-                            corners1_to_set,
-                            corners2_to_set,
-                            corner_edges1,
-                            corner_edges2,
-                            corners1_to_set,
-                            corners2_to_set,
-                            corner_set_ids);
-  attributes_line_up = update_set_ids_with_id_maps(
-      corner_set_ids, corner_edges1, corner_edges2, edges1_to_set, edges2_to_set, edge_set_ids);
-  if (!attributes_line_up) {
-    return MeshMismatch::CornerAttributes;
+  if (!sort_corners_based_on_edges(mesh1.corner_edges(),
+                                   mesh2.corner_edges(),
+                                   verts1_to_set,
+                                   verts2_to_set,
+                                   vertex_set_ids,
+                                   corners1_to_set,
+                                   corners2_to_set,
+                                   corner_set_ids,
+                                   corner_set_sizes))
+  {
+    return MeshMismatch::FaceTopology;
   }
-  update_set_sizes(corner_set_ids, corner_set_sizes);
 
   mismatch = sort_domain_using_attributes(mesh1_attributes,
                                           mesh2_attributes,
