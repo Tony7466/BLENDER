@@ -63,11 +63,6 @@ typedef struct PointCloud {
   void tag_radii_changed();
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
-
-#  ifdef WITH_OPENVDB
-  using PointDataGridPtr = blender::bke::poPointCloudRuntime::PointDataGridPtr;
-  std::optional<PointDataGridPtr> point_data_grid() const;
-#  endif
 #endif
 
   PointCloudRuntimeHandle *runtime;

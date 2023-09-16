@@ -84,9 +84,6 @@ static void pointcloud_copy_data(Main * /*bmain*/,
 
   pointcloud_dst->runtime = new blender::bke::PointCloudRuntime();
   pointcloud_dst->runtime->bounds_cache = pointcloud_src->runtime->bounds_cache;
-#ifdef WITH_OPENVDB
-  pointcloud_dst->runtime->point_data_grid_cache = pointcloud_src->runtime->point_data_grid_cache;
-#endif
 
   pointcloud_dst->batch_cache = nullptr;
 }
@@ -261,32 +258,6 @@ std::optional<blender::Bounds<blender::float3>> PointCloud::bounds_min_max() con
   });
   return this->runtime->bounds_cache.data();
 }
-
-#ifdef WITH_OPENVDB
-std::optional<blender::bke::PointCloudRuntime::PointDataGridPtr> PointCloud::point_data_grid()
-    const
-{
-  using namespace blender;
-  using namespace blender::bke;
-  if (this->totpoint == 0) {
-    return std::nullopt;
-  }
-  this->runtime->point_data_grid_cache.ensure(
-      [&](PointCloudRuntime::PointDataGridPtr &r_point_data_grid) {
-        const AttributeAccessor attributes = this->attributes();
-        const Span<float3> positions = this->positions();
-        if (attributes.contains(POINTCLOUD_ATTR_RADIUS)) {
-          const VArraySpan radii = *attributes.lookup<float>(POINTCLOUD_ATTR_RADIUS);
-          r_bounds = *bounds::min_max_with_radii(positions, radii);
-        }
-        else {
-          r_bounds = *bounds::min_max(positions);
-        }
-        r_point_data_grid = std::make_shared<>
-      });
-  return this->runtime->bounds_cache.data();
-}
-#endif
 
 BoundBox *BKE_pointcloud_boundbox_get(Object *ob)
 {
