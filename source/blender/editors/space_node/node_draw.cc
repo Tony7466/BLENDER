@@ -1751,7 +1751,7 @@ static void node_draw_sockets(const View2D &v2d,
   /* Socket inputs. */
   int selected_input_len = 0;
   for (const bNodeSocket *sock : node.input_sockets()) {
-    if (!sock->is_visible()) {
+    if (!sock->is_visible() && !node.is_reroute()) {
       continue;
     }
     if (select_all || (sock->flag & SELECT)) {
@@ -1774,7 +1774,7 @@ static void node_draw_sockets(const View2D &v2d,
   int selected_output_len = 0;
   if (draw_outputs) {
     for (const bNodeSocket *sock : node.output_sockets()) {
-      if (!sock->is_visible()) {
+      if (!sock->is_visible() && !node.is_reroute()) {
         continue;
       }
       if (select_all || (sock->flag & SELECT)) {
@@ -1802,7 +1802,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_input_len) {
       /* Socket inputs. */
       for (const bNodeSocket *sock : node.input_sockets()) {
-        if (!sock->is_visible()) {
+        if (!sock->is_visible() && !node.is_reroute()) {
           continue;
         }
         /* Don't draw multi-input sockets here since they are drawn in a different batch. */
@@ -1831,7 +1831,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_output_len) {
       /* Socket outputs. */
       for (const bNodeSocket *sock : node.output_sockets()) {
-        if (!sock->is_visible()) {
+        if (!sock->is_visible() && !node.is_reroute()) {
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
