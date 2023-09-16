@@ -67,13 +67,26 @@ template<typename T> static void sort_indices(MutableSpan<int> indices, const Sp
       indices.begin(), indices.end(), [&](int i1, int i2) { return values[i1] < values[i2]; });
 }
 
+/**
+ * Sort the indices using the values.
+ */
+static void sort_indices_with_id_maps(MutableSpan<int> indices,
+                                      const Span<int> &values,
+                                      const Span<int> values_to_set,
+                                      const Span<int> value_set_ids)
+{
+  std::stable_sort(indices.begin(), indices.end(), [&](int i1, int i2) {
+    return value_set_ids[values_to_set[values[i1]]] < value_set_ids[values_to_set[values[i2]]];
+  });
+}
+
 /* Sort the elements in each set based on the attribute values. */
 template<typename T>
 static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
                                              MutableSpan<int> map1,
                                              MutableSpan<int> map2,
-                                             const Span<T> &values1,
-                                             const Span<T> &values2)
+                                             const Span<T> values1,
+                                             const Span<T> values2)
 {
   int i = 0;
   while (i < map1.size()) {
@@ -86,6 +99,33 @@ static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
 
     sort_indices(map1.slice(IndexRange(i, set_size)), values1);
     sort_indices(map2.slice(IndexRange(i, set_size)), values2);
+    i += set_size;
+  }
+}
+
+/* Sort the elements in each set based on the set ids of the values. */
+static void sort_per_set_with_id_maps(const Span<int> set_sizes,
+                                      MutableSpan<int> map1,
+                                      MutableSpan<int> map2,
+                                      const Span<int> values1,
+                                      const Span<int> values2,
+                                      const Span<int> values1_to_set,
+                                      const Span<int> values2_to_set,
+                                      const Span<int> value_set_ids)
+{
+  int i = 0;
+  while (i < map1.size()) {
+    const int set_size = set_sizes[i];
+    if (set_size == 1) {
+      /* No need to sort anymore. */
+      i += 1;
+      continue;
+    }
+
+    sort_indices_with_id_maps(
+        map1.slice(IndexRange(i, set_size)), values1, values1_to_set, value_set_ids);
+    sort_indices_with_id_maps(
+        map2.slice(IndexRange(i, set_size)), values2, values2_to_set, value_set_ids);
     i += set_size;
   }
 }
@@ -112,6 +152,38 @@ static bool update_set_ids(MutableSpan<int> set_ids,
     }
     if (value1 != previous || set_ids[i] == i) {
       /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+      /* Different value, or this was already a different set. */
+      set_id = i;
+      previous = value1;
+    }
+    set_ids[i] = set_id;
+  }
+
+  return true;
+}
+
+/**
+ * Split the sets into smaller sets based on the sorted attribute values.
+ *
+ * \returns false if the attributes don't line up.
+ */
+static bool update_set_ids_with_id_maps(MutableSpan<int> set_ids,
+                                        const Span<int> &values1,
+                                        const Span<int> &values2,
+                                        const Span<int> &values1_to_set,
+                                        const Span<int> &values2_to_set,
+                                        const Span<int> &value_set_ids)
+{
+  int previous = value_set_ids[values1_to_set[values1[0]]];
+  int set_id = 0;
+  for (const int i : values1.index_range()) {
+    const int value1 = value_set_ids[values1_to_set[values1[i]]];
+    const int value2 = value_set_ids[values2_to_set[values2[i]]];
+    if (value1 != value2) {
+      /* They should be the same after sorting. */
+      return false;
+    }
+    if (value1 != previous || set_ids[i] == i) {
       /* Different value, or this was already a different set. */
       set_id = i;
       previous = value1;
@@ -310,15 +382,14 @@ static std::optional<MeshMismatch> sort_corners_using_attributes(
   /* Sort based on corner vertices. */
   const Span<int> corner_verts1 = mesh1.corner_verts();
   const Span<int> corner_verts2 = mesh2.corner_verts();
-  std::stable_sort(r_corners1_to_set.begin(), r_corners1_to_set.end(), [&](int i1, int i2) {
-    return vertex_set_ids[verts1_to_set[corner_verts1[i1]]] <
-           vertex_set_ids[verts1_to_set[corner_verts1[i2]]];
-  });
-  std::stable_sort(r_corners2_to_set.begin(), r_corners2_to_set.end(), [&](int i1, int i2) {
-    return vertex_set_ids[verts2_to_set[corner_verts2[i1]]] <
-           vertex_set_ids[verts2_to_set[corner_verts2[i2]]];
-  });
-  bool attributes_line_up = update_set_ids(r_corner_set_ids, corner_verts1, corner_verts2);
+  sort_indices_with_id_maps(r_corners1_to_set, corner_verts1, verts1_to_set, vertex_set_ids);
+  sort_indices_with_id_maps(r_corners2_to_set, corner_verts2, verts2_to_set, vertex_set_ids);
+  bool attributes_line_up = update_set_ids_with_id_maps(r_corner_set_ids,
+                                                        corner_verts1,
+                                                        corner_verts2,
+                                                        verts1_to_set,
+                                                        verts2_to_set,
+                                                        vertex_set_ids);
   if (!attributes_line_up) {
     return MeshMismatch::CornerAttributes;
   }
@@ -328,15 +399,16 @@ static std::optional<MeshMismatch> sort_corners_using_attributes(
   const Span<int> corner_edges1 = mesh1.corner_edges();
   const Span<int> corner_edges2 = mesh2.corner_edges();
 
-  std::stable_sort(r_corners1_to_set.begin(), r_corners1_to_set.end(), [&](int i1, int i2) {
-    return edge_set_ids[edges1_to_set[corner_edges1[i1]]] <
-           edge_set_ids[edges1_to_set[corner_edges1[i2]]];
-  });
-  std::stable_sort(r_corners2_to_set.begin(), r_corners2_to_set.end(), [&](int i1, int i2) {
-    return edge_set_ids[edges2_to_set[corner_edges2[i1]]] <
-           edge_set_ids[edges2_to_set[corner_edges2[i2]]];
-  });
-  attributes_line_up = update_set_ids(r_corner_set_ids, corner_verts1, corner_verts2);
+  sort_per_set_with_id_maps(r_corner_set_ids,
+                            r_corners1_to_set,
+                            r_corners2_to_set,
+                            corner_edges1,
+                            corner_edges2,
+                            r_corners1_to_set,
+                            r_corners2_to_set,
+                            r_corner_set_ids);
+  attributes_line_up = update_set_ids_with_id_maps(
+      r_corner_set_ids, corner_edges1, corner_edges2, edges1_to_set, edges2_to_set, edge_set_ids);
   if (!attributes_line_up) {
     return MeshMismatch::CornerAttributes;
   }
@@ -345,7 +417,7 @@ static std::optional<MeshMismatch> sort_corners_using_attributes(
   for (const AttributeIDRef &id : attribute_ids) {
     GAttributeReader reader1 = mesh1_attributes.lookup(id);
     GAttributeReader reader2 = mesh2_attributes.lookup(id);
-    if (reader1.domain != ATTR_DOMAIN_EDGE) {
+    if (reader1.domain != ATTR_DOMAIN_CORNER) {
       /* We only look at corner attributes here. */
       continue;
     }
