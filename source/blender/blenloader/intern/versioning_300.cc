@@ -69,9 +69,9 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
+#include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.h"
-#include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.hh"
@@ -318,10 +318,10 @@ static void do_versions_idproperty_ui_data(Main *bmain)
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       version_idproperty_ui_data(node->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
   }
@@ -544,8 +544,11 @@ static bNodeTree *add_realize_node_tree(Main *bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(bmain, "Realize Instances 2.93 Legacy", "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  node_tree->tree_interface.add_socket("Geometry",
+                                       "",
+                                       "NodeSocketGeometry",
+                                       NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                       nullptr);
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -400.0f;
@@ -1050,6 +1053,27 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
   }
 }
 
+/* Change the action strip (if a NLA strip is preset) to HOLD instead of HOLD FORWARD to maintain
+ * backwards compatibility. */
+static void version_nla_action_strip_hold(Main *bmain)
+{
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    AnimData *adt = BKE_animdata_from_id(id);
+    /* We only want to preserve existing behavior if there's an action and 1 or more NLA strips. */
+    if (adt == nullptr || adt->action == nullptr ||
+        adt->act_extendmode != NLASTRIP_EXTEND_HOLD_FORWARD)
+    {
+      continue;
+    }
+
+    if (BKE_nlatrack_has_strips(&adt->nla_tracks)) {
+      adt->act_extendmode = NLASTRIP_EXTEND_HOLD;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+}
+
 void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
 {
   if (MAIN_VERSION_FILE_ATLEAST(bmain, 300, 0) && !MAIN_VERSION_FILE_ATLEAST(bmain, 300, 1)) {
@@ -1337,6 +1361,10 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
       SEQ_for_each_callback(
           &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 13)) {
+    version_nla_action_strip_hold(bmain);
   }
 
   /**
@@ -4486,22 +4514,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 11)) {
     BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, nullptr);
-
-    /* Store simulation bake directory in geometry nodes modifier. */
-    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-        if (md->type != eModifierType_Nodes) {
-          continue;
-        }
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (nmd->simulation_bake_directory) {
-          continue;
-        }
-        const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
-            *bmain, *ob, *md);
-        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
-      }
-    }
 
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {

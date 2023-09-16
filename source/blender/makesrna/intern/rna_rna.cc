@@ -1214,7 +1214,7 @@ static int rna_BlenderRNA_structs_lookup_int(PointerRNA *ptr, int index, Pointer
   StructRNA *srna = static_cast<StructRNA *>(
       index < brna->structs_len ? BLI_findlink(&brna->structs, index) : nullptr);
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
   else {
@@ -1228,7 +1228,7 @@ static int rna_BlenderRNA_structs_lookup_string(PointerRNA *ptr,
   BlenderRNA *brna = static_cast<BlenderRNA *>(ptr->data);
   StructRNA *srna = static_cast<StructRNA *>(BLI_ghash_lookup(brna->structs_map, (void *)key));
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
 
@@ -3161,7 +3161,7 @@ static void rna_def_property(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_enum_flag", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_Property_is_enum_flag_get", nullptr);
-  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums ");
+  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums");
 
   prop = RNA_def_property(srna, "is_library_editable", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

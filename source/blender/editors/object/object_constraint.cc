@@ -78,7 +78,7 @@ ListBase *ED_object_constraint_active_list(Object *ob)
   if (ob->mode & OB_MODE_POSE) {
     bPoseChannel *pchan;
 
-    pchan = BKE_pose_channel_active_if_layer_visible(ob);
+    pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
     if (pchan) {
       return &pchan->constraints;
     }
@@ -1084,12 +1084,11 @@ static int followpath_path_animate_exec(bContext *C, wmOperator *op)
   }
   else {
     /* animate constraint's "fixed offset" */
-    PointerRNA ptr;
     PropertyRNA *prop;
     char *path;
 
     /* get RNA pointer to constraint's "offset_factor" property - to build RNA path */
-    RNA_pointer_create(&ob->id, &RNA_FollowPathConstraint, con, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_FollowPathConstraint, con);
     prop = RNA_struct_find_property(&ptr, "offset_factor");
 
     path = RNA_path_from_ID_to_property(&ptr, prop);
@@ -1450,7 +1449,7 @@ static int constraint_delete_exec(bContext *C, wmOperator *op)
 
   /* free the constraint */
   if (BKE_constraint_remove_ex(lb, ob, con, true)) {
-    /* needed to set the flags on posebones correctly */
+    /* Needed to set the flags on pose-bones correctly. */
     ED_object_constraint_update(bmain, ob);
 
     /* relations */
@@ -1540,7 +1539,7 @@ static int constraint_apply_exec(bContext *C, wmOperator *op)
   /* Update for any children that may get moved. */
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
-  /* Needed to set the flags on posebones correctly. */
+  /* Needed to set the flags on pose-bones correctly. */
   ED_object_constraint_update(bmain, ob);
 
   DEG_relations_tag_update(bmain);
@@ -1640,7 +1639,7 @@ static int constraint_copy_exec(bContext *C, wmOperator *op)
   BLI_assert(current_index >= 0);
   BLI_listbase_link_move(constraints, copy_con, new_index - current_index);
 
-  /* Needed to set the flags on posebones correctly. */
+  /* Needed to set the flags on pose-bones correctly. */
   ED_object_constraint_update(bmain, ob);
 
   DEG_relations_tag_update(bmain);
@@ -2204,7 +2203,7 @@ static bool get_new_constraint_target(
     bContext *C, int con_type, Object **tar_ob, bPoseChannel **tar_pchan, bool add)
 {
   Object *obact = ED_object_active_context(C);
-  bPoseChannel *pchanact = BKE_pose_channel_active_if_layer_visible(obact);
+  bPoseChannel *pchanact = BKE_pose_channel_active_if_bonecoll_visible(obact);
   bool only_curve = false, only_mesh = false, only_ob = false;
   bool found = false;
 
@@ -2362,7 +2361,7 @@ static int constraint_add_exec(
     pchan = nullptr;
   }
   else {
-    pchan = BKE_pose_channel_active_if_layer_visible(ob);
+    pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
 
     /* ensure not to confuse object/pose adding */
     if (pchan == nullptr) {
@@ -2636,7 +2635,7 @@ void POSE_OT_constraint_add_with_targets(wmOperatorType *ot)
 static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
-  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+  bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
   bConstraint *con = nullptr;
 
   uiPopupMenu *pup;

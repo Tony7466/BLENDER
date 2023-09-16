@@ -9,7 +9,6 @@
 #include "BKE_node_tree_interface.hh"
 
 #include "BLI_math_vector.h"
-#include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
@@ -21,8 +20,14 @@
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
 
-#include "RNA_access.hh"
-#include "RNA_prototypes.h"
+/**
+ * These flags are used by the `changed_flag` field in #bNodeTreeInterfaceRuntime.
+ */
+enum NodeTreeInterfaceChangedFlag {
+  NODE_INTERFACE_CHANGED_NOTHING = 0,
+  NODE_INTERFACE_CHANGED_ITEMS = (1 << 1),
+  NODE_INTERFACE_CHANGED_ALL = -1,
+};
 
 namespace blender::bke::node_interface {
 
@@ -373,9 +378,43 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 
 namespace item_types {
 
+using UidGeneratorFn = blender::FunctionRef<int()>;
+
 static void item_copy(bNodeTreeInterfaceItem &dst,
                       const bNodeTreeInterfaceItem &src,
-                      const int flag)
+                      int flag,
+                      UidGeneratorFn generate_uid);
+
+/**
+ * Copy the source items and give each a new unique identifier.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
+ */
+static void panel_init(bNodeTreeInterfacePanel &panel,
+                       const Span<const bNodeTreeInterfaceItem *> items_src,
+                       const int flag,
+                       UidGeneratorFn generate_uid)
+{
+  panel.items_num = items_src.size();
+  panel.items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(panel.items_num, __func__);
+
+  /* Copy buffers. */
+  for (const int i : items_src.index_range()) {
+    const bNodeTreeInterfaceItem *item_src = items_src[i];
+    panel.items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
+    item_types::item_copy(*panel.items_array[i], *item_src, flag, generate_uid);
+  }
+}
+
+/**
+ * Copy data from a source item.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
+ */
+static void item_copy(bNodeTreeInterfaceItem &dst,
+                      const bNodeTreeInterfaceItem &src,
+                      const int flag,
+                      UidGeneratorFn generate_uid)
 {
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
@@ -389,7 +428,8 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
       dst_socket.description = BLI_strdup_null(src_socket.description);
       dst_socket.socket_type = BLI_strdup(src_socket.socket_type);
       dst_socket.default_attribute_name = BLI_strdup_null(src_socket.default_attribute_name);
-      dst_socket.identifier = BLI_strdup(src_socket.identifier);
+      dst_socket.identifier = generate_uid ? BLI_sprintfN("Socket_%d", generate_uid()) :
+                                             BLI_strdup(src_socket.identifier);
       if (src_socket.properties) {
         dst_socket.properties = IDP_CopyProperty_ex(src_socket.properties, flag);
       }
@@ -405,7 +445,10 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
       BLI_assert(src_panel.name != nullptr);
 
       dst_panel.name = BLI_strdup(src_panel.name);
-      dst_panel.copy_from(src_panel.items(), flag);
+      dst_panel.description = BLI_strdup_null(src_panel.description);
+      dst_panel.identifier = generate_uid ? generate_uid() : src_panel.identifier;
+
+      panel_init(dst_panel, src_panel.items(), flag, generate_uid);
       break;
     }
   }
@@ -438,6 +481,7 @@ static void item_free(bNodeTreeInterfaceItem &item, const bool do_id_user)
 
       panel.clear(do_id_user);
       MEM_SAFE_FREE(panel.name);
+      MEM_SAFE_FREE(panel.description);
       break;
     }
   }
@@ -453,6 +497,7 @@ static void item_write_data(BlendWriter *writer, bNodeTreeInterfaceItem &item)
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
       BLO_write_string(writer, socket.name);
+      BLO_write_string(writer, socket.identifier);
       BLO_write_string(writer, socket.description);
       BLO_write_string(writer, socket.socket_type);
       BLO_write_string(writer, socket.default_attribute_name);
@@ -466,6 +511,7 @@ static void item_write_data(BlendWriter *writer, bNodeTreeInterfaceItem &item)
     case NODE_INTERFACE_PANEL: {
       bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
       BLO_write_string(writer, panel.name);
+      BLO_write_string(writer, panel.description);
       BLO_write_pointer_array(writer, panel.items_num, panel.items_array);
       for (bNodeTreeInterfaceItem *child_item : panel.items()) {
         item_write_struct(writer, *child_item);
@@ -510,6 +556,7 @@ static void item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem &item
     case NODE_INTERFACE_PANEL: {
       bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
       BLO_read_data_address(reader, &panel.name);
+      BLO_read_data_address(reader, &panel.description);
       BLO_read_pointer_array(reader, reinterpret_cast<void **>(&panel.items_array));
       for (const int i : blender::IndexRange(panel.items_num)) {
         BLO_read_data_address(reader, &panel.items_array[i]);
@@ -575,12 +622,14 @@ bNodeSocketType *bNodeTreeInterfaceSocket::socket_typeinfo() const
 blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
 {
   bNodeSocketType *typeinfo = this->socket_typeinfo();
-  if (!typeinfo || !typeinfo->draw_color) {
+  if (!typeinfo || !typeinfo->draw_color_simple) {
     return blender::ColorGeometry4f(1.0f, 0.0f, 1.0f, 1.0f);
   }
 
   float color[4];
-  typeinfo->draw_color(nullptr, nullptr, nullptr, color);
+  if (typeinfo->draw_color_simple) {
+    typeinfo->draw_color_simple(typeinfo, color);
+  }
   return blender::ColorGeometry4f(color);
 }
 
@@ -723,21 +772,63 @@ bNodeTreeInterfacePanel *bNodeTreeInterfacePanel::find_parent_recursive(
   return nullptr;
 }
 
+int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
+    const bNodeTreeInterfaceItem &item, const int initial_pos) const
+{
+  const bool sockets_above_panels = !(this->flag &
+                                      NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
+  const blender::Span<const bNodeTreeInterfaceItem *> items = this->items();
+
+  int pos = initial_pos;
+
+  if (sockets_above_panels) {
+    if (item.item_type == NODE_INTERFACE_PANEL) {
+      /* Find the closest valid position from the end, only panels at or after #position. */
+      for (int test_pos = items.size() - 1; test_pos >= initial_pos; test_pos--) {
+        if (test_pos < 0) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type != NODE_INTERFACE_PANEL) {
+          /* Found valid position, insert after the last socket item. */
+          pos = test_pos + 1;
+          break;
+        }
+      }
+    }
+    else {
+      /* Find the closest valid position from the start, no panels at or after #position. */
+      for (int test_pos = 0; test_pos <= initial_pos; test_pos++) {
+        if (test_pos >= items.size()) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
+          /* Found valid position, inserting moves the first panel. */
+          pos = test_pos;
+          break;
+        }
+      }
+    }
+  }
+
+  return pos;
+}
+
 void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
 {
-  blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
-  items_num++;
-  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-  this->items().drop_back(1).copy_from(old_items);
-  this->items().last() = &item;
-
-  if (old_items.data()) {
-    MEM_freeN(old_items.data());
-  }
+  /* Same as inserting at the end. */
+  insert_item(item, this->items_num);
 }
 
 void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int position)
 {
+  /* Are child panels allowed? */
+  BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
+             (this->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
+
+  /* Apply any constraints on the item positions. */
+  position = find_valid_insert_position_for_item(item, position);
   position = std::min(std::max(position, 0), items_num);
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
@@ -752,7 +843,7 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int posi
   }
 }
 
-bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool free)
+bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, const bool free)
 {
   const int position = this->item_position(item);
   if (!this->items().index_range().contains(position)) {
@@ -785,26 +876,28 @@ void bNodeTreeInterfacePanel::clear(bool do_id_user)
   items_num = 0;
 }
 
-bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int new_position)
+bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, int new_position)
 {
   const int old_position = this->item_position(item);
-  if (!this->items().index_range().contains(old_position) ||
-      !this->items().index_range().contains(new_position))
-  {
+  if (!this->items().index_range().contains(old_position)) {
     return false;
   }
-
   if (old_position == new_position) {
     /* Nothing changes. */
     return true;
   }
-  else if (old_position < new_position) {
+
+  new_position = find_valid_insert_position_for_item(item, new_position);
+  new_position = std::min(std::max(new_position, 0), items_num);
+
+  if (old_position < new_position) {
+    /* Actual target position and all existing items shifted by 1. */
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = this->items().slice(
-        old_position + 1, new_position - old_position);
+        old_position + 1, new_position - old_position - 1);
     bNodeTreeInterfaceItem *tmp = this->items()[old_position];
     std::copy(
         moved_items.begin(), moved_items.end(), this->items().drop_front(old_position).data());
-    this->items()[new_position] = tmp;
+    this->items()[new_position - 1] = tmp;
   }
   else /* old_position > new_position */ {
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = this->items().slice(
@@ -893,7 +986,7 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
                                              blender::StringRefNull name,
                                              blender::StringRefNull description,
                                              blender::StringRefNull socket_type,
-                                             const eNodeTreeInterfaceSocketFlag flag)
+                                             const NodeTreeInterfaceSocketFlag flag)
 {
   BLI_assert(name.c_str() != nullptr);
   BLI_assert(socket_type.c_str() != nullptr);
@@ -919,39 +1012,44 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   return new_socket;
 }
 
-static bNodeTreeInterfacePanel *make_panel(const int uid, blender::StringRefNull name)
+static bNodeTreeInterfacePanel *make_panel(const int uid,
+                                           blender::StringRefNull name,
+                                           blender::StringRefNull description,
+                                           const NodeTreeInterfacePanelFlag flag)
 {
   BLI_assert(name.c_str() != nullptr);
 
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
   new_panel->item.item_type = NODE_INTERFACE_PANEL;
   new_panel->name = BLI_strdup(name.c_str());
+  new_panel->description = BLI_strdup_null(description.c_str());
   new_panel->identifier = uid;
+  new_panel->flag = flag;
   return new_panel;
 }
 
-void bNodeTreeInterfacePanel::copy_from(
-    const blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag)
+void bNodeTreeInterface::init_data()
 {
-  items_num = items_src.size();
-  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
+  this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
+  this->tag_missing_runtime_data();
 
-  /* Copy buffers. */
-  for (const int i : items_src.index_range()) {
-    const bNodeTreeInterfaceItem *item_src = items_src[i];
-    items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
-    item_types::item_copy(*items_array[i], *item_src, flag);
-  }
+  /* Root panel is allowed to contain child panels. */
+  root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
 }
 
 void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
-  this->root_panel.copy_from(src.root_panel.items(), flag);
+  item_types::panel_init(this->root_panel, src.root_panel.items(), flag, nullptr);
   this->active_index = src.active_index;
+
+  this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
+  this->tag_missing_runtime_data();
 }
 
 void bNodeTreeInterface::free_data()
 {
+  MEM_delete(this->runtime);
+
   /* Called when freeing the main database, don't do user refcount here. */
   this->root_panel.clear(false);
 }
@@ -966,6 +1064,9 @@ void bNodeTreeInterface::write(BlendWriter *writer)
 void bNodeTreeInterface::read_data(BlendDataReader *reader)
 {
   item_types::item_read_data(reader, this->root_panel.item);
+
+  this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
+  this->tag_missing_runtime_data();
 }
 
 bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
@@ -1015,7 +1116,7 @@ void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRefNull name,
                                                          blender::StringRefNull description,
                                                          blender::StringRefNull socket_type,
-                                                         const eNodeTreeInterfaceSocketFlag flag,
+                                                         const NodeTreeInterfaceSocketFlag flag,
                                                          bNodeTreeInterfacePanel *parent)
 {
   if (parent == nullptr) {
@@ -1028,16 +1129,17 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRefNull 
   if (new_socket) {
     parent->add_item(new_socket->item);
   }
+
+  this->tag_items_changed();
   return new_socket;
 }
 
-bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
-    blender::StringRefNull name,
-    blender::StringRefNull description,
-    blender::StringRefNull socket_type,
-    const eNodeTreeInterfaceSocketFlag flag,
-    bNodeTreeInterfacePanel *parent,
-    const int position)
+bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(blender::StringRefNull name,
+                                                            blender::StringRefNull description,
+                                                            blender::StringRefNull socket_type,
+                                                            const NodeTreeInterfaceSocketFlag flag,
+                                                            bNodeTreeInterfacePanel *parent,
+                                                            const int position)
 {
   if (parent == nullptr) {
     parent = &root_panel;
@@ -1049,10 +1151,14 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   if (new_socket) {
     parent->insert_item(new_socket->item, position);
   }
+
+  this->tag_items_changed();
   return new_socket;
 }
 
 bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRefNull name,
+                                                       blender::StringRefNull description,
+                                                       const NodeTreeInterfacePanelFlag flag,
                                                        bNodeTreeInterfacePanel *parent)
 {
   if (parent == nullptr) {
@@ -1060,14 +1166,23 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRefNull na
   }
   BLI_assert(this->find_item(parent->item));
 
-  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
+  if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
+
+  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name, description, flag);
   if (new_panel) {
     parent->add_item(new_panel->item);
   }
+
+  this->tag_items_changed();
   return new_panel;
 }
 
 bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRefNull name,
+                                                          blender::StringRefNull description,
+                                                          const NodeTreeInterfacePanelFlag flag,
                                                           bNodeTreeInterfacePanel *parent,
                                                           const int position)
 {
@@ -1076,10 +1191,17 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRefNull
   }
   BLI_assert(this->find_item(parent->item));
 
-  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
+  if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
+
+  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name, description, flag);
   if (new_panel) {
     parent->insert_item(new_panel->item, position);
   }
+
+  this->tag_items_changed();
   return new_panel;
 }
 
@@ -1092,14 +1214,18 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   BLI_assert(this->find_item(item));
   BLI_assert(this->find_item(parent->item));
 
-  if (parent == nullptr) {
-    parent = &root_panel;
+  if (item.item_type == NODE_INTERFACE_PANEL &&
+      !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
+  item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->add_item(*citem);
 
+  this->tag_items_changed();
   return citem;
 }
 
@@ -1113,16 +1239,24 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   BLI_assert(this->find_item(item));
   BLI_assert(this->find_item(parent->item));
 
+  if (item.item_type == NODE_INTERFACE_PANEL &&
+      !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
+
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
+  item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->insert_item(*citem, position);
 
+  this->tag_items_changed();
   return citem;
 }
 
 bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_content_to_parent)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
@@ -1135,36 +1269,61 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_con
     }
   }
   if (parent->remove_item(item, true)) {
+    this->tag_items_changed();
     return true;
   }
+
   return false;
 }
 
 void bNodeTreeInterface::clear_items()
 {
   root_panel.clear(true);
+  this->tag_items_changed();
 }
 
 bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_position)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
-  return parent->move_item(item, new_position);
+
+  if (parent->move_item(item, new_position)) {
+    this->tag_items_changed();
+    return true;
+  }
+  return false;
 }
 
 bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
                                              bNodeTreeInterfacePanel *new_parent,
                                              int new_position)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
-  if (parent->remove_item(item, false)) {
-    new_parent->insert_item(item, new_position);
-    return true;
+  if (item.item_type == NODE_INTERFACE_PANEL && new_parent &&
+      !(new_parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
+    return false;
+  }
+  if (parent == new_parent) {
+    if (parent->move_item(item, new_position)) {
+      this->tag_items_changed();
+      return true;
+    }
+  }
+  else {
+    /* Note: only remove and reinsert when parents different, otherwise removing the item can
+     * change the desired target position! */
+    if (parent->remove_item(item, false)) {
+      new_parent->insert_item(item, new_position);
+      this->tag_items_changed();
+      return true;
+    }
   }
   return false;
 }
@@ -1174,27 +1333,59 @@ void bNodeTreeInterface::foreach_id(LibraryForeachIDData *cb)
   item_types::item_foreach_id(cb, root_panel.item);
 }
 
-namespace blender::bke {
-
-void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
+bool bNodeTreeInterface::items_cache_is_available() const
 {
-  /* Rebuild draw-order list of interface items for linear access. */
-  items.clear();
-  inputs.clear();
-  outputs.clear();
+  return !this->runtime->items_cache_mutex_.is_dirty();
+}
 
-  interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
-    items.append(&item);
-    if (bNodeTreeInterfaceSocket *socket = get_item_as<bNodeTreeInterfaceSocket>(&item)) {
-      if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
-        inputs.append(socket);
+void bNodeTreeInterface::ensure_items_cache() const
+{
+  blender::bke::bNodeTreeInterfaceRuntime &runtime = *this->runtime;
+
+  runtime.items_cache_mutex_.ensure([&]() {
+    /* Rebuild draw-order list of interface items for linear access. */
+    runtime.items_.clear();
+    runtime.inputs_.clear();
+    runtime.outputs_.clear();
+
+    /* Items in the cache are mutable pointers, but node tree update considers ID data to be
+     * immutable when caching. DNA ListBase pointers can be mutable even if their container is
+     * const, but the items returned by #foreach_item inherit qualifiers from the container. */
+    bNodeTreeInterface &mutable_self = const_cast<bNodeTreeInterface &>(*this);
+
+    mutable_self.foreach_item([&](bNodeTreeInterfaceItem &item) {
+      runtime.items_.append(&item);
+      if (bNodeTreeInterfaceSocket *socket = get_item_as<bNodeTreeInterfaceSocket>(&item)) {
+        if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
+          runtime.inputs_.append(socket);
+        }
+        if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
+          runtime.outputs_.append(socket);
+        }
       }
-      if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-        outputs.append(socket);
-      }
-    }
-    return true;
+      return true;
+    });
   });
 }
 
-}  // namespace blender::bke
+void bNodeTreeInterface::tag_missing_runtime_data()
+{
+  this->runtime->changed_flag_ |= NODE_INTERFACE_CHANGED_ALL;
+  this->runtime->items_cache_mutex_.tag_dirty();
+}
+
+bool bNodeTreeInterface::is_changed() const
+{
+  return this->runtime->changed_flag_ != NODE_INTERFACE_CHANGED_NOTHING;
+}
+
+void bNodeTreeInterface::tag_items_changed()
+{
+  this->runtime->changed_flag_ |= NODE_INTERFACE_CHANGED_ITEMS;
+  this->runtime->items_cache_mutex_.tag_dirty();
+}
+
+void bNodeTreeInterface::reset_changed_flags()
+{
+  this->runtime->changed_flag_ = NODE_INTERFACE_CHANGED_NOTHING;
+}

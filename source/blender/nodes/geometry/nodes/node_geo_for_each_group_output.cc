@@ -10,7 +10,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "NOD_add_node_search.hh"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
@@ -32,7 +31,6 @@ static void node_register()
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_FOR_EACH_GROUP_OUTPUT, "For Each Group Output", NODE_CLASS_INTERFACE);
   ntype.declare = node_declare;
-  ntype.gather_add_node_search_ops = nullptr;
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

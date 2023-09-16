@@ -168,6 +168,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_ray_generate_reflect";
     case RAY_GENERATE_REFRACT:
       return "eevee_ray_generate_refract";
+    case RAY_TRACE_FALLBACK:
+      return "eevee_ray_trace_fallback";
     case RAY_TRACE_SCREEN_REFLECT:
       return "eevee_ray_trace_screen_reflect";
     case RAY_TRACE_SCREEN_REFRACT:
@@ -216,6 +218,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_surfels";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
+    case SHADOW_TILEMAP_TAG_USAGE_VOLUME:
+      return "eevee_shadow_tag_usage_volume";
     case SUBSURFACE_EVAL:
       return "eevee_subsurface_eval";
     case SURFEL_CLUSTER_BUILD:
@@ -339,7 +343,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE) && pipeline_type == MAT_PIPE_FORWARD) {
-    info.additional_info("eevee_transmittance_data");
+    info.define("SSS_TRANSMITTANCE");
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_BARYCENTRIC)) {

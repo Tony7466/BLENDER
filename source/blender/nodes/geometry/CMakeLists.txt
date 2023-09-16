@@ -104,7 +104,8 @@ set(SRC
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc
-  nodes/node_geo_input_shade_smooth.cc
+  nodes/node_geo_input_edge_smooth.cc
+  nodes/node_geo_input_face_smooth.cc
   nodes/node_geo_input_shortest_edge_paths.cc
   nodes/node_geo_input_signed_distance.cc
   nodes/node_geo_input_spline_cyclic.cc
@@ -146,6 +147,7 @@ set(SRC
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
+  nodes/node_geo_points_to_curves.cc
   nodes/node_geo_points_to_sdf_volume.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc

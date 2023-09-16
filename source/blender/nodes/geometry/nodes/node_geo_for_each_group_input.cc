@@ -53,7 +53,6 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  ntype.gather_add_node_search_ops = nullptr;
   ntype.gather_link_search_ops = nullptr;
   nodeRegisterType(&ntype);
 }

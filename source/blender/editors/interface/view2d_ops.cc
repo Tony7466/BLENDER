@@ -1701,7 +1701,7 @@ static int view2d_smoothview_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   float step;
   if (sms->time_allowed != 0.0) {
-    step = float((v2d->smooth_timer->duration) / sms->time_allowed);
+    step = float((v2d->smooth_timer->time_duration) / sms->time_allowed);
   }
   else {
     step = 1.0f;
@@ -2344,7 +2344,7 @@ void ED_operatortypes_view2d()
 
 void ED_keymap_view2d(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "View2D", 0, 0);
+  WM_keymap_ensure(keyconf, "View2D", SPACE_EMPTY, RGN_TYPE_WINDOW);
 }
 
 /** \} */
