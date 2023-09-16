@@ -199,11 +199,12 @@ static std::optional<MeshMismatch> sort_vertices_using_attributes(
 
 static void edges_from_vertex_sets(const Span<int2> edges,
                                    const Span<int> verts_to_set,
+                                   const Span<int> vertex_set_ids,
                                    MutableSpan<OrderedEdge> r_edges)
 {
   for (const int i : r_edges.index_range()) {
     const int2 e = edges[i];
-    r_edges[i] = OrderedEdge(verts_to_set[e.x], verts_to_set[e.y]);
+    r_edges[i] = OrderedEdge(vertex_set_ids[verts_to_set[e.x]], vertex_set_ids[verts_to_set[e.y]]);
   }
 }
 
@@ -211,6 +212,7 @@ static std::optional<MeshMismatch> sort_edges_using_attributes(const Mesh &mesh1
                                                                const Mesh &mesh2,
                                                                const Span<int> verts1_to_set,
                                                                const Span<int> verts2_to_set,
+                                                               const Span<int> vertex_set_ids,
                                                                MutableSpan<int> r_edges1_to_set,
                                                                MutableSpan<int> r_edges2_to_set,
                                                                MutableSpan<int> r_edge_set_ids,
@@ -232,8 +234,8 @@ static std::optional<MeshMismatch> sort_edges_using_attributes(const Mesh &mesh1
   /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
   Array<OrderedEdge> edges1(mesh1.totedge, NoInitialization());
   Array<OrderedEdge> edges2(mesh2.totedge, NoInitialization());
-  edges_from_vertex_sets(mesh1.edges(), verts1_to_set, edges1);
-  edges_from_vertex_sets(mesh2.edges(), verts2_to_set, edges2);
+  edges_from_vertex_sets(mesh1.edges(), verts1_to_set, vertex_set_ids, edges1);
+  edges_from_vertex_sets(mesh2.edges(), verts2_to_set, vertex_set_ids, edges2);
   sort_indices(r_edges1_to_set, edges1.as_span());
   sort_indices(r_edges2_to_set, edges2.as_span());
   const bool attributes_line_up = update_set_ids(
@@ -484,6 +486,7 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                          mesh2,
                                          verts1_to_set,
                                          verts2_to_set,
+                                         vertex_set_ids,
                                          edges1_to_set,
                                          edges2_to_set,
                                          edge_set_ids,
