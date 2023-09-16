@@ -1577,7 +1577,7 @@ struct RepeatEvalStorage {
   std::optional<lf::GraphExecutor> graph_executor;
   void *graph_executor_storage = nullptr;
   bool multi_threading_enabled = false;
-  Vector<int> input_index_map;
+  IndexRange input_index_map;
   Vector<int> output_index_map;
 };
 
@@ -1898,10 +1898,9 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     /* Create a mapping from parameter indices inside of this graph to parameters of the repeat
      * zone. The main complexity below stems from the fact that the iterations input is handled
      * outside of this graph. */
-    eval_storage.input_index_map.reinitialize(inputs_.size() - 1);
     eval_storage.output_index_map.reinitialize(outputs_.size() - 1);
 
-    std::iota(eval_storage.input_index_map.begin(), eval_storage.input_index_map.end(), 1);
+    eval_storage.input_index_map = inputs_.index_range().drop_front(1);
     Vector<const lf::OutputSocket *> lf_graph_inputs = lf_input_node.outputs().drop_front(1);
 
     const int iteration_usage_index = zone_info_.main_input_usage_indices[0];
