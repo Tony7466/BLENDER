@@ -42,6 +42,21 @@ struct OrderedEdge {
     BLI_assert(e2.v_low < e2.v_high);
     return e1.v_low == e2.v_low && e1.v_high == e2.v_high;
   }
+
+  friend bool operator!=(const OrderedEdge &e1, const OrderedEdge &e2)
+  {
+    BLI_assert(e1.v_low < e1.v_high);
+    BLI_assert(e2.v_low < e2.v_high);
+    return !(e1 == e2);
+  }
+
+  friend bool operator<(const OrderedEdge &e1, const OrderedEdge &e2)
+  {
+    if (e1.v_low != e2.v_low) {
+      return e1.v_low < e2.v_low;
+    }
+    return e1.v_high < e2.v_high;
+  }
 };
 
 }  // namespace blender

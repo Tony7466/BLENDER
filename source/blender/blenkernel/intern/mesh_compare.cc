@@ -4,6 +4,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_base.h"
+#include "BLI_ordered_edge.hh"
 #include "BLI_span.hh"
 
 #include "BKE_attribute.hh"
@@ -60,7 +61,7 @@ static bool faces_equal(const IndexRange f1,
 /**
  * Sort the indices using the values.
  */
-template<typename T> static void sort_indices(MutableSpan<int> indices, const VArray<T> &values)
+template<typename T> static void sort_indices(MutableSpan<int> indices, const Span<T> &values)
 {
   std::stable_sort(
       indices.begin(), indices.end(), [&](int i1, int i2) { return values[i1] < values[i2]; });
@@ -71,8 +72,8 @@ template<typename T>
 static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
                                              MutableSpan<int> map1,
                                              MutableSpan<int> map2,
-                                             const VArray<T> &values1,
-                                             const VArray<T> &values2)
+                                             const Span<T> &values1,
+                                             const Span<T> &values2)
 {
   int i = 0;
   while (i < map1.size()) {
@@ -96,8 +97,8 @@ static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
  */
 template<typename T>
 static bool update_set_ids(MutableSpan<int> set_ids,
-                           const VArray<T> &values1,
-                           const VArray<T> &values2)
+                           const Span<T> &values1,
+                           const Span<T> &values2)
 {
   T previous = values1[0];
   int set_id = 0;
@@ -175,8 +176,8 @@ static std::optional<MeshMismatch> sort_vertices_using_attributes(
 
     attribute_math::convert_to_static_type(reader1.varray.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      const VArray<T> values1 = reader1.varray.typed<T>();
-      const VArray<T> values2 = reader2.varray.typed<T>();
+      const VArraySpan<T> values1 = reader1.varray.typed<T>();
+      const VArraySpan<T> values2 = reader2.varray.typed<T>();
 
       sort_per_set_based_on_attributes(
           r_vertex_set_sizes, r_verts1_to_set, r_verts2_to_set, values1, values2);
@@ -187,6 +188,85 @@ static std::optional<MeshMismatch> sort_vertices_using_attributes(
         return;
       }
       update_set_sizes(r_vertex_set_ids, r_vertex_set_sizes);
+    });
+
+    if (mismatch) {
+      return mismatch;
+    }
+  }
+  return {};
+}
+
+static void edges_from_vertex_sets(const Span<int2> edges,
+                                   const Span<int> verts_to_set,
+                                   MutableSpan<OrderedEdge> r_edges)
+{
+  for (const int i : r_edges.index_range()) {
+    const int2 e = edges[i];
+    r_edges[i] = OrderedEdge(verts_to_set[e.x], verts_to_set[e.y]);
+  }
+}
+
+static std::optional<MeshMismatch> sort_edges_using_attributes(const Mesh &mesh1,
+                                                               const Mesh &mesh2,
+                                                               const Span<int> verts1_to_set,
+                                                               const Span<int> verts2_to_set,
+                                                               MutableSpan<int> r_edges1_to_set,
+                                                               MutableSpan<int> r_edges2_to_set,
+                                                               MutableSpan<int> r_edge_set_ids,
+                                                               MutableSpan<int> r_edge_set_sizes)
+{
+  /* At the start, all the edges are in the same set. */
+  std::iota(r_edges1_to_set.begin(), r_edges1_to_set.end(), 0);
+  std::iota(r_edges2_to_set.begin(), r_edges2_to_set.end(), 0);
+  r_edge_set_ids.fill(0);
+  r_edge_set_sizes.fill(r_edge_set_ids.size());
+
+  AttributeAccessor mesh1_attributes = mesh1.attributes();
+  AttributeAccessor mesh2_attributes = mesh2.attributes();
+  /* We only need the ids from one mesh, since we know they have the same attributes. */
+  Set<AttributeIDRef> attribute_ids = mesh1_attributes.all_ids();
+
+  /* We need to handle this attribute separately. */
+  attribute_ids.remove(".edge_verts");
+  /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
+  Array<OrderedEdge> edges1(mesh1.totedge, NoInitialization());
+  Array<OrderedEdge> edges2(mesh2.totedge, NoInitialization());
+  edges_from_vertex_sets(mesh1.edges(), verts1_to_set, edges1);
+  edges_from_vertex_sets(mesh2.edges(), verts2_to_set, edges2);
+  sort_indices(r_edges1_to_set, edges1.as_span());
+  sort_indices(r_edges2_to_set, edges2.as_span());
+  const bool attributes_line_up = update_set_ids(
+      r_edge_set_ids, edges1.as_span(), edges2.as_span());
+  if (!attributes_line_up) {
+    return MeshMismatch::EdgeAttributes;
+  }
+  update_set_sizes(r_edge_set_ids, r_edge_set_sizes);
+
+  for (const AttributeIDRef &id : attribute_ids) {
+    GAttributeReader reader1 = mesh1_attributes.lookup(id);
+    GAttributeReader reader2 = mesh2_attributes.lookup(id);
+    if (reader1.domain != ATTR_DOMAIN_EDGE) {
+      /* We only look at edge attributes here. */
+      continue;
+    }
+
+    std::optional<MeshMismatch> mismatch = {};
+
+    attribute_math::convert_to_static_type(reader1.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArraySpan<T> values1 = reader1.varray.typed<T>();
+      const VArraySpan<T> values2 = reader2.varray.typed<T>();
+
+      sort_per_set_based_on_attributes(
+          r_edge_set_sizes, r_edges1_to_set, r_edges2_to_set, values1, values2);
+
+      const bool attributes_line_up = update_set_ids(r_edge_set_ids, values1, values2);
+      if (!attributes_line_up) {
+        mismatch = MeshMismatch::EdgeAttributes;
+        return;
+      }
+      update_set_sizes(r_edge_set_ids, r_edge_set_sizes);
     });
 
     if (mismatch) {
@@ -384,12 +464,33 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
     return MeshMismatch::NumFaces;
   }
 
+  std::optional<MeshMismatch> mismatch = {};
+
   Array<int> verts1_to_set(mesh1.totvert);
   Array<int> verts2_to_set(mesh1.totvert);
   Array<int> vertex_set_ids(mesh1.totvert);
   Array<int> vertex_set_sizes(mesh1.totvert);
-  sort_vertices_using_attributes(
+  mismatch = sort_vertices_using_attributes(
       mesh1, mesh2, verts1_to_set, verts2_to_set, vertex_set_ids, vertex_set_sizes);
+  if (mismatch) {
+    return mismatch;
+  };
+
+  Array<int> edges1_to_set(mesh1.totedge);
+  Array<int> edges2_to_set(mesh1.totedge);
+  Array<int> edge_set_ids(mesh1.totedge);
+  Array<int> edge_set_sizes(mesh1.totedge);
+  mismatch = sort_edges_using_attributes(mesh1,
+                                         mesh2,
+                                         verts1_to_set,
+                                         verts2_to_set,
+                                         edges1_to_set,
+                                         edges2_to_set,
+                                         edge_set_ids,
+                                         edge_set_sizes);
+  if (mismatch) {
+    return mismatch;
+  };
 
   /* We first try to construct a bijection between the vertices, since edges, corners and faces are
    * dependent on vertex indices. */
