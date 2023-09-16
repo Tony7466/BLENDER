@@ -278,6 +278,103 @@ static std::optional<MeshMismatch> sort_edges_using_attributes(const Mesh &mesh1
   return {};
 }
 
+static std::optional<MeshMismatch> sort_corners_using_attributes(
+    const Mesh &mesh1,
+    const Mesh &mesh2,
+    const Span<int> verts1_to_set,
+    const Span<int> verts2_to_set,
+    const Span<int> vertex_set_ids,
+    const Span<int> edges1_to_set,
+    const Span<int> edges2_to_set,
+    const Span<int> edge_set_ids,
+    MutableSpan<int> r_corners1_to_set,
+    MutableSpan<int> r_corners2_to_set,
+    MutableSpan<int> r_corner_set_ids,
+    MutableSpan<int> r_corner_set_sizes)
+{
+  /* At the start, all the corners are in the same set. */
+  std::iota(r_corners1_to_set.begin(), r_corners1_to_set.end(), 0);
+  std::iota(r_corners2_to_set.begin(), r_corners2_to_set.end(), 0);
+  r_corner_set_ids.fill(0);
+  r_corner_set_sizes.fill(r_corner_set_ids.size());
+
+  AttributeAccessor mesh1_attributes = mesh1.attributes();
+  AttributeAccessor mesh2_attributes = mesh2.attributes();
+  /* We only need the ids from one mesh, since we know they have the same attributes. */
+  Set<AttributeIDRef> attribute_ids = mesh1_attributes.all_ids();
+
+  /* We need to handle these attributes separately. */
+  attribute_ids.remove(".corner_vert");
+  attribute_ids.remove(".corner_edge");
+
+  /* Sort based on corner vertices. */
+  const Span<int> corner_verts1 = mesh1.corner_verts();
+  const Span<int> corner_verts2 = mesh2.corner_verts();
+  std::stable_sort(r_corners1_to_set.begin(), r_corners1_to_set.end(), [&](int i1, int i2) {
+    return vertex_set_ids[verts1_to_set[corner_verts1[i1]]] <
+           vertex_set_ids[verts1_to_set[corner_verts1[i2]]];
+  });
+  std::stable_sort(r_corners2_to_set.begin(), r_corners2_to_set.end(), [&](int i1, int i2) {
+    return vertex_set_ids[verts2_to_set[corner_verts2[i1]]] <
+           vertex_set_ids[verts2_to_set[corner_verts2[i2]]];
+  });
+  bool attributes_line_up = update_set_ids(r_corner_set_ids, corner_verts1, corner_verts2);
+  if (!attributes_line_up) {
+    return MeshMismatch::CornerAttributes;
+  }
+  update_set_sizes(r_corner_set_ids, r_corner_set_sizes);
+
+  /* Sort based on corner edges. */
+  const Span<int> corner_edges1 = mesh1.corner_edges();
+  const Span<int> corner_edges2 = mesh2.corner_edges();
+
+  std::stable_sort(r_corners1_to_set.begin(), r_corners1_to_set.end(), [&](int i1, int i2) {
+    return edge_set_ids[edges1_to_set[corner_edges1[i1]]] <
+           edge_set_ids[edges1_to_set[corner_edges1[i2]]];
+  });
+  std::stable_sort(r_corners2_to_set.begin(), r_corners2_to_set.end(), [&](int i1, int i2) {
+    return edge_set_ids[edges2_to_set[corner_edges2[i1]]] <
+           edge_set_ids[edges2_to_set[corner_edges2[i2]]];
+  });
+  attributes_line_up = update_set_ids(r_corner_set_ids, corner_verts1, corner_verts2);
+  if (!attributes_line_up) {
+    return MeshMismatch::CornerAttributes;
+  }
+  update_set_sizes(r_corner_set_ids, r_corner_set_sizes);
+
+  for (const AttributeIDRef &id : attribute_ids) {
+    GAttributeReader reader1 = mesh1_attributes.lookup(id);
+    GAttributeReader reader2 = mesh2_attributes.lookup(id);
+    if (reader1.domain != ATTR_DOMAIN_EDGE) {
+      /* We only look at corner attributes here. */
+      continue;
+    }
+
+    std::optional<MeshMismatch> mismatch = {};
+
+    attribute_math::convert_to_static_type(reader1.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArraySpan<T> values1 = reader1.varray.typed<T>();
+      const VArraySpan<T> values2 = reader2.varray.typed<T>();
+
+      sort_per_set_based_on_attributes(
+          r_corner_set_sizes, r_corners1_to_set, r_corners2_to_set, values1, values2);
+
+      const bool attributes_line_up = update_set_ids(r_corner_set_ids, values1, values2);
+      if (!attributes_line_up) {
+        mismatch = MeshMismatch::EdgeAttributes;
+        return;
+      }
+      update_set_sizes(r_corner_set_ids, r_corner_set_sizes);
+    });
+
+    if (mismatch) {
+      return mismatch;
+    }
+  }
+  return {};
+}
+
 /**
  * Tries to construct a (bijective) mapping from the vertices of the first mesh to the
  * vertices of the second mesh, such that:
@@ -491,6 +588,26 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                          edges2_to_set,
                                          edge_set_ids,
                                          edge_set_sizes);
+  if (mismatch) {
+    return mismatch;
+  };
+
+  Array<int> corners1_to_set(mesh1.totloop);
+  Array<int> corners2_to_set(mesh1.totloop);
+  Array<int> corner_set_ids(mesh1.totloop);
+  Array<int> corner_set_sizes(mesh1.totloop);
+  mismatch = sort_corners_using_attributes(mesh1,
+                                           mesh2,
+                                           verts1_to_set,
+                                           verts2_to_set,
+                                           vertex_set_ids,
+                                           edges1_to_set,
+                                           edges2_to_set,
+                                           edge_set_ids,
+                                           corners1_to_set,
+                                           corners2_to_set,
+                                           corner_set_ids,
+                                           corner_set_sizes);
   if (mismatch) {
     return mismatch;
   };
