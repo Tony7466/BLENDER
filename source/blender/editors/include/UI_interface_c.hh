@@ -1757,6 +1757,7 @@ typedef enum uiTooltipStyle {
   UI_TIP_STYLE_HEADER,     /* Header text. */
   UI_TIP_STYLE_MONO,       /* Mono-spaced text. */
   UI_TIP_STYLE_IMAGE,      /* Image field. */
+  UI_TIP_STYLE_SPACER,     /* Padding to separate sections. */
 } uiTooltipStyle;
 
 typedef enum uiTooltipColorID {
@@ -1782,8 +1783,7 @@ void UI_tooltip_text_field_add(struct uiTooltipData *data,
                                char *text,
                                char *suffix,
                                const uiTooltipStyle style,
-                               const uiTooltipColorID color_id,
-                               const bool is_pad = false) ATTR_NONNULL(1);
+                               const uiTooltipColorID color_id) ATTR_NONNULL(1);
 
 /**
  * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
