@@ -2916,9 +2916,34 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *input_bsocket : bnode.input_sockets()) {
       const int input_index = input_bsocket->index();
-      graph_params.usage_by_bsocket.add(
-          input_bsocket,
-          &lf_group_node.output(group_lf_graph_info->function.outputs.input_usages[input_index]));
+      const InputUsageHint &input_usage_hint =
+          group_lf_graph_info->mapping.group_input_usage_hints[input_index];
+      switch (input_usage_hint.type) {
+        case InputUsageHintType::Never: {
+          /* Nothing to do. */
+          break;
+        }
+        case InputUsageHintType::DependsOnOutput: {
+          Vector<lf::OutputSocket *> output_usages;
+          for (const int i : input_usage_hint.output_dependencies) {
+            if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
+                    &bnode.output_socket(i), nullptr))
+            {
+              output_usages.append(lf_socket);
+            }
+          }
+          graph_params.usage_by_bsocket.add(input_bsocket,
+                                            this->or_socket_usages(output_usages, graph_params));
+          break;
+        }
+        case InputUsageHintType::DynamicSocket: {
+          graph_params.usage_by_bsocket.add(
+              input_bsocket,
+              &lf_group_node.output(
+                  group_lf_graph_info->function.outputs.input_usages[input_index]));
+          break;
+        }
+      }
     }
 
     for (const bNodeSocket *output_bsocket : bnode.output_sockets()) {
@@ -3545,13 +3570,26 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::OutputSocket *lf_socket = this->or_socket_usages(target_usages, graph_params);
       lf::InputSocket *lf_group_output = const_cast<lf::InputSocket *>(
           group_input_usage_sockets_[i]);
+      InputUsageHint input_usage_hint;
       if (lf_socket == nullptr) {
         static const bool static_false = false;
         lf_group_output->set_default_value(&static_false);
+        input_usage_hint.type = InputUsageHintType::Never;
       }
       else {
         graph_params.lf_graph.add_link(*lf_socket, *lf_group_output);
+        if (lf_socket->node().is_interface()) {
+          /* Can support slightly more complex cases where it depends on more than one output in
+           * the future. */
+          input_usage_hint.type = InputUsageHintType::DependsOnOutput;
+          input_usage_hint.output_dependencies = {
+              group_output_used_sockets_.first_index_of(lf_socket)};
+        }
+        else {
+          input_usage_hint.type = InputUsageHintType::DynamicSocket;
+        }
       }
+      lf_graph_info_->mapping.group_input_usage_hints.append(std::move(input_usage_hint));
     }
   }
 

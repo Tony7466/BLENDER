@@ -226,10 +226,37 @@ struct GeoNodesLFLocalUserData : public lf::LocalUserData {
 };
 
 /**
+ * In the general case, this is #DynamicSocket. That means that to determine if a node group will
+ * use a particular input, it has to be partially executed.
+ *
+ * In other cases, it's not necessary to look into the node group to determine if an input is
+ * necessary.
+ */
+enum class InputUsageHintType {
+  /** The input socket is never used. */
+  Never,
+  /** The input socket is used when a subset of the outputs is used. */
+  DependsOnOutput,
+  /** Can't determine statically if the input is used, check the corresponding output socket. */
+  DynamicSocket,
+};
+
+struct InputUsageHint {
+  InputUsageHintType type = InputUsageHintType::DependsOnOutput;
+  /** Used in depends-on-output mode. */
+  Vector<int> output_dependencies;
+};
+
+/**
  * Contains the mapping between the #bNodeTree and the corresponding lazy-function graph.
  * This is *not* a one-to-one mapping.
  */
 struct GeometryNodeLazyFunctionGraphMapping {
+  /**
+   * This is an optimization to avoid partially evaluating a node group just to figure out which
+   * inputs are needed.
+   */
+  Vector<InputUsageHint> group_input_usage_hints;
   /**
    * A mapping used for logging intermediate values.
    */
