@@ -1291,7 +1291,9 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_range(prop, -1.0f, 1.0f);
   RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
-  RNA_def_property_ui_text(prop, "Character Slant", "Change to the slant of the characters");
+  RNA_def_property_ui_text(prop,
+                           "Character Slant",
+                           "Slant of the characters. Use negative values for a rightward slant.");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "character_width", PROP_FLOAT, PROP_NONE);
