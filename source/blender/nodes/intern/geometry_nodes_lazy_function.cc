@@ -992,15 +992,9 @@ class LazyFunctionForGroupNode : public LazyFunction {
     graph_outputs.extend(group_lf_graph_info.mapping.standard_group_output_sockets);
     /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
     for (const int i : group_node.input_sockets().index_range()) {
-      const InputUsageHint &input_usage_hint =
-          group_lf_graph_info.mapping.group_input_usage_hints[i];
-      if (input_usage_hint.type == InputUsageHintType::DynamicSocket) {
-        const lf::InputSocket *lf_socket =
-            group_lf_graph_info.mapping.group_input_usage_sockets[i];
-        lf_output_for_input_bsocket_usage_.add_new(i,
-                                                   graph_outputs.append_and_get_index(lf_socket));
-        outputs_.append_as("Input is Used", CPPType::get<bool>());
-      }
+      const lf::InputSocket *lf_socket = group_lf_graph_info.mapping.group_input_usage_sockets[i];
+      lf_output_for_input_bsocket_usage_.add_new(i, graph_outputs.append_and_get_index(lf_socket));
+      outputs_.append_as("Input is Used", CPPType::get<bool>());
     }
 
     lf_logger_.emplace(group_lf_graph_info);
@@ -2935,33 +2929,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *input_bsocket : bnode.input_sockets()) {
       const int input_index = input_bsocket->index();
-      const InputUsageHint &input_usage_hint =
-          group_lf_graph_info->mapping.group_input_usage_hints[input_index];
-      switch (input_usage_hint.type) {
-        case InputUsageHintType::Never: {
-          /* Nothing to do. */
-          break;
-        }
-        case InputUsageHintType::DependsOnOutput: {
-          Vector<lf::OutputSocket *> output_usages;
-          for (const int i : input_usage_hint.output_dependencies) {
-            if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
-                    &bnode.output_socket(i), nullptr))
-            {
-              output_usages.append(lf_socket);
-            }
-          }
-          graph_params.usage_by_bsocket.add(input_bsocket,
-                                            this->or_socket_usages(output_usages, graph_params));
-          break;
-        }
-        case InputUsageHintType::DynamicSocket: {
-          graph_params.usage_by_bsocket.add(
-              input_bsocket,
-              &lf_group_node.output(fn.lf_output_for_input_bsocket_usage_.lookup(input_index)));
-          break;
-        }
-      }
+      graph_params.usage_by_bsocket.add(
+          input_bsocket,
+          &lf_group_node.output(fn.lf_output_for_input_bsocket_usage_.lookup(input_index)));
     }
 
     for (const bNodeSocket *output_bsocket : bnode.output_sockets()) {
@@ -3588,26 +3558,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::OutputSocket *lf_socket = this->or_socket_usages(target_usages, graph_params);
       lf::InputSocket *lf_group_output = const_cast<lf::InputSocket *>(
           mapping_->group_input_usage_sockets[i]);
-      InputUsageHint input_usage_hint;
       if (lf_socket == nullptr) {
         static const bool static_false = false;
         lf_group_output->set_default_value(&static_false);
-        input_usage_hint.type = InputUsageHintType::Never;
       }
       else {
         graph_params.lf_graph.add_link(*lf_socket, *lf_group_output);
-        if (lf_socket->node().is_interface()) {
-          /* Can support slightly more complex cases where it depends on more than one output in
-           * the future. */
-          input_usage_hint.type = InputUsageHintType::DependsOnOutput;
-          input_usage_hint.output_dependencies = {
-              mapping_->group_output_used_sockets.first_index_of(lf_socket)};
-        }
-        else {
-          input_usage_hint.type = InputUsageHintType::DynamicSocket;
-        }
       }
-      lf_graph_info_->mapping.group_input_usage_hints.append(std::move(input_usage_hint));
     }
   }
 
