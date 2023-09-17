@@ -939,12 +939,6 @@ class LazyFunctionForGroupNode : public LazyFunction {
   };
 
  public:
-  /**
-   * For every input bsocket there is a corresponding boolean output that indicates whether that
-   * input is used.
-   */
-  Map<int, int> lf_output_for_input_bsocket_usage_;
-
   LazyFunctionForGroupNode(const bNode &group_node,
                            const GeometryNodesLazyFunctionGraphInfo &group_lf_graph_info,
                            GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info)
@@ -977,12 +971,6 @@ class LazyFunctionForGroupNode : public LazyFunction {
       const bNodeSocket &output_bsocket = group_node_.output_socket(output_index);
       own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
           [output_bsocket.index_in_all_outputs()] = lf_index;
-    }
-
-    /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
-    for (const int i : group_node.input_sockets().index_range()) {
-      lf_output_for_input_bsocket_usage_.add_new(
-          i, group_lf_graph_info.function.outputs.input_usages[i]);
     }
   }
 
@@ -2930,7 +2918,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const int input_index = input_bsocket->index();
       graph_params.usage_by_bsocket.add(
           input_bsocket,
-          &lf_group_node.output(fn.lf_output_for_input_bsocket_usage_.lookup(input_index)));
+          &lf_group_node.output(group_lf_graph_info->function.outputs.input_usages[input_index]));
     }
 
     for (const bNodeSocket *output_bsocket : bnode.output_sockets()) {
