@@ -42,6 +42,7 @@ static void node_composit_init_keyingscreen(const bContext *C, PointerRNA *ptr)
 
   NodeKeyingScreenData *data = MEM_cnew<NodeKeyingScreenData>(__func__);
   node->storage = data;
+  data->smoothness = 0.2;
 
   const Scene *scene = CTX_data_scene(C);
   if (scene->clip) {
@@ -78,6 +79,8 @@ static void node_composit_buts_keyingscreen(uiLayout *layout, bContext *C, Point
     col = uiLayoutColumn(layout, true);
     uiItemPointerR(col, ptr, "tracking_object", &tracking_ptr, "objects", "", ICON_OBJECT_DATA);
   }
+
+  uiItemR(layout, ptr, "smoothness", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 using namespace blender::realtime_compositor;
