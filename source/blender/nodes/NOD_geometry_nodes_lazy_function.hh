@@ -306,7 +306,7 @@ struct GeometryNodesGroupFunction {
     struct {
       IndexRange range;
       Vector<int> geometry_outputs;
-    } attributes_to_propatate;
+    } attributes_to_propagate;
   } inputs;
 
   struct {

@@ -928,8 +928,7 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
 class LazyFunctionForGroupNode : public LazyFunction {
  private:
   const bNode &group_node_;
-  const GeometryNodesLazyFunctionGraphInfo &group_lf_graph_info_;
-  const GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info_;
+  const LazyFunction &group_lazy_function_;
   bool has_many_nodes_ = false;
 
   struct Storage {
@@ -942,12 +941,12 @@ class LazyFunctionForGroupNode : public LazyFunction {
   LazyFunctionForGroupNode(const bNode &group_node,
                            const GeometryNodesLazyFunctionGraphInfo &group_lf_graph_info,
                            GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info)
-      : group_node_(group_node),
-        group_lf_graph_info_(group_lf_graph_info),
-        own_lf_graph_info_(own_lf_graph_info)
+      : group_node_(group_node), group_lazy_function_(*group_lf_graph_info.function.function)
   {
     debug_name_ = group_node.name;
     allow_missing_requested_inputs_ = true;
+
+    /* This wrapper has the same interface as the actual underlying node group. */
     inputs_ = group_lf_graph_info.function.function->inputs();
     outputs_ = group_lf_graph_info.function.function->outputs();
 
@@ -962,12 +961,12 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
     /* Add an attribute set input for every output geometry socket that can propagate attributes
      * from inputs. */
-    for (const int i : group_lf_graph_info.function.inputs.attributes_to_propatate.geometry_outputs
+    for (const int i : group_lf_graph_info.function.inputs.attributes_to_propagate.geometry_outputs
                            .index_range())
     {
-      const int lf_index = group_lf_graph_info.function.inputs.attributes_to_propatate.range[i];
+      const int lf_index = group_lf_graph_info.function.inputs.attributes_to_propagate.range[i];
       const int output_index =
-          group_lf_graph_info.function.inputs.attributes_to_propatate.geometry_outputs[i];
+          group_lf_graph_info.function.inputs.attributes_to_propagate.geometry_outputs[i];
       const bNodeSocket &output_bsocket = group_node_.output_socket(output_index);
       own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
           [output_bsocket.index_in_all_outputs()] = lf_index;
@@ -1004,20 +1003,20 @@ class LazyFunctionForGroupNode : public LazyFunction {
     lf::Context group_context{
         storage->graph_executor_storage, &group_user_data, &group_local_user_data};
 
-    group_lf_graph_info_.function.function->execute(params, group_context);
+    group_lazy_function_.execute(params, group_context);
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
   {
     Storage *s = allocator.construct<Storage>().release();
-    s->graph_executor_storage = group_lf_graph_info_.function.function->init_storage(allocator);
+    s->graph_executor_storage = group_lazy_function_.init_storage(allocator);
     return s;
   }
 
   void destruct_storage(void *storage) const override
   {
     Storage *s = static_cast<Storage *>(storage);
-    group_lf_graph_info_.function.function->destruct_storage(s->graph_executor_storage);
+    group_lazy_function_.destruct_storage(s->graph_executor_storage);
     std::destroy_at(s);
   }
 
@@ -1743,10 +1742,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (auto [output_index, lf_socket] : attribute_set_by_geometry_output_.items()) {
       lf_graph_inputs.append(lf_socket);
-      lf_graph_info_->function.inputs.attributes_to_propatate.geometry_outputs.append(
+      lf_graph_info_->function.inputs.attributes_to_propagate.geometry_outputs.append(
           output_index);
     }
-    lf_graph_info_->function.inputs.attributes_to_propatate.range =
+    lf_graph_info_->function.inputs.attributes_to_propagate.range =
         lf_graph_inputs.index_range().take_back(attribute_set_by_geometry_output_.size());
 
     lf_graph_outputs.extend(standard_group_output_sockets_);
