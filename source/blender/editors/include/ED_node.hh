@@ -33,4 +33,13 @@ void node_insert_on_link_flags_clear(bNodeTree &node_tree);
  */
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale);
 
+/**
+ * Move socket default from \a src (input socket) to locations specified by \a dst (output socket).
+ * Result value moved in specific location. (potentially multiple group nodes socket values, if \a
+ * dst is a group input node).
+ * \note Conceptually, the effect should be such that the evaluation of
+ * this graph again returns the value in src.
+ */
+void node_socket_move_default_value(bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst);
+
 }  // namespace blender::ed::space_node

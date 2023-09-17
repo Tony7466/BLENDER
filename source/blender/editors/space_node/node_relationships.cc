@@ -11,6 +11,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_node_types.h"
 
+#include "BLI_cpp_types.hh"
 #include "BLI_easing.h"
 #include "BLI_math_geom.h"
 #include "BLI_stack.hh"
@@ -24,6 +25,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
+#include "BKE_type_conversions.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_render.hh"
@@ -67,6 +69,80 @@ struct NodeInsertOfsData {
 };
 
 namespace blender::ed::space_node {
+
+/**
+ * Type of value storage related with socket is the same.
+ * \param socket: Node can have multiple sockets & storages pairs.
+ */
+static void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
+{
+  if (!socket.is_output()) {
+    return nullptr;
+  }
+
+  switch (node.type) {
+    case FN_NODE_INPUT_BOOL:
+      return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
+    case FN_NODE_INPUT_INT:
+      return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
+    case FN_NODE_INPUT_VECTOR:
+      return &reinterpret_cast<NodeInputVector *>(node.storage)->vector;
+    case FN_NODE_INPUT_COLOR:
+      return &reinterpret_cast<NodeInputColor *>(node.storage)->color;
+    case GEO_NODE_IMAGE:
+      return &node.id;
+    default:
+      break;
+  }
+
+  return nullptr;
+}
+
+void node_socket_move_default_value(bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst)
+{
+  tree.ensure_topology_cache();
+
+  bNode &dst_node = dst.owner_node();
+  bNode &src_node = src.owner_node();
+
+  const CPPType &src_type = *src.typeinfo->base_cpp_type;
+  const CPPType &dst_type = *dst.typeinfo->base_cpp_type;
+
+  const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
+
+  if (src.is_multi_input()) {
+    /* Multi input sockets no have value. */
+    return;
+  }
+  if (ELEM(NODE_REROUTE, dst_node.type, src_node.type)) {
+    /* Reroute node can't have ownership of socket value directly. */
+    return;
+  }
+  if (&src_type != &dst_type) {
+    if (!convert.is_convertible(src_type, dst_type)) {
+      return;
+    }
+  }
+
+  void *src_value = bke::socket_value_storage(src);
+  void *dst_value = node_static_value_storage_for(dst_node, dst);
+  if (!dst_value || !src_value) {
+    return;
+  }
+
+  convert.convert_to_uninitialized(src_type, dst_type, src_value, dst_value);
+
+  src_type.destruct(src_value);
+  if (ELEM(eNodeSocketDatatype(src.type),
+           SOCK_COLLECTION,
+           SOCK_IMAGE,
+           SOCK_MATERIAL,
+           SOCK_TEXTURE,
+           SOCK_OBJECT))
+  {
+    src_type.value_initialize(src_value);
+  }
+}
 
 static void clear_picking_highlight(ListBase *links)
 {

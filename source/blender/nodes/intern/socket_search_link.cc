@@ -14,6 +14,8 @@
 #include "NOD_node_declaration.hh"
 #include "NOD_socket_search_link.hh"
 
+#include "ED_node.hh"
+
 namespace blender::nodes {
 
 void GatherLinkSearchOpParams::add_item(std::string socket_name,
@@ -66,7 +68,7 @@ void LinkSearchOpParams::connect_available_socket(bNode &new_node, StringRef soc
   if (in_out == SOCK_OUT) {
     /* If the old socket already contained a value, then transfer it to a new one, from
      * which this value will get there. */
-    bke::node_socket_move_default_value(*CTX_data_main(&C), node_tree, socket, *new_node_socket);
+    ed::space_node::node_socket_move_default_value(node_tree, socket, *new_node_socket);
   }
 }
 
