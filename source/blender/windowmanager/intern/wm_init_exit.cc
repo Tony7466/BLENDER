@@ -226,6 +226,9 @@ void WM_init(bContext *C, int argc, const char **argv)
   GHOST_CreateSystemPaths();
 
   BKE_addon_pref_type_init();
+
+  BKE_file_handlers_init();
+
   BKE_keyconfig_pref_type_init();
 
   wm_operatortype_init();

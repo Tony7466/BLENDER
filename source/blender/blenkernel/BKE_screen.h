@@ -670,3 +670,42 @@ bool BKE_screen_blend_read_data(struct BlendDataReader *reader, struct bScreen *
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+
+struct bFileExtension {
+  char extension[64];
+};
+
+struct FileHandlerType {
+
+  char idname[BKE_ST_MAXNAME]; /* Unique name. */
+
+  char label[BKE_ST_MAXNAME]; /* For UI text. */
+
+  char import_operator[BKE_ST_MAXNAME]; /* Import operator name, same as #OP_MAX_TYPENAME. */
+
+  /* Check if file handler can be used. */
+  bool (*poll)(const struct bContext *C, FileHandlerType *file_handle_type);
+
+  /* List of file extensions supported by the file handler. */
+  blender::Vector<bFileExtension> file_extensions;
+
+  /** Equivalent to datablocks ID properties. */
+  struct IDProperty *id_properties;
+
+  /* RNA integration */
+  ExtensionRNA rna_ext;
+};
+
+void BKE_file_handlers_init();
+
+void BKE_file_handlers_free();
+
+blender::Span<FileHandlerType *> BKE_file_handlers();
+
+void BKE_file_handler_add(FileHandlerType *file_handler);
+
+void BKE_file_handler_remove(FileHandlerType *file_handler);
+
+#endif
