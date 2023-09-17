@@ -932,7 +932,7 @@ class LazyFunctionForGroupNode : public LazyFunction {
   bool has_many_nodes_ = false;
 
   struct Storage {
-    void *graph_executor_storage = nullptr;
+    void *group_storage = nullptr;
     /* To avoid computing the hash more than once. */
     std::optional<ComputeContextHash> context_hash_cache;
   };
@@ -1000,8 +1000,7 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
     GeoNodesLFLocalUserData group_local_user_data{group_user_data};
 
-    lf::Context group_context{
-        storage->graph_executor_storage, &group_user_data, &group_local_user_data};
+    lf::Context group_context{storage->group_storage, &group_user_data, &group_local_user_data};
 
     group_lazy_function_.execute(params, group_context);
   }
@@ -1009,20 +1008,30 @@ class LazyFunctionForGroupNode : public LazyFunction {
   void *init_storage(LinearAllocator<> &allocator) const override
   {
     Storage *s = allocator.construct<Storage>().release();
-    s->graph_executor_storage = group_lazy_function_.init_storage(allocator);
+    s->group_storage = group_lazy_function_.init_storage(allocator);
     return s;
   }
 
   void destruct_storage(void *storage) const override
   {
     Storage *s = static_cast<Storage *>(storage);
-    group_lazy_function_.destruct_storage(s->graph_executor_storage);
+    group_lazy_function_.destruct_storage(s->group_storage);
     std::destroy_at(s);
   }
 
   std::string name() const override
   {
     return fmt::format(TIP_("Group '{}' ({})"), group_node_.id->name + 2, group_node_.name);
+  }
+
+  std::string input_name(const int i) const override
+  {
+    return group_lazy_function_.input_name(i);
+  }
+
+  std::string output_name(const int i) const override
+  {
+    return group_lazy_function_.output_name(i);
   }
 };
 
@@ -2277,7 +2286,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
