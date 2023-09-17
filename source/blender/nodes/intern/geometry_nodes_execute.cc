@@ -586,8 +586,12 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   nodes::GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
   nodes::GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
 
-  lf::GraphExecutor graph_executor{
-      lf_graph_info.graph, graph_inputs, graph_outputs, &lf_logger, &lf_side_effect_provider};
+  lf::GraphExecutor graph_executor{lf_graph_info.graph,
+                                   graph_inputs,
+                                   graph_outputs,
+                                   &lf_logger,
+                                   &lf_side_effect_provider,
+                                   nullptr};
 
   nodes::GeoNodesLFUserData user_data;
   fill_user_data(user_data);
@@ -597,6 +601,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   LinearAllocator<> allocator;
   Vector<GMutablePointer> inputs_to_destruct;
 
+  btree.ensure_interface_cache();
   int input_index = -1;
   for (const int i : btree.interface_inputs().index_range()) {
     input_index++;
@@ -668,7 +673,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const bool use_bool_for_use_attribute,
                                             IDProperty &properties)
 {
-  tree.ensure_topology_cache();
+  tree.ensure_interface_cache();
   const Span<const bNodeTreeInterfaceSocket *> tree_inputs = tree.interface_inputs();
   for (const int i : tree_inputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_inputs[i];
