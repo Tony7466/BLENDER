@@ -2589,7 +2589,7 @@ static void *socket_value_storage(bNodeSocket &socket)
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_ROTATION:
-      return &socket.default_value_typed<bNodeSocketValueRotation>()->value;
+      return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
     case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
