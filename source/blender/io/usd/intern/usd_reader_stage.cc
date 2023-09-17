@@ -15,6 +15,7 @@
 #include "usd_reader_skeleton.h"
 #include "usd_reader_volume.h"
 #include "usd_reader_xform.h"
+#include "usd_reader_pointinstancer.h"
 
 #include <pxr/pxr.h>
 #include <pxr/usd/usd/primRange.h>
@@ -45,6 +46,7 @@
 #include <pxr/usd/usdGeom/cube.h>
 #include <pxr/usd/usdGeom/cylinder.h>
 #include <pxr/usd/usdGeom/sphere.h>
+#include <pxr/usd/usdGeom/pointInstancer.h>
 
 #include <iostream>
 
@@ -87,6 +89,9 @@ bool USDStageReader::is_primitive_prim(const pxr::UsdPrim &prim) const
 USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim,
                                                         pxr::UsdGeomXformCache *xf_cache)
 {
+  if (prim.IsA<pxr::UsdGeomPointInstancer>()) {
+    return new USDPointInstancerReader(prim, params_, settings_);
+  }
   if (params_.use_instancing && prim.IsInstance()) {
     return new USDInstanceReader(prim, params_, settings_);
   }
@@ -391,6 +396,19 @@ void USDStageReader::collect_readers(Main *bmain)
   if (params_.use_instancing) {
     // Collect the scenegraph instance prototypes.
     std::vector<pxr::UsdPrim> protos = stage_->GetPrototypes();
+
+    // Cheap hack: GetPrototypes doesn't include point instancer prototypes so we need to traverse to get those.
+    for (auto prim: stage_->Traverse()) {
+      if (auto point_instancer = pxr::UsdGeomPointInstancer(prim)) {
+        pxr::SdfPathVector paths;
+        point_instancer.GetPrototypesRel().GetTargets(&paths);
+        for (auto path: paths) {
+          if (auto proto_prim = stage_->GetPrimAtPath(path)) {
+            protos.push_back(proto_prim);
+          }
+        }
+      }
+    }
 
     for (const pxr::UsdPrim &proto_prim : protos) {
       std::vector<USDPrimReader *> proto_readers;
