@@ -1,1 +1,2 @@
 Referenced by commit 69bf9db9a41e096288e49bd89ca5a6e2af6a09e5, Tests: update test for change to BLI_str_cursor_step_next_utf8
+Referenced by commit 0464b9fc58864bac7ca7106d8a10d27e323fa0db, Fix selecting between tab (or other control characters) in the UI
