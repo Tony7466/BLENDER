@@ -1664,11 +1664,11 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 };
 
 /**
- * Utility class to build a lazy-function graph based on a geometry nodes tree.
+ * Utility class to build a lazy-function based on a geometry nodes tree.
  * This is mainly a separate class because it makes it easier to have variables that can be
  * accessed by many functions.
  */
-struct GeometryNodesLazyFunctionGraphBuilder {
+struct GeometryNodesLazyFunctionBuilder {
  private:
   const bNodeTree &btree_;
   const aai::AnonymousAttributeInferencingResult &attribute_inferencing_;
@@ -1715,8 +1715,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   friend class UsedSocketVisualizeOptions;
 
  public:
-  GeometryNodesLazyFunctionGraphBuilder(const bNodeTree &btree,
-                                        GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
+  GeometryNodesLazyFunctionBuilder(const bNodeTree &btree,
+                                   GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
       : btree_(btree),
         attribute_inferencing_(*btree.runtime->anonymous_attribute_inferencing),
         scope_(lf_graph_info.scope),
@@ -1737,41 +1737,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->initialize_mapping_arrays();
     this->build_zone_functions();
     this->build_root_graph();
-
-    Vector<const lf::GraphInputSocket *> lf_graph_inputs;
-    Vector<const lf::GraphOutputSocket *> lf_graph_outputs;
-
-    lf_graph_inputs.extend(group_input_sockets_);
-    lf_graph_info_->function.inputs.main = lf_graph_inputs.index_range().take_back(
-        group_input_sockets_.size());
-
-    lf_graph_inputs.extend(group_output_used_sockets_);
-    lf_graph_info_->function.inputs.output_usages = lf_graph_inputs.index_range().take_back(
-        group_output_used_sockets_.size());
-
-    for (auto [output_index, lf_socket] : attribute_set_by_geometry_output_.items()) {
-      lf_graph_inputs.append(lf_socket);
-      lf_graph_info_->function.inputs.attributes_to_propagate.geometry_outputs.append(
-          output_index);
-    }
-    lf_graph_info_->function.inputs.attributes_to_propagate.range =
-        lf_graph_inputs.index_range().take_back(attribute_set_by_geometry_output_.size());
-
-    lf_graph_outputs.extend(standard_group_output_sockets_);
-    lf_graph_info_->function.outputs.main = lf_graph_outputs.index_range().take_back(
-        standard_group_output_sockets_.size());
-
-    lf_graph_outputs.extend(group_input_usage_sockets_);
-    lf_graph_info_->function.outputs.input_usages = lf_graph_outputs.index_range().take_back(
-        group_input_usage_sockets_.size());
-
-    lf_graph_info_->function.function = &scope_.construct<lf::GraphExecutor>(
-        lf_graph_info_->graph,
-        std::move(lf_graph_inputs),
-        std::move(lf_graph_outputs),
-        &scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_),
-        &scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>(),
-        nullptr);
+    this->build_geometry_nodes_group_function();
   }
 
  private:
@@ -2286,10 +2252,52 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
+  }
+
+  /**
+   * Build a lazy-function from the generated graph. This is then the lazy-function that must be
+   * executed by others to run a geometry node group.
+   */
+  void build_geometry_nodes_group_function()
+  {
+    GeometryNodesGroupFunction &function = lf_graph_info_->function;
+
+    Vector<const lf::GraphInputSocket *> lf_graph_inputs;
+    Vector<const lf::GraphOutputSocket *> lf_graph_outputs;
+
+    lf_graph_inputs.extend(group_input_sockets_);
+    function.inputs.main = lf_graph_inputs.index_range().take_back(group_input_sockets_.size());
+
+    lf_graph_inputs.extend(group_output_used_sockets_);
+    function.inputs.output_usages = lf_graph_inputs.index_range().take_back(
+        group_output_used_sockets_.size());
+
+    for (auto [output_index, lf_socket] : attribute_set_by_geometry_output_.items()) {
+      lf_graph_inputs.append(lf_socket);
+      function.inputs.attributes_to_propagate.geometry_outputs.append(output_index);
+    }
+    function.inputs.attributes_to_propagate.range = lf_graph_inputs.index_range().take_back(
+        attribute_set_by_geometry_output_.size());
+
+    lf_graph_outputs.extend(standard_group_output_sockets_);
+    function.outputs.main = lf_graph_outputs.index_range().take_back(
+        standard_group_output_sockets_.size());
+
+    lf_graph_outputs.extend(group_input_usage_sockets_);
+    function.outputs.input_usages = lf_graph_outputs.index_range().take_back(
+        group_input_usage_sockets_.size());
+
+    function.function = &scope_.construct<lf::GraphExecutor>(
+        lf_graph_info_->graph,
+        std::move(lf_graph_inputs),
+        std::move(lf_graph_outputs),
+        &scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_),
+        &scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>(),
+        nullptr);
   }
 
   void build_attribute_set_inputs_outside_of_zones(
@@ -3783,7 +3791,7 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   }
 
   auto lf_graph_info = std::make_unique<GeometryNodesLazyFunctionGraphInfo>();
-  GeometryNodesLazyFunctionGraphBuilder builder{btree, *lf_graph_info};
+  GeometryNodesLazyFunctionBuilder builder{btree, *lf_graph_info};
   builder.build();
 
   lf_graph_info_ptr = std::move(lf_graph_info);
