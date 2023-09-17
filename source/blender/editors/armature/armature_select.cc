@@ -257,7 +257,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(
 
 EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
                                                    uint bases_len,
-                                                   const GPUSelectResult *buffer,
+                                                   const GPUSelectResult *hit_results,
                                                    const int hits,
                                                    bool findunsel,
                                                    bool do_nearest,
@@ -265,12 +265,12 @@ EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
 {
   const bool is_editmode = true;
   return static_cast<EditBone *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, {buffer, hits}, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, {hit_results, hits}, findunsel, do_nearest, r_base));
 }
 
 bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
                                                        uint bases_len,
-                                                       const GPUSelectResult *buffer,
+                                                       const GPUSelectResult *hit_results,
                                                        const int hits,
                                                        bool findunsel,
                                                        bool do_nearest,
@@ -278,19 +278,19 @@ bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
 {
   const bool is_editmode = false;
   return static_cast<bPoseChannel *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, {buffer, hits}, findunsel, do_nearest, r_base));
+      is_editmode, bases, bases_len, {hit_results, hits}, findunsel, do_nearest, r_base));
 }
 
 Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
                                               uint bases_len,
-                                              const GPUSelectResult *buffer,
+                                              const GPUSelectResult *hit_results,
                                               const int hits,
                                               bool findunsel,
                                               bool do_nearest,
                                               Base **r_base)
 {
   bPoseChannel *pchan = ED_armature_pick_pchan_from_selectbuffer(
-      bases, bases_len, buffer, hits, findunsel, do_nearest, r_base);
+      bases, bases_len, hit_results, hits, findunsel, do_nearest, r_base);
   return pchan ? pchan->bone : nullptr;
 }
 
