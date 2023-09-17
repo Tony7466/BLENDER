@@ -27,6 +27,8 @@ endif()
 set(DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/downloads" CACHE STRING "Path for downloaded files")
 
 set(PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages" CACHE PATH "default path for downloaded packages")
+# This option is required to be on to build any of the dependencies. However to support generating the CVE report or the HTML version report the download phase is unnecessary and may be skipped
+option(PACKAGE_DOWNLOAD_SOURCES "Download all sources during configure phase" ON)
 option(PACKAGE_USE_UPSTREAM_SOURCES "Use sources upstream to download the package sources, when OFF the blender mirror will be used" ON)
 
 file(TO_CMAKE_PATH ${DOWNLOAD_DIR} DOWNLOAD_DIR)

@@ -38,7 +38,9 @@ include(cmake/options.cmake)
 # due to the `BLENDER_PLATFORM_ARM` variable being needed.
 include(cmake/versions.cmake)
 include(cmake/boost_build_options.cmake)
-include(cmake/download.cmake)
+if(PACKAGE_DOWNLOAD_SOURCES)
+  include(cmake/download.cmake)
+endif()
 include(cmake/macros.cmake)
 
 if(ENABLE_MSYS2)
