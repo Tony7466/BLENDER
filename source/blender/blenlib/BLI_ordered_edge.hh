@@ -50,6 +50,11 @@ struct OrderedEdge {
     return !(e1 == e2);
   }
 
+  friend std::ostream &operator<<(std::ostream &stream, const OrderedEdge &e)
+  {
+    return stream << "OrderedEdge(" << e.v_low << ", " << e.v_high << ")";
+  }
+
   friend bool operator<(const OrderedEdge &e1, const OrderedEdge &e2)
   {
     if (e1.v_low != e2.v_low) {

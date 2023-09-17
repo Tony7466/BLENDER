@@ -619,6 +619,16 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     return !(a == b);
   }
 
+  friend bool operator<(const VecBase &a, const VecBase &b)
+  {
+    for (int i = 0; i < Size; i++) {
+      if (a[i] != b[i]) {
+        return a[i] < b[i];
+      }
+    }
+    return false;
+  }
+
   /** Misc. */
 
   uint64_t hash() const
