@@ -320,19 +320,6 @@ static void sort_small_groups(const OffsetIndices<int> groups,
   });
 }
 
-static void atomic_a_swap_b(int &a, int &b)
-{
-  int prev_a_state = a;
-  while (true) {
-    const int result = atomic_cas_int32(&a, prev_a_state, b);
-    if (result == b) {
-      break;
-    }
-    prev_a_state = result;
-  }
-  b = prev_a_state;
-}
-
 static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
                                             const OffsetIndices<int> offsets)
 {
@@ -353,7 +340,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
       const int group_index = group_indices[i];
       group_lists[i] = int(i);
       /* Swap current index with any other in list head. */
-      atomic_a_swap_b(lists_ends[group_index], group_lists[i]);
+      atomic_swap_int32(&lists_ends[group_index], &group_lists[i]);
     }
   });
 
