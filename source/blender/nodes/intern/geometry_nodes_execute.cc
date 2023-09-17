@@ -571,11 +571,11 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
       *nodes::ensure_geometry_nodes_lazy_function_graph(btree);
   const nodes::GeometryNodeLazyFunctionGraphMapping &mapping = lf_graph_info.mapping;
 
-  Vector<const lf::OutputSocket *> graph_inputs = mapping.group_input_sockets;
+  Vector<const lf::GraphInputSocket *> graph_inputs = mapping.group_input_sockets;
   graph_inputs.extend(mapping.group_output_used_sockets);
   graph_inputs.extend(mapping.attribute_set_by_geometry_output.values().begin(),
                       mapping.attribute_set_by_geometry_output.values().end());
-  Vector<const lf::InputSocket *> graph_outputs = mapping.standard_group_output_sockets;
+  Vector<const lf::GraphOutputSocket *> graph_outputs = mapping.standard_group_output_sockets;
 
   Array<GMutablePointer> param_inputs(graph_inputs.size());
   Array<GMutablePointer> param_outputs(graph_outputs.size());
@@ -586,8 +586,12 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   nodes::GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
   nodes::GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
 
-  lf::GraphExecutor graph_executor{
-      lf_graph_info.graph, graph_inputs, graph_outputs, &lf_logger, &lf_side_effect_provider};
+  lf::GraphExecutor graph_executor{lf_graph_info.graph,
+                                   graph_inputs,
+                                   graph_outputs,
+                                   &lf_logger,
+                                   &lf_side_effect_provider,
+                                   nullptr};
 
   nodes::GeoNodesLFUserData user_data;
   fill_user_data(user_data);
@@ -632,7 +636,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   }
 
   for (const int i : graph_outputs.index_range()) {
-    const lf::InputSocket &socket = *graph_outputs[i];
+    const lf::GraphOutputSocket &socket = *graph_outputs[i];
     const CPPType &type = socket.type();
     void *buffer = allocator.allocate(type.size(), type.alignment());
     param_outputs[i] = {type, buffer};

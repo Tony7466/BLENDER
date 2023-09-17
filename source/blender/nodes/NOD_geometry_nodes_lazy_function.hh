@@ -128,6 +128,10 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
+struct GeoNodesSideEffectNodes {
+  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> nodes_by_context;
+};
+
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
  */
@@ -145,7 +149,7 @@ struct GeoNodesModifierData {
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
    * the node groups they are contained in).
    */
-  const MultiValueMap<ComputeContextHash, const lf::FunctionNode *> *side_effect_nodes = nullptr;
+  const GeoNodesSideEffectNodes *side_effect_nodes = nullptr;
   /**
    * Controls in which compute contexts we want to log socket values. Logging them in all contexts
    * can result in slowdowns. In the majority of cases, the logged socket values are freed without
@@ -194,13 +198,31 @@ struct GeoNodesLFUserData : public lf::UserData {
 };
 
 struct GeoNodesLFLocalUserData : public lf::LocalUserData {
- public:
+ private:
+  GeoNodesLFUserData &user_data_;
   /**
-   * Thread-local logger for the current node tree in the current compute context.
+   * Thread-local logger for the current node tree in the current compute context. It is only
+   * instantiated when it is actually used and then cached for the current thread.
    */
-  geo_eval_log::GeoTreeLogger *tree_logger = nullptr;
+  mutable std::optional<geo_eval_log::GeoTreeLogger *> tree_logger_;
 
-  GeoNodesLFLocalUserData(GeoNodesLFUserData &user_data);
+ public:
+  GeoNodesLFLocalUserData(GeoNodesLFUserData &user_data) : user_data_(user_data) {}
+
+  /**
+   * Get the current tree logger. This method is not thread-safe, each thread is supposed to have
+   * a separate logger.
+   */
+  geo_eval_log::GeoTreeLogger *try_get_tree_logger() const
+  {
+    if (!tree_logger_.has_value()) {
+      this->ensure_tree_logger();
+    }
+    return *tree_logger_;
+  }
+
+ private:
+  void ensure_tree_logger() const;
 };
 
 /**
@@ -231,29 +253,25 @@ struct InputUsageHint {
  */
 struct GeometryNodeLazyFunctionGraphMapping {
   /**
-   * Contains mapping of sockets for special nodes like group input and group output.
-   */
-  Map<const bNodeSocket *, lf::Socket *> dummy_socket_map;
-  /**
    * The inputs sockets in the graph. Multiple group input nodes are combined into one in the
    * lazy-function graph.
    */
-  Vector<const lf::OutputSocket *> group_input_sockets;
+  Vector<const lf::GraphInputSocket *> group_input_sockets;
   /**
-   * Dummy output sockets that correspond to the active group output node. If there is no such
+   * Interface output sockets that correspond to the active group output node. If there is no such
    * node, defaulted fallback outputs are created.
    */
-  Vector<const lf::InputSocket *> standard_group_output_sockets;
+  Vector<const lf::GraphOutputSocket *> standard_group_output_sockets;
   /**
-   * Dummy boolean sockets that have to be passed in from the outside and indicate whether a
+   * Interface boolean sockets that have to be passed in from the outside and indicate whether a
    * specific output will be used.
    */
-  Vector<const lf::OutputSocket *> group_output_used_sockets;
+  Vector<const lf::GraphInputSocket *> group_output_used_sockets;
   /**
-   * Dummy boolean sockets that can be used as group output that indicate whether a specific input
-   * will be used (this may depend on the used outputs as well as other inputs).
+   * Interface boolean sockets that can be used as group output that indicate whether a specific
+   * input will be used (this may depend on the used outputs as well as other inputs).
    */
-  Vector<const lf::InputSocket *> group_input_usage_sockets;
+  Vector<const lf::GraphOutputSocket *> group_input_usage_sockets;
   /**
    * This is an optimization to avoid partially evaluating a node group just to figure out which
    * inputs are needed.
@@ -263,7 +281,7 @@ struct GeometryNodeLazyFunctionGraphMapping {
    * If the node group propagates attributes from an input geometry to the output, it has to know
    * which attributes should be propagated and which can be removed (for optimization purposes).
    */
-  Map<int, const lf::OutputSocket *> attribute_set_by_geometry_output;
+  Map<int, const lf::GraphInputSocket *> attribute_set_by_geometry_output;
   /**
    * A mapping used for logging intermediate values.
    */
