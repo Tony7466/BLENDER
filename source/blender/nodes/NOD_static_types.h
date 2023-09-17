@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -68,7 +68,7 @@ DefNode(ShaderNode,     SH_NODE_BSDF_GLASS,         def_glass,              "BSD
 DefNode(ShaderNode,     SH_NODE_BSDF_REFRACTION,    def_refraction,         "BSDF_REFRACTION",    BsdfRefraction,   "Refraction BSDF",   "Glossy refraction with sharp or microfacet distribution, typically used for materials that transmit light")
 DefNode(ShaderNode,     SH_NODE_BSDF_TRANSLUCENT,   0,                      "BSDF_TRANSLUCENT",   BsdfTranslucent,  "Translucent BSDF",  "Lambertian diffuse transmission")
 DefNode(ShaderNode,     SH_NODE_BSDF_TRANSPARENT,   0,                      "BSDF_TRANSPARENT",   BsdfTransparent,  "Transparent BSDF",  "Transparency without refraction, passing straight through the surface as if there were no geometry")
-DefNode(ShaderNode,     SH_NODE_BSDF_SHEEN,         def_sheen,              "BSDF_SHEEN",         BsdfSheen,        "Sheen BSDF",        "Reflection for materials such as cloth.\nTypically mixed with other shaders (such as a Diffuse Shader) and is not particularly useful on its own")
+DefNode(ShaderNode,     SH_NODE_BSDF_VELVET,        0,                      "BSDF_VELVET",        BsdfVelvet,       "Velvet BSDF",       "Reflection for materials such as cloth.\nTypically mixed with other shaders (such as a Diffuse Shader) and is not particularly useful on its own")
 DefNode(ShaderNode,     SH_NODE_BSDF_TOON,          def_toon,               "BSDF_TOON",          BsdfToon,         "Toon BSDF",         "Diffuse and Glossy shaders with cartoon light effects")
 DefNode(ShaderNode,     SH_NODE_BSDF_HAIR,          def_hair,               "BSDF_HAIR",          BsdfHair,         "Hair BSDF",         "Reflection and transmission shaders optimized for hair rendering")
 DefNode(ShaderNode,     SH_NODE_BSDF_HAIR_PRINCIPLED,  def_hair_principled, "BSDF_HAIR_PRINCIPLED", BsdfHairPrincipled,  "Principled Hair BSDF", "Physically-based, easy-to-use shader for rendering hair and fur")
@@ -263,10 +263,12 @@ DefNode(TextureNode,    TEX_NODE_PROC+TEX_NOISE, 0,                      "TEX_NO
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_STUCCI, 0,                     "TEX_STUCCI",     TexStucci,        "Stucci",            ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_DISTNOISE, 0,                  "TEX_DISTNOISE",  TexDistNoise,     "Distorted Noise",   ""              )
 
-DefNode(FunctionNode, FN_NODE_ALIGN_EULER_TO_VECTOR, 0, "ALIGN_EULER_TO_VECTOR", AlignEulerToVector, "Align Euler to Vector", "")
+DefNode(FunctionNode, FN_NODE_ALIGN_EULER_TO_VECTOR, def_fn_align_euler_to_vector,"ALIGN_EULER_TO_VECTOR", AlignEulerToVector, "Align Euler to Vector", "")
 DefNode(FunctionNode, FN_NODE_AXIS_ANGLE_TO_ROTATION, 0, "AXIS_ANGLE_TO_ROTATION", AxisAngleToRotation, "Axis Angle to Rotation", "")
+DefNode(FunctionNode, FN_NODE_BOOLEAN_MATH, def_boolean_math,  "BOOLEAN_MATH", BooleanMath, "Boolean Math", "")
+DefNode(FunctionNode, FN_NODE_AXIS_ANGLE_TO_ROTATION, 0, "AXIS_ANGLE_TO_ROTATION", AxisAngleToRotation, "Axis Angle to Rotation", "")
+DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, def_fn_combsep_color, "COMBINE_COLOR", CombineColor, "Combine Color", "")
 DefNode(FunctionNode, FN_NODE_BOOLEAN_MATH, 0, "BOOLEAN_MATH", BooleanMath, "Boolean Math", "")
-DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, 0, "COMBINE_COLOR", CombineColor, "Combine Color", "")
 DefNode(FunctionNode, FN_NODE_QUATERNION_TO_ROTATION, 0, "QUATERNION_TO_ROTATION", QuaternionToRotation, "Quaternion to Rotation", "")
 DefNode(FunctionNode, FN_NODE_COMPARE, 0, "COMPARE", Compare, "Compare", "")
 DefNode(FunctionNode, FN_NODE_EULER_TO_ROTATION, 0, "EULER_TO_ROTATION", EulerToRotation, "Euler to Rotation", "")
