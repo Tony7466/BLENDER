@@ -275,6 +275,21 @@ struct GeometryNodeLazyFunctionGraphMapping {
   Array<int> lf_index_by_bsocket;
 };
 
+struct GeometryNodesGroupFunction {
+  const LazyFunction *function = nullptr;
+
+  struct {
+    IndexRange main;
+    IndexRange output_usages;
+    Map<int, int> attributes_by_output_geometry_index;
+  } inputs;
+
+  struct {
+    IndexRange main;
+    IndexRange input_usages;
+  } outputs;
+};
+
 /**
  * Data that is cached for every #bNodeTree.
  */
@@ -283,6 +298,7 @@ struct GeometryNodesLazyFunctionGraphInfo {
    * Contains resources that need to be freed when the graph is not needed anymore.
    */
   ResourceScope scope;
+  GeometryNodesGroupFunction function;
   /**
    * The actual lazy-function graph.
    */
