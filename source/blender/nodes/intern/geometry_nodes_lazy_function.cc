@@ -2912,28 +2912,18 @@ struct GeometryNodesLazyFunctionBuilder {
       }
     }
 
-    this->build_group_node_socket_usage(bnode, lf_node, graph_params);
+    this->build_group_node_socket_usage(bnode, lf_node, graph_params, *group_lf_graph_info);
   }
 
   void build_group_node_socket_usage(const bNode &bnode,
                                      lf::FunctionNode &lf_group_node,
-                                     BuildGraphParams &graph_params)
+                                     BuildGraphParams &graph_params,
+                                     const GeometryNodesLazyFunctionGraphInfo &group_lf_graph_info)
   {
-    const bNodeTree *bgroup = reinterpret_cast<const bNodeTree *>(bnode.id);
-    if (bgroup == nullptr) {
-      return;
-    }
-    const GeometryNodesLazyFunctionGraphInfo *group_lf_graph_info =
-        ensure_geometry_nodes_lazy_function_graph(*bgroup);
-    if (group_lf_graph_info == nullptr) {
-      return;
-    }
-    const auto &fn = static_cast<const LazyFunctionForGroupNode &>(lf_group_node.function());
-
     for (const bNodeSocket *input_bsocket : bnode.input_sockets()) {
       const int input_index = input_bsocket->index();
       const InputUsageHint &input_usage_hint =
-          group_lf_graph_info->mapping.group_input_usage_hints[input_index];
+          group_lf_graph_info.mapping.group_input_usage_hints[input_index];
       switch (input_usage_hint.type) {
         case InputUsageHintType::Never: {
           /* Nothing to do. */
@@ -2956,7 +2946,7 @@ struct GeometryNodesLazyFunctionBuilder {
           graph_params.usage_by_bsocket.add(
               input_bsocket,
               &lf_group_node.output(
-                  group_lf_graph_info->function.outputs.input_usages[input_index]));
+                  group_lf_graph_info.function.outputs.input_usages[input_index]));
           break;
         }
       }
