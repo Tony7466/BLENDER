@@ -231,31 +231,6 @@ struct GeoNodesLFLocalUserData : public lf::LocalUserData {
  */
 struct GeometryNodeLazyFunctionGraphMapping {
   /**
-   * The inputs sockets in the graph. Multiple group input nodes are combined into one in the
-   * lazy-function graph.
-   */
-  Vector<const lf::GraphInputSocket *> group_input_sockets;
-  /**
-   * Interface output sockets that correspond to the active group output node. If there is no such
-   * node, defaulted fallback outputs are created.
-   */
-  Vector<const lf::GraphOutputSocket *> standard_group_output_sockets;
-  /**
-   * Interface boolean sockets that have to be passed in from the outside and indicate whether a
-   * specific output will be used.
-   */
-  Vector<const lf::GraphInputSocket *> group_output_used_sockets;
-  /**
-   * Interface boolean sockets that can be used as group output that indicate whether a specific
-   * input will be used (this may depend on the used outputs as well as other inputs).
-   */
-  Vector<const lf::GraphOutputSocket *> group_input_usage_sockets;
-  /**
-   * If the node group propagates attributes from an input geometry to the output, it has to know
-   * which attributes should be propagated and which can be removed (for optimization purposes).
-   */
-  Map<int, const lf::GraphInputSocket *> attribute_set_by_geometry_output;
-  /**
    * A mapping used for logging intermediate values.
    */
   MultiValueMap<const lf::Socket *, const bNodeSocket *> bsockets_by_lf_socket_map;
