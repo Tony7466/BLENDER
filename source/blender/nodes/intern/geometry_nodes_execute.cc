@@ -580,6 +580,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   Array<lf::ValueUsage> param_output_usages(num_outputs);
   Array<bool> param_set_outputs(num_outputs, false);
 
+  /* We want to evaluate the main outputs, but don't care about which inputs are used for now. */
   param_output_usages.as_mutable_span().slice(function.outputs.main).fill(lf::ValueUsage::Used);
   param_output_usages.as_mutable_span()
       .slice(function.outputs.input_usages)
@@ -594,6 +595,8 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   Vector<GMutablePointer> inputs_to_destruct;
 
   btree.ensure_interface_cache();
+
+  /* Prepare main inputs. */
   for (const int i : btree.interface_inputs().index_range()) {
     const bNodeTreeInterfaceSocket &interface_socket = *btree.interface_inputs()[i];
     const bNodeSocketType *typeinfo = interface_socket.socket_typeinfo();
@@ -612,6 +615,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     inputs_to_destruct.append({type, value});
   }
 
+  /* Prepare used-outputs inputs. */
   Array<bool> output_used_inputs(btree.interface_outputs().size(), true);
   for (const int i : btree.interface_outputs().index_range()) {
     param_inputs[function.inputs.output_usages[i]] = &output_used_inputs[i];
@@ -624,6 +628,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     param_inputs[function.inputs.attributes_to_propatate.range[i]] = &attributes_to_propagate[i];
   }
 
+  /* Prepare memory for output values. */
   for (const int i : IndexRange(num_outputs)) {
     const lf::Output &lf_output = lazy_function.outputs()[i];
     const CPPType &type = *lf_output.type;
