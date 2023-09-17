@@ -968,11 +968,15 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
     /* Add an attribute set input for every output geometry socket that can propagate attributes
      * from inputs. */
-    for (auto [output_index, lf_index] :
-         group_lf_graph_info.function.inputs.attributes_by_output_geometry_index.items())
+    for (const int i : group_lf_graph_info.function.inputs.attributes_to_propatate.geometry_outputs
+                           .index_range())
     {
+      const int lf_index = group_lf_graph_info.function.inputs.attributes_to_propatate.range[i];
+      const int output_index =
+          group_lf_graph_info.function.inputs.attributes_to_propatate.geometry_outputs[i];
+      const bNodeSocket &output_bsocket = group_node_.output_socket(output_index);
       own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
-          [group_node_.output_socket(output_index).index_in_all_outputs()] = lf_index;
+          [output_bsocket.index_in_all_outputs()] = lf_index;
     }
 
     /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
@@ -1750,9 +1754,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         group_output_used_sockets_.size());
 
     for (auto [output_index, lf_socket] : attribute_set_by_geometry_output_.items()) {
-      lf_graph_info_->function.inputs.attributes_by_output_geometry_index.add(
-          output_index, lf_graph_inputs.append_and_get_index(lf_socket));
+      lf_graph_inputs.append(lf_socket);
+      lf_graph_info_->function.inputs.attributes_to_propatate.geometry_outputs.append(
+          output_index);
     }
+    lf_graph_info_->function.inputs.attributes_to_propatate.range =
+        lf_graph_inputs.index_range().take_back(attribute_set_by_geometry_output_.size());
 
     lf_graph_outputs.extend(standard_group_output_sockets_);
     lf_graph_info_->function.outputs.main = lf_graph_outputs.index_range().take_back(

@@ -256,7 +256,10 @@ struct GeometryNodesGroupFunction {
   struct {
     IndexRange main;
     IndexRange output_usages;
-    Map<int, int> attributes_by_output_geometry_index;
+    struct {
+      IndexRange range;
+      Vector<int> geometry_outputs;
+    } attributes_to_propatate;
   } inputs;
 
   struct {
