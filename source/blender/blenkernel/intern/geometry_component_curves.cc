@@ -10,7 +10,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curve.h"
 #include "BKE_curves.hh"
-#include "BKE_deform.hh"
+#include "BKE_deform.h"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
@@ -358,8 +358,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       static const float default_value = 0.0f;
       return {VArray<float>::ForSingle(default_value, curves->points_num()), ATTR_DOMAIN_POINT};
     }
-    return {VArray<float>::For<VArrayImpl_For_VertexWeights>(dverts, vertex_group_index),
-            ATTR_DOMAIN_POINT};
+    return {bke::varray_for_deform_verts(dverts, vertex_group_index), ATTR_DOMAIN_POINT};
   }
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
@@ -378,8 +377,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       return {};
     }
     MutableSpan<MDeformVert> dverts = curves->deform_verts_for_write();
-    return {VMutableArray<float>::For<VArrayImpl_For_VertexWeights>(dverts, vertex_group_index),
-            ATTR_DOMAIN_POINT};
+    return {bke::varray_for_deform_verts(dverts, vertex_group_index), ATTR_DOMAIN_POINT};
   }
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final

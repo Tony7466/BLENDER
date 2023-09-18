@@ -296,6 +296,10 @@ void BKE_defvert_extract_vgroup_to_faceweights(const struct MDeformVert *dvert,
                                                bool invert_vgroup,
                                                float *r_weights);
 
+namespace blender::bke {
+VArray<float> varray_for_deform_verts(Span<MDeformVert> dverts, const int dvert_index);
+VMutableArray<float> varray_for_deform_verts(MutableSpan<MDeformVert> dverts, int dvert_index);
+}  // namespace blender::bke
 #endif
 
 void BKE_defvert_weight_to_rgb(float r_rgb[3], float weight);
