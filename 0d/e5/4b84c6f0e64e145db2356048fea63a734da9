@@ -5,3 +5,4 @@ Referenced by commit 2db23d38ca4356ddcc6a9152df794ac87ca5304d, Fix #107826: Miss
 Referenced by issue #108120, Regression: User interface graphic artefacts during cycles render
 Referenced by issue #107219, Simulation Nodes: Support anonymous attributes.
 Referenced by issue #112381, Blender deleted my entire projects folder
+Referenced by issue #112477, Reading an attribute from `Capture Attribute` after simulation nodes does not work. Bug?
