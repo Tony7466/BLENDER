@@ -263,7 +263,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_common)
     .additional_info("eevee_shadow_page_metal_tbdr_common")
     .define("PASS_DEPTH_STORE")
     .vertex_out(eevee_shadow_tbdr_store_iface)
-    .fragment_tile_in(0, Type::FLOAT, "in_tile_depth", DualBlend::NONE, 0);
+    .subpass_in(0, Type::FLOAT, "in_tile_depth", 0);
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_u32)
     .do_static_compilation(true)

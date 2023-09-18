@@ -215,7 +215,6 @@ void ShadowPipeline::sync()
     inst_.bind_uniform_data(&tbdr_page_store_ps_);
     tbdr_page_store_ps_.draw_procedural(
         GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
-        
   }
 }
 
