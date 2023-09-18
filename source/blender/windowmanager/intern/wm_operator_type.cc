@@ -573,25 +573,26 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
   BLI_freelistN(&ot->macro);
 }
 
-std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
-{
-  std::string name;
-  if (ot->get_name && properties) {
-    name = ot->get_name(ot, properties);
-  }
-
-  return name.empty() ? std::string(RNA_struct_ui_name(ot->srna)) : name;
-}
-
 std::string WM_operatortype_name_raw(wmOperatorType *ot, PointerRNA *properties)
 {
+  // This may return a translated name.
   std::string name;
-
   if (ot->get_name && properties) {
     name = ot->get_name(ot, properties);
   }
 
   return name.empty() ? std::string(RNA_struct_ui_name_raw(ot->srna)) : name;
+}
+
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
+{
+  // When a get_name() callback is found for an operator, it is its reponsability to return a
+  // translated name.
+  if (ot->get_name && properties) {
+    return WM_operatortype_name_raw(ot, properties);
+  }
+
+  return std::string(RNA_struct_ui_name(ot->srna));
 }
 
 std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
