@@ -292,7 +292,6 @@ static void triangulate_ngons(const Span<float3> positions,
                               const TriangulateNGonMode ngon_mode,
                               const OffsetIndices<int> faces,
                               const int edges_start,
-                              const int corner_map_offset,
                               MutableSpan<int> corner_map,
                               MutableSpan<int2> inner_edges,
                               MutableSpan<int> corner_edges)
@@ -372,8 +371,7 @@ static void triangulate_ngons(const Span<float3> positions,
     for (const int i : ngons.index_range()) {
       const Span<float2> positions_2d = projected_positions.slice(local_corner_offsets[i]);
       const IndexRange tris_range = tris_by_ngon[pos + i];
-      const IndexRange corners = faces[tris_range];
-      MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
+      MutableSpan<int> map = corner_map.slice(tris_range.start() * 3, tris_range.size() * 3);
       BLI_polyfill_calc(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                         positions_2d.size(),
                         1,
@@ -394,7 +392,7 @@ static void triangulate_ngons(const Span<float3> positions,
       const IndexRange tris_range = tris_by_ngon[pos + i];
       const IndexRange edges = edges_by_ngon[pos + i];
       const IndexRange corners = faces[tris_range];
-      MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
+      MutableSpan<int> map = corner_map.slice(tris_range.start() * 3, tris_range.size() * 3);
 
       data.inner_edges.clear();
       calc_inner_triangles(src_corner_verts.slice(src_face),
@@ -411,8 +409,7 @@ static void triangulate_ngons(const Span<float3> positions,
     for (const int i : ngons.index_range()) {
       const IndexRange src_face = src_faces[ngons[i]];
       const IndexRange tris_range = tris_by_ngon[pos + i];
-      const IndexRange corners = faces[tris_range];
-      MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
+      MutableSpan<int> map = corner_map.slice(tris_range.start() * 3, tris_range.size() * 3);
       for (int &vert : map) {
         vert += src_face.start();
       }
@@ -553,10 +550,6 @@ std::optional<Mesh *> mesh_triangulate(
   attributes.add<int>(".corner_vert", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
   attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
 
-  /* All unnaffected corners from unselected faces, shifted to the front of the mesh. */
-  const IndexRange unselected_corners = faces[unselected_range];
-  /* Corners from selected faces that are already triangulated. */
-  const IndexRange copy_tri_corners = faces[copy_tris_range];
   /* Corners from triangulated Ngons. */
   const IndexRange ngon_tri_corners = faces[ngon_tris_range];
   /* Corners from triangulated quads. */
@@ -591,7 +584,6 @@ std::optional<Mesh *> mesh_triangulate(
                       ngon_mode,
                       faces.slice(ngon_tris_range),
                       ngon_edges_range.start(),
-                      unselected_corners.size() + copy_tri_corners.size(),
                       corner_map.as_mutable_span().take_front(ngon_tri_corners.size()),
                       edges.slice(ngon_edges_range),
                       corner_edges);
