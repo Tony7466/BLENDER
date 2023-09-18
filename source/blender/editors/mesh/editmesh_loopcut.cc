@@ -374,6 +374,9 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
 /* called by both init() and exec() */
 static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  /* Check whether both `rv3d` and `event` is present, this way we allow the loopcut operator to
+   * run non-interactively no matter whether the graphical UI is present or not (e.g. from scripts
+   * with UI running, or entirely in the background with `blender -b`). */
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   const bool is_interactive = (rv3d != nullptr) && (event != nullptr);
 
