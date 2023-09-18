@@ -77,7 +77,8 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
 {
   ensure_allocated();
 
-  const VKVertexBuffer &src_vertex_buffer = *unwrap(src);
+  VKVertexBuffer &src_vertex_buffer = *unwrap(src);
+  src_vertex_buffer.upload();
 
   VkBufferCopy region = {};
   region.srcOffset = src_offset;
