@@ -10,6 +10,7 @@
 #  include "scene/pointcloud.h"
 
 #  include "util/progress.h"
+#  include "util/task.h"
 
 #  include "device/metal/bvh.h"
 #  include "device/metal/util.h"
@@ -19,7 +20,7 @@ CCL_NAMESPACE_BEGIN
 #  define BVH_status(...) \
     { \
       string str = string_printf(__VA_ARGS__); \
-      progress.set_substatus(str); \
+      progress->set_substatus(str); \
       metal_printf("%s\n", str.c_str()); \
     }
 
@@ -41,7 +42,7 @@ BVHMetal::~BVHMetal()
   }
 }
 
-bool BVHMetal::build_BLAS_mesh(Progress &progress,
+bool BVHMetal::build_BLAS_mesh(Progress *progress,
                                id<MTLDevice> device,
                                id<MTLCommandQueue> queue,
                                Geometry *const geom,
@@ -204,55 +205,47 @@ bool BVHMetal::build_BLAS_mesh(Progress &progress,
                                            sizeDataType:MTLDataTypeULong];
     }
     [accelEnc endEncoding];
-    [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-      /* free temp resources */
-      [scratchBuf release];
-      [indexBuf release];
-      [posBuf release];
-
-      if (use_fast_trace_bvh) {
-        /* Compact the accel structure */
-        uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
-
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-          id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
-          id<MTLAccelerationStructureCommandEncoder> accelEnc =
-              [accelCommands accelerationStructureCommandEncoder];
-          id<MTLAccelerationStructure> accel = [device
-              newAccelerationStructureWithSize:compressed_size];
-          [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
-                                toAccelerationStructure:accel];
-          [accelEnc endEncoding];
-          [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-            uint64_t allocated_size = [accel allocatedSize];
-            stats.mem_alloc(allocated_size);
-            accel_struct = accel;
-            [accel_uncompressed release];
-            accel_struct_building = false;
-          }];
-          [accelCommands commit];
-        });
-      }
-      else {
-        /* set our acceleration structure to the uncompressed structure */
-        accel_struct = accel_uncompressed;
-
-        uint64_t allocated_size = [accel_struct allocatedSize];
-        stats.mem_alloc(allocated_size);
-        accel_struct_building = false;
-      }
-      [sizeBuf release];
-    }];
-
-    accel_struct_building = true;
     [accelCommands commit];
+    [accelCommands waitUntilCompleted];
+
+    /* free temp resources */
+    [scratchBuf release];
+    [indexBuf release];
+    [posBuf release];
+
+    if (use_fast_trace_bvh) {
+      /* Compact the accel structure */
+      uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
+
+      id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
+      id<MTLAccelerationStructureCommandEncoder> accelEnc =
+          [accelCommands accelerationStructureCommandEncoder];
+      id<MTLAccelerationStructure> accel = [device
+          newAccelerationStructureWithSize:compressed_size];
+      [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
+                            toAccelerationStructure:accel];
+      [accelEnc endEncoding];
+      [accelCommands commit];
+      [accelCommands waitUntilCompleted];
+
+      accel_struct = accel;
+      [accel_uncompressed release];
+    }
+    else {
+      /* set our acceleration structure to the uncompressed structure */
+      accel_struct = accel_uncompressed;
+    }
+    uint64_t allocated_size = [accel_struct allocatedSize];
+    stats.mem_alloc(allocated_size);
+
+    [sizeBuf release];
 
     return true;
   }
-  return false;
+  return true;
 }
 
-bool BVHMetal::build_BLAS_hair(Progress &progress,
+bool BVHMetal::build_BLAS_hair(Progress *progress,
                                id<MTLDevice> device,
                                id<MTLCommandQueue> queue,
                                Geometry *const geom,
@@ -528,56 +521,48 @@ bool BVHMetal::build_BLAS_hair(Progress &progress,
                                            sizeDataType:MTLDataTypeULong];
     }
     [accelEnc endEncoding];
-    [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-      /* free temp resources */
-      [scratchBuf release];
-      [cpBuffer release];
-      [radiusBuffer release];
-      [idxBuffer release];
-
-      if (use_fast_trace_bvh) {
-        uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
-
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-          id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
-          id<MTLAccelerationStructureCommandEncoder> accelEnc =
-              [accelCommands accelerationStructureCommandEncoder];
-          id<MTLAccelerationStructure> accel = [device
-              newAccelerationStructureWithSize:compressed_size];
-          [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
-                                toAccelerationStructure:accel];
-          [accelEnc endEncoding];
-          [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-            uint64_t allocated_size = [accel allocatedSize];
-            stats.mem_alloc(allocated_size);
-            accel_struct = accel;
-            [accel_uncompressed release];
-            accel_struct_building = false;
-          }];
-          [accelCommands commit];
-        });
-      }
-      else {
-        /* set our acceleration structure to the uncompressed structure */
-        accel_struct = accel_uncompressed;
-
-        uint64_t allocated_size = [accel_struct allocatedSize];
-        stats.mem_alloc(allocated_size);
-        accel_struct_building = false;
-      }
-      [sizeBuf release];
-    }];
-
-    accel_struct_building = true;
     [accelCommands commit];
+    [accelCommands waitUntilCompleted];
+    
+    /* free temp resources */
+    [scratchBuf release];
+    [cpBuffer release];
+    [radiusBuffer release];
+    [idxBuffer release];
 
-    return true;
+    if (use_fast_trace_bvh) {
+      uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
+
+      id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
+      id<MTLAccelerationStructureCommandEncoder> accelEnc =
+          [accelCommands accelerationStructureCommandEncoder];
+      id<MTLAccelerationStructure> accel = [device
+          newAccelerationStructureWithSize:compressed_size];
+      [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
+                            toAccelerationStructure:accel];
+      [accelEnc endEncoding];
+      [accelCommands commit];
+      [accelCommands waitUntilCompleted];
+
+      accel_struct = accel;
+      [accel_uncompressed release];
+    }
+    else {
+      /* set our acceleration structure to the uncompressed structure */
+      accel_struct = accel_uncompressed;
+    }
+
+    uint64_t allocated_size = [accel_struct allocatedSize];
+    stats.mem_alloc(allocated_size);
+
+    [sizeBuf release];
   }
+
 #  endif /* MAC_OS_VERSION_14_0 */
-  return false;
+  return true;
 }
 
-bool BVHMetal::build_BLAS_pointcloud(Progress &progress,
+bool BVHMetal::build_BLAS_pointcloud(Progress *progress,
                                      id<MTLDevice> device,
                                      id<MTLCommandQueue> queue,
                                      Geometry *const geom,
@@ -757,58 +742,51 @@ bool BVHMetal::build_BLAS_pointcloud(Progress &progress,
                                            sizeDataType:MTLDataTypeULong];
     }
     [accelEnc endEncoding];
-    [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-      /* free temp resources */
-      [scratchBuf release];
-      [aabbBuf release];
-
-      if (use_fast_trace_bvh) {
-        /* Compact the accel structure */
-        uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
-
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-          id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
-          id<MTLAccelerationStructureCommandEncoder> accelEnc =
-              [accelCommands accelerationStructureCommandEncoder];
-          id<MTLAccelerationStructure> accel = [device
-              newAccelerationStructureWithSize:compressed_size];
-          [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
-                                toAccelerationStructure:accel];
-          [accelEnc endEncoding];
-          [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> /*command_buffer*/) {
-            uint64_t allocated_size = [accel allocatedSize];
-            stats.mem_alloc(allocated_size);
-            accel_struct = accel;
-            [accel_uncompressed release];
-            accel_struct_building = false;
-          }];
-          [accelCommands commit];
-        });
-      }
-      else {
-        /* set our acceleration structure to the uncompressed structure */
-        accel_struct = accel_uncompressed;
-
-        uint64_t allocated_size = [accel_struct allocatedSize];
-        stats.mem_alloc(allocated_size);
-        accel_struct_building = false;
-      }
-      [sizeBuf release];
-    }];
-
-    accel_struct_building = true;
     [accelCommands commit];
-    return true;
+    [accelCommands waitUntilCompleted];
+
+    /* free temp resources */
+    [scratchBuf release];
+    [aabbBuf release];
+
+    if (use_fast_trace_bvh) {
+      /* Compact the accel structure */
+      uint64_t compressed_size = *(uint64_t *)sizeBuf.contents;
+
+      id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
+      id<MTLAccelerationStructureCommandEncoder> accelEnc =
+          [accelCommands accelerationStructureCommandEncoder];
+      id<MTLAccelerationStructure> accel = [device
+          newAccelerationStructureWithSize:compressed_size];
+      [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
+                            toAccelerationStructure:accel];
+      [accelEnc endEncoding];
+      [accelCommands commit];
+      [accelCommands waitUntilCompleted];
+
+      accel_struct = accel;
+      [accel_uncompressed release];
+    }
+    else {
+      /* set our acceleration structure to the uncompressed structure */
+      accel_struct = accel_uncompressed;
+    }
+
+    uint64_t allocated_size = [accel_struct allocatedSize];
+    stats.mem_alloc(allocated_size);
+
+    [sizeBuf release];
   }
-  return false;
+
+  return true;
 }
 
-bool BVHMetal::build_BLAS(Progress &progress,
+bool BVHMetal::build_BLAS(Progress *progress,
                           id<MTLDevice> device,
                           id<MTLCommandQueue> queue,
                           bool refit)
 {
-  if (@available(macos 12.0, *)) {
+  @autoreleasepool {
     assert(objects.size() == 1 && geometry.size() == 1);
 
     /* Build bottom level acceleration structures (BLAS) */
@@ -828,42 +806,12 @@ bool BVHMetal::build_BLAS(Progress &progress,
   return false;
 }
 
-bool BVHMetal::build_TLAS(Progress &progress,
+bool BVHMetal::build_TLAS(Progress *progress,
                           id<MTLDevice> device,
                           id<MTLCommandQueue> queue,
                           bool refit)
 {
   if (@available(macos 12.0, *)) {
-
-    /* we need to sync here and ensure that all BLAS have completed async generation by both GCD
-     * and Metal */
-    {
-      __block bool complete_bvh = false;
-      while (!complete_bvh) {
-        dispatch_sync(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-          complete_bvh = true;
-          for (Object *ob : objects) {
-            /* Skip non-traceable objects */
-            if (!ob->is_traceable())
-              continue;
-
-            Geometry const *geom = ob->get_geometry();
-            BVHMetal const *blas = static_cast<BVHMetal const *>(geom->bvh);
-            if (blas->accel_struct_building) {
-              complete_bvh = false;
-
-              /* We're likely waiting on a command buffer that's in flight to complete.
-               * Queue up a command buffer and wait for it complete before checking the BLAS again
-               */
-              id<MTLCommandBuffer> command_buffer = [queue commandBuffer];
-              [command_buffer commit];
-              [command_buffer waitUntilCompleted];
-              break;
-            }
-          }
-        });
-      }
-    }
 
     uint32_t num_instances = 0;
     uint32_t num_motion_transforms = 0;
@@ -1154,7 +1102,16 @@ bool BVHMetal::build_TLAS(Progress &progress,
   return false;
 }
 
-bool BVHMetal::build(Progress &progress,
+TaskPool blas_task_pool;
+
+#  define BLAS_CONCURRENCY_DEBUG 1
+
+#  if BLAS_CONCURRENCY_DEBUG
+std::atomic_int blas_count = 0;
+std::atomic_int high_watermark = 0;
+#  endif
+
+bool BVHMetal::build(Progress *progress,
                      id<MTLDevice> device,
                      id<MTLCommandQueue> queue,
                      bool refit)
@@ -1173,11 +1130,40 @@ bool BVHMetal::build(Progress &progress,
   }
 
   if (!params.top_level) {
-    return build_BLAS(progress, device, queue, refit);
+    blas_task_pool.push(
+      [this,progress, device, queue, refit] { 
+
+#  if BLAS_CONCURRENCY_DEBUG
+        blas_count += 1;
+        
+        int c = blas_count;
+        int hwm = high_watermark;
+        if (c > hwm) {
+          high_watermark = c;
+        }
+
+        for(int i=0; i<c; i++) printf("<->");
+        for(int i=c; i<high_watermark+1; i++) printf("   ");
+        printf("|\n");
+#  endif
+
+        @autoreleasepool {
+          build_BLAS(progress, device, queue, refit);
+        }
+
+#  if BLAS_CONCURRENCY_DEBUG
+        blas_count -= 1;
+#  endif
+      });
   }
   else {
-    return build_TLAS(progress, device, queue, refit);
+    blas_task_pool.wait_work();
+    @autoreleasepool {
+      build_TLAS(progress, device, queue, refit);
+    }
   }
+
+  return true;
 }
 
 CCL_NAMESPACE_END

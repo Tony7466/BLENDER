@@ -1368,7 +1368,7 @@ void MetalDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 
   BVHMetal *bvh_metal = static_cast<BVHMetal *>(bvh);
   bvh_metal->motion_blur = motion_blur;
-  if (bvh_metal->build(progress, mtlDevice, mtlGeneralCommandQueue, refit)) {
+  if (bvh_metal->build(&progress, mtlDevice, mtlGeneralCommandQueue, refit)) {
 
     if (@available(macos 11.0, *)) {
       if (bvh->params.top_level) {

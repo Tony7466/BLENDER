@@ -18,7 +18,6 @@ class BVHMetal : public BVH {
  public:
   API_AVAILABLE(macos(11.0))
   id<MTLAccelerationStructure> accel_struct = nil;
-  bool accel_struct_building = false;
 
   API_AVAILABLE(macos(11.0))
   vector<id<MTLAccelerationStructure>> blas_array;
@@ -30,7 +29,7 @@ class BVHMetal : public BVH {
 
   Stats &stats;
 
-  bool build(Progress &progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
+  bool build(Progress *progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
 
   BVHMetal(const BVHParams &params,
            const vector<Geometry *> &geometry,
@@ -38,23 +37,23 @@ class BVHMetal : public BVH {
            Device *device);
   virtual ~BVHMetal();
 
-  bool build_BLAS(Progress &progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
-  bool build_BLAS_mesh(Progress &progress,
+  bool build_BLAS(Progress *progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
+  bool build_BLAS_mesh(Progress *progress,
                        id<MTLDevice> device,
                        id<MTLCommandQueue> queue,
                        Geometry *const geom,
                        bool refit);
-  bool build_BLAS_hair(Progress &progress,
+  bool build_BLAS_hair(Progress *progress,
                        id<MTLDevice> device,
                        id<MTLCommandQueue> queue,
                        Geometry *const geom,
                        bool refit);
-  bool build_BLAS_pointcloud(Progress &progress,
+  bool build_BLAS_pointcloud(Progress *progress,
                              id<MTLDevice> device,
                              id<MTLCommandQueue> queue,
                              Geometry *const geom,
                              bool refit);
-  bool build_TLAS(Progress &progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
+  bool build_TLAS(Progress *progress, id<MTLDevice> device, id<MTLCommandQueue> queue, bool refit);
 };
 
 CCL_NAMESPACE_END
