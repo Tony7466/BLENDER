@@ -1113,6 +1113,7 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   return blf_glyph_ensure_ex(font, gc, charcode, 0);
 }
 
+#ifdef BLF_SUBPIXEL_AA
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x)
 {
   if (font->flags & BLF_HINTING_NONE) {
@@ -1133,6 +1134,7 @@ GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *
   }
   return g;
 }
+#endif
 
 void blf_glyph_free(GlyphBLF *g)
 {

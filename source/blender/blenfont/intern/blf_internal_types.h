@@ -73,9 +73,6 @@ BLI_INLINE ft_pix ft_pix_from_float(float v)
   return lroundf(v * 64.0f);
 }
 
-#undef FT_PIX_ROUND
-#undef FT_PIX_CEIL
-
 /** \} */
 
 #define BLF_BATCH_DRAW_LEN_MAX 2048 /* in glyph */
