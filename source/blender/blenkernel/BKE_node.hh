@@ -333,6 +333,7 @@ class bNodeZoneType {
   std::string output_idname;
   int input_type;
   int output_type;
+  /** Initialized in #initialize_zone_type_theme_ids. */
   int theme_id = -1;
 
   virtual ~bNodeZoneType() = default;

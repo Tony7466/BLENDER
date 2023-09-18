@@ -448,13 +448,13 @@ const bNode *bNodeZoneType::get_corresponding_output(const bNodeTree &tree,
 bNode *bNodeZoneType::get_corresponding_input(bNodeTree &tree, const bNode &output_bnode) const
 {
   return const_cast<bNode *>(
-      const_cast<const bNodeZoneType *>(this)->get_corresponding_input(tree, output_bnode));
+      this->get_corresponding_input(const_cast<const bNodeTree &>(tree), output_bnode));
 }
 
 bNode *bNodeZoneType::get_corresponding_output(bNodeTree &tree, const bNode &input_bnode) const
 {
   return const_cast<bNode *>(
-      const_cast<const bNodeZoneType *>(this)->get_corresponding_output(tree, input_bnode));
+      this->get_corresponding_output(const_cast<const bNodeTree &>(tree), input_bnode));
 }
 
 class SimulationZoneType : public bNodeZoneType {

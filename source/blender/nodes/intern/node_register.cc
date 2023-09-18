@@ -52,13 +52,18 @@ static void register_undefined_types()
   blender::bke::NodeSocketTypeUndefined.output_link_limit = 0xFFF;
 }
 
-void register_nodes()
+static void initialize_zone_type_theme_ids()
 {
+  /* Those can't be initialized in blenkernel, because UI data is not available there. */
   const_cast<blender::bke::bNodeZoneType &>(blender::bke::simulation_zone_type()).theme_id =
       TH_NODE_ZONE_SIMULATION;
   const_cast<blender::bke::bNodeZoneType &>(blender::bke::repeat_zone_type()).theme_id =
       TH_NODE_ZONE_REPEAT;
+}
 
+void register_nodes()
+{
+  initialize_zone_type_theme_ids();
   register_undefined_types();
 
   register_standard_node_socket_types();
