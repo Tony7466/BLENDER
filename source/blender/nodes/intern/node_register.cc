@@ -16,6 +16,8 @@
 
 #include "RNA_access.hh"
 
+#include "UI_resources.hh"
+
 static bool node_undefined_poll(const bNodeType * /*ntype*/,
                                 const bNodeTree * /*nodetree*/,
                                 const char ** /*r_disabled_hint*/)
@@ -52,6 +54,11 @@ static void register_undefined_types()
 
 void register_nodes()
 {
+  const_cast<blender::bke::bNodeZoneType &>(blender::bke::simulation_zone_type()).theme_id =
+      TH_NODE_ZONE_SIMULATION;
+  const_cast<blender::bke::bNodeZoneType &>(blender::bke::repeat_zone_type()).theme_id =
+      TH_NODE_ZONE_REPEAT;
+
   register_undefined_types();
 
   register_standard_node_socket_types();
