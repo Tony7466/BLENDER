@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -83,7 +83,8 @@ static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
                     "domain",
-                    "Domain", "",
+                    "Domain",
+                    "",
                     rna_enum_attribute_domain_point_face_curve_items,
                     NOD_inline_enum_accessors(custom1),
                     ATTR_DOMAIN_POINT);
@@ -97,7 +98,6 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  ntype.gather_add_node_search_ops = search_link_ops_for_for_tool_node;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
   nodeRegisterType(&ntype);
 

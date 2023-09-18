@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -111,9 +111,7 @@ class FrameBuffer {
                                 eGPUDataFormat data_format,
                                 const void *clear_value) = 0;
 
-  virtual void attachment_set_loadstore_op(GPUAttachmentType type,
-                                           eGPULoadOp load_action,
-                                           eGPUStoreOp store_action) = 0;
+  virtual void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) = 0;
 
   virtual void read(eGPUFrameBufferBits planes,
                     eGPUDataFormat format,

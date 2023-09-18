@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,6 +34,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "armature_intern.h"
 

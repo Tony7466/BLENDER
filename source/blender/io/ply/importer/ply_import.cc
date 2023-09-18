@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,6 +20,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_string.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -59,8 +60,9 @@ static Span<char> parse_word(Span<char> &str)
 
 static void skip_space(Span<char> &str)
 {
-  while (!str.is_empty() && str[0] <= ' ')
+  while (!str.is_empty() && str[0] <= ' ') {
     str = str.drop_front(1);
+  }
 }
 
 static PlyDataTypes type_from_string(Span<char> word)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -410,7 +410,7 @@ StringRef AbstractTreeViewItem::get_rename_string() const
   return label_;
 }
 
-bool AbstractTreeViewItem::rename(StringRefNull new_name)
+bool AbstractTreeViewItem::rename(const bContext & /*C*/, StringRefNull new_name)
 {
   /* It is important to update the label after renaming, so #AbstractTreeViewItem::matches_single()
    * recognizes the item. (It only compares labels by default.) */

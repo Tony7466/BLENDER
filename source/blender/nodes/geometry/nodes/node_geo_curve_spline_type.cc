@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -91,7 +91,7 @@ static void node_rna(StructRNA *srna)
                     "spline_type",
                     "Type",
                     "The curve type to change the selected curves to",
-                    rna_enum_curves_types,
+                    rna_enum_curves_type_items,
                     NOD_storage_enum_accessors(spline_type),
                     CURVE_TYPE_POLY);
 }

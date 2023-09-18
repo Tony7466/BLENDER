@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -588,7 +588,6 @@ static void multibuf(ImBuf *ibuf, const float fmul)
       rt[0] = min_ii((imul * rt[0]) >> 8, 255);
       rt[1] = min_ii((imul * rt[1]) >> 8, 255);
       rt[2] = min_ii((imul * rt[2]) >> 8, 255);
-      rt[3] = min_ii((imul * rt[3]) >> 8, 255);
 
       rt += 4;
     }
@@ -599,14 +598,9 @@ static void multibuf(ImBuf *ibuf, const float fmul)
       rt_float[0] *= fmul;
       rt_float[1] *= fmul;
       rt_float[2] *= fmul;
-      rt_float[3] *= fmul;
 
       rt_float += 4;
     }
-  }
-
-  if (ELEM(ibuf->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB) && fmul < 1.0f) {
-    ibuf->planes = R_IMF_PLANES_RGBA;
   }
 }
 
@@ -1940,6 +1934,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
           ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
           out = seq_render_strip_stack_apply_effect(context, seq, timeline_frame, ibuf1, ibuf2);
+          IMB_metadata_copy(out, ibuf2);
 
           seq_cache_put(context, seq_arr[i], timeline_frame, SEQ_CACHE_STORE_COMPOSITE, out);
 

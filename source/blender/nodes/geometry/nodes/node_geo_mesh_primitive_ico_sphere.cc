@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -62,6 +62,10 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
                                     const float radius,
                                     const AttributeIDRef &uv_map_id)
 {
+  if (subdivisions >= 3) {
+    lazy_threading::send_hint();
+  }
+
   const float4x4 transform = float4x4::identity();
 
   const bool create_uv_map = bool(uv_map_id);

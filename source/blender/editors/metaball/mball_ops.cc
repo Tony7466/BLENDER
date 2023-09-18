@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,6 +47,6 @@ void ED_operatormacros_metaball()
 
 void ED_keymap_metaball(wmKeyConfig *keyconf)
 {
-  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Metaball", 0, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Metaball", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = ED_operator_editmball;
 }

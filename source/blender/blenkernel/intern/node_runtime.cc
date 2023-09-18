@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,13 +22,6 @@ void preprocess_geometry_node_tree_for_evaluation(bNodeTree &tree_cow)
   /* Rebuild geometry nodes lazy function graph. */
   tree_cow.runtime->geometry_nodes_lazy_function_graph_info.reset();
   blender::nodes::ensure_geometry_nodes_lazy_function_graph(tree_cow);
-}
-
-static void update_interface_sockets(const bNodeTree &ntree)
-{
-  bNodeTreeRuntime &tree_runtime = *ntree.runtime;
-  tree_runtime.interface_inputs = ntree.inputs;
-  tree_runtime.interface_outputs = ntree.outputs;
 }
 
 static void update_node_vector(const bNodeTree &ntree)
@@ -89,6 +82,15 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
       tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo ==
                                                      &bke::NodeSocketTypeUndefined;
     }
+  }
+}
+
+static void update_panels(const bNodeTree &ntree)
+{
+  bNodeTreeRuntime &tree_runtime = *ntree.runtime;
+  for (bNode *node : tree_runtime.nodes_by_id) {
+    bNodeRuntime &node_runtime = *node->runtime;
+    node_runtime.panels.reinitialize(node->num_panel_states);
   }
 }
 
@@ -528,10 +530,10 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.topology_cache_mutex.ensure([&]() {
-    update_interface_sockets(ntree);
     update_node_vector(ntree);
     update_link_vector(ntree);
     update_socket_vectors_and_owner_node(ntree);
+    update_panels(ntree);
     update_internal_link_inputs(ntree);
     update_directly_linked_links_and_sockets(ntree);
     update_nodes_by_type(ntree);

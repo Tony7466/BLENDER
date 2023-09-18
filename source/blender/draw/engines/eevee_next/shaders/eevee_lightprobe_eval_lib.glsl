@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * The resources expected to be defined are:
@@ -21,7 +24,7 @@ ivec3 lightprobe_irradiance_grid_brick_coord(vec3 lP)
 }
 
 /**
- * Return the local coordinated of the shading point inside the brick in unormalized coordinate.
+ * Return the local coordinated of the shading point inside the brick in unnormalized coordinate.
  */
 vec3 lightprobe_irradiance_grid_brick_local_coord(IrradianceGridData grid_data,
                                                   vec3 lP,
@@ -50,7 +53,8 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   /* NOTE(fclem): Use uint to avoid signed int modulo. */
   uint vis_comp = uint(cell_start.z) % 4u;
   /* Visibility is stored after the irradiance. */
-  ivec3 vis_coord = ivec3(brick_atlas_coord, IRRADIANCE_GRID_BRICK_SIZE * 4) + ivec3(cell_start);
+  ivec3 vis_coord = ivec3(ivec2(brick_atlas_coord), IRRADIANCE_GRID_BRICK_SIZE * 4) +
+                    ivec3(cell_start);
   /* Visibility is stored packed 1 cell per channel. */
   vis_coord.z -= int(vis_comp);
   float cell_visibility = texelFetch(irradiance_atlas_tx, vis_coord, 0)[vis_comp];
@@ -85,7 +89,7 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
 
     /* Biases. See McGuire's presentation. */
     positional_weight += 0.001;
-    geometry_weight = square_f(geometry_weight) + 0.2 + grid_data.facing_bias;
+    geometry_weight = square(geometry_weight) + 0.2 + grid_data.facing_bias;
 
     trilinear_weights[i] = saturate(positional_weight * geometry_weight * validity_weight);
     total_weight += trilinear_weights[i];
@@ -180,7 +184,7 @@ void lightprobe_eval(ClosureDiffuse diffuse,
                      inout vec3 out_specular)
 {
   /* NOTE: Use the diffuse normal for biasing the probe sampling location since it is smoother than
-   * geometric normal. Could also try to use interp.N. */
+   * geometric normal. Could also try to use `interp.N`. */
   SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
       irradiance_atlas_tx, P, V, diffuse.N, true);
 

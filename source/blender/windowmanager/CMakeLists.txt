@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -22,7 +22,6 @@ set(INC
   ../render
   ../sequencer
   ../../../intern/clog
-  ../../../intern/ghost
   ../../../intern/memutil
   ../../../extern/fmtlib/include
   ../bmesh
@@ -105,6 +104,7 @@ set(LIB
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc
   bf_sequencer
+  bf_intern_ghost
 )
 
 if(WIN32)

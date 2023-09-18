@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -693,8 +693,7 @@ int UI_icon_from_id(const ID *id)
 
   /* otherwise get it through RNA, creating the pointer
    * will set the right type, also with subclassing */
-  PointerRNA ptr;
-  RNA_id_pointer_create((ID *)id, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)id);
 
   return (ptr.type) ? RNA_struct_ui_icon(ptr.type) : ICON_NONE;
 }

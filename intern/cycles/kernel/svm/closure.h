@@ -54,6 +54,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       return svm_node_closure_bsdf_skip(kg, offset, type);
     }
   }
+  else IF_KERNEL_NODES_FEATURE(EMISSION) {
+    if (type != CLOSURE_BSDF_PRINCIPLED_ID) {
+      /* Only principled BSDF can have emission. */
+      return svm_node_closure_bsdf_skip(kg, offset, type);
+    }
+  }
   else {
     return svm_node_closure_bsdf_skip(kg, offset, type);
   }
@@ -69,8 +75,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
   switch (type) {
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
-          sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1;
+          sheen_offset, sheen_tint_offset, sheen_roughness_offset, coat_offset,
+          coat_roughness_offset, coat_ior_offset, eta_offset, transmission_offset,
+          anisotropic_rotation_offset, coat_tint_offset, coat_normal_offset, dummy, alpha_offset,
+          emission_strength_offset, emission_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -79,13 +87,15 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &roughness_offset,
                              &specular_tint_offset,
                              &anisotropic_offset);
-      svm_unpack_node_uchar4(data_node.w,
-                             &sheen_offset,
-                             &sheen_tint_offset,
-                             &clearcoat_offset,
-                             &clearcoat_roughness_offset);
       svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &pad1);
+          data_node.w, &sheen_offset, &sheen_tint_offset, &sheen_roughness_offset, &dummy);
+      svm_unpack_node_uchar4(data_node2.x,
+                             &eta_offset,
+                             &transmission_offset,
+                             &anisotropic_rotation_offset,
+                             &coat_normal_offset);
+      svm_unpack_node_uchar4(
+          data_node2.w, &coat_offset, &coat_roughness_offset, &coat_ior_offset, &coat_tint_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -96,9 +106,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float anisotropic = stack_load_float(stack, anisotropic_offset);
       float sheen = stack_load_float(stack, sheen_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
-      float sheen_roughness = stack_load_float(stack, data_node2.w);
-      float clearcoat = stack_load_float(stack, clearcoat_offset);
-      float clearcoat_roughness = stack_load_float(stack, clearcoat_roughness_offset);
+      float sheen_roughness = stack_load_float(stack, sheen_roughness_offset);
+      float coat = stack_load_float(stack, coat_offset);
+      float coat_roughness = stack_load_float(stack, coat_roughness_offset);
+      float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
+      float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float eta = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
@@ -116,28 +128,22 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                           __uint_as_float(data_base_color.z),
                                           __uint_as_float(data_base_color.w));
 
-      // get the additional clearcoat normal and subsurface scattering radius
-      uint4 data_cn_ssr = read_node(kg, &offset);
-      float3 clearcoat_normal = stack_valid(data_cn_ssr.x) ?
-                                    stack_load_float3(stack, data_cn_ssr.x) :
-                                    sd->N;
-      clearcoat_normal = maybe_ensure_valid_specular_reflection(sd, clearcoat_normal);
-      float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
-                                     stack_load_float3(stack, data_cn_ssr.y) :
-                                     one_float3();
-      float subsurface_ior = stack_valid(data_cn_ssr.z) ? stack_load_float(stack, data_cn_ssr.z) :
-                                                          1.4f;
-      float subsurface_anisotropy = stack_valid(data_cn_ssr.w) ?
-                                        stack_load_float(stack, data_cn_ssr.w) :
-                                        0.0f;
+      // get the subsurface scattering data
+      uint4 data_subsurf = read_node(kg, &offset);
 
-      // get the subsurface color
-      uint4 data_subsurface_color = read_node(kg, &offset);
-      float3 subsurface_color = stack_valid(data_subsurface_color.x) ?
-                                    stack_load_float3(stack, data_subsurface_color.x) :
-                                    make_float3(__uint_as_float(data_subsurface_color.y),
-                                                __uint_as_float(data_subsurface_color.z),
-                                                __uint_as_float(data_subsurface_color.w));
+      uint4 data_alpha_emission = read_node(kg, &offset);
+      svm_unpack_node_uchar4(data_alpha_emission.x,
+                             &alpha_offset,
+                             &emission_strength_offset,
+                             &emission_offset,
+                             &dummy);
+      float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
+                                                __uint_as_float(data_alpha_emission.y);
+      float3 emission = stack_load_float3(stack, emission_offset);
+      /* Emission strength */
+      emission *= stack_valid(emission_strength_offset) ?
+                      stack_load_float(stack, emission_strength_offset) :
+                      __uint_as_float(data_alpha_emission.z);
 
       Spectrum weight = closure_weight * mix_weight;
 
@@ -161,6 +167,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       const bool glass_caustics = true;
 #endif
 
+      /* Before any actual shader components, apply transparency. */
+      if (alpha < 1.0f) {
+        bsdf_transparent_setup(sd, weight * (1.0f - alpha), path_flag);
+        weight *= alpha;
+      }
+
       /* First layer: Sheen */
       if (sheen > CLOSURE_WEIGHT_CUTOFF) {
         ccl_private SheenBsdf *bsdf = (ccl_private SheenBsdf *)bsdf_alloc(
@@ -175,29 +187,68 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
         }
       }
 
-      /* Second layer: Clearcoat */
-      if (reflective_caustics && clearcoat > CLOSURE_WEIGHT_CUTOFF) {
-        ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-            sd, sizeof(MicrofacetBsdf), 0.25f * clearcoat * weight);
+      /* Second layer: Coat */
+      if (coat > CLOSURE_WEIGHT_CUTOFF) {
+        float3 coat_normal = stack_valid(coat_normal_offset) ?
+                                 stack_load_float3(stack, coat_normal_offset) :
+                                 sd->N;
+        coat_normal = maybe_ensure_valid_specular_reflection(sd, coat_normal);
+        if (reflective_caustics) {
+          ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+              sd, sizeof(MicrofacetBsdf), coat * weight);
 
-        if (bsdf) {
-          bsdf->N = clearcoat_normal;
-          bsdf->T = zero_float3();
-          bsdf->ior = 1.5f;
+          if (bsdf) {
+            bsdf->N = coat_normal;
+            bsdf->T = zero_float3();
+            bsdf->ior = coat_ior;
 
-          bsdf->alpha_x = bsdf->alpha_y = sqr(clearcoat_roughness);
+            bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
 
-          /* setup bsdf */
-          sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(kg, bsdf, sd);
+            /* setup bsdf */
+            sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+            bsdf_microfacet_setup_fresnel_dielectric(kg, bsdf, sd);
 
-          /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+            /* Attenuate lower layers */
+            Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
+            weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+          }
         }
+
+        if (!isequal(coat_tint, one_float3())) {
+          /* Tint is normalized to perpendicular incidence.
+           * Therefore, if we define the coat thickness as length 1, the length along the ray is
+           * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
+           * From Beer's law, we have T = exp(-sigma_e * t).
+           * Therefore, tint = exp(-sigma_e * 1) (per def.), so -sigma_e = log(tint).
+           * From this, T = exp(log(tint) * t) = exp(log(tint)) ^ t = tint ^ t;
+           *
+           * Note that this is only an approximation - it assumes that the outgoing ray
+           * follows the same angle, and that there aren't multiple internal bounces.
+           * In particular, things that could be improved:
+           * - For transmissive materials, there should not be an outgoing path at all if the path
+           *   is transmitted.
+           * - For rough materials, we could blend towards a view-independent average path length
+           *   (e.g. 2 for diffuse reflection) for the outgoing direction.
+           * However, there's also an argument to be made for keeping parameters independent of
+           * each other for more intuitive control, in particular main roughness not affecting the
+           * coat.
+           */
+          float cosNI = dot(sd->wi, coat_normal);
+          /* Refract incoming direction into coat material.
+           * TIR is no concern here since we're always coming from the outside. */
+          float cosNT = sqrtf(1.0f - sqr(1.0f / coat_ior) * (1 - sqr(cosNI)));
+          float optical_depth = 1.0f / cosNT;
+          weight *= power(rgb_to_spectrum(coat_tint), coat * optical_depth);
+        }
+      }
+
+      /* Emission (attenuated by sheen and coat) */
+      if (!is_zero(emission)) {
+        emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }
 
       /* Metallic component */
@@ -250,7 +301,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           fresnel->reflection_tint = mix(
               one_spectrum(), rgb_to_spectrum(base_color), specular_tint);
-          fresnel->transmission_tint = rgb_to_spectrum(base_color);
+          fresnel->transmission_tint = sqrt(rgb_to_spectrum(base_color));
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
@@ -295,48 +346,42 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
         }
       }
 
-      /* Diffuse component */
-      float3 diffuse_color = mix(base_color, subsurface_color, subsurface);
+      /* Diffuse/Subsurface component */
 #ifdef __SUBSURFACE__
-      /* disable in case of diffuse ancestor, can't see it well then and
-       * adds considerably noise due to probabilities of continuing path
-       * getting lower and lower */
-      if ((subsurface > CLOSURE_WEIGHT_CUTOFF) && !(path_flag & PATH_RAY_DIFFUSE_ANCESTOR)) {
-        /* Skip in case of extremely low albedo. */
-        if (fabsf(average(diffuse_color)) > CLOSURE_WEIGHT_CUTOFF) {
-          ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd, rgb_to_spectrum(diffuse_color) * weight);
+      ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd,
+                                                rgb_to_spectrum(base_color) * subsurface * weight);
+      if (bssrdf) {
+        float3 subsurface_radius = stack_load_float3(stack, data_subsurf.y);
+        float subsurface_scale = stack_load_float(stack, data_subsurf.z);
 
-          if (bssrdf) {
-            bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface);
-            bssrdf->albedo = rgb_to_spectrum(diffuse_color);
-            bssrdf->N = N;
-            bssrdf->roughness = roughness;
-
-            /* Clamps protecting against bad/extreme and non physical values. */
-            subsurface_ior = clamp(subsurface_ior, 1.01f, 3.8f);
-            bssrdf->anisotropy = clamp(subsurface_anisotropy, 0.0f, 0.9f);
-
-            /* setup bsdf */
-            sd->flag |= bssrdf_setup(sd, bssrdf, subsurface_method, subsurface_ior);
-          }
+        bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
+        bssrdf->albedo = rgb_to_spectrum(base_color);
+        bssrdf->N = N;
+        bssrdf->alpha = sqr(roughness);
+        bssrdf->ior = eta;
+        bssrdf->anisotropy = stack_load_float(stack, data_subsurf.w);
+        if (subsurface_method == CLOSURE_BSSRDF_RANDOM_WALK_ID) {
+          bssrdf->ior = stack_load_float(stack, data_subsurf.x);
         }
+
+        /* setup bsdf */
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, subsurface_method);
       }
-      else
+#else
+      subsurface = 0.0f;
 #endif
-      {
-        ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
-            sd, sizeof(DiffuseBsdf), rgb_to_spectrum(diffuse_color) * weight);
 
-        if (bsdf) {
-          bsdf->N = N;
+      ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
+          sd, sizeof(DiffuseBsdf), rgb_to_spectrum(base_color) * (1.0f - subsurface) * weight);
+      if (bsdf) {
+        bsdf->N = N;
 
-          /* setup bsdf */
-          sd->flag |= bsdf_diffuse_setup(bsdf);
-        }
+        /* setup bsdf */
+        sd->flag |= bsdf_diffuse_setup(bsdf);
       }
 
       break;
@@ -566,7 +611,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       break;
     }
 #ifdef __HAIR__
-    case CLOSURE_BSDF_HAIR_PRINCIPLED_ID: {
+    case CLOSURE_BSDF_HAIR_CHIANG_ID:
+    case CLOSURE_BSDF_HAIR_HUANG_ID: {
       uint4 data_node2 = read_node(kg, &offset);
       uint4 data_node3 = read_node(kg, &offset);
       uint4 data_node4 = read_node(kg, &offset);
@@ -578,18 +624,18 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float alpha = stack_load_float_default(stack, offset_ofs, data_node.z);
       float ior = stack_load_float_default(stack, ior_ofs, data_node.w);
 
-      uint coat_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
+      uint tint_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
       svm_unpack_node_uchar4(data_node2.x,
-                             &coat_ofs,
+                             &tint_ofs,
                              &melanin_ofs,
                              &melanin_redness_ofs,
                              &absorption_coefficient_ofs);
 
-      uint tint_ofs, random_ofs, random_color_ofs, random_roughness_ofs;
+      uint shared_ofs1, random_ofs, random_color_ofs, shared_ofs2;
       svm_unpack_node_uchar4(
-          data_node3.x, &tint_ofs, &random_ofs, &random_color_ofs, &random_roughness_ofs);
+          data_node3.x, &shared_ofs1, &random_ofs, &random_color_ofs, &shared_ofs2);
 
-      const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node4.y);
+      const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node2.y);
       float random = 0.0f;
       if (attr_descr_random.offset != ATTR_STD_NOT_FOUND) {
         random = primitive_surface_attribute_float(kg, sd, attr_descr_random, NULL, NULL);
@@ -598,83 +644,122 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         random = stack_load_float_default(stack, random_ofs, data_node3.y);
       }
 
-      ccl_private PrincipledHairBSDF *bsdf = (ccl_private PrincipledHairBSDF *)bsdf_alloc(
-          sd, sizeof(PrincipledHairBSDF), weight);
-      if (bsdf) {
-        ccl_private PrincipledHairExtra *extra = (ccl_private PrincipledHairExtra *)
-            closure_alloc_extra(sd, sizeof(PrincipledHairExtra));
+      /* Random factors range: [-randomization/2, +randomization/2]. */
+      float random_roughness = param2;
+      float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
+      float roughness = param1 * factor_random_roughness;
+      float radial_roughness = (type == CLOSURE_BSDF_HAIR_CHIANG_ID) ?
+                                   stack_load_float_default(stack, shared_ofs2, data_node4.y) *
+                                       factor_random_roughness :
+                                   roughness;
 
-        if (!extra)
+      Spectrum sigma;
+      switch (parametrization) {
+        case NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION: {
+          float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
+          sigma = rgb_to_spectrum(absorption_coefficient);
           break;
+        }
+        case NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION: {
+          float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
+          float melanin_redness = stack_load_float_default(
+              stack, melanin_redness_ofs, data_node2.w);
 
-        /* Random factors range: [-randomization/2, +randomization/2]. */
-        float random_roughness = stack_load_float_default(
-            stack, random_roughness_ofs, data_node3.w);
-        float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
-        float roughness = param1 * factor_random_roughness;
-        float radial_roughness = param2 * factor_random_roughness;
+          /* Randomize melanin. */
+          float random_color = stack_load_float_default(stack, random_color_ofs, data_node3.z);
+          random_color = clamp(random_color, 0.0f, 1.0f);
+          float factor_random_color = 1.0f + 2.0f * (random - 0.5f) * random_color;
+          melanin *= factor_random_color;
 
-        /* Remap Coat value to [0, 100]% of Roughness. */
-        float coat = stack_load_float_default(stack, coat_ofs, data_node2.y);
-        float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
+          /* Map melanin 0..inf from more perceptually linear 0..1. */
+          melanin = -logf(fmaxf(1.0f - melanin, 0.0001f));
 
-        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
-        bsdf->v = roughness;
-        bsdf->s = radial_roughness;
-        bsdf->m0_roughness = m0_roughness;
-        bsdf->alpha = alpha;
-        bsdf->eta = ior;
-        bsdf->extra = extra;
+          /* Benedikt Bitterli's melanin ratio remapping. */
+          float eumelanin = melanin * (1.0f - melanin_redness);
+          float pheomelanin = melanin * melanin_redness;
+          Spectrum melanin_sigma = bsdf_principled_hair_sigma_from_concentration(eumelanin,
+                                                                                 pheomelanin);
 
-        switch (parametrization) {
-          case NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION: {
-            float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
-            bsdf->sigma = rgb_to_spectrum(absorption_coefficient);
-            break;
-          }
-          case NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION: {
-            float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
-            float melanin_redness = stack_load_float_default(
-                stack, melanin_redness_ofs, data_node2.w);
+          /* Optional tint. */
+          float3 tint = stack_load_float3(stack, tint_ofs);
+          Spectrum tint_sigma = bsdf_principled_hair_sigma_from_reflectance(rgb_to_spectrum(tint),
+                                                                            radial_roughness);
 
-            /* Randomize melanin. */
-            float random_color = stack_load_float_default(stack, random_color_ofs, data_node3.z);
-            random_color = clamp(random_color, 0.0f, 1.0f);
-            float factor_random_color = 1.0f + 2.0f * (random - 0.5f) * random_color;
-            melanin *= factor_random_color;
+          sigma = melanin_sigma + tint_sigma;
+          break;
+        }
+        case NODE_PRINCIPLED_HAIR_REFLECTANCE: {
+          float3 color = stack_load_float3(stack, color_ofs);
+          sigma = bsdf_principled_hair_sigma_from_reflectance(rgb_to_spectrum(color),
+                                                              radial_roughness);
+          break;
+        }
+        default: {
+          /* Fallback to brownish hair, same as defaults for melanin. */
+          kernel_assert(!"Invalid Hair parametrization!");
+          sigma = bsdf_principled_hair_sigma_from_concentration(0.0f, 0.8054375f);
+          break;
+        }
+      }
 
-            /* Map melanin 0..inf from more perceptually linear 0..1. */
-            melanin = -logf(fmaxf(1.0f - melanin, 0.0001f));
+      if (type == CLOSURE_BSDF_HAIR_CHIANG_ID) {
+        ccl_private ChiangHairBSDF *bsdf = (ccl_private ChiangHairBSDF *)bsdf_alloc(
+            sd, sizeof(ChiangHairBSDF), weight);
+        if (bsdf) {
+          /* Remap Coat value to [0, 100]% of Roughness. */
+          float coat = stack_load_float_default(stack, shared_ofs1, data_node3.w);
+          float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
 
-            /* Benedikt Bitterli's melanin ratio remapping. */
-            float eumelanin = melanin * (1.0f - melanin_redness);
-            float pheomelanin = melanin * melanin_redness;
-            Spectrum melanin_sigma = bsdf_principled_hair_sigma_from_concentration(eumelanin,
-                                                                                   pheomelanin);
+          bsdf->v = roughness;
+          bsdf->s = radial_roughness;
+          bsdf->m0_roughness = m0_roughness;
+          bsdf->alpha = alpha;
+          bsdf->eta = ior;
+          bsdf->sigma = sigma;
 
-            /* Optional tint. */
-            float3 tint = stack_load_float3(stack, tint_ofs);
-            Spectrum tint_sigma = bsdf_principled_hair_sigma_from_reflectance(
-                rgb_to_spectrum(tint), radial_roughness);
-
-            bsdf->sigma = melanin_sigma + tint_sigma;
-            break;
-          }
-          case NODE_PRINCIPLED_HAIR_REFLECTANCE: {
-            float3 color = stack_load_float3(stack, color_ofs);
-            bsdf->sigma = bsdf_principled_hair_sigma_from_reflectance(rgb_to_spectrum(color),
-                                                                      radial_roughness);
-            break;
-          }
-          default: {
-            /* Fallback to brownish hair, same as defaults for melanin. */
-            kernel_assert(!"Invalid Principled Hair parametrization!");
-            bsdf->sigma = bsdf_principled_hair_sigma_from_concentration(0.0f, 0.8054375f);
-            break;
-          }
+          sd->flag |= bsdf_hair_chiang_setup(sd, bsdf);
+        }
+      }
+      else {
+        kernel_assert(type == CLOSURE_BSDF_HAIR_HUANG_ID);
+        uint R_ofs, TT_ofs, TRT_ofs, unused;
+        svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &unused);
+        float R = stack_load_float_default(stack, R_ofs, data_node4.y);
+        float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
+        float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
+        if (R <= 0.0f && TT <= 0.0f && TRT <= 0.0f) {
+          break;
         }
 
-        sd->flag |= bsdf_principled_hair_setup(sd, bsdf);
+        ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)bsdf_alloc(
+            sd, sizeof(HuangHairBSDF), weight);
+        if (bsdf) {
+          ccl_private HuangHairExtra *extra = (ccl_private HuangHairExtra *)closure_alloc_extra(
+              sd, sizeof(HuangHairExtra));
+
+          if (!extra) {
+            break;
+          }
+
+          bsdf->extra = extra;
+          bsdf->extra->R = fmaxf(0.0f, R);
+          bsdf->extra->TT = fmaxf(0.0f, TT);
+          bsdf->extra->TRT = fmaxf(0.0f, TRT);
+
+          bsdf->aspect_ratio = stack_load_float_default(stack, shared_ofs1, data_node3.w);
+          if (bsdf->aspect_ratio != 1.0f) {
+            /* Align ellipse major axis with the curve normal direction. */
+            const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, shared_ofs2);
+            bsdf->N = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
+          }
+
+          bsdf->roughness = roughness;
+          bsdf->tilt = alpha;
+          bsdf->eta = ior;
+          bsdf->sigma = sigma;
+
+          sd->flag |= bsdf_hair_huang_setup(sd, bsdf, path_flag);
+        }
       }
       break;
     }
@@ -721,22 +806,14 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd, weight);
 
       if (bssrdf) {
-        /* disable in case of diffuse ancestor, can't see it well then and
-         * adds considerably noise due to probabilities of continuing path
-         * getting lower and lower */
-        if (path_flag & PATH_RAY_DIFFUSE_ANCESTOR)
-          param1 = 0.0f;
-
         bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, data_node.z) * param1);
         bssrdf->albedo = closure_weight;
         bssrdf->N = N;
-        bssrdf->roughness = FLT_MAX;
+        bssrdf->ior = param2;
+        bssrdf->alpha = 1.0f;
+        bssrdf->anisotropy = stack_load_float(stack, data_node.w);
 
-        const float subsurface_ior = clamp(param2, 1.01f, 3.8f);
-        const float subsurface_anisotropy = stack_load_float(stack, data_node.w);
-        bssrdf->anisotropy = clamp(subsurface_anisotropy, 0.0f, 0.9f);
-
-        sd->flag |= bssrdf_setup(sd, bssrdf, (ClosureType)type, subsurface_ior);
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, (ClosureType)type);
       }
 
       break;

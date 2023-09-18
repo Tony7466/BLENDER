@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -163,9 +163,9 @@ class IrradianceBake {
   LightProbeGridCacheFrame *read_result_packed();
 
  private:
-  /** Read surfel data back to CPU into \a cache_frame . */
+  /** Read surfel data back to CPU into \a cache_frame. */
   void read_surfels(LightProbeGridCacheFrame *cache_frame);
-  /** Read virtual offset back to CPU into \a cache_frame . */
+  /** Read virtual offset back to CPU into \a cache_frame. */
   void read_virtual_offset(LightProbeGridCacheFrame *cache_frame);
 };
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -11,6 +11,9 @@ set(INC
   ../../../intern/eigen
 )
 
+set(INC_SYS
+)
+
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
@@ -18,6 +21,10 @@ set(SRC
   intern/mesh_copy_selection.cc
   intern/mesh_merge_by_distance.cc
   intern/mesh_primitive_cuboid.cc
+  intern/mesh_primitive_cylinder_cone.cc
+  intern/mesh_primitive_grid.cc
+  intern/mesh_primitive_line.cc
+  intern/mesh_primitive_uv_sphere.cc
   intern/mesh_split_edges.cc
   intern/mesh_to_curve_convert.cc
   intern/mesh_to_volume.cc
@@ -38,6 +45,10 @@ set(SRC
   GEO_mesh_copy_selection.hh
   GEO_mesh_merge_by_distance.hh
   GEO_mesh_primitive_cuboid.hh
+  GEO_mesh_primitive_cylinder_cone.hh
+  GEO_mesh_primitive_grid.hh
+  GEO_mesh_primitive_line.hh
+  GEO_mesh_primitive_uv_sphere.hh
   GEO_mesh_split_edges.hh
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh

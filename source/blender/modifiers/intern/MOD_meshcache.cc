@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -100,7 +100,7 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
   float time;
 
   /* -------------------------------------------------------------------- */
-  /* Interpret Time (the reading functions also do some of this ) */
+  /* Interpret Time (the reading functions also do some of this). */
   if (mcmd->play_mode == MOD_MESHCACHE_PLAY_CFEA) {
     const float ctime = BKE_scene_ctime_get(scene);
 

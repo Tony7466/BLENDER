@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -508,7 +508,7 @@ static void gpencil_brush_angle(bGPdata *gpd, Brush *brush, tGPspoint *pt, const
   /* angle vector of the brush with full thickness */
   const float v0[2] = {cos(angle), sin(angle)};
 
-  /* Apply to first point (only if there are 2 points because before no data to do it ) */
+  /* Apply to first point (only if there are 2 points because before no data to do it). */
   if (gpd->runtime.sbuffer_used == 1) {
     sub_v2_v2v2(mvec, mval, (pt - 1)->m_xy);
     normalize_v2(mvec);
