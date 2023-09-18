@@ -246,4 +246,20 @@ MetalBufferPool::~MetalBufferPool()
 
 CCL_NAMESPACE_END
 
+void show_metal_alloc()
+{
+  static std::mutex m;
+  static id<MTLDevice> device = nil;
+  m.lock();
+  if (!device) {
+    device = MTLCreateSystemDefaultDevice();
+  }
+  m.unlock();
+
+  size_t allocated_so_far = [device currentAllocatedSize];
+  int megs_used_memory = int(allocated_so_far / 1024 / 1024);
+
+  fprintf(stdout, "-- MTLDevice.currentAllocatedSize = %zu bytes (%d MiB) -- ", allocated_so_far, megs_used_memory);
+}
+
 #endif /* WITH_METAL */

@@ -182,6 +182,8 @@ static bool default_break(void * /*arg*/)
   return G.is_break == true;
 }
 
+extern void show_metal_alloc();
+
 static void stats_background(void * /*arg*/, RenderStats *rs)
 {
   if (rs->infostr == nullptr) {
@@ -215,6 +217,8 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
   fprintf(stdout, TIP_("| Time:%s | "), info_time_str);
 
   fprintf(stdout, "%s", rs->infostr);
+
+  show_metal_alloc();
 
   /* Flush stdout to be sure python callbacks are printing stuff after blender. */
   fflush(stdout);

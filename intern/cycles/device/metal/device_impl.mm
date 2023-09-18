@@ -287,6 +287,10 @@ MetalDevice::~MetalDevice()
   [mtlDevice release];
 
   texture_info.free();
+
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+  size_t allocated_so_far = [device currentAllocatedSize];
+  fprintf(stdout, "MetalDevice::~MetalDevice   ---   MTLDevice.currentAllocatedSize = %zu bytes --\n", allocated_so_far);
 }
 
 bool MetalDevice::support_device(const uint /*kernel_features*/)

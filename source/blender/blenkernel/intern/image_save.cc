@@ -876,6 +876,8 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
 /* Render output. */
 
+extern void show_metal_alloc();
+
 static void image_render_print_save_message(ReportList *reports,
                                             const char *filepath,
                                             int ok,
@@ -883,6 +885,7 @@ static void image_render_print_save_message(ReportList *reports,
 {
   if (ok) {
     /* no need to report, just some helpful console info */
+    show_metal_alloc();
     printf("Saved: '%s'\n", filepath);
   }
   else {
