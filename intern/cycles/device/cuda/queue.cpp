@@ -10,7 +10,67 @@
 #  include "device/cuda/graphics_interop.h"
 #  include "device/cuda/kernel.h"
 
+#  include "util/path.h"
+#  include "util/string.h"
+#  include "util/time.h"
+
 CCL_NAMESPACE_BEGIN
+
+void TimingStats::Print(CUDADeviceQueue *queue)
+{
+  if (!queue->done_any_rendering) return;
+
+  const char *device_name = (queue->cuda_device_->info.type == DEVICE_CUDA) ? "CUDA" : "Optix";
+  TimingStats *stats = queue->timing_stats;
+
+  printf("\n%s dispatch stats:\n\n", device_name);
+  int num_unfinished = 0;
+  double total_time = 0.0;
+  double kernel_time[DEVICE_KERNEL_NUM] = {0};
+  int64_t num_dispatches = 0;
+  for (int i = 0; i < DEVICE_KERNEL_NUM; i++) {
+    num_unfinished += stats[i].openIntervals.size();
+    total_time += stats[i].total_time;
+    kernel_time[i] = stats[i].total_time;
+    num_dispatches += stats[i].num_dispatches;
+  }
+  if (num_unfinished) {
+    printf("Warning: There are %d dispatches still in flight!\n", num_unfinished);
+  }
+
+  printf("\nCUDA dispatch stats:\n\n");
+  auto header = string_printf("%-40s %16s %12s %12s %7s %7s",
+                              "Kernel name",
+                              "Total threads",
+                              "Dispatches",
+                              "Avg. T/D",
+                              "Time",
+                              "Time%");
+  auto divider = string(header.length(), '-');
+  printf("%s\n%s\n%s\n", divider.c_str(), header.c_str(), divider.c_str());
+
+  for (int i = 0; i < DEVICE_KERNEL_NUM; i++) {
+    TimingStats &stat = stats[i];
+    if (stat.num_dispatches > 0) {
+      printf("%-40s %16s %12s %12s %6.2fs %6.2f%%\n",
+            device_kernel_as_string(DeviceKernel(i)),
+            string_human_readable_number(stat.total_work_size).c_str(),
+            string_human_readable_number(stat.num_dispatches).c_str(),
+            string_human_readable_number(stat.total_work_size / stat.num_dispatches).c_str(),
+            float(stat.total_time),
+            total_time ? float(stat.total_time) * 100.0f / total_time : 0.0f);
+    }
+  }
+  printf("%s\n", divider.c_str());
+  printf("%-40s %16s %12s %12s %6.2fs %6.2f%%\n",
+         "",
+         "",
+         string_human_readable_number(num_dispatches).c_str(),
+         "",
+         total_time,
+         100.0);
+  printf("%s\n\n", divider.c_str());
+}
 
 /* CUDADeviceQueue */
 
@@ -23,6 +83,8 @@ CUDADeviceQueue::CUDADeviceQueue(CUDADevice *device)
 
 CUDADeviceQueue::~CUDADeviceQueue()
 {
+  TimingStats::Print(this);
+
   const CUDAContextScope scope(cuda_device_);
   cuStreamDestroy(cuda_stream_);
 }
@@ -122,6 +184,11 @@ bool CUDADeviceQueue::enqueue(DeviceKernel kernel,
                                 0),
                  "enqueue");
 
+  timing_stats[kernel].AddInterval(kernel, interval);
+  if (kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST) {
+    done_any_rendering = true;
+  }
+
   debug_enqueue_end();
 
   return !(cuda_device_->have_error());
@@ -137,6 +204,11 @@ bool CUDADeviceQueue::synchronize()
   assert_success(cuStreamSynchronize(cuda_stream_), "synchronize");
 
   debug_synchronize();
+
+  /* naive poll loop for all in-flight dispatches (TODO: this is crude) */
+  for (int i = 0; i < DEVICE_KERNEL_NUM; i++) {
+    timing_stats[i].Poll();
+  }
 
   return !(cuda_device_->have_error());
 }
