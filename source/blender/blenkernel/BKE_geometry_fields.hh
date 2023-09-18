@@ -72,6 +72,19 @@ class PointCloudFieldContext : public fn::FieldContext {
   }
 };
 
+class GreasePencilFieldContext : public fn::FieldContext {
+ private:
+  const GreasePencil &grease_pencil_;
+
+ public:
+  GreasePencilFieldContext(const GreasePencil &pointcloud) : grease_pencil_(pointcloud) {}
+
+  const GreasePencil &grease_pencil() const
+  {
+    return grease_pencil_;
+  }
+};
+
 class InstancesFieldContext : public fn::FieldContext {
  private:
   const Instances &instances_;
@@ -125,12 +138,14 @@ class GeometryFieldContext : public fn::FieldContext {
   const Mesh *mesh() const;
   const CurvesGeometry *curves() const;
   const PointCloud *pointcloud() const;
+  const GreasePencil *grease_pencil() const;
   const Instances *instances() const;
 
  private:
   GeometryFieldContext(const Mesh &mesh, eAttrDomain domain);
   GeometryFieldContext(const CurvesGeometry &curves, eAttrDomain domain);
   GeometryFieldContext(const PointCloud &points);
+  GeometryFieldContext(const GreasePencil &grease_pencil);
   GeometryFieldContext(const Instances &instances);
 };
 
@@ -176,6 +191,16 @@ class PointCloudFieldInput : public fn::FieldInput {
                                  const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const PointCloud &pointcloud,
+                                         const IndexMask &mask) const = 0;
+};
+
+class GreasePencilFieldInput : public fn::FieldInput {
+ public:
+  using fn::FieldInput::FieldInput;
+  GVArray get_varray_for_context(const fn::FieldContext &context,
+                                 const IndexMask &mask,
+                                 ResourceScope &scope) const override;
+  virtual GVArray get_varray_for_context(const GreasePencil &grease_pencil,
                                          const IndexMask &mask) const = 0;
 };
 

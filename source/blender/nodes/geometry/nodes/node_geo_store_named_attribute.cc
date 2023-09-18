@@ -176,7 +176,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
       for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
                                                  GeometryComponent::Type::PointCloud,
-                                                 GeometryComponent::Type::Curve})
+                                                 GeometryComponent::Type::Curve,
+                                                 GeometryComponent::Type::GreasePencil})
       {
         if (geometry_set.has(type)) {
           GeometryComponent &component = geometry_set.get_component_for_write(type);

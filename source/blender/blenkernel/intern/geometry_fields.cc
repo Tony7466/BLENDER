@@ -8,6 +8,7 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
@@ -43,6 +44,7 @@ GeometryFieldContext::GeometryFieldContext(const void *geometry,
                   GeometryComponent::Type::Mesh,
                   GeometryComponent::Type::Curve,
                   GeometryComponent::Type::PointCloud,
+                  GeometryComponent::Type::GreasePencil,
                   GeometryComponent::Type::Instance));
 }
 
@@ -68,6 +70,12 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       geometry_ = pointcloud_component.get();
       break;
     }
+    case GeometryComponent::Type::GreasePencil: {
+      const GreasePencilComponent &grease_pencil_component =
+          static_cast<const GreasePencilComponent &>(component);
+      geometry_ = grease_pencil_component.get();
+      break;
+    }
     case GeometryComponent::Type::Instance: {
       const InstancesComponent &instances_component = static_cast<const InstancesComponent &>(
           component);
@@ -76,7 +84,6 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
     }
     case GeometryComponent::Type::Volume:
     case GeometryComponent::Type::Edit:
-    case GeometryComponent::Type::GreasePencil:
       BLI_assert_unreachable();
       break;
   }
@@ -92,6 +99,12 @@ GeometryFieldContext::GeometryFieldContext(const CurvesGeometry &curves, eAttrDo
 }
 GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
     : geometry_(&points), type_(GeometryComponent::Type::PointCloud), domain_(ATTR_DOMAIN_POINT)
+{
+}
+GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil)
+    : geometry_(&grease_pencil),
+      type_(GeometryComponent::Type::GreasePencil),
+      domain_(ATTR_DOMAIN_GREASE_PENCIL_LAYER)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const Instances &instances)
@@ -111,6 +124,9 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
   }
   if (const PointCloud *pointcloud = this->pointcloud()) {
     return pointcloud->attributes();
+  }
+  if (const GreasePencil *grease_pencil = this->grease_pencil()) {
+    return grease_pencil->attributes();
   }
   if (const Instances *instances = this->instances()) {
     return instances->attributes();
@@ -133,6 +149,12 @@ const PointCloud *GeometryFieldContext::pointcloud() const
 {
   return this->type() == GeometryComponent::Type::PointCloud ?
              static_cast<const PointCloud *>(geometry_) :
+             nullptr;
+}
+const GreasePencil *GeometryFieldContext::grease_pencil() const
+{
+  return this->type() == GeometryComponent::Type::GreasePencil ?
+             static_cast<const GreasePencil *>(geometry_) :
              nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
@@ -162,6 +184,11 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
           &context))
   {
     return this->get_varray_for_context({point_context->pointcloud()}, mask);
+  }
+  if (const GreasePencilFieldContext *grease_pencil_context =
+          dynamic_cast<const GreasePencilFieldContext *>(&context))
+  {
+    return this->get_varray_for_context({grease_pencil_context->grease_pencil()}, mask);
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(
           &context))
@@ -238,6 +265,25 @@ GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &con
           &context))
   {
     return this->get_varray_for_context(point_context->pointcloud(), mask);
+  }
+  return {};
+}
+
+GVArray GreasePencilFieldInput::get_varray_for_context(const fn::FieldContext &context,
+                                                       const IndexMask &mask,
+                                                       ResourceScope & /*scope*/) const
+{
+  if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
+          &context))
+  {
+    if (const GreasePencil *grease_pencil = geometry_context->grease_pencil()) {
+      return this->get_varray_for_context(*grease_pencil, mask);
+    }
+  }
+  if (const GreasePencilFieldContext *grease_pencil_context =
+          dynamic_cast<const GreasePencilFieldContext *>(&context))
+  {
+    return this->get_varray_for_context(grease_pencil_context->grease_pencil(), mask);
   }
   return {};
 }
@@ -577,6 +623,9 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
   const GeometryComponent::Type component_type = component.type();
   if (component_type == GeometryComponent::Type::PointCloud) {
     return ATTR_DOMAIN_POINT;
+  }
+  if (component_type == GeometryComponent::Type::GreasePencil) {
+    return ATTR_DOMAIN_GREASE_PENCIL_LAYER;
   }
   if (component_type == GeometryComponent::Type::Instance) {
     return ATTR_DOMAIN_INSTANCE;
