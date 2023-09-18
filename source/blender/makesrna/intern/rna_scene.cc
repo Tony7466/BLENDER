@@ -4391,7 +4391,7 @@ static void rna_def_view_layer_eevee(BlenderRNA *brna)
   PropertyRNA *prop;
   srna = RNA_def_struct(brna, "ViewLayerEEVEE", nullptr);
   RNA_def_struct_path_func(srna, "rna_ViewLayerEEVEE_path");
-  RNA_def_struct_ui_text(srna, "EEVEE Settings", "View layer settings for EEVEE");
+  RNA_def_struct_ui_text(srna, "EEVEE Settings", "View Layer settings for EEVEE");
 
   prop = RNA_def_property(srna, "use_pass_volume_direct", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "render_passes", EEVEE_RENDER_PASS_VOLUME_LIGHT);
@@ -8093,12 +8093,12 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "reflection_options", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "RaytraceEEVEE");
   RNA_def_property_ui_text(
-      prop, "Reflection Trace Options", "EEVEE settings for the tracing reflections");
+      prop, "Reflection Trace Options", "EEVEE settings for tracing reflections");
 
   prop = RNA_def_property(srna, "refraction_options", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "RaytraceEEVEE");
   RNA_def_property_ui_text(
-      prop, "Reflection Trace Options", "EEVEE settings for the tracing reflections");
+      prop, "Refraction Trace Options", "EEVEE settings for tracing refractions");
 }
 
 static void rna_def_scene_gpencil(BlenderRNA *brna)

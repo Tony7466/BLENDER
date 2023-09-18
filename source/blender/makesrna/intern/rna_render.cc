@@ -943,8 +943,9 @@ static void rna_def_render_engine(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bl_use_eevee_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "type->flag", RE_USE_EEVEE_VIEWPORT);
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  RNA_def_property_ui_text(
-      prop, "Use EEVEE Viewport", "Uses EEVEE for viewport shading in LookDev shading mode");
+  RNA_def_property_ui_text(prop,
+                           "Use EEVEE Viewport",
+                           "Uses EEVEE for viewport shading in Material Preview shading mode");
 
   prop = RNA_def_property(srna, "bl_use_custom_freestyle", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "type->flag", RE_USE_CUSTOM_FREESTYLE);
