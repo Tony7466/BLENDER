@@ -14,6 +14,7 @@
 #include "BKE_duplilist.h"
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
+#include "DEG_depsgraph_query.h"
 #include "DNA_object_types.h"
 #include "DRW_render.h"
 #include "GPU_material.h"
@@ -33,53 +34,21 @@ class Instance;
 
 struct ObjectKey {
   /** Hash value of the key. */
-  uint64_t hash_value;
-  /** Original Object or source object for duplis. */
-  Object *ob;
-  /** Original Parent object for duplis. */
-  Object *parent;
-  /** Dupli objects recursive unique identifier */
-  int id[MAX_DUPLI_RECUR];
-  /** Used for particle system hair. */
-  int sub_key_;
-#ifdef DEBUG
-  char name[64];
-#endif
-  ObjectKey() : ob(nullptr), parent(nullptr){};
+  uint64_t hash_value = 0;
 
-  ObjectKey(Object *ob_, Object *parent_, int id_[MAX_DUPLI_RECUR], int sub_key_ = 0)
-      : ob(ob_), parent(parent_), sub_key_(sub_key_)
+  ObjectKey() = default;
+
+  ObjectKey(Object *ob, int sub_key_ = 0)
   {
-    if (id_) {
-      memcpy(id, id_, sizeof(id));
-    }
-    else {
-      memset(id, 0, sizeof(id));
-    }
-    /* Compute hash on creation so we avoid the cost of it for every sync. */
-    hash_value = BLI_ghashutil_ptrhash(ob);
-    hash_value = BLI_ghashutil_combine_hash(hash_value, BLI_ghashutil_ptrhash(parent));
-    for (int i = 0; i < MAX_DUPLI_RECUR; i++) {
-      if (id[i] != 0) {
-        hash_value = BLI_ghashutil_combine_hash(hash_value, BLI_ghashutil_inthash(id[i]));
-      }
-      else {
-        break;
-      }
+    hash_value = BLI_ghashutil_ptrhash(DEG_get_original_object(ob));
+
+    if (DupliObject *dupli = DRW_object_get_dupli(ob)) {
+      hash_value = BLI_ghashutil_combine_hash(hash_value, dupli->random_id);
     }
     if (sub_key_ != 0) {
       hash_value = BLI_ghashutil_combine_hash(hash_value, sub_key_);
     }
-#ifdef DEBUG
-    STRNCPY(name, ob->id.name);
-#endif
-  }
-
-  ObjectKey(Object *ob, DupliObject *dupli, Object *parent, int sub_key_ = 0)
-      : ObjectKey(ob, parent, dupli ? dupli->persistent_id : nullptr, sub_key_){};
-
-  ObjectKey(Object *ob, int sub_key_ = 0)
-      : ObjectKey(ob, DRW_object_get_dupli(ob), DRW_object_get_dupli_parent(ob), sub_key_){};
+  };
 
   uint64_t hash() const
   {
@@ -88,30 +57,12 @@ struct ObjectKey {
 
   bool operator<(const ObjectKey &k) const
   {
-    if (ob != k.ob) {
-      return (ob < k.ob);
-    }
-    if (parent != k.parent) {
-      return (parent < k.parent);
-    }
-    if (sub_key_ != k.sub_key_) {
-      return (sub_key_ < k.sub_key_);
-    }
-    return memcmp(id, k.id, sizeof(id)) < 0;
+    return hash_value < k.hash_value;
   }
 
   bool operator==(const ObjectKey &k) const
   {
-    if (ob != k.ob) {
-      return false;
-    }
-    if (parent != k.parent) {
-      return false;
-    }
-    if (sub_key_ != k.sub_key_) {
-      return false;
-    }
-    return memcmp(id, k.id, sizeof(id)) == 0;
+    return hash_value == k.hash_value;
   }
 };
 

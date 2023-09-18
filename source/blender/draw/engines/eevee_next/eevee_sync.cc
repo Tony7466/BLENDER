@@ -40,7 +40,7 @@ static void draw_data_init_cb(DrawData *dd)
 
 ObjectHandle &SyncModule::sync_object(Object *ob)
 {
-  ObjectKey key(DEG_get_original_object(ob));
+  ObjectKey key(ob);
 
   ObjectHandle &handle = ob_handles.lookup_or_add_cb(key.hash_value, [&]() {
     ObjectHandle new_handle;
@@ -513,8 +513,8 @@ void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, HairHandle
         continue;
       }
 
-      ObjectHandle particle_sys_handle;
-      particle_sys_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
+      ObjectHandle particle_sys_handle = ob_handle;
+      particle_sys_handle.object_key = ObjectKey(ob, sub_key++);
       particle_sys_handle.recalc = particle_sys->recalc;
 
       callback(particle_sys_handle, *md, *particle_sys);
