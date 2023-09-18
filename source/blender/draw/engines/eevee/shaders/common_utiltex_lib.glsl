@@ -51,7 +51,34 @@ vec2 brdf_lut(float cos_theta, float roughness)
   return textureLod(utilTex, vec3(lut_coords(cos_theta, roughness), BRDF_LUT_LAYER), 0.0).rg;
 }
 
+vec4 sample_3D_texture(sampler2DArray tex, vec3 coords)
+{
+  float layer_floored;
+  float interp = modf(coords.z, layer_floored);
+
+  coords.z = layer_floored;
+  vec4 tex_low = textureLod(tex, coords, 0.0);
+
+  coords.z += 1.0;
+  vec4 tex_high = textureLod(tex, coords, 0.0);
+
+  /* Manual trilinear interpolation. */
+  return mix(tex_low, tex_high, interp);
+}
+
 /* Return texture coordinates to sample Surface LUT. */
+vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
+{
+  vec3 coords = vec3(sqrt((ior - 1.0) / (ior + 1.0)), sqrt(1.0 - cos_theta), roughness);
+
+  /* scale and bias coordinates, for correct filtered lookup */
+  coords.xy = coords.xy * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
+  coords.z = coords.z * lut_btdf_layer_count + lut_btdf_layer_first;
+
+  return coords;
+}
+
+/* Return texture coordinates to sample BSDF LUT. */
 vec3 lut_coords_bsdf(float cos_theta, float roughness, float ior)
 {
   /* ior is sin of critical angle. */
@@ -72,33 +99,6 @@ vec3 lut_coords_bsdf(float cos_theta, float roughness, float ior)
   coords.z = coords.z * lut_btdf_layer_count + lut_btdf_layer_first;
 
   return coords;
-}
-
-/* Return texture coordinates to sample Surface LUT. */
-vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
-{
-  vec3 coords = vec3(sqrt((ior - 1.0) / (ior + 1.0)), sqrt(1.0 - cos_theta), roughness);
-
-  /* scale and bias coordinates, for correct filtered lookup */
-  coords.xy = coords.xy * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
-  coords.z = coords.z * lut_btdf_layer_count + lut_btdf_layer_first;
-
-  return coords;
-}
-
-vec4 sample_3D_texture(sampler2DArray tex, vec3 coords)
-{
-  float layer_floored;
-  float f = modf(coords.z, layer_floored);
-
-  coords.z = layer_floored;
-  vec4 tex_low = textureLod(tex, coords, 0.0);
-
-  coords.z += 1.0;
-  vec4 tex_high = textureLod(tex, coords, 0.0);
-
-  /* Manual trilinear interpolation. */
-  return mix(tex_low, tex_high, f);
 }
 
 /* Computes the reflectance and transmittance based on the tint (`f0`, `f90`, `transmission_tint`)

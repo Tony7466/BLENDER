@@ -188,13 +188,15 @@ static void eevee_init_util_texture()
   }
   texels_layer += 64 * 64;
 
-  /* Copy Refraction GGX LUT in layer 5 - 21 */
+  /* Copy BSDF GGX LUT in layer 5 - 21 */
   for (int j = 0; j < 16; j++) {
     for (int x = 0; x < 64; x++) {
       for (int y = 0; y < 64; y++) {
+        /* BSDF LUT for `IOR < 1`. */
         texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_ggx[j][y][x][0];
         texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_ggx[j][y][x][1];
         texels_layer[y * 64 + x][2] = blender::eevee::lut::bsdf_ggx[j][y][x][2];
+        /* BTDF LUT for `IOR > 1`, parametrized differently as above. See `eevee_lut_comp.glsl`. */
         texels_layer[y * 64 + x][3] = blender::eevee::lut::btdf_ggx[j][y][x][0];
       }
     }
