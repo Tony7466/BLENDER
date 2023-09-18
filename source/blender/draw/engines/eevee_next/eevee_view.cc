@@ -120,8 +120,6 @@ void ShadingView::render()
 
   inst_.pipelines.background.render(render_view_new_);
 
-#if 0
-
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
@@ -150,7 +148,6 @@ void ShadingView::render()
   inst_.irradiance_cache.viewport_draw(render_view_new_, combined_fb_);
 
   inst_.ambient_occlusion.render_pass(render_view_new_);
-#endif
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
   inst_.film.accumulate(sub_view_, combined_final_tx);
