@@ -4,6 +4,7 @@
 
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_task.hh"
 
 #include "COM_SummedAreaTableOperation.h"
 
@@ -59,118 +60,218 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
                                                     const rcti &area,
                                                     Span<MemoryBuffer *> inputs)
 {
+  /* Note: although this is a single threaded call, multithreading is used. */
   MemoryBuffer *image = inputs[0];
 
-  /* Track floating point error. See below. */
-  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+  /* First pass: copy values from input to output and square values if necessary. */
+  threading::parallel_for(IndexRange(area.ymin, area.ymax), 1, [&](const IndexRange range_y) {
+    threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
+      for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
+        for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
 
-  for (BuffersIterator<float> it = output->iterate_with({inputs}, area); !it.is_end(); ++it) {
-    const int x = it.x;
-    const int y = it.y;
+          float4 color;
+          image->read_elem(x, y, &color.x);
 
-    BLI_assert(it.get_num_inputs() == 2);
-    const float offset = *it.in(1);
+          float *out = output->get_elem(x, y);
 
-    float4 color, upper, left, upper_left;
-    image->read_elem(x, y, &color.x);
-    color -= offset;
+          switch (mode_) {
+            case eMode::Squared: {
+              color *= color;
+              break;
+            }
+            case eMode::Identity: {
+              /* Pass. */
+              break;
+            }
+            default: {
+              BLI_assert_msg(0, "Mode not implemented");
+              break;
+            }
+          }
 
-    output->read_elem_checked(x, y - 1, &upper.x);
-    output->read_elem_checked(x - 1, y, &left.x);
-    output->read_elem_checked(x - 1, y - 1, &upper_left.x);
-
-    float4 sum = upper + left - upper_left;
-
-    float4 v;
-    switch (mode_) {
-      case eMode::Squared: {
-        v = color * color;
-        break;
+          out[0] = color.x;
+          out[1] = color.y;
+          out[2] = color.z;
+          out[3] = color.w;
+        }
       }
-      case eMode::Identity: {
-        v = color;
-        break;
-      }
-      default: {
-        BLI_assert_msg(0, "Mode not implemented");
-        break;
+    });
+  });
+
+  /* Second pass. */
+  threading::parallel_for(IndexRange(area.ymin, area.ymax), 1, [&](const IndexRange range_y) {
+    for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
+      /* Track floating point error. See below. */
+      float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+      for (int x = area.xmin; x < area.xmax; x++) {
+
+        float4 color;
+        output->read_elem_checked(x - 1, y, &color.x);
+
+        float *out = output->get_elem(x, y);
+
+        out[0] += color.x;
+        out[1] += color.y;
+        out[2] += color.z;
+        out[3] += color.w;
       }
     }
+  });
 
-    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
-     * summing up large number of values.
-     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
-     * and then correct the error in the next iteration. */
-    float4 difference = v - running_compensation;
-    float4 temp = sum + difference;
-    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
-     * recovers `difference` for the next iteration. */
-    running_compensation = (temp - sum) - difference;
-    sum = temp;
+  /* Third pass: vertical sum. */
+  threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
+    for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
+      for (int y = area.ymin; y < area.ymax; y++) {
+        float4 color;
+        output->read_elem_checked(x, y - 1, &color.x);
 
-    it.out[0] = sum.x;
-    it.out[1] = sum.y;
-    it.out[2] = sum.z;
-    it.out[3] = sum.w;
-  }
+        float *out = output->get_elem(x, y);
+
+        out[0] += color.x;
+        out[1] += color.y;
+        out[2] += color.z;
+        out[3] += color.w;
+      }
+    }
+  });
 }
 
-MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
+MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
 {
-  MemoryBuffer *result = new MemoryBuffer(DataType::Color, *rect);
+  MemoryBuffer *output = new MemoryBuffer(DataType::Color, *area);
   PixelSampler sampler = PixelSampler::Nearest;
 
-  /* Track floating point error. See below. */
-  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+  /* First pass: copy values from input to output and square values if necessary. */
+  threading::parallel_for(IndexRange(area->ymin, area->ymax), 1, [&](const IndexRange range_y) {
+    threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
+      for (float y = float(*range_y.begin()); y < float(*range_y.end()); y++) {
+        for (float x = float(*range_x.begin()); x < float(*range_x.end()); x++) {
 
-  for (BuffersIterator<float> it = result->iterate_with({}, *rect); !it.is_end(); ++it) {
-    const int x = it.x;
-    const int y = it.y;
+          float4 color;
+          image_reader_->read_sampled(&color.x, x, y, sampler);
 
-    float4 color, upper, left, upper_left;
-    image_reader_->read_sampled(color, x, y, sampler);
+          float *out = output->get_elem(x, y);
 
-    result->read_elem_checked(x, y - 1, &upper.x);
-    result->read_elem_checked(x - 1, y, &left.x);
-    result->read_elem_checked(x - 1, y - 1, &upper_left.x);
+          switch (mode_) {
+            case eMode::Squared: {
+              color *= color;
+              break;
+            }
+            case eMode::Identity: {
+              /* Pass. */
+              break;
+            }
+            default: {
+              BLI_assert_msg(0, "Mode not implemented");
+              break;
+            }
+          }
 
-    float4 sum = upper + left - upper_left;
-
-    float4 v;
-    switch (mode_) {
-      case eMode::Squared: {
-        v = color * color;
-        break;
+          out[0] = color.x;
+          out[1] = color.y;
+          out[2] = color.z;
+          out[3] = color.w;
+        }
       }
-      case eMode::Identity: {
-        v = color;
-        break;
-      }
-      default: {
-        BLI_assert_msg(0, "Mode not implemented");
-        break;
+    });
+  });
+
+  /* Second pass. */
+  threading::parallel_for(IndexRange(area->ymin, area->ymax), 1, [&](const IndexRange range_y) {
+    for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
+      /* Track floating point error. See below. */
+      float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+      for (int x = area->xmin; x < area->xmax; x++) {
+
+        float4 color;
+        output->read_elem_checked(x - 1, y, &color.x);
+
+        float *out = output->get_elem(x, y);
+
+        out[0] += color.x;
+        out[1] += color.y;
+        out[2] += color.z;
+        out[3] += color.w;
       }
     }
+  });
 
-    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
-     * summing up large number of values.
-     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
-     * and then correct the error in the next iteration. */
-    float4 difference = v - running_compensation;
-    float4 temp = sum + difference;
-    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
-     * recovers `difference` for the next iteration. */
-    running_compensation = (temp - sum) - difference;
-    sum = temp;
+  /* Third pass: vertical sum. */
+  threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
+    for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
+      for (int y = area->ymin; y < area->ymax; y++) {
+        float4 color;
+        output->read_elem_checked(x, y - 1, &color.x);
 
-    it.out[0] = sum.x;
-    it.out[1] = sum.y;
-    it.out[2] = sum.z;
-    it.out[3] = sum.w;
-  }
+        float *out = output->get_elem(x, y);
 
-  return result;
+        out[0] += color.x;
+        out[1] += color.y;
+        out[2] += color.z;
+        out[3] += color.w;
+      }
+    }
+  });
+
+  return output;
 }
+
+//MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
+//{
+//  MemoryBuffer *result = new MemoryBuffer(DataType::Color, *rect);
+//  PixelSampler sampler = PixelSampler::Nearest;
+//
+//  /* Track floating point error. See below. */
+//  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+//
+//  for (BuffersIterator<float> it = result->iterate_with({}, *rect); !it.is_end(); ++it) {
+//    const int x = it.x;
+//    const int y = it.y;
+//
+//    float4 color, upper, left, upper_left;
+//    image_reader_->read_sampled(color, x, y, sampler);
+//
+//    result->read_elem_checked(x, y - 1, &upper.x);
+//    result->read_elem_checked(x - 1, y, &left.x);
+//    result->read_elem_checked(x - 1, y - 1, &upper_left.x);
+//
+//    float4 sum = upper + left - upper_left;
+//
+//    float4 v;
+//    switch (mode_) {
+//      case eMode::Squared: {
+//        v = color * color;
+//        break;
+//      }
+//      case eMode::Identity: {
+//        v = color;
+//        break;
+//      }
+//      default: {
+//        BLI_assert_msg(0, "Mode not implemented");
+//        break;
+//      }
+//    }
+//
+//    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
+//     * summing up large number of values.
+//     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
+//     * and then correct the error in the next iteration. */
+//    float4 difference = v - running_compensation;
+//    float4 temp = sum + difference;
+//    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
+//     * recovers `difference` for the next iteration. */
+//    running_compensation = (temp - sum) - difference;
+//    sum = temp;
+//
+//    it.out[0] = sum.x;
+//    it.out[1] = sum.y;
+//    it.out[2] = sum.z;
+//    it.out[3] = sum.w;
+//  }
+//
+//  return result;
+//}
 
 void SummedAreaTableOperation::set_mode(eMode mode)
 {

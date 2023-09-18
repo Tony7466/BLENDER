@@ -63,9 +63,6 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
     uiItemR(col, ptr, "sharpness", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "eccentricity", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  else if (variation == CMP_NODE_KUWAHARA_CLASSIC) {
-    uiItemR(col, ptr, "fast", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
 }
 
 using namespace blender::realtime_compositor;

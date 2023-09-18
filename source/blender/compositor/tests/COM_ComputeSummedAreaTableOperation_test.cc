@@ -12,7 +12,6 @@ struct SatParams {
   /* Input parameters. */
   SummedAreaTableOperation::eMode mode;
   eExecutionModel execution_model;
-  float offset;
   rcti area;
   float4 fill_value;
 
@@ -36,11 +35,8 @@ TEST_P(SummedAreaTableTestP, Values)
 
   std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area);
   input->fill(area, &params.fill_value.x);
-  std::shared_ptr<MemoryBuffer> offset = std::make_shared<MemoryBuffer>(
-      DataType::Value, area, true);
-  offset->fill(area, &params.offset);
 
-  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get(), offset.get()});
+  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get()});
 
   /* First row. */
   EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], params.values[0][0]);
@@ -57,54 +53,45 @@ INSTANTIATE_TEST_SUITE_P(FullFrame5x2_IdentityOnes,
                          SummedAreaTableTestP,
                          testing::Values(SatParams{SummedAreaTableOperation::eMode::Identity,
                                                    eExecutionModel::FullFrame,
-                                                   0.0f,                     /* Offset. */
                                                    rcti{0, 5, 0, 2},         /* Area. */
                                                    {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
 
                                                    /* Expected output. */
-                                                   {{1, 2, 3, 4, 5}, {2, 4, 6, 8, 10}}}));
+                                                   {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f},
+                                                     {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
+
+}));
+
+INSTANTIATE_TEST_SUITE_P(FullFrame5x2_SquaredOnes,
+                         SummedAreaTableTestP,
+                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Squared,
+  eExecutionModel::FullFrame,
+  rcti{0, 5, 0, 2},         /* Area. */
+  {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
+
+  /* Expect identical to when using Identity SAT, since all inputs are 1. */
+  {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f},
+    {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
+
+}));
 
 INSTANTIATE_TEST_SUITE_P(FullFrame3x2_Squared,
                          SummedAreaTableTestP,
-                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Identity,
+                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Squared,
                                                    eExecutionModel::FullFrame,
-                                                   0.0f,                    /* Offset. */
                                                    rcti{0, 3, 0, 2},        /* Area. */
                                                    {2.0f, 2.0f, 1.5f, .1f}, /* Fill value. */
 
                                                    /* Expected output. */
                                                    {
-                                                       {2, 4, 4.5},
-                                                       {0.2, 8, 12},
+                                                       {4.0f, 8.0f, 6.75f},
+                                                       {0.02f, 16.0f, 24.0f},
                                                    }}));
 
-INSTANTIATE_TEST_SUITE_P(FullFrame3x2_IdentityPositiveOffset,
-                         SummedAreaTableTestP,
-                         testing::Values(SatParams{
-                             SummedAreaTableOperation::eMode::Identity,
-                             eExecutionModel::FullFrame,
-                             42.0f,                     /* Offset. */
-                             rcti{0, 3, 0, 2},          /* Area. */
-                             {2.0f, 1.24f, 5.0f, 1.0f}, /* Fill value. */
 
-                             /* Expected output. */
-                             {{-40.0f, -81.519997f, -111.0f}, {-82.0f, -160.0f, -244.56001f}}}));
-
-INSTANTIATE_TEST_SUITE_P(FullFrame3x2_SquaredNegativeOffset,
-                         SummedAreaTableTestP,
-                         testing::Values(SatParams{
-                             SummedAreaTableOperation::eMode::Identity,
-                             eExecutionModel::FullFrame,
-                             -0.5f,                     /* Offset. */
-                             rcti{0, 3, 0, 2},          /* Area. */
-                             {2.0f, 1.24f, 5.0f, 1.0f}, /* Fill value. */
-
-                             /* Expected output. */
-                             {{2.5f, 3.48f, 16.5f}, {3.0f, 10.0f, 10.440001f}}}));
-
-class SummedTableAreaSumTest : public ::testing::Test {
+class SummedAreaTableSumTest : public ::testing::Test {
  public:
-  SummedTableAreaSumTest()
+  SummedAreaTableSumTest()
   {
     operation_ = std::make_shared<SummedAreaTableOperation>();
   }
@@ -135,7 +122,7 @@ class SummedTableAreaSumTest : public ::testing::Test {
   float offset_ = 0.0f;
 };
 
-TEST_F(SummedTableAreaSumTest, FullyInside)
+TEST_F(SummedAreaTableSumTest, FullyInside)
 {
   rcti area;
   area.xmin = 1;
@@ -146,7 +133,7 @@ TEST_F(SummedTableAreaSumTest, FullyInside)
   ASSERT_EQ(sum[0], 9);
 }
 
-TEST_F(SummedTableAreaSumTest, LeftEdge)
+TEST_F(SummedAreaTableSumTest, LeftEdge)
 {
   rcti area;
   area.xmin = 0;
@@ -157,7 +144,7 @@ TEST_F(SummedTableAreaSumTest, LeftEdge)
   ASSERT_EQ(sum[0], 9);
 }
 
-TEST_F(SummedTableAreaSumTest, RightEdge)
+TEST_F(SummedAreaTableSumTest, RightEdge)
 {
   rcti area;
   area.xmin = area_.xmax - 2;
@@ -168,7 +155,7 @@ TEST_F(SummedTableAreaSumTest, RightEdge)
   ASSERT_EQ(sum[0], 6);
 }
 
-TEST_F(SummedTableAreaSumTest, LowerRightCorner)
+TEST_F(SummedAreaTableSumTest, LowerRightCorner)
 {
   rcti area;
   area.xmin = area_.xmax - 1;
@@ -179,7 +166,7 @@ TEST_F(SummedTableAreaSumTest, LowerRightCorner)
   ASSERT_EQ(sum[0], 1);
 }
 
-TEST_F(SummedTableAreaSumTest, TopLine)
+TEST_F(SummedAreaTableSumTest, TopLine)
 {
   rcti area;
   area.xmin = 0;
@@ -190,7 +177,7 @@ TEST_F(SummedTableAreaSumTest, TopLine)
   ASSERT_EQ(sum[0], 2);
 }
 
-TEST_F(SummedTableAreaSumTest, ButtomLine)
+TEST_F(SummedAreaTableSumTest, ButtomLine)
 {
   rcti area;
   area.xmin = 0;

@@ -1033,8 +1033,6 @@ typedef struct NodeKuwaharaData {
   int uniformity;
   float sharpness;
   float eccentricity;
-  short fast;
-  char _pad[2];
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {

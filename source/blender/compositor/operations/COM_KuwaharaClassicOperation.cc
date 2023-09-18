@@ -29,7 +29,6 @@ void KuwaharaClassicOperation::init_execution()
   image_reader_ = this->get_input_socket_reader(0);
   sat_reader_ = this->get_input_socket_reader(1);
   sat_squared_reader_ = this->get_input_socket_reader(2);
-  offset_reader_ = this->get_input_socket_reader(3);
 }
 
 void KuwaharaClassicOperation::deinit_execution()
@@ -77,7 +76,6 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
     }
   }
   else {
-
     /* Split surroundings of pixel into 4 overlapping regions. */
     for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
       for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
@@ -182,9 +180,6 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     const int x = it.x;
     const int y = it.y;
 
-    BLI_assert(it.get_num_inputs() == 4);
-    const float offset = *it.in(3);
-
     float3 mean_of_color[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
     float3 mean_of_squared_color[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
     int quadrant_pixel_count[4] = {0, 0, 0, 0};
@@ -276,9 +271,9 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
       }
     }
 
-    it.out[0] = mean_of_color[min_index].x + offset;
-    it.out[1] = mean_of_color[min_index].y + offset;
-    it.out[2] = mean_of_color[min_index].z + offset;
+    it.out[0] = mean_of_color[min_index].x;
+    it.out[1] = mean_of_color[min_index].y;
+    it.out[2] = mean_of_color[min_index].z;
 
     /* No changes for alpha channel. */
     it.out[3] = image->get_value(x, y, 3);

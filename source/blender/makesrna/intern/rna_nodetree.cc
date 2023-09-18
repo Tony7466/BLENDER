@@ -8630,12 +8630,6 @@ static void def_cmp_kuwahara(StructRNA *srna)
       "Eccentricity",
       "Controls how directional the filter is. 0 means the filter is completely omnidirectional "
       "while 2 means it is maximally directed along the edges of the image");
-
-  prop = RNA_def_property(srna, "fast", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "fast", 1);
-  RNA_def_property_ui_text(
-      prop, "Fast", "Use faster computation. Might produce artefacts for large images.");
-
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
