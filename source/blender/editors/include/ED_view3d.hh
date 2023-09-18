@@ -902,10 +902,6 @@ void view3d_opengl_select_cache_begin();
 void view3d_opengl_select_cache_end();
 
 /**
- * \warning be sure to account for a negative return value
- * This is an error, "Too many objects in select buffer"
- * and no action should be taken (can crash blender) if this happens
- *
  * \note (vc->obedit == NULL) can be set to explicitly skip edit-object selection.
  */
 int view3d_opengl_select_ex(ViewContext *vc,

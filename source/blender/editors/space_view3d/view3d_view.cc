@@ -750,11 +750,6 @@ int view3d_opengl_select_ex(ViewContext *vc,
   UI_Theme_Restore(&theme_state);
 
 finally:
-
-  if (hits < 0) {
-    printf("Too many objects in select buffer\n"); /* XXX make error message */
-  }
-
   return hits;
 }
 
