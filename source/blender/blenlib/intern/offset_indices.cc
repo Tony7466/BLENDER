@@ -57,8 +57,17 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
   }
   BLI_assert(selection.size() == (dst_offsets.size() - 1));
   gather_group_sizes(src_offsets, selection, dst_offsets);
-  accumulate_counts_to_offsets(dst_offsets);
-  return OffsetIndices<int>(dst_offsets);
+  return accumulate_counts_to_offsets(dst_offsets);
+}
+
+static OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
+                                                  const IndexMaskSegment mask,
+                                                  MutableSpan<int> dst)
+{
+  for (const int i : mask.index_range()) {
+    dst[i] = src[mask[i]].size();
+  }
+  return offset_indices::accumulate_counts_to_offsets(dst);
 }
 
 void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map)

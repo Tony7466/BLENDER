@@ -253,16 +253,6 @@ static OffsetIndices<int> calc_edges_by_ngon(const OffsetIndices<int> src_faces,
   return offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 }
 
-static OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
-                                                  const IndexMaskSegment mask,
-                                                  MutableSpan<int> dst)
-{
-  for (const int i : mask.index_range()) {
-    dst[i] = src[mask[i]].size();
-  }
-  return offset_indices::accumulate_counts_to_offsets(dst);
-}
-
 static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
                                                    const Span<int> face_edges,
                                                    const int edge_offset,
@@ -335,7 +325,7 @@ static void triangulate_ngons(const Span<float3> positions,
     /* In order to simplify and "parallelize" the next loops, gather offsets used to group an array
      * large enough for all the local face corners. */
     data.offset_data.reinitialize(ngons.size() + 1);
-    const OffsetIndices local_corner_offsets = gather_selected_offsets(
+    const OffsetIndices local_corner_offsets = offset_indices::gather_selected_offsets(
         src_faces, ngons, data.offset_data);
 
     /* Use face normals to build projection matrices to make the face positions 2D. */

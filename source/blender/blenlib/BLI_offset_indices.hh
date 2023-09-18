@@ -157,6 +157,9 @@ void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, Mutab
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
                                            MutableSpan<int> dst_offsets);
+OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                           const IndexMaskSegment mask,
+                                           MutableSpan<int> dst_offsets);
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.
