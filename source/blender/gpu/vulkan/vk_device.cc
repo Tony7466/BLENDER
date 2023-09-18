@@ -25,6 +25,7 @@ void VKDevice::deinit()
 {
   VK_ALLOCATION_CALLBACKS;
   vkDestroyCommandPool(vk_device_, vk_command_pool_, vk_allocation_callbacks);
+
   dummy_buffer_.free();
   sampler_.free();
   destroy_discarded_resources();
