@@ -7,6 +7,7 @@
 #ifdef __cplusplus
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
+#  include "BLI_virtual_array.hh"
 #endif
 
 #ifdef __cplusplus
@@ -298,7 +299,8 @@ void BKE_defvert_extract_vgroup_to_faceweights(const struct MDeformVert *dvert,
 
 namespace blender::bke {
 VArray<float> varray_for_deform_verts(Span<MDeformVert> dverts, const int dvert_index);
-VMutableArray<float> varray_for_deform_verts(MutableSpan<MDeformVert> dverts, int dvert_index);
+VMutableArray<float> varray_for_mutable_deform_verts(MutableSpan<MDeformVert> dverts,
+                                                     int dvert_index);
 }  // namespace blender::bke
 #endif
 
