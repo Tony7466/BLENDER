@@ -190,7 +190,6 @@ typedef struct bNodeSocket {
   bool is_available() const;
   bool is_panel_collapsed() const;
   bool is_visible_or_panel_collapsed() const;
-  bool is_visible() const;
   bool is_multi_input() const;
   bool is_input() const;
   bool is_output() const;
@@ -427,6 +426,9 @@ typedef struct bNode {
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
+
+  bool is_socket_drawn(const bNodeSocket &socket) const;
+  bool is_socket_icon_drawn(const bNodeSocket &socket) const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
