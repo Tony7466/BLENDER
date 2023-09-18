@@ -369,6 +369,15 @@ static void triangulate_ngons(const Span<float3> positions,
       }
     }
 
+    if (ngon_mode == TriangulateNGonMode::Beauty) {
+      if (!data.arena) {
+        data.arena = BLI_memarena_new(BLI_POLYFILL_ARENA_SIZE, __func__);
+      }
+      if (!data.heap) {
+        data.heap = BLI_heap_new_ex(BLI_POLYFILL_ALLOC_NGON_RESERVE);
+      }
+    }
+
     /* Calculate the triangulation of corners indices local to each face. */
     for (const int i : ngons.index_range()) {
       const Span<float2> positions_2d = projected_positions.slice(local_corner_offsets[i]);
@@ -380,12 +389,6 @@ static void triangulate_ngons(const Span<float3> positions,
                         1,
                         reinterpret_cast<uint(*)[3]>(map.data()));
       if (ngon_mode == TriangulateNGonMode::Beauty) {
-        if (!data.arena) {
-          data.arena = BLI_memarena_new(BLI_POLYFILL_ARENA_SIZE, __func__);
-        }
-        if (!data.heap) {
-          data.heap = BLI_heap_new_ex(BLI_POLYFILL_ALLOC_NGON_RESERVE);
-        }
         BLI_polyfill_beautify(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                               positions_2d.size(),
                               reinterpret_cast<uint(*)[3]>(map.data()),
