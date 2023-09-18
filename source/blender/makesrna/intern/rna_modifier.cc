@@ -1681,8 +1681,13 @@ static bool rna_NodesModifier_node_group_poll(PointerRNA * /*ptr*/, PointerRNA v
   }
   if (ntree->id.asset_data) {
     if ((ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER) == 0) {
+      /* Only node group assets specically marked as modifiers can be modifiers. */
       return false;
     }
+  }
+  if (ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) {
+    /* Tool node groups cannot be modifiers. */
+    return false;
   }
   return true;
 }
