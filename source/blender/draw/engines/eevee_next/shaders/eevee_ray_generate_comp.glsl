@@ -25,7 +25,11 @@ void main()
   bool valid_texel = in_texture_range(texel_fullres, stencil_tx);
   uint closure_bits = (!valid_texel) ? 0u : texelFetch(stencil_tx, texel_fullres, 0).r;
 
-#if defined(RAYTRACE_REFLECT)
+#if defined(RAYTRACE_DIFFUSE)
+  ClosureDiffuse closure;
+  eClosureBits closure_active = CLOSURE_DIFFUSE;
+  const int gbuf_layer = 1;
+#elif defined(RAYTRACE_REFLECT)
   ClosureReflection closure;
   eClosureBits closure_active = CLOSURE_REFLECTION;
   const int gbuf_layer = 0;
@@ -67,7 +71,7 @@ void main()
   float pdf;
   vec3 ray_direction = ray_generate_direction(noise.xy, closure, V, pdf);
 
-#if defined(RAYTRACE_REFRACT)
+#if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_DIFFUSE)
   if (gbuffer_is_refraction(gbuffer_packed) && closure_active != CLOSURE_REFRACTION) {
     /* Discard incorrect rays. */
     pdf = 0.0;

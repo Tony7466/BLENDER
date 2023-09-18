@@ -14,6 +14,32 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 
+#if defined(RAYTRACE_DIFFUSE)
+
+void main()
+{
+  const uint tile_size = RAYTRACE_GROUP_SIZE;
+  uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
+  ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+
+  ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
+                        uniform_buf.raytrace.resolution_bias;
+
+  float depth = texelFetch(depth_tx, texel_fullres, 0).r;
+  vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
+
+  /* Create screen space directions. */
+  const int direction_count = 4;
+  for (int i = 0; i < direction_count; i++) {
+#  ifndef SKIP_TRACING
+#  endif
+  }
+
+  imageStore(ray_radiance_img, texel, vec4(0.0));
+}
+
+#else /* RAYTRACE_REFLECT || RAYTRACE_REFRACT */
+
 void main()
 {
   const uint tile_size = RAYTRACE_GROUP_SIZE;
@@ -45,13 +71,13 @@ void main()
   float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
 
-#if defined(RAYTRACE_REFLECT)
+#  if defined(RAYTRACE_REFLECT)
   const bool discard_backface = true;
   const bool allow_self_intersection = false;
-#elif defined(RAYTRACE_REFRACT)
+#  elif defined(RAYTRACE_REFRACT)
   const bool discard_backface = false;
   const bool allow_self_intersection = true;
-#endif
+#  endif
 
   /* TODO(fclem): Take IOR into account in the roughness LOD bias. */
   /* TODO(fclem): pdf to roughness mapping is a crude approximation. Find something better. */
@@ -101,3 +127,5 @@ void main()
   imageStore(ray_time_img, texel, vec4(hit.time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
 }
+
+#endif
