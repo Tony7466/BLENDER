@@ -2069,69 +2069,27 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 /* Handle selection */
 
 /* Defines for handle select tool. */
-static const EnumPropertyItem prop_graphkeys_leftright_handle_select_types[] = {
-    {GRAPHKEYS_HANDLESEL_BOTH, "BOTH", 0, "Select Both Handles", ""},
-    {GRAPHKEYS_HANDLESEL_L, "LEFT", 0, "Select Left Handles", ""},
-    {GRAPHKEYS_HANDLESEL_R, "RIGHT", 0, "Select Right Handles", ""},
-    {GRAPHKEYS_HANDLESEL_KEY, "KEY", 0, "Select Keyframes", ""},
+static const EnumPropertyItem prop_graphkeys_handle_select_actions[] = {
+    {GRAPHKEYS_HANDLESEL_SELECT, "SELECT", 0, "Select", ""},
+    {GRAPHKEYS_HANDLESEL_DESELECT, "DESELECT", 0, "Deselect", ""},
+    {GRAPHKEYS_HANDLESEL_KEEP, "KEEP", 0, "Keep", "Leave as-is"},
     {0, NULL, 0, NULL, NULL},
 };
 
-static short bezt_sel_left_handles(KeyframeEditData * /* ked */, BezTriple *bezt)
-{
-  if (BEZT_ISSEL_ANY(bezt)) {
-    BEZT_SEL_IDX(bezt, 0);
-    BEZT_DESEL_IDX(bezt, 2);
-  }
-  return 0;
-}
-
-static short bezt_sel_right_handles(KeyframeEditData * /* ked */, BezTriple *bezt)
-{
-  if (BEZT_ISSEL_ANY(bezt)) {
-    BEZT_DESEL_IDX(bezt, 0);
-    BEZT_SEL_IDX(bezt, 2);
-  }
-  return 0;
-}
-
-static short bezt_sel_both_handles(KeyframeEditData * /* ked */, BezTriple *bezt)
-{
-  if (BEZT_ISSEL_ANY(bezt)) {
-    BEZT_SEL_IDX(bezt, 0);
-    BEZT_SEL_IDX(bezt, 2);
-  }
-  return 0;
-}
-
-static short bezt_sel_keys(KeyframeEditData * /* ked */, BezTriple *bezt)
-{
-  if (BEZT_ISSEL_ANY(bezt)) {
-    BEZT_DESEL_IDX(bezt, 0);
-    BEZT_SEL_IDX(bezt, 1);
-    BEZT_DESEL_IDX(bezt, 2);
-  }
-  return 0;
-}
-
-static short bezt_desel_keys(KeyframeEditData * /*ked */, BezTriple *bezt)
-{
-  if (BEZT_ISSEL_ANY(bezt)) {
-    BEZT_DESEL_IDX(bezt, 1);
-  }
-  return 0;
-}
-
-/*
- * Select keyframe handles left/right/both or keys based on the given selection.
+/**
+ * Select/deselect different parts (e.g. left/right handles) of already-selected keys.
  *
- * mode: Determines which handles to select - left, right, or both.
- * deselect_keyframe: Specifies whether keyframes should be deselected (true) or if the current
- * selection should be preserved (false).
+ * The *_action parameters determine what action to take on each part of
+ * a key: select, deselect, or keep (do nothing).
+ *
+ * \param left_handle_action: selection action to perform on left handles.
+ * \param key_action: selection action to perform on the keys themselves.
+ * \param right_handle_action: selection action to perform on right handles.
  */
 static void graph_keys_select_handles(bAnimContext *ac,
-                                      const enum eGraphKey_HandleSelect_Side mode,
-                                      const bool deselect_keyframe)
+                                      const enum eGraphKey_HandleSelect_Action left_handle_action,
+                                      const enum eGraphKey_HandleSelect_Action key_action,
+                                      const enum eGraphKey_HandleSelect_Action right_handle_action)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -2147,25 +2105,49 @@ static void graph_keys_select_handles(bAnimContext *ac,
     if (fcu->bezt == NULL) {
       continue;
     }
-    switch (mode) {
-      case GRAPHKEYS_HANDLESEL_BOTH: {
-        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_both_handles, NULL);
-        break;
+
+    int i = 0;
+    BezTriple *bezt = fcu->bezt;
+    for (; i < fcu->totvert; bezt++, i++) {
+      if (!BEZT_ISSEL_ANY(bezt)) {
+        continue;
       }
-      case GRAPHKEYS_HANDLESEL_R: {
-        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_right_handles, NULL);
-        break;
+
+      switch (left_handle_action) {
+        case GRAPHKEYS_HANDLESEL_SELECT:
+          BEZT_SEL_IDX(bezt, 0);
+          break;
+        case GRAPHKEYS_HANDLESEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 0);
+          break;
+        case GRAPHKEYS_HANDLESEL_KEEP:
+          /* Do nothing. */
+          break;
       }
-      case GRAPHKEYS_HANDLESEL_L: {
-        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_left_handles, NULL);
-        break;
+
+      switch (key_action) {
+        case GRAPHKEYS_HANDLESEL_SELECT:
+          BEZT_SEL_IDX(bezt, 1);
+          break;
+        case GRAPHKEYS_HANDLESEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 1);
+          break;
+        case GRAPHKEYS_HANDLESEL_KEEP:
+          /* Do nothing. */
+          break;
       }
-      case GRAPHKEYS_HANDLESEL_KEY: {
-        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_keys, NULL);
+
+      switch (right_handle_action) {
+        case GRAPHKEYS_HANDLESEL_SELECT:
+          BEZT_SEL_IDX(bezt, 2);
+          break;
+        case GRAPHKEYS_HANDLESEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 2);
+          break;
+        case GRAPHKEYS_HANDLESEL_KEEP:
+          /* Do nothing. */
+          break;
       }
-    }
-    if (deselect_keyframe && (mode != GRAPHKEYS_HANDLESEL_KEY)) {
-      ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_desel_keys, NULL);
     }
   }
 
@@ -2182,13 +2164,15 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const eGraphKey_HandleSelect_Side leftright = static_cast<eGraphKey_HandleSelect_Side>(
-      RNA_enum_get(op->ptr, "mode"));
-  const bool deselect_keyframe = RNA_boolean_get(op->ptr, "deselect_keyframe");
-  /* Perform selection changes. */
-  graph_keys_select_handles(&ac, leftright, deselect_keyframe);
+  const eGraphKey_HandleSelect_Action left_handle_action =
+      static_cast<eGraphKey_HandleSelect_Action>(RNA_enum_get(op->ptr, "left_handle_action"));
+  const eGraphKey_HandleSelect_Action key_action = static_cast<eGraphKey_HandleSelect_Action>(
+      RNA_enum_get(op->ptr, "key_action"));
+  const eGraphKey_HandleSelect_Action right_handle_action =
+      static_cast<eGraphKey_HandleSelect_Action>(RNA_enum_get(op->ptr, "right_handle_action"));
 
-  /* Set notifier that keyframe selection has changed. */
+  graph_keys_select_handles(&ac, left_handle_action, key_action, right_handle_action);
+
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
 
   return OPERATOR_FINISHED;
@@ -2199,13 +2183,12 @@ static void graphkeys_select_handles_ui(bContext * /* C */, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayout *row;
 
-  bool keyframe_selection = RNA_enum_get(op->ptr, "mode") == GRAPHKEYS_HANDLESEL_KEY;
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "mode", UI_ITEM_NONE, NULL, ICON_NONE);
-
-  if (!keyframe_selection) {
-    uiItemR(layout, op->ptr, "deselect_keyframe", UI_ITEM_NONE, NULL, ICON_NONE);
-  }
+  uiItemR(row, op->ptr, "left_handle_action", UI_ITEM_NONE, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "right_handle_action", UI_ITEM_NONE, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "key_action", UI_ITEM_NONE, NULL, ICON_NONE);
 }
 
 void GRAPH_OT_select_handles(wmOperatorType *ot)
@@ -2213,7 +2196,8 @@ void GRAPH_OT_select_handles(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Select Handles";
   ot->idname = "GRAPH_OT_select_handles";
-  ot->description = "Select keyframe handles left/right/both or keys based on the given selection";
+  ot->description =
+      "Select/deselect the different parts of keys that have at least one part already selected";
 
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
@@ -2223,17 +2207,22 @@ void GRAPH_OT_select_handles(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  RNA_def_enum(
-      ot->srna,
-      "mode",
-      prop_graphkeys_leftright_handle_select_types,
-      GRAPHKEYS_HANDLESEL_BOTH,
-      "Mode",
-      "Selects corresponding keyframe handles (left, right, both or keys) based on the given "
-      "selection");
-  RNA_def_boolean(ot->srna,
-                  "deselect_keyframe",
-                  1,
-                  "Deselect Keyframes",
-                  "Deselect keyframes or preserve the given keyframe selection");
+  RNA_def_enum(ot->srna,
+               "left_handle_action",
+               prop_graphkeys_handle_select_actions,
+               GRAPHKEYS_HANDLESEL_SELECT,
+               "Left Handle",
+               "How to affect the selection of the left handle");
+  RNA_def_enum(ot->srna,
+               "right_handle_action",
+               prop_graphkeys_handle_select_actions,
+               GRAPHKEYS_HANDLESEL_SELECT,
+               "Right Handle",
+               "How to affect the selection of the right handle");
+  RNA_def_enum(ot->srna,
+               "key_action",
+               prop_graphkeys_handle_select_actions,
+               GRAPHKEYS_HANDLESEL_KEEP,
+               "Key",
+               "How to affect the selection of the key itself");
 }

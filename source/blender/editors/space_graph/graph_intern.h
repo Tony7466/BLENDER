@@ -80,11 +80,11 @@ enum eGraphKeys_LeftRightSelect_Mode {
 };
 
 /* Defines for handle selection. */
-enum eGraphKey_HandleSelect_Side {
-  GRAPHKEYS_HANDLESEL_BOTH = 0,
-  GRAPHKEYS_HANDLESEL_L,
-  GRAPHKEYS_HANDLESEL_R,
-  GRAPHKEYS_HANDLESEL_KEY,
+enum eGraphKey_HandleSelect_Action {
+  GRAPHKEYS_HANDLESEL_SELECT = 0,
+  GRAPHKEYS_HANDLESEL_DESELECT,
+  /* Leave the selection status as-is. */
+  GRAPHKEYS_HANDLESEL_KEEP,
 };
 
 /* defines for column-select mode */
