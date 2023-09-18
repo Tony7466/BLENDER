@@ -261,7 +261,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
-  NodeItem detail = get_input_value("Detail", NodeItem::Type::Float);
+  NodeItem detail = get_input_default("Detail", NodeItem::Type::Float);
   NodeItem lacunarity = get_input_value("Lacunarity", NodeItem::Type::Float);
 
   NodeItem position = create_node("position", NodeItem::Type::Vector3);
@@ -269,9 +269,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   NodeItem res = create_node("fractal3d", NodeItem::Type::Color3);
   res.set_input("position", position);
-  if (detail.value) {
-    res.set_input("octaves", val(int(detail.value->asA<float>())));
-  }
+  res.set_input("octaves", val(int(detail.value->asA<float>())));
   res.set_input("lacunarity", lacunarity);
   return res;
 }

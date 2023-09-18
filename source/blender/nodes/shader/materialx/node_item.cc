@@ -66,7 +66,7 @@ std::string NodeItem::type(Type type)
 {
   switch (type) {
     case Type::Any:
-      return "";
+      return "any";
     case Type::Multioutput:
       return "multioutput";
     case Type::String:
@@ -103,9 +103,14 @@ std::string NodeItem::type(Type type)
   return "";
 }
 
+bool NodeItem::is_arithmetic(Type type)
+{
+  return type >= Type::Float && type <= Type::Color4;
+}
+
 NodeItem::operator bool() const
 {
-  return value || node;
+  return value || node || input || output;
 }
 
 NodeItem NodeItem::operator+(const NodeItem &other) const
@@ -604,8 +609,8 @@ NodeItem NodeItem::if_else(CompareOp op,
 
 NodeItem NodeItem::extract(const int index) const
 {
-  NodeItem res = empty();
-  res = create_node("extract", Type::Float);
+  /* TODO: Add check if (value) { ... } */
+  NodeItem res = create_node("extract", Type::Float);
   res.set_input("in", *this);
   res.set_input("index", val(index));
   return res;
@@ -623,6 +628,9 @@ NodeItem::Type NodeItem::type() const
   }
   if (node) {
     return type(node->getType());
+  }
+  if (output) {
+    return type(output->getType());
   }
   return Type::Empty;
 }
@@ -675,30 +683,59 @@ void NodeItem::set_input(const std::string &in_name, const NodeItem &item)
   else if (item.node) {
     node->setConnectedNode(in_name, item.node);
   }
+  else if (item.input) {
+    node->setAttribute("interfacename", item.input->getName());
+  }
+  else if (item.output) {
+    node->setConnectedOutput(in_name, item.output);
+  }
   else {
     CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", in_name.c_str());
   }
 }
 
-void NodeItem::set_input_output(const std::string &in_name,
-                                const NodeItem &item,
-                                const std::string &out_name)
+NodeItem NodeItem::add_output(const std::string &out_name, Type out_type)
 {
-  if (!item.node) {
+  NodeItem res = empty();
+  res.output = node->addOutput(out_name, type(out_type));
+  return res;
+}
+
+NodeItem NodeItem::create_input(const std::string &name, const NodeItem &item) const
+{
+  NodeItem res = empty();
+  res.input = graph_->addInput(name);
+
+  Type item_type = item.type();
+  if (item.node) {
+    res.input->setConnectedNode(item.node);
+  }
+  else {
     BLI_assert_unreachable();
   }
-  node->setConnectedNode(in_name, item.node);
-  node->setConnectedOutput(in_name, item.node->getOutput(out_name));
+  res.input->setType(type(item_type));
+
+  return res;
 }
 
-void NodeItem::add_output(const std::string &name, Type out_type)
+NodeItem NodeItem::create_output(const std::string &name, const NodeItem &item) const
 {
-  node->addOutput(name, type(out_type));
-}
+  NodeItem res = empty();
+  res.output = graph_->addOutput(name);
 
-bool NodeItem::is_arithmetic(Type type)
-{
-  return type >= Type::Float && type <= Type::Color4;
+  Type item_type = item.type();
+  if (item.node) {
+    res.output->setConnectedNode(item.node);
+  }
+  else if (item.input) {
+    res.output->setInterfaceName(item.input->getName());
+  }
+  else {
+    BLI_assert_unreachable();
+  }
+  res.output->setType(type(item_type));
+
+  return res;
 }
 
 NodeItem::Type NodeItem::cast_types(NodeItem &item1, NodeItem &item2)
@@ -776,10 +813,16 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
     }
   }
   else {
-    /* TODO: Some of math functions (sin, cos, ...) doesn't work with Color types,
-     * we have to convert to Vector */
+    NodeItem v = *this;
+    if (ELEM(type, Type::Color3, Type::Color4) &&
+        ELEM(category, "sin", "cos", "tan", "asin", "acos", "atan2", "sqrt", "ln", "exp"))
+    {
+      /* These functions haven't implementation in MaterialX, converting to Vector types */
+      type = type == Type::Color3 ? Type::Vector3 : Type::Vector4;
+      v = v.convert(type);
+    }
     res = create_node(category, type);
-    res.set_input("in", *this);
+    res.set_input("in", v);
   }
   return res;
 }

@@ -4,6 +4,8 @@
 
 #include "node_parser.h"
 
+#include "group_nodes.h"
+
 #include "BKE_node_runtime.hh"
 
 namespace blender::nodes::materialx {
@@ -17,13 +19,15 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const Material *material,
                        const bNode *node,
                        const bNodeSocket *socket_out,
-                       NodeItem::Type to_type)
+                       NodeItem::Type to_type,
+                       GroupNodeParser *group_parser)
     : graph_(graph),
       depsgraph_(depsgraph),
       material_(material),
       node_(node),
       socket_out_(socket_out),
-      to_type_(to_type)
+      to_type_(to_type),
+      group_parser_(group_parser)
 {
 }
 
@@ -52,7 +56,7 @@ NodeItem NodeParser::compute_full()
   return res;
 }
 
-std::string NodeParser::node_name()
+std::string NodeParser::node_name() const
 {
   std::string name = node_->name;
   if (node_->output_sockets().size() > 1) {
@@ -61,12 +65,33 @@ std::string NodeParser::node_name()
   if (ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
     name += "_" + NodeItem::type(to_type_);
   }
+#ifdef USE_MATERIALX_NODEGRAPH
   return MaterialX::createValidName(name);
+#else
+  std::string prefix;
+  GroupNodeParser *gr = group_parser_;
+  while (gr) {
+    const bNodeTree *ngroup = reinterpret_cast<const bNodeTree *>(gr->node_->id);
+    prefix = MaterialX::createValidName(ngroup->id.name) + "_" + prefix;
+    gr = gr->group_parser_;
+  }
+  return prefix + MaterialX::createValidName(name);
+#endif
 }
 
 NodeItem NodeParser::create_node(const std::string &category, NodeItem::Type type)
 {
   return empty().create_node(category, type);
+}
+
+NodeItem NodeParser::create_input(const std::string &name, const NodeItem &item)
+{
+  return empty().create_input(name, item);
+}
+
+NodeItem NodeParser::create_output(const std::string &name, const NodeItem &item)
+{
+  return empty().create_output(name, item);
 }
 
 NodeItem NodeParser::get_input_default(const std::string &name, NodeItem::Type to_type)
@@ -129,6 +154,9 @@ NodeItem NodeParser::get_default(const bNodeSocket &socket, NodeItem::Type to_ty
 {
   NodeItem res = empty();
   switch (socket.type) {
+    case SOCK_CUSTOM:
+      /* Return empty */
+      break;
     case SOCK_FLOAT: {
       float v = socket.default_value_typed<bNodeSocketValueFloat>()->value;
       res.value = MaterialX::Value::createValue<float>(v);
@@ -163,12 +191,23 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
   const bNode *from_node = link->fromnode;
 
   /* Passing NODE_REROUTE nodes */
-  while (from_node->type == NODE_REROUTE) {
+  while (from_node->is_reroute()) {
     link = from_node->input_socket(0).link;
     if (!(link && link->is_used())) {
       return empty();
     }
     from_node = link->fromnode;
+  }
+
+  if (from_node->is_group()) {
+    return GroupNodeParser(
+               graph_, depsgraph_, material_, from_node, link->fromsock, to_type, group_parser_)
+        .compute_full();
+  }
+  if (from_node->is_group_input()) {
+    return GroupInputNodeParser(
+               graph_, depsgraph_, material_, from_node, link->fromsock, to_type, group_parser_)
+        .compute_full();
   }
 
   if (!from_node->typeinfo->materialx_fn) {
@@ -179,7 +218,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
     return empty();
   }
 
-  NodeParserData data = {graph_, depsgraph_, material_, to_type, empty()};
+  NodeParserData data = {graph_, depsgraph_, material_, to_type, group_parser_, empty()};
   from_node->typeinfo->materialx_fn(&data, const_cast<bNode *>(from_node), link->fromsock);
   return data.result;
 }

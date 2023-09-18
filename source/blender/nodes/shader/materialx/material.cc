@@ -62,18 +62,18 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *mater
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
     if (output_node) {
       NodeParserData data = {
-          doc.get(), depsgraph, material, NodeItem::Type::Material, NodeItem(doc.get())};
+          doc.get(), depsgraph, material, NodeItem::Type::Material, nullptr, NodeItem(doc.get())};
       output_node->typeinfo->materialx_fn(&data, output_node, nullptr);
     }
     else {
       DefaultMaterialNodeParser(
-          doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material)
+          doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material, nullptr)
           .compute_error();
     }
   }
   else {
     DefaultMaterialNodeParser(
-        doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material)
+        doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material, nullptr)
         .compute();
   }
 

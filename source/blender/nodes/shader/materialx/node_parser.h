@@ -16,6 +16,8 @@ namespace blender::nodes::materialx {
 
 extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
+class GroupNodeParser;
+
 class NodeParser {
  protected:
   MaterialX::GraphElement *graph_;
@@ -24,6 +26,7 @@ class NodeParser {
   const bNode *node_;
   const bNodeSocket *socket_out_;
   NodeItem::Type to_type_;
+  GroupNodeParser *group_parser_;
 
  public:
   NodeParser(MaterialX::GraphElement *graph,
@@ -31,15 +34,18 @@ class NodeParser {
              const Material *material,
              const bNode *node,
              const bNodeSocket *socket_out,
-             NodeItem::Type to_type);
+             NodeItem::Type to_type,
+             GroupNodeParser *group_parser);
   virtual ~NodeParser() = default;
 
   virtual NodeItem compute() = 0;
   virtual NodeItem compute_full();
 
  protected:
-  std::string node_name();
+  std::string node_name() const;
   NodeItem create_node(const std::string &category, NodeItem::Type type);
+  NodeItem create_input(const std::string &name, const NodeItem &item);
+  NodeItem create_output(const std::string &name, const NodeItem &item);
   NodeItem get_input_default(const std::string &name, NodeItem::Type to_type);
   NodeItem get_input_default(int index, NodeItem::Type to_type);
   NodeItem get_output_default(const std::string &name, NodeItem::Type to_type);
@@ -71,6 +77,7 @@ struct NodeParserData {
   const Depsgraph *depsgraph;
   const Material *material;
   NodeItem::Type to_type;
+  GroupNodeParser *group_parser;
   NodeItem result;
 };
 
@@ -91,7 +98,8 @@ struct NodeParserData {
   void node_shader_materialx(void *data, struct bNode *node, struct bNodeSocket *out) \
   { \
     materialx::NodeParserData *d = reinterpret_cast<materialx::NodeParserData *>(data); \
-    d->result = MaterialXNodeParser(d->graph, d->depsgraph, d->material, node, out, d->to_type) \
+    d->result = MaterialXNodeParser( \
+                    d->graph, d->depsgraph, d->material, node, out, d->to_type, d->group_parser) \
                     .compute_full(); \
   }
 

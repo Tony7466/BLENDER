@@ -64,17 +64,17 @@ NODE_SHADER_MATERIALX_BEGIN
   dielectric.set_input("scatter_mode", val(std::string("RT")));
 
   NodeItem artistic_ior = create_node("artistic_ior", NodeItem::Type::Multioutput);
-  artistic_ior.add_output("ior", NodeItem::Type::Color3);
-  artistic_ior.add_output("extinction", NodeItem::Type::Color3);
   artistic_ior.set_input("reflectivity", color);
   artistic_ior.set_input("edge_color", color);
+  NodeItem ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
+  NodeItem extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
 
   NodeItem conductor = create_node("conductor_bsdf", NodeItem::Type::BSDF);
   if (normal) {
     conductor.set_input("normal", normal);
   }
-  conductor.set_input_output("ior", artistic_ior, "ior");
-  conductor.set_input_output("extinction", artistic_ior, "extinction");
+  conductor.set_input("ior", ior_out);
+  conductor.set_input("extinction", extinction_out);
   conductor.set_input("roughness", roughness);
 
   NodeItem res = create_node("mix", NodeItem::Type::BSDF);
@@ -82,7 +82,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("bg", conductor);
   res.set_input("mix", val(0.5f));
 
-  return res ;
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END

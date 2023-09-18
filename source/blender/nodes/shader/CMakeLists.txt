@@ -150,10 +150,12 @@ if(WITH_MATERIALX)
     materialx/material.cc
     materialx/node_item.cc
     materialx/node_parser.cc
+    materialx/group_nodes.cc
 
     materialx/material.h
     materialx/node_item.h
     materialx/node_parser.h
+    materialx/group_nodes.h
   )
   list(APPEND LIB
     MaterialXCore

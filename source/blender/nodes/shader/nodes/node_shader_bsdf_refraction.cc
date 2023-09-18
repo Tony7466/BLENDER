@@ -60,7 +60,7 @@ NODE_SHADER_MATERIALX_BEGIN
   res.set_input("roughness", roughness);
   res.set_input("ior", ior);
   res.set_input("scatter_mode", val(std::string("T")));
-  
+
   return res;
 }
 #endif

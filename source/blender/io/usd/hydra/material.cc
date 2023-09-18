@@ -81,6 +81,16 @@ void MaterialData::init()
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
         scene_delegate_->depsgraph, (Material *)id);
     pxr::UsdMtlxRead(doc, stage);
+
+    /* Logging stage: creating lambda stage_str() for not to call stage->ExportToString()
+     * if log won't be printed. */
+    auto stage_str = [&stage]() {
+      std::string str;
+      stage->ExportToString(&str);
+      return str;
+    };
+    ID_LOGN(2, "Stage:\n%s", stage_str().c_str());
+
     if (pxr::UsdPrim materials = stage->GetPrimAtPath(pxr::SdfPath("/MaterialX/Materials"))) {
       pxr::UsdPrimSiblingRange children = materials.GetChildren();
       if (!children.empty()) {

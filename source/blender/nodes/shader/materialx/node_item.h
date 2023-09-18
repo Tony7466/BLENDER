@@ -43,6 +43,8 @@ class NodeItem {
  public:
   MaterialX::ValuePtr value;
   MaterialX::NodePtr node;
+  MaterialX::InputPtr input;
+  MaterialX::OutputPtr output;
 
  private:
   MaterialX::GraphElement *graph_;
@@ -102,15 +104,16 @@ class NodeItem {
   NodeItem empty() const;
   template<class T> NodeItem val(const T &data) const;
   Type type() const;
-  NodeItem create_node(const std::string &category, NodeItem::Type type) const;
 
-  /* Functions to set input and output */
+  /* Node functions */
+  NodeItem create_node(const std::string &category, NodeItem::Type type) const;
   template<class T> void set_input(const std::string &in_name, const T &value, Type in_type);
   void set_input(const std::string &in_name, const NodeItem &item);
-  void set_input_output(const std::string &in_name,
-                        const NodeItem &item,
-                        const std::string &out_name);
-  void add_output(const std::string &in_name, Type out_type);
+  NodeItem add_output(const std::string &out_name, Type out_type);
+
+  /* Output functions */
+  NodeItem create_input(const std::string &name, const NodeItem &item) const;
+  NodeItem create_output(const std::string &name, const NodeItem &item) const;
 
  private:
   static Type cast_types(NodeItem &item1, NodeItem &item2);
