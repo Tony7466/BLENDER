@@ -122,15 +122,19 @@ struct ObjectKey {
  *
  * \{ */
 
-struct ObjectHandle : public DrawData {
-  ObjectKey object_key;
-
+struct BaseHandle {
+  /* Accumulated recalc flags, which corresponds to ID->recalc flags. */
+  unsigned int recalc;
   void reset_recalc_flag()
   {
     if (recalc != 0) {
       recalc = 0;
     }
   }
+};
+
+struct ObjectHandle : public BaseHandle {
+  ObjectKey object_key;
 };
 
 struct WorldHandle : public DrawData {
@@ -154,6 +158,8 @@ struct SceneHandle : public DrawData {
 class SyncModule {
  private:
   Instance &inst_;
+
+  Map<uint64_t, ObjectHandle> ob_handles = {};
 
  public:
   SyncModule(Instance &inst) : inst_(inst){};
