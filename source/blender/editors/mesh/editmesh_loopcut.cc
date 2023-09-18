@@ -374,7 +374,8 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
 /* called by both init() and exec() */
 static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const bool is_interactive = (event != nullptr);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  const bool is_interactive = (rv3d != nullptr) && (event != nullptr);
 
   /* Use for redo - intentionally wrap int to uint. */
   struct {
@@ -404,7 +405,9 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  view3d_operator_needs_opengl(C);
+  if (is_interactive) {
+    view3d_operator_needs_opengl(C);
+  }
 
   /* for re-execution, check edge index is in range before we setup ringsel */
   bool ok = true;
@@ -737,7 +740,8 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   ot->exec = loopcut_exec;
   ot->modal = loopcut_modal;
   ot->cancel = ringcut_cancel;
-  ot->poll = ED_operator_editmesh_region_view3d;
+  /* Note the #RegionView3D is needed for interactive use, the operator must check this. */
+  ot->poll = ED_operator_editmesh;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
