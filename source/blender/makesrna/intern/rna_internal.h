@@ -17,6 +17,15 @@
 #include "UI_resources.hh"
 
 #ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
+#else
+typedef struct AssetRepresentationHandle AssetRepresentationHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
