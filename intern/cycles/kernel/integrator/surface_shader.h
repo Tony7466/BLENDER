@@ -209,7 +209,7 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
 }
 
 /* BSDF */
-#if WITH_CYCLES_DEBUG
+#ifdef WITH_CYCLES_DEBUG
 ccl_device_inline void surface_shader_validate_bsdf_sample(const KernelGlobals kg,
                                                            const ShaderClosure *sc,
                                                            const float3 wo,
@@ -550,7 +550,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure_mis(KernelGlobals kg,
                         unguided_bsdf_pdf,
                         sampled_roughness,
                         eta);
-#  if WITH_CYCLES_DEBUG
+#  ifdef WITH_CYCLES_DEBUG
     /* Code path to validate the estimation of the label, sampled roughness and eta. This should be
      * activated from time to time when the BSDFs change to check if everything is still working
      * correctly. */
@@ -793,7 +793,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure_ris(KernelGlobals kg,
                         unguided_bsdf_pdf,
                         sampled_roughness,
                         eta);
-#  if WITH_CYCLES_DEBUG
+#  ifdef WITH_CYCLES_DEBUG
     // Code path to validate the estimation of the label, sampled roughness and eta
     // This should be activated from time to time when the BSDFs change to check if everything
     // is still working correctly.
