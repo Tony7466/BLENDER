@@ -193,17 +193,33 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
       pad = false;
     }
 
-    if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP) &&
-        !(file->attributes & FILE_ATTR_OFFLINE))
+    if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP))
     {
-      /* Load Blender version directly from the file. */
-      short version = BLO_version_from_file(full_path);
-      if (version != 0) {
+      char version_st[128] = {0};
+      ImBuf *thumb = IMB_thumb_read(full_path, THB_LARGE);
+
+      if (thumb) {
+        /* Look for version in existing thumbnail if available. */
+        IMB_metadata_get_field(
+            thumb->metadata, "Thumb::Blender::Version", version_st, sizeof(version_st));
+        IMB_freeImBuf(thumb);
+      }
+
+      if (!version_st[0] && !(file->attributes & FILE_ATTR_OFFLINE)) {
+        /* Load Blender version directly from the file. */
+        short version = BLO_version_from_file(full_path);
+        if (version != 0) {
+          SNPRINTF(version_st, "%d.%01d", version / 100, version % 100);
+        }
+      }
+
+      if (version_st[0]) {
         UI_tooltip_text_field_add(tip,
-                                  BLI_sprintfN("Blender: %d.%01d", version / 100, version % 100),
+                                  BLI_sprintfN("Blender: %s", version_st),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL, pad);
+                                  UI_TIP_LC_NORMAL,
+                                  pad);
         pad = false;
       }
     }
@@ -235,8 +251,8 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
       char value1[128];
       char value2[128];
       char value3[128];
-      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Width", value1, sizeof(value1)) &&
-          IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
+      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Width", value1, sizeof(value1)) &&
+          IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Height", value2, sizeof(value2)))
       {
         UI_tooltip_text_field_add(
             tip,
@@ -246,9 +262,9 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
             UI_TIP_LC_NORMAL, pad);
         pad = false;
       }
-      if (IMB_metadata_get_field(thumb->metadata, "Frames", value1, sizeof(value1)) &&
-          IMB_metadata_get_field(thumb->metadata, "FPS", value2, sizeof(value2)) &&
-          IMB_metadata_get_field(thumb->metadata, "Duration", value3, sizeof(value3)))
+      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Frames", value1, sizeof(value1)) &&
+          IMB_metadata_get_field(thumb->metadata, "Thumb::Video::FPS", value2, sizeof(value2)) &&
+          IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Duration", value3, sizeof(value3)))
       {
         UI_tooltip_text_field_add(tip,
                                   BLI_sprintfN("%s: %s @ %s %s (%s %s)",
@@ -263,7 +279,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
                                   UI_TIP_LC_NORMAL, pad);
         pad = false;
       }
-      if (IMB_metadata_get_field(thumb->metadata, "Codec", value1, sizeof(value1)))
+      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Codec", value1, sizeof(value1)))
       {
         UI_tooltip_text_field_add(tip,
                                   BLI_sprintfN("%s: %s", N_("Codec"), value1),

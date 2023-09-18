@@ -1538,22 +1538,24 @@ ImBuf *IMB_anim_previewframe(anim *anim)
     char value[128];
     IMB_metadata_ensure(&ibuf->metadata);
     SNPRINTF(value, "%i", anim->x);
-    IMB_metadata_set_field(ibuf->metadata, "Thumb::Image::Width", value);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Width", value);
     SNPRINTF(value, "%i", anim->y);
-    IMB_metadata_set_field(ibuf->metadata, "Thumb::Image::Height", value);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Height", value);
     SNPRINTF(value, "%i", anim->duration_in_frames);
-    IMB_metadata_set_field(ibuf->metadata, "Frames", value);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Frames", value);
 
 #ifdef WITH_FFMPEG
-    AVStream *v_st = anim->pFormatCtx->streams[anim->videoStream];
-    AVRational frame_rate = av_guess_frame_rate(anim->pFormatCtx, v_st, NULL);
-    if (frame_rate.num != 0) {
-      double duration = anim->duration_in_frames / av_q2d(frame_rate);
-      SNPRINTF(value, "%g", av_q2d(frame_rate));
-      IMB_metadata_set_field(ibuf->metadata, "FPS", value);
-      SNPRINTF(value, "%g", duration);
-      IMB_metadata_set_field(ibuf->metadata, "Duration", value);
-      IMB_metadata_set_field(ibuf->metadata, "Codec", anim->pCodec->long_name);
+    if (anim->pFormatCtx && anim->curtype == ANIM_FFMPEG) {
+      AVStream *v_st = anim->pFormatCtx->streams[anim->videoStream];
+      AVRational frame_rate = av_guess_frame_rate(anim->pFormatCtx, v_st, NULL);
+      if (frame_rate.num != 0) {
+        double duration = anim->duration_in_frames / av_q2d(frame_rate);
+        SNPRINTF(value, "%g", av_q2d(frame_rate));
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::FPS", value);
+        SNPRINTF(value, "%g", duration);
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Duration", value);
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Codec", anim->pCodec->long_name);
+      }
     }
 #endif
   }
