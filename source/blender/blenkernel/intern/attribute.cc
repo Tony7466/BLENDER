@@ -33,6 +33,7 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -90,6 +91,11 @@ static void get_domains(const ID *id, DomainInfo info[ATTR_DOMAIN_NUM])
       info[ATTR_DOMAIN_CURVE].customdata = &curves->geometry.curve_data;
       info[ATTR_DOMAIN_CURVE].length = curves->geometry.curve_num;
       break;
+    }
+    case ID_GP: {
+      GreasePencil *grease_pencil = (GreasePencil *)id;
+      info[ATTR_DOMAIN_GREASE_PENCIL_LAYER].customdata = &grease_pencil->layers_data;
+      info[ATTR_DOMAIN_GREASE_PENCIL_LAYER].length = grease_pencil->layers().size();
     }
     default:
       break;

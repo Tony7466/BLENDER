@@ -384,6 +384,13 @@ void CustomData_copy_layer_type_data(const struct CustomData *source,
 void CustomData_free_elem(struct CustomData *data, int index, int count);
 
 /**
+ * Frees \a count elems starting at \a index and shifts the all the elements after to fill the gap.
+ * This is done in all the layers in \a data.
+ * Note: This does not realloc the #CustomData, the last \a count elems will be freed.
+ */
+void CustomData_free_elem_and_shift(CustomData *data, int index, int count, int totelem);
+
+/**
  * Interpolate given custom data source items into a single destination one.
  *
  * \param src_indices: Indices of every source items to interpolate into the destination one.

@@ -68,11 +68,14 @@ static void grease_pencil_init_data(ID *id)
   using namespace blender::bke;
 
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
-  grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 
   grease_pencil->root_group_ptr = MEM_new<greasepencil::LayerGroup>(__func__);
   grease_pencil->active_layer = nullptr;
   grease_pencil->flag |= GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+  CustomData_reset(&grease_pencil->layers_data);
+
+  grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/,
@@ -123,6 +126,12 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
   }
 
+  CustomData_free(&grease_pencil_dst->layers_data, grease_pencil_dst->layers().size());
+  CustomData_copy(&grease_pencil_src->layers_data,
+                  &grease_pencil_dst->layers_data,
+                  CD_MASK_ALL,
+                  grease_pencil_dst->layers().size());
+
   /* Make sure the runtime pointer exists. */
   grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__);
 }
@@ -133,6 +142,8 @@ static void grease_pencil_free_data(ID *id)
   BKE_animdata_free(&grease_pencil->id, false);
 
   MEM_SAFE_FREE(grease_pencil->material_array);
+
+  CustomData_free(&grease_pencil->layers_data, grease_pencil->layers().size());
 
   free_drawing_array(*grease_pencil);
   MEM_delete(&grease_pencil->root_group());
@@ -162,9 +173,19 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 {
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
+  blender::Vector<CustomDataLayer, 16> layers_data_layers;
+  CustomData_blend_write_prepare(&grease_pencil->layers_data, layers_data_layers);
+
   /* Write LibData */
   BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
   BKE_id_blend_write(writer, &grease_pencil->id);
+
+  CustomData_blend_write(&writer,
+                         &grease_pencil->layers_data,
+                         layers_data_layers,
+                         grease_pencil->layers().size(),
+                         CD_MASK_ALL,
+                         &id);
 
   /* Write drawings. */
   write_drawing_array(*grease_pencil, writer);
@@ -185,6 +206,8 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   read_drawing_array(*grease_pencil, reader);
   /* Read layer tree. */
   read_layer_tree(*grease_pencil, reader);
+
+  CustomData_blend_read(&reader, &grease_pencil->layers_data, grease_pencil->layers().size());
 
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
@@ -1853,6 +1876,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
+  CustomData_realloc(&this->layers_data, this->layers().size(), this->layers().size() + 1);
   return parent_group.add_layer(unique_name);
 }
 
@@ -1973,6 +1997,11 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
       }
     }
   }
+
+  /* Remove all the layer attributes and shrink the `CustomData`. */
+  const int64_t layer_index = this->layers().first_index(layer);
+  CustomData_free_elem_and_shift(&this->layers_data, layer_index, 1, this->layers().size());
+  CustomData_realloc(&this->layers_data, this->layers().size(), this->layers().size() - 1);
 
   /* Unlink the layer from the parent group. */
   layer.parent_group().unlink_node(layer.as_node());

@@ -3413,6 +3413,36 @@ void CustomData_free_elem(CustomData *data, const int index, const int count)
   }
 }
 
+void CustomData_free_elem_and_shift(CustomData *data,
+                                    const int index,
+                                    const int count,
+                                    const int totelem)
+{
+  for (int i = 0; i < data->totlayer; i++) {
+    CustomDataLayer *layer = &data->layers[i];
+    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer->type));
+
+    if (typeInfo->free) {
+      size_t offset = size_t(index) * typeInfo->size;
+      typeInfo->free(POINTER_OFFSET(layer->data, offset), 1, typeInfo->size);
+      for (int j = index + 1 + count; j < totelem; j++) {
+        size_t src_offset = size_t(j) * typeInfo->size;
+        size_t dst_offset = size_t(j - count) * typeInfo->size;
+        if (typeInfo->copy) {
+          typeInfo->copy(
+              POINTER_OFFSET(layer->data, src_offset), POINTER_OFFSET(layer->data, dst_offset), 1);
+        }
+        else {
+          memcpy(POINTER_OFFSET(layer->data, dst_offset),
+                 POINTER_OFFSET(layer->data, src_offset),
+                 typeInfo->size);
+        }
+        typeInfo->free(POINTER_OFFSET(layer->data, src_offset), 1, typeInfo->size);
+      }
+    }
+  }
+}
+
 #define SOURCE_BUF_SIZE 100
 
 void CustomData_interp(const CustomData *source,
