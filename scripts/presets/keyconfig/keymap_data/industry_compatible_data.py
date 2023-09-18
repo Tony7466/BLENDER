@@ -315,7 +315,7 @@ def km_view2d(params):
     )
 
     items.extend([
-        # Scrollbars
+        # Scroll-bars.
         ("view2d.scroller_activate", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("view2d.scroller_activate", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         # Pan/scroll
@@ -359,7 +359,7 @@ def km_view2d_buttons_list(params):
     )
 
     items.extend([
-        # Scrollbars
+        # Scroll-bars.
         ("view2d.scroller_activate", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("view2d.scroller_activate", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         # Pan scroll
@@ -1064,7 +1064,6 @@ def km_node_generic(_params):
 
     items.extend([
         op_panel("TOPBAR_PT_name", {"type": 'RET', "value": 'PRESS'}, [("keep_open", False)]),
-        ("node.add_search", {"type": 'TAB', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -2360,7 +2359,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.stroke_join", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
         ("gpencil.stroke_join", {"type": 'J', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("type", 'JOINCOPY')]}),
-        # Copy + paset
+        # Copy + paste.
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("gpencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
         # Snap
@@ -3673,7 +3672,8 @@ def km_sculpt(params):
         ("wm.context_toggle", {"type": 'L', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.sculpt.brush.use_smooth_stroke')]}),
         # Tools
-        # This is the only mode without an Annotate shortcut. The multires shortcuts took precedence instead.
+        # This is the only mode without an Annotate shortcut.
+        # The multi-resolution shortcuts took precedence instead.
         op_tool_cycle("builtin.box_mask", {"type": 'Q', "value": 'PRESS'}),
         op_tool_cycle("builtin.move", {"type": 'W', "value": 'PRESS'}),
         op_tool_cycle("builtin.rotate", {"type": 'E', "value": 'PRESS'}),
@@ -4268,7 +4268,7 @@ def km_transform_modal_map(_params):
 
 
 # ------------------------------------------------------------------------------
-# Tool System Keymaps
+# Tool System Key-maps
 #
 # Named are auto-generated based on the tool name and it's toolbar.
 

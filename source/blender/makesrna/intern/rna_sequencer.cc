@@ -267,7 +267,7 @@ static int rna_SequenceEditor_sequences_all_lookup_string(PointerRNA *ptr,
 
   Sequence *seq = SEQ_sequence_lookup_seq_by_name(scene, key);
   if (seq) {
-    RNA_pointer_create(ptr->owner_id, &RNA_Sequence, seq, r_ptr);
+    *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Sequence, seq);
     return true;
   }
   return false;
@@ -853,8 +853,7 @@ static PointerRNA rna_MovieSequence_metadata_get(Sequence *seq)
     return PointerRNA_NULL;
   }
 
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_IDPropertyWrapPtr, metadata, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_IDPropertyWrapPtr, metadata);
   return ptr;
 }
 
@@ -3842,13 +3841,13 @@ static void rna_def_sound_equalizer_modifier(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SoundEqualizerModifierData");
   RNA_def_struct_ui_text(srna, "SoundEqualizerModifier", "Equalize audio");
 
-  /* Sound Equalizers*/
+  /* Sound Equalizers. */
   prop = RNA_def_property(srna, "graphics", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "EQCurveMappingData");
   RNA_def_property_ui_text(
       prop, "Graphical definition equalization", "Graphical definition equalization");
 
-  /* add band*/
+  /* Add band. */
   func = RNA_def_function(srna, "new_graphic", "rna_Sequence_SoundEqualizer_Curve_add");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   RNA_def_function_ui_description(func, "Add a new EQ band");

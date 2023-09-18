@@ -39,10 +39,10 @@ using namespace blender::gpu;
 
 /* Fire off a single dispatch per encoder. Can make debugging view clearer for texture resources
  * associated with each dispatch. */
-#ifdef DEBUG
-#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1
-#else
+#if defined(NDEBUG)
 #  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 0
+#else
+#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1
 #endif
 
 /* Debug option to bind null buffer for missing UBOs.

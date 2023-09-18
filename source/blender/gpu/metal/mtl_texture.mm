@@ -2153,7 +2153,12 @@ void gpu::MTLTexture::ensure_baked()
 
     /* Override storage mode if memoryless attachments are being used. */
     if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
-      texture_descriptor_.storageMode = MTLStorageModeMemoryless;
+      if (@available(macOS 11.00, *)) {
+        texture_descriptor_.storageMode = MTLStorageModeMemoryless;
+      }
+      else {
+        BLI_assert_msg(0, "GPU_TEXTURE_USAGE_MEMORYLESS is not available on older MacOS versions");
+      }
     }
 
     /* Standard texture allocation. */
