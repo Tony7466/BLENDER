@@ -903,13 +903,14 @@ wmKeyMap *WM_modalkeymap_ensure(wmKeyConfig *keyconf,
                                 const char *idname,
                                 const EnumPropertyItem *items)
 {
-  wmKeyMap *km = WM_keymap_ensure(keyconf, idname, 0, 0);
+  wmKeyMap *km = WM_keymap_ensure(keyconf, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
   km->flag |= KEYMAP_MODAL;
 
   /* init modal items from default config */
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   if (wm->defaultconf && wm->defaultconf != keyconf) {
-    wmKeyMap *defaultkm = WM_keymap_list_find(&wm->defaultconf->keymaps, km->idname, 0, 0);
+    wmKeyMap *defaultkm = WM_keymap_list_find(
+        &wm->defaultconf->keymaps, km->idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
 
     if (defaultkm) {
       km->modal_items = defaultkm->modal_items;
@@ -1020,7 +1021,8 @@ static void wm_user_modal_keymap_set_items(wmWindowManager *wm, wmKeyMap *km)
       return;
     }
 
-    wmKeyMap *defaultkm = WM_keymap_list_find(&wm->defaultconf->keymaps, km->idname, 0, 0);
+    wmKeyMap *defaultkm = WM_keymap_list_find(
+        &wm->defaultconf->keymaps, km->idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
     if (!defaultkm) {
       return;
     }
@@ -1057,7 +1059,7 @@ static const char *key_event_glyph_or_text(const int font_id,
                                            const char *single_glyph)
 {
   BLI_assert(single_glyph == nullptr || (BLI_strlen_utf8(single_glyph) == 1));
-  return (single_glyph && BLF_has_glyph(font_id, BLI_str_utf8_as_unicode(single_glyph))) ?
+  return (single_glyph && BLF_has_glyph(font_id, BLI_str_utf8_as_unicode_or_error(single_glyph))) ?
              single_glyph :
              text;
 }
@@ -1793,6 +1795,11 @@ enum {
 
 static char wm_keymap_update_flag = 0;
 
+static char wm_keymap_update_suppress_flag = 0;
+#ifndef NDEBUG
+static int8_t wm_keymap_update_suppress_count = 0;
+#endif
+
 void WM_keyconfig_update_tag(wmKeyMap *keymap, wmKeyMapItem *kmi)
 {
   /* quick tag to do delayed keymap updates */
@@ -1809,6 +1816,33 @@ void WM_keyconfig_update_tag(wmKeyMap *keymap, wmKeyMapItem *kmi)
 void WM_keyconfig_update_operatortype()
 {
   wm_keymap_update_flag |= WM_KEYMAP_UPDATE_OPERATORTYPE;
+}
+
+/* NOTE(@ideasman42): regarding suppressing updates.
+ * If this becomes a common operation it would be better use something more general,
+ * a key-map flag for e.g. to signify that the key-map is stored outside of a #wmKeyConfig
+ * and should not receive updates on modification. At the moment this has the down-side of
+ * needing to be supported in quite a few places for something which isn't used much.
+ * Since the use case for this is limited, add functions to begin/end suppression.
+ * If these end up being used a lot we can consider alternatives. */
+
+void WM_keyconfig_update_suppress_begin()
+{
+#ifndef NDEBUG
+  BLI_assert(wm_keymap_update_suppress_count == 0);
+  wm_keymap_update_suppress_count += 1;
+#endif
+  wm_keymap_update_suppress_flag = wm_keymap_update_flag;
+}
+
+void WM_keyconfig_update_suppress_end()
+{
+#ifndef NDEBUG
+  BLI_assert(wm_keymap_update_suppress_count == 1);
+  wm_keymap_update_suppress_count -= 1;
+#endif
+  wm_keymap_update_flag = wm_keymap_update_suppress_flag;
+  wm_keymap_update_suppress_flag = 0;
 }
 
 static bool wm_keymap_test_and_clear_update(wmKeyMap *km)
