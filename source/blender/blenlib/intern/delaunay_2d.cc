@@ -2208,7 +2208,7 @@ int add_face_constraints(CDT_state<T> *cdt_state,
                          CDT_output_type output_type)
 {
   int nv = input.vert.size();
-  const GroupedSpan<int> input_faces(input.face, input.face_vert_indices);
+  const GroupedSpan<int> input_faces(input.face_offsets, input.face_vert_indices);
   SymEdge<T> *face_symedge0 = nullptr;
   CDTArrangement<T> *cdt = &cdt_state->cdt;
 

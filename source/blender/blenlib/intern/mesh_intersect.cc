@@ -1785,7 +1785,7 @@ static void do_cdt(CDT_data &cd)
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = cd.vert;
   cdt_in.edge = cd.edge;
-  cdt_in.face = cd.face_offsets.as_span();
+  cdt_in.face_offsets = cd.face_offsets.as_span();
   cdt_in.face_vert_indices = cd.face_vert_indices;
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
@@ -2122,7 +2122,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
 
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = verts;
-  cdt_in.face = face_offsets.as_span();
+  cdt_in.face_offsets = face_offsets.as_span();
   cdt_in.face_vert_indices = face_vert_indices;
 
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
