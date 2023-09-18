@@ -1,3 +1,3 @@
 Referenced by issue #103789, Remove unnecessary mesh position copying
 Referenced by issue #106802, Regression: sculpt with shape keys looses deformation of previous stroke
-Referenced by issue #112448, Child hair particles set to "Interpolated" causes jittering when the based vertex changes position
+Referenced by issue #112448, Regression: Child hair particles set to "Interpolated" causes jittering when the based vertex changes position
