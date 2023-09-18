@@ -407,8 +407,8 @@ static bool node_update_basis_socket(const bContext &C,
                                      const int &locx,
                                      int &locy)
 {
-  if ((!input_socket || !input_socket->is_visible_or_panel_collapsed()) &&
-      (!output_socket || !output_socket->is_visible_or_panel_collapsed()))
+  if ((!input_socket || !input_socket->is_visible()) &&
+      (!output_socket || !output_socket->is_visible()))
   {
     return false;
   }
@@ -701,7 +701,7 @@ static void node_update_basis_from_declaration(
         }
         else {
           /* Space between items. */
-          if (!is_first && item.input->is_visible_or_panel_collapsed()) {
+          if (!is_first && item.input->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
@@ -714,7 +714,7 @@ static void node_update_basis_from_declaration(
         }
         else {
           /* Space between items. */
-          if (!is_first && item.output->is_visible_or_panel_collapsed()) {
+          if (!is_first && item.output->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
@@ -865,12 +865,12 @@ static void node_update_hidden(bNode &node, uiBlock &block)
 
   /* Calculate minimal radius. */
   for (const bNodeSocket *socket : node.input_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       totin++;
     }
   }
   for (const bNodeSocket *socket : node.output_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       totout++;
     }
   }
@@ -891,7 +891,7 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   float drad = rad;
 
   for (bNodeSocket *socket : node.output_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
           round(node.runtime->totr.xmax - hiddenrad + sinf(rad) * hiddenrad),
@@ -904,7 +904,7 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   rad = drad = -float(M_PI) / (1.0f + float(totin));
 
   for (bNodeSocket *socket : node.input_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
           round(node.runtime->totr.xmin + hiddenrad + sinf(rad) * hiddenrad),
