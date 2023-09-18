@@ -26,5 +26,5 @@ void main()
   surfel_buf[surfel_index].cluster_id = cluster.x + cluster.y * 1000 + cluster.z * 1000000;
   /* NOTE: We only need to init the `cluster_list_img` to -1 for the whole list to be valid since
    * every surfel will load its `next` value from the list head. */
-  // surfel_buf[surfel_index].next = imageAtomicExchange(cluster_list_img, cluster, surfel_index);
+  surfel_buf[surfel_index].next = imageAtomicExchange(cluster_list_img, cluster, surfel_index);
 }
