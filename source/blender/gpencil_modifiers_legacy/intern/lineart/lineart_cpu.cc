@@ -4994,33 +4994,34 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartData *ld;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   int intersections_only = 0; /* Not used right now, but preserve for future. */
-  Object *use_camera = nullptr;
+  Object *lineart_camera = nullptr;
 
   double t_start;
   if (G.debug_value == 4000) {
     t_start = PIL_check_seconds_timer();
   }
 
-  bool re_override = false;
+  bool use_render_camera_override = false;
   if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA) {
     if (!lmd->source_camera ||
-        (use_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type != OB_CAMERA)
+        (lineart_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type !=
+            OB_CAMERA)
     {
       return false;
     }
   }
   else {
-    Render *re = RE_GetSceneRender(scene);
-    if (re && re->camera_override) {
-      use_camera = DEG_get_evaluated_object(depsgraph, re->camera_override);
-      re_override = true;
+    Render *render = RE_GetSceneRender(scene);
+    if (render && render->camera_override) {
+      lineart_camera = DEG_get_evaluated_object(depsgraph, render->camera_override);
+      use_render_camera_override = true;
     }
-    if (!use_camera) {
+    if (!lineart_camera) {
       BKE_scene_camera_switch_update(scene);
       if (!scene->camera) {
         return false;
       }
-      use_camera = scene->camera;
+      lineart_camera = scene->camera;
     }
   }
 
@@ -5028,7 +5029,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   *cached_result = lc;
 
   ld = lineart_create_render_buffer(
-      scene, lmd, use_camera, re_override ? use_camera : scene->camera, lc);
+      scene, lmd, lineart_camera, use_render_camera_override ? lineart_camera : scene->camera, lc);
 
   /* Triangle thread testing data size varies depending on the thread count.
    * See definition of LineartTriangleThread for details. */
@@ -5052,7 +5053,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
 
   lineart_main_load_geometries(depsgraph,
                                scene,
-                               use_camera,
+                               lineart_camera,
                                ld,
                                lmd->calculation_flags & LRT_ALLOW_DUPLI_OBJECTS,
                                false,
