@@ -151,9 +151,9 @@ static void move_curves_geometry(CurvesGeometry &dst, CurvesGeometry &src)
 
   std::swap(dst.curve_offsets, src.curve_offsets);
 
-  dst.vertex_group_active_index = src.vertex_group_active_index;
   std::swap(dst.vertex_group_names.first, src.vertex_group_names.first);
   std::swap(dst.vertex_group_names.last, src.vertex_group_names.last);
+  std::swap(dst.vertex_group_active_index, src.vertex_group_active_index);
   src.vertex_group_active_index = 0;
 
   std::swap(dst.runtime, src.runtime);
