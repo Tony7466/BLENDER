@@ -140,7 +140,7 @@ void bsdf_lut(vec3 F0,
   reflectance = F_brdf_single_scatter(F0, F90, split_sum);
   transmittance = (vec3(1.0) - F0) * transmission_factor * transmission_tint;
 
-  if (do_multiscatter) {
+  if (do_multiscatter != 0.0) {
     float real_F0 = F0_from_ior(ior);
     float Ess = real_F0 * split_sum.x + split_sum.y + (1.0 - real_F0) * transmission_factor;
     float Ems = 1.0 - Ess;
