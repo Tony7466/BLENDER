@@ -60,9 +60,9 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
   return accumulate_counts_to_offsets(dst_offsets);
 }
 
-static OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
-                                                  const IndexMaskSegment mask,
-                                                  MutableSpan<int> dst)
+OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
+                                           const IndexMaskSegment mask,
+                                           MutableSpan<int> dst)
 {
   for (const int i : mask.index_range()) {
     dst[i] = src[mask[i]].size();
