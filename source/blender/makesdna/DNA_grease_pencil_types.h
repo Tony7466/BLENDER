@@ -16,10 +16,13 @@
 #ifdef __cplusplus
 #  include "BLI_bounds_types.hh"
 #  include "BLI_function_ref.hh"
+#  include "BLI_generic_virtual_array.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 namespace blender::bke {
+class AttributeAccessor;
+class MutableAttributeAccessor;
 class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
 namespace greasepencil {
@@ -563,6 +566,9 @@ typedef struct GreasePencil {
       blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
+
+  blender::bke::AttributeAccessor attributes() const;
+  blender::bke::MutableAttributeAccessor attributes_for_write();
 
   /* For debugging purposes. */
   void print_layer_tree();

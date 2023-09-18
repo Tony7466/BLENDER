@@ -174,18 +174,18 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
   blender::Vector<CustomDataLayer, 16> layers_data_layers;
-  CustomData_blend_write_prepare(&grease_pencil->layers_data, layers_data_layers);
+  CustomData_blend_write_prepare(grease_pencil->layers_data, layers_data_layers);
 
   /* Write LibData */
   BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
   BKE_id_blend_write(writer, &grease_pencil->id);
 
-  CustomData_blend_write(&writer,
+  CustomData_blend_write(writer,
                          &grease_pencil->layers_data,
                          layers_data_layers,
                          grease_pencil->layers().size(),
                          CD_MASK_ALL,
-                         &id);
+                         id);
 
   /* Write drawings. */
   write_drawing_array(*grease_pencil, writer);
@@ -207,7 +207,7 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   /* Read layer tree. */
   read_layer_tree(*grease_pencil, reader);
 
-  CustomData_blend_read(&reader, &grease_pencil->layers_data, grease_pencil->layers().size());
+  CustomData_blend_read(reader, &grease_pencil->layers_data, grease_pencil->layers().size());
 
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
@@ -1999,7 +1999,7 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   }
 
   /* Remove all the layer attributes and shrink the `CustomData`. */
-  const int64_t layer_index = this->layers().first_index(layer);
+  const int64_t layer_index = this->layers().first_index(&layer);
   CustomData_free_elem_and_shift(&this->layers_data, layer_index, 1, this->layers().size());
   CustomData_realloc(&this->layers_data, this->layers().size(), this->layers().size() - 1);
 
