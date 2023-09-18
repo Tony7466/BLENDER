@@ -2838,7 +2838,7 @@ CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_ty
 {
   int nv = input.vert.size();
   int ne = input.edge.size();
-  int nf = input.face.size();
+  int nf = input.face_offsets.size();
   CDT_state<T> cdt_state(nv, ne, nf, input.epsilon, input.need_ids);
   add_input_verts(&cdt_state, input);
   initial_triangulation(&cdt_state.cdt);
