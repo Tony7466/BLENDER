@@ -2091,62 +2091,63 @@ static int mixed_bones_object_selectbuffer(ViewContext *vc,
   /* we _must_ end cache before return, use 'goto finally' */
   view3d_opengl_select_cache_begin();
 
+  GPUSelectStorage &storage = buffer->storage;
   BLI_rcti_init_pt_radius(&rect, mval, 14);
   hits15 = view3d_opengl_select_ex(
       vc, buffer, &rect, select_mode, select_filter, do_material_slot_selection);
   if (hits15 == 1) {
-    hits = selectbuffer_ret_hits_15(buffer->as_mutable_span(), hits15);
+    hits = selectbuffer_ret_hits_15(storage.as_mutable_span(), hits15);
     goto finally;
   }
   else if (hits15 > 0) {
     int ofs;
-    has_bones15 = selectbuffer_has_bones(buffer->as_span().slice(0, hits15));
+    has_bones15 = selectbuffer_has_bones(storage.as_span().slice(0, hits15));
 
     ofs = hits15;
     BLI_rcti_init_pt_radius(&rect, mval, 9);
     hits9 = view3d_opengl_select(vc, buffer, &rect, select_mode, select_filter);
     if (hits9 == 1) {
-      hits = selectbuffer_ret_hits_9(buffer->as_mutable_span(), hits15, hits9);
+      hits = selectbuffer_ret_hits_9(storage.as_mutable_span(), hits15, hits9);
       goto finally;
     }
     else if (hits9 > 0) {
-      has_bones9 = selectbuffer_has_bones(buffer->as_span().slice(ofs, hits9));
+      has_bones9 = selectbuffer_has_bones(storage.as_span().slice(ofs, hits9));
 
       ofs += hits9;
       BLI_rcti_init_pt_radius(&rect, mval, 5);
       hits5 = view3d_opengl_select(vc, buffer, &rect, select_mode, select_filter);
       if (hits5 == 1) {
-        hits = selectbuffer_ret_hits_5(buffer->as_mutable_span(), hits15, hits9, hits5);
+        hits = selectbuffer_ret_hits_5(storage.as_mutable_span(), hits15, hits9, hits5);
         goto finally;
       }
       else if (hits5 > 0) {
-        has_bones5 = selectbuffer_has_bones(buffer->as_span().slice(ofs, hits5));
+        has_bones5 = selectbuffer_has_bones(storage.as_span().slice(ofs, hits5));
       }
     }
 
     if (has_bones5) {
-      hits = selectbuffer_ret_hits_5(buffer->as_mutable_span(), hits15, hits9, hits5);
+      hits = selectbuffer_ret_hits_5(storage.as_mutable_span(), hits15, hits9, hits5);
       goto finally;
     }
     else if (has_bones9) {
-      hits = selectbuffer_ret_hits_9(buffer->as_mutable_span(), hits15, hits9);
+      hits = selectbuffer_ret_hits_9(storage.as_mutable_span(), hits15, hits9);
       goto finally;
     }
     else if (has_bones15) {
-      hits = selectbuffer_ret_hits_15(buffer->as_mutable_span(), hits15);
+      hits = selectbuffer_ret_hits_15(storage.as_mutable_span(), hits15);
       goto finally;
     }
 
     if (hits5 > 0) {
-      hits = selectbuffer_ret_hits_5(buffer->as_mutable_span(), hits15, hits9, hits5);
+      hits = selectbuffer_ret_hits_5(storage.as_mutable_span(), hits15, hits9, hits5);
       goto finally;
     }
     else if (hits9 > 0) {
-      hits = selectbuffer_ret_hits_9(buffer->as_mutable_span(), hits15, hits9);
+      hits = selectbuffer_ret_hits_9(storage.as_mutable_span(), hits15, hits9);
       goto finally;
     }
     else {
-      hits = selectbuffer_ret_hits_15(buffer->as_mutable_span(), hits15);
+      hits = selectbuffer_ret_hits_15(storage.as_mutable_span(), hits15);
       goto finally;
     }
   }
@@ -2258,8 +2259,8 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
     if (has_bones && do_bones_get_priotity) {
       /* we skip non-bone hits */
       for (a = 0; a < hits; a++) {
-        if (min > buffer[a].depth && (buffer[a].id & 0xFFFF0000)) {
-          min = buffer[a].depth;
+        if (min > buffer.storage[a].depth && (buffer.storage[a].id & 0xFFFF0000)) {
+          min = buffer.storage[a].depth;
           hit_index = a;
         }
       }
@@ -2268,23 +2269,23 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
 
       for (a = 0; a < hits; a++) {
         /* Any object. */
-        if (min > buffer[a].depth) {
-          min = buffer[a].depth;
+        if (min > buffer.storage[a].depth) {
+          min = buffer.storage[a].depth;
           hit_index = a;
         }
       }
     }
 
     if (hit_index != -1) {
-      select_id = buffer[hit_index].id & 0xFFFF;
-      select_id_subelem = (buffer[hit_index].id & 0xFFFF0000) >> 16;
+      select_id = buffer.storage[hit_index].id & 0xFFFF;
+      select_id_subelem = (buffer.storage[hit_index].id & 0xFFFF0000) >> 16;
       found = true;
-      /* No need to set `min` to `buffer[hit_index].depth`, it's not used from now on. */
+      /* No need to set `min` to `buffer.storage[hit_index].depth`, it's not used from now on. */
     }
   }
   else {
 
-    GPUSelectBuffer buffer_sorted = buffer;
+    GPUSelectStorage buffer_sorted = buffer.storage;
     {
       buffer_sorted.resize(hits);
       /* Remove non-bone objects. */
@@ -2420,7 +2421,7 @@ static Base *ed_view3d_give_base_under_cursor_ex(bContext *C,
 
   if (hits > 0) {
     const bool has_bones = (r_material_slot == nullptr) &&
-                           selectbuffer_has_bones(buffer.as_span().slice(0, hits));
+                           selectbuffer_has_bones(buffer.storage.as_span().slice(0, hits));
     basact = mouse_select_eval_buffer(
         &vc, buffer, hits, do_nearest, has_bones, true, r_material_slot);
   }
@@ -2483,7 +2484,7 @@ static bool ed_object_select_pick_camera_track(bContext *C,
   MovieTrackingTrack *track = nullptr;
 
   for (int i = 0; i < hits; i++) {
-    const int hitresult = buffer[i].id;
+    const int hitresult = buffer.storage[i].id;
 
     /* If there's bundles in buffer select bundles first,
      * so non-camera elements should be ignored in buffer. */
@@ -2619,7 +2620,7 @@ static bool ed_object_select_pick(bContext *C,
         &vc, &gpu->buffer, mval, select_filter, true, enumerate, &gpu->do_nearest);
     gpu->has_bones = (object_only && gpu->hits > 0) ?
                          false :
-                         selectbuffer_has_bones(gpu->buffer.as_span().slice(0, gpu->hits));
+                         selectbuffer_has_bones(gpu->buffer.storage.as_span().slice(0, gpu->hits));
   }
 
   /* First handle menu selection, early exit when a menu was opened.
@@ -2633,7 +2634,8 @@ static bool ed_object_select_pick(bContext *C,
     }
     else {
       if (gpu->hits != 0) {
-        blender::Span<GPUSelectResult> hit_results = gpu->buffer.as_span().slice(0, gpu->hits);
+        blender::Span<GPUSelectResult> hit_results = gpu->buffer.storage.as_span().slice(
+            0, gpu->hits);
         if (gpu->has_bones && bone_mouse_select_menu(C, hit_results, false, params)) {
           has_menu = true;
         }
@@ -2756,7 +2758,7 @@ static bool ed_object_select_pick(bContext *C,
                                                         view_layer,
                                                         v3d,
                                                         basact ? basact : (Base *)oldbasact,
-                                                        gpu->buffer.data(),
+                                                        gpu->buffer.storage.data(),
                                                         gpu->hits,
                                                         params,
                                                         gpu->do_nearest))
@@ -3307,7 +3309,8 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
         GPUSelectBuffer buffer;
         const int hits = mixed_bones_object_selectbuffer(
             &vc, &buffer, mval, VIEW3D_SELECT_FILTER_NOP, false, true, false);
-        changed = bone_mouse_select_menu(C, buffer.as_span().take_front(hits), true, &params);
+        changed = bone_mouse_select_menu(
+            C, buffer.storage.as_span().take_front(hits), true, &params);
       }
       if (!changed) {
         changed = ED_armature_edit_select_pick(C, mval, &params);
@@ -3879,7 +3882,7 @@ static bool do_meta_box_select(ViewContext *vc, const rcti *rect, const eSelectO
     bool is_inside_stiff = false;
 
     for (a = 0; a < hits; a++) {
-      const int hitresult = buffer[a].id;
+      const int hitresult = buffer.storage[a].id;
 
       if (hitresult == -1) {
         continue;
@@ -3953,7 +3956,7 @@ static bool do_armature_box_select(ViewContext *vc, const rcti *rect, const eSel
 
   /* first we only check points inside the border */
   for (a = 0; a < hits; a++) {
-    const int select_id = buffer[a].id;
+    const int select_id = buffer.storage[a].id;
     if (select_id != -1) {
       if ((select_id & 0xFFFF0000) == 0) {
         continue;
@@ -4041,9 +4044,9 @@ static bool do_object_box_select(bContext *C,
   }
 
   /* The draw order doesn't always match the order we populate the engine, see: #51695. */
-  qsort(buffer.data(), hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
+  qsort(buffer.storage.data(), hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
 
-  for (const GPUSelectResult *buf_iter = buffer.data(), *buf_end = buf_iter + hits;
+  for (const GPUSelectResult *buf_iter = buffer.storage.data(), *buf_end = buf_iter + hits;
        buf_iter < buf_end;
        buf_iter++)
   {
@@ -4100,9 +4103,9 @@ static bool do_pose_box_select(bContext *C,
     /* no need to loop if there's no hit */
 
     /* The draw order doesn't always match the order we populate the engine, see: #51695. */
-    qsort(buffer.data(), hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
+    qsort(buffer.storage.data(), hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
 
-    for (const GPUSelectResult *buf_iter = buffer.data(), *buf_end = buf_iter + hits;
+    for (const GPUSelectResult *buf_iter = buffer.storage.data(), *buf_end = buf_iter + hits;
          buf_iter < buf_end;
          buf_iter++)
     {

@@ -809,7 +809,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
        * ensure this steps onto the next meta-element. */
       a = hits;
       while (a--) {
-        const int select_id = buffer[a].id;
+        const int select_id = buffer.storage[a].id;
         if (select_id == -1) {
           continue;
         }
@@ -825,7 +825,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
 
   for (a = 0; a < hits; a++) {
     const int index = (hit_cycle_offset == 0) ? a : ((a + hit_cycle_offset) % hits);
-    const uint select_id = buffer[index].id;
+    const uint select_id = buffer.storage[index].id;
     if (select_id == -1) {
       continue;
     }

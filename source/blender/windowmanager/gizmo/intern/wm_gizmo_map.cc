@@ -597,6 +597,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
   ED_view3d_draw_setup_view(
       wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, nullptr, nullptr, nullptr);
 
+  blender::Span<GPUSelectResult> hit_results = buffer.storage.as_span().take_front(hits);
   if (use_select_bias && (hits > 1)) {
     float co_direction[3];
     float co_screen[3] = {float(co[0]), float(co[1]), 0.0f};
@@ -608,15 +609,14 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
 
     GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d_origin);
 
-    GPUSelectResult *buf_iter = buffer.data();
     int hit_found = -1;
     float dot_best = FLT_MAX;
 
-    for (int i = 0; i < hits; i++, buf_iter++) {
+    for (const GPUSelectResult &result : hit_results) {
       BLI_assert(buf_iter->id != -1);
-      wmGizmo *gz = visible_gizmos[buf_iter->id >> 8];
+      wmGizmo *gz = visible_gizmos[result.id >> 8];
       float co_3d[3];
-      co_screen[2] = float(double(buf_iter->depth) / double(UINT_MAX));
+      co_screen[2] = float(double(result.depth) / double(UINT_MAX));
       GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d);
       float select_bias = gz->select_bias;
       if ((gz->flag & WM_GIZMO_DRAW_NO_SCALE) == 0) {
@@ -626,13 +626,13 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
       const float dot_test = dot_v3v3(co_3d, co_direction) - select_bias;
       if (dot_best > dot_test) {
         dot_best = dot_test;
-        hit_found = buf_iter->id;
+        hit_found = result.id;
       }
     }
     return hit_found;
   }
 
-  const GPUSelectResult *hit_near = GPU_select_buffer_near(buffer.as_span().take_front(hits));
+  const GPUSelectResult *hit_near = GPU_select_buffer_near(hit_results);
   return hit_near ? hit_near->id : -1;
 }
 

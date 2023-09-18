@@ -41,9 +41,10 @@ typedef struct GPUSelectResult {
   unsigned int depth;
 } GPUSelectResult;
 
-/* Type alias for the GPU selection buffer. Must be kept in sync with
- * the same alias in ED_view3d.hh */
-using GPUSelectBuffer = blender::Vector<GPUSelectResult, 2500>;
+using GPUSelectStorage = blender::Vector<GPUSelectResult, 2500>;
+struct GPUSelectBuffer {
+  GPUSelectStorage storage;
+};
 
 /**
  * Initialize and provide buffer for results.

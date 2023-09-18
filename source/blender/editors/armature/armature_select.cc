@@ -345,7 +345,13 @@ static void *ed_armature_pick_bone_impl(
     }
 
     void *bone = ed_armature_pick_bone_from_selectbuffer_impl(
-        is_editmode, bases, bases_len, buffer.as_span().take_front(hits), findunsel, true, r_base);
+        is_editmode,
+        bases,
+        bases_len,
+        buffer.storage.as_span().take_front(hits),
+        findunsel,
+        true,
+        r_base);
 
     MEM_freeN(bases);
 
@@ -684,13 +690,14 @@ static EditBone *get_nearest_editbonepoint(
     const int select_mode = (do_nearest ? VIEW3D_SELECT_PICK_NEAREST : VIEW3D_SELECT_PICK_ALL);
     const eV3DSelectObjectFilter select_filter = VIEW3D_SELECT_FILTER_NOP;
 
+    GPUSelectStorage &storage = buffer.storage;
     rcti rect;
     BLI_rcti_init_pt_radius(&rect, vc->mval, 12);
     const int hits12 = view3d_opengl_select_with_id_filter(
         vc, &buffer, &rect, eV3DSelectMode(select_mode), select_filter, select_id_ignore);
 
     if (hits12 == 1) {
-      hits = selectbuffer_ret_hits_12(buffer.as_mutable_span(), hits12);
+      hits = selectbuffer_ret_hits_12(storage.as_mutable_span(), hits12);
       goto cache_end;
     }
     else if (hits12 > 0) {
@@ -702,16 +709,16 @@ static EditBone *get_nearest_editbonepoint(
           vc, &buffer, &rect, eV3DSelectMode(select_mode), select_filter, select_id_ignore);
 
       if (hits5 == 1) {
-        hits = selectbuffer_ret_hits_5(buffer.as_mutable_span(), hits12, hits5);
+        hits = selectbuffer_ret_hits_5(storage.as_mutable_span(), hits12, hits5);
         goto cache_end;
       }
 
       if (hits5 > 0) {
-        hits = selectbuffer_ret_hits_5(buffer.as_mutable_span(), hits12, hits5);
+        hits = selectbuffer_ret_hits_5(storage.as_mutable_span(), hits12, hits5);
         goto cache_end;
       }
       else {
-        hits = selectbuffer_ret_hits_12(buffer.as_mutable_span(), hits12);
+        hits = selectbuffer_ret_hits_12(storage.as_mutable_span(), hits12);
         goto cache_end;
       }
     }
@@ -727,7 +734,7 @@ cache_end:
   /* See if there are any selected bones in this group */
   if (hits > 0) {
     if (hits == 1) {
-      result_bias.hitresult = buffer[0].id;
+      result_bias.hitresult = buffer.storage[0].id;
       result_bias.base = ED_armature_base_and_ebone_from_select_buffer(
           bases, bases_len, result_bias.hitresult, &result_bias.ebone);
     }
@@ -766,7 +773,7 @@ cache_end:
       }
 
       for (int i = 0; i < hits; i++) {
-        const uint hitresult = buffer[i].id;
+        const uint hitresult = buffer.storage[i].id;
 
         Base *base = nullptr;
         EditBone *ebone;

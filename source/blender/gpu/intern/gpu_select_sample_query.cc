@@ -125,7 +125,7 @@ bool gpu_select_query_load_id(uint id)
      * can read past `buffer_len` in this case. */
     BLI_assert(g_query_state.oldhits != -1);
     if (g_query_state.index < g_query_state.oldhits) {
-      if ((*g_query_state.buffer)[g_query_state.index].id == id) {
+      if (g_query_state.buffer->storage[g_query_state.index].id == id) {
         g_query_state.index++;
         return true;
       }
@@ -150,15 +150,15 @@ uint gpu_select_query_end()
   for (int i = 0; i < result.size(); i++) {
     if (result[i] != 0) {
       if (g_query_state.mode != GPU_SELECT_NEAREST_SECOND_PASS) {
-        g_query_state.buffer->append({ids[i], 0xFFFF});
+        g_query_state.buffer->storage.append({ids[i], 0xFFFF});
         hits++;
       }
       else {
         int j;
         /* search in buffer and make selected object first */
         for (j = 0; j < g_query_state.oldhits; j++) {
-          if ((*g_query_state.buffer)[j].id == ids[i]) {
-            (*g_query_state.buffer)[j].depth = 0;
+          if (g_query_state.buffer->storage[j].id == ids[i]) {
+            g_query_state.buffer->storage[j].depth = 0;
           }
         }
         break;

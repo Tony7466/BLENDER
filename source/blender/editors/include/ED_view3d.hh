@@ -10,7 +10,6 @@
 
 #include "BKE_attribute.h"
 #include "BLI_utildefines.h"
-#include "BLI_vector.hh"
 #include "DNA_scene_types.h"
 
 /* ********* exports for space_view3d/ module ********** */
@@ -28,7 +27,7 @@ struct Camera;
 struct CustomData_MeshMasks;
 struct Depsgraph;
 struct EditBone;
-struct GPUSelectResult;
+struct GPUSelectBuffer;
 struct ID;
 struct Main;
 struct MetaElem;
@@ -873,10 +872,6 @@ bool ED_view3d_autodist_simple(ARegion *region,
                                const float *force_depth);
 bool ED_view3d_depth_read_cached_seg(
     const ViewDepths *vd, const int mval_sta[2], const int mval_end[2], int margin, float *depth);
-
-/* Type alias for the GPU selection buffer. Must be kept in sync with
- * the same alias in GPU_select.h */
-using GPUSelectBuffer = blender::Vector<GPUSelectResult, 2500>;
 
 enum eV3DSelectMode {
   /* all elements in the region, ignore depth */

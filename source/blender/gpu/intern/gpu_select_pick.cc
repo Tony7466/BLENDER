@@ -663,7 +663,7 @@ uint gpu_select_pick_end()
 #ifdef DEBUG_PRINT
     printf("  hit: %u: depth %u\n", depth_data[i].id, depth_data[i].depth);
 #endif
-    g_pick_state.buffer->append({depth_data[i].id, depth_data[i].depth});
+    g_pick_state.buffer->storage.append({depth_data[i].id, depth_data[i].depth});
     hits++;
   }
 
