@@ -163,7 +163,7 @@ class NODE_HT_header(Header):
                 if snode.node_tree and snode.node_tree.asset_data:
                     layout.popover(panel="NODE_PT_geometry_node_asset_traits")
             else:
-                layout.template_ID(snode, "geometry_nodes_tool_tree", new="node.new_geometry_node_group_tool")
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
                 if snode.node_tree and snode.node_tree.asset_data:
                     layout.popover(panel="NODE_PT_geometry_node_asset_traits")
         else:

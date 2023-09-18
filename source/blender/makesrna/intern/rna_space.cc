@@ -2501,22 +2501,6 @@ static char *rna_SpaceNodeOverlay_path(const PointerRNA * /*ptr*/)
   return BLI_strdup("overlay");
 }
 
-static bool rna_SpaceNodeEditor_geometry_nodes_tool_tree_poll(PointerRNA * /*ptr*/,
-                                                              const PointerRNA value)
-{
-  const bNodeTree &ntree = *static_cast<const bNodeTree *>(value.data);
-  if (ntree.type != NTREE_GEOMETRY) {
-    return false;
-  }
-  if (!ntree.id.asset_data) {
-    return false;
-  }
-  if ((ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0) {
-    return false;
-  }
-  return true;
-}
-
 static void rna_SpaceNodeEditor_node_tree_set(PointerRNA *ptr,
                                               const PointerRNA value,
                                               ReportList * /*reports*/)
@@ -2536,7 +2520,10 @@ static bool rna_SpaceNodeEditor_node_tree_poll(PointerRNA *ptr, const PointerRNA
   }
   if (ntree->type == NTREE_GEOMETRY) {
     if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-      if (!rna_SpaceNodeEditor_geometry_nodes_tool_tree_poll(ptr, value)) {
+      if (!ntree->id.asset_data) {
+        return false;
+      }
+      if ((ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0) {
         return false;
       }
     }
@@ -7571,14 +7558,6 @@ static void rna_def_space_node(BlenderRNA *brna)
       prop, "Backdrop", "Use active Viewer Node output as backdrop for compositing nodes");
   RNA_def_property_update(
       prop, NC_SPACE | ND_SPACE_NODE_VIEW, "rna_SpaceNodeEditor_show_backdrop_update");
-
-  prop = RNA_def_property(srna, "geometry_nodes_tool_tree", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_funcs(
-      prop, nullptr, nullptr, nullptr, "rna_SpaceNodeEditor_geometry_nodes_tool_tree_poll");
-  RNA_def_property_pointer_sdna(prop, nullptr, "geometry_nodes_tool_tree");
-  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_CONTEXT_UPDATE);
-  RNA_def_property_ui_text(prop, "Node Tree", "Base node tree from context");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, "rna_SpaceNodeEditor_node_tree_update");
 
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SNODE_SHOW_GPENCIL);
