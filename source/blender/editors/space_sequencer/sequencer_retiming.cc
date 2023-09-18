@@ -13,6 +13,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_space_types.h"
 #include "DNA_workspace_types.h"
 
 #include "BKE_context.h"
@@ -47,12 +48,22 @@ using blender::MutableSpan;
 
 bool sequencer_retiming_tool_is_active(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
-  if (area->runtime.is_tool_set) {
-    return STREQ(area->runtime.tool->idname, "builtin.retime");
-  }
-  return false;
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  return sseq->draw_flag & SEQ_DRAW_RETIMING_ALL;
 }
+
+void sequencer_retiming_tool_set_active(const bContext *C)
+{
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  sseq->draw_flag |= SEQ_DRAW_RETIMING_ALL;
+}
+
+static void sequencer_retiming_tool_reset(const bContext *C)
+{
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  sseq->draw_flag &= ~SEQ_DRAW_RETIMING_ALL;
+}
+
 
 static bool retiming_poll(bContext *C)
 {
@@ -407,11 +418,7 @@ void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Retiming Remove Key
- * \{ */
-
-static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
+int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 {
   Scene *scene = CTX_data_scene(C);
 
@@ -441,23 +448,6 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
-
-void SEQUENCER_OT_retiming_key_remove(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Remove Retiming Key";
-  ot->description = "Remove retiming key";
-  ot->idname = "SEQUENCER_OT_retiming_key_remove";
-
-  /* api callbacks */
-  ot->exec = sequencer_retiming_key_remove_exec;
-  ot->poll = retiming_poll;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Retiming Set Segment Speed
@@ -493,7 +483,6 @@ static int segment_speed_set_exec(const bContext *C,
                                   blender::Map<SeqRetimingKey *, Sequence *> selection)
 {
   Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
 
   for (auto item : selection.items()) {
     SEQ_retiming_key_speed_set(scene, item.value, item.key, RNA_float_get(op->ptr, "speed"));
@@ -507,7 +496,6 @@ static int segment_speed_set_exec(const bContext *C,
 static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
 
   /* Strip mode. */
   if (!sequencer_retiming_tool_is_active(C)) {
@@ -564,10 +552,6 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Retiming Key Select
- * \{ */
-
 static bool select_key(const Editing *ed,
                        SeqRetimingKey *key,
                        const bool toggle,
@@ -593,7 +577,7 @@ static bool select_key(const Editing *ed,
   return true;
 }
 
-static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
+int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -623,50 +607,20 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  /* Click on strip to change tool to select. */
+  /* Click on strip, do strip selection. */
   const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   if (seq_click_exact != nullptr && key == nullptr) {
-    WM_toolsystem_ref_set_by_id(C, "builtin.select");
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-    return OPERATOR_FINISHED;
+    sequencer_retiming_tool_reset(C);
+    return sequencer_select_exec(C, op);
   }
 
   /* Selection after click is released. */
   const bool changed = select_key(ed, key, toggle, deselect_all);
 
-  WM_toolsystem_ref_set_by_id(C, "builtin.retime"); /* Switch to retiming tool. */
+  sequencer_retiming_tool_set_active(C);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
-
-static int sequencer_retiming_key_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  return WM_generic_select_invoke(C, op, event);
-}
-
-void SEQUENCER_OT_retiming_key_select(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Select Retiming Key";
-  ot->description = "Select retiming key";
-  ot->idname = "SEQUENCER_OT_retiming_key_select";
-
-  /* api callbacks */
-  ot->exec = sequencer_retiming_key_select_exec;
-  ot->invoke = sequencer_retiming_key_select_invoke;
-  ot->poll = retiming_poll;
-  ot->modal = WM_generic_select_modal;
-  ot->get_name = ED_select_pick_get_name;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* properties */
-  WM_operator_properties_generic_select(ot);
-  WM_operator_properties_mouse_select(ot);
-}
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Retiming Key Box Select

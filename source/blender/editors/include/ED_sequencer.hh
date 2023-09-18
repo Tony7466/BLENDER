@@ -45,3 +45,6 @@ void ED_operatormacros_sequencer();
 Sequence *ED_sequencer_special_preview_get();
 void ED_sequencer_special_preview_set(bContext *C, const int mval[2]);
 void ED_sequencer_special_preview_clear();
+
+bool sequencer_retiming_tool_is_active(const struct bContext *C);
+void sequencer_retiming_tool_set_active(const bContext *C);

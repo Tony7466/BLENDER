@@ -890,7 +890,7 @@ static void sequencer_select_strip_impl(const Editing *ed,
   }
 }
 
-static int sequencer_select_exec(bContext *C, wmOperator *op)
+int sequencer_select_exec(bContext *C, wmOperator *op)
 {
   View2D *v2d = UI_view2d_fromcontext(C);
   Scene *scene = CTX_data_scene(C);
@@ -909,6 +909,10 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     if (sseq->mainb != SEQ_DRAW_IMG_IMBUF) {
       return OPERATOR_CANCELLED;
     }
+  }
+
+  if (sequencer_retiming_tool_is_active(C)) {
+    return sequencer_retiming_key_select_exec(C, op);
   }
 
   bool extend = RNA_boolean_get(op->ptr, "extend");
@@ -981,7 +985,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     ED_sequencer_deselect_all(scene);
     SEQ_retiming_selection_clear(ed);
     SEQ_retiming_selection_append(key);
-    WM_toolsystem_ref_set_by_id(C, "builtin.retime");
+    sequencer_retiming_tool_set_active(C);
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
@@ -1010,10 +1014,6 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
 
 static int sequencer_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (sequencer_retiming_tool_is_active(C)) {
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-
   const int retval = WM_generic_select_invoke(C, op, event);
   ARegion *region = CTX_wm_region(C);
   if (region && (region->regiontype == RGN_TYPE_PREVIEW)) {

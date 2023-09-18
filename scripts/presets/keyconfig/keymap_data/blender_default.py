@@ -8237,45 +8237,6 @@ def km_sequencer_editor_tool_blade(_params):
     )
 
 
-def _template_sequencer_retime_select(*, type, value, legacy):
-    return [(
-        "sequencer.retiming_key_select",
-        {"type": type, "value": value, **{m: True for m in mods}},
-        {"properties": [(c, True) for c in props]},
-    ) for props, mods in (
-        (("deselect_all",) if not legacy else (), ()),
-        (("toggle",), ("shift",)),
-    )]
-
-
-def km_sequencer_editor_tool_retime(_params):
-    return (
-        "Sequencer Tool: Retime",
-        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
-        {"items": [
-            ("sequencer.retiming_key_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
-            ("sequencer.retiming_key_remove", {"type": 'DEL', "value": 'PRESS'},None),
-            ("sequencer.retiming_key_remove", {"type": 'X', "value": 'PRESS'},None),
-            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
-             {"properties": [("tweak", True), ("mode", 'SET')]}),
-            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "shift": True},
-             {"properties": [("tweak", True), ("mode", 'ADD')]}),
-            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "ctrl": True},
-             {"properties": [("tweak", True), ("mode", 'SUB')]}),
-            ("sequencer.retiming_select_box", {"type": 'B', "value": 'PRESS'}, None),
-            *_template_sequencer_retime_select(
-            type=_params.select_mouse,
-            value="PRESS",
-            legacy=_params.legacy,
-            ),
-            ("sequencer.retiming_deselect_all", {"type": 'A', "value": 'PRESS', "alt": True},None),
-            ("transform.translate", {"type": 'G', "value": 'PRESS'},
-             {"properties": [("view2d_edge_pan", True)]}),
-            ("transform.translate", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
-             {"properties": [("view2d_edge_pan", True)]}),
-        ]},
-    )
-
 # ------------------------------------------------------------------------------
 # Tool System (Sequencer, Preview)
 
@@ -8592,7 +8553,6 @@ def generate_keymaps(params=None):
         *(km_sequencer_editor_tool_generic_select_box(params, fallback=fallback) for fallback in (False, True)),
         km_sequencer_editor_tool_generic_cursor(params),
         km_sequencer_editor_tool_blade(params),
-        km_sequencer_editor_tool_retime(params),
         km_sequencer_editor_tool_sample(params),
         km_sequencer_editor_tool_move(params),
         km_sequencer_editor_tool_rotate(params),

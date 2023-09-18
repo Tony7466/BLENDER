@@ -10,6 +10,7 @@
 
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
+#include "BLI_vector.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,7 @@ struct wmOperator;
 struct ScrArea;
 struct Editing;
 struct ListBase;
+struct SeqRetimingKey;
 
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
 #define OVERLAP_ALPHA 180
@@ -312,11 +314,24 @@ void SEQUENCER_OT_retiming_reset(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_key_add(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_transition_add(struct wmOperatorType *ot);
-void SEQUENCER_OT_retiming_key_remove(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(struct wmOperatorType *ot);
-void SEQUENCER_OT_retiming_key_select(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_deselect_all(wmOperatorType *ot);
+
+blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
+bool retiming_last_key_is_clicked(const struct bContext *C,
+                                  const struct Sequence *seq,
+                                  const int mval[2]);
+
+struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
+                                                 const int mval[2],
+                                                 Sequence **r_seq);
+bool sequencer_retiming_tool_is_active(const struct bContext *C);
+void sequencer_retiming_tool_set_active(const bContext *C);
+void sequencer_draw_retiming(const struct bContext *C);
+int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_select_exec(bContext *C, wmOperator *op);
+int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */);
 
 #ifdef __cplusplus
 }
