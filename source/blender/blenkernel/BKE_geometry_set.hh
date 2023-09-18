@@ -719,6 +719,9 @@ class GreasePencilComponent : public GeometryComponent {
   void ensure_owns_direct_data() override;
 
   static constexpr inline GeometryComponent::Type static_type = Type::GreasePencil;
+
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 };
 
 }  // namespace blender::bke

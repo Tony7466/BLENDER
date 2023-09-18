@@ -197,3 +197,18 @@ blender::bke::MutableAttributeAccessor GreasePencil::attributes_for_write()
   return blender::bke::MutableAttributeAccessor(
       this, blender::bke::get_grease_pencil_accessor_functions_ref());
 }
+
+namespace blender::bke {
+
+std::optional<AttributeAccessor> GreasePencilComponent::attributes() const
+{
+  return AttributeAccessor(grease_pencil_, get_grease_pencil_accessor_functions_ref());
+}
+
+std::optional<MutableAttributeAccessor> GreasePencilComponent::attributes_for_write()
+{
+  GreasePencil *grease_pencil = this->get_for_write();
+  return MutableAttributeAccessor(grease_pencil, get_grease_pencil_accessor_functions_ref());
+}
+
+}  // namespace blender::bke

@@ -126,7 +126,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
   }
 
-  CustomData_free(&grease_pencil_dst->layers_data, grease_pencil_dst->layers().size());
   CustomData_copy(&grease_pencil_src->layers_data,
                   &grease_pencil_dst->layers_data,
                   CD_MASK_ALL,
@@ -1063,8 +1062,10 @@ GreasePencil *BKE_grease_pencil_new_nomain()
 
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src)
 {
-  return reinterpret_cast<GreasePencil *>(
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
       BKE_id_copy_ex(nullptr, &grease_pencil_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
+  grease_pencil->runtime->eval_frame = grease_pencil_src->runtime->eval_frame;
+  return grease_pencil;
 }
 
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
@@ -1132,6 +1133,8 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 
   /* Evaluate modifiers. */
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+  /* Store the frame that this grease pencil is evaluated on. */
+  grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
   GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
                                                              GeometryOwnershipType::ReadOnly);
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
@@ -1143,9 +1146,6 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
    * would result in a copy when it's shared. So for now, we use a const_cast here. */
   GreasePencil *grease_pencil_eval = const_cast<GreasePencil *>(geometry_set.get_grease_pencil());
-
-  /* Store the frame that this grease pencil data was evaluated on. */
-  grease_pencil_eval->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
 
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);

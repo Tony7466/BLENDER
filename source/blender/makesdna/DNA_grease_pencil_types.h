@@ -407,6 +407,11 @@ typedef struct GreasePencil {
    * All attributes stored on the grease pencil layers (#ATTR_DOMAIN_GREASE_PENCIL_LAYER).
    */
   CustomData layers_data;
+  /**
+   * The index of the active attribute in the UI.
+   */
+  int attributes_active_index;
+  char _pad2[4];
 
   /**
    * Pointer to the active layer. Can be NULL.
@@ -419,7 +424,7 @@ typedef struct GreasePencil {
    */
   struct Material **material_array;
   short material_array_num;
-  char _pad2[2];
+  char _pad3[2];
   /**
    * Global flag on the data-block.
    */
