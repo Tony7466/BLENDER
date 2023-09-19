@@ -33,7 +33,7 @@ void main()
   bool valid_pixel = gbuf.has_refraction;
 #endif
 
-  if (valid_pixel) {
+  if (!valid_pixel) {
     imageStore(out_ray_data_img, texel, vec4(0.0));
     return;
   }
