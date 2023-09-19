@@ -78,7 +78,7 @@ void RayTraceModule::sync()
     pass.dispatch(&tile_compact_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
   }
-  for (auto type : IndexRange(2)) {
+  for (auto type : IndexRange(3)) {
     PassSimple &pass = PASS_VARIATION(generate_, type, _ps_);
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(SHADER_VARIATION(RAY_GENERATE_, type)));
@@ -223,8 +223,10 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
   if (raytrace_closure == CLOSURE_DIFFUSE) {
     options = reflection_options_;
+    generate_ray_ps = &generate_diffuse_ps_;
     trace_ray_ps = force_no_tracing ? &trace_diffuse_ps_ : &trace_diffuse_ps_;
     denoise_spatial_ps = &denoise_spatial_diffuse_ps_;
+    denoise_bilateral_ps = &denoise_bilateral_diffuse_ps_;
     denoise_buf = &rt_buffer.diffuse;
   }
   else if (raytrace_closure == CLOSURE_REFLECTION) {
