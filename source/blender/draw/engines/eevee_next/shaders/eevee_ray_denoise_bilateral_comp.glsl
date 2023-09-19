@@ -1,11 +1,14 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Bilateral filtering of denoised raytraced radiance.
+ * Bilateral filtering of denoised ray-traced radiance.
  *
- * Dispatched at fullres using a tile list.
+ * Dispatched at full-resolution using a tile list.
  *
- * Input: Temporaly Stabilized Radiance, Stabilized Variance
- * Ouput: Denoised radiance
+ * Input: Temporally Stabilized Radiance, Stabilized Variance
+ * Output: Denoised radiance
  *
  * Following "Stochastic All The Things: Raytracing in Hybrid Real-Time Rendering"
  * by Tomasz Stachowiak
@@ -48,7 +51,7 @@ float bilateral_normal_weight(vec3 center_N, vec3 sample_N)
   return weight;
 }
 
-/* In order to remove some more fireflies, "tonemap" the color samples during the accumulation. */
+/* In order to remove some more fireflies, "tone-map" the color samples during the accumulation. */
 vec3 to_accumulation_space(vec3 color)
 {
   return color / (1.0 + dot(color, vec3(1.0)));
@@ -99,9 +102,9 @@ void main()
   const uint tile_size = RAYTRACE_GROUP_SIZE;
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
-  vec2 center_uv = vec2(texel_fullres) * raytrace_buf.full_resolution_inv;
+  vec2 center_uv = vec2(texel_fullres) * uniform_buf.raytrace.full_resolution_inv;
 
-  float center_depth = texelFetch(hiz_tx, texel_fullres, 0).r;
+  float center_depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec3 center_P = get_world_space_from_depth(center_uv, center_depth);
 
 #if defined(RAYTRACE_DIFFUSE)
@@ -156,8 +159,8 @@ void main()
       continue;
     }
 
-    float sample_depth = texelFetch(hiz_tx, sample_texel, 0).r;
-    vec2 sample_uv = vec2(sample_texel) * raytrace_buf.full_resolution_inv;
+    float sample_depth = texelFetch(depth_tx, sample_texel, 0).r;
+    vec2 sample_uv = vec2(sample_texel) * uniform_buf.raytrace.full_resolution_inv;
     vec3 sample_P = get_world_space_from_depth(sample_uv, sample_depth);
 
     /* Background case. */

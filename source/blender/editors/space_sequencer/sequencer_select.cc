@@ -48,7 +48,6 @@
 #include "UI_view2d.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
 #include "sequencer_intern.hh"
 
 /* -------------------------------------------------------------------- */

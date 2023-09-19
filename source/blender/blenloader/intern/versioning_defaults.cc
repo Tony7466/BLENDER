@@ -65,7 +65,7 @@
 
 #include "BLT_translation.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 /* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
@@ -374,7 +374,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   }
 
   /* Clear ID properties so Cycles gets defaults. */
-  IDProperty *idprop = IDP_GetProperties(&scene->id, false);
+  IDProperty *idprop = IDP_GetProperties(&scene->id);
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
@@ -537,6 +537,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY(scene->view_settings.look, "None");
     }
     else {
+      /* Default to AgX view transform. */
+      STRNCPY(scene->view_settings.view_transform, "AgX");
+
       /* AV Sync break physics sim caching, disable until that is fixed. */
       scene->audio.flag &= ~AUDIO_SYNC;
       scene->flag &= ~SCE_FRAME_DROP;
@@ -606,9 +609,12 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       for (bNode *node : ma->nodetree->all_nodes()) {
         if (node->type == SH_NODE_BSDF_PRINCIPLED) {
           bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
-          bNodeSocketValueFloat *roughness_data = static_cast<bNodeSocketValueFloat *>(
-              roughness_socket->default_value);
-          roughness_data->value = 0.5f;
+          *version_cycles_node_socket_float_value(roughness_socket) = 0.5f;
+          bNodeSocket *emission = nodeFindSocket(node, SOCK_IN, "Emission");
+          copy_v4_fl(version_cycles_node_socket_rgba_value(emission), 1.0f);
+          bNodeSocket *emission_strength = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+          *version_cycles_node_socket_float_value(emission_strength) = 0.0f;
+
           node->custom1 = SHD_GLOSSY_MULTI_GGX;
           node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
           BKE_ntree_update_tag_node_property(ma->nodetree, node);

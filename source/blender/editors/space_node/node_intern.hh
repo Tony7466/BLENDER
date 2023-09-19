@@ -162,11 +162,7 @@ int node_get_resize_cursor(NodeResizeDirection directions);
  * Usual convention here would be #node_socket_get_color(),
  * but that's already used (for setting a color property socket).
  */
-void node_socket_color_get(const bContext &C,
-                           const bNodeTree &ntree,
-                           PointerRNA &node_ptr,
-                           const bNodeSocket &sock,
-                           float r_color[4]);
+void node_socket_color_get(const bNodeSocketType &type, float r_color[4]);
 
 /* `node_draw.cc` */
 
@@ -244,20 +240,15 @@ void nodelink_batch_end(SpaceNode &snode);
 /**
  * \note this is used for fake links in groups too.
  */
-void node_draw_link(const bContext &C,
-                    const View2D &v2d,
+void node_draw_link(const View2D &v2d,
                     const SpaceNode &snode,
                     const bNodeLink &link,
                     bool selected);
-void node_draw_link_dragged(const bContext &C,
-                            const View2D &v2d,
-                            const SpaceNode &snode,
-                            const bNodeLink &link);
+void node_draw_link_dragged(const View2D &v2d, const SpaceNode &snode, const bNodeLink &link);
 /**
  * Don't do shadows if th_col3 is -1.
  */
-void node_draw_link_bezier(const bContext &C,
-                           const View2D &v2d,
+void node_draw_link_bezier(const View2D &v2d,
                            const SpaceNode &snode,
                            const bNodeLink &link,
                            int th_col1,
@@ -283,13 +274,13 @@ bNode *add_node(const bContext &C, StringRef idname, const float2 &location);
 bNode *add_static_node(const bContext &C, int type, const float2 &location);
 
 void NODE_OT_add_reroute(wmOperatorType *ot);
-void NODE_OT_add_search(wmOperatorType *ot);
 void NODE_OT_add_group(wmOperatorType *ot);
 void NODE_OT_add_group_asset(wmOperatorType *ot);
 void NODE_OT_add_object(wmOperatorType *ot);
 void NODE_OT_add_collection(wmOperatorType *ot);
 void NODE_OT_add_file(wmOperatorType *ot);
 void NODE_OT_add_mask(wmOperatorType *ot);
+void NODE_OT_add_material(wmOperatorType *ot);
 void NODE_OT_new_node_tree(wmOperatorType *ot);
 
 /* `node_group.cc` */
@@ -378,12 +369,6 @@ void NODE_OT_switch_view_update(wmOperatorType *ot);
 void NODE_OT_clipboard_copy(wmOperatorType *ot);
 void NODE_OT_clipboard_paste(wmOperatorType *ot);
 
-void NODE_OT_tree_socket_add(wmOperatorType *ot);
-void NODE_OT_tree_socket_remove(wmOperatorType *ot);
-void NODE_OT_tree_socket_change_type(wmOperatorType *ot);
-void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot);
-void NODE_OT_tree_socket_move(wmOperatorType *ot);
-
 void NODE_OT_shader_script_update(wmOperatorType *ot);
 
 void NODE_OT_viewer_border(wmOperatorType *ot);
@@ -417,13 +402,10 @@ void invoke_node_link_drag_add_menu(bContext &C,
                                     bNodeSocket &socket,
                                     const float2 &cursor);
 
-/* `add_node_search.cc` */
-
-void invoke_add_node_search_menu(bContext &C, const float2 &cursor, bool use_transform);
-
 /* `add_menu_assets.cc` */
 
 MenuType add_catalog_assets_menu_type();
+MenuType add_unassigned_assets_menu_type();
 MenuType add_root_catalogs_menu_type();
 
 }  // namespace blender::ed::space_node

@@ -53,7 +53,7 @@
 /* For obscure full screen mode stuff
  * lifted verbatim from blut. */
 
-using MotifWmHints = struct {
+struct MotifWmHints {
   long flags;
   long functions;
   long decorations;
@@ -402,8 +402,9 @@ bool GHOST_WindowX11::createX11_XIC()
                     XNDestroyCallback,
                     &destroy,
                     nullptr);
-  if (!m_xic)
+  if (!m_xic) {
     return false;
+  }
 
   ulong fevent;
   XGetICValues(m_xic, XNFilterEvents, &fevent, nullptr);
