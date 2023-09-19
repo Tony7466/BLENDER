@@ -55,7 +55,7 @@ class GRAPH_HT_header(Header):
         sub.popover(
             panel="GRAPH_PT_snapping",
             icon='NONE',
-            text="Modes",
+            text="",
         )
 
         row = layout.row(align=True)

@@ -40,7 +40,7 @@ class NLA_HT_header(Header):
         sub.popover(
             panel="NLA_PT_snapping",
             icon='NONE',
-            text="Modes",
+            text="",
         )
 
 
