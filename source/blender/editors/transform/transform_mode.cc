@@ -291,7 +291,7 @@ void constraintTransLim(const TransInfo *t, TransData *td)
         /* do space conversions */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
           /* just multiply by td->mtx (this should be ok) */
-          mul_m4_m3m4(cob.matrix, td->mtx, cob.matrix);
+          mul_m3_v3(td->mtx, cob.matrix[3]);
         }
         else if (con->ownspace != CONSTRAINT_SPACE_LOCAL) {
           /* skip... incompatible spacetype */
@@ -310,7 +310,7 @@ void constraintTransLim(const TransInfo *t, TransData *td)
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
           /* just multiply by td->smtx (this should be ok) */
-          mul_m4_m3m4(cob.matrix, td->smtx, cob.matrix);
+          mul_m3_v3(td->smtx, cob.matrix[3]);
         }
 
         /* free targets list */
