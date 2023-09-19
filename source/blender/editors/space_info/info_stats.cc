@@ -198,15 +198,16 @@ static void stats_object(Object *ob,
       }
       using namespace blender;
       GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
-
       Span<GreasePencilDrawingBase *> drawings = grease_pencil->drawings();
+
       for (int range : drawings.index_range()) {
         GreasePencilDrawingBase *drawing_base = drawings[range];
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        CurvesGeometry &curves = drawing->geometry;
+        CurvesGeometry curves = drawing->geometry;
         stats->totgppoint += curves.point_num;
         stats->totgpstroke += curves.curve_num;
       }
+
       stats->totgplayer += grease_pencil->layers().size();
       stats->totgpframe += grease_pencil->drawing_array_num;
       break;
