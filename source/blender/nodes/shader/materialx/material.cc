@@ -21,10 +21,12 @@ class DefaultMaterialNodeParser : public NodeParser {
 
   NodeItem compute() override
   {
-    NodeItem surface = create_node("standard_surface", NodeItem::Type::SurfaceShader);
-    surface.set_input("base_color",
-                      val(MaterialX::Color3(material_->r, material_->g, material_->b)));
-    surface.set_input("diffuse_roughness", val(material_->roughness));
+    NodeItem surface = create_node(
+        "standard_surface",
+        NodeItem::Type::SurfaceShader,
+        {{"base_color", val(MaterialX::Color3(material_->r, material_->g, material_->b))},
+         {"diffuse_roughness", val(material_->roughness)}});
+
     if (material_->metallic > 0.0f) {
       surface.set_input("metalness", val(material_->metallic));
     }
@@ -34,20 +36,20 @@ class DefaultMaterialNodeParser : public NodeParser {
       surface.set_input("specular_roughness", val(material_->roughness));
     }
 
-    NodeItem res = create_node("surfacematerial", NodeItem::Type::Material);
+    NodeItem res = create_node(
+        "surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});
     res.node->setName("Material_Default");
-    res.set_input("surfaceshader", surface);
     return res;
   }
 
   NodeItem compute_error()
   {
-    NodeItem surface = create_node("standard_surface", NodeItem::Type::SurfaceShader);
-    surface.set_input("base_color", val(MaterialX::Color3(1.0f, 0.0f, 1.0f)));
-
-    NodeItem res = create_node("surfacematerial", NodeItem::Type::Material);
+    NodeItem surface = create_node("standard_surface",
+                                   NodeItem::Type::SurfaceShader,
+                                   {{"base_color", val(MaterialX::Color3(1.0f, 0.0f, 1.0f))}});
+    NodeItem res = create_node(
+        "surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});
     res.node->setName("Material_Error");
-    res.set_input("surfaceshader", surface);
     return res;
   }
 };

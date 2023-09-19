@@ -91,15 +91,13 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem anisotropy = get_input_value("Anisotropy", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem res = create_node("subsurface_bsdf", NodeItem::Type::BSDF);
-  res.set_input("weight", val(1.0f));
-  res.set_input("color", color);
-  res.set_input("radius", radius * scale);
-  res.set_input("anisotropy", anisotropy);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  return res;
+  return create_node("subsurface_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"weight", val(1.0f)},
+                      {"color", color},
+                      {"radius", radius * scale},
+                      {"anisotropy", anisotropy},
+                      {"normal", normal}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

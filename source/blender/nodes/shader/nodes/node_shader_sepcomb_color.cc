@@ -82,8 +82,7 @@ NODE_SHADER_MATERIALX_BEGIN
     case NODE_COMBSEP_COLOR_HSV:
     case NODE_COMBSEP_COLOR_HSL:
       /* NOTE: HSL is unsupported color model, using HSV instead */
-      convert = create_node("rgbtohsv", NodeItem::Type::Color3);
-      convert.set_input("in", color);
+      convert = create_node("rgbtohsv", NodeItem::Type::Color3, {{"in", color}});
       break;
     default:
       BLI_assert_unreachable();

@@ -82,12 +82,10 @@ NODE_SHADER_MATERIALX_BEGIN
     res = texcoord_node();
   }
   else if (name == "Normal") {
-    res = create_node("normal", NodeItem::Type::Vector3);
-    res.set_input("space", val(std::string("world")));
+    res = create_node("normal", NodeItem::Type::Vector3, {{"space", val(std::string("world"))}});
   }
   else if (name == "Object") {
-    res = create_node("position", NodeItem::Type::Vector3);
-    res.set_input("space", val(std::string("world")));
+    res = create_node("position", NodeItem::Type::Vector3, {{"space", val(std::string("world"))}});
   }
   else {
     res = get_output_default(name, NodeItem::Type::Any);

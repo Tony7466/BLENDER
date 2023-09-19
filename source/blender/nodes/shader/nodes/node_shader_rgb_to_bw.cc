@@ -31,10 +31,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
-
-  NodeItem res = create_node("luminance", NodeItem::Type::Color4);
-  res.set_input("in", color);
-  return res;
+  return create_node("luminance", NodeItem::Type::Color4, {{"in", color}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

@@ -69,24 +69,19 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
   NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
 
-  NodeItem artistic_ior = create_node("artistic_ior", NodeItem::Type::Multioutput);
-  artistic_ior.set_input("reflectivity", color);
-  artistic_ior.set_input("edge_color", color);
+  NodeItem artistic_ior = create_node("artistic_ior",
+                                      NodeItem::Type::Multioutput,
+                                      {{"reflectivity", color}, {"edge_color", color}});
   NodeItem ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
   NodeItem extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
 
-  NodeItem res = create_node("conductor_bsdf", NodeItem::Type::BSDF);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  if (tangent) {
-    res.set_input("tangent", tangent);
-  }
-  res.set_input("ior", ior_out);
-  res.set_input("extinction", extinction_out);
-  res.set_input("roughness", roughness);
-
-  return res;
+  return create_node("conductor_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"normal", normal},
+                      {"tangent", tangent},
+                      {"ior", ior_out},
+                      {"extinction", extinction_out},
+                      {"roughness", roughness}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

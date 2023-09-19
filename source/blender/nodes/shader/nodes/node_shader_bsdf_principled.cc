@@ -331,52 +331,39 @@ NODE_SHADER_MATERIALX_BEGIN
   subsurface_radius = subsurface_radius * subsurface_scale;
 
   /* Creating standard_surface */
-  NodeItem res = create_node("standard_surface", NodeItem::Type::SurfaceShader);
-  res.set_input("base", val(1.0f));
-  res.set_input("base_color", base_color);
-  res.set_input("diffuse_roughness", roughness);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  if (tangent) {
-    res.set_input("tangent", tangent);
-  }
-  res.set_input("metalness", metallic);
-
-  res.set_input("specular", specular);
-  res.set_input("specular_color", base_color);
-  res.set_input("specular_roughness", roughness);
-  res.set_input("specular_IOR", ior);
-  res.set_input("specular_anisotropy", anisotropic);
-  res.set_input("specular_rotation", anisotropic_rotation);
-
-  res.set_input("transmission", transmission);
-  res.set_input("transmission_color", base_color);
-  res.set_input("transmission_extra_roughness", roughness);
-
-  res.set_input("subsurface", subsurface);
-  res.set_input("subsurface_color", base_color);
-  res.set_input("subsurface_radius", subsurface_radius);
-  res.set_input("subsurface_anisotropy", anisotropic);
-
-  res.set_input("sheen", sheen);
-  res.set_input("sheen_color", base_color);
-  res.set_input("sheen_roughness", roughness);
-
-  res.set_input("coat", coat);
-  res.set_input("coat_color", base_color);
-  res.set_input("coat_roughness", coat_roughness);
-  res.set_input("coat_IOR", ior);
-  res.set_input("coat_anisotropy", anisotropic);
-  res.set_input("coat_rotation", anisotropic_rotation);
-  if (coat_normal) {
-    res.set_input("coat_normal", coat_normal);
-  }
-
-  res.set_input("emission", emission_strength);
-  res.set_input("emission_color", emission);
-
-  return res;
+  return create_node("standard_surface",
+                     NodeItem::Type::SurfaceShader,
+                     {{"base", val(1.0f)},
+                      {"base_color", base_color},
+                      {"diffuse_roughness", roughness},
+                      {"normal", normal},
+                      {"tangent", tangent},
+                      {"metalness", metallic},
+                      {"specular", specular},
+                      {"specular_color", base_color},
+                      {"specular_roughness", roughness},
+                      {"specular_IOR", ior},
+                      {"specular_anisotropy", anisotropic},
+                      {"specular_rotation", anisotropic_rotation},
+                      {"transmission", transmission},
+                      {"transmission_color", base_color},
+                      {"transmission_extra_roughness", roughness},
+                      {"subsurface", subsurface},
+                      {"subsurface_color", base_color},
+                      {"subsurface_radius", subsurface_radius},
+                      {"subsurface_anisotropy", anisotropic},
+                      {"sheen", sheen},
+                      {"sheen_color", base_color},
+                      {"sheen_roughness", roughness},
+                      {"coat", coat},
+                      {"coat_color", base_color},
+                      {"coat_roughness", coat_roughness},
+                      {"coat_IOR", ior},
+                      {"coat_anisotropy", anisotropic},
+                      {"coat_rotation", anisotropic_rotation},
+                      {"coat_normal", coat_normal},
+                      {"emission", emission_strength},
+                      {"emission_color", emission}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

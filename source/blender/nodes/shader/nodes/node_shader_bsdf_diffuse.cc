@@ -45,13 +45,9 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem res = create_node("oren_nayar_diffuse_bsdf", NodeItem::Type::BSDF);
-  res.set_input("color", color);
-  res.set_input("roughness", roughness);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  return res;
+  return create_node("oren_nayar_diffuse_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"color", color}, {"roughness", roughness}, {"normal", normal}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

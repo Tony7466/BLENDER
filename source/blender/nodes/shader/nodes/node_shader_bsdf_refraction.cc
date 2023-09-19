@@ -52,16 +52,13 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem res = create_node("dielectric_bsdf", NodeItem::Type::BSDF);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  res.set_input("tint", color);
-  res.set_input("roughness", roughness);
-  res.set_input("ior", ior);
-  res.set_input("scatter_mode", val(std::string("T")));
-
-  return res;
+  return create_node("dielectric_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"normal", normal},
+                      {"tint", color},
+                      {"roughness", roughness},
+                      {"ior", ior},
+                      {"scatter_mode", val(std::string("T"))}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

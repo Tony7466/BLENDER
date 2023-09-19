@@ -238,12 +238,14 @@ NODE_SHADER_MATERIALX_BEGIN
           BLI_assert_unreachable();
       }
 
-      res = create_node("image", NodeItem::Type::Color4);
+      res = create_node("image",
+                        NodeItem::Type::Color4,
+                        {{"texcoord", vector},
+                         {"filtertype", val(filtertype)},
+                         {"uaddressmode", val(addressmode)},
+                         {"vaddressmode", val(addressmode)}});
       res.set_input("file", image_path, NodeItem::Type::Filename);
-      res.set_input("texcoord", vector);
-      res.set_input("filtertype", val(filtertype));
-      res.set_input("uaddressmode", val(addressmode));
-      res.set_input("vaddressmode", val(addressmode));
+      res.node->setName(image_node_name);
     }
   }
 

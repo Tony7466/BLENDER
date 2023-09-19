@@ -38,8 +38,7 @@ NODE_SHADER_MATERIALX_BEGIN
   std::string name = socket_out_->name;
 
   if (name == "Location") {
-    res = create_node("position", NodeItem::Type::Vector3);
-    res.set_input("space", val(std::string("world")));
+    res = create_node("position", NodeItem::Type::Vector3, {{"space", val(std::string("world"))}});
   }
   /* TODO: This node doesn't have an implementation in MaterialX.
    * It's added in MaterialX 1.38.8. Uncomment this code after switching to 1.38.8.

@@ -475,14 +475,14 @@ NODE_SHADER_MATERIALX_BEGIN
       BLI_assert_unreachable();
   }
 
-  NodeItem res = create_node("range", type);
-  res.set_input("in", value);
-  res.set_input("inlow", from_min);
-  res.set_input("inhigh", from_max);
-  res.set_input("outlow", to_min);
-  res.set_input("outhigh", to_max);
-  res.set_input("doclamp", val(bool(map_range->clamp)));
-  return res;
+  return create_node("range",
+                     type,
+                     {{"in", value},
+                      {"inlow", from_min},
+                      {"inhigh", from_max},
+                      {"outlow", to_min},
+                      {"outhigh", to_max},
+                      {"doclamp", val(bool(map_range->clamp))}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

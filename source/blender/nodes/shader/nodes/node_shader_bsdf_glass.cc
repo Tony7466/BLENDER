@@ -54,35 +54,29 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem dielectric = create_node("dielectric_bsdf", NodeItem::Type::BSDF);
-  if (normal) {
-    dielectric.set_input("normal", normal);
-  }
-  dielectric.set_input("tint", color);
-  dielectric.set_input("roughness", roughness);
-  dielectric.set_input("ior", ior);
-  dielectric.set_input("scatter_mode", val(std::string("RT")));
+  NodeItem dielectric = create_node("dielectric_bsdf",
+                                    NodeItem::Type::BSDF,
+                                    {{"normal", normal},
+                                     {"tint", color},
+                                     {"roughness", roughness},
+                                     {"ior", ior},
+                                     {"scatter_mode", val(std::string("RT"))}});
 
-  NodeItem artistic_ior = create_node("artistic_ior", NodeItem::Type::Multioutput);
-  artistic_ior.set_input("reflectivity", color);
-  artistic_ior.set_input("edge_color", color);
+  NodeItem artistic_ior = create_node("artistic_ior",
+                                      NodeItem::Type::Multioutput,
+                                      {{"reflectivity", color}, {"edge_color", color}});
   NodeItem ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
   NodeItem extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
 
-  NodeItem conductor = create_node("conductor_bsdf", NodeItem::Type::BSDF);
-  if (normal) {
-    conductor.set_input("normal", normal);
-  }
-  conductor.set_input("ior", ior_out);
-  conductor.set_input("extinction", extinction_out);
-  conductor.set_input("roughness", roughness);
+  NodeItem conductor = create_node("conductor_bsdf",
+                                   NodeItem::Type::BSDF,
+                                   {{"normal", normal},
+                                    {"ior", ior_out},
+                                    {"extinction", extinction_out},
+                                    {"roughness", roughness}});
 
-  NodeItem res = create_node("mix", NodeItem::Type::BSDF);
-  res.set_input("fg", dielectric);
-  res.set_input("bg", conductor);
-  res.set_input("mix", val(0.5f));
-
-  return res;
+  return create_node(
+      "mix", NodeItem::Type::BSDF, {{"fg", dielectric}, {"bg", conductor}, {"mix", val(0.5f)}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

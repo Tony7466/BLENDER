@@ -267,11 +267,11 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem position = create_node("position", NodeItem::Type::Vector3);
   position = position * scale;
 
-  NodeItem res = create_node("fractal3d", NodeItem::Type::Color3);
-  res.set_input("position", position);
-  res.set_input("octaves", val(int(detail.value->asA<float>())));
-  res.set_input("lacunarity", lacunarity);
-  return res;
+  return create_node("fractal3d",
+                     NodeItem::Type::Color3,
+                     {{"position", position},
+                      {"octaves", val(int(detail.value->asA<float>()))},
+                      {"lacunarity", lacunarity}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

@@ -42,9 +42,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem value = get_output_default("Value", NodeItem::Type::Float);
-  NodeItem res = create_node("constant", NodeItem::Type::Float);
-  res.set_input("value", value);
-  return res;
+  return create_node("constant", NodeItem::Type::Float, {{"value", value}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

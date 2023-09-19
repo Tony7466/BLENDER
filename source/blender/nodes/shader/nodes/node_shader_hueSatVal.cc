@@ -43,15 +43,10 @@ NODE_SHADER_MATERIALX_BEGIN
   /* Modifier to follow Cycles result */
   hue = hue - val(0.5f);
 
-  NodeItem combine = create_node("combine3", NodeItem::Type::Vector3);
-  combine.set_input("in1", hue);
-  combine.set_input("in2", saturation);
-  combine.set_input("in3", value);
+  NodeItem combine = create_node(
+      "combine3", NodeItem::Type::Vector3, {{"in1", hue}, {"in2", saturation}, {"in3", value}});
 
-  NodeItem res = create_node("hsvadjust", NodeItem::Type::Color3);
-  res.set_input("in", color);
-  res.set_input("amount", combine);
-  return res;
+  return create_node("hsvadjust", NodeItem::Type::Color3, {{"in", color}, {"amount", combine}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

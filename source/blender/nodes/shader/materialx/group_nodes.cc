@@ -61,9 +61,7 @@ NodeItem GroupOutputNodeParser::compute()
   for (auto socket_in : node_->input_sockets()) {
     NodeItem value = get_input_value(socket_in->index(), NodeItem::Type::Any);
     if (value.value) {
-      NodeItem constant = create_node("constant", value.type());
-      constant.set_input("value", value);
-      value = constant;
+      value = create_node("constant", value.type(), {{"value", value}});
     }
     values.append(value);
   }
@@ -113,9 +111,7 @@ NodeItem GroupInputNodeParser::compute()
   }
 
   if (value.value) {
-    NodeItem constant = create_node("constant", value.type());
-    constant.set_input("value", value);
-    value = constant;
+    value = create_node("constant", value.type(), {{"value", value}});
   }
   return create_input("input" + std::to_string(socket_out_->index() + 1), value);
 #else

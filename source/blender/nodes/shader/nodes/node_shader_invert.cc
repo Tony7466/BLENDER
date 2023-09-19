@@ -31,7 +31,7 @@ NODE_SHADER_MATERIALX_BEGIN
 {
   NodeItem fac = get_input_value("Fac", NodeItem::Type::Float);
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
-  return fac.blend(color, fac.val(1.0f) - color);
+  return fac.blend(color, val(1.0f) - color);
 }
 #endif
 NODE_SHADER_MATERIALX_END

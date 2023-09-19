@@ -44,6 +44,9 @@ class NodeParser {
  protected:
   std::string node_name() const;
   NodeItem create_node(const std::string &category, NodeItem::Type type);
+  NodeItem create_node(const std::string &category,
+                       NodeItem::Type type,
+                       const NodeItem::Inputs &inputs);
   NodeItem create_input(const std::string &name, const NodeItem &item);
   NodeItem create_output(const std::string &name, const NodeItem &item);
   NodeItem get_input_default(const std::string &name, NodeItem::Type to_type);

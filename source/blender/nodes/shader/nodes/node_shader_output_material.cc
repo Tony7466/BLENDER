@@ -61,9 +61,7 @@ NODE_SHADER_MATERIALX_BEGIN
   else {
     surface = get_input_link("Surface", NodeItem::Type::SurfaceShader);
   }
-  NodeItem res = create_node("surfacematerial", NodeItem::Type::Material);
-  res.set_input("surfaceshader", surface);
-  return res;
+  return create_node("surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

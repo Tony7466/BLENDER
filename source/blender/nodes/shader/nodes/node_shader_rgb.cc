@@ -30,9 +30,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem color = get_output_default("Color", NodeItem::Type::Color4);
-  NodeItem res = create_node("constant", NodeItem::Type::Color4);
-  res.set_input("value", color);
-  return res;
+  return create_node("constant", NodeItem::Type::Color4, {{"value", color}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

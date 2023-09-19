@@ -84,6 +84,13 @@ NodeItem NodeParser::create_node(const std::string &category, NodeItem::Type typ
   return empty().create_node(category, type);
 }
 
+NodeItem NodeParser::create_node(const std::string &category,
+                                 NodeItem::Type type,
+                                 const NodeItem::Inputs &inputs)
+{
+  return empty().create_node(category, type, inputs);
+}
+
 NodeItem NodeParser::create_input(const std::string &name, const NodeItem &item)
 {
   return empty().create_input(name, item);

@@ -147,11 +147,9 @@ NODE_SHADER_MATERIALX_BEGIN
       BLI_assert_unreachable();
   }
 
-  NodeItem res = create_node("normalmap", NodeItem::Type::Vector3);
-  res.set_input("in", color);
-  res.set_input("scale", strength);
-  res.set_input("space", val(space));
-  return res;
+  return create_node("normalmap",
+                     NodeItem::Type::Vector3,
+                     {{"in", color}, {"scale", strength}, {"space", val(space)}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

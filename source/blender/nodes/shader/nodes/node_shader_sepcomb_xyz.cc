@@ -153,11 +153,7 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem y = get_input_value("Y", NodeItem::Type::Float);
   NodeItem z = get_input_value("Z", NodeItem::Type::Float);
 
-  NodeItem res = create_node("combine3", NodeItem::Type::Vector3);
-  res.set_input("in1", x);
-  res.set_input("in2", y);
-  res.set_input("in3", z);
-  return res;
+  return create_node("combine3", NodeItem::Type::Vector3, {{"in1", x}, {"in2", y}, {"in3", z}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

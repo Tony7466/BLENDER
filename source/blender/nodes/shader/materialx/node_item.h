@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <map>
+
 #include <MaterialXCore/Node.h>
 
 namespace blender::nodes::materialx {
@@ -13,6 +15,8 @@ namespace blender::nodes::materialx {
  * All work should be done via this class instead of using MaterialX API directly. */
 class NodeItem {
  public:
+  using Inputs = std::vector<std::pair<std::string, NodeItem>>;
+
   enum class Type {
     Any = 0,
     Empty,
@@ -106,7 +110,8 @@ class NodeItem {
   Type type() const;
 
   /* Node functions */
-  NodeItem create_node(const std::string &category, NodeItem::Type type) const;
+  NodeItem create_node(const std::string &category, Type type) const;
+  NodeItem create_node(const std::string &category, Type type, const Inputs &inputs) const;
   template<class T> void set_input(const std::string &in_name, const T &value, Type in_type);
   void set_input(const std::string &in_name, const NodeItem &item);
   NodeItem add_output(const std::string &out_name, Type out_type);

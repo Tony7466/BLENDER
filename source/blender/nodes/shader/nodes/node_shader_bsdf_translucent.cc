@@ -39,12 +39,8 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem res = create_node("translucent_bsdf", NodeItem::Type::BSDF);
-  res.set_input("color", color);
-  if (normal) {
-    res.set_input("normal", normal);
-  }
-  return res;
+  return create_node(
+      "translucent_bsdf", NodeItem::Type::BSDF, {{"color", color}, {"normal", normal}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

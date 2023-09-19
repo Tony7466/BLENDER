@@ -41,10 +41,7 @@ NODE_SHADER_MATERIALX_BEGIN
         res = shader2 * fac;
       }
       else if (shader1 && shader2) {
-        res = create_node("mix", to_type_);
-        res.set_input("fg", shader1);
-        res.set_input("bg", shader2);
-        res.set_input("mix", fac);
+        res = create_node("mix", to_type_, {{"fg", shader1}, {"bg", shader2}, {"mix", fac}});
       }
       break;
     }

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_item.h"
+#include "node_parser.h"
 
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
@@ -120,9 +121,7 @@ NodeItem NodeItem::operator+(const NodeItem &other) const
     /* Special case: add BSDF/EDF shaders */
     NodeItem res = empty();
     if (other.type() == type) {
-      res = create_node("add", type);
-      res.set_input("in1", *this);
-      res.set_input("in2", other);
+      res = create_node("add", type, {{"in1", *this}, {"in2", other}});
     }
     else {
       BLI_assert_unreachable();
@@ -151,9 +150,7 @@ NodeItem NodeItem::operator*(const NodeItem &other) const
     NodeItem res = empty();
     Type other_type = other.type();
     if (ELEM(other_type, Type::Float, Type::Color3)) {
-      res = create_node("multiply", type);
-      res.set_input("in1", *this);
-      res.set_input("in2", other);
+      res = create_node("multiply", type, {{"in1", *this}, {"in2", other}});
     }
     else {
       BLI_assert_unreachable();
@@ -540,8 +537,7 @@ NodeItem NodeItem::convert(Type to_type) const
     }
   }
   else {
-    res = create_node("convert", to_type);
-    res.set_input("in", *this);
+    res = create_node("convert", to_type, {{"in", *this}});
   }
   return res;
 }
@@ -597,11 +593,8 @@ NodeItem NodeItem::if_else(CompareOp op,
     res = func(value->asA<float>(), other.value->asA<float>()) ? item1 : item2;
   }
   else {
-    res = create_node(category, to_type);
-    res.set_input("value1", *this);
-    res.set_input("value2", other);
-    res.set_input("in1", item1);
-    res.set_input("in2", item2);
+    res = create_node(
+        category, to_type, {{"value1", *this}, {"value2", other}, {"in1", item1}, {"in2", item2}});
   }
 
   return res;
@@ -610,9 +603,7 @@ NodeItem NodeItem::if_else(CompareOp op,
 NodeItem NodeItem::extract(const int index) const
 {
   /* TODO: Add check if (value) { ... } */
-  NodeItem res = create_node("extract", Type::Float);
-  res.set_input("in", *this);
-  res.set_input("index", val(index));
+  NodeItem res = create_node("extract", Type::Float, {{"in", *this}, {"index", val(index)}});
   return res;
 }
 
@@ -635,12 +626,23 @@ NodeItem::Type NodeItem::type() const
   return Type::Empty;
 }
 
-NodeItem NodeItem::create_node(const std::string &category, NodeItem::Type type) const
+NodeItem NodeItem::create_node(const std::string &category, Type type) const
 {
   std::string type_str = this->type(type);
   CLOG_INFO(LOG_MATERIALX_SHADER, 2, "<%s type=%s>", category.c_str(), type_str.c_str());
   NodeItem res = empty();
   res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, type_str);
+  return res;
+}
+
+NodeItem NodeItem::create_node(const std::string &category, Type type, const Inputs &inputs) const
+{
+  NodeItem res = create_node(category, type);
+  for (auto &it : inputs) {
+    if (it.second) {
+      res.set_input(it.first, it.second);
+    }
+  }
   return res;
 }
 
@@ -821,8 +823,7 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
       type = type == Type::Color3 ? Type::Vector3 : Type::Vector4;
       v = v.convert(type);
     }
-    res = create_node(category, type);
-    res.set_input("in", v);
+    res = create_node(category, type, {{"in", v}});
   }
   return res;
 }
@@ -887,9 +888,7 @@ NodeItem NodeItem::arithmetic(const NodeItem &other,
     }
   }
   else {
-    res = create_node(category, to_type);
-    res.set_input("in1", item1);
-    res.set_input("in2", item2);
+    res = create_node(category, to_type, {{"in1", item1}, {"in2", item2}});
   }
   return res;
 }
