@@ -180,13 +180,13 @@ vec4 burley_sss_translucency(vec3 lut_coord)
   /* Note that we only store the 1st (radius == 1) component.
    * The others are here for debugging overall appearance. */
   vec3 radii = vec3(1.0, 0.2, 0.1);
-  float thickness = lut_coord.x * 2.0;
+  float thickness = lut_coord.x * SSS_TRANSMIT_LUT_RADIUS;
   vec3 r = thickness / radii;
   /* Manual fit based on cycles render of a backlit slab of varying thickness.
    * Mean Error: 0.003
    * Max Error: 0.015 */
-  vec3 exponential = exp(-3.6 * pow(r, 1.11));
-  vec3 gaussian = exp(-pow(3.4 * r, 1.6));
+  vec3 exponential = exp(-3.6 * pow(r, vec3(1.11)));
+  vec3 gaussian = exp(-pow(3.4 * r, vec3(1.6)));
   vec3 fac = square(saturate(0.5 + r / 0.6));
   vec3 profile = saturate(mix(gaussian, exponential, fac));
   /* Mask off the end progressively to 0. */
@@ -200,7 +200,7 @@ vec4 random_walk_sss_translucency(vec3 lut_coord)
   /* Note that we only store the 1st (radius == 1) component.
    * The others are here for debugging overall appearance. */
   vec3 radii = vec3(1.0, 0.2, 0.1);
-  float thickness = lut_coord.x * 2.0;
+  float thickness = lut_coord.x * SSS_TRANSMIT_LUT_RADIUS;
   vec3 r = thickness / radii;
   /* Manual fit based on cycles render of a backlit slab of varying thickness.
    * Mean Error: 0.003
