@@ -144,11 +144,21 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Specular component */
   if (true) {
-    vec3 F0 = vec3(F0_from_ior(ior)) * 2.0 * specular * reflection_tint;
+    float eta = ior;
+    float f0 = F0_from_ior(eta);
+    if (specular != 0.5) {
+      f0 *= 2.0 * specular;
+      eta = ior_from_f0(f0);
+      if (ior < 1.0) {
+        eta = 1.0 / eta;
+      }
+    }
+
+    vec3 F0 = vec3(f0) * reflection_tint;
     F0 = clamp(F0, vec3(0.0), vec3(1.0));
     vec3 F90 = vec3(1.0);
     vec3 reflectance, unused;
-    bsdf_lut(F0, F90, vec3(0.0), NV, roughness, ior, do_multiscatter, reflectance, unused);
+    bsdf_lut(F0, F90, vec3(0.0), NV, roughness, eta, do_multiscatter, reflectance, unused);
 
     reflection_data.color += weight * reflectance;
     /* Attenuate lower layers */

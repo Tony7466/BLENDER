@@ -17,19 +17,6 @@ vec3 specular_dominant_dir(vec3 N, vec3 V, float roughness)
   return normalize(mix(N, R, fac));
 }
 
-float ior_from_f0(float f0)
-{
-  float f = sqrt(f0);
-  return (-f - 1.0) / (f - 1.0);
-}
-
-/* Simplified form of F_eta(eta, 1.0). */
-float F0_from_ior(float eta)
-{
-  float A = (eta - 1.0) / (eta + 1.0);
-  return A * A;
-}
-
 vec3 refraction_dominant_dir(vec3 N, vec3 V, float roughness, float ior)
 {
   /* TODO: This a bad approximation. Better approximation should fit
