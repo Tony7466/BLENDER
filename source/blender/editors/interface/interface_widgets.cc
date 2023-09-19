@@ -1740,16 +1740,12 @@ static void ui_text_clip_cursor(const uiFontStyle *fstyle, uiBut *but, const rct
         ui_text_clip_give_next_off(but, but->editstr, but->editstr + editstr_len);
       }
       else {
-        int bytes;
         /* shift string to the left */
         if (width < 20 && but->ofs > 0) {
           ui_text_clip_give_prev_off(but, but->editstr);
         }
-        bytes = BLI_str_utf8_size(BLI_str_find_prev_char_utf8(but->editstr + len, but->editstr));
-        if (bytes == -1) {
-          bytes = 1;
-        }
-        len -= bytes;
+        len -= BLI_str_utf8_size_safe(
+            BLI_str_find_prev_char_utf8(but->editstr + len, but->editstr));
       }
 
       but->strwidth = BLF_width(fstyle->uifont_id, but->editstr + but->ofs, len - but->ofs);
@@ -1957,7 +1953,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
   }
 
-  /* If not editing and indeterminate, show dash.*/
+  /* If not editing and indeterminate, show dash. */
   if (but->drawflag & UI_BUT_INDETERMINATE && !but->editstr &&
       ELEM(but->type,
            UI_BTYPE_MENU,
@@ -1988,7 +1984,6 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         /* We are drawing on top of widget bases. Flush cache. */
         GPU_blend(GPU_BLEND_ALPHA);
         UI_widgetbase_draw_cache_flush();
-        GPU_blend(GPU_BLEND_NONE);
 
         if (but->selsta >= but->ofs) {
           selsta_draw = BLF_width(fstyle->uifont_id, drawstr + but->ofs, but->selsta - but->ofs);
@@ -2016,6 +2011,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                  selection_shape.ymax);
 
         immUnbindProgram();
+        GPU_blend(GPU_BLEND_NONE);
 
 #ifdef WITH_INPUT_IME
         /* IME candidate window uses selection position. */
@@ -2726,8 +2722,16 @@ static void widget_state_menu_item(uiWidgetType *wt,
     color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.5f);
     wt->wcol.inner[3] = 64;
   }
-  else if (state->but_flag & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
+  else if (state->but_flag & UI_BUT_DISABLED) {
     /* Regular disabled. */
+    color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
+  }
+  else if (state->but_flag & UI_BUT_INACTIVE) {
+    /* Inactive. */
+    if (state->but_flag & UI_ACTIVE) {
+      color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+      wt->wcol.inner[3] = 255;
+    }
     color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
   }
   else if (state->but_flag & (UI_BUT_ACTIVE_DEFAULT | UI_SELECT_DRAW)) {
@@ -2825,11 +2829,9 @@ static void widget_menu_back(
   }
   else if (direction == UI_DIR_DOWN) {
     roundboxalign = (UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
-    rect->ymin -= 0.1f * U.widget_unit;
   }
   else if (direction == UI_DIR_UP) {
     roundboxalign = UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
-    rect->ymax += 0.1f * U.widget_unit;
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
@@ -5303,7 +5305,10 @@ void ui_draw_pie_center(uiBlock *block)
   const int subd = 40;
 
   const float angle = atan2f(pie_dir[1], pie_dir[0]);
-  const float range = (block->pie_data.flags & UI_PIE_DEGREES_RANGE_LARGE) ? M_PI_2 : M_PI_4;
+  /* Use a smaller range if there are both axis aligned & diagonal buttons. */
+  const bool has_aligned = (block->pie_data.pie_dir_mask & UI_RADIAL_MASK_ALL_AXIS_ALIGNED) != 0;
+  const bool has_diagonal = (block->pie_data.pie_dir_mask & UI_RADIAL_MASK_ALL_DIAGONAL) != 0;
+  const float range = (has_aligned && has_diagonal) ? M_PI_4 : M_PI_2;
 
   GPU_matrix_push();
   GPU_matrix_translate_2f(cx, cy);

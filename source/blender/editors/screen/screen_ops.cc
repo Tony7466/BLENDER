@@ -2755,6 +2755,10 @@ static int region_scale_invoke(bContext *C, wmOperator *op, const wmEvent *event
     {
       rmd->region = az->region->prev;
     }
+    /* Flag to always forward scaling to the previous region. */
+    else if (az->region->prev && (az->region->alignment & RGN_SPLIT_SCALE_PREV)) {
+      rmd->region = az->region->prev;
+    }
     else {
       rmd->region = az->region;
     }
@@ -3178,6 +3182,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
     if (ob->type == OB_GPENCIL_LEGACY) {
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
       gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, active);
+    }
+
+    if (ob->type == OB_GREASE_PENCIL) {
+      const bool active_layer_only = !(scene->flag & SCE_KEYS_NO_SELONLY);
+      grease_pencil_data_block_to_keylist(
+          nullptr, static_cast<const GreasePencil *>(ob->data), keylist, 0, active_layer_only);
     }
   }
 
@@ -5917,16 +5927,16 @@ static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop
 void ED_keymap_screen(wmKeyConfig *keyconf)
 {
   /* Screen Editing ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen Editing", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Screen General ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Anim Playback ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Frames", 0, 0);
+  WM_keymap_ensure(keyconf, "Frames", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* dropbox for entire window */
-  ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+  ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_dropbox_add(
       lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy, nullptr, nullptr);
   WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy, nullptr, nullptr);
