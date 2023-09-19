@@ -882,26 +882,24 @@ static bool blf_glyph_set_variation_float(FontBLF *font, FT_Fixed coords[], uint
  * \{ */
 
 /**
- * Adjust the glyphs weight by a factor.
+ * Adjust the glyph's weight by a factor. Used for fonts without "wght" variable axis.
  *
  * \param factor: -1 (min stroke width) <= 0 (normal) => 1 (max boldness).
  */
 static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float factor, bool monospaced)
 {
   if (glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-    /* Fake bold if the font does not have this variable axis. */
     const FontBLF *font = (FontBLF *)glyph->face->generic.data;
     const FT_Pos average_width = font->ft_size->metrics.height;
-    FT_Pos change = (FT_Pos)(float(average_width) * factor * 0.1f);
-    FT_Outline_EmboldenXY(&glyph->outline, change, change / 2);
+    FT_Pos change = (FT_Pos)(float(average_width) * factor * 0.12f);
+    FT_Outline_EmboldenXY(&glyph->outline, change, 0);
     if (monospaced) {
       /* Widened fixed-pitch font needs a nudge left. */
       FT_Outline_Translate(&glyph->outline, change / -2, 0);
     }
     else {
-      /* Need to increase advance. */
-      glyph->advance.x += change;
-      glyph->advance.y += change / 2;
+      /* Need to increase horizontal advance. */
+      glyph->advance.x += change / 2;
     }
     return true;
   }
@@ -909,16 +907,17 @@ static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float factor, bool mo
 }
 
 /**
- * Adjust the glyphs slant by a factor (making it oblique).
+ * Adjust the glyph's slant by a factor. Used for fonts without "slnt" variable axis.
  *
- * \param factor: -1 (max negative) <= 0 (no slant) => 1 (max positive).
+ * \param factor: -1 (max right-leaning) <= 0 (no slant) => 1 (max left-leaning).
  *
  * \note that left-leaning italics are possible in some RTL writing systems.
  */
 static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float factor)
 {
   if (glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-    FT_Matrix transform = {to_16dot16(1), to_16dot16(factor / 2.0f), 0, to_16dot16(1)};
+    /* Slant angle is counter-clockwise as per OTF specs. */
+    FT_Matrix transform = {to_16dot16(1), to_16dot16(-factor / 4.0f), 0, to_16dot16(1)};
     FT_Outline_Transform(&glyph->outline, &transform);
     return true;
   }
@@ -926,7 +925,7 @@ static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float factor)
 }
 
 /**
- * Adjust the glyph width by factor.
+ * Adjust the glyph width by factor. Used for fonts without "wdth" variable axis.
  *
  * \param factor: -1 (min width) <= 0 (normal) => 1 (max width).
  */
@@ -943,7 +942,7 @@ static bool blf_glyph_transform_width(FT_GlyphSlot glyph, float factor)
 }
 
 /**
- * Change glyph advance to alter letter-spacing (tracking).
+ * Adjust the glyph spacing by factor. Used for fonts without "spac" variable axis.
  *
  * \param factor: -1 (min tightness) <= 0 (normal) => 1 (max looseness).
  */
@@ -959,7 +958,9 @@ static bool blf_glyph_transform_spacing(FT_GlyphSlot glyph, float factor)
 }
 
 /**
- * Transform glyph to fit nicely within a fixed column width.
+ * Transform glyph to fit nicely within a fixed column width. This conversion of
+ * a proportional font glyph into a monospaced glyph only occurs when a mono font
+ * does not contain a needed character and must get one from the fallback stack.
  */
 static bool blf_glyph_transform_monospace(FT_GlyphSlot glyph, int width)
 {
@@ -1011,16 +1012,12 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   bool width_done = false;
   bool spacing_done = false;
 
-  /* 70% of maximum weight results in the same amount of boldness and horizontal
-   * expansion as the bold version `DejaVuSans-Bold.ttf` of our default font.
-   * Worth reevaluating if we change default font. */
-  float weight = (settings_font->flags & BLF_BOLD) ? 0.7f : settings_font->char_weight;
+  /* Treat bold as 75% of maximum weight. */
+  float weight = (settings_font->flags & BLF_BOLD) ? 0.75f : settings_font->char_weight;
 
-  /* 37.5% of maximum rightward slant results in 6 degree slope, matching italic
-   * version `DejaVuSans-Oblique.ttf` of our current font. But a nice median when
-   * checking others. Worth reevaluating if we change default font. We could also
-   * narrow the glyph slightly as most italics do, but this one does not. */
-  float slant = (settings_font->flags & BLF_ITALIC) ? 0.375f : settings_font->char_slant;
+  /* Treat italics as 75% of maximum rightward slant. Note that slant angle is in
+   * counter-clockwise degrees per OTF spec, so negative. */
+  float slant = (settings_font->flags & BLF_ITALIC) ? -0.75f : settings_font->char_slant;
 
   float width = settings_font->char_width;
   float spacing = settings_font->char_spacing;
@@ -1053,7 +1050,10 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   }
 
   if ((settings_font->flags & BLF_MONOSPACED) && (settings_font != glyph_font)) {
-    blf_glyph_transform_monospace(glyph, BLI_wcwidth(char32_t(charcode)) * fixed_width);
+    const int col = BLI_wcwidth_or_error(char32_t(charcode));
+    if (col > 0) {
+      blf_glyph_transform_monospace(glyph, col * fixed_width);
+    }
   }
 
   /* Fallback glyph transforms, but only if required and not yet done. */

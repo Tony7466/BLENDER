@@ -22,6 +22,7 @@ ccl_device_inline int svm_node_closure_bsdf_skip(KernelGlobals kg, int offset, u
     read_node(kg, &offset);
     read_node(kg, &offset);
     read_node(kg, &offset);
+    read_node(kg, &offset);
   }
 
   return offset;
@@ -53,6 +54,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       return svm_node_closure_bsdf_skip(kg, offset, type);
     }
   }
+  else IF_KERNEL_NODES_FEATURE(EMISSION) {
+    if (type != CLOSURE_BSDF_PRINCIPLED_ID) {
+      /* Only principled BSDF can have emission. */
+      return svm_node_closure_bsdf_skip(kg, offset, type);
+    }
+  }
   else {
     return svm_node_closure_bsdf_skip(kg, offset, type);
   }
@@ -70,7 +77,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, sheen_roughness_offset, coat_offset,
           coat_roughness_offset, coat_ior_offset, eta_offset, transmission_offset,
-          anisotropic_rotation_offset, coat_tint_offset, coat_normal_offset, dummy;
+          anisotropic_rotation_offset, coat_tint_offset, coat_normal_offset, dummy, alpha_offset,
+          emission_strength_offset, emission_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -123,11 +131,19 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       // get the subsurface scattering data
       uint4 data_subsurf = read_node(kg, &offset);
 
-      // get the additional coat normal
-      float3 coat_normal = stack_valid(coat_normal_offset) ?
-                               stack_load_float3(stack, coat_normal_offset) :
-                               sd->N;
-      coat_normal = maybe_ensure_valid_specular_reflection(sd, coat_normal);
+      uint4 data_alpha_emission = read_node(kg, &offset);
+      svm_unpack_node_uchar4(data_alpha_emission.x,
+                             &alpha_offset,
+                             &emission_strength_offset,
+                             &emission_offset,
+                             &dummy);
+      float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
+                                                __uint_as_float(data_alpha_emission.y);
+      float3 emission = stack_load_float3(stack, emission_offset);
+      /* Emission strength */
+      emission *= stack_valid(emission_strength_offset) ?
+                      stack_load_float(stack, emission_strength_offset) :
+                      __uint_as_float(data_alpha_emission.z);
 
       Spectrum weight = closure_weight * mix_weight;
 
@@ -151,6 +167,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       const bool glass_caustics = true;
 #endif
 
+      /* Before any actual shader components, apply transparency. */
+      if (alpha < 1.0f) {
+        bsdf_transparent_setup(sd, weight * (1.0f - alpha), path_flag);
+        weight *= alpha;
+      }
+
       /* First layer: Sheen */
       if (sheen > CLOSURE_WEIGHT_CUTOFF) {
         ccl_private SheenBsdf *bsdf = (ccl_private SheenBsdf *)bsdf_alloc(
@@ -170,51 +192,63 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       }
 
       /* Second layer: Coat */
-      if (reflective_caustics && coat > CLOSURE_WEIGHT_CUTOFF) {
-        ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-            sd, sizeof(MicrofacetBsdf), coat * weight);
+      if (coat > CLOSURE_WEIGHT_CUTOFF) {
+        float3 coat_normal = stack_valid(coat_normal_offset) ?
+                                 stack_load_float3(stack, coat_normal_offset) :
+                                 sd->N;
+        coat_normal = maybe_ensure_valid_specular_reflection(sd, coat_normal);
+        if (reflective_caustics) {
+          ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+              sd, sizeof(MicrofacetBsdf), coat * weight);
 
-        if (bsdf) {
-          bsdf->N = coat_normal;
-          bsdf->T = zero_float3();
-          bsdf->ior = coat_ior;
+          if (bsdf) {
+            bsdf->N = coat_normal;
+            bsdf->T = zero_float3();
+            bsdf->ior = coat_ior;
 
-          bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
+            bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
 
-          /* setup bsdf */
-          sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
-          bsdf_microfacet_setup_fresnel_dielectric(kg, bsdf, sd);
+            /* setup bsdf */
+            sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+            bsdf_microfacet_setup_fresnel_dielectric(kg, bsdf, sd);
 
-          /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+            /* Attenuate lower layers */
+            Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
+            weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+          }
+        }
+
+        if (!isequal(coat_tint, one_float3())) {
+          /* Tint is normalized to perpendicular incidence.
+           * Therefore, if we define the coat thickness as length 1, the length along the ray is
+           * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
+           * From Beer's law, we have T = exp(-sigma_e * t).
+           * Therefore, tint = exp(-sigma_e * 1) (per def.), so -sigma_e = log(tint).
+           * From this, T = exp(log(tint) * t) = exp(log(tint)) ^ t = tint ^ t;
+           *
+           * Note that this is only an approximation - it assumes that the outgoing ray
+           * follows the same angle, and that there aren't multiple internal bounces.
+           * In particular, things that could be improved:
+           * - For transmissive materials, there should not be an outgoing path at all if the path
+           *   is transmitted.
+           * - For rough materials, we could blend towards a view-independent average path length
+           *   (e.g. 2 for diffuse reflection) for the outgoing direction.
+           * However, there's also an argument to be made for keeping parameters independent of
+           * each other for more intuitive control, in particular main roughness not affecting the
+           * coat.
+           */
+          float cosNI = dot(sd->wi, coat_normal);
+          /* Refract incoming direction into coat material.
+           * TIR is no concern here since we're always coming from the outside. */
+          float cosNT = sqrtf(1.0f - sqr(1.0f / coat_ior) * (1 - sqr(cosNI)));
+          float optical_depth = 1.0f / cosNT;
+          weight *= power(rgb_to_spectrum(coat_tint), coat * optical_depth);
         }
       }
 
-      if (coat > CLOSURE_WEIGHT_CUTOFF && !isequal(coat_tint, one_float3())) {
-        /* Tint is normalized to perpendicular incidence.
-         * Therefore, if we define the coat thickness as length 1, the length along the ray is
-         * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
-         * From Beer's law, we have T = exp(-sigma_e * t).
-         * Therefore, tint = exp(-sigma_e * 1) (per def.), so -sigma_e = log(tint).
-         * From this, T = exp(log(tint) * t) = exp(log(tint)) ^ t = tint ^ t;
-         *
-         * Note that this is only an approximation - it assumes that the outgoing ray
-         * follows the same angle, and that there aren't multiple internal bounces.
-         * In particular, things that could be improved:
-         * - For transmissive materials, there should not be an outgoing path at all if the path
-         *   is transmitted.
-         * - For rough materials, we could blend towards a view-independent average path length
-         *   (e.g. 2 for diffuse reflection) for the outgoing direction.
-         * However, there's also an argument to be made for keeping parameters independent of each
-         * other for more intuitive control, in particular main roughness not affecting the coat.
-         */
-        float cosNI = dot(sd->wi, coat_normal);
-        /* Refract incoming direction into coat material.
-         * TIR is no concern here since we're always coming from the outside. */
-        float cosNT = sqrtf(1.0f - sqr(1.0f / coat_ior) * (1 - sqr(cosNI)));
-        float optical_depth = 1.0f / cosNT;
-        weight *= power(rgb_to_spectrum(coat_tint), coat * optical_depth);
+      /* Emission (attenuated by sheen and coat) */
+      if (!is_zero(emission)) {
+        emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }
 
       /* Metallic component */
@@ -267,7 +301,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           fresnel->reflection_tint = mix(
               one_spectrum(), rgb_to_spectrum(base_color), specular_tint);
-          fresnel->transmission_tint = rgb_to_spectrum(base_color);
+          fresnel->transmission_tint = sqrt(rgb_to_spectrum(base_color));
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
@@ -672,13 +706,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         ccl_private ChiangHairBSDF *bsdf = (ccl_private ChiangHairBSDF *)bsdf_alloc(
             sd, sizeof(ChiangHairBSDF), weight);
         if (bsdf) {
-          ccl_private ChiangHairExtra *extra = (ccl_private ChiangHairExtra *)closure_alloc_extra(
-              sd, sizeof(ChiangHairExtra));
-
-          if (!extra) {
-            break;
-          }
-
           /* Remap Coat value to [0, 100]% of Roughness. */
           float coat = stack_load_float_default(stack, shared_ofs1, data_node3.w);
           float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
@@ -688,7 +715,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->m0_roughness = m0_roughness;
           bsdf->alpha = alpha;
           bsdf->eta = ior;
-          bsdf->extra = extra;
           bsdf->sigma = sigma;
 
           sd->flag |= bsdf_hair_chiang_setup(sd, bsdf);
