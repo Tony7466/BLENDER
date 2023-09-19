@@ -47,22 +47,56 @@ using blender::MutableSpan;
 
 bool sequencer_retiming_mode_is_active(const bContext *C)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  return sseq->flag & SEQ_USE_RETIMING_CONTEXT;
+  Scene *scene = CTX_data_scene(C);
+  return SEQ_retiming_selection_get(scene).size() > 0;
 }
 
-void sequencer_retiming_mode_set_active(const bContext *C)
+bool sequencer_retiming_data_is_visible(const Sequence *seq)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  sseq->flag |= SEQ_USE_RETIMING_CONTEXT;
+  return seq->flag & SEQ_SHOW_RETIMING;
 }
 
-static void sequencer_retiming_mode_exit(const bContext *C)
+/*-------------------------------------------------------------------- */
+/** \name Retiming Data Show
+ * \{ */
+
+static int sequencer_retiming_data_show_exec(bContext *C, wmOperator * /* op */)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  sseq->flag &= ~SEQ_USE_RETIMING_CONTEXT;
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    if ((seq->flag & SELECT) == 0) {
+      continue;
+    }
+    if (!sequencer_retiming_data_is_visible(seq)) {
+      seq->flag |= SEQ_SHOW_RETIMING;
+    }
+    else {
+      seq->flag &= ~SEQ_SHOW_RETIMING;
+    }
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
 }
 
+void SEQUENCER_OT_retiming_show(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Retime Strips";
+  ot->description = "Show retiming keys in selected strips";
+  ot->idname = "SEQUENCER_OT_retiming_show";
+
+  /* api callbacks */
+  ot->exec = sequencer_retiming_data_show_exec;
+  ot->poll = sequencer_editing_initialized_and_active;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
 
 static bool retiming_poll(bContext *C)
 {
@@ -578,14 +612,13 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   /* Click on strip, do strip selection. */
   const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   if (seq_click_exact != nullptr && key == nullptr) {
-    sequencer_retiming_mode_exit(C);
+    SEQ_retiming_selection_clear(ed);
     return sequencer_select_exec(C, op);
   }
 
   /* Selection after click is released. */
   const bool changed = select_key(ed, key, toggle, deselect_all);
 
-  sequencer_retiming_mode_set_active(C);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -616,6 +649,9 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
     if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
+      continue;
+    }
+    if (!sequencer_retiming_data_is_visible(seq)) {
       continue;
     }
     /* Realize "fake" key, since it is clicked on. */

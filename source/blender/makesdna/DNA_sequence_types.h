@@ -620,7 +620,7 @@ enum {
   SEQ_IGNORE_CHANNEL_LOCK = (1 << 16),
   SEQ_AUTO_PLAYBACK_RATE = (1 << 17),
   SEQ_SINGLE_FRAME_CONTENT = (1 << 18),
-  SEQ_FLAG_UNUSED_19 = (1 << 19), /* cleared */
+  SEQ_SHOW_RETIMING = (1 << 19),
   SEQ_FLAG_UNUSED_21 = (1 << 21), /* cleared */
 
   SEQ_USE_EFFECT_DEFAULT_FADE = (1 << 22),

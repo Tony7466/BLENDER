@@ -39,6 +39,7 @@
 #include "ED_keyframes_keylist.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
+#include "ED_sequencer.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -286,7 +287,7 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
   draw_keyframe_shape(key_position,
                       bottom,
                       size,
-                      is_selected && sequencer_retiming_mode_is_active(C),
+                      is_selected && sequencer_retiming_data_is_visible(seq),
                       key_type,
                       KEYFRAME_SHAPE_BOTH,
                       1,
@@ -326,7 +327,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (sequencer_retiming_mode_is_active(C) &&
+  if (sequencer_retiming_data_is_visible(seq) &&
       (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)))
   {
     immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
@@ -341,10 +342,9 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
 
 static void draw_backdrop(const bContext *C, const Sequence *seq)
 {
-  if (!sequencer_retiming_mode_is_active(C)) {
+  if (!sequencer_retiming_data_is_visible(seq)) {
     return;
   }
-  return;
   const View2D *v2d = UI_view2d_fromcontext(C);
   const Scene *scene = CTX_data_scene(C);
 
@@ -381,13 +381,16 @@ static void retime_keys_draw(const bContext *C)
     if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
+    if (!sequencer_retiming_data_is_visible(seq)) {
+      continue;
+    }
 
     draw_backdrop(C, seq);
 
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
 
     /* If there are no keys, draw fake one and create real key when it is clicked. */
-    if (sequencer_retiming_mode_is_active(C) && keys.size() == 0) {
+    if (sequencer_retiming_data_is_visible(seq) && keys.size() == 0) {
       SeqRetimingKey fake_key;
       fake_key.strip_frame_index = SEQ_time_strip_length_get(CTX_data_scene(C), seq);
       fake_key.flag = 0;

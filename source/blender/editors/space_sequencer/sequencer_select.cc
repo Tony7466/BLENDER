@@ -979,17 +979,29 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
+
   Sequence *seq_key_test = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
-  bool retiming_key_clicked = (key != nullptr);
 
-  if (seq_key_test && retiming_key_clicked) {
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-    ED_sequencer_deselect_all(scene);
-    SEQ_retiming_selection_clear(ed);
-    SEQ_retiming_selection_append(key);
-    sequencer_retiming_mode_set_active(C);
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  if (seq_key_test && sequencer_retiming_data_is_visible(seq_key_test) &&
+      !sequencer_retiming_mode_is_active(C))
+  {
+
+    /* Realize "fake" key, if it is clicked on. */
+    if (seq_key_test != nullptr && retiming_last_key_is_clicked(C, seq_key_test, mval)) {
+      SEQ_retiming_data_ensure(scene, seq_key_test);
+      key = SEQ_retiming_last_key_get(seq_key_test);
+    }
+
+    bool retiming_key_clicked = (key != nullptr);
+
+    if (seq_key_test && retiming_key_clicked) {
+      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+      ED_sequencer_deselect_all(scene);
+      SEQ_retiming_selection_clear(ed);
+      SEQ_retiming_selection_append(key);
+      return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+    }
   }
 
   bool changed = false;
