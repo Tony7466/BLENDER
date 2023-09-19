@@ -641,9 +641,10 @@ ShadowModule::ShadowModule(Instance &inst) : inst_(inst)
 void ShadowModule::init()
 {
   /* Determine shadow update technique and atlas format.
-   * NOTE(Metal): Metal utilizes a tile-optimized approach. */
+   * NOTE(Metal): Metal utilizes a tile-optimized approach for Apple Silicon's architecture. */
   bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
-  if (is_metal_backend) {
+  bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+  if (is_metal_backend && is_tile_based_arch) {
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
   }
   else {
