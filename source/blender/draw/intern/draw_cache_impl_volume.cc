@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -31,8 +32,8 @@
 
 #include "DRW_render.h"
 
-#include "draw_cache.h"      /* own include */
-#include "draw_cache_impl.h" /* own include */
+#include "draw_cache.h"       /* own include */
+#include "draw_cache_impl.hh" /* own include */
 
 static void volume_batch_cache_clear(Volume *volume);
 

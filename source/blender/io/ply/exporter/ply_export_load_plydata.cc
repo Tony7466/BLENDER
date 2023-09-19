@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "ply_export_load_plydata.hh"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 #include "ply_data.hh"
 
 #include "BKE_attribute.hh"
@@ -13,7 +15,10 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BLI_hash.hh"
-#include "BLI_math.h"
+#include "BLI_math_color.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_vector.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_layer_types.h"
@@ -86,10 +91,10 @@ static void generate_vertex_map(const Mesh *mesh,
   bool export_uv = false;
   VArraySpan<float2> uv_map;
   if (export_params.export_uv) {
-    const StringRef uv_name = CustomData_get_active_layer_name(&mesh->ldata, CD_PROP_FLOAT2);
+    const StringRef uv_name = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
     if (!uv_name.is_empty()) {
       const bke::AttributeAccessor attributes = mesh->attributes();
-      uv_map = attributes.lookup<float2>(uv_name, ATTR_DOMAIN_CORNER);
+      uv_map = *attributes.lookup<float2>(uv_name, ATTR_DOMAIN_CORNER);
       export_uv = !uv_map.is_empty();
     }
   }
@@ -132,8 +137,9 @@ static void generate_vertex_map(const Mesh *mesh,
 
   /* Add zero UVs for any loose vertices. */
   for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
-    if (r_vertex_to_ply[vertex_index] != -1)
+    if (r_vertex_to_ply[vertex_index] != -1) {
       continue;
+    }
     int ply_index = int(r_uvs.size());
     r_vertex_to_ply[vertex_index] = ply_index;
     r_uvs.append({0, 0});
@@ -168,9 +174,9 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
     bool force_triangulation = false;
-    const OffsetIndices polys = mesh->polys();
-    for (const int i : polys.index_range()) {
-      if (polys[i].size() > 255) {
+    const OffsetIndices faces = mesh->faces();
+    for (const int i : faces.index_range()) {
+      if (faces[i].size() > 255) {
         force_triangulation = true;
         break;
       }
@@ -196,37 +202,41 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
                              world_and_axes_normal_transform);
 
     /* Face data. */
-    plyData.face_vertices.reserve(mesh->totloop);
-    plyData.face_sizes.reserve(mesh->totpoly);
-    for (const int i : polys.index_range()) {
-      const IndexRange poly = polys[i];
-      for (const int corner : poly) {
-        int ply_index = loop_to_ply[corner];
-        BLI_assert(ply_index >= 0 && ply_index < ply_to_vertex.size());
-        plyData.face_vertices.append(ply_index + vertex_offset);
-      }
-      plyData.face_sizes.append(poly.size());
+    plyData.face_vertices.reserve(plyData.face_vertices.size() + mesh->totloop);
+    for (const int corner : IndexRange(mesh->totloop)) {
+      int ply_index = loop_to_ply[corner];
+      BLI_assert(ply_index >= 0 && ply_index < ply_to_vertex.size());
+      plyData.face_vertices.append_unchecked(ply_index + vertex_offset);
+    }
+
+    plyData.face_sizes.reserve(plyData.face_sizes.size() + mesh->faces_num);
+    for (const int i : faces.index_range()) {
+      const IndexRange face = faces[i];
+      plyData.face_sizes.append_unchecked(face.size());
     }
 
     /* Vertices */
-    plyData.vertices.reserve(ply_to_vertex.size());
+    plyData.vertices.reserve(plyData.vertices.size() + ply_to_vertex.size());
     Span<float3> vert_positions = mesh->vert_positions();
     for (int vertex_index : ply_to_vertex) {
       float3 pos = vert_positions[vertex_index];
       mul_m4_v3(world_and_axes_transform, pos);
       mul_v3_fl(pos, export_params.global_scale);
-      plyData.vertices.append(pos);
+      plyData.vertices.append_unchecked(pos);
     }
 
     /* UV's */
-    if (!uvs.is_empty()) {
+    if (uvs.is_empty()) {
+      uvs.append_n_times(float2(0), ply_to_vertex.size());
+    }
+    else {
       BLI_assert(uvs.size() == ply_to_vertex.size());
-      plyData.uv_coordinates = uvs;
+      plyData.uv_coordinates.extend(uvs);
     }
 
     /* Normals */
     if (export_params.export_normals) {
-      plyData.vertex_normals.reserve(ply_to_vertex.size());
+      plyData.vertex_normals.reserve(plyData.vertex_normals.size() + ply_to_vertex.size());
       const Span<float3> vert_normals = mesh->vert_normals();
       for (int vertex_index : ply_to_vertex) {
         float3 normal = vert_normals[vertex_index];
@@ -241,7 +251,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
       if (!name.is_empty()) {
         const bke::AttributeAccessor attributes = mesh->attributes();
         const VArray<ColorGeometry4f> color_attribute =
-            attributes.lookup_or_default<ColorGeometry4f>(
+            *attributes.lookup_or_default<ColorGeometry4f>(
                 name, ATTR_DOMAIN_POINT, {0.0f, 0.0f, 0.0f, 0.0f});
         if (!color_attribute.is_empty()) {
           plyData.vertex_colors.reserve(ply_to_vertex.size());
@@ -259,12 +269,10 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
     /* Loose edges */
     const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
     if (loose_edges.count > 0) {
-      Span<MEdge> edges = mesh->edges();
+      Span<int2> edges = mesh->edges();
       for (int i = 0; i < edges.size(); ++i) {
         if (loose_edges.is_loose_bits[i]) {
-          int v1 = vertex_to_ply[edges[i].v1];
-          int v2 = vertex_to_ply[edges[i].v2];
-          plyData.edges.append({v1, v2});
+          plyData.edges.append({vertex_to_ply[edges[i][0]], vertex_to_ply[edges[i][1]]});
         }
       }
     }

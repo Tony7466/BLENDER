@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -36,13 +38,21 @@ typedef struct AssetTypeInfo {
 struct AssetMetaData *BKE_asset_metadata_create(void);
 void BKE_asset_metadata_free(struct AssetMetaData **asset_data);
 
+/**
+ * Create a copy of the #AssetMetaData so that it can be assigned to another asset.
+ *
+ * The caller becomes the owner of the returned pointer.
+ */
+struct AssetMetaData *BKE_asset_metadata_copy(const struct AssetMetaData *source);
+
 struct AssetTagEnsureResult {
   struct AssetTag *tag;
   /* Set to false if a tag of this name was already present. */
   bool is_new;
 };
 
-struct AssetTag *BKE_asset_metadata_tag_add(struct AssetMetaData *asset_data, const char *name);
+struct AssetTag *BKE_asset_metadata_tag_add(struct AssetMetaData *asset_data, const char *name)
+    ATTR_NONNULL(1, 2);
 /**
  * Make sure there is a tag with name \a name, create one if needed.
  */

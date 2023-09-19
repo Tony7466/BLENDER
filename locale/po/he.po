@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'2d057c023879')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-03 10:36:36\n"
+"POT-Creation-Date: 2023-09-18 08:31:54\n"
 "PO-Revision-Date: 2012-10-07 13:56+0300\n"
 "Last-Translator: Barak Itkin <lightningismyname@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -67,16 +67,8 @@ msgid "Vertex Color"
 msgstr "דוקדוק עבצ"
 
 
-msgid "Smooth"
-msgstr "קלח"
-
-
 msgid "Saturation"
 msgstr "היוור"
-
-
-msgid "Path"
-msgstr "ביתנ"
 
 
 msgid "Rotation"
@@ -191,6 +183,10 @@ msgid "Mirror"
 msgstr "הארמ"
 
 
+msgid "Smooth"
+msgstr "קלח"
+
+
 msgid "Space"
 msgstr "חוור"
 
@@ -207,12 +203,12 @@ msgid "Blue"
 msgstr "לוחכ"
 
 
-msgid "Mask"
-msgstr "הכסמ"
-
-
 msgid "Up"
 msgstr "הלעמ"
+
+
+msgid "Path"
+msgstr "ביתנ"
 
 
 msgid "Mean"
@@ -229,10 +225,6 @@ msgstr "תוסג"
 
 msgid "Specular"
 msgstr "רלקפסא"
-
-
-msgid "Both"
-msgstr "םהינש"
 
 
 msgid "Sculpt Mode"
@@ -257,6 +249,14 @@ msgstr "לפרע"
 
 msgid "Color Management"
 msgstr "עבצ לוהינ"
+
+
+msgid "Mask"
+msgstr "הכסמ"
+
+
+msgid "Add Modifier"
+msgstr "הנשמ ףסוה"
 
 
 msgid "Apply"
@@ -297,6 +297,10 @@ msgstr "תופקתשה"
 
 msgid "Emission"
 msgstr "הטילפ"
+
+
+msgid "Both"
+msgstr "םהינש"
 
 
 msgid "Down"
@@ -422,16 +426,8 @@ msgid "Value:"
 msgstr ":ךרע"
 
 
-msgid "Add Modifier"
-msgstr "הנשמ ףסוה"
-
-
 msgid "Select Layer"
 msgstr "הבכש רחב"
-
-
-msgid " + Z"
-msgstr " + Z"
 
 
 msgid "Label Size"

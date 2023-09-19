@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -10,6 +11,8 @@
 #include "intern/builder/deg_builder_relations_drivers.h"
 
 #include <cstring>
+
+#include "BLI_listbase.h"
 
 #include "DNA_anim_types.h"
 
@@ -163,8 +166,7 @@ void DepsgraphRelationBuilder::build_driver_relations(IDNode *id_node)
   /* Mapping from RNA prefix -> set of driver descriptors: */
   Map<string, Vector<DriverDescriptor>> driver_groups;
 
-  PointerRNA id_ptr;
-  RNA_id_pointer_create(id_orig, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id_orig);
 
   LISTBASE_FOREACH (FCurve *, fcu, &adt->drivers) {
     if (fcu->rna_path == nullptr) {

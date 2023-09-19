@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 if "bpy" in locals():
@@ -20,7 +23,7 @@ from bpy.app.translations import pgettext_tip as tip_
 
 
 class ANIM_OT_keying_set_export(Operator):
-    """Export Keying Set to a python script"""
+    """Export Keying Set to a Python script"""
     bl_idname = "anim.keying_set_export"
     bl_label = "Export Keying Set..."
 
@@ -38,7 +41,7 @@ class ANIM_OT_keying_set_export(Operator):
         options={'HIDDEN'},
     )
     filter_python: BoolProperty(
-        name="Filter python",
+        name="Filter Python",
         default=True,
         options={'HIDDEN'},
     )
@@ -86,13 +89,13 @@ class ANIM_OT_keying_set_export(Operator):
             if ksp.id in id_to_paths_cache:
                 continue
 
-            # - idtype_list is used to get the list of id-datablocks from
-            #   bpy.data.* since this info isn't available elsewhere
-            # - id.bl_rna.name gives a name suitable for UI,
+            # - `idtype_list` is used to get the list of ID-data-blocks from
+            #   `bpy.data.*` since this info isn't available elsewhere.
+            # - `id.bl_rna.name` gives a name suitable for UI,
             #   with a capitalized first letter, but we need
-            #   the plural form that's all lower case
+            #   the plural form that's all lower case.
             # - special handling is needed for "nested" ID-blocks
-            #   (e.g. nodetree in Material)
+            #   (e.g. node-tree in Material).
             if ksp.id.bl_rna.identifier.startswith("ShaderNodeTree"):
                 # Find material or light using this node tree...
                 id_bpy_path = "bpy.data.nodes[\"%s\"]"
@@ -117,7 +120,7 @@ class ANIM_OT_keying_set_export(Operator):
                         tip_("Could not find material or light using Shader Node Tree - %s") %
                         (ksp.id))
             elif ksp.id.bl_rna.identifier.startswith("CompositorNodeTree"):
-                # Find compositor nodetree using this node tree...
+                # Find compositor node-tree using this node tree.
                 for scene in bpy.data.scenes:
                     if scene.node_tree == ksp.id:
                         id_bpy_path = "bpy.data.scenes[\"%s\"].node_tree" % (scene.name)
@@ -385,7 +388,7 @@ class UpdateAnimatedTransformConstraint(Operator):
             data = ...
             try:
                 data = eval("base." + old_path)
-            except:
+            except BaseException:
                 pass
             ret = (data, old_path)
             if isinstance(base, bpy.types.TransformConstraint) and data is not ...:
@@ -402,7 +405,7 @@ class UpdateAnimatedTransformConstraint(Operator):
                     data = ...
                     try:
                         data = eval("base." + new_path)
-                    except:
+                    except BaseException:
                         pass
                     ret = (data, new_path)
                     # print(ret)

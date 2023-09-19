@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # classes for extracting info from blenders internal classes
@@ -78,8 +80,8 @@ def write_sysinfo(filepath):
                     sys.executable,
                     "--version",
                 ]).strip())
-            except Exception as e:
-                py_ver = str(e)
+            except BaseException as ex:
+                py_ver = str(ex)
             output.write("version: %s\n" % py_ver)
             del py_ver
 
@@ -88,10 +90,12 @@ def write_sysinfo(filepath):
             for p in bpy.utils.script_paths():
                 output.write("\t%r\n" % p)
             output.write("user scripts: %r\n" % (bpy.utils.script_path_user()))
-            output.write("pref scripts: %r\n" % (bpy.utils.script_path_pref()))
+            output.write("pref scripts:\n")
+            for p in bpy.utils.script_paths_pref():
+                output.write("\t%r\n" % p)
             output.write("datafiles: %r\n" % (bpy.utils.user_resource('DATAFILES')))
             output.write("config: %r\n" % (bpy.utils.user_resource('CONFIG')))
-            output.write("scripts : %r\n" % (bpy.utils.user_resource('SCRIPTS')))
+            output.write("scripts: %r\n" % (bpy.utils.user_resource('SCRIPTS')))
             output.write("autosave: %r\n" % (bpy.utils.user_resource('AUTOSAVE')))
             output.write("tempdir: %r\n" % (bpy.app.tempdir))
 
@@ -121,7 +125,7 @@ def write_sysinfo(filepath):
             output.write("OpenColorIO: ")
             if ocio.supported:
                 if ocio.version_string == "fallback":
-                    output.write("Blender was built with OpenColorIO, " +
+                    output.write("Blender was built with OpenColorIO, "
                                  "but it currently uses fallback color management.\n")
                 else:
                     output.write("%s\n" % (ocio.version_string))
@@ -228,5 +232,5 @@ def write_sysinfo(filepath):
                 else:
                     output.write("%s (version: %s, path: %s)\n" %
                                  (addon, addon_mod.bl_info.get('version', "UNKNOWN"), addon_mod.__file__))
-        except Exception as e:
-            output.write("ERROR: %s\n" % e)
+        except BaseException as ex:
+            output.write("ERROR: %s\n" % ex)

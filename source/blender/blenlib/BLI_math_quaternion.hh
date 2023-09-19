@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -86,7 +88,7 @@ template<typename T>
  * \{ */
 
 /**
- * Transform \a v by rotation using the quaternion \a q .
+ * Transform \a v by rotation using the quaternion \a q.
  */
 template<typename T>
 [[nodiscard]] inline VecBase<T, 3> transform_point(const QuaternionBase<T> &q,
@@ -678,7 +680,7 @@ template<typename T> QuaternionBase<T> QuaternionBase<T>::expmap(const VecBase<T
   T angle;
   const VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
   if (LIKELY(angle != T(0))) {
-    return to_quaternion(AxisAngleT(axis, angle_wrap_rad(angle)));
+    return to_quaternion(AxisAngleT(axis, AngleRadianBase<T>(angle).wrapped()));
   }
   return QuaternionBase<T>::identity();
 }
@@ -694,5 +696,3 @@ template<typename T> VecBase<T, 3> QuaternionBase<T>::expmap() const
 /** \} */
 
 }  // namespace blender::math
-
-/** \} */

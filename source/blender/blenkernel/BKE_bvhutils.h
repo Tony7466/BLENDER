@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -38,8 +39,6 @@ typedef struct BVHTreeFromEditMesh {
   BVHTree_NearestPointCallback nearest_callback;
   BVHTree_RayCastCallback raycast_callback;
 
-  struct BMEditMesh *em;
-
   /* Private data */
   bool cached;
 
@@ -57,7 +56,7 @@ typedef struct BVHTreeFromMesh {
 
   /* Vertex array, so that callbacks have instant access to data. */
   const float (*vert_positions)[3];
-  const struct MEdge *edge;
+  const struct vec2i *edge;
   const struct MFace *face;
   const int *corner_verts;
   const struct MLoopTri *looptri;
@@ -77,7 +76,7 @@ typedef enum BVHCacheType {
   BVHTREE_FROM_LOOSEVERTS,
   BVHTREE_FROM_LOOSEEDGES,
 
-  BVHTREE_FROM_EM_VERTS,
+  BVHTREE_FROM_EM_LOOSEVERTS,
   BVHTREE_FROM_EM_EDGES,
   BVHTREE_FROM_EM_LOOPTRI,
 
@@ -142,6 +141,8 @@ BVHTree *bvhtree_from_editmesh_edges_ex(BVHTreeFromEditMesh *data,
                                         int tree_type,
                                         int axis);
 
+#  ifdef __cplusplus
+
 /**
  * Builds a BVH-tree where nodes are the given edges.
  * \param vert, vert_allocated: if true, elem freeing will be done when freeing data.
@@ -150,15 +151,17 @@ BVHTree *bvhtree_from_editmesh_edges_ex(BVHTreeFromEditMesh *data,
  * \param edges_num_active: if >= 0, number of active edges to add to BVH-tree
  * (else will be computed from mask).
  */
-BVHTree *bvhtree_from_mesh_edges_ex(struct BVHTreeFromMesh *data,
+BVHTree *bvhtree_from_mesh_edges_ex(BVHTreeFromMesh *data,
                                     const float (*vert_positions)[3],
-                                    const struct MEdge *edge,
+                                    const blender::int2 *edge,
                                     int edges_num,
                                     blender::BitSpan edges_mask,
                                     int edges_num_active,
                                     float epsilon,
                                     int tree_type,
                                     int axis);
+
+#  endif
 
 BVHTree *bvhtree_from_editmesh_looptri(
     BVHTreeFromEditMesh *data, struct BMEditMesh *em, float epsilon, int tree_type, int axis);
@@ -244,9 +247,11 @@ typedef struct BVHTreeFromPointCloud {
   const float (*coords)[3];
 } BVHTreeFromPointCloud;
 
-BVHTree *BKE_bvhtree_from_pointcloud_get(struct BVHTreeFromPointCloud *data,
-                                         const struct PointCloud *pointcloud,
-                                         int tree_type);
+#ifdef __cplusplus
+[[nodiscard]] BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
+                                                       const PointCloud *pointcloud,
+                                                       int tree_type);
+#endif
 
 void free_bvhtree_from_pointcloud(struct BVHTreeFromPointCloud *data);
 

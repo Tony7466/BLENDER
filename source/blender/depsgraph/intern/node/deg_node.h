@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -77,6 +78,8 @@ enum class NodeType {
   /* Used by all operations which are updating object when something is
    * changed in view layer. */
   OBJECT_FROM_LAYER,
+  /* Hierarchy of objects and collections */
+  HIERARCHY,
   /* Audio-related evaluation. */
   AUDIO,
   ARMATURE,
@@ -100,7 +103,7 @@ enum class NodeType {
    * properly evaluated. Example of this is custom shapes for bones. */
   VISIBILITY,
 
-  /* **** Evaluation-Related Outer Types (with Subdata) **** */
+  /* **** Evaluation-Related Outer Types (with Sub-data) **** */
 
   /* Pose Component - Owner/Container of Bones Eval */
   EVAL_POSE,
@@ -126,8 +129,6 @@ enum class NodeType {
   DUPLI,
   /* Synchronization back to original datablock. */
   SYNCHRONIZATION,
-  /* Simulation component. */
-  SIMULATION,
   /* Node tree output component. */
   NTREE_OUTPUT,
   /* Preprocessing for geometry node trees before they can be evaluated. */

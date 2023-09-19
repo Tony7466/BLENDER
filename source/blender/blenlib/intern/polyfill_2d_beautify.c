@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -13,17 +15,18 @@
  * - The polygon is primitive with no holes with a continuous boundary.
  * - Triangles have consistent winding.
  * - 2d (saves some hassles projecting face pairs on an axis for every edge-rotation)
- *   also saves us having to store all previous edge-states (see #EdRotState in bmesh_beautify.c)
+ *   also saves us having to store all previous edge-states
+ *   (see #EdRotState in `bmesh_beautify.cc`).
  *
  * \note
  *
  * No globals - keep threadsafe.
  */
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_heap.h"
+#include "BLI_math_geom.h"
 #include "BLI_memarena.h"
 
 #include "BLI_polyfill_2d_beautify.h" /* own include */
@@ -242,7 +245,7 @@ static void polyedge_beauty_cost_update(const float (*coords)[2],
   }
 }
 
-static void polyedge_rotate(struct HalfEdge *edges, struct HalfEdge *e)
+static void polyedge_rotate(struct HalfEdge *edges, const struct HalfEdge *e)
 {
   /** CCW winding, rotate internal edge to new vertical state.
    *

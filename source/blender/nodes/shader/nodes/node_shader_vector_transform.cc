@@ -1,24 +1,26 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
  */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_vector_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>(N_("Vector"))
+  b.add_input<decl::Vector>("Vector")
       .default_value({0.5f, 0.5f, 0.5f})
       .min(-10000.0f)
       .max(10000.0f);
-  b.add_output<decl::Vector>(N_("Vector"));
+  b.add_output<decl::Vector>("Vector");
 }
 
 static void node_shader_buts_vect_transform(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -92,7 +94,7 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
                                      GPUNodeStack *in,
                                      GPUNodeStack *out)
 {
-  struct GPUNodeLink *inputlink;
+  GPUNodeLink *inputlink;
 
   NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)node->storage;
 
@@ -111,14 +113,16 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
     /* For cycles we have inverted Z */
     /* TODO: pass here the correct matrices */
     if (nodeprop->convert_from == SHD_VECT_TRANSFORM_SPACE_CAMERA &&
-        nodeprop->convert_to != SHD_VECT_TRANSFORM_SPACE_CAMERA) {
+        nodeprop->convert_to != SHD_VECT_TRANSFORM_SPACE_CAMERA)
+    {
       GPU_link(mat, "invert_z", inputlink, &inputlink);
     }
 
     GPU_link(mat, func_name, inputlink, &out[0].link);
 
     if (nodeprop->convert_to == SHD_VECT_TRANSFORM_SPACE_CAMERA &&
-        nodeprop->convert_from != SHD_VECT_TRANSFORM_SPACE_CAMERA) {
+        nodeprop->convert_from != SHD_VECT_TRANSFORM_SPACE_CAMERA)
+    {
       GPU_link(mat, "invert_z", out[0].link, &out[0].link);
     }
   }

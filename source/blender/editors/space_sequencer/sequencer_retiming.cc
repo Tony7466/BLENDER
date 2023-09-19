@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -8,7 +9,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -25,30 +25,31 @@
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "DEG_depsgraph.h"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 using blender::MutableSpan;
 
 static bool retiming_poll(bContext *C)
 {
-  if (!sequencer_edit_poll(C)) {
+  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+  if (ed == nullptr) {
     return false;
   }
-
-  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
   Sequence *seq = ed->act_seq;
-
-  if (seq != nullptr && !SEQ_retiming_is_allowed(seq)) {
+  if (seq == nullptr) {
+    return false;
+  }
+  if (!SEQ_retiming_is_allowed(seq)) {
     CTX_wm_operator_poll_msg_set(C, "This strip type can not be retimed");
     return false;
   }
@@ -164,9 +165,32 @@ static int sequencer_retiming_handle_move_invoke(bContext *C, wmOperator *op, co
     return OPERATOR_CANCELLED;
   }
 
-  op->customdata = handle;
+  RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
+
+  /* Pass pressed modifier key to exec function. */
+  op->customdata = POINTER_FROM_UINT(event->modifier & (KM_SHIFT | KM_CTRL));
+
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
+}
+
+static SeqRetimingHandle *make_speed_transition(const Scene *scene,
+                                                Sequence *seq,
+                                                SeqRetimingHandle *handle,
+                                                const int offset)
+{
+  SeqRetimingHandle *transition_handle = SEQ_retiming_add_transition(
+      scene, seq, handle, abs(offset));
+  if (transition_handle == nullptr) {
+    return nullptr;
+  }
+
+  /* New gradient handle was created - update operator properties. */
+  if (offset < 0) {
+    return transition_handle;
+  }
+
+  return transition_handle + 1;
 }
 
 static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -177,18 +201,65 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
   const Editing *ed = SEQ_editing_get(scene);
   Sequence *seq = ed->act_seq;
 
+  int handle_index = RNA_int_get(op->ptr, "handle_index");
+  SeqRetimingHandle *handle = &SEQ_retiming_handles_get(seq)[handle_index];
+
   switch (event->type) {
     case MOUSEMOVE: {
       float mouse_x = UI_view2d_region_to_view_x(v2d, event->mval[0]);
       int offset = 0;
 
-      SeqRetimingHandle *handle = (SeqRetimingHandle *)op->customdata;
-      SeqRetimingHandle *handle_prev = handle - 1;
-
-      /* Limit retiming handle movement. */
-      int xmin = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_prev) + 1;
-      mouse_x = max_ff(xmin, mouse_x);
       offset = mouse_x - SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+
+      if (offset == 0) {
+        return OPERATOR_RUNNING_MODAL;
+      }
+
+      uint8_t invoke_modifier = POINTER_AS_UINT(op->customdata);
+      /* Add retiming gradient and move handle. */
+      if (invoke_modifier != 0) {
+        SeqRetimingHandle *new_handle = nullptr;
+        if ((invoke_modifier & KM_SHIFT) != 0) {
+          new_handle = make_speed_transition(scene, seq, handle, offset);
+        }
+        else if ((invoke_modifier & KM_CTRL) != 0) {
+          new_handle = SEQ_retiming_add_freeze_frame(scene, seq, handle, abs(offset));
+        }
+
+        if (new_handle != nullptr) {
+          handle = new_handle;
+          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, new_handle));
+        }
+        op->customdata = POINTER_FROM_UINT(0);
+      }
+
+      const bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
+      const bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+
+      /* When working with transition, change handles when moving past pivot point. */
+      if (handle_is_transition || prev_handle_is_transition) {
+        SeqRetimingHandle *transition_start, *transition_end;
+        if (handle_is_transition) {
+          transition_start = handle;
+          transition_end = handle + 1;
+        }
+        else {
+          transition_start = handle - 1;
+          transition_end = handle;
+        }
+        const int offset_l = mouse_x -
+                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
+        const int offset_r = mouse_x -
+                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
+
+        if (prev_handle_is_transition && offset_l < 0) {
+          RNA_int_set(
+              op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_start));
+        }
+        if (handle_is_transition && offset_r > 0) {
+          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_end));
+        }
+      }
 
       SEQ_retiming_offset_handle(scene, seq, handle, offset);
 
@@ -253,7 +324,7 @@ static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
   const Editing *ed = SEQ_editing_get(scene);
   Sequence *seq = ed->act_seq;
 
-  SEQ_retiming_data_ensure(seq);
+  SEQ_retiming_data_ensure(scene, seq);
 
   float timeline_frame;
   if (RNA_struct_property_is_set(op->ptr, "timeline_frame")) {
@@ -261,6 +332,14 @@ static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
   }
   else {
     timeline_frame = BKE_scene_frame_get(scene);
+  }
+
+  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
+  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    BKE_report(op->reports, RPT_ERROR, "Can not create handle inside of speed transition");
+    return OPERATOR_CANCELLED;
   }
 
   bool inserted = false;
@@ -313,7 +392,7 @@ static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator *op)
   Sequence *seq = ed->act_seq;
 
   SeqRetimingHandle *handle = (SeqRetimingHandle *)op->customdata;
-  SEQ_retiming_remove_handle(seq, handle);
+  SEQ_retiming_remove_handle(scene, seq, handle);
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
@@ -378,6 +457,98 @@ void SEQUENCER_OT_retiming_handle_remove(wmOperatorType *ot)
                                   0,
                                   INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Set Segment Speed
+ * \{ */
+
+static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(scene);
+  Sequence *seq = ed->act_seq;
+  MutableSpan handles = SEQ_retiming_handles_get(seq);
+  SeqRetimingHandle *handle = &handles[RNA_int_get(op->ptr, "handle_index")];
+
+  SEQ_retiming_handle_speed_set(scene, seq, handle, RNA_float_get(op->ptr, "speed"));
+  SEQ_relations_invalidate_cache_raw(scene, seq);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
+}
+
+static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
+                                                       wmOperator *op,
+                                                       const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(scene);
+  const Sequence *seq = ed->act_seq;
+
+  if (seq == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  MutableSpan handles = SEQ_retiming_handles_get(seq);
+  SeqRetimingHandle *handle = nullptr;
+
+  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
+    const int handle_index = RNA_int_get(op->ptr, "handle_index");
+    BLI_assert(handle_index < handles.size());
+    handle = &handles[handle_index];
+  }
+  else {
+    handle = closest_retiming_handle_get(C, seq, event->mval[0]);
+  }
+
+  if (handle == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "No handle available");
+    return OPERATOR_CANCELLED;
+  }
+
+  RNA_float_set(op->ptr, "speed", SEQ_retiming_handle_speed_get(seq, handle) * 100.0f);
+  RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
+  return WM_operator_props_popup(C, op, event);
+}
+
+void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Speed";
+  ot->description = "Set speed of retimed segment";
+  ot->idname = "SEQUENCER_OT_retiming_segment_speed_set";
+
+  /* api callbacks */
+  ot->invoke = sequencer_retiming_segment_speed_set_invoke;
+  ot->exec = sequencer_retiming_segment_speed_set_exec;
+  ot->poll = retiming_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop = RNA_def_int(ot->srna,
+                                  "handle_index",
+                                  0,
+                                  0,
+                                  INT_MAX,
+                                  "Handle Index",
+                                  "Index of handle to be removed",
+                                  0,
+                                  INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+
+  prop = RNA_def_float(ot->srna,
+                       "speed",
+                       100.0f,
+                       0.001f,
+                       FLT_MAX,
+                       "Speed",
+                       "New speed of retimed segment",
+                       0.1f,
+                       FLT_MAX);
 }
 
 /** \} */

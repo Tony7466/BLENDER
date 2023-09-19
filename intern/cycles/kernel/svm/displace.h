@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -73,8 +74,7 @@ ccl_device_noinline void svm_node_set_bump(KernelGlobals kg,
 
     stack_store_float3(stack, node.w, normal_out);
   }
-  else
-  {
+  else {
     stack_store_float3(stack, node.w, zero_float3());
   }
 #endif
@@ -128,8 +128,7 @@ ccl_device_noinline void svm_node_displacement(KernelGlobals kg,
 
     stack_store_float3(stack, node.z, dP);
   }
-  else
-  {
+  else {
     stack_store_float3(stack, node.z, zero_float3());
   }
 }
@@ -166,7 +165,7 @@ ccl_device_noinline int svm_node_vector_displacement(
         tangent = normalize(sd->dPdu);
       }
 
-      float3 bitangent = normalize(cross(normal, tangent));
+      float3 bitangent = safe_normalize(cross(normal, tangent));
       const AttributeDescriptor attr_sign = find_attribute(kg, sd, node.w);
       if (attr_sign.offset != ATTR_STD_NOT_FOUND) {
         float sign = primitive_surface_attribute_float(kg, sd, attr_sign, NULL, NULL);
@@ -183,8 +182,7 @@ ccl_device_noinline int svm_node_vector_displacement(
 
     stack_store_float3(stack, displacement_offset, dP);
   }
-  else
-  {
+  else {
     stack_store_float3(stack, displacement_offset, zero_float3());
     (void)data_node;
   }

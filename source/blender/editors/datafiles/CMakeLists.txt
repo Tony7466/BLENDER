@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -16,7 +18,7 @@ set(SRC
 set(LIB
 )
 
-# Order matches `UI_icons.h`, final name will be formatted: `icons{size}_{name}.dat`.
+# Order matches `UI_icons.hh`, final name will be formatted: `icons{size}_{name}.dat`.
 set(ICON_NAMES
   question
   error
@@ -508,6 +510,7 @@ set(ICON_NAMES
   ipo_ease_out
   ipo_ease_in_out
   normalize_fcurves
+  orientation_parent
   vertexsel
   edgesel
   facesel
@@ -808,11 +811,14 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_line
   ops.gpencil.primitive_polyline
   ops.gpencil.radius
+  ops.gpencil.sculpt_average
+  ops.gpencil.sculpt_blur
   ops.gpencil.sculpt_clone
   ops.gpencil.sculpt_grab
   ops.gpencil.sculpt_pinch
   ops.gpencil.sculpt_push
   ops.gpencil.sculpt_randomize
+  ops.gpencil.sculpt_smear
   ops.gpencil.sculpt_smooth
   ops.gpencil.sculpt_strength
   ops.gpencil.sculpt_thickness
