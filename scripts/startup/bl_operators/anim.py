@@ -289,20 +289,24 @@ class NLA_OT_bake(Operator):
             [(obj, None) for obj in objects]
         )
 
+        bake_options = anim_utils.BakeOptions(
+                only_selected=self.only_selected,
+                do_pose=do_pose,
+                do_object=do_object,
+                do_visual_keying=self.visual_keying,
+                do_constraint_clear=self.clear_constraints,
+                do_parents_clear=self.clear_parents,
+                do_clean=self.clean_curves,
+                do_location=do_location,
+                do_rotation=do_rotation,
+                do_scale=do_scale,
+                do_bbone=do_bbone
+        )
+
         actions = anim_utils.bake_action_objects(
             object_action_pairs,
             frames=range(self.frame_start, self.frame_end + 1, self.step),
-            only_selected=self.only_selected,
-            do_pose=do_pose,
-            do_object=do_object,
-            do_visual_keying=self.visual_keying,
-            do_constraint_clear=self.clear_constraints,
-            do_parents_clear=self.clear_parents,
-            do_clean=self.clean_curves,
-            do_location=do_location,
-            do_rotation=do_rotation,
-            do_scale=do_scale,
-            do_bbone=do_bbone,
+            bake_options=bake_options
         )
 
         if not any(actions):

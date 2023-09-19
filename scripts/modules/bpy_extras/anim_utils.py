@@ -12,6 +12,7 @@ __all__ = (
 
 import bpy
 from bpy.types import Action
+from dataclasses import dataclass
 
 from typing import (
     List,
@@ -209,7 +210,7 @@ def bake_action_iter(
         matrix = {}
         bbones = {}
         for name, pbone in obj.pose.bones.items():
-            if do_visual_keying:
+            if bake_options.do_visual_keying:
                 # Get the final transform of the bone in its own local space...
                 matrix[name] = obj.convert_space(pose_bone=pbone, matrix=pbone.matrix,
                                                  from_space='POSE', to_space='LOCAL')
@@ -221,8 +222,8 @@ def bake_action_iter(
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
         return matrix, bbones
 
-    if do_parents_clear:
-        if do_visual_keying:
+    if bake_options.do_parents_clear:
+        if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 return obj.matrix_world.copy()
         else:
@@ -234,7 +235,7 @@ def bake_action_iter(
                 else:
                     return matrix.copy()
     else:
-        if do_visual_keying:
+        if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_world
@@ -252,7 +253,7 @@ def bake_action_iter(
     if obj.pose is None:
         do_pose = False
 
-    if not (do_pose or do_object):
+    if not (do_pose or bake_options.do_object):
         raise Exception("Pose and object baking is disabled, no action needed")
 
     pose_info = []
@@ -271,12 +272,12 @@ def bake_action_iter(
 
         if do_pose:
             pose_info.append((frame, *pose_frame_info(obj)))
-        if do_object:
+        if bake_options.do_object:
             obj_info.append((frame, obj_frame_info(obj)))
 
     # -------------------------------------------------------------------------
     # Clean (store initial data)
-    if do_clean and action is not None:
+    if bake_options.do_clean and action is not None:
         clean_orig_data = {fcu: {p.co[1] for p in fcu.keyframe_points} for fcu in action.fcurves}
     else:
         clean_orig_data = {}
@@ -309,10 +310,10 @@ def bake_action_iter(
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if do_pose:
         for name, pbone in obj.pose.bones.items():
-            if only_selected and not pbone.bone.select:
+            if bake_options.only_selected and not pbone.bone.select:
                 continue
 
-            if do_constraint_clear:
+            if bake_options.do_constraint_clear:
                 while pbone.constraints:
                     pbone.constraints.remove(pbone.constraints[0])
 
@@ -330,16 +331,16 @@ def bake_action_iter(
 
             keyframes = KeyframesCo()
 
-            if do_location:
+            if bake_options.do_location:
                 keyframes.add_paths(path_location, 3)
-            if do_rotation:
+            if bake_options.do_rotation:
                 keyframes.add_paths(path_quaternion, 4)
                 keyframes.add_paths(path_axis_angle, 4)
                 keyframes.add_paths(path_euler, 3)
-            if do_scale:
+            if bake_options.do_scale:
                 keyframes.add_paths(path_scale, 3)
 
-            if do_bbone and pbone.bone.bbone_segments > 1:
+            if bake_options.do_bbone and pbone.bone.bbone_segments > 1:
                 for prop_name, path in zip(BBONE_PROPS, paths_bbprops):
                     keyframes.add_paths(path, BBONE_PROPS_LENGTHS[prop_name])
 
@@ -348,10 +349,10 @@ def bake_action_iter(
             for (f, matrix, bbones) in pose_info:
                 pbone.matrix_basis = matrix[name].copy()
 
-                if do_location:
+                if bake_options.do_location:
                     keyframes.extend_co_values(path_location, 3, f, pbone.location)
 
-                if do_rotation:
+                if bake_options.do_rotation:
                     if rotation_mode == 'QUATERNION':
                         if quat_prev is not None:
                             quat = pbone.rotation_quaternion.copy()
@@ -372,11 +373,11 @@ def bake_action_iter(
                         euler_prev = pbone.rotation_euler.copy()
                         keyframes.extend_co_values(path_euler, 3, f, pbone.rotation_euler)
 
-                if do_scale:
+                if bake_options.do_scale:
                     keyframes.extend_co_values(path_scale, 3, f, pbone.scale)
 
                 # Bendy Bones
-                if do_bbone and pbone.bone.bbone_segments > 1:
+                if bake_options.do_bbone and pbone.bone.bbone_segments > 1:
                     bbone_shape = bbones[name]
                     for prop_index, prop_name in enumerate(BBONE_PROPS):
                         prop_len = BBONE_PROPS_LENGTHS[prop_name]
@@ -395,8 +396,8 @@ def bake_action_iter(
                 keyframes.insert_keyframes_into_existing_action(lookup_fcurves, total_new_keys, action, name)
 
     # object. TODO. multiple objects
-    if do_object:
-        if do_constraint_clear:
+    if bake_options.do_object:
+        if bake_options.do_constraint_clear:
             while obj.constraints:
                 obj.constraints.remove(obj.constraints[0])
 
@@ -411,13 +412,13 @@ def bake_action_iter(
         path_scale = "scale"
 
         keyframes = KeyframesCo()
-        if do_location:
+        if bake_options.do_location:
             keyframes.add_paths(path_location, 3)
-        if do_rotation:
+        if bake_options.do_rotation:
             keyframes.add_paths(path_quaternion, 4)
             keyframes.add_paths(path_axis_angle, 4)
             keyframes.add_paths(path_euler, 3)
-        if do_scale:
+        if bake_options.do_scale:
             keyframes.add_paths(path_scale, 3)
 
         rotation_mode = obj.rotation_mode
@@ -426,10 +427,10 @@ def bake_action_iter(
             name = "Action Bake"  # XXX: placeholder
             obj.matrix_basis = matrix
 
-            if do_location:
+            if bake_options.do_location:
                 keyframes.extend_co_values(path_location, 3, f, obj.location)
 
-            if do_rotation:
+            if bake_options.do_rotation:
                 if rotation_mode == 'QUATERNION':
                     if quat_prev is not None:
                         quat = obj.rotation_quaternion.copy()
@@ -449,7 +450,7 @@ def bake_action_iter(
                     euler_prev = obj.rotation_euler.copy()
                     keyframes.extend_co_values(path_euler, 3, f, obj.rotation_euler)
 
-            if do_scale:
+            if bake_options.do_scale:
                 keyframes.extend_co_values(path_scale, 3, f, obj.scale)
 
         if is_new_action:
@@ -457,13 +458,13 @@ def bake_action_iter(
         else:
             keyframes.insert_keyframes_into_existing_action(lookup_fcurves, total_new_keys, action, name)
 
-        if do_parents_clear:
+        if bake_options.do_parents_clear:
             obj.parent = None
 
     # -------------------------------------------------------------------------
     # Clean
 
-    if do_clean:
+    if bake_options.do_clean:
         for fcu in action.fcurves:
             fcu_orig_data = clean_orig_data.get(fcu, set())
 
