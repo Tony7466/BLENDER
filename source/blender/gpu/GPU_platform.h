@@ -55,6 +55,11 @@ typedef enum eGPUSupportLevel {
   GPU_SUPPORT_LEVEL_UNSUPPORTED,
 } eGPUSupportLevel;
 
+typedef enum eGPUArchitectureType {
+  GPU_ARCHITECTURE_IMR = 0,
+  GPU_ARCHITECTURE_TBDR = 1,
+} eGPUArchitectureType;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -74,6 +79,7 @@ const char *GPU_platform_renderer(void);
 const char *GPU_platform_version(void);
 const char *GPU_platform_support_level_key(void);
 const char *GPU_platform_gpu_name(void);
+eGPUArchitectureType GPU_platform_architecture(void);
 
 #ifdef __cplusplus
 }
