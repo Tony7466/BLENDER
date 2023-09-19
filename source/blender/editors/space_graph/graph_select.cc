@@ -2066,13 +2066,13 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 }
 
 /** \} */
-/* Handle selection */
+/* Key/handles selection */
 
-/* Defines for handle select tool. */
-static const EnumPropertyItem prop_graphkeys_handle_select_actions[] = {
-    {GRAPHKEYS_HANDLESEL_SELECT, "SELECT", 0, "Select", ""},
-    {GRAPHKEYS_HANDLESEL_DESELECT, "DESELECT", 0, "Deselect", ""},
-    {GRAPHKEYS_HANDLESEL_KEEP, "KEEP", 0, "Keep", "Leave as-is"},
+/* Defines for key/handles select tool. */
+static const EnumPropertyItem prop_graphkeys_select_key_handles_actions[] = {
+    {GRAPHKEYS_KEYHANDLESSEL_SELECT, "SELECT", 0, "Select", ""},
+    {GRAPHKEYS_KEYHANDLESSEL_DESELECT, "DESELECT", 0, "Deselect", ""},
+    {GRAPHKEYS_KEYHANDLESSEL_KEEP, "KEEP", 0, "Keep", "Leave as-is"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2086,10 +2086,11 @@ static const EnumPropertyItem prop_graphkeys_handle_select_actions[] = {
  * \param key_action: selection action to perform on the keys themselves.
  * \param right_handle_action: selection action to perform on right handles.
  */
-static void graph_keys_select_handles(bAnimContext *ac,
-                                      const enum eGraphKey_HandleSelect_Action left_handle_action,
-                                      const enum eGraphKey_HandleSelect_Action key_action,
-                                      const enum eGraphKey_HandleSelect_Action right_handle_action)
+static void graphkeys_select_key_handles(
+    bAnimContext *ac,
+    const enum eGraphKey_SelectKeyHandles_Action left_handle_action,
+    const enum eGraphKey_SelectKeyHandles_Action key_action,
+    const enum eGraphKey_SelectKeyHandles_Action right_handle_action)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -2114,37 +2115,37 @@ static void graph_keys_select_handles(bAnimContext *ac,
       }
 
       switch (left_handle_action) {
-        case GRAPHKEYS_HANDLESEL_SELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
           BEZT_SEL_IDX(bezt, 0);
           break;
-        case GRAPHKEYS_HANDLESEL_DESELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
           BEZT_DESEL_IDX(bezt, 0);
           break;
-        case GRAPHKEYS_HANDLESEL_KEEP:
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
           /* Do nothing. */
           break;
       }
 
       switch (key_action) {
-        case GRAPHKEYS_HANDLESEL_SELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
           BEZT_SEL_IDX(bezt, 1);
           break;
-        case GRAPHKEYS_HANDLESEL_DESELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
           BEZT_DESEL_IDX(bezt, 1);
           break;
-        case GRAPHKEYS_HANDLESEL_KEEP:
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
           /* Do nothing. */
           break;
       }
 
       switch (right_handle_action) {
-        case GRAPHKEYS_HANDLESEL_SELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
           BEZT_SEL_IDX(bezt, 2);
           break;
-        case GRAPHKEYS_HANDLESEL_DESELECT:
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
           BEZT_DESEL_IDX(bezt, 2);
           break;
-        case GRAPHKEYS_HANDLESEL_KEEP:
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
           /* Do nothing. */
           break;
       }
@@ -2155,7 +2156,7 @@ static void graph_keys_select_handles(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
+static int graphkeys_select_key_handles_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -2164,21 +2165,21 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const eGraphKey_HandleSelect_Action left_handle_action =
-      static_cast<eGraphKey_HandleSelect_Action>(RNA_enum_get(op->ptr, "left_handle_action"));
-  const eGraphKey_HandleSelect_Action key_action = static_cast<eGraphKey_HandleSelect_Action>(
-      RNA_enum_get(op->ptr, "key_action"));
-  const eGraphKey_HandleSelect_Action right_handle_action =
-      static_cast<eGraphKey_HandleSelect_Action>(RNA_enum_get(op->ptr, "right_handle_action"));
+  const eGraphKey_SelectKeyHandles_Action left_handle_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "left_handle_action"));
+  const eGraphKey_SelectKeyHandles_Action key_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "key_action"));
+  const eGraphKey_SelectKeyHandles_Action right_handle_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "right_handle_action"));
 
-  graph_keys_select_handles(&ac, left_handle_action, key_action, right_handle_action);
+  graphkeys_select_key_handles(&ac, left_handle_action, key_action, right_handle_action);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
 
   return OPERATOR_FINISHED;
 }
 
-static void graphkeys_select_handles_ui(bContext * /* C */, wmOperator *op)
+static void graphkeys_select_key_handles_ui(bContext * /* C */, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *row;
@@ -2191,38 +2192,38 @@ static void graphkeys_select_handles_ui(bContext * /* C */, wmOperator *op)
   uiItemR(row, op->ptr, "key_action", UI_ITEM_NONE, NULL, ICON_NONE);
 }
 
-void GRAPH_OT_select_handles(wmOperatorType *ot)
+void GRAPH_OT_select_key_handles(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Select Handles";
-  ot->idname = "GRAPH_OT_select_handles";
+  ot->name = "Select Key / Handles";
+  ot->idname = "GRAPH_OT_select_key_handles";
   ot->description =
       "Select/deselect the different parts of keys that have at least one part already selected";
 
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
-  ot->exec = graphkeys_select_handles_exec;
-  ot->ui = graphkeys_select_handles_ui;
+  ot->exec = graphkeys_select_key_handles_exec;
+  ot->ui = graphkeys_select_key_handles_ui;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
   RNA_def_enum(ot->srna,
                "left_handle_action",
-               prop_graphkeys_handle_select_actions,
-               GRAPHKEYS_HANDLESEL_SELECT,
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_SELECT,
                "Left Handle",
                "How to affect the selection of the left handle");
   RNA_def_enum(ot->srna,
                "right_handle_action",
-               prop_graphkeys_handle_select_actions,
-               GRAPHKEYS_HANDLESEL_SELECT,
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_SELECT,
                "Right Handle",
                "How to affect the selection of the right handle");
   RNA_def_enum(ot->srna,
                "key_action",
-               prop_graphkeys_handle_select_actions,
-               GRAPHKEYS_HANDLESEL_KEEP,
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_KEEP,
                "Key",
                "How to affect the selection of the key itself");
 }

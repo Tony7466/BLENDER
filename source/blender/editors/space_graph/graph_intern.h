@@ -70,6 +70,7 @@ void GRAPH_OT_select_linked(struct wmOperatorType *ot);
 void GRAPH_OT_select_more(struct wmOperatorType *ot);
 void GRAPH_OT_select_less(struct wmOperatorType *ot);
 void GRAPH_OT_select_leftright(struct wmOperatorType *ot);
+void GRAPH_OT_select_key_handles(struct wmOperatorType *ot);
 void GRAPH_OT_clickselect(struct wmOperatorType *ot);
 
 /* defines for left-right select tool */
@@ -79,12 +80,12 @@ enum eGraphKeys_LeftRightSelect_Mode {
   GRAPHKEYS_LRSEL_RIGHT,
 };
 
-/* Defines for handle selection. */
-enum eGraphKey_HandleSelect_Action {
-  GRAPHKEYS_HANDLESEL_SELECT = 0,
-  GRAPHKEYS_HANDLESEL_DESELECT,
+/* Defines for key/handles selection. */
+enum eGraphKey_SelectKeyHandles_Action {
+  GRAPHKEYS_KEYHANDLESSEL_SELECT = 0,
+  GRAPHKEYS_KEYHANDLESSEL_DESELECT,
   /* Leave the selection status as-is. */
-  GRAPHKEYS_HANDLESEL_KEEP,
+  GRAPHKEYS_KEYHANDLESSEL_KEEP,
 };
 
 /* defines for column-select mode */
@@ -143,7 +144,6 @@ void GRAPH_OT_sound_to_samples(struct wmOperatorType *ot);
 void GRAPH_OT_smooth(struct wmOperatorType *ot);
 void GRAPH_OT_euler_filter(struct wmOperatorType *ot);
 
-void GRAPH_OT_select_handles(struct wmOperatorType *ot);
 void GRAPH_OT_handle_type(struct wmOperatorType *ot);
 void GRAPH_OT_interpolation_type(struct wmOperatorType *ot);
 void GRAPH_OT_extrapolation_type(struct wmOperatorType *ot);
