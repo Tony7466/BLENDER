@@ -704,7 +704,8 @@ inline blender::Span<bNodeLink> bNode::internal_links() const
   return this->runtime->internal_links;
 }
 
-inline bool bNode::is_socket_drawn(const bNodeSocket &socket) const{
+inline bool bNode::is_socket_drawn(const bNodeSocket &socket) const
+{
   return socket.is_visible();
 }
 
