@@ -100,7 +100,7 @@ NodeItem GroupOutputNodeParser::compute_full()
   res = compute();
   return res;
 #else
-  return NodeParser::compute_full();
+  return compute();
 #endif
 }
 
@@ -144,7 +144,7 @@ NodeItem GroupInputNodeParser::compute_full()
   res = compute();
   return res;
 #else
-  return NodeParser::compute_full();
+  return compute();
 #endif
 }
 

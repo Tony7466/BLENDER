@@ -11,6 +11,10 @@
 
 #include "IMB_colormanagement.h"
 
+#include "hydra/image.h"
+
+#include "DEG_depsgraph_query.h"
+
 namespace blender::nodes::node_shader_tex_environment_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -130,8 +134,50 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* TODO: Implement */
-  return empty();
+  NodeItem res = val(MaterialX::Color4(1.0f, 0.0f, 1.0f, 1.0f));
+
+  Image *image = (Image *)node_->id;
+  if (!image) {
+    return res;
+  }
+
+  NodeTexEnvironment *tex_env = static_cast<NodeTexEnvironment *>(node_->storage);
+  Scene *scene = DEG_get_input_scene(depsgraph_);
+  Main *bmain = DEG_get_bmain(depsgraph_);
+
+  /* TODO: What if Blender built without Hydra? Also io::hydra::cache_or_get_image_file contains
+   * pretty general code, so could be moved from bf_usd project. */
+  std::string image_path = io::hydra::cache_or_get_image_file(
+      bmain, scene, image, &tex_env->iuser);
+
+  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector2);
+  if (!vector) {
+    vector = texcoord_node();
+  }
+  /* TODO: texcoords should be translated to spherical coordinates */
+
+  std::string filtertype;
+  switch (tex_env->interpolation) {
+    case SHD_INTERP_LINEAR:
+      filtertype = "linear";
+      break;
+    case SHD_INTERP_CLOSEST:
+      filtertype = "closest";
+      break;
+    case SHD_INTERP_CUBIC:
+    case SHD_INTERP_SMART:
+      filtertype = "cubic";
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+
+  res = create_node("image", NodeItem::Type::Color4);
+  res.set_input("file", image_path, NodeItem::Type::Filename);
+  res.set_input("texcoord", vector);
+  res.set_input("filtertype", val(filtertype));
+
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END
