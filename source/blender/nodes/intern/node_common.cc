@@ -387,13 +387,13 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
                                                declaration_for_interface_socket(
                                                    *group, socket, SOCK_OUT) :
                                                nullptr;
-        if (input_decl) {
-          r_declaration.inputs.append(input_decl.get());
-          r_declaration.items.append(std::move(input_decl));
-        }
         if (output_decl) {
           r_declaration.outputs.append(output_decl.get());
           r_declaration.items.append(std::move(output_decl));
+        }
+        if (input_decl) {
+          r_declaration.inputs.append(input_decl.get());
+          r_declaration.items.append(std::move(input_decl));
         }
         break;
       }
