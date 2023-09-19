@@ -68,8 +68,8 @@
 #include "SEQ_transform.h"
 
 #include "BLO_readfile.h"
-#include "readfile.h"
-#include "versioning_common.h"
+#include "readfile.hh"
+#include "versioning_common.hh"
 
 /* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
@@ -626,7 +626,7 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 292, 8)) {
-    /* Systematically rebuild posebones to ensure consistent ordering matching the one of bones in
+    /* Systematically rebuild pose-bones to ensure consistent ordering matching the one of bones in
      * Armature obdata. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (ob->type == OB_ARMATURE) {
