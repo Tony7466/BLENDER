@@ -184,7 +184,7 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
       }
       const bke::CurvesGeometry &src_curves = drawing->strokes();
       bke::CurvesGeometry dst_curves;
-      if (!set_curve_trim(src_curves,
+      if (set_curve_trim(src_curves,
                           mode,
                           selection_field,
                           start_field,
@@ -192,9 +192,8 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
                           propagation_info,
                           dst_curves))
       {
-        continue;
+        drawing->strokes_for_write() = std::move(dst_curves);
       }
-      drawing->strokes_for_write() = std::move(dst_curves);
     }
   }
 }
