@@ -285,6 +285,15 @@ void main()
   fragColor = vec4(0.0);
   fragRevealage = vec4(0.0);
 
+  /* Alternate path for disabled antialiasing */
+  if (sampCount == 0) {
+    vec2 texSize = vec2(textureSize(colorBuf, 0));
+    ivec2 iuv = ivec2(uv * texSize);
+    fragColor = texelFetch(colorBuf, iuv, 0);
+    fragRevealage = texelFetch(revealBuf, iuv, 0);
+    return;
+  }
+
   for (int i = -sampCount; i <= sampCount; i++) {
     float x = float(i) / float(sampCount + 1);
     vec2 uv_ofs = uv + accumOffset * 0.5 * x;
