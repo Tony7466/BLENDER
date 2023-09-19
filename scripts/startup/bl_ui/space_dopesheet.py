@@ -283,7 +283,7 @@ class DOPESHEET_HT_editor_buttons:
             sub.popover(
                 panel="DOPESHEET_PT_snapping",
                 icon='NONE',
-                text="Modes",
+                text="",
             )
 
         row = layout.row(align=True)
