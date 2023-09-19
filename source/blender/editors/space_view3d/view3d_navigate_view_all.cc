@@ -426,6 +426,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
       ok = true;
       copy_v3_v3(min, curves_bounds->min);
       copy_v3_v3(max, curves_bounds->max);
+      mul_m4_v3(ob_eval->object_to_world, min);
+      mul_m4_v3(ob_eval->object_to_world, max);
     }
   }
   else if (ob_eval && (ob_eval->mode & (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT |
