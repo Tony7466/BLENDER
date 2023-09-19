@@ -961,10 +961,8 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_segment_speed_set")
 
 
-# xxx needs mode
     def draw(self, context):
-        tool = bpy.context.workspace.tools.from_space_sequencer('SEQUENCER')
-        if tool.idname == 'builtin.retime':
+        if use_retiming_context:
             self.draw_retiming_context(context)
         else:
             self.draw_strip_context(context)
@@ -1231,11 +1229,8 @@ class SEQUENCER_MT_context_menu(Menu):
 
             layout.operator("sequencer.retiming_key_remove")
 
-    # xxx needs mode
     def draw(self, context):
-        tool = context.workspace.tools.from_space_sequencer('SEQUENCER')
-
-        if tool.idname == 'builtin.retime':
+        if use_retiming_context:
             self.draw_retime(context)
         else:
             self.draw_generic(context)

@@ -48,19 +48,19 @@ using blender::MutableSpan;
 bool sequencer_retiming_mode_is_active(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  return sseq->draw_flag & SEQ_DRAW_RETIMING_ALL;
+  return sseq->flag & SEQ_USE_RETIMING_CONTEXT;
 }
 
 void sequencer_retiming_mode_set_active(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  sseq->draw_flag |= SEQ_DRAW_RETIMING_ALL;
+  sseq->flag |= SEQ_USE_RETIMING_CONTEXT;
 }
 
 static void sequencer_retiming_mode_exit(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  sseq->draw_flag &= ~SEQ_DRAW_RETIMING_ALL;
+  sseq->flag &= ~SEQ_USE_RETIMING_CONTEXT;
 }
 
 
