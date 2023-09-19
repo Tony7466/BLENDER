@@ -1210,5 +1210,32 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
+
+    /* Convert sockets with both input and output flag into two separate sockets. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      blender::Vector<bNodeTreeInterfaceSocket *> sockets_to_split;
+      ntree->tree_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+        if (item.item_type == NODE_INTERFACE_SOCKET) {
+          bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+          if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+            sockets_to_split.append(&socket);
+          }
+        }
+        return true;
+      });
+
+      for (bNodeTreeInterfaceSocket *socket : sockets_to_split) {
+        const int position = ntree->tree_interface.find_item_position(socket->item);
+        bNodeTreeInterfacePanel *parent = ntree->tree_interface.find_item_parent(socket->item);
+        bNodeTreeInterfaceSocket *socket_copy = reinterpret_cast<bNodeTreeInterfaceSocket *>(
+            ntree->tree_interface.insert_item_copy(socket->item, parent, position + 1));
+        /* Original socket becomes output */
+        socket->flag &= ~NODE_INTERFACE_SOCKET_INPUT;
+        /* Copied socket becomes input */
+        socket_copy->flag &= ~NODE_INTERFACE_SOCKET_OUTPUT;
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 }
