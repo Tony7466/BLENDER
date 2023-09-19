@@ -1,1 +1,2 @@
 Referenced by issue #103284, Files saved with the Sobol Burley sampling pattern will continue to use the Sobol Burley sampling pattern in later versions of Blender
+Referenced by pull request #112553, Fix #103284: Cycles - Use Tabulated Sobol when loading older files
