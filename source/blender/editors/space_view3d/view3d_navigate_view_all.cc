@@ -17,6 +17,7 @@
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 
+#include "BLI_bounds.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -419,9 +420,12 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     const Object &ob_orig = *DEG_get_original_object(ob_eval);
     const GeometryDeformation deformation = get_evaluated_curves_deformation(ob_eval, ob_orig);
     BLI_assert(ob_eval->data);
-    const Curves &curves = *static_cast<const Curves *>(ob_orig.data);
-    const std::optional<Bounds<float3>> curves_bounds = ed::curves::selection_bounds(curves,
-                                                                                     deformation);
+    const Curves &curves_id = *static_cast<const Curves *>(ob_orig.data);
+    IndexMaskMemory memory;
+    const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+    const IndexMask mask = retrieve_selected_points(curves, memory);
+    const std::optional<Bounds<float3>> curves_bounds = bounds::min_max(mask,
+                                                                        deformation.positions);
     if (curves_bounds.has_value()) {
       ok = true;
       copy_v3_v3(min, curves_bounds->min);

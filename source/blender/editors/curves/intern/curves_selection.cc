@@ -7,11 +7,8 @@
  */
 
 #include "BLI_array_utils.hh"
-#include "BLI_bounds.hh"
-#include "BLI_bounds_types.hh"
 #include "BLI_lasso_2d.h"
 #include "BLI_math_geom.h"
-#include "BLI_math_vector.hh"
 #include "BLI_rand.hh"
 #include "BLI_rect.h"
 
@@ -25,15 +22,6 @@
 #include "ED_view3d.hh"
 
 namespace blender::ed::curves {
-
-std::optional<Bounds<float3>> selection_bounds(
-    const Curves &curves_id, const bke::crazyspace::GeometryDeformation deformation)
-{
-  IndexMaskMemory memory;
-  const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-  const IndexMask mask = retrieve_selected_points(curves, memory);
-  return bounds::min_max(mask, deformation.positions);
-}
 
 static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
                                           IndexMaskMemory &memory)
