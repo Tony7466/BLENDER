@@ -203,9 +203,21 @@ void IrradianceCache::set_view(View & /*view*/)
                 /* Volumes are identical. Any arbitrary criteria can be used to sort them.
                  * Use position to avoid unstable result caused by depsgraph non deterministic eval
                  * order. This could also become a priority parameter. */
-                return a->object_to_world.location()[0] < b->object_to_world.location()[0] ||
-                       a->object_to_world.location()[1] < b->object_to_world.location()[1] ||
-                       a->object_to_world.location()[2] < b->object_to_world.location()[2];
+                float3 _a = a->object_to_world.location();
+                float3 _b = b->object_to_world.location();
+                if (_a.x != _b.x) {
+                  return _a.x < _b.x;
+                }
+                else if (_a.y != _b.y) {
+                  return _a.y < _b.y;
+                }
+                else if (_a.z != _b.z) {
+                  return _a.z < _b.z;
+                }
+                else {
+                  /* Fallback to memory address, since there's no good alternative.*/
+                  return a < b;
+                }
               });
 
     /* Insert grids in UBO in sorted order. */
