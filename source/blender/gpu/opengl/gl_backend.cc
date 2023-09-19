@@ -146,17 +146,21 @@ void GLBackend::platform_init()
         support_level = GPU_SUPPORT_LEVEL_LIMITED;
       }
     }
-  }
 
-  /* Check SSBO bindings requirement. */
-  GLint max_ssbo_binds_vertex;
-  GLint max_ssbo_binds_fragment;
-  GLint max_ssbo_binds_compute;
-  glGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_vertex);
-  glGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_fragment);
-  glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_compute);
-  if (min_iii(max_ssbo_binds_vertex, max_ssbo_binds_fragment, max_ssbo_binds_compute) < 8) {
-    support_level = GPU_SUPPORT_LEVEL_UNSUPPORTED;
+    /* Check SSBO bindings requirement. */
+    GLint max_ssbo_binds_vertex;
+    GLint max_ssbo_binds_fragment;
+    GLint max_ssbo_binds_compute;
+    glGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_vertex);
+    glGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_fragment);
+    glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &max_ssbo_binds_compute);
+    GLint max_ssbo_binds = min_iii(
+        max_ssbo_binds_vertex, max_ssbo_binds_fragment, max_ssbo_binds_compute);
+    if (max_ssbo_binds < 8) {
+      std::cout << "Warning: Unsupported platform as it supports max " << max_ssbo_binds
+                << " SSBO binding locations\n";
+      support_level = GPU_SUPPORT_LEVEL_UNSUPPORTED;
+    }
   }
 
   GPG.init(device, os, driver, support_level, GPU_BACKEND_OPENGL, vendor, renderer, version);
