@@ -10,7 +10,7 @@
 
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
-
+#include <BLI_vector.hh>
 
 /* Internal exports only. */
 
@@ -124,7 +124,6 @@ void channel_draw_context_init(const bContext *C,
 /* `sequencer_edit.cc` */
 
 void seq_rectf(const Scene *scene, Sequence *seq, rctf *rectf);
-Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[2]);
 Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int sel);
 void recurs_sel_seq(Sequence *seq_meta);
 int seq_effect_find_selected(Scene *scene,
@@ -234,6 +233,7 @@ void SEQUENCER_OT_select_side(wmOperatorType *ot);
 void SEQUENCER_OT_select_box(wmOperatorType *ot);
 void SEQUENCER_OT_select_inverse(wmOperatorType *ot);
 void SEQUENCER_OT_select_grouped(wmOperatorType *ot);
+Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, int *hand, const int mval[2]);
 
 /* `sequencer_add.cc` */
 
@@ -304,9 +304,9 @@ void sequencer_image_seq_reserve_frames(
 
 /* `sequencer_retiming.cc` */
 void SEQUENCER_OT_retiming_reset(wmOperatorType *ot);
-void SEQUENCER_OT_retiming_handle_move(wmOperatorType *ot);
-void SEQUENCER_OT_retiming_handle_add(wmOperatorType *ot);
-void SEQUENCER_OT_retiming_handle_remove(wmOperatorType *ot);
+void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
+void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
+void SEQUENCER_OT_retiming_transition_add (wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
 
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
@@ -317,9 +317,11 @@ bool retiming_last_key_is_clicked(const struct bContext *C,
 struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
                                                  const int mval[2],
                                                  Sequence **r_seq);
-bool sequencer_retiming_tool_is_active(const struct bContext *C);
-void sequencer_retiming_tool_set_active(const bContext *C);
+bool sequencer_retiming_mode_is_active(const struct bContext *C);
+void sequencer_retiming_mode_set_active(const bContext *C);
 void sequencer_draw_retiming(const struct bContext *C);
 int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_select_exec(bContext *C, wmOperator *op);
-int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */);
+int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_select_all_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_box_select_exec(struct bContext *C, struct wmOperator *op);

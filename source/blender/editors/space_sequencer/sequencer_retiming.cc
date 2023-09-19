@@ -45,19 +45,19 @@
 
 using blender::MutableSpan;
 
-bool sequencer_retiming_tool_is_active(const bContext *C)
+bool sequencer_retiming_mode_is_active(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   return sseq->draw_flag & SEQ_DRAW_RETIMING_ALL;
 }
 
-void sequencer_retiming_tool_set_active(const bContext *C)
+void sequencer_retiming_mode_set_active(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   sseq->draw_flag |= SEQ_DRAW_RETIMING_ALL;
 }
 
-static void sequencer_retiming_tool_reset(const bContext *C)
+static void sequencer_retiming_mode_exit(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   sseq->draw_flag &= ~SEQ_DRAW_RETIMING_ALL;
@@ -281,7 +281,7 @@ static int sequencer_retiming_freeze_frame_add_exec(bContext *C, wmOperator *op)
     duration = RNA_int_get(op->ptr, "duration");
   }
 
-  if (sequencer_retiming_tool_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(C)) {
     success = freeze_frame_add_from_retiming_selection(C, op, duration);
   }
   else {
@@ -376,7 +376,7 @@ static int sequencer_retiming_transition_add_exec(bContext *C, wmOperator *op)
     duration = RNA_int_get(op->ptr, "duration");
   }
 
-  if (sequencer_retiming_tool_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(C)) {
     success = transition_add_from_retiming_selection(C, op, duration);
   }
   else {
@@ -416,37 +416,6 @@ void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
 }
 
 /** \} */
-
-int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
-{
-  Scene *scene = CTX_data_scene(C);
-
-  blender::Vector<Sequence *> strips_to_handle;
-
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
-    strips_to_handle.append_non_duplicates(item.value);
-    item.key->flag |= DELETE_KEY;
-  }
-
-  for (Sequence *seq : strips_to_handle) {
-    for (int i = 0; i < seq->retiming_keys_num;) {
-      SeqRetimingKey *key = seq->retiming_keys + i;
-      i++;
-
-      if ((key->flag & DELETE_KEY) == 0) {
-        continue;
-      }
-
-      SEQ_retiming_remove_key(scene, seq, key);
-    }
-    SEQ_relations_invalidate_cache_raw(scene, seq);
-  }
-
-  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-  return OPERATOR_FINISHED;
-}
 
 /* -------------------------------------------------------------------- */
 /** \name Retiming Set Segment Speed
@@ -497,7 +466,7 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
   const Scene *scene = CTX_data_scene(C);
 
   /* Strip mode. */
-  if (!sequencer_retiming_tool_is_active(C)) {
+  if (!sequencer_retiming_mode_is_active(C)) {
     return strip_speed_set_exec(C, op);
   }
 
@@ -609,23 +578,19 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   /* Click on strip, do strip selection. */
   const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   if (seq_click_exact != nullptr && key == nullptr) {
-    sequencer_retiming_tool_reset(C);
+    sequencer_retiming_mode_exit(C);
     return sequencer_select_exec(C, op);
   }
 
   /* Selection after click is released. */
   const bool changed = select_key(ed, key, toggle, deselect_all);
 
-  sequencer_retiming_tool_set_active(C);
+  sequencer_retiming_mode_set_active(C);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Retiming Key Box Select
- * \{ */
-
-static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
+int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 {
 
   const Scene *scene = CTX_data_scene(C);
@@ -711,69 +676,85 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static int sequencer_retiming_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  if (RNA_boolean_get(op->ptr, "tweak") &&
-      retiming_mousover_key_get(C, event->mval, nullptr) != nullptr)
-  {
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-
-  return WM_gesture_box_invoke(C, op, event);
-}
-
-void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
-{
-  /* Identifiers. */
-  ot->name = "Box Select";
-  ot->idname = "SEQUENCER_OT_retiming_select_box";
-  ot->description = "Select retiming keys using box selection";
-
-  /* Api callbacks. */
-  ot->invoke = sequencer_retiming_box_select_invoke;
-  ot->exec = sequencer_retiming_box_select_exec;
-  ot->modal = WM_gesture_box_modal;
-  ot->cancel = WM_gesture_box_cancel;
-
-  ot->poll = retiming_poll;
-
-  /* Flags. */
-  ot->flag = OPTYPE_UNDO;
-
-  /* Properties. */
-  WM_operator_properties_gesture_box(ot);
-  WM_operator_properties_select_operation_simple(ot);
-  RNA_def_boolean(
-      ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Retiming Key Deselect All
- * \{ */
-
-static int sequencer_retiming_deselect_all_exec(bContext *C, wmOperator * /* op */)
+int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
+  int action = RNA_enum_get(op->ptr, "action");
+
+  SeqCollection *strips = all_strips_from_context(C);
+  Sequence *seq;
+
+  if (action == SEL_TOGGLE) {
+    action = SEL_SELECT;
+    SEQ_ITERATOR_FOREACH (seq, strips) {
+      for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+        if (key.flag & KEY_SELECTED) {
+          action = SEL_DESELECT;
+          break;
+        }
+      }
+    }
+  }
+
+  if (action == SEL_DESELECT) {
+    SEQ_retiming_selection_clear(SEQ_editing_get(scene));
+  }
+
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+      if (key.strip_frame_index == 0) {
+        continue;
+      }
+
+      switch (action) {
+        case SEL_SELECT:
+          key.flag |= KEY_SELECTED;
+          break;
+        case SEL_INVERT:
+          if (key.flag & KEY_SELECTED) {
+            key.flag &= ~KEY_SELECTED;
+          }
+          else {
+            key.flag |= KEY_SELECTED;
+          }
+          break;
+      }
+    }
+  }
+
+
+
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
 
-void SEQUENCER_OT_retiming_deselect_all(wmOperatorType *ot)
+int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 {
-  /* Identifiers. */
-  ot->name = "Deselect All";
-  ot->idname = "SEQUENCER_OT_retiming_deselect_all";
-  ot->description = "Select strips using box selection";
+  Scene *scene = CTX_data_scene(C);
 
-  /* Api callbacks. */
-  ot->exec = sequencer_retiming_deselect_all_exec;
-  ot->poll = sequencer_editing_initialized_and_active;
+  blender::Vector<Sequence *> strips_to_handle;
 
-  /* Flags. */
-  ot->flag = OPTYPE_UNDO;
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+    strips_to_handle.append_non_duplicates(item.value);
+    item.key->flag |= DELETE_KEY;
+  }
+
+  for (Sequence *seq : strips_to_handle) {
+    for (int i = 0; i < seq->retiming_keys_num;) {
+      SeqRetimingKey *key = seq->retiming_keys + i;
+      i++;
+
+      if ((key->flag & DELETE_KEY) == 0) {
+        continue;
+      }
+
+      SEQ_retiming_remove_key(scene, seq, key);
+    }
+    SEQ_relations_invalidate_cache_raw(scene, seq);
+  }
+
+  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
 }
-
-/** \} */

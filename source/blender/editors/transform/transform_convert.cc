@@ -943,7 +943,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     if (t->options & CTX_SEQUENCER_IMAGE) {
       return &TransConvertType_SequencerImage;
     }
-    if (sequencer_retiming_tool_is_active(t->context)) {
+    if (sequencer_retiming_mode_is_active(t->context)) {
       return &TransConvertType_SequencerRetiming;
     }
     return &TransConvertType_Sequencer;

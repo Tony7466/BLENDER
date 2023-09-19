@@ -52,7 +52,6 @@
 #include "SEQ_time.h"
 
 /* Own include. */
-#include "sequencer_intern.h"
 #include "sequencer_intern.hh"
 
 #define KEY_SIZE (10 * U.pixelsize)
@@ -287,7 +286,7 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
   draw_keyframe_shape(key_position,
                       bottom,
                       size,
-                      is_selected && sequencer_retiming_tool_is_active(C),
+                      is_selected && sequencer_retiming_mode_is_active(C),
                       key_type,
                       KEYFRAME_SHAPE_BOTH,
                       1,
@@ -327,7 +326,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (sequencer_retiming_tool_is_active(C) &&
+  if (sequencer_retiming_mode_is_active(C) &&
       (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)))
   {
     immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
@@ -342,7 +341,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
 
 static void draw_backdrop(const bContext *C, const Sequence *seq)
 {
-  if (!sequencer_retiming_tool_is_active(C)) {
+  if (!sequencer_retiming_mode_is_active(C)) {
     return;
   }
   return;
@@ -370,7 +369,7 @@ static void draw_backdrop(const bContext *C, const Sequence *seq)
 static void retime_keys_draw(const bContext *C)
 {
   const SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (!sequencer_retiming_tool_is_active(C) &&
+  if (!sequencer_retiming_mode_is_active(C) &&
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) == 0)
   {
     return;
@@ -388,7 +387,7 @@ static void retime_keys_draw(const bContext *C)
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
 
     /* If there are no keys, draw fake one and create real key when it is clicked. */
-    if (sequencer_retiming_tool_is_active(C) && keys.size() == 0) {
+    if (sequencer_retiming_mode_is_active(C) && keys.size() == 0) {
       SeqRetimingKey fake_key;
       fake_key.strip_frame_index = SEQ_time_strip_length_get(CTX_data_scene(C), seq);
       fake_key.flag = 0;
@@ -496,7 +495,7 @@ static void retime_speed_text_draw(const bContext *C,
 static void retime_speed_draw(const bContext *C)
 {
   const SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (!sequencer_retiming_tool_is_active(C) &&
+  if (!sequencer_retiming_mode_is_active(C) &&
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) == 0)
   {
     return;

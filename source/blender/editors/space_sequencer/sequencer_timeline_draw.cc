@@ -69,10 +69,6 @@
 #include "MEM_guardedalloc.h"
 
 /* Own include. */
-<<<<<<< HEAD:source/blender/editors/space_sequencer/sequencer_draw.cc
-#include "sequencer_intern.h"
-=======
->>>>>>> main:source/blender/editors/space_sequencer/sequencer_timeline_draw.cc
 #include "sequencer_intern.hh"
 
 #define SEQ_LEFTHANDLE 1
@@ -1498,188 +1494,6 @@ static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx, StripDraw
 /* Draw visible strips. Bounds check are already made. */
 static void draw_seq_strip(TimelineDrawContext *timeline_ctx, StripDrawContext *strip_ctx)
 {
-<<<<<<< HEAD:source/blender/editors/space_sequencer/sequencer_draw.cc
-  Editing *ed = SEQ_editing_get(CTX_data_scene(C));
-  ListBase *channels = SEQ_channels_displayed_get(ed);
-
-  View2D *v2d = &region->v2d;
-  float x1, x2, y1, y2;
-  const float handsize_clamped = sequence_handle_size_get_clamped(scene, seq, pixelx);
-  float pixely = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
-
-  /* Check if we are doing "solo preview". */
-  bool is_single_image = char(SEQ_transform_single_image_check(seq));
-
-  /* Use the seq->color_tag to display the tag color. */
-  const bool show_strip_color_tag = (sseq->timeline_overlay.flag &
-                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
-
-  /* Draw strip body. */
-  x1 = SEQ_time_has_left_still_frames(scene, seq) ? SEQ_time_start_frame_get(seq) :
-                                                    SEQ_time_left_handle_frame_get(scene, seq);
-  y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
-  x2 = SEQ_time_has_right_still_frames(scene, seq) ? SEQ_time_content_end_frame_get(scene, seq) :
-                                                     SEQ_time_right_handle_frame_get(scene, seq);
-  y2 = seq->machine + SEQ_STRIP_OFSTOP;
-
-  /* Limit body to strip bounds. Meta strip can end up with content outside of strip range. */
-  x1 = min_ff(x1, SEQ_time_right_handle_frame_get(scene, seq));
-  x2 = max_ff(x2, SEQ_time_left_handle_frame_get(scene, seq));
-
-  float text_margin_y;
-  /* Whether there is enough space for the strip preview. */
-  const bool draw_strip_preview = ((y2 - y1) / pixely) > 20 * UI_SCALE_FAC;
-  /* If there is not enough vertical space, don't draw any previews nor the title. */
-  const bool strip_content_none = (y2 - y1) < 8 * pixely * UI_SCALE_FAC;
-  /* Only a single vertical element is drawn on the strip: the waveform in the case of
-   * sound strips, or the strip title for most other strip types. */
-  bool strip_content_single;
-
-  if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_NAME) ||
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_SOURCE) ||
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_DURATION))
-  {
-
-    /* Calculate height needed for drawing text on strip. */
-    text_margin_y = y2 - min_ff(0.40f, 20 * UI_SCALE_FAC * pixely);
-
-    strip_content_single = !draw_strip_preview;
-  }
-  else {
-    text_margin_y = y2;
-    strip_content_single = true;
-  }
-  /* When a text overlay is enabled and there is space for both the text and the strip content,
-   * draw below the text. */
-  /* When text is disabled or there is space for only one or the other, use entire strip area. */
-  const float strip_preview_y2 = strip_content_single ? y2 : text_margin_y;
-
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  draw_seq_background(scene, seq, pos, x1, x2, y1, y2, is_single_image, show_strip_color_tag);
-
-  /* Draw a color band inside color strip. */
-  if ((sseq->flag & SEQ_SHOW_OVERLAY) && (seq->type == SEQ_TYPE_COLOR)) {
-    draw_color_strip_band(scene, channels, seq, pos, strip_preview_y2, y1);
-  }
-
-  /* Draw strip offsets when flag is enabled or during "solo preview". */
-  if (sseq->flag & SEQ_SHOW_OVERLAY) {
-    if (!is_single_image && pixely > 0) {
-      if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) ||
-          (seq == special_seq_update))
-      {
-        draw_sequence_extensions_overlay(scene, seq, pos, pixely, show_strip_color_tag);
-      }
-    }
-  }
-  immUnbindProgram();
-
-  if (draw_strip_preview && (sseq->flag & SEQ_SHOW_OVERLAY) &&
-      ELEM(seq->type, SEQ_TYPE_CROSS, SEQ_TYPE_GAMCROSS, SEQ_TYPE_WIPE))
-  {
-    draw_seq_transition_strip(
-        scene, seq, x1, x2, y1, strip_preview_y2, sseq->timeline_overlay.flag);
-  }
-
-  x1 = SEQ_time_left_handle_frame_get(scene, seq);
-  x2 = SEQ_time_right_handle_frame_get(scene, seq);
-
-  if (draw_strip_preview && (sseq->flag & SEQ_SHOW_OVERLAY)) {
-    if ((seq->type == SEQ_TYPE_META) ||
-        ((seq->type == SEQ_TYPE_SCENE) && (seq->flag & SEQ_SCENE_STRIPS)))
-    {
-      drawmeta_contents(scene, seq, x1, y1, x2, strip_preview_y2, show_strip_color_tag);
-    }
-  }
-
-  if ((sseq->flag & SEQ_SHOW_OVERLAY) &&
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_THUMBNAILS) &&
-      ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE))
-  {
-    draw_seq_strip_thumbnail(v2d, C, scene, seq, y1, strip_preview_y2, pixelx, pixely);
-  }
-
-  if (draw_strip_preview && (sseq->flag & SEQ_SHOW_OVERLAY) &&
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_FCURVES))
-  {
-    draw_seq_fcurve_overlay(scene, v2d, seq, x1, y1, x2, strip_preview_y2, pixelx);
-  }
-
-  /* Draw sound strip waveform. */
-  if (seq_draw_waveforms_poll(C, sseq, seq) && !strip_content_none) {
-    draw_seq_waveform_overlay(
-        C, region, seq, x1, strip_content_single ? y1 : y1 + 0.05f, x2, strip_preview_y2);
-  }
-  /* Draw locked state. */
-  if (SEQ_transform_is_locked(channels, seq)) {
-    draw_seq_locked(x1, y1, x2, y2);
-  }
-
-  /* Draw Red line on the top of invalid strip (Missing media). */
-  if (!SEQ_sequence_has_source(seq)) {
-    draw_seq_invalid(x1, x2, y2, text_margin_y);
-  }
-
-  pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  if (!SEQ_transform_is_locked(channels, seq)) {
-    draw_seq_handle(scene,
-                    v2d,
-                    seq,
-                    handsize_clamped,
-                    SEQ_LEFTHANDLE,
-                    pos,
-                    seq_active,
-                    pixelx,
-                    draw_strip_preview);
-    draw_seq_handle(scene,
-                    v2d,
-                    seq,
-                    handsize_clamped,
-                    SEQ_RIGHTHANDLE,
-                    pos,
-                    seq_active,
-                    pixelx,
-                    draw_strip_preview);
-  }
-
-  if (!sequencer_retiming_tool_is_active(C)) {
-    draw_seq_outline(scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active);
-  }
-  else {
-    seq_active = false;
-  }
-
-  immUnbindProgram();
-
-  /* If a waveform or a color strip is drawn,
-   * avoid drawing text when there is not enough vertical space. */
-  if (strip_content_single &&
-      (seq_draw_waveforms_poll(C, sseq, seq) || seq->type == SEQ_TYPE_COLOR))
-  {
-    return;
-  }
-
-  if (sseq->flag & SEQ_SHOW_OVERLAY) {
-    /* Draw text only if there is enough horizontal or vertical space. */
-    if (((x2 - x1) > 32 * pixelx * UI_SCALE_FAC) && !strip_content_none) {
-      calculate_seq_text_offsets(scene, v2d, seq, &x1, &x2, pixelx);
-      /* Depending on the vertical space, draw text on top or in the center of strip. */
-      draw_seq_text_overlay(scene,
-                            v2d,
-                            seq,
-                            sseq,
-                            x1,
-                            x2,
-                            strip_content_single ? y1 : text_margin_y,
-                            y2,
-                            seq_active);
-    }
-  }
-=======
   draw_strip_background(timeline_ctx, strip_ctx);
   draw_strip_color_band(timeline_ctx, strip_ctx);
   draw_strip_offsets(timeline_ctx, strip_ctx);
@@ -1701,7 +1515,6 @@ static void draw_seq_strip(TimelineDrawContext *timeline_ctx, StripDrawContext *
   draw_seq_handle(timeline_ctx, strip_ctx, SEQ_RIGHTHANDLE);
   draw_seq_outline(timeline_ctx, strip_ctx);
   draw_seq_text_overlay(timeline_ctx, strip_ctx);
->>>>>>> main:source/blender/editors/space_sequencer/sequencer_timeline_draw.cc
 }
 
 static void draw_effect_inputs_highlight(const Scene *scene, Sequence *seq)
@@ -2273,74 +2086,14 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
   draw_timeline_backdrop(&ctx);
   draw_timeline_sfra_efra(&ctx);
   draw_seq_strips(&ctx);
+  sequencer_draw_retiming(C);
   draw_timeline_markers(&ctx);
   ANIM_draw_previewrange(C, ctx.v2d, 1);
   draw_timeline_gizmos(&ctx);
   draw_timeline_post_view_callbacks(&ctx);
   ED_time_scrub_draw(region, ctx.scene, !(ctx.sseq->flag & SEQ_DRAWFRAMES), true);
 
-<<<<<<< HEAD:source/blender/editors/space_sequencer/sequencer_draw.cc
-  UI_view2d_view_ortho(v2d);
-  draw_seq_timeline_channels(v2d);
-
-  if ((sseq->flag & SEQ_SHOW_OVERLAY) && (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_GRID)) {
-    U.v2d_min_gridsize *= 3;
-    UI_view2d_draw_lines_x__discrete_frames_or_seconds(
-        v2d, scene, (sseq->flag & SEQ_DRAWFRAMES) == 0, false);
-    U.v2d_min_gridsize /= 3;
-  }
-
-  /* Only draw backdrop in timeline view. */
-  if (sseq->view == SEQ_VIEW_SEQUENCE && sseq->draw_flag & SEQ_DRAW_BACKDROP) {
-    int preview_frame = scene->r.cfra;
-    if (sequencer_draw_get_transform_preview(sseq, scene)) {
-      preview_frame = sequencer_draw_get_transform_preview_frame(scene);
-    }
-
-    sequencer_draw_preview(C, scene, region, sseq, preview_frame, 0, false, true);
-    UI_view2d_view_ortho(v2d);
-  }
-
-  /* Draw attached callbacks. */
-  GPU_framebuffer_bind(framebuffer_overlay);
-  ED_region_draw_cb_draw(C, region, REGION_DRAW_PRE_VIEW);
-  GPU_framebuffer_bind_no_srgb(framebuffer_overlay);
-
-  seq_draw_sfra_efra(scene, v2d);
-
-  if (ed) {
-    draw_seq_strips(C, ed, region);
-    /* Draw text added in previous function. */
-    UI_view2d_text_cache_draw(region);
-  }
-
-  UI_view2d_view_ortho(v2d);
-
-  UI_view2d_view_orthoSpecial(region, v2d, true);
-  int marker_draw_flag = DRAW_MARKERS_MARGIN;
-  if (sseq->flag & SEQ_SHOW_MARKERS) {
-    ED_markers_draw(C, marker_draw_flag);
-  }
-
-  UI_view2d_view_ortho(v2d);
-  ANIM_draw_previewrange(C, v2d, 1);
-
-  if ((sseq->gizmo_flag & SEQ_GIZMO_HIDE) == 0) {
-    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
-  }
-
-  /* Draw registered callbacks. */
-  GPU_framebuffer_bind(framebuffer_overlay);
-  ED_region_draw_cb_draw(C, region, REGION_DRAW_POST_VIEW);
-  GPU_framebuffer_bind_no_srgb(framebuffer_overlay);
-
-  UI_view2d_view_restore(C);
-  ED_time_scrub_draw(region, scene, !(sseq->flag & SEQ_DRAWFRAMES), true);
-
-  sequencer_draw_retiming(C);
-=======
   seq_prefetch_wm_notify(C, ctx.scene);
->>>>>>> main:source/blender/editors/space_sequencer/sequencer_timeline_draw.cc
 }
 
 void draw_timeline_seq_display(const bContext *C, ARegion *region)
