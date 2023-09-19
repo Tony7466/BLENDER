@@ -100,7 +100,10 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR);
 #define SOCK_SPECULAR_ID 13
-  spec.add_input<decl::Color>("Specular Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  spec.add_input<decl::Color>("Specular Tint")
+      .default_value({1.0f, 1.0f, 1.0f, 1.0f})
+      .description(
+          "Tint of the specular reflection at normal incidence. Affects dielectric materials");
 #define SOCK_SPECULAR_TINT_ID 14
   spec.add_input<decl::Float>("Anisotropic")
       .default_value(0.0f)
