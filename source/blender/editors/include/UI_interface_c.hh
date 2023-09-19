@@ -12,6 +12,7 @@
 #include <string>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
 #include "BLI_utildefines.h"
@@ -22,7 +23,6 @@
 
 struct ARegion;
 struct AssetFilterSettings;
-struct AssetRepresentation;
 struct AutoComplete;
 struct EnumPropertyItem;
 struct FileSelectParams;
@@ -73,6 +73,7 @@ struct uiBut;
 struct uiButExtraOpIcon;
 struct uiLayout;
 struct uiPopupBlockHandle;
+struct uiTooltipData;
 /* C handle for C++ #ui::AbstractView type. */
 struct uiViewHandle;
 /* C handle for C++ #ui::AbstractViewItem type. */
@@ -175,6 +176,8 @@ enum {
   UI_BLOCK_SEARCH_ONLY = 1 << 25,
   /** Hack for quick setup (splash screen) to draw text centered. */
   UI_BLOCK_QUICK_SETUP = 1 << 26,
+  /** Don't accelerator keys for the items in the block. */
+  UI_BLOCK_NO_ACCELERATOR_KEYS = 1 << 27,
 };
 
 /** #uiPopupBlockHandle.menuretval */
@@ -245,6 +248,15 @@ enum {
 
   /** RNA property of the button is overridden from linked reference data. */
   UI_BUT_OVERRIDDEN = 1u << 31u,
+};
+
+enum {
+  /**
+   * This is used when `UI_BUT_ACTIVATE_ON_INIT` is used, which is used to activate e.g. a search
+   * box as soon as a popup opens. Usually, the text in the search box is selected by default.
+   * However, sometimes this behavior is not desired, so it can be disabled with this flag.
+   */
+  UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT = 1 << 0,
 };
 
 /** #uiBut.dragflag */
@@ -570,6 +582,8 @@ using uiButSearchListenFn = void (*)(const wmRegionListenerParams *params, void 
 /** Must return an allocated string. */
 using uiButToolTipFunc = char *(*)(bContext *C, void *argN, const char *tip);
 
+using uiButToolTipCustomFunc = void (*)(bContext *C, uiTooltipData *data, void *argN);
+
 using uiBlockHandleFunc = void (*)(bContext *C, void *arg, int event);
 
 /* -------------------------------------------------------------------- */
@@ -887,6 +901,7 @@ bool UI_but_active_drop_color(bContext *C);
 void UI_but_flag_enable(uiBut *but, int flag);
 void UI_but_flag_disable(uiBut *but, int flag);
 bool UI_but_flag_is_set(uiBut *but, int flag);
+void UI_but_flag2_enable(uiBut *but, int flag);
 
 void UI_but_drawflag_enable(uiBut *but, int flag);
 void UI_but_drawflag_disable(uiBut *but, int flag);
@@ -1736,6 +1751,48 @@ void UI_but_func_menu_step_set(uiBut *but, uiMenuStepFunc func);
 
 void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFreeArgFunc free_arg);
 void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const uiBut *but)> func);
+
+typedef enum uiTooltipStyle {
+  UI_TIP_STYLE_NORMAL = 0, /* Regular text. */
+  UI_TIP_STYLE_HEADER,     /* Header text. */
+  UI_TIP_STYLE_MONO,       /* Mono-spaced text. */
+  UI_TIP_STYLE_IMAGE,      /* Image field. */
+} uiTooltipStyle;
+
+typedef enum uiTooltipColorID {
+  UI_TIP_LC_MAIN = 0, /* Color of primary text. */
+  UI_TIP_LC_VALUE,    /* Color for the value of buttons (also shortcuts). */
+  UI_TIP_LC_ACTIVE,   /* Color of titles of active enum values. */
+  UI_TIP_LC_NORMAL,   /* Color of regular text. */
+  UI_TIP_LC_PYTHON,   /* Color of python snippets. */
+  UI_TIP_LC_ALERT,    /* Warning text color, eg: why operator can't run. */
+  UI_TIP_LC_MAX
+} uiTooltipColorID;
+
+void UI_but_func_tooltip_custom_set(uiBut *but,
+                                    uiButToolTipCustomFunc func,
+                                    void *arg,
+                                    uiFreeArgFunc free_arg);
+
+/**
+ * \param text: Allocated text (transfer ownership to `data`) or null.
+ * \param suffix: Allocated text (transfer ownership to `data`) or null.
+ */
+void UI_tooltip_text_field_add(struct uiTooltipData *data,
+                               char *text,
+                               char *suffix,
+                               const uiTooltipStyle style,
+                               const uiTooltipColorID color_id,
+                               const bool is_pad = false) ATTR_NONNULL(1);
+
+/**
+ * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
+ * \param image_size: Display size for the image (pixels without UI scale applied).
+ */
+void UI_tooltip_image_field_add(struct uiTooltipData *data,
+                                const struct ImBuf *image,
+                                const short image_size[2]) ATTR_NONNULL(1, 2, 3);
+
 /**
  * Recreate tool-tip (use to update dynamic tips)
  */
@@ -1864,6 +1921,9 @@ void UI_panel_header_buttons_begin(Panel *panel);
  */
 void UI_panel_header_buttons_end(Panel *panel);
 void UI_panel_end(Panel *panel, int width, int height);
+
+/** Set the name that should be drawn in the UI. Should be a translated string. */
+void UI_panel_drawname_set(Panel *panel, blender::StringRef name);
 
 /**
  * Set a context for this entire panel and its current layout. This should be used whenever panel
@@ -2404,7 +2464,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C);
 void UI_but_func_operator_search(uiBut *but);
 void uiTemplateOperatorSearch(uiLayout *layout);
 
-void UI_but_func_menu_search(uiBut *but);
+void UI_but_func_menu_search(uiBut *but, const char *single_menu_idname = nullptr);
 void uiTemplateMenuSearch(uiLayout *layout);
 
 /**

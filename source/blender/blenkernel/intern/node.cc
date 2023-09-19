@@ -1094,14 +1094,17 @@ static void ntree_blend_read_after_liblink(BlendLibReader *reader, ID *id)
   }
 }
 
-static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
+void node_update_asset_metadata(bNodeTree &node_tree)
 {
-  bNodeTree &node_tree = *static_cast<bNodeTree *>(asset_ptr);
+  AssetMetaData *asset_data = node_tree.id.asset_data;
+  if (!asset_data) {
+    return;
+  }
 
   BKE_asset_metadata_idprop_ensure(asset_data, idprop::create("type", node_tree.type).release());
   auto inputs = idprop::create_group("inputs");
   auto outputs = idprop::create_group("outputs");
-  node_tree.ensure_topology_cache();
+  node_tree.ensure_interface_cache();
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_inputs()) {
     auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
@@ -1117,6 +1120,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
                                    node_tree.geometry_node_asset_traits->flag);
     BKE_asset_metadata_idprop_ensure(asset_data, property.release());
   }
+}
+
+static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_data*/)
+{
+  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
 }
 
 }  // namespace blender::bke
@@ -1236,8 +1244,7 @@ static void node_init(const bContext *C, bNodeTree *ntree, bNode *node)
   }
 
   if (ntype->initfunc_api) {
-    PointerRNA ptr;
-    RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
 
     /* XXX WARNING: context can be nullptr in case nodes are added in do_versions.
      * Delayed init is not supported for nodes with context-based `initfunc_api` at the moment. */
@@ -1358,14 +1365,16 @@ void ntreeSetTypes(const bContext *C, bNodeTree *ntree)
   blender::bke::ntree_set_typeinfo(ntree, ntreeTypeFind(ntree->idname));
 
   for (bNode *node : ntree->all_nodes()) {
-    blender::bke::node_set_typeinfo(C, ntree, node, nodeTypeFind(node->idname));
-
+    /* Set socket typeinfo first because node initialization may rely on socket typeinfo for
+     * generating declarations. */
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
     }
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
       blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
     }
+
+    blender::bke::node_set_typeinfo(C, ntree, node, nodeTypeFind(node->idname));
   }
 }
 
@@ -2520,8 +2529,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   /* Only call copy function when a copy is made for the main database, not
    * for cases like the dependency graph and localization. */
   if (node_dst->typeinfo->copyfunc_api && !(flag & LIB_ID_CREATE_NO_MAIN)) {
-    PointerRNA ptr;
-    RNA_pointer_create(reinterpret_cast<ID *>(dst_tree), &RNA_Node, node_dst, &ptr);
+    PointerRNA ptr = RNA_pointer_create(reinterpret_cast<ID *>(dst_tree), &RNA_Node, node_dst);
 
     node_dst->typeinfo->copyfunc_api(&ptr, &node_src);
   }
@@ -3307,8 +3315,7 @@ void nodeRemoveNode(Main *bmain, bNodeTree *ntree, bNode *node, const bool do_id
   if (do_id_user) {
     /* Free callback for NodeCustomGroup. */
     if (node->typeinfo->freefunc_api) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
 
       node->typeinfo->freefunc_api(&ptr);
     }
