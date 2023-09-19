@@ -1769,9 +1769,18 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
             sub.use_property_decorate = True
             split = sub.split(factor=0.4, align=True)
             split.alignment = 'RIGHT'
-            split.label(text="Volume", text_ctxt=i18n_contexts.id_sound)
+            split.label(text="Scene Volume", text_ctxt=i18n_contexts.id_sound)
             split.prop(scene, "audio_volume", text="")
             sub.use_property_decorate = False
+
+        col = layout.column()
+
+        col.use_property_decorate = True
+        split = col.split(factor=0.4)
+        split.alignment = 'RIGHT'
+        split.label(text="Strip Volume", text_ctxt=i18n_contexts.id_sound)
+        split.prop(strip, "volume", text="")
+        col.use_property_decorate = False
 
         if strip.scene_input == 'CAMERA':
             layout = layout.column(heading="Show")
