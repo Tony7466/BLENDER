@@ -1186,6 +1186,17 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+    /* Unhide all Reroute nodes. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->is_reroute()) {
+          blender::bke::node_find_enabled_input_socket(*node, "Input")->flag &= ~SOCK_HIDDEN;
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
