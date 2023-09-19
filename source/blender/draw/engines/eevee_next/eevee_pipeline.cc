@@ -446,7 +446,8 @@ void DeferredLayer::end_sync()
 
     combine_ps_.init();
     /* Use stencil test to reject pixel not written by this layer. */
-    combine_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL | DRW_STATE_BLEND_ADD);
+    combine_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL |
+                          DRW_STATE_BLEND_ADD_FULL);
     combine_ps_.state_stencil(0x00u, 0x00u, evaluated_closures);
     combine_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_COMBINE));
     combine_ps_.bind_image("direct_diffuse_img", &direct_diffuse_tx_);
