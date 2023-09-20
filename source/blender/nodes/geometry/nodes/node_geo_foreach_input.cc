@@ -47,29 +47,3 @@ static void node_register()
 NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_geo_foreach_input_cc
-
-bool NOD_geometry_foreach_input_pair_with_output(const bNodeTree *node_tree,
-                                                 bNode *foreach_input_node,
-                                                 const bNode *foreach_output_node)
-{
-  namespace file_ns = blender::nodes::node_geo_foreach_input_cc;
-
-  BLI_assert(foreach_input_node->type == GEO_NODE_FOR_EACH_INPUT);
-  if (foreach_output_node->type != GEO_NODE_FOR_EACH_OUTPUT) {
-    return false;
-  }
-
-  /* Allow only one input paired to an output. */
-  for (const bNode *other_input_node : node_tree->nodes_by_type("GeometryNodeForEachInput")) {
-    if (other_input_node != foreach_input_node) {
-      const NodeGeometryForEachInput &other_storage = file_ns::node_storage(*other_input_node);
-      if (other_storage.output_node_id == foreach_output_node->identifier) {
-        return false;
-      }
-    }
-  }
-
-  NodeGeometryForEachInput &storage = file_ns::node_storage(*foreach_input_node);
-  storage.output_node_id = foreach_output_node->identifier;
-  return true;
-}
