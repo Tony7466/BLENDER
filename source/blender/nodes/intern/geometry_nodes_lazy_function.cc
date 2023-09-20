@@ -1394,7 +1394,9 @@ struct ZoneBodyFunction {
 
 /**
  * Wraps the execution of a repeat loop body. The purpose is to setup the correct #ComputeContext
- * inside of the loop body.
+ * inside of the loop body. This is necessary to support correct logging inside of a repeat zone.
+ * An alternative would be to use a separate `LazyFunction` for every iteration, but that would
+ * have higher overhead.
  */
 class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper {
  public:
