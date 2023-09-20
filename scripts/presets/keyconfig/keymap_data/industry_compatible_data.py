@@ -3716,6 +3716,8 @@ def km_mesh(params):
 
         ("mesh.shortest_path_pick", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("use_fill", False)]}),
+        ("mesh.shortest_path_pick", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
+         {"properties": [("use_fill", True)]}),
 
         ("mesh.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("mesh.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
@@ -4108,7 +4110,8 @@ def km_object_non_modal(params):
 
     items.extend([
         ("object.transfer_mode", {"type": 'ACCENT_GRAVE', "value": 'PRESS'}, None),
-        op_menu_pie("VIEW3D_MT_object_mode_pie", {"type": 'FOUR', "value": 'PRESS'}),
+        ("object.mode_set", {"type": 'FOUR', "value": 'PRESS'}, {"properties": [("mode", 'OBJECT')]}),
+        op_menu_pie("VIEW3D_MT_object_mode_pie", {"type": 'FIVE', "value": 'PRESS'}),
     ])
 
     return keymap
