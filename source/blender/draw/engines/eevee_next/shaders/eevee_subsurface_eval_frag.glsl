@@ -20,31 +20,6 @@
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
-vec3 burley_setup(vec3 radius, vec3 albedo)
-{
-  /* Scale albedo because we can have HDR value caused by BSDF sampling. */
-  vec3 A = albedo / max(1e-6, max_v3(albedo));
-  /* Diffuse surface transmission, equation (6). */
-  vec3 s = 1.9 - A + 3.5 * sqr(A - 0.8);
-  /* Mean free path length adapted to fit ancient Cubic and Gaussian models. */
-  vec3 l = 0.25 * M_1_PI * radius;
-
-  return l / s;
-}
-
-vec3 burley_eval(vec3 d, float r)
-{
-  /* Slide 33. */
-  vec3 exp_r_3_d = exp(-r / (3.0 * d));
-  vec3 exp_r_d = exp_r_3_d * exp_r_3_d * exp_r_3_d;
-  /* NOTE:
-   * - Surface albedo is applied at the end.
-   * - This is normalized diffuse model, so the equation is multiplied
-   *   by 2*pi, which also matches `cdf()`.
-   */
-  return (exp_r_d + exp_r_3_d) / (4.0 * d);
-}
-
 void main(void)
 {
   vec2 center_uv = uvcoordsvar.xy;
@@ -77,7 +52,9 @@ void main(void)
 
   /* Avoid too small radii that have float imprecision. */
   vec3 clamped_sss_radius = max(vec3(1e-4), gbuf.diffuse.sss_radius / max_radius) * max_radius;
-  vec3 d = burley_setup(clamped_sss_radius, gbuf.diffuse.color);
+  /* Scale albedo because we can have HDR value caused by BSDF sampling. */
+  vec3 albedo = gbuf.diffuse.color / max(1e-6, max_v3(gbuf.diffuse.color));
+  vec3 d = burley_setup(clamped_sss_radius, albedo);
 
   /* Do not rotate too much to avoid too much cache misses. */
   float golden_angle = M_PI * (3.0 - sqrt(5.0));
