@@ -156,7 +156,8 @@ void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, Mutab
 /** Build new offsets that contains only the groups chosen by \a selection. */
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
-                                           MutableSpan<int> dst_offsets);
+                                           MutableSpan<int> dst_offsets,
+                                           int start_offset = 0);
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMaskSegment mask,
                                            MutableSpan<int> dst_offsets);

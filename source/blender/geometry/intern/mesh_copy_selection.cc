@@ -4,6 +4,7 @@
 
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_listbase.h"
@@ -234,6 +235,8 @@ static void gather_vert_attributes(const Mesh &mesh_src,
                                vert_mask,
                                mesh_dst.attributes_for_write());
       });
+  // if ()
+  // array_utils::gather()
 }
 
 std::optional<Mesh *> mesh_copy_selection(
@@ -478,6 +481,8 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
       [&]() {
         bke::copy_attributes(
             src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, dst_attributes);
+        CustomData_merge(
+            &src_mesh.vert_data, &dst_mesh->vert_data, CD_MASK_ORIGINDEX, src_mesh.totvert);
         bke::gather_attributes(
             src_attributes, ATTR_DOMAIN_EDGE, propagation_info, {}, edge_mask, dst_attributes);
         bke::gather_attributes(
@@ -553,7 +558,9 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
   dst_attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
 
   bke::copy_attributes(src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, dst_attributes);
+  CustomData_merge(&src_mesh.vert_data, &dst_mesh->vert_data, CD_MASK_ORIGINDEX, src_mesh.totvert);
   bke::copy_attributes(src_attributes, ATTR_DOMAIN_EDGE, propagation_info, {}, dst_attributes);
+  CustomData_merge(&src_mesh.edge_data, &dst_mesh->edge_data, CD_MASK_ORIGINDEX, src_mesh.totedge);
   bke::gather_attributes(
       src_attributes, ATTR_DOMAIN_FACE, propagation_info, {}, face_mask, dst_attributes);
   bke::gather_attributes_group_to_group(src_attributes,

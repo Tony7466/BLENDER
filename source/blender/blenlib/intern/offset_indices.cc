@@ -50,14 +50,15 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
 
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
-                                           MutableSpan<int> dst_offsets)
+                                           MutableSpan<int> dst_offsets,
+                                           const int start_offset)
 {
   if (selection.is_empty()) {
     return {};
   }
   BLI_assert(selection.size() == (dst_offsets.size() - 1));
   gather_group_sizes(src_offsets, selection, dst_offsets);
-  return accumulate_counts_to_offsets(dst_offsets);
+  return accumulate_counts_to_offsets(dst_offsets, start_offset);
 }
 
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
