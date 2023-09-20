@@ -684,8 +684,7 @@ class GeometryComponentEditData final : public GeometryComponent {
 
 /**
  * A geometry component that stores #GreasePencil data.
- * This component does not implement an attribute API, because the #GreasePencil data itself does
- * not store any attributes, only the individual drawings within it.
+ * The attributes on this component are only on the layer domain.
  */
 class GreasePencilComponent : public GeometryComponent {
  private:
