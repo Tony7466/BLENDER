@@ -316,9 +316,9 @@ class SEQUENCER_PT_sequencer_overlay(Panel):
 
         layout.prop(overlay_settings, "show_strip_offset", text="Offsets")
         layout.prop(overlay_settings, "show_fcurves", text="F-Curves")
+        layout.prop(overlay_settings, "show_strip_retiming", text="Retiming")
         layout.prop(overlay_settings, "show_thumbnails", text="Thumbnails")
         layout.prop(overlay_settings, "show_grid", text="Grid")
-        layout.prop(overlay_settings, "show_strip_retiming", text="Retiming")
 
         layout.separator()
 
@@ -942,6 +942,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.separator()
 
         layout.operator("sequencer.retiming_segment_speed_set")
+        layout.operator("sequencer.retiming_show")
 
     def draw_retiming_context(self, context):
         layout = self.layout
@@ -959,6 +960,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.separator()
 
         layout.operator("sequencer.retiming_segment_speed_set")
+        layout.operator("sequencer.retiming_show")
 
 
     def draw(self, context):
