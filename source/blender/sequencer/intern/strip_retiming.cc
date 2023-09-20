@@ -817,7 +817,7 @@ static int seq_retiming_clamp_timeline_frame(const Scene *scene,
                                              SeqRetimingKey *key,
                                              const int timeline_frame)
 {
-  int prev_key_timeline_frame = MINFRAME;
+  int prev_key_timeline_frame = -MAXFRAME;
   int next_key_timeline_frame = MAXFRAME;
 
   if (key->strip_frame_index > 0) {
