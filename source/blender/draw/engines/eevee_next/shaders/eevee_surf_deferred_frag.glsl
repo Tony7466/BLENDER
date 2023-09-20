@@ -87,7 +87,7 @@ void main()
 
   /* ----- GBuffer output ----- */
 
-  eClosureBits header = 0u;
+  uint header = 0u;
 
   if (g_reflection_data.weight > 0.0) {
     /* Reflection. */
