@@ -389,7 +389,7 @@ static void rna_Sequence_retiming_key_frame_set(PointerRNA *ptr, int value)
 static bool rna_SequenceEditor_selected_retiming_key_get(PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
-  return SEQ_retiming_selection_get(scene).size() != 0;
+  return SEQ_retiming_selection_get(SEQ_editing_get(scene)).size() != 0;
 }
 
 static void rna_Sequence_views_format_update(Main *bmain, Scene *scene, PointerRNA *ptr)

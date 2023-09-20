@@ -294,13 +294,6 @@ typedef struct SeqTimelineChannel {
   int flag;
 } SeqTimelineChannel;
 
-typedef struct SeqRetimingKeySelection {
-  struct SeqRetimingKeySelection *next, *prev;
-  char strip_name[64]; /* SEQ_NAME_MAXSTR */
-  int index;
-  int _pad0;
-} SeqRetimingKeySelection;
-
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
 } EditingRuntime;

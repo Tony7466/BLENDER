@@ -15,4 +15,4 @@ struct Sequence;
 struct SeqRetimingKey;
 
 blender::MutableSpan<SeqRetimingKey> SEQ_retiming_keys_get(const Sequence *seq);
-blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const struct Scene *scene);
+blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const struct Editing *ed);

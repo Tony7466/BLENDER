@@ -86,7 +86,7 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
     return;
   }
 
-  const blender::Map selection = SEQ_retiming_selection_get(t->scene);
+  const blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(t->scene) );
 
   if (selection.size() == 0) {
     return;
@@ -141,7 +141,7 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     SeqRetimingKey *key = &keys[tdseq->key_index];
 
     if (SEQ_retiming_key_is_transition_type(key) &&
-        !SEQ_retiming_selection_has_whole_transition(t->scene, key))
+        !SEQ_retiming_selection_has_whole_transition(SEQ_editing_get(t->scene) , key))
     {
       seq_resize_speed_translation(t->scene, seq, key, td2d->loc[0]);
     }

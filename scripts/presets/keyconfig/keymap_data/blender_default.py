@@ -3036,7 +3036,8 @@ def km_sequencer(params):
          {"properties": [("data_path", "space_data.show_overlays")]}),
         *_template_items_context_menu("SEQUENCER_MT_context_menu", params.context_menu_event),
         op_menu("SEQUENCER_MT_retiming", {"type": 'I', "value": 'PRESS'}),
-        ("sequencer.retiming_show", {"type": 'R', "value": 'PRESS'}, None),
+        ("sequencer.retiming_segment_speed_set", {"type": 'R', "value": 'PRESS'}, None),
+        ("sequencer.retiming_show", {"type": 'R', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     return keymap

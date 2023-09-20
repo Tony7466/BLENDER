@@ -979,9 +979,8 @@ void SEQ_retiming_selection_remove(SeqRetimingKey *key)
   key->flag &= ~KEY_SELECTED;
 }
 
-blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Scene *scene)
+blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Editing *ed)
 {
-  Editing *ed = SEQ_editing_get(scene);
   blender::Map<SeqRetimingKey *, Sequence *> selection;
 
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
@@ -1006,13 +1005,13 @@ bool SEQ_retiming_selection_contains(const Editing *ed, const SeqRetimingKey *ke
   return false;
 }
 
-bool SEQ_retiming_selection_has_whole_transition(Scene *scene, SeqRetimingKey *key)
+bool SEQ_retiming_selection_has_whole_transition(const Editing *ed, SeqRetimingKey *key)
 {
   SeqRetimingKey *key_start = SEQ_retiming_transition_start_get(key);
   SeqRetimingKey *key_end = key_start + 1;
   bool has_start = false, has_end = false;
 
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(ed).items()) {
     if (item.key == key_start) {
       has_start = true;
     }

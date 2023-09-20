@@ -5951,12 +5951,6 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Transform Preview", "Show preview of the transformed frames");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 
-  prop = RNA_def_property(srna, "use_retiming_context", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_USE_RETIMING_CONTEXT);
-  RNA_def_property_ui_text(prop, "Retiming Context", "Retiming controls are activated");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-
   /* Gizmo toggles. */
   prop = RNA_def_property(srna, "show_gizmo", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "gizmo_flag", SEQ_GIZMO_HIDE);

@@ -699,7 +699,7 @@ typedef enum eSpaceSeq_RegionType {
 /** #SpaceSeq.draw_flag */
 typedef enum eSpaceSeq_DrawFlag {
   SEQ_DRAW_BACKDROP = (1 << 0),
-  SEQ_DRAW_UNUSED = (1 << 1),
+  SEQ_DRAW_UNUSED_1 = (1 << 1),
   SEQ_DRAW_TRANSFORM_PREVIEW = (1 << 2),
 } eSpaceSeq_DrawFlag;
 
@@ -709,8 +709,8 @@ typedef enum eSpaceSeq_Flag {
   SEQ_MARKER_TRANS = (1 << 1),
   SEQ_DRAW_COLOR_SEPARATED = (1 << 2),
   SEQ_CLAMP_VIEW = (1 << 3),
-  SEQ_USE_RETIMING_CONTEXT = (1 << 4),
-  SEQ_USE_RETIMING_CONTEXT_SELECTED = (1 << 5),
+  SPACE_SEQ_FLAG_UNUSED_4 = (1 << 4),
+  SPACE_SEQ_FLAG_UNUSED_5 = (1 << 5),
   SEQ_USE_ALPHA = (1 << 6), /* use RGBA display mode for preview */
   SPACE_SEQ_FLAG_UNUSED_9 = (1 << 9),
   SPACE_SEQ_FLAG_UNUSED_10 = (1 << 10),

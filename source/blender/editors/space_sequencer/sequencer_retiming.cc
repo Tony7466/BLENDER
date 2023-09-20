@@ -48,7 +48,7 @@ using blender::MutableSpan;
 bool sequencer_retiming_mode_is_active(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
-  return SEQ_retiming_selection_get(scene).size() > 0;
+  return SEQ_retiming_selection_get(SEQ_editing_get(scene)).size() > 0;
 }
 
 bool sequencer_retiming_data_is_visible(const Sequence *seq)
@@ -295,7 +295,7 @@ static bool freeze_frame_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(SEQ_editing_get(scene)).items()) {
     const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
     success |= freeze_frame_add_new_for_seq(C, op, item.value, timeline_frame, duration);
     SEQ_relations_invalidate_cache_raw(scene, item.value);
@@ -391,7 +391,7 @@ static bool transition_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(SEQ_editing_get(scene)).items()) {
     const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
     success |= transition_add_new_for_seq(C, op, item.value, timeline_frame, duration);
   }
@@ -504,7 +504,7 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
     return strip_speed_set_exec(C, op);
   }
 
-  blender::Map selection = SEQ_retiming_selection_get(scene);
+  blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(scene));
 
   /* Retiming mode. */
   if (selection.size() > 0) {
@@ -770,7 +770,7 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 
   blender::Vector<Sequence *> strips_to_handle;
 
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(SEQ_editing_get(scene)).items()) {
     strips_to_handle.append_non_duplicates(item.value);
     item.key->flag |= DELETE_KEY;
   }
