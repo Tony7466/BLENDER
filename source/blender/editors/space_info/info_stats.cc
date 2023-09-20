@@ -40,9 +40,11 @@
 #include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
+#include "BKE_curves.hh"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -197,19 +199,23 @@ static void stats_object(Object *ob,
         break;
       }
       using namespace blender;
-      GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
-      Span<GreasePencilDrawingBase *> drawings = grease_pencil->drawings();
+      const GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+      const Span<GreasePencilDrawingBase *> drawings = grease_pencil->drawings();
 
       for (int range : drawings.index_range()) {
         GreasePencilDrawingBase *drawing_base = drawings[range];
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        CurvesGeometry curves = drawing->geometry;
-        stats->totgppoint += curves.point_num;
-        stats->totgpstroke += curves.curve_num;
+        const bke::CurvesGeometry &curves = drawing->wrap().strokes();
+
+        stats->totgppoint += curves.points_num();
+        stats->totgpstroke += curves.curves_num();
+      }
+
+      for (auto layer : grease_pencil->layers()) {
+        stats->totgpframe += layer->frames().size();
       }
 
       stats->totgplayer += grease_pencil->layers().size();
-      stats->totgpframe += grease_pencil->drawing_array_num;
       break;
     }
     case OB_CURVES:
