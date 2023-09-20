@@ -57,16 +57,6 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
       }
     }
   }
-  for (const bNode *node : tree.nodes_by_type("GeometryNodeForEachInput")) {
-    const auto &storage = *static_cast<NodeGeometryForEachInput *>(node->storage);
-    if (const bNode *foreach_output_node = tree.node_by_id(storage.output_node_id)) {
-      if (bNodeTreeZone *zone = r_zone_by_inout_node.lookup_default(foreach_output_node, nullptr))
-      {
-        zone->input_node = node;
-        r_zone_by_inout_node.add(node, zone);
-      }
-    }
-  }
   return zones;
 }
 

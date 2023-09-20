@@ -1308,19 +1308,6 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
         output_node_id = 0;
         blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
       }
-      case GEO_NODE_FOR_EACH_INPUT: {
-        NodeGeometryForEachInput *data = static_cast<NodeGeometryForEachInput *>(
-            dst_node->storage);
-        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                          nullptr)) {
-          data->output_node_id = output_node->identifier;
-        }
-        else {
-          data->output_node_id = 0;
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
-      }
     }
   }
 }

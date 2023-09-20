@@ -158,19 +158,6 @@ static void remap_pairing(bNodeTree &dst_tree,
       if (output_node_id == 0) {
         blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
       }
-      case GEO_NODE_FOR_EACH_INPUT: {
-        NodeGeometryForEachInput *data = static_cast<NodeGeometryForEachInput *>(
-            dst_node->storage);
-        if (data->output_node_id == 0) {
-          continue;
-        }
-
-        data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
-        if (data->output_node_id == 0) {
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
-      }
     }
   }
 }
