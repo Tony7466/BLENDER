@@ -872,6 +872,11 @@ extern bool BLI_memory_is_zero(const void *arr, size_t arr_size);
 
 /** \} */
 
+/**
+ * Fix of bug with a function arguments inlining and passing to lambda in the last MVSC.
+ */
+#define ARGUMENT_NON_INLINE &
+
 #ifdef __cplusplus
 }
 
