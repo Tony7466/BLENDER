@@ -540,6 +540,7 @@ struct BlendThumbnail *BLO_thumbnail_from_file(const char *filepath);
  */
 short BLO_version_from_file(const char *filepath);
 
+/** Default theme, see: `release/datafiles/userdef/userdef_default_theme.c`. */
 extern const struct bTheme U_theme_default;
 /** Default preferences, defined by: `release/datafiles/userdef/userdef_default.c`. */
 extern const struct UserDef U_default;
