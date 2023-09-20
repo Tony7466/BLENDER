@@ -256,7 +256,7 @@ static OffsetIndices<int> calc_edges_by_ngon(const OffsetIndices<int> src_faces,
 static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
                                                    const Span<int> face_edges,
                                                    const int edge_offset,
-                                                   const Span<int3> tris_range,
+                                                   const Span<int3> tris,
                                                    MutableSpan<int> corner_edges,
                                                    VectorSet<OrderedEdge> &inner_edges)
 {
@@ -271,8 +271,8 @@ static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
     return edge_offset + inner_edges.index_of_or_add(edge);
   };
 
-  for (const int i : tris_range.index_range()) {
-    const int3 tri = tris_range[i];
+  for (const int i : tris.index_range()) {
+    const int3 tri = tris[i];
     corner_edges[3 * i + 0] = add_edge({tri[0], tri[1]});
     corner_edges[3 * i + 1] = add_edge({tri[1], tri[2]});
     corner_edges[3 * i + 2] = add_edge({tri[2], tri[0]});
