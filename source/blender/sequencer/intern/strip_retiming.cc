@@ -915,7 +915,9 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
       seq_retiming_key_offset(scene, seq, key, offset);
     }
   }
-  else if (orig_timeline_frame == SEQ_time_left_handle_frame_get(scene, seq) || key->strip_frame_index == 0) {
+  else if (orig_timeline_frame == SEQ_time_left_handle_frame_get(scene, seq) ||
+           key->strip_frame_index == 0)
+  {
     seq->start += offset;
     key++;
     for (; key < keys.end(); key++) {
@@ -949,7 +951,8 @@ void SEQ_retiming_key_speed_set(const Scene *scene,
   const int segment_duration = frame_retimed - frame_retimed_prev;
   const int new_duration = segment_duration * speed_fac;
 
-  const int new_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key_prev) + new_duration;
+  const int new_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key_prev) +
+                                 new_duration;
 
   SEQ_retiming_key_timeline_frame_set(scene, seq, key, new_timeline_frame);
 }

@@ -161,7 +161,11 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot)
 /** \name Retiming Add Key
  * \{ */
 
-static bool retiming_key_add_new_for_seq(bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame) {
+static bool retiming_key_add_new_for_seq(bContext *C,
+                                         wmOperator *op,
+                                         Sequence *seq,
+                                         const int timeline_frame)
+{
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(seq);
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
@@ -181,7 +185,11 @@ static bool retiming_key_add_new_for_seq(bContext *C, wmOperator *op, Sequence *
   return true;
 }
 
-static int retiming_key_add_from_selection(bContext *C, wmOperator *op, SeqCollection *strips, const int timeline_frame) {
+static int retiming_key_add_from_selection(bContext *C,
+                                           wmOperator *op,
+                                           SeqCollection *strips,
+                                           const int timeline_frame)
+{
   bool inserted = false;
 
   Sequence *seq;
@@ -228,7 +236,8 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
   SeqCollection *strips = selected_strips_from_context(C);
   if (SEQ_collection_len(strips) != 0) {
     ret_val = retiming_key_add_from_selection(C, op, strips, timeline_frame);
-  } else {
+  }
+  else {
     ret_val = retiming_key_add_to_editable_strips(C, op, timeline_frame);
   }
   SEQ_collection_free(strips);
@@ -489,7 +498,6 @@ void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
 /** \name Retiming Set Segment Speed
  * \{ */
 
-
 static SeqRetimingKey *ensure_left_and_right_keys(const bContext *C, Sequence *seq)
 {
   Scene *scene = CTX_data_scene(C);
@@ -505,7 +513,7 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
     SEQ_retiming_data_ensure(seq);
-    SeqRetimingKey *key = ensure_left_and_right_keys(C, seq); 
+    SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
 
     if (key == nullptr) {
       continue;
@@ -809,8 +817,6 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
       }
     }
   }
-
-
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;

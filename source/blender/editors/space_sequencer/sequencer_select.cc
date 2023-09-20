@@ -273,15 +273,13 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq))
-          {
+              SEQ_time_right_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq))
-          {
+              SEQ_time_left_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
@@ -978,7 +976,6 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   if (seq && element_already_selected(seq, handle_clicked) && wait_to_deselect_others && !toggle) {
     return OPERATOR_RUNNING_MODAL;
   }
-
 
   Sequence *seq_key_test = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);

@@ -307,13 +307,13 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_show(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
-void SEQUENCER_OT_retiming_transition_add (wmOperatorType *ot);
+void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
 
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
 struct SeqRetimingKey *try_to_realize_virtual_key(const struct bContext *C,
-                                                     struct Sequence *seq,
-                                                     const int mval[2]);
+                                                  struct Sequence *seq,
+                                                  const int mval[2]);
 struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
                                                  const int mval[2],
                                                  Sequence **r_seq);

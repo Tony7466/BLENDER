@@ -38,8 +38,8 @@
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.hh"
 #include "ED_sequencer.hh"
+#include "ED_view3d.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -169,12 +169,14 @@ int right_fake_key_frame_get(const bContext *C, const Sequence *seq)
   return min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
-static bool retiming_right_fake_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
+static bool retiming_right_fake_key_is_clicked(const bContext *C,
+                                               const Sequence *seq,
+                                               const int mval[2])
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   rctf box = keys_box_get(C, seq);
-  box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD; 
+  box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD;
   if (!mouse_is_inside_box(&box, mval)) {
     return false;
   }
@@ -184,7 +186,9 @@ static bool retiming_right_fake_key_is_clicked(const bContext *C, const Sequence
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-static bool retiming_left_fake_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
+static bool retiming_left_fake_key_is_clicked(const bContext *C,
+                                              const Sequence *seq,
+                                              const int mval[2])
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
 
@@ -199,9 +203,7 @@ static bool retiming_left_fake_key_is_clicked(const bContext *C, const Sequence 
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-SeqRetimingKey *try_to_realize_virtual_key(const bContext *C,
-                                    Sequence *seq,
-                                    const int mval[2])
+SeqRetimingKey *try_to_realize_virtual_key(const bContext *C, Sequence *seq, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
   SeqRetimingKey *key = nullptr;
@@ -319,8 +321,8 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
                                   v2d, SEQ_time_right_handle_frame_get(scene, seq)) -
                               (size / 2);
   const float left_pos_min = UI_view2d_view_to_region_x(
-                                  v2d, SEQ_time_left_handle_frame_get(scene, seq)) +
-                              (size / 2);
+                                 v2d, SEQ_time_left_handle_frame_get(scene, seq)) +
+                             (size / 2);
   float key_position = UI_view2d_view_to_region_x(v2d, key_x);
   CLAMP(key_position, left_pos_min, right_pos_max);
   const float alpha = sequencer_retiming_data_is_editable(seq) ? 1.0f : 0.3f;
@@ -347,7 +349,9 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   const Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
 
-  if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq) || key->strip_frame_index == 0) {
+  if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq) ||
+      key->strip_frame_index == 0)
+  {
     return;
   }
 
@@ -387,7 +391,8 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
 
 /* If there are no keys, draw fake keys and create real key when they are selected. */
 /* TODO: would be nice to draw continuity between fake keys. */
-static void fake_keys_draw(const bContext *C, Sequence *seq) {
+static void fake_keys_draw(const bContext *C, Sequence *seq)
+{
   if (!SEQ_retiming_is_active(seq) && !sequencer_retiming_data_is_editable(seq)) {
     return;
   }
