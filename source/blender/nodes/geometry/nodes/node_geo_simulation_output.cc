@@ -853,6 +853,7 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   const bNode *node = static_cast<bNode *>(ptr->data);
+  Scene *scene = CTX_data_scene(C);
   SpaceNode *snode = CTX_wm_space_node(C);
   if (snode == nullptr) {
     return;
@@ -891,6 +892,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
   PointerRNA bake_rna = RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake);
 
+  const std::optional<IndexRange> simulation_range = bke::bake::get_node_bake_frame_range(
+      *scene, *object, nmd, *bake_id);
+
   std::optional<IndexRange> baked_range;
   if (nmd.runtime->cache) {
     const bke::bake::ModifierCache &cache = *nmd.runtime->cache;
@@ -917,10 +921,18 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayout *col = uiLayoutColumn(layout, false);
     uiLayout *row = uiLayoutRow(col, true);
     {
+      char bake_label[1024] = N_("Bake");
+      if (simulation_range.has_value()) {
+        SNPRINTF(bake_label,
+                 N_("Bake %d - %d"),
+                 int(simulation_range->first()),
+                 int(simulation_range->last()));
+      }
+
       PointerRNA ptr;
       uiItemFullO(row,
                   "OBJECT_OT_geometry_nodes_bake_node",
-                  "Bake",
+                  bake_label,
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
@@ -945,10 +957,12 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       RNA_int_set(&ptr, "bake_id", bake->id);
     }
     if (is_baked) {
-      char baked_label[1024];
-      SNPRINTF(
-          baked_label, N_("Baked %d - %d"), int(baked_range->first()), int(baked_range->last()));
-      uiItemL(layout, baked_label, ICON_NONE);
+      char baked_range_label[1024];
+      SNPRINTF(baked_range_label,
+               N_("Baked %d - %d"),
+               int(baked_range->first()),
+               int(baked_range->last()));
+      uiItemL(layout, baked_range_label, ICON_NONE);
     }
   }
   {
