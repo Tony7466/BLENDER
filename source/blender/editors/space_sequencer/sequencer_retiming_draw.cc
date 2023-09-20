@@ -155,21 +155,69 @@ static bool mouse_is_inside_box(const rctf *box, const int mval[2])
          mval[1] <= box->ymax;
 }
 
-bool retiming_last_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
+int left_fake_key_frame_get(const bContext *C, const Sequence *seq)
 {
   const Scene *scene = CTX_data_scene(C);
+  const int content_start = SEQ_time_start_frame_get(seq);
+  return max_ii(content_start, SEQ_time_left_handle_frame_get(scene, seq));
+}
+
+int right_fake_key_frame_get(const bContext *C, const Sequence *seq)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const int content_end = SEQ_time_content_end_frame_get(scene, seq);
+  return min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
+}
+
+static bool retiming_right_fake_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
+{
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   rctf box = keys_box_get(C, seq);
-  box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD; /* Fix selecting last key. */
+  box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD; 
   if (!mouse_is_inside_box(&box, mval)) {
     return false;
   }
 
-  const float right_handle_pos = UI_view2d_view_to_region_x(
-      v2d, SEQ_time_right_handle_frame_get(scene, seq));
-  const float distance = fabs(right_handle_pos - mval[0]);
+  const float key_pos = UI_view2d_view_to_region_x(v2d, right_fake_key_frame_get(C, seq));
+  const float distance = fabs(key_pos - mval[0]);
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
+}
+
+static bool retiming_left_fake_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
+{
+  const View2D *v2d = UI_view2d_fromcontext(C);
+
+  rctf box = keys_box_get(C, seq);
+  box.xmax -= RETIME_KEY_MOUSEOVER_THRESHOLD;
+  if (!mouse_is_inside_box(&box, mval)) {
+    return false;
+  }
+
+  const float key_pos = UI_view2d_view_to_region_x(v2d, left_fake_key_frame_get(C, seq));
+  const float distance = fabs(key_pos - mval[0]);
+  return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
+}
+
+SeqRetimingKey *try_to_realize_virtual_key(const bContext *C,
+                                    Sequence *seq,
+                                    const int mval[2])
+{
+  Scene *scene = CTX_data_scene(C);
+  SeqRetimingKey *key = nullptr;
+
+  if (retiming_left_fake_key_is_clicked(C, seq, mval)) {
+    SEQ_retiming_data_ensure(seq);
+    int frame = SEQ_time_left_handle_frame_get(scene, seq);
+    key = SEQ_retiming_add_key(scene, seq, frame);
+  }
+  if (retiming_right_fake_key_is_clicked(C, seq, mval)) {
+    SEQ_retiming_data_ensure(seq);
+    const int frame = SEQ_time_right_handle_frame_get(scene, seq);
+    key = SEQ_retiming_add_key(scene, seq, frame);
+  }
+
+  return key;
 }
 
 static SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
@@ -299,7 +347,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   const Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
 
-  if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq)) {
+  if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq) || key->strip_frame_index == 0) {
     return;
   }
 
@@ -337,9 +385,36 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   GPU_blend(GPU_BLEND_NONE);
 }
 
+/* If there are no keys, draw fake keys and create real key when they are selected. */
+/* TODO: would be nice to draw continuity between fake keys. */
+static void fake_keys_draw(const bContext *C, Sequence *seq) {
+  if (!SEQ_retiming_is_active(seq) && !sequencer_retiming_data_is_editable(seq)) {
+    return;
+  }
+
+  const Scene *scene = CTX_data_scene(C);
+  const int left_key_frame = left_fake_key_frame_get(C, seq);
+  const int right_key_frame = right_fake_key_frame_get(C, seq);
+
+  if (SEQ_retiming_key_get_by_timeline_frame(scene, seq, left_key_frame) == nullptr) {
+    SeqRetimingKey fake_key;
+    fake_key.strip_frame_index = left_key_frame - SEQ_time_start_frame_get(seq);
+    fake_key.flag = 0;
+    retime_key_draw(C, seq, &fake_key);
+  }
+
+  if (SEQ_retiming_key_get_by_timeline_frame(scene, seq, right_key_frame) == nullptr) {
+    SeqRetimingKey fake_key;
+    fake_key.strip_frame_index = right_key_frame - SEQ_time_start_frame_get(seq);
+    fake_key.flag = 0;
+    retime_key_draw(C, seq, &fake_key);
+  }
+}
+
 static void retime_keys_draw(const bContext *C)
 {
   const SpaceSeq *sseq = CTX_wm_space_seq(C);
+
   if (!sequencer_retiming_mode_is_active(C) &&
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) == 0)
   {
@@ -353,22 +428,12 @@ static void retime_keys_draw(const bContext *C)
       continue;
     }
 
-    blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
+    fake_keys_draw(C, seq);
 
-    /* If there are no keys, draw fake keys and create real key when it is selected. */
-    if (keys.size() == 0 && sequencer_retiming_data_is_editable(seq)) {
-      SeqRetimingKey fake_key;
-      fake_key.strip_frame_index = SEQ_time_strip_length_get(CTX_data_scene(C), seq);
-      fake_key.flag = 0;
-      draw_continuity(C, seq, &fake_key);
-      retime_key_draw(C, seq, &fake_key);
-      continue;
-    }
-
-    for (const SeqRetimingKey &key : keys) {
+    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       draw_continuity(C, seq, &key);
     }
-    for (const SeqRetimingKey &key : keys) {
+    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       retime_key_draw(C, seq, &key);
     }
   }

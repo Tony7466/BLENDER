@@ -51,11 +51,6 @@ bool sequencer_retiming_mode_is_active(const bContext *C)
   return SEQ_retiming_selection_get(SEQ_editing_get(scene)).size() > 0;
 }
 
-bool sequencer_retiming_data_is_editable(const Sequence *seq)
-{
-  return seq->flag & SEQ_SHOW_RETIMING;
-}
-
 /*-------------------------------------------------------------------- */
 /** \name Retiming Data Show
  * \{ */
@@ -168,7 +163,7 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot)
 
 static bool retiming_key_add_new_for_seq(bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame) {
   Scene *scene = CTX_data_scene(C);
-  SEQ_retiming_data_ensure(scene, seq);
+  SEQ_retiming_data_ensure(seq);
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
   const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
 
@@ -280,7 +275,8 @@ static bool freeze_frame_add_new_for_seq(const bContext *C,
                                          const int duration)
 {
   Scene *scene = CTX_data_scene(C);
-  SEQ_retiming_data_ensure(scene, seq);
+  SEQ_retiming_data_ensure(seq);
+  // ensure L+R key
   SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   if (key == nullptr) {
@@ -403,7 +399,8 @@ static bool transition_add_new_for_seq(const bContext *C,
                                        const int duration)
 {
   Scene *scene = CTX_data_scene(C);
-  SEQ_retiming_data_ensure(scene, seq);
+
+  // ensure L+R key
   SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   if (key == nullptr) {
@@ -492,6 +489,14 @@ void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
 /** \name Retiming Set Segment Speed
  * \{ */
 
+
+static SeqRetimingKey *ensure_left_and_right_keys(const bContext *C, Sequence *seq)
+{
+  Scene *scene = CTX_data_scene(C);
+  SEQ_retiming_add_key(scene, seq, left_fake_key_frame_get(C, seq));
+  return SEQ_retiming_add_key(scene, seq, right_fake_key_frame_get(C, seq));
+}
+
 static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -499,16 +504,13 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    if (SEQ_retiming_is_active(seq)) {
-      /* TODO: Can't modify retimed strips with simple logic, probably even with complex logic. */
-      continue;
-    }
-    SEQ_retiming_data_ensure(scene, seq);
-    SeqRetimingKey *key = SEQ_retiming_ensure_last_key(scene, seq);
+    SEQ_retiming_data_ensure(seq);
+    SeqRetimingKey *key = ensure_left_and_right_keys(C, seq); 
 
     if (key == nullptr) {
       continue;
     }
+    /* TODO: it would be nice to multiply speed with complex retiming by a factor. */
     SEQ_retiming_key_speed_set(scene, seq, key, RNA_float_get(op->ptr, "speed"));
   }
   SEQ_collection_free(strips);
@@ -626,10 +628,9 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   Sequence *seq_key_owner = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
 
-  /* Realize "fake" key, since it is clicked on. */
-  if (seq_key_owner != nullptr && retiming_last_key_is_clicked(C, seq_key_owner, mval)) {
-    SEQ_retiming_data_ensure(scene, seq_key_owner);
-    key = SEQ_retiming_last_key_get(seq_key_owner);
+  /* Try to realize "fake" key, since it is clicked on. */
+  if (key == nullptr && seq_key_owner != nullptr) {
+    key = try_to_realize_virtual_key(C, seq_key_owner, mval);
   }
 
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
@@ -660,9 +661,26 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
+static void realize_fake_keys_in_rect(bContext *C, Sequence *seq, rctf &rectf)
+{
+  const Scene *scene = CTX_data_scene(C);
+
+  const int content_start = SEQ_time_start_frame_get(seq);
+  const int left_key_frame = max_ii(content_start, SEQ_time_left_handle_frame_get(scene, seq));
+  const int content_end = SEQ_time_content_end_frame_get(scene, seq);
+  const int right_key_frame = min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
+
+  /* Realize "fake" keys. */
+  if (left_key_frame > rectf.xmin && left_key_frame < rectf.xmax) {
+    SEQ_retiming_add_key(scene, seq, left_key_frame);
+  }
+  if (right_key_frame > rectf.xmin && right_key_frame < rectf.xmax) {
+    SEQ_retiming_add_key(scene, seq, right_key_frame);
+  }
+}
+
 int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 {
-
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -691,12 +709,7 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
     if (!sequencer_retiming_data_is_editable(seq)) {
       continue;
     }
-    /* Realize "fake" key, since it is clicked on. */
-    if (!SEQ_retiming_is_active(seq) && SEQ_time_content_end_frame_get(scene, seq) > rectf.xmin &&
-        SEQ_time_content_end_frame_get(scene, seq) < rectf.xmax)
-    {
-      SEQ_retiming_data_ensure(scene, seq);
-    }
+    realize_fake_keys_in_rect(C, seq, rectf);
 
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, &key);

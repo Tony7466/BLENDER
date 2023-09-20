@@ -18,8 +18,7 @@ struct SeqRetimingKey;
 
 int SEQ_retiming_keys_count(const struct Sequence *seq);
 bool SEQ_retiming_is_active(const struct Sequence *seq);
-SeqRetimingKey *SEQ_retiming_ensure_last_key(const struct Scene *scene, struct Sequence *seq);
-void SEQ_retiming_data_ensure(const struct Scene *scene, struct Sequence *seq);
+void SEQ_retiming_data_ensure(struct Sequence *seq);
 void SEQ_retiming_data_clear(struct Sequence *seq);
 bool SEQ_retiming_is_allowed(const struct Sequence *seq);
 
@@ -78,6 +77,8 @@ void SEQ_retiming_selection_append(struct SeqRetimingKey *key);
 void SEQ_retiming_selection_remove(struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_contains(const struct Editing *ed, const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_has_whole_transition(const struct Editing *ed, struct SeqRetimingKey *key);
+bool sequencer_retiming_data_is_editable(const struct Sequence *seq);
+
 #ifdef __cplusplus
 }
 #endif

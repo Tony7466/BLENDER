@@ -675,7 +675,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   const int content_length = SEQ_time_strip_length_get(scene, seq);
 
-  SEQ_retiming_data_ensure(scene, seq);
+  SEQ_retiming_data_ensure(seq);
 
   SeqRetimingKey *key = &seq->retiming_keys[seq->retiming_keys_num - 1];
   key->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);

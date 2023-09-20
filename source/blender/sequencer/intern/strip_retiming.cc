@@ -102,26 +102,13 @@ int SEQ_retiming_keys_count(const Sequence *seq)
   return seq->retiming_keys_num;
 }
 
-SeqRetimingKey *SEQ_retiming_ensure_last_key(const Scene *scene, Sequence *seq)
-{
-  if (!SEQ_retiming_is_allowed(seq)) {
-    return nullptr;
-  }
-  if (seq->retiming_keys == nullptr) {
-    return nullptr;
-  }
-
-  return SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
-}
-
-void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
+void SEQ_retiming_data_ensure(Sequence *seq)
 {
   if (!SEQ_retiming_is_allowed(seq)) {
     return;
   }
 
   if (SEQ_retiming_is_active(seq)) {
-    SEQ_retiming_ensure_last_key(scene, seq);
     return;
   }
 
@@ -130,8 +117,6 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
   key->strip_frame_index = seq->len;
   key->retiming_factor = 1.0f;
   seq->retiming_keys_num = 2;
-
-  SEQ_retiming_ensure_last_key(scene, seq);
 }
 
 void SEQ_retiming_data_clear(Sequence *seq)
@@ -143,6 +128,11 @@ void SEQ_retiming_data_clear(Sequence *seq)
 bool SEQ_retiming_is_active(const Sequence *seq)
 {
   return seq->retiming_keys_num > 1;
+}
+
+bool sequencer_retiming_data_is_editable(const Sequence *seq)
+{
+  return seq->flag & SEQ_SHOW_RETIMING;
 }
 
 bool SEQ_retiming_is_allowed(const Sequence *seq)
@@ -833,7 +823,7 @@ static int seq_retiming_clamp_timeline_frame(const Scene *scene,
 
   if (key->strip_frame_index > 0) {
     SeqRetimingKey *prev_key = key - 1;
-    const int prev_key_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, prev_key);
+    prev_key_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, prev_key);
   }
 
   if (!SEQ_retiming_is_last_key(seq, key)) {
@@ -925,7 +915,7 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
       seq_retiming_key_offset(scene, seq, key, offset);
     }
   }
-  else if (orig_timeline_frame == SEQ_time_left_handle_frame_get(scene, seq)) {
+  else if (orig_timeline_frame == SEQ_time_left_handle_frame_get(scene, seq) || key->strip_frame_index == 0) {
     seq->start += offset;
     key++;
     for (; key < keys.end(); key++) {
@@ -959,9 +949,9 @@ void SEQ_retiming_key_speed_set(const Scene *scene,
   const int segment_duration = frame_retimed - frame_retimed_prev;
   const int new_duration = segment_duration * speed_fac;
 
-  const int offset = (key_prev->strip_frame_index + new_duration) - key->strip_frame_index;
+  const int new_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key_prev) + new_duration;
 
-  seq_retiming_key_offset(scene, seq, key, offset);
+  SEQ_retiming_key_timeline_frame_set(scene, seq, key, new_timeline_frame);
 }
 
 bool SEQ_retiming_selection_clear(const Editing *ed)

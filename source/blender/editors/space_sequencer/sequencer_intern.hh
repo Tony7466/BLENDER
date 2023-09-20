@@ -311,10 +311,9 @@ void SEQUENCER_OT_retiming_transition_add (wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
 
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
-bool retiming_last_key_is_clicked(const struct bContext *C,
-                                  const struct Sequence *seq,
-                                  const int mval[2]);
-
+struct SeqRetimingKey *try_to_realize_virtual_key(const struct bContext *C,
+                                                     struct Sequence *seq,
+                                                     const int mval[2]);
 struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
                                                  const int mval[2],
                                                  Sequence **r_seq);
@@ -325,3 +324,5 @@ int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
 int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
 int sequencer_retiming_select_all_exec(struct bContext *C, struct wmOperator *op);
 int sequencer_retiming_box_select_exec(struct bContext *C, struct wmOperator *op);
+int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
+int right_fake_key_frame_get(const bContext *C, const Sequence *seq);

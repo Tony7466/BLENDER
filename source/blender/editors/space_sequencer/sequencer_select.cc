@@ -988,9 +988,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   {
 
     /* Realize "fake" key, if it is clicked on. */
-    if (seq_key_test != nullptr && retiming_last_key_is_clicked(C, seq_key_test, mval)) {
-      SEQ_retiming_data_ensure(scene, seq_key_test);
-      key = SEQ_retiming_last_key_get(seq_key_test);
+    if (key == nullptr && seq_key_test != nullptr) {
+      key = try_to_realize_virtual_key(C, seq_key_test, mval);
     }
 
     bool retiming_key_clicked = (key != nullptr);
