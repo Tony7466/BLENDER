@@ -390,8 +390,12 @@ static ImBuf *brush_painter_imbuf_new(
   if (brush->imagepaint_tool == PAINT_TOOL_DRAW) {
     paint_brush_color_get(
         scene, brush, use_color_correction, cache->invert, distance, pressure, brush_rgb, display);
-    if (use_float) {
-      srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+    /* Non-Color colorspace for float images would result in untouched sRGB (use_color_correction
+     * is false in that case) brush colors, need to be linear though. */
+    if (use_float && !use_color_correction) {
+      if (tile->canvas->colormanage_flag & IMB_COLORMANAGE_IS_DATA) {
+        srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+      }
     }
   }
   else {
@@ -477,8 +481,12 @@ static void brush_painter_imbuf_update(BrushPainter *painter,
   if (brush->imagepaint_tool == PAINT_TOOL_DRAW) {
     paint_brush_color_get(
         scene, brush, use_color_correction, cache->invert, 0.0f, 1.0f, brush_rgb, display);
-    if (use_float) {
-      srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+    /* Non-Color colorspace for float images would result in untouched sRGB (use_color_correction
+     * is false in that case) brush colors, need to be linear though. */
+    if (use_float && !use_color_correction) {
+      if (tile->canvas->colormanage_flag & IMB_COLORMANAGE_IS_DATA) {
+        srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+      }
     }
   }
   else {
