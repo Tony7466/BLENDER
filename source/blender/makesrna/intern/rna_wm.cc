@@ -655,7 +655,6 @@ static int rna_Event_ascii_length(PointerRNA *ptr)
 
 static void rna_Event_unicode_get(PointerRNA *ptr, char *value)
 {
-  /* utf8 buf isn't \0 terminated */
   const wmEvent *event = static_cast<wmEvent *>(ptr->data);
   size_t len = 0;
 
@@ -670,15 +669,18 @@ static void rna_Event_unicode_get(PointerRNA *ptr, char *value)
 
 static int rna_Event_unicode_length(PointerRNA *ptr)
 {
-
   const wmEvent *event = static_cast<wmEvent *>(ptr->data);
+  int len = 0;
   if (event->utf8_buf[0]) {
-    /* invalid value is checked on assignment so we don't need to account for this */
-    return BLI_str_utf8_size(event->utf8_buf);
+    len = BLI_str_utf8_size_or_error(event->utf8_buf);
+    if (len == -1) {
+      /* Even though this is documented as always being a valid UTF8 sequence,
+       * assert instead of returning a negative length if it is. */
+      BLI_assert_unreachable();
+      len = 0;
+    }
   }
-  else {
-    return 0;
-  }
+  return len;
 }
 
 static bool rna_Event_is_repeat_get(PointerRNA *ptr)
@@ -2862,7 +2864,7 @@ static void rna_def_keyconfig(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Expanded", "Show key map event and property details in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
-  RNA_def_property_update(prop, 0, "rna_KeyMapItem_update");
+  /* Display only, no need to call `rna_KeyMapItem_update`. */
 
   prop = RNA_def_property(srna, "propvalue", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "propvalue");

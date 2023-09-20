@@ -791,7 +791,7 @@ static void wm_file_read_post(bContext *C,
 
 #ifndef WITH_HEADLESS
   if (!G.background) {
-      WM_redraw_windows(C);
+    WM_redraw_windows(C);
   }
 #endif /* WITH_HEADLESS */
 
@@ -1214,6 +1214,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
       bf_reports.duration.whole = PIL_check_seconds_timer() - bf_reports.duration.whole;
       file_read_reports_finalize(&bf_reports);
+
       WM_cursor_wait(true);
       success = true;
     }
