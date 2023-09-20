@@ -72,17 +72,28 @@ class PointCloudFieldContext : public fn::FieldContext {
   }
 };
 
-class GreasePencilFieldContext : public fn::FieldContext {
+class GreasePencilLayerFieldContext : public fn::FieldContext {
  private:
   const GreasePencil &grease_pencil_;
+  const eAttrDomain domain_;
+  const int layer_index_;
 
  public:
-  GreasePencilFieldContext(const GreasePencil &pointcloud) : grease_pencil_(pointcloud) {}
+  GreasePencilLayerFieldContext(const GreasePencil &grease_pencil,
+                                eAttrDomain domain,
+                                int layer_index)
+      : grease_pencil_(grease_pencil), domain_(domain), layer_index_(layer_index)
+  {
+  }
 
   const GreasePencil &grease_pencil() const
   {
     return grease_pencil_;
   }
+
+  GVArray get_varray_for_input(const fn::FieldInput &field_input,
+                               const IndexMask &mask,
+                               ResourceScope & /*scope*/) const;
 };
 
 class InstancesFieldContext : public fn::FieldContext {
