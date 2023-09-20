@@ -828,9 +828,13 @@ static int seq_retiming_clamp_timeline_frame(const Scene *scene,
                                              SeqRetimingKey *key,
                                              const int timeline_frame)
 {
-  SeqRetimingKey *prev_key = key - 1;
-  const int prev_key_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, prev_key);
+  int prev_key_timeline_frame = MINFRAME;
   int next_key_timeline_frame = MAXFRAME;
+
+  if (key->strip_frame_index > 0) {
+    SeqRetimingKey *prev_key = key - 1;
+    const int prev_key_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, prev_key);
+  }
 
   if (!SEQ_retiming_is_last_key(seq, key)) {
     SeqRetimingKey *next_key = key + 1;
@@ -849,8 +853,7 @@ static int seq_retiming_clamp_timeline_frame(const Scene *scene,
   return clamped_timeline_frame;
 }
 
-/* Key affected transitions: remove and re-create transition. This way transition won't change
- * length.
+/* Remove and re-create transition. This way transition won't change length.
  * Alternative solution is to find where in arc segment the `y` value is closest to key
  * retiming factor, then trim transition to that point. This would change transition length. */
 
@@ -916,10 +919,17 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
       scene, seq, key, timeline_frame);
   const int offset = clamped_timeline_frame - orig_timeline_frame;
 
+  MutableSpan keys = SEQ_retiming_keys_get(seq);
   if (orig_timeline_frame == SEQ_time_right_handle_frame_get(scene, seq)) {
-    MutableSpan keys = SEQ_retiming_keys_get(seq);
     for (; key < keys.end(); key++) {
       seq_retiming_key_offset(scene, seq, key, offset);
+    }
+  }
+  else if (orig_timeline_frame == SEQ_time_left_handle_frame_get(scene, seq)) {
+    seq->start += offset;
+    key++;
+    for (; key < keys.end(); key++) {
+      seq_retiming_key_offset(scene, seq, key, -offset);
     }
   }
   else {

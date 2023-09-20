@@ -124,7 +124,9 @@ typedef enum eSeqRetimingKeyFlag {
   FREEZE_FRAME_IN = (1 << 2),
   FREEZE_FRAME_OUT = (1 << 3),
   DELETE_KEY = (1 << 4),
-  KEY_SELECTED = (1 << 4),
+  KEY_SELECTED = (1 << 5),
+  /* Fake key used for drawing and selection when strip is resized. */
+  KEY_IS_VIRTUAL = (1 << 6), 
 } eSeqRetimingKeyFlag;
 
 typedef struct SeqRetimingKey {

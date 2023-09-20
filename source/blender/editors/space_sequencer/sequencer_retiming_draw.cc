@@ -197,7 +197,6 @@ static SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
 
 SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq)
 {
-  const Scene *scene = CTX_data_scene(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
 
     rctf box = keys_box_get(C, seq);
@@ -216,12 +215,6 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
       continue;
     }
 
-    if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq) ||
-        SEQ_retiming_key_index_get(seq, key) == 0)
-    {
-      continue;
-    }
-
     return key;
   }
 
@@ -236,10 +229,6 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
 {
   const Scene *scene = CTX_data_scene(C);
   const float key_x = key_x_get(scene, seq, key);
-
-  if (key_x == SEQ_time_left_handle_frame_get(scene, seq)) {
-    return;
-  }
 
   const View2D *v2d = UI_view2d_fromcontext(C);
   const rctf strip_box = strip_box_get(C, seq);
@@ -281,16 +270,20 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
   const float right_pos_max = UI_view2d_view_to_region_x(
                                   v2d, SEQ_time_right_handle_frame_get(scene, seq)) -
                               (size / 2);
+  const float left_pos_min = UI_view2d_view_to_region_x(
+                                  v2d, SEQ_time_left_handle_frame_get(scene, seq)) +
+                              (size / 2);
   float key_position = UI_view2d_view_to_region_x(v2d, key_x);
-  key_position = min_ff(key_position, right_pos_max);
+  CLAMP(key_position, left_pos_min, right_pos_max);
+  const float alpha = sequencer_retiming_data_is_editable(seq) ? 1.0f : 0.3f;
 
   draw_keyframe_shape(key_position,
                       bottom,
                       size,
-                      is_selected && sequencer_retiming_data_is_visible(seq),
+                      is_selected && sequencer_retiming_data_is_editable(seq),
                       key_type,
                       KEYFRAME_SHAPE_BOTH,
-                      1,
+                      alpha,
                       &sh_bindings,
                       0,
                       0);
@@ -305,6 +298,10 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   const View2D *v2d = UI_view2d_fromcontext(C);
   const Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
+
+  if (key_x_get(scene, seq, key) == SEQ_time_left_handle_frame_get(scene, seq)) {
+    return;
+  }
 
   const float left_handle_position = UI_view2d_view_to_region_x(
       v2d, SEQ_time_left_handle_frame_get(scene, seq));
@@ -327,7 +324,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (sequencer_retiming_data_is_visible(seq) &&
+  if (sequencer_retiming_data_is_editable(seq) &&
       (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)))
   {
     immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
@@ -336,32 +333,6 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
     immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
   }
   immRectf(pos, prev_key_position, bottom, key_position, top);
-  immUnbindProgram();
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-static void draw_backdrop(const bContext *C, const Sequence *seq)
-{
-  if (!sequencer_retiming_data_is_visible(seq)) {
-    return;
-  }
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
-
-  const float start = UI_view2d_view_to_region_x(v2d, SEQ_time_left_handle_frame_get(scene, seq));
-  const float end = UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
-
-  const int size = KEY_SIZE;
-  const float y_center = KEY_CENTER;
-  const float bottom = y_center - size / 2;
-  const float top = y_center + size / 2;
-
-  GPU_blend(GPU_BLEND_ALPHA);
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.3f);
-  immRectf(pos, start, bottom, end, top);
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
 }
@@ -381,16 +352,11 @@ static void retime_keys_draw(const bContext *C)
     if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
-    if (!sequencer_retiming_data_is_visible(seq)) {
-      continue;
-    }
-
-    draw_backdrop(C, seq);
 
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
 
-    /* If there are no keys, draw fake one and create real key when it is clicked. */
-    if (sequencer_retiming_data_is_visible(seq) && keys.size() == 0) {
+    /* If there are no keys, draw fake keys and create real key when it is selected. */
+    if (keys.size() == 0 && sequencer_retiming_data_is_editable(seq)) {
       SeqRetimingKey fake_key;
       fake_key.strip_frame_index = SEQ_time_strip_length_get(CTX_data_scene(C), seq);
       fake_key.flag = 0;
@@ -400,15 +366,9 @@ static void retime_keys_draw(const bContext *C)
     }
 
     for (const SeqRetimingKey &key : keys) {
-      if (&key == keys.begin()) {
-        continue; /* Ignore first key. */
-      }
       draw_continuity(C, seq, &key);
     }
     for (const SeqRetimingKey &key : keys) {
-      if (&key == keys.begin()) {
-        continue; /* Ignore first key. */
-      }
       retime_key_draw(C, seq, &key);
     }
   }

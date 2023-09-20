@@ -983,7 +983,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   Sequence *seq_key_test = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
 
-  if (seq_key_test && sequencer_retiming_data_is_visible(seq_key_test) &&
+  if (seq_key_test && sequencer_retiming_data_is_editable(seq_key_test) &&
       !sequencer_retiming_mode_is_active(C))
   {
 

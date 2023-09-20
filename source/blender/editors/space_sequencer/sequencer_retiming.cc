@@ -51,7 +51,7 @@ bool sequencer_retiming_mode_is_active(const bContext *C)
   return SEQ_retiming_selection_get(SEQ_editing_get(scene)).size() > 0;
 }
 
-bool sequencer_retiming_data_is_visible(const Sequence *seq)
+bool sequencer_retiming_data_is_editable(const Sequence *seq)
 {
   return seq->flag & SEQ_SHOW_RETIMING;
 }
@@ -69,7 +69,7 @@ static int sequencer_retiming_data_show_exec(bContext *C, wmOperator * /* op */)
     if ((seq->flag & SELECT) == 0) {
       continue;
     }
-    if (!sequencer_retiming_data_is_visible(seq)) {
+    if (!sequencer_retiming_data_is_editable(seq)) {
       seq->flag |= SEQ_SHOW_RETIMING;
     }
     else {
@@ -166,6 +166,57 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot)
 /** \name Retiming Add Key
  * \{ */
 
+static bool retiming_key_add_new_for_seq(bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame) {
+  Scene *scene = CTX_data_scene(C);
+  SEQ_retiming_data_ensure(scene, seq);
+  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
+  const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
+
+  if (SEQ_retiming_key_is_transition_start(key)) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
+    return false;
+  }
+
+  const float end_frame = seq->start + SEQ_time_strip_length_get(scene, seq);
+  if (seq->start > timeline_frame || end_frame < timeline_frame) {
+    return false;
+  }
+
+  SEQ_retiming_add_key(scene, seq, timeline_frame);
+  return true;
+}
+
+static int retiming_key_add_from_selection(bContext *C, wmOperator *op, SeqCollection *strips, const int timeline_frame) {
+  bool inserted = false;
+
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    inserted |= retiming_key_add_new_for_seq(C, op, seq, timeline_frame);
+  }
+
+  return inserted ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
+static int retiming_key_add_to_editable_strips(bContext *C,
+                                               wmOperator *op,
+                                               const int timeline_frame)
+{
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+  bool inserted = false;
+
+  blender::Map selection = SEQ_retiming_selection_get(ed);
+  if (selection.size() == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  for (Sequence *seq : selection.values()) {
+    inserted |= retiming_key_add_new_for_seq(C, op, seq, timeline_frame);
+  }
+
+  return inserted ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
 static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -178,31 +229,17 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
     timeline_frame = BKE_scene_frame_get(scene);
   }
 
-  bool inserted = false;
-
+  int ret_val;
   SeqCollection *strips = selected_strips_from_context(C);
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
-    SEQ_retiming_data_ensure(scene, seq);
-    const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
-    const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
-
-    if (SEQ_retiming_key_is_transition_start(key)) {
-      BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
-      continue;
-    }
-
-    const float end_frame = seq->start + SEQ_time_strip_length_get(scene, seq);
-    if (seq->start < timeline_frame && end_frame > timeline_frame) {
-      SEQ_retiming_add_key(scene, seq, timeline_frame);
-      inserted = true;
-    }
+  if (SEQ_collection_len(strips) != 0) {
+    ret_val = retiming_key_add_from_selection(C, op, strips, timeline_frame);
+  } else {
+    ret_val = retiming_key_add_to_editable_strips(C, op, timeline_frame);
   }
   SEQ_collection_free(strips);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-
-  return inserted ? OPERATOR_FINISHED : OPERATOR_PASS_THROUGH;
+  return ret_val;
 }
 
 void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot)
@@ -651,7 +688,7 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
     if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
       continue;
     }
-    if (!sequencer_retiming_data_is_visible(seq)) {
+    if (!sequencer_retiming_data_is_editable(seq)) {
       continue;
     }
     /* Realize "fake" key, since it is clicked on. */
@@ -723,6 +760,9 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
     SEQ_ITERATOR_FOREACH (seq, strips) {
+      if (!sequencer_retiming_data_is_editable(seq)) {
+        continue;
+      }
       for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
         if (key.flag & KEY_SELECTED) {
           action = SEL_DESELECT;
@@ -737,11 +777,10 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   }
 
   SEQ_ITERATOR_FOREACH (seq, strips) {
+    if (!sequencer_retiming_data_is_editable(seq)) {
+      continue;
+    }
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      if (key.strip_frame_index == 0) {
-        continue;
-      }
-
       switch (action) {
         case SEL_SELECT:
           key.flag |= KEY_SELECTED;
