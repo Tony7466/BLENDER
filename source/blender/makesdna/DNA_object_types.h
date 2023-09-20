@@ -797,7 +797,8 @@ enum {
   OB_HIDE_VOLUME_SCATTER = 1 << 7,
   OB_HIDE_SHADOW = 1 << 8,
   OB_HOLDOUT = 1 << 9,
-  OB_SHADOW_CATCHER = 1 << 10
+  OB_SHADOW_CATCHER = 1 << 10,
+  OB_HIDE_IRRADIANCE_PROBE = 1 << 11,
 };
 
 /** #Object.shapeflag */

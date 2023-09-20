@@ -370,7 +370,7 @@ class OBJECT_PT_motion_paths_display(MotionPathButtonsPanel_display, Panel):
 class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
     bl_label = "Visibility"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -396,6 +396,11 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         layout.separator()
         col = layout.column(heading="Mask")
         col.prop(ob, "is_holdout")
+
+        if context.engine == 'BLENDER_EEVEE_NEXT':
+            if ob.type in ('MESH','CURVE','SURFACE','META','FONT','CURVES','POINTCLOUD','VOLUME','LIGHT'):
+                col = layout.column(heading="Probes")
+                col.prop(ob, "hide_irradiance_probes", text="Irradiance", toggle=False, invert_checkbox=True)                
 
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
