@@ -46,7 +46,6 @@
 #include "SEQ_prefetch.h"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
-#include "SEQ_retiming.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"

@@ -24,7 +24,6 @@
 
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
-#include "SEQ_retiming.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"

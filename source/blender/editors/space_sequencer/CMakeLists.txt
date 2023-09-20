@@ -43,6 +43,7 @@ set(SRC
   sequencer_timeline_draw.cc
   sequencer_view.cc
   space_sequencer.cc
+
   sequencer_intern.hh
 )
 

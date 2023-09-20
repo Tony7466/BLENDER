@@ -45,7 +45,7 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
-#include "SEQ_retiming.h"
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 
 #include "ANIM_armature_iter.hh"
