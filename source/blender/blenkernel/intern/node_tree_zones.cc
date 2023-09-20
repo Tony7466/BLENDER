@@ -457,55 +457,20 @@ bNode *bNodeZoneType::get_corresponding_output(bNodeTree &tree, const bNode &inp
       this->get_corresponding_output(const_cast<const bNodeTree &>(tree), input_bnode));
 }
 
-class SimulationZoneType : public bNodeZoneType {
- public:
-  SimulationZoneType()
-  {
-    this->input_idname = "GeometryNodeSimulationInput";
-    this->output_idname = "GeometryNodeSimulationOutput";
-    this->input_type = GEO_NODE_SIMULATION_INPUT;
-    this->output_type = GEO_NODE_SIMULATION_OUTPUT;
-  }
-
-  const int &get_corresponding_output_id(const bNode &input_bnode) const override
-  {
-    BLI_assert(input_bnode.type == this->input_type);
-    return static_cast<NodeGeometrySimulationInput *>(input_bnode.storage)->output_node_id;
-  }
+static Vector<const bNodeZoneType *> &get_zone_types_vector()
+{
+  static Vector<const bNodeZoneType *> zone_types;
+  return zone_types;
 };
 
-class RepeatZoneType : public bNodeZoneType {
- public:
-  RepeatZoneType()
-  {
-    this->input_idname = "GeometryNodeRepeatInput";
-    this->output_idname = "GeometryNodeRepeatOutput";
-    this->input_type = GEO_NODE_REPEAT_INPUT;
-    this->output_type = GEO_NODE_REPEAT_OUTPUT;
-  }
-
-  const int &get_corresponding_output_id(const bNode &input_bnode) const override
-  {
-    BLI_assert(input_bnode.type == this->input_type);
-    return static_cast<NodeGeometryRepeatInput *>(input_bnode.storage)->output_node_id;
-  }
-};
-
-const bNodeZoneType &simulation_zone_type()
+void register_node_zone_type(const bNodeZoneType &zone_type)
 {
-  static SimulationZoneType zone_type;
-  return zone_type;
-}
-const bNodeZoneType &repeat_zone_type()
-{
-  static RepeatZoneType zone_type;
-  return zone_type;
+  get_zone_types_vector().append(&zone_type);
 }
 
 Span<const bNodeZoneType *> all_zone_types()
 {
-  static std::array types = {&simulation_zone_type(), &repeat_zone_type()};
-  return types;
+  return get_zone_types_vector();
 }
 
 Span<int> all_zone_node_types()

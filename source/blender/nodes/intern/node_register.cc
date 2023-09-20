@@ -52,18 +52,54 @@ static void register_undefined_types()
   blender::bke::NodeSocketTypeUndefined.output_link_limit = 0xFFF;
 }
 
-static void initialize_zone_type_theme_ids()
+class SimulationZoneType : public blender::bke::bNodeZoneType {
+ public:
+  SimulationZoneType()
+  {
+    this->input_idname = "GeometryNodeSimulationInput";
+    this->output_idname = "GeometryNodeSimulationOutput";
+    this->input_type = GEO_NODE_SIMULATION_INPUT;
+    this->output_type = GEO_NODE_SIMULATION_OUTPUT;
+    this->theme_id = TH_NODE_ZONE_SIMULATION;
+  }
+
+  const int &get_corresponding_output_id(const bNode &input_bnode) const override
+  {
+    BLI_assert(input_bnode.type == this->input_type);
+    return static_cast<NodeGeometrySimulationInput *>(input_bnode.storage)->output_node_id;
+  }
+};
+
+class RepeatZoneType : public blender::bke::bNodeZoneType {
+ public:
+  RepeatZoneType()
+  {
+    this->input_idname = "GeometryNodeRepeatInput";
+    this->output_idname = "GeometryNodeRepeatOutput";
+    this->input_type = GEO_NODE_REPEAT_INPUT;
+    this->output_type = GEO_NODE_REPEAT_OUTPUT;
+    this->theme_id = TH_NODE_ZONE_REPEAT;
+  }
+
+  const int &get_corresponding_output_id(const bNode &input_bnode) const override
+  {
+    BLI_assert(input_bnode.type == this->input_type);
+    return static_cast<NodeGeometryRepeatInput *>(input_bnode.storage)->output_node_id;
+  }
+};
+
+static void register_zone_types()
 {
-  /* Those can't be initialized in blenkernel, because UI data is not available there. */
-  const_cast<blender::bke::bNodeZoneType &>(blender::bke::simulation_zone_type()).theme_id =
-      TH_NODE_ZONE_SIMULATION;
-  const_cast<blender::bke::bNodeZoneType &>(blender::bke::repeat_zone_type()).theme_id =
-      TH_NODE_ZONE_REPEAT;
+  static SimulationZoneType simulation_zone_type;
+  static RepeatZoneType repeat_zone_type;
+  blender::bke::register_node_zone_type(simulation_zone_type);
+  blender::bke::register_node_zone_type(repeat_zone_type);
 }
 
 void register_nodes()
 {
-  initialize_zone_type_theme_ids();
+  register_zone_types();
+
   register_undefined_types();
 
   register_standard_node_socket_types();

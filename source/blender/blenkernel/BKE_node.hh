@@ -333,8 +333,7 @@ class bNodeZoneType {
   std::string output_idname;
   int input_type;
   int output_type;
-  /** Initialized in #initialize_zone_type_theme_ids. */
-  int theme_id = -1;
+  int theme_id;
 
   virtual ~bNodeZoneType() = default;
 
@@ -353,8 +352,8 @@ class bNodeZoneType {
   bNode *get_corresponding_output(bNodeTree &tree, const bNode &input_bnode) const;
 };
 
-const bNodeZoneType &simulation_zone_type();
-const bNodeZoneType &repeat_zone_type();
+void register_node_zone_type(const bNodeZoneType &zone_type);
+
 Span<const bNodeZoneType *> all_zone_types();
 Span<int> all_zone_node_types();
 Span<int> all_zone_input_node_types();
