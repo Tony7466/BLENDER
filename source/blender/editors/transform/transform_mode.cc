@@ -292,7 +292,7 @@ void constraintTransLim(const TransInfo *t, const TransDataContainer *tc, TransD
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
           mul_m3_v3(td->mtx, cob.matrix[3]);
           if (tc->use_local_mat) {
-            mul_m4_v3(tc->mat, cob.matrix[3]);
+            add_v3_v3(cob.matrix[3], tc->mat[3]);
           }
         }
         else if (con->ownspace != CONSTRAINT_SPACE_LOCAL) {
@@ -312,7 +312,7 @@ void constraintTransLim(const TransInfo *t, const TransDataContainer *tc, TransD
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
           if (tc->use_local_mat) {
-            mul_m4_v3(tc->imat, cob.matrix[3]);
+            sub_v3_v3(cob.matrix[3], tc->mat[3]);
           }
           mul_m3_v3(td->smtx, cob.matrix[3]);
         }
