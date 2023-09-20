@@ -513,7 +513,12 @@ static void retime_speed_text_draw(const bContext *C,
     return; /* Not enough space to draw label. */
   }
 
-  const uchar col[4] = {255, 255, 255, 255};
+  uchar col[4] = {255, 255, 255, 255};
+  if ((seq->flag & SELECT) == 0) {
+    memset(col, 0, sizeof(col));
+    col[3] = 255;
+  }
+
   UI_view2d_text_cache_add(
       UI_view2d_fromcontext(C), label_rect.xmin, label_rect.ymin, label_str, label_len, col);
 }
