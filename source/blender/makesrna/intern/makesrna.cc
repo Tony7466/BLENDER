@@ -3026,7 +3026,9 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
   rna_construct_wrapper_function_name(
       funcname, sizeof(funcname), srna->identifier, func->identifier, "func");
 
-  fprintf(f, "RNA_EXTERN_C ");
+  if (!(dfunc->call && strstr(dfunc->call, "<"))) {
+    fprintf(f, "RNA_EXTERN_C ");
+  }
   rna_generate_static_parameter_prototypes(f, srna, dfunc, funcname, 0);
 
   fprintf(f, "\n{\n");
@@ -3785,6 +3787,10 @@ static void rna_generate_static_parameter_prototypes(FILE *f,
   dsrna = rna_find_struct_def(srna);
   func = dfunc->func;
 
+  if (!name_override && dfunc->call && strstr(dfunc->call, "<")) {
+    fprintf(f, "template<typename T> ");
+  }
+
   /* return type */
   LISTBASE_FOREACH (PropertyDefRNA *, dparm, &dfunc->cont.properties) {
     if (dparm->prop == func->c_ret) {
@@ -3810,7 +3816,14 @@ static void rna_generate_static_parameter_prototypes(FILE *f,
 
   /* function name */
   if (name_override == nullptr || name_override[0] == '\0') {
-    fprintf(f, "%s(", dfunc->call);
+    const char *template_begin = strstr(dfunc->call, "<");
+    if (template_begin) {
+      const int num_chars = template_begin - dfunc->call;
+      fprintf(f, "%.*s(", num_chars, dfunc->call);
+    }
+    else {
+      fprintf(f, "%s(", dfunc->call);
+    }
   }
   else {
     fprintf(f, "%s(", name_override);
