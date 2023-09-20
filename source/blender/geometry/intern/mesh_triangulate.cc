@@ -253,7 +253,7 @@ static void calc_quad_edges(const Span<int> corner_verts, MutableSpan<int2> edge
   for (const int quad : IndexRange(quads_num)) {
     const Span<int> quad_verts = corner_verts.slice(6 * quad, 6);
     /* Use the first vertex of each triangle. */
-    edges[quad] = int2(quad_verts[0], quad_verts[3]);
+    edges[quad] = int2(quad_verts[0], quad_verts[1]);
   }
 }
 
@@ -607,7 +607,9 @@ std::optional<Mesh *> mesh_triangulate(
   const OffsetIndices edges_by_ngon = calc_edges_by_ngon(src_faces, ngons, edge_offset_data);
   const int ngon_edges_num = edges_by_ngon.total_size();
   const int quad_edges_num = quads.size();
-  const IndexRange tri_edges_range(ngon_edges_num + quad_edges_num);
+  const IndexRange src_edges_range(0, src_edges.size());
+  const IndexRange tri_edges_range(src_edges_range.one_after_last(),
+                                   ngon_edges_num + quad_edges_num);
   const IndexRange ngon_edges_range = tri_edges_range.take_front(ngon_edges_num);
   const IndexRange quad_edges_range = tri_edges_range.take_front(quad_edges_num);
 
@@ -702,7 +704,7 @@ std::optional<Mesh *> mesh_triangulate(
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes, attributes, ATTR_DOMAIN_MASK_EDGE, propagation_info, {".edge_verts"}))
   {
-    attribute.dst.span.take_front(attribute.src.size()).copy_from(attribute.src);
+    attribute.dst.span.slice(src_edges_range).copy_from(attribute.src);
     GMutableSpan new_data = attribute.dst.span.slice(tri_edges_range);
     /* It would be reasonable interpolate data from connected edges within each face.
      * Currently the data from new edges is just set to the type's default value. */
@@ -719,7 +721,7 @@ std::optional<Mesh *> mesh_triangulate(
                         &mesh->edge_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->totedge)),
                     mesh->totedge);
     dst.slice(tri_edges_range).fill(ORIGINDEX_NONE);
-    array_utils::copy(src, dst.take_back(src.size()));
+    array_utils::copy(src, dst.slice(src_edges_range));
   }
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
