@@ -48,6 +48,7 @@ ccl_device void noise_texture_1d(float co,
                                  float lacunarity,
                                  float distortion,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -57,12 +58,14 @@ ccl_device void noise_texture_1d(float co,
     p += snoise_1d(p + random_float_offset(0.0f)) * distortion;
   }
 
-  *value = fractal_noise_1d(p, detail, roughness, lacunarity, normalize);
+  *value = fractal_noise_1d(p, detail, roughness, lacunarity, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(
         *value,
-        fractal_noise_1d(p + random_float_offset(1.0f), detail, roughness, lacunarity, normalize),
-        fractal_noise_1d(p + random_float_offset(2.0f), detail, roughness, lacunarity, normalize));
+        fractal_noise_1d(
+            p + random_float_offset(1.0f), detail, roughness, lacunarity, normalize, hard),
+        fractal_noise_1d(
+            p + random_float_offset(2.0f), detail, roughness, lacunarity, normalize, hard));
   }
 }
 
@@ -72,6 +75,7 @@ ccl_device void noise_texture_2d(float2 co,
                                  float lacunarity,
                                  float distortion,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -82,13 +86,14 @@ ccl_device void noise_texture_2d(float2 co,
                      snoise_2d(p + random_float2_offset(1.0f)) * distortion);
   }
 
-  *value = fractal_noise_2d(p, detail, roughness, lacunarity, normalize);
+  *value = fractal_noise_2d(p, detail, roughness, lacunarity, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(
         *value,
-        fractal_noise_2d(p + random_float2_offset(2.0f), detail, roughness, lacunarity, normalize),
         fractal_noise_2d(
-            p + random_float2_offset(3.0f), detail, roughness, lacunarity, normalize));
+            p + random_float2_offset(2.0f), detail, roughness, lacunarity, normalize, hard),
+        fractal_noise_2d(
+            p + random_float2_offset(3.0f), detail, roughness, lacunarity, normalize, hard));
   }
 }
 
@@ -98,6 +103,7 @@ ccl_device void noise_texture_3d(float3 co,
                                  float lacunarity,
                                  float distortion,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -109,13 +115,14 @@ ccl_device void noise_texture_3d(float3 co,
                      snoise_3d(p + random_float3_offset(2.0f)) * distortion);
   }
 
-  *value = fractal_noise_3d(p, detail, roughness, lacunarity, normalize);
+  *value = fractal_noise_3d(p, detail, roughness, lacunarity, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(
         *value,
-        fractal_noise_3d(p + random_float3_offset(3.0f), detail, roughness, lacunarity, normalize),
         fractal_noise_3d(
-            p + random_float3_offset(4.0f), detail, roughness, lacunarity, normalize));
+            p + random_float3_offset(3.0f), detail, roughness, lacunarity, normalize, hard),
+        fractal_noise_3d(
+            p + random_float3_offset(4.0f), detail, roughness, lacunarity, normalize, hard));
   }
 }
 
@@ -125,6 +132,7 @@ ccl_device void noise_texture_4d(float4 co,
                                  float lacunarity,
                                  float distortion,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -137,13 +145,14 @@ ccl_device void noise_texture_4d(float4 co,
                      snoise_4d(p + random_float4_offset(3.0f)) * distortion);
   }
 
-  *value = fractal_noise_4d(p, detail, roughness, lacunarity, normalize);
+  *value = fractal_noise_4d(p, detail, roughness, lacunarity, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(
         *value,
-        fractal_noise_4d(p + random_float4_offset(4.0f), detail, roughness, lacunarity, normalize),
         fractal_noise_4d(
-            p + random_float4_offset(5.0f), detail, roughness, lacunarity, normalize));
+            p + random_float4_offset(4.0f), detail, roughness, lacunarity, normalize, hard),
+        fractal_noise_4d(
+            p + random_float4_offset(5.0f), detail, roughness, lacunarity, normalize, hard));
   }
 }
 
@@ -158,7 +167,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   uint vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset;
   uint roughness_stack_offset, lacunarity_stack_offset, distortion_stack_offset,
       value_stack_offset;
-  uint color_stack_offset, dimensions, normalize;
+  uint color_stack_offset, dimensions, normalize, hard;
 
   svm_unpack_node_uchar4(
       offsets1, &vector_stack_offset, &w_stack_offset, &scale_stack_offset, &detail_stack_offset);
@@ -167,7 +176,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                          &lacunarity_stack_offset,
                          &distortion_stack_offset,
                          &value_stack_offset);
-  svm_unpack_node_uchar3(offsets3, &color_stack_offset, &dimensions, &normalize);
+  svm_unpack_node_uchar4(offsets3, &color_stack_offset, &dimensions, &normalize, &hard);
 
   uint4 defaults1 = read_node(kg, &offset);
   uint4 defaults2 = read_node(kg, &offset);
@@ -193,6 +202,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        lacunarity,
                        distortion,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -204,6 +214,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        lacunarity,
                        distortion,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -215,6 +226,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        lacunarity,
                        distortion,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -226,6 +238,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        lacunarity,
                        distortion,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);

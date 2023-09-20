@@ -936,6 +936,7 @@ static ShaderNode *add_node(Scene *scene,
     NoiseTextureNode *noise = graph->create_node<NoiseTextureNode>();
     noise->set_dimensions(b_noise_node.noise_dimensions());
     noise->set_use_normalize(b_noise_node.normalize());
+    noise->set_hard(b_noise_node.hard());
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;

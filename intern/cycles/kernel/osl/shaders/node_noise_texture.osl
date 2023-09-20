@@ -49,6 +49,7 @@ float noise_texture(float co,
                     float lacunarity,
                     float distortion,
                     int use_normalize,
+                    int hard,
                     output color Color)
 {
   float p = co;
@@ -56,11 +57,13 @@ float noise_texture(float co,
     p += safe_snoise(p + random_float_offset(0.0)) * distortion;
   }
 
-  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize);
+  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize, hard);
   Color = color(
       value,
-      fractal_noise(p + random_float_offset(1.0), detail, roughness, lacunarity, use_normalize),
-      fractal_noise(p + random_float_offset(2.0), detail, roughness, lacunarity, use_normalize));
+      fractal_noise(
+          p + random_float_offset(1.0), detail, roughness, lacunarity, use_normalize, hard),
+      fractal_noise(
+          p + random_float_offset(2.0), detail, roughness, lacunarity, use_normalize, hard));
   return value;
 }
 
@@ -70,6 +73,7 @@ float noise_texture(vector2 co,
                     float lacunarity,
                     float distortion,
                     int use_normalize,
+                    int hard,
                     output color Color)
 {
   vector2 p = co;
@@ -78,11 +82,13 @@ float noise_texture(vector2 co,
                  safe_snoise(p + random_vector2_offset(1.0)) * distortion);
   }
 
-  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize);
+  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize, hard);
   Color = color(
       value,
-      fractal_noise(p + random_vector2_offset(2.0), detail, roughness, lacunarity, use_normalize),
-      fractal_noise(p + random_vector2_offset(3.0), detail, roughness, lacunarity, use_normalize));
+      fractal_noise(
+          p + random_vector2_offset(2.0), detail, roughness, lacunarity, use_normalize, hard),
+      fractal_noise(
+          p + random_vector2_offset(3.0), detail, roughness, lacunarity, use_normalize, hard));
   return value;
 }
 
@@ -92,6 +98,7 @@ float noise_texture(vector3 co,
                     float lacunarity,
                     float distortion,
                     int use_normalize,
+                    int hard,
                     output color Color)
 {
   vector3 p = co;
@@ -101,11 +108,13 @@ float noise_texture(vector3 co,
                  safe_snoise(p + random_vector3_offset(2.0)) * distortion);
   }
 
-  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize);
+  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize, hard);
   Color = color(
       value,
-      fractal_noise(p + random_vector3_offset(3.0), detail, roughness, lacunarity, use_normalize),
-      fractal_noise(p + random_vector3_offset(4.0), detail, roughness, lacunarity, use_normalize));
+      fractal_noise(
+          p + random_vector3_offset(3.0), detail, roughness, lacunarity, use_normalize, hard),
+      fractal_noise(
+          p + random_vector3_offset(4.0), detail, roughness, lacunarity, use_normalize, hard));
   return value;
 }
 
@@ -115,6 +124,7 @@ float noise_texture(vector4 co,
                     float lacunarity,
                     float distortion,
                     int use_normalize,
+                    int hard,
                     output color Color)
 {
   vector4 p = co;
@@ -125,11 +135,13 @@ float noise_texture(vector4 co,
                  safe_snoise(p + random_vector4_offset(3.0)) * distortion);
   }
 
-  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize);
+  float value = fractal_noise(p, detail, roughness, lacunarity, use_normalize, hard);
   Color = color(
       value,
-      fractal_noise(p + random_vector4_offset(4.0), detail, roughness, lacunarity, use_normalize),
-      fractal_noise(p + random_vector4_offset(5.0), detail, roughness, lacunarity, use_normalize));
+      fractal_noise(
+          p + random_vector4_offset(4.0), detail, roughness, lacunarity, use_normalize, hard),
+      fractal_noise(
+          p + random_vector4_offset(5.0), detail, roughness, lacunarity, use_normalize, hard));
   return value;
 }
 
@@ -137,6 +149,7 @@ shader node_noise_texture(int use_mapping = 0,
                           matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                           string dimensions = "3D",
                           int use_normalize = 0,
+                          int hard = 0,
                           vector3 Vector = vector3(0, 0, 0),
                           float W = 0.0,
                           float Scale = 5.0,
@@ -155,12 +168,18 @@ shader node_noise_texture(int use_mapping = 0,
   float w = W * Scale;
 
   if (dimensions == "1D")
-    Fac = noise_texture(w, Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
+    Fac = noise_texture(w, Detail, Roughness, Lacunarity, Distortion, use_normalize, hard, Color);
   else if (dimensions == "2D")
-    Fac = noise_texture(
-        vector2(p[0], p[1]), Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
+    Fac = noise_texture(vector2(p[0], p[1]),
+                        Detail,
+                        Roughness,
+                        Lacunarity,
+                        Distortion,
+                        use_normalize,
+                        hard,
+                        Color);
   else if (dimensions == "3D")
-    Fac = noise_texture(p, Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
+    Fac = noise_texture(p, Detail, Roughness, Lacunarity, Distortion, use_normalize, hard, Color);
   else if (dimensions == "4D")
     Fac = noise_texture(vector4(p[0], p[1], p[2], w),
                         Detail,
@@ -168,6 +187,7 @@ shader node_noise_texture(int use_mapping = 0,
                         Lacunarity,
                         Distortion,
                         use_normalize,
+                        hard,
                         Color);
   else
     error("Unknown dimension!");

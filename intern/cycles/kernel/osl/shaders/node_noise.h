@@ -72,7 +72,8 @@ float safe_snoise(vector4 p)
 }
 
 /* The fractal_noise functions are all exactly the same except for the input type. */
-float fractal_noise(float p, float details, float roughness, float lacunarity, int use_normalize)
+float fractal_noise(
+    float p, float details, float roughness, float lacunarity, int use_normalize, int hard)
 {
   float fscale = 1.0;
   float amp = 1.0;
@@ -82,6 +83,7 @@ float fractal_noise(float p, float details, float roughness, float lacunarity, i
   int n = (int)octaves;
   for (int i = 0; i <= n; i++) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     sum += t * amp;
     maxamp += amp;
     amp *= clamp(roughness, 0.0, 1.0);
@@ -90,6 +92,7 @@ float fractal_noise(float p, float details, float roughness, float lacunarity, i
   float rmd = octaves - floor(octaves);
   if (rmd != 0.0) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     float sum2 = sum + t * amp;
     return use_normalize ? mix(0.5 * sum / maxamp + 0.5, 0.5 * sum2 / (maxamp + amp) + 0.5, rmd) :
                            mix(sum, sum2, rmd);
@@ -100,7 +103,8 @@ float fractal_noise(float p, float details, float roughness, float lacunarity, i
 }
 
 /* The fractal_noise functions are all exactly the same except for the input type. */
-float fractal_noise(vector2 p, float details, float roughness, float lacunarity, int use_normalize)
+float fractal_noise(
+    vector2 p, float details, float roughness, float lacunarity, int use_normalize, int hard)
 {
   float fscale = 1.0;
   float amp = 1.0;
@@ -110,6 +114,7 @@ float fractal_noise(vector2 p, float details, float roughness, float lacunarity,
   int n = (int)octaves;
   for (int i = 0; i <= n; i++) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     sum += t * amp;
     maxamp += amp;
     amp *= clamp(roughness, 0.0, 1.0);
@@ -118,6 +123,7 @@ float fractal_noise(vector2 p, float details, float roughness, float lacunarity,
   float rmd = octaves - floor(octaves);
   if (rmd != 0.0) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     float sum2 = sum + t * amp;
     return use_normalize ? mix(0.5 * sum / maxamp + 0.5, 0.5 * sum2 / (maxamp + amp) + 0.5, rmd) :
                            mix(sum, sum2, rmd);
@@ -128,7 +134,8 @@ float fractal_noise(vector2 p, float details, float roughness, float lacunarity,
 }
 
 /* The fractal_noise functions are all exactly the same except for the input type. */
-float fractal_noise(vector3 p, float details, float roughness, float lacunarity, int use_normalize)
+float fractal_noise(
+    vector3 p, float details, float roughness, float lacunarity, int use_normalize, int hard)
 {
   float fscale = 1.0;
   float amp = 1.0;
@@ -138,6 +145,7 @@ float fractal_noise(vector3 p, float details, float roughness, float lacunarity,
   int n = (int)octaves;
   for (int i = 0; i <= n; i++) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     sum += t * amp;
     maxamp += amp;
     amp *= clamp(roughness, 0.0, 1.0);
@@ -146,6 +154,7 @@ float fractal_noise(vector3 p, float details, float roughness, float lacunarity,
   float rmd = octaves - floor(octaves);
   if (rmd != 0.0) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     float sum2 = sum + t * amp;
     return use_normalize ? mix(0.5 * sum / maxamp + 0.5, 0.5 * sum2 / (maxamp + amp) + 0.5, rmd) :
                            mix(sum, sum2, rmd);
@@ -156,7 +165,8 @@ float fractal_noise(vector3 p, float details, float roughness, float lacunarity,
 }
 
 /* The fractal_noise functions are all exactly the same except for the input type. */
-float fractal_noise(vector4 p, float details, float roughness, float lacunarity, int use_normalize)
+float fractal_noise(
+    vector4 p, float details, float roughness, float lacunarity, int use_normalize, int hard)
 {
   float fscale = 1.0;
   float amp = 1.0;
@@ -166,6 +176,7 @@ float fractal_noise(vector4 p, float details, float roughness, float lacunarity,
   int n = (int)octaves;
   for (int i = 0; i <= n; i++) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     sum += t * amp;
     maxamp += amp;
     amp *= clamp(roughness, 0.0, 1.0);
@@ -174,6 +185,7 @@ float fractal_noise(vector4 p, float details, float roughness, float lacunarity,
   float rmd = octaves - floor(octaves);
   if (rmd != 0.0) {
     float t = safe_snoise(fscale * p);
+    t = hard ? abs(t) * 2.0 - 1.0 : t;
     float sum2 = sum + t * amp;
     return use_normalize ? mix(0.5 * sum / maxamp + 0.5, 0.5 * sum2 / (maxamp + amp) + 0.5, rmd) :
                            mix(sum, sum2, rmd);

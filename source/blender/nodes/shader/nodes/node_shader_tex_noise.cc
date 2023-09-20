@@ -47,6 +47,7 @@ static void node_shader_buts_tex_noise(uiLayout *layout, bContext * /*C*/, Point
 {
   uiItemR(layout, ptr, "noise_dimensions", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "hard", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 static void node_shader_init_tex_noise(bNodeTree * /*ntree*/, bNode *node)
@@ -56,6 +57,7 @@ static void node_shader_init_tex_noise(bNodeTree * /*ntree*/, bNode *node)
   BKE_texture_colormapping_default(&tex->base.color_mapping);
   tex->dimensions = 3;
   tex->normalize = true;
+  tex->hard = false;
 
   node->storage = tex;
 }
@@ -81,9 +83,10 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
   const NodeTexNoise &storage = node_storage(*node);
   float normalize = storage.normalize;
+  float hard = storage.hard;
 
   const char *name = gpu_shader_get_name(storage.dimensions);
-  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&normalize));
+  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&normalize), GPU_constant(&hard));
 }
 
 static void node_shader_update_tex_noise(bNodeTree *ntree, bNode *node)
@@ -100,9 +103,11 @@ class NoiseFunction : public mf::MultiFunction {
  private:
   int dimensions_;
   bool normalize_;
+  bool hard_;
 
  public:
-  NoiseFunction(int dimensions, bool normalize) : dimensions_(dimensions), normalize_(normalize)
+  NoiseFunction(int dimensions, bool normalize, bool hard)
+      : dimensions_(dimensions), normalize_(normalize), hard_(hard)
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     static std::array<mf::Signature, 4> signatures{
@@ -161,15 +166,25 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float position = w[i] * scale[i];
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          distortion[i],
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float position = w[i] * scale[i];
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    distortion[i],
+                                                                    normalize_,
+                                                                    hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -180,15 +195,25 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float2 position = float2(vector[i] * scale[i]);
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          distortion[i],
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float2 position = float2(vector[i] * scale[i]);
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    distortion[i],
+                                                                    normalize_,
+                                                                    hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -199,15 +224,25 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float3 position = vector[i] * scale[i];
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          distortion[i],
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float3 position = vector[i] * scale[i];
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    distortion[i],
+                                                                    normalize_,
+                                                                    hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -222,8 +257,13 @@ class NoiseFunction : public mf::MultiFunction {
             const float position_w = w[i] * scale[i];
             const float4 position{
                 position_vector[0], position_vector[1], position_vector[2], position_w};
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          distortion[i],
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
@@ -232,8 +272,13 @@ class NoiseFunction : public mf::MultiFunction {
             const float position_w = w[i] * scale[i];
             const float4 position{
                 position_vector[0], position_vector[1], position_vector[2], position_w};
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    distortion[i],
+                                                                    normalize_,
+                                                                    hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -254,7 +299,8 @@ class NoiseFunction : public mf::MultiFunction {
 static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexNoise &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<NoiseFunction>(storage.dimensions, storage.normalize);
+  builder.construct_and_set_matching_fn<NoiseFunction>(
+      storage.dimensions, storage.normalize, storage.hard);
 }
 
 }  // namespace blender::nodes::node_shader_tex_noise_cc

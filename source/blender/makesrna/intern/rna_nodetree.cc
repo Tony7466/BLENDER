@@ -4931,6 +4931,11 @@ static void def_sh_tex_noise(StructRNA *srna)
   RNA_def_property_boolean_sdna(prop, nullptr, "normalize", 0);
   RNA_def_property_ui_text(prop, "Normalize", "Normalize outputs to 0.0 to 1.0 range");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "hard", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "hard", 0);
+  RNA_def_property_ui_text(prop, "Hard", "Specifies whether noise is hard (sharp transitions) ");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_tex_checker(StructRNA *srna)

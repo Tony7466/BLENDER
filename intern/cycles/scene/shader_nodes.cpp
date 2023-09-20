@@ -1138,6 +1138,7 @@ NODE_DEFINE(NoiseTextureNode)
   SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
   SOCKET_BOOLEAN(use_normalize, "Normalize", true);
+  SOCKET_BOOLEAN(hard, "Hard", false);
 
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
@@ -1185,7 +1186,7 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
                              lacunarity_stack_offset,
                              distortion_stack_offset,
                              fac_stack_offset),
-      compiler.encode_uchar4(color_stack_offset, dimensions, use_normalize));
+      compiler.encode_uchar4(color_stack_offset, dimensions, use_normalize, hard));
 
   compiler.add_node(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
@@ -1203,6 +1204,7 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
   tex_mapping.compile(compiler);
   compiler.parameter(this, "dimensions");
   compiler.parameter(this, "use_normalize");
+  compiler.parameter(this, "hard");
   compiler.add(this, "node_noise_texture");
 }
 

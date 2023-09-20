@@ -533,7 +533,7 @@ float perlin(float4 position)
 
 template<typename T>
 float perlin_fractal_template(
-    T position, float octaves, float roughness, float lacunarity, bool normalize)
+    T position, float octaves, float roughness, float lacunarity, bool normalize, bool hard)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -543,6 +543,7 @@ float perlin_fractal_template(
   int n = int(octaves);
   for (int i = 0; i <= n; i++) {
     float t = perlin_signed(fscale * position);
+    t = hard ? math::abs(t) * 2.0f - 1.0f : t;
     sum += t * amp;
     maxamp += amp;
     amp *= CLAMPIS(roughness, 0.0f, 1.0f);
@@ -551,6 +552,7 @@ float perlin_fractal_template(
   float rmd = octaves - std::floor(octaves);
   if (rmd != 0.0f) {
     float t = perlin_signed(fscale * position);
+    t = hard ? math::abs(t) * 2.0f - 1.0f : t;
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
@@ -561,27 +563,27 @@ float perlin_fractal_template(
 }
 
 float perlin_fractal(
-    float position, float octaves, float roughness, float lacunarity, bool normalize)
+    float position, float octaves, float roughness, float lacunarity, bool normalize, bool hard)
 {
-  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal(
-    float2 position, float octaves, float roughness, float lacunarity, bool normalize)
+    float2 position, float octaves, float roughness, float lacunarity, bool normalize, bool hard)
 {
-  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal(
-    float3 position, float octaves, float roughness, float lacunarity, bool normalize)
+    float3 position, float octaves, float roughness, float lacunarity, bool normalize, bool hard)
 {
-  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal(
-    float4 position, float octaves, float roughness, float lacunarity, bool normalize)
+    float4 position, float octaves, float roughness, float lacunarity, bool normalize, bool hard)
 {
-  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal_template(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 /* The following offset functions generate random offsets to be added to
@@ -652,10 +654,11 @@ float perlin_fractal_distorted(float position,
                                float roughness,
                                float lacunarity,
                                float distortion,
-                               bool normalize)
+                               bool normalize,
+                               bool hard)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal_distorted(float2 position,
@@ -663,10 +666,11 @@ float perlin_fractal_distorted(float2 position,
                                float roughness,
                                float lacunarity,
                                float distortion,
-                               bool normalize)
+                               bool normalize,
+                               bool hard)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal_distorted(float3 position,
@@ -674,10 +678,11 @@ float perlin_fractal_distorted(float3 position,
                                float roughness,
                                float lacunarity,
                                float distortion,
-                               bool normalize)
+                               bool normalize,
+                               bool hard)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 float perlin_fractal_distorted(float4 position,
@@ -685,10 +690,11 @@ float perlin_fractal_distorted(float4 position,
                                float roughness,
                                float lacunarity,
                                float distortion,
-                               bool normalize)
+                               bool normalize,
+                               bool hard)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness, lacunarity, normalize);
+  return perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard);
 }
 
 /* Positive distorted fractal perlin noise that outputs a float3. The arbitrary seeds are for
@@ -699,15 +705,16 @@ float3 perlin_float3_fractal_distorted(float position,
                                        float roughness,
                                        float lacunarity,
                                        float distortion,
-                                       bool normalize)
+                                       bool normalize,
+                                       bool hard)
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_fractal(position, octaves, roughness, lacunarity, normalize),
+      perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float_offset(1.0f), octaves, roughness, lacunarity, normalize),
+          position + random_float_offset(1.0f), octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float_offset(2.0f), octaves, roughness, lacunarity, normalize));
+          position + random_float_offset(2.0f), octaves, roughness, lacunarity, normalize, hard));
 }
 
 float3 perlin_float3_fractal_distorted(float2 position,
@@ -715,15 +722,16 @@ float3 perlin_float3_fractal_distorted(float2 position,
                                        float roughness,
                                        float lacunarity,
                                        float distortion,
-                                       bool normalize)
+                                       bool normalize,
+                                       bool hard)
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_fractal(position, octaves, roughness, lacunarity, normalize),
+      perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float2_offset(2.0f), octaves, roughness, lacunarity, normalize),
+          position + random_float2_offset(2.0f), octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float2_offset(3.0f), octaves, roughness, lacunarity, normalize));
+          position + random_float2_offset(3.0f), octaves, roughness, lacunarity, normalize, hard));
 }
 
 float3 perlin_float3_fractal_distorted(float3 position,
@@ -731,15 +739,16 @@ float3 perlin_float3_fractal_distorted(float3 position,
                                        float roughness,
                                        float lacunarity,
                                        float distortion,
-                                       bool normalize)
+                                       bool normalize,
+                                       bool hard)
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_fractal(position, octaves, roughness, lacunarity, normalize),
+      perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float3_offset(3.0f), octaves, roughness, lacunarity, normalize),
+          position + random_float3_offset(3.0f), octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float3_offset(4.0f), octaves, roughness, lacunarity, normalize));
+          position + random_float3_offset(4.0f), octaves, roughness, lacunarity, normalize, hard));
 }
 
 float3 perlin_float3_fractal_distorted(float4 position,
@@ -747,15 +756,16 @@ float3 perlin_float3_fractal_distorted(float4 position,
                                        float roughness,
                                        float lacunarity,
                                        float distortion,
-                                       bool normalize)
+                                       bool normalize,
+                                       bool hard)
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_fractal(position, octaves, roughness, lacunarity, normalize),
+      perlin_fractal(position, octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float4_offset(4.0f), octaves, roughness, lacunarity, normalize),
+          position + random_float4_offset(4.0f), octaves, roughness, lacunarity, normalize, hard),
       perlin_fractal(
-          position + random_float4_offset(5.0f), octaves, roughness, lacunarity, normalize));
+          position + random_float4_offset(5.0f), octaves, roughness, lacunarity, normalize, hard));
 }
 
 /** \} */
