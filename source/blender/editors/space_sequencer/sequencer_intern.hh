@@ -1,12 +1,12 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma once
-
 /** \file
- * \ingroup sequencer
+ * \ingroup spseq
  */
+
+#pragma once
 
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
@@ -22,6 +22,7 @@ struct wmGizmoType;
 struct Main;
 struct Scene;
 struct SeqCollection;
+struct SeqRetimingKey;
 struct Sequence;
 struct SpaceSeq;
 struct StripElem;
@@ -309,7 +310,15 @@ void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
+bool sequencer_retiming_data_is_editable(const struct Sequence *seq);
+int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_select_all_exec(struct bContext *C, struct wmOperator *op);
+int sequencer_retiming_box_select_exec(struct bContext *C, struct wmOperator *op);
 
+/* `sequencer_retiming_draw.cc` */
+void sequencer_draw_retiming(const struct bContext *C);
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
 struct SeqRetimingKey *try_to_realize_virtual_key(const struct bContext *C,
                                                   struct Sequence *seq,
@@ -317,12 +326,5 @@ struct SeqRetimingKey *try_to_realize_virtual_key(const struct bContext *C,
 struct SeqRetimingKey *retiming_mousover_key_get(const struct bContext *C,
                                                  const int mval[2],
                                                  Sequence **r_seq);
-bool sequencer_retiming_data_is_editable(const struct Sequence *seq);
-void sequencer_draw_retiming(const struct bContext *C);
-int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_select_all_exec(struct bContext *C, struct wmOperator *op);
-int sequencer_retiming_box_select_exec(struct bContext *C, struct wmOperator *op);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);

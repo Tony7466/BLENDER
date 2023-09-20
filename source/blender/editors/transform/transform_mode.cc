@@ -1153,8 +1153,7 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
   t->mode = eTfmMode(mode);
   t->mode_info = mode_info_get(t, mode);
 
-  // XXX bad :(
-  if (sequencer_retiming_mode_is_active(t->context)) {
+  if (t->spacetype == SPACE_SEQ && sequencer_retiming_mode_is_active(t->context)) {
     t->mode_info = &TransMode_translate;
   }
 

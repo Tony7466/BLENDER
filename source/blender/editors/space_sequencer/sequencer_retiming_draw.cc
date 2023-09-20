@@ -148,12 +148,6 @@ static rctf keys_box_get(const bContext *C, const Sequence *seq)
   return rect;
 }
 
-static bool mouse_is_inside_box(const rctf *box, const int mval[2])
-{
-  return mval[0] >= box->xmin && mval[0] <= box->xmax && mval[1] >= box->ymin &&
-         mval[1] <= box->ymax;
-}
-
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq)
 {
   const Scene *scene = CTX_data_scene(C);
@@ -176,7 +170,7 @@ static bool retiming_right_fake_key_is_clicked(const bContext *C,
 
   rctf box = keys_box_get(C, seq);
   box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD;
-  if (!mouse_is_inside_box(&box, mval)) {
+  if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
     return false;
   }
 
@@ -193,7 +187,7 @@ static bool retiming_left_fake_key_is_clicked(const bContext *C,
 
   rctf box = keys_box_get(C, seq);
   box.xmax -= RETIME_KEY_MOUSEOVER_THRESHOLD;
-  if (!mouse_is_inside_box(&box, mval)) {
+  if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
     return false;
   }
 
@@ -250,7 +244,7 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
 
     rctf box = keys_box_get(C, seq);
     box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD; /* Fix selecting last key. */
-    if (!mouse_is_inside_box(&box, mval)) {
+    if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
       continue;
     }
 
