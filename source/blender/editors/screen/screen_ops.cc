@@ -5033,59 +5033,70 @@ static void SCREEN_OT_animation_play(wmOperatorType *ot)
 static int screen_animation_play_with_preroll_exec(bContext *C, wmOperator * /*op*/)
 {
   namespace bake = blender::bke::bake;
-  if (!ED_screen_animation_playing(CTX_wm_manager(C))) {
-    Scene *scene = CTX_data_scene(C);
-    ViewLayer *view_layer = CTX_data_view_layer(C);
 
-    std::optional<int> playback_start_frame;
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
 
-    FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
-      LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
-        if (md->type != eModifierType_Nodes) {
+  std::optional<int> playback_start_frame;
+
+  FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
+    LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
+      if (!nmd.runtime->cache) {
+        continue;
+      }
+      const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+      std::lock_guard lock{modifier_cache.mutex};
+      for (const NodesModifierBake &bake : blender::Span(nmd.bakes, nmd.bakes_num)) {
+        const std::unique_ptr<bake::NodeCache> *node_cache_ptr =
+            modifier_cache.cache_by_id.lookup_ptr(bake.id);
+        const bool cache_is_invalid = (node_cache_ptr == nullptr) ||
+                                      (*node_cache_ptr)->cache_status ==
+                                          bake::CacheStatus::Invalid ||
+                                      (*node_cache_ptr)->frame_caches.is_empty();
+        if (!cache_is_invalid) {
           continue;
         }
-        const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
-        if (!nmd.runtime->cache) {
+        const std::optional<blender::IndexRange> frame_range = bake::get_node_bake_frame_range(
+            *scene, *ob, nmd, bake.id);
+        if (!frame_range.has_value()) {
           continue;
         }
-        const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
-        std::lock_guard lock{modifier_cache.mutex};
-        for (const NodesModifierBake &bake : blender::Span(nmd.bakes, nmd.bakes_num)) {
-          const std::unique_ptr<bake::NodeCache> *node_cache_ptr =
-              modifier_cache.cache_by_id.lookup_ptr(bake.id);
-          const bool cache_is_invalid = (node_cache_ptr == nullptr) ||
-                                        (*node_cache_ptr)->cache_status ==
-                                            bake::CacheStatus::Invalid ||
-                                        (*node_cache_ptr)->frame_caches.is_empty();
-          if (!cache_is_invalid) {
-            continue;
-          }
-          const std::optional<blender::IndexRange> frame_range = bake::get_node_bake_frame_range(
-              *scene, *ob, nmd, bake.id);
-          if (!frame_range.has_value()) {
-            continue;
-          }
-          const int sim_start_frame = frame_range->start();
-          if (playback_start_frame) {
-            if (sim_start_frame < *playback_start_frame) {
-              playback_start_frame = sim_start_frame;
-            }
-          }
-          else {
+        const int sim_start_frame = frame_range->start();
+        if (playback_start_frame) {
+          if (sim_start_frame < *playback_start_frame) {
             playback_start_frame = sim_start_frame;
           }
         }
+        else {
+          playback_start_frame = sim_start_frame;
+        }
       }
     }
-    FOREACH_OBJECT_END;
+  }
+  FOREACH_OBJECT_END;
 
-    if (playback_start_frame.has_value()) {
+  const bool is_playing = ED_screen_animation_playing(CTX_wm_manager(C));
+
+  if (playback_start_frame.has_value()) {
+    if (wmTimer *animtimer = CTX_wm_screen(C)->animtimer) {
+      ScreenAnimData *sad = static_cast<ScreenAnimData *>(animtimer->customdata);
+      sad->flag |= ANIMPLAY_FLAG_USE_NEXT_FRAME;
+      sad->nextfra = *playback_start_frame;
+    }
+    else {
       scene->r.cfra = *playback_start_frame;
       DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
       WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
     }
   }
-  return ED_screen_animation_play(C, ANIMPLAY_FLAG_NO_SYNC, 1, false);
+  if (!is_playing) {
+    return ED_screen_animation_play(C, ANIMPLAY_FLAG_NO_SYNC, 1, false);
+  }
+  return OPERATOR_FINISHED;
 }
 
 static void SCREEN_OT_animation_play_with_preroll(wmOperatorType *ot)
