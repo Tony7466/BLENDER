@@ -10,6 +10,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 
 #include "node_geometry_util.hh"
@@ -108,6 +109,52 @@ static void set_computed_position_and_offset(GeometryComponent &component,
   }
 }
 
+static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
+                                          const Field<bool> &selection_field,
+                                          const Field<float3> &position_field,
+                                          const Field<float3> &offset_field)
+{
+  using namespace blender::bke::greasepencil;
+  const GrainSize grain_size{10000};
+
+  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    const Layer *layer = grease_pencil.layers()[layer_index];
+    int drawing_index = layer->drawing_index_at(grease_pencil.runtime->eval_frame);
+    if (drawing_index == -1) {
+      continue;
+    }
+    GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
+    }
+    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+
+    bke::GreasePencilLayerFieldContext field_context(
+        grease_pencil, ATTR_DOMAIN_POINT, layer_index);
+    fn::FieldEvaluator evaluator{field_context, drawing.strokes().points_num()};
+    evaluator.set_selection(selection_field);
+    evaluator.add(position_field);
+    evaluator.add(offset_field);
+    evaluator.evaluate();
+
+    const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+    if (selection.is_empty()) {
+      return;
+    }
+
+    const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
+    const VArray<float3> offsets_input = evaluator.get_evaluated<float3>(1);
+
+    MutableSpan<float3> positions = drawing.strokes_for_write().positions_for_write();
+
+    selection.foreach_index_optimized<int>(
+        grain_size, [&](const int i) { positions[i] = positions_input[i] + offsets_input[i]; });
+
+    drawing.tag_positions_changed();
+  }
+}
+
 static void set_position_in_component(GeometrySet &geometry,
                                       GeometryComponent::Type component_type,
                                       const Field<bool> &selection_field,
@@ -147,6 +194,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<float3> offset_field = params.extract_input<Field<float3>>("Offset");
   Field<float3> position_field = params.extract_input<Field<float3>>("Position");
+
+  if (geometry.has_grease_pencil()) {
+    set_position_in_grease_pencil(
+        *geometry.get_grease_pencil_for_write(), selection_field, position_field, offset_field);
+  }
 
   for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
                                              GeometryComponent::Type::PointCloud,
