@@ -595,7 +595,7 @@ std::optional<Mesh *> mesh_triangulate(
   const IndexRange ngon_tris_range = tris_range.take_front(ngon_tris_num);
   const IndexRange quad_tris_range = tris_range.take_front(quad_tris_num);
 
-  const int ngon_corners_num = face_tri_to_corners_num(ngons.size(), ngon_tris_num);
+  const int ngon_corners_num = tris_by_ngon.total_size() * 3;
   const int quad_corners_num = quads.size() * 6;
   const IndexRange tri_corners_range(quad_corners_num + ngon_corners_num);
   const IndexRange ngon_corners_range = tri_corners_range.take_front(ngon_corners_num);
