@@ -522,6 +522,7 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   }
   SEQ_collection_free(strips);
 
+  SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
