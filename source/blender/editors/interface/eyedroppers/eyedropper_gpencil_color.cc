@@ -53,6 +53,7 @@
 enum eGP_EyeMode {
   GP_EYE_MATERIAL = 0,
   GP_EYE_PALETTE = 1,
+  GP_EYE_BRUSH = 2,
 };
 
 struct EyedropperGPencil {
@@ -234,10 +235,10 @@ static void eyedropper_set_brush_color(bContext *C, const float col_conv[4])
   Paint *paint = nullptr;
 
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
       paint = &ts->gp_paint->paint;
       break;
-    case CTX_MODE_VERTEX_GPENCIL:
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
       paint = &ts->gp_vertexpaint->paint;
       break;
     default:
