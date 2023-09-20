@@ -798,33 +798,6 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
       }
     }
   }
-  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeForEachInput")) {
-    const NodeGeometryForEachInput &input_data = *static_cast<const NodeGeometryForEachInput *>(
-        input_node->storage);
-
-    if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
-      const bool input_selected = nodes_to_group.contains(input_node);
-      const bool output_selected = nodes_to_group.contains(output_node);
-      if (input_selected && !output_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add for-each input node '%s' to a group without its paired output '%s'",
-            input_node->name,
-            output_node->name);
-        return false;
-      }
-      if (output_selected && !input_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add for-each output node '%s' to a group without its paired input '%s'",
-            output_node->name,
-            input_node->name);
-        return false;
-      }
-    }
-  }
 
   return true;
 }
