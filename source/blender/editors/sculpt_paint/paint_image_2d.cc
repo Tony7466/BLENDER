@@ -390,6 +390,9 @@ static ImBuf *brush_painter_imbuf_new(
   if (brush->imagepaint_tool == PAINT_TOOL_DRAW) {
     paint_brush_color_get(
         scene, brush, use_color_correction, cache->invert, distance, pressure, brush_rgb, display);
+    if (use_float) {
+      srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+    }
   }
   else {
     brush_rgb[0] = 1.0f;
@@ -474,6 +477,9 @@ static void brush_painter_imbuf_update(BrushPainter *painter,
   if (brush->imagepaint_tool == PAINT_TOOL_DRAW) {
     paint_brush_color_get(
         scene, brush, use_color_correction, cache->invert, 0.0f, 1.0f, brush_rgb, display);
+    if (use_float) {
+      srgb_to_linearrgb_v3_v3(brush_rgb, brush_rgb);
+    }
   }
   else {
     brush_rgb[0] = 1.0f;
