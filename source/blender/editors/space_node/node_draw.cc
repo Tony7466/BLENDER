@@ -1077,6 +1077,10 @@ static void node_socket_outline_color_get(const bool selected,
 
 void node_socket_color_get(const bNodeSocketType &type, float r_color[4])
 {
+  if (!type.draw_color_simple) {
+    float undefined_color[4] = {0.8, 0.8, 0.8, 1.0};
+    copy_v4_v4(r_color, undefined_color);
+  }
   type.draw_color_simple(&type, r_color);
 }
 
