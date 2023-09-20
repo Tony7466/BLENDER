@@ -95,7 +95,9 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
         bke::GeometryComponent::Type::Curve, ATTR_DOMAIN_CURVE, IFACE_("Spline"), ICON_CURVE_PATH);
 
     GeometryDataSetTreeViewItem &grease_pencil = this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GeometryComponent::Type::GreasePencil, IFACE_("Grease Pencil"), ICON_GREASEPENCIL);
+        bke::GeometryComponent::Type::GreasePencil,
+        IFACE_("Grease Pencil"),
+        ICON_OUTLINER_DATA_GREASEPENCIL);
     grease_pencil.add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::GreasePencil,
         ATTR_DOMAIN_GREASE_PENCIL_LAYER,
