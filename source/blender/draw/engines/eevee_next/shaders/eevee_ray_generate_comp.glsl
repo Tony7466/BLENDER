@@ -22,10 +22,7 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
-  bool valid_texel = in_texture_range(texel_fullres, gbuf_header_tx);
-  uint closure_bits = (!valid_texel) ? 0u : texelFetch(gbuf_header_tx, texel_fullres, 0).r;
-
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
 
 #if defined(RAYTRACE_REFLECT)
   bool valid_pixel = gbuf.has_reflection;

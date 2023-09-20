@@ -124,7 +124,7 @@ void main()
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
   vec3 V = transform_direction(ViewMatrixInverse, get_view_vector_from_screen_uv(uv));
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
 
 #if defined(RAYTRACE_DIFFUSE)
   ClosureDiffuse closure = gbuf.diffuse;
