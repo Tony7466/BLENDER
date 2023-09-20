@@ -7,11 +7,15 @@
  * - grids_infos_buf
  * - bricks_infos_buf
  * - irradiance_atlas_tx
+ * Needed for sampling (not for upload):
+ * - util_tx
+ * - sampling_buf
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 /**
  * Return the brick coordinate inside the grid.
@@ -105,23 +109,42 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   return 0.5 + cell_start + trilinear_coord;
 }
 
+#if defined(GPU_FRAGMENT_SHADER)
+#  define UTIL_TEXEL vec2(gl_FragCoord)
+#elif defined(GPU_COMPUTE_SHADER)
+#  define UTIL_TEXEL vec2(gl_GlobalInvocationID)
+#else
+#  define UTIL_TEXEL vec2(gl_VertexID, 0)
+#endif
+
 SphericalHarmonicL1 lightprobe_irradiance_sample(
     sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
 {
   vec3 lP;
-  int index = 0;
+  int index = -1;
+  int i = 0;
 #ifdef IRRADIANCE_GRID_UPLOAD
-  index = grid_start_index;
+  i = grid_start_index;
 #endif
-  for (; index < IRRADIANCE_GRID_MAX; index++) {
+  for (; i < IRRADIANCE_GRID_MAX; i++) {
     /* Last grid is tagged as invalid to stop the iteration. */
-    if (grids_infos_buf[index].grid_size.x == -1) {
+    if (grids_infos_buf[i].grid_size.x == -1) {
       /* Sample the last grid instead. */
-      index -= 1;
+      index = i - 1;
       break;
     }
+
     /* If sample fall inside the grid, step out of the loop. */
-    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[index], P, lP)) {
+    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
+      index = i;
+#ifndef IRRADIANCE_GRID_UPLOAD
+      float distance_to_border = min_v3(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
+      float noise = utility_tx_fetch(utility_tx, UTIL_TEXEL, UTIL_BLUE_NOISE_LAYER).x;
+      if (distance_to_border < fract(noise + sampling_rng_1D_get(SAMPLING_VOLUME_U))) {
+        /* Try to sample another grid to get smooth transitions at borders. */
+        continue;
+      }
+#endif
       break;
     }
   }

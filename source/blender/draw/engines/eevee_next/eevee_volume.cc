@@ -257,6 +257,7 @@ void VolumeModule::end_sync()
   inst_.irradiance_cache.bind_resources(&scatter_ps_);
   inst_.shadows.bind_resources(&scatter_ps_);
   inst_.sampling.bind_resources(&scatter_ps_);
+  scatter_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, &inst_.pipelines.utility_tx);
   scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
   scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
   scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
