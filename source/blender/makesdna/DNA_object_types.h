@@ -799,6 +799,7 @@ enum {
   OB_HOLDOUT = 1 << 9,
   OB_SHADOW_CATCHER = 1 << 10,
   OB_HIDE_IRRADIANCE_PROBE = 1 << 11,
+  OB_HIDE_REFLECTION_PROBE = 1 << 12,
 };
 
 /** #Object.shapeflag */
