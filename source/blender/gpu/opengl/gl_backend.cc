@@ -471,8 +471,7 @@ static void detect_workarounds()
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
   GCaps.minimum_per_vertex_stride = 1;
-
-}  // namespace blender::gpu
+}
 
 /** Internal capabilities. */
 
