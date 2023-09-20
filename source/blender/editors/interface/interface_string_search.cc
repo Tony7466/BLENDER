@@ -31,10 +31,10 @@ static RecentCacheStorage &get_recent_cache_storage()
   return storage;
 }
 
-void add_recent_search(const StringRef choosen_str)
+void add_recent_search(const StringRef chosen_str)
 {
   RecentCacheStorage &storage = get_recent_cache_storage();
-  storage.cache.logical_time_by_str.add_overwrite(choosen_str, storage.logical_clock);
+  storage.cache.logical_time_by_str.add_overwrite(chosen_str, storage.logical_clock);
   storage.logical_clock++;
 }
 

@@ -12,7 +12,7 @@ namespace blender::ui::string_search {
  * Remember the string that the user chose. This allows us to put it higher up in the search items
  * later on.
  */
-void add_recent_search(StringRef choosen_str);
+void add_recent_search(StringRef chosen_str);
 
 const blender::string_search::RecentCache *get_recent_cache();
 
