@@ -13,16 +13,6 @@
 
 namespace blender::nodes::node_shader_bsdf_principled_cc {
 
-static void node_buts_specular(uiLayout *layout, bContext *, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "distribution", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-}
-
-static void node_buts_subsurface(uiLayout *layout, bContext *, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "subsurface_method", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-}
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   /**
@@ -65,7 +55,11 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   /* Panel for Subsurface scattering settings. */
   PanelDeclarationBuilder &sss =
-      b.add_panel("Subsurface").default_closed(true).draw_buttons(node_buts_subsurface);
+      b.add_panel("Subsurface")
+          .default_closed(true)
+          .draw_buttons([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+            uiItemR(layout, ptr, "subsurface_method", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+          });
   sss.add_input<decl::Float>("Subsurface")
       .default_value(0.0f)
       .min(0.0f)
@@ -105,7 +99,11 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   /* Panel for Specular settings. */
   PanelDeclarationBuilder &spec =
-      b.add_panel("Specular").default_closed(true).draw_buttons(node_buts_specular);
+      b.add_panel("Specular")
+          .default_closed(true)
+          .draw_buttons([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+            uiItemR(layout, ptr, "distribution", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+          });
   spec.add_input<decl::Float>("Specular")
       .default_value(0.5f)
       .min(0.0f)

@@ -402,7 +402,7 @@ static bool node_update_basis_buttons(const bContext &C,
   return true;
 }
 
-const char *node_socket_get_label(bNodeSocket *socket, const char *panel_label)
+const char *node_socket_get_label(const bNodeSocket *socket, const char *panel_label)
 {
   const char *socket_label = bke::nodeSocketLabel(socket);
   const char *socket_translation_context = node_socket_get_translation_context(*socket);
@@ -415,9 +415,9 @@ const char *node_socket_get_label(bNodeSocket *socket, const char *panel_label)
   {
     return translated_socket_label + len_prefix + 1;
   }
-  else {
-    return translated_socket_label;
-  }
+
+  /* Full label. */
+  return translated_socket_label;
 }
 
 static bool node_update_basis_socket(const bContext &C,
