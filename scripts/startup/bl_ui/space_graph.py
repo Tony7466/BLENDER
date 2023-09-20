@@ -54,8 +54,8 @@ class GRAPH_HT_header(Header):
         sub = row.row(align=True)
         sub.popover(
             panel="GRAPH_PT_snapping",
-            icon='NONE',
-            text="Modes",
+            icon='SNAP_INCREMENT',
+            text="",
         )
 
         row = layout.row(align=True)

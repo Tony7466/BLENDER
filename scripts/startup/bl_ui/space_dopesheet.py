@@ -282,8 +282,8 @@ class DOPESHEET_HT_editor_buttons:
             sub = row.row(align=True)
             sub.popover(
                 panel="DOPESHEET_PT_snapping",
-                icon='NONE',
-                text="Modes",
+                icon='SNAP_INCREMENT',
+                text="",
             )
 
         row = layout.row(align=True)
