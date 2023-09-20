@@ -132,6 +132,7 @@ GBufferData gbuffer_read(usampler2D header_tx,
 
   uint header = texelFetch(header_tx, texel, 0).r;
 
+  gbuf.thickness = 0.0;
   gbuf.has_diffuse = flag_test(header, CLOSURE_DIFFUSE);
   gbuf.has_reflection = flag_test(header, CLOSURE_REFLECTION);
   gbuf.has_refraction = flag_test(header, CLOSURE_REFRACTION);
@@ -144,6 +145,11 @@ GBufferData gbuffer_read(usampler2D header_tx,
 
     vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
     gbuf.reflection.color = gbuffer_color_unpack(color_packed);
+  }
+  else {
+    gbuf.reflection.N = vec3(0.0, 0.0, 1.0);
+    gbuf.reflection.roughness = 0.0;
+    gbuf.reflection.color = vec3(0.0);
   }
 
   if (gbuf.has_diffuse) {
@@ -163,6 +169,11 @@ GBufferData gbuffer_read(usampler2D header_tx,
       gbuf.diffuse.sss_id = gbuffer_object_id_unorm16_unpack(closure_packed.w);
     }
   }
+  else {
+    gbuf.diffuse.N = vec3(0.0, 0.0, 1.0);
+    gbuf.diffuse.sss_id = 0u;
+    gbuf.diffuse.color = vec3(0.0);
+  }
 
   if (gbuf.has_refraction) {
     int layer = 1;
@@ -173,6 +184,12 @@ GBufferData gbuffer_read(usampler2D header_tx,
 
     vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
     gbuf.refraction.color = gbuffer_color_unpack(color_packed);
+  }
+  else {
+    gbuf.refraction.N = vec3(0.0, 0.0, 1.0);
+    gbuf.refraction.ior = 1.1;
+    gbuf.refraction.roughness = 0.0;
+    gbuf.refraction.color = vec3(0.0);
   }
 
   return gbuf;
