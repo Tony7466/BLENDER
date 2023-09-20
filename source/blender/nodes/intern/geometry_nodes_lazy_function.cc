@@ -1816,8 +1816,8 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     eval_storage.side_effect_provider->lf_body_nodes_ = lf_body_nodes;
 
     eval_storage.graph_executor.emplace(lf_graph,
-                                        lf_graph_inputs,
-                                        lf_graph_outputs,
+                                        std::move(lf_graph_inputs),
+                                        std::move(lf_graph_outputs),
                                         nullptr,
                                         &*eval_storage.side_effect_provider,
                                         &*eval_storage.body_execute_wrapper);
