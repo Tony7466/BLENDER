@@ -237,7 +237,7 @@ void protectedSizeBits(short protectflag, float size[3])
 /** \name Transform Limits
  * \{ */
 
-void constraintTransLim(const TransInfo *t, TransData *td)
+void constraintTransLim(const TransInfo *t, const TransDataContainer *tc, TransData *td)
 {
   if (td->con) {
     const bConstraintTypeInfo *ctiLoc = BKE_constraint_typeinfo_from_type(
@@ -290,8 +290,10 @@ void constraintTransLim(const TransInfo *t, TransData *td)
       if (cti) {
         /* do space conversions */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
-          /* just multiply by td->mtx (this should be ok) */
           mul_m3_v3(td->mtx, cob.matrix[3]);
+          if (tc->use_local_mat) {
+            mul_m4_v3(tc->mat, cob.matrix[3]);
+          }
         }
         else if (con->ownspace != CONSTRAINT_SPACE_LOCAL) {
           /* skip... incompatible spacetype */
@@ -309,7 +311,9 @@ void constraintTransLim(const TransInfo *t, TransData *td)
 
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
-          /* just multiply by td->smtx (this should be ok) */
+          if (tc->use_local_mat) {
+            mul_m4_v3(tc->imat, cob.matrix[3]);
+          }
           mul_m3_v3(td->smtx, cob.matrix[3]);
         }
 
@@ -633,7 +637,7 @@ void ElementRotation_ex(const TransInfo *t,
 
       add_v3_v3v3(td->loc, td->iloc, vec);
 
-      constraintTransLim(t, td);
+      constraintTransLim(t, tc, td);
     }
 
     /* rotation */
@@ -709,7 +713,7 @@ void ElementRotation_ex(const TransInfo *t,
       add_v3_v3v3(td->loc, td->iloc, vec);
     }
 
-    constraintTransLim(t, td);
+    constraintTransLim(t, tc, td);
 
     /* rotation */
     if ((t->flag & T_V3D_ALIGN) == 0) { /* Align mode doesn't rotate objects itself. */
@@ -1059,7 +1063,7 @@ void ElementResize(const TransInfo *t,
     add_v3_v3v3(td->loc, td->iloc, vec);
   }
 
-  constraintTransLim(t, td);
+  constraintTransLim(t, tc, td);
 }
 
 /** \} */
