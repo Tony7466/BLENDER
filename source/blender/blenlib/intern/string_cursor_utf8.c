@@ -70,6 +70,7 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
 
     case '\'':
     case '\"':
+    case '\`':
       return STRCUR_DELIM_QUOTE;
 
     case ' ':
