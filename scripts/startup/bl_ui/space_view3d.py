@@ -7674,6 +7674,14 @@ class TOPBAR_PT_annotation_layers(Panel, AnnotationDataPanel):
     bl_ui_units_x = 14
 
 
+class PROPERTIES_PT_annotation_layers(Panel, AnnotationDataPanel):
+    # Only for popover, these are dummy values.
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Layers"
+    bl_ui_units_x = 14
+
+
 class VIEW3D_PT_view3d_stereo(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -8710,6 +8718,7 @@ classes = (
     TOPBAR_PT_gpencil_materials,
     TOPBAR_PT_gpencil_vertexcolor,
     TOPBAR_PT_annotation_layers,
+    PROPERTIES_PT_annotation_layers,
     VIEW3D_PT_curves_sculpt_add_shape,
     VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
