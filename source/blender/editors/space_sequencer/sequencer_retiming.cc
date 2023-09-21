@@ -853,32 +853,40 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+
+static bool delete_flagged_key(Scene *scene, Sequence *seq) {
+  for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+    if ((key.flag & SEQ_DELETE_KEY) != 0) {
+      SEQ_retiming_remove_key(scene, seq, &key);
+      return true;
+    }
+  }
+  return false;
+}
+
 int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 {
   Scene *scene = CTX_data_scene(C);
 
   blender::Vector<Sequence *> strips_to_handle;
+  blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(scene));
 
-  for (auto item : SEQ_retiming_selection_get(SEQ_editing_get(scene)).items()) {
+  for (auto item : selection.items()) {
+    /* First and last key can not be removed. */
+    if (item.key->strip_frame_index == 0 || SEQ_retiming_is_last_key(item.value, item.key)) {
+      continue;
+    }
+
     strips_to_handle.append_non_duplicates(item.value);
     item.key->flag |= SEQ_DELETE_KEY;
   }
 
   for (Sequence *seq : strips_to_handle) {
-    for (int i = 0; i < seq->retiming_keys_num;) {
-      SeqRetimingKey *key = seq->retiming_keys + i;
-      i++;
-
-      if ((key->flag & SEQ_DELETE_KEY) == 0) {
-        continue;
-      }
-
-      SEQ_retiming_remove_key(scene, seq, key);
+    while (delete_flagged_key(scene, seq)){
+      /* Pass. */
     }
     SEQ_relations_invalidate_cache_raw(scene, seq);
   }
-
-  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
