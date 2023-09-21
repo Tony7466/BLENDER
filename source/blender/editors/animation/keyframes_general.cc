@@ -1253,6 +1253,7 @@ void bake_fcurve(FCurve *fcu,
                  const float step,
                  const BakeCurveRemove remove_existing)
 {
+  BLI_assert(step > 0);
   const int sample_count = (range[1] - range[0]) / step;
   float *samples = static_cast<float *>(
       MEM_callocN(sample_count * sizeof(float), "Channel Bake Samples"));

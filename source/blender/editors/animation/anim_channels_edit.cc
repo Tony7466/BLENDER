@@ -4376,6 +4376,9 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
    * constantly be overridden. */
   blender::int2 frame_range;
   RNA_int_get_array(op->ptr, "range", frame_range);
+  if (frame_range[1] < frame_range[0]) {
+    frame_range[1] = frame_range[0];
+  }
   const float step = RNA_float_get(op->ptr, "step");
   if (frame_range[0] == 0 && frame_range[1] == 0) {
     if (scene->r.flag & SCER_PRV_RANGE) {
