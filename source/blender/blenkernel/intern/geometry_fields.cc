@@ -66,7 +66,9 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
       return GVArray::ForSingle(varray.type(), domain_size, value);
     }
   }
-  else if (dynamic_cast<const CurvesFieldInput *>(&field_input)) {
+  else if (dynamic_cast<const GeometryFieldInput *>(&field_input) ||
+           dynamic_cast<const CurvesFieldInput *>(&field_input))
+  {
     if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
       return {};
     }
