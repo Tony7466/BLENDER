@@ -272,7 +272,7 @@ set(SRC
   intern/screen.cc
   intern/shader_fx.cc
   intern/shrinkwrap.cc
-  intern/softbody.c
+  intern/softbody_bad_function.c
   intern/softbody.cc
   intern/sound.cc
   intern/speaker.cc
@@ -532,6 +532,7 @@ set(SRC
   intern/pbvh_intern.hh
   intern/pbvh_pixels_copy.hh
   intern/pbvh_uv_islands.hh
+  intern/softbody_intern.h
   intern/subdiv_converter.hh
   intern/subdiv_inline.hh
 )
