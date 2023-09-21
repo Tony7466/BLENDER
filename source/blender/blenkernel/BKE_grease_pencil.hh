@@ -260,6 +260,10 @@ struct LayerTransformData {
    * i.e. each frame that is not an implicit hold. */
   Map<int, int> frames_duration;
 
+  /* Temporary copy of duplicated frames before we decide on a place to insert them.
+   * Used in the move+duplicate operator. */
+  Map<int, GreasePencilFrame> temp_frames_buffer;
+
   FrameTransformationStatus status{TRANS_CLEAR};
 };
 
@@ -737,11 +741,11 @@ inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup:
   return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
 }
 
-inline GreasePencilDrawingBase *GreasePencil::drawings(int64_t index) const
+inline const GreasePencilDrawingBase *GreasePencil::drawing(int64_t index) const
 {
   return this->drawings()[index];
 }
-inline GreasePencilDrawingBase *GreasePencil::drawings(int64_t index)
+inline GreasePencilDrawingBase *GreasePencil::drawing(int64_t index)
 {
   return this->drawings()[index];
 }

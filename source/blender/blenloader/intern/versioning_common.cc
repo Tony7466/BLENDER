@@ -361,7 +361,7 @@ float *version_cycles_node_socket_vector_value(bNodeSocket *socket)
 
 IDProperty *version_cycles_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
@@ -408,7 +408,7 @@ void version_cycles_property_boolean_set(IDProperty *idprop, const char *name, b
 
 IDProperty *version_cycles_visibility_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : nullptr;
 }
 

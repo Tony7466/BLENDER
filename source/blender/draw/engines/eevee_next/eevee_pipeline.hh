@@ -180,7 +180,10 @@ class DeferredLayer {
   PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
   PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
 
+  /* Evaluate all light objects contribution. */
   PassSimple eval_light_ps_ = {"EvalLights"};
+  /* Combine direct and indirect light contributions and apply BSDF color. */
+  PassSimple combine_ps_ = {"Combine"};
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
@@ -193,12 +196,17 @@ class DeferredLayer {
    *
    * NOTE: Not to be confused with the render passes.
    */
-  TextureFromPool diffuse_light_tx_ = {"diffuse_light_accum_tx"};
-  TextureFromPool specular_light_tx_ = {"specular_light_accum_tx"};
-
+  TextureFromPool direct_diffuse_tx_ = {"direct_diffuse_tx"};
+  TextureFromPool direct_reflect_tx_ = {"direct_reflect_tx"};
+  TextureFromPool direct_refract_tx_ = {"direct_refract_tx"};
   /* Reference to ray-tracing result. */
-  GPUTexture *indirect_refraction_tx_ = nullptr;
-  GPUTexture *indirect_reflection_tx_ = nullptr;
+  GPUTexture *indirect_diffuse_tx_ = nullptr;
+  GPUTexture *indirect_reflect_tx_ = nullptr;
+  GPUTexture *indirect_refract_tx_ = nullptr;
+
+  Texture radiance_behind_tx_ = {"radiance_behind_tx"};
+  Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
+  float4x4 radiance_feedback_persmat_;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
@@ -214,7 +222,8 @@ class DeferredLayer {
               Framebuffer &prepass_fb,
               Framebuffer &combined_fb,
               int2 extent,
-              RayTraceBuffer &rt_buffer);
+              RayTraceBuffer &rt_buffer,
+              bool is_first_pass);
 };
 
 class DeferredPipeline {
@@ -373,15 +382,16 @@ class UtilityTexture : public Texture {
     }
     {
       Layer &layer = data[UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER];
-      const Vector<float> &transmittance_profile = SubsurfaceModule::transmittance_profile();
-      BLI_assert(transmittance_profile.size() == lut_size);
-      /* Repeatedly stored on every row for correct interpolation. */
       for (auto y : IndexRange(lut_size)) {
         for (auto x : IndexRange(lut_size)) {
-          /* Only the first channel is used. */
-          layer.data[y][x] = float4(transmittance_profile[x]);
+          /* Repeatedly stored on every row for correct interpolation. */
+          layer.data[y][x][0] = lut::burley_sss_profile[x][0];
+          layer.data[y][x][1] = lut::random_walk_sss_profile[x][0];
+          layer.data[y][x][2] = 0.0f;
+          layer.data[y][x][UTIL_DISK_INTEGRAL_COMP] = lut::ltc_disk_integral[y][x][0];
         }
       }
+      BLI_assert(UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER == UTIL_DISK_INTEGRAL_LAYER);
     }
     {
       Layer &layer = data[UTIL_LTC_MAT_LAYER];
@@ -391,8 +401,8 @@ class UtilityTexture : public Texture {
       Layer &layer = data[UTIL_LTC_MAG_LAYER];
       for (auto x : IndexRange(lut_size)) {
         for (auto y : IndexRange(lut_size)) {
-          layer.data[y][x][0] = lut::bsdf_split_sum_ggx[y][x][0];
-          layer.data[y][x][1] = lut::bsdf_split_sum_ggx[y][x][1];
+          layer.data[y][x][0] = lut::brdf_ggx[y][x][0];
+          layer.data[y][x][1] = lut::brdf_ggx[y][x][1];
           layer.data[y][x][2] = lut::ltc_mag_ggx[y][x][0];
           layer.data[y][x][3] = lut::ltc_mag_ggx[y][x][1];
         }
@@ -400,20 +410,14 @@ class UtilityTexture : public Texture {
       BLI_assert(UTIL_LTC_MAG_LAYER == UTIL_BSDF_LAYER);
     }
     {
-      Layer &layer = data[UTIL_DISK_INTEGRAL_LAYER];
-      for (auto x : IndexRange(lut_size)) {
-        for (auto y : IndexRange(lut_size)) {
-          layer.data[y][x][UTIL_DISK_INTEGRAL_COMP] = lut::ltc_disk_integral[y][x][0];
-        }
-      }
-    }
-    {
       for (auto layer_id : IndexRange(16)) {
         Layer &layer = data[UTIL_BTDF_LAYER + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
-            layer.data[y][x][0] = lut::btdf_split_sum_ggx[layer_id][y][x][0];
-            layer.data[y][x][1] = lut::btdf_split_sum_ggx[layer_id][y][x][1];
+            layer.data[y][x][0] = lut::bsdf_ggx[layer_id][y][x][0];
+            layer.data[y][x][1] = lut::bsdf_ggx[layer_id][y][x][1];
+            layer.data[y][x][2] = lut::bsdf_ggx[layer_id][y][x][2];
+            layer.data[y][x][3] = lut::btdf_ggx[layer_id][y][x][0];
           }
         }
       }

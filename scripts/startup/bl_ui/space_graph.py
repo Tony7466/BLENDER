@@ -218,6 +218,16 @@ class GRAPH_MT_select(Menu):
         props.mode = 'RIGHT'
 
         layout.separator()
+        props = layout.operator("graph.select_key_handles", text="Select Handles")
+        props.left_handle_action = 'SELECT'
+        props.right_handle_action = 'SELECT'
+        props.key_action = 'KEEP'
+        props = layout.operator("graph.select_key_handles", text="Select Key")
+        props.left_handle_action = 'DESELECT'
+        props.right_handle_action = 'DESELECT'
+        props.key_action = 'SELECT'
+
+        layout.separator()
         layout.operator("graph.select_more")
         layout.operator("graph.select_less")
 
@@ -285,7 +295,7 @@ class GRAPH_MT_channel(Menu):
         layout.separator()
         layout.operator("graph.keys_to_samples")
         layout.operator("graph.samples_to_keys")
-        layout.operator("graph.sound_bake")
+        layout.operator("graph.sound_to_samples")
 
         layout.separator()
         layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")
@@ -305,7 +315,7 @@ class GRAPH_MT_key_density(Menu):
         # as we do not have a modal mode for it, so just execute it.
         with operator_context(layout, 'EXEC_REGION_WIN'):
             layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
-        layout.operator("graph.sample")
+        layout.operator("graph.bake_keys")
 
         layout.separator()
         layout.operator("graph.clean").channels = False
@@ -324,8 +334,10 @@ class GRAPH_MT_key_blending(Menu):
         layout.operator("graph.blend_offset", text="Blend Offset")
         layout.operator("graph.blend_to_ease", text="Blend to Ease")
         layout.operator("graph.match_slope", text="Match Slope")
+        layout.operator("graph.push_pull", text="Push Pull")
         layout.operator("graph.shear", text="Shear Keys")
         layout.operator("graph.scale_average", text="Scale Average")
+        layout.operator("graph.time_offset", text="Time Offset")
 
 
 class GRAPH_MT_key_smoothing(Menu):

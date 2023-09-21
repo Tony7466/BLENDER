@@ -468,6 +468,9 @@ struct wmNotifier {
 
 /* NC_NODE Nodes */
 
+/* Influences which menus node assets are included in. */
+#define ND_NODE_ASSET_DATA (1 << 16)
+
 /* NC_SPACE */
 #define ND_SPACE_CONSOLE (1 << 16)     /* general redraw */
 #define ND_SPACE_INFO_REPORT (2 << 16) /* update for reports, could specify type */
@@ -705,8 +708,10 @@ struct wmEvent {
   int mval[2];
   /**
    * A single UTF8 encoded character.
-   * #BLI_str_utf8_size() must _always_ return a valid value,
-   * check when assigning so we don't need to check on every access after.
+   *
+   * - Not null terminated although it may not be set `(utf8_buf[0] == '\0')`.
+   * - #BLI_str_utf8_size_or_error() must _always_ return a valid value,
+   *   check when assigning so we don't need to check on every access after.
    */
   char utf8_buf[6];
 
@@ -982,10 +987,19 @@ struct wmOperatorType {
 
   /** Optional panel for redo and repeat, auto-generated if not set. */
   void (*ui)(bContext *, wmOperator *);
+  /**
+   * Optional check for whether the #ui callback should be called (usually to create the redo
+   * panel interface).
+   */
+  bool (*ui_poll)(wmOperatorType *, PointerRNA *);
 
   /**
    * Return a different name to use in the user interface, based on property values.
    * The returned string is expected to be translated if needed.
+   *
+   * WARNING: This callback does not currently work as expected in most common usage cases (e.g.
+   * any definition of an operator button through the layout API will fail to execute it). See
+   * #112253 for details.
    */
   std::string (*get_name)(wmOperatorType *, PointerRNA *);
 
