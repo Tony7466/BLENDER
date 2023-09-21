@@ -37,35 +37,6 @@ class WORKSPACE_PT_main(WorkSpaceButtonsPanel, Panel):
         layout.prop(workspace, "object_mode", text="Mode")
 
 
-class WORKSPACE_UL_addons_items(bpy.types.UIList):
-    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        layout.alignment = 'LEFT'
-        row = layout.row()
-        row.alignment = 'LEFT'
-        row.active = context.workspace.use_filter_by_owner
-        row.operator(
-            "wm.owner_disable" if item.enabled else "wm.owner_enable",
-            icon='CHECKBOX_HLT' if item.enabled else 'CHECKBOX_DEHLT',
-            text=item.name,
-            translate=True,
-            emboss=False,
-        ).owner_id = item.module
-
-
-class WORKSPACE_UL_unknown_addons_items(bpy.types.UIList):
-    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        layout.alignment = 'LEFT'
-        row = layout.row()
-        row.alignment = 'LEFT'
-        row.active = context.workspace.use_filter_by_owner
-        row.operator(
-            "wm.owner_disable",
-            icon='CHECKBOX_HLT',
-            text=item.name,
-            emboss=False,
-        ).owner_id = item.module
-
-
 class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
     bl_label = "Filter Add-ons"
     bl_parent_id = "WORKSPACE_PT_main"
@@ -76,12 +47,13 @@ class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-
-        bpy.context.workspace.addons.clear()
-        bpy.context.workspace.unknown_addons.clear()
+        # align just to pack more tightly
+        col = layout.box().column(align=True)
 
         workspace = context.workspace
         prefs = context.preferences
+
+        col.active = workspace.use_filter_by_owner
 
         import addon_utils
         addon_map = {mod.__name__: mod for mod in addon_utils.modules()}
@@ -94,37 +66,31 @@ class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
                 continue
             info = addon_utils.module_bl_info(module)
             is_enabled = module_name in owner_ids
-            addon = context.workspace.addons.add()
-            addon.enabled = is_enabled
-            addon.module = module_name
-            addon.name = (iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])))
-
+            row = col.row()
+            row.alignment = 'LEFT'
+            row.operator(
+                "wm.owner_disable" if is_enabled else "wm.owner_enable",
+                icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT',
+                text=iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])),
+                translate=False,
+                emboss=False,
+            ).owner_id = module_name
             if is_enabled:
                 owner_ids.remove(module_name)
-        row = layout.row()
-        layout.template_list(
-            "WORKSPACE_UL_addons_items",
-            "",
-            context.workspace,
-            "addons",
-            context.workspace,
-            "active_addon",
-            rows=10)
+
         # Detect unused
         if owner_ids:
             layout.label(text="Unknown add-ons", icon='ERROR')
+            col = layout.box().column(align=True)
             for module_name in sorted(owner_ids):
-                addon = context.workspace.unknown_addons.add()
-                addon.name = addon.module = module_name
-            row = layout.row()
-            layout.template_list(
-                "WORKSPACE_UL_unknown_addons_items",
-                "",
-                context.workspace,
-                "unknown_addons",
-                context.workspace,
-                "active_unknown_addon",
-                rows=10)
+                row = col.row()
+                row.alignment = 'LEFT'
+                row.operator(
+                    "wm.owner_disable",
+                    icon='CHECKBOX_HLT',
+                    text=module_name,
+                    emboss=False,
+                ).owner_id = module_name
 
 
 class WORKSPACE_PT_custom_props(WorkSpaceButtonsPanel, PropertyPanel, Panel):
@@ -135,27 +101,10 @@ class WORKSPACE_PT_custom_props(WorkSpaceButtonsPanel, PropertyPanel, Panel):
 
 
 classes = (
-    WORKSPACE_UL_addons_items,
-    WORKSPACE_UL_unknown_addons_items,
-
     WORKSPACE_PT_main,
     WORKSPACE_PT_addons,
     WORKSPACE_PT_custom_props,
 )
-
-
-class WorkspaceAddonPropertyGroup(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty()
-    enabled: bpy.props.BoolProperty()
-    module: bpy.props.StringProperty()
-
-
-bpy.utils.register_class(WorkspaceAddonPropertyGroup)
-
-bpy.types.WorkSpace.active_addon = bpy.props.IntProperty()
-bpy.types.WorkSpace.active_unknown_addon = bpy.props.IntProperty()
-bpy.types.WorkSpace.addons = bpy.props.CollectionProperty(type=WorkspaceAddonPropertyGroup)
-bpy.types.WorkSpace.unknown_addons = bpy.props.CollectionProperty(type=WorkspaceAddonPropertyGroup)
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
