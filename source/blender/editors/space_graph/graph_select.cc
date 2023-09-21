@@ -2213,17 +2213,17 @@ void GRAPH_OT_select_key_handles(wmOperatorType *ot)
                prop_graphkeys_select_key_handles_actions,
                GRAPHKEYS_KEYHANDLESSEL_SELECT,
                "Left Handle",
-               "How to affect the selection of the left handle");
+               "Effect on the left handle");
   RNA_def_enum(ot->srna,
                "right_handle_action",
                prop_graphkeys_select_key_handles_actions,
                GRAPHKEYS_KEYHANDLESSEL_SELECT,
                "Right Handle",
-               "How to affect the selection of the right handle");
+               "Effect on the right handle");
   RNA_def_enum(ot->srna,
                "key_action",
                prop_graphkeys_select_key_handles_actions,
                GRAPHKEYS_KEYHANDLESSEL_KEEP,
                "Key",
-               "How to affect the selection of the key itself");
+               "Effect on the key itself");
 }
