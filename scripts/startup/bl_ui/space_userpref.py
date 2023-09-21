@@ -385,8 +385,9 @@ class USERPREF_PT_edit_objects_new(EditingPanel, CenterAlignMixIn, Panel):
 
 
 class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Panel):
-    bl_label = "Duplicate Data"
+    bl_label = "Copy on Duplicate"
     bl_parent_id = "USERPREF_PT_edit_objects"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
@@ -396,33 +397,49 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
-        col = flow.column()
-        col.prop(edit, "use_duplicate_action", text="Action", icon="ACTION")
-        col.prop(edit, "use_duplicate_armature", text="Armature", icon="OUTLINER_DATA_ARMATURE")
-        col.prop(edit, "use_duplicate_camera", text="Camera", icon="OUTLINER_DATA_CAMERA")
-        col.prop(edit, "use_duplicate_curve", text="Curve", icon="OUTLINER_DATA_CURVE")
-        # col.prop(edit, "use_duplicate_fcurve", text="F-Curve")  # Not implemented.
-        col.prop(edit, "use_duplicate_curves", text="Curves", icon="OUTLINER_DATA_CURVES")
-        col.prop(edit, "use_duplicate_grease_pencil", text="Grease Pencil", icon="OUTLINER_OB_GREASEPENCIL")
-        col.prop(edit, "use_duplicate_lattice", text="Lattice", icon="OUTLINER_DATA_LATTICE")
+        datablock_types = (
+            ("use_duplicate_action", "Action", 'ACTION', ''),
+            ("use_duplicate_armature", "Armature", 'OUTLINER_DATA_ARMATURE', ''),
+            ("use_duplicate_camera", "Camera", 'OUTLINER_DATA_CAMERA', ''),
+            ("use_duplicate_curve", "Curve", 'OUTLINER_DATA_CURVE', ''),
+            ("use_duplicate_curves", "Curves", 'OUTLINER_DATA_CURVES', ''),
+            ("use_duplicate_grease_pencil", "Grease Pencil", 'OUTLINER_OB_GREASEPENCIL', ''),
+            ("use_duplicate_lattice", "Lattice", 'OUTLINER_DATA_LATTICE', ''),
+            (None, None, None, None),
+            ("use_duplicate_light", "Light", 'OUTLINER_DATA_LIGHT', ''),
+            ("use_duplicate_lightprobe", "Light Probe", 'OUTLINER_DATA_LIGHTPROBE', ''),
+            ("use_duplicate_material", "Material", 'MATERIAL_DATA', ''),
+            ("use_duplicate_mesh", "Mesh", 'OUTLINER_DATA_MESH', ''),
+            ("use_duplicate_metaball", "Metaball", 'OUTLINER_DATA_META', ''),
+            ("use_duplicate_node_tree", "Node Tree", 'NODETREE', ''),
+            ("use_duplicate_particle", "Particle", 'PARTICLES', ''),
+            (None, None, None, None),
+            ("use_duplicate_pointcloud", "Point Cloud", 'OUTLINER_DATA_POINTCLOUD', ''),
+            ("use_duplicate_speaker", "Speaker", 'OUTLINER_DATA_SPEAKER', ''),
+            ("use_duplicate_surface", "Surface", 'OUTLINER_DATA_SURFACE', ''),
+            ("use_duplicate_text", "Text", 'OUTLINER_DATA_FONT', ''),
+            ("use_duplicate_volume", "Volume", 'OUTLINER_DATA_VOLUME', 'i18n_contexts.id_id'),
+        )
 
         col = flow.column()
-        col.prop(edit, "use_duplicate_light", text="Light", icon="OUTLINER_DATA_LIGHT")
-        col.prop(edit, "use_duplicate_lightprobe", text="Light Probe", icon="OUTLINER_DATA_LIGHTPROBE")
-        col.prop(edit, "use_duplicate_material", text="Material", icon="MATERIAL_DATA")
-        col.prop(edit, "use_duplicate_mesh", text="Mesh", icon="OUTLINER_DATA_MESH")
-        col.prop(edit, "use_duplicate_metaball", text="Metaball", icon="OUTLINER_DATA_META")
-        col.prop(edit, "use_duplicate_node_tree", text="Node Tree", icon="NODETREE")
-        col.prop(edit, "use_duplicate_particle", text="Particle", icon="PARTICLES")
 
-        col = flow.column()
-        if hasattr(edit, "use_duplicate_pointcloud"):
-            col.prop(edit, "use_duplicate_pointcloud", text="Point Cloud", icon="OUTLINER_DATA_POINTCLOUD")
-        col.prop(edit, "use_duplicate_speaker", text="Speaker", icon="OUTLINER_DATA_SPEAKER")
-        col.prop(edit, "use_duplicate_surface", text="Surface", icon="OUTLINER_DATA_SURFACE")
-        col.prop(edit, "use_duplicate_text", text="Text", icon="OUTLINER_DATA_FONT")
-        # col.prop(edit, "use_duplicate_texture", text="Texture")  # Not implemented, icon="OUTLINER_OB_".
-        col.prop(edit, "use_duplicate_volume", text="Volume", text_ctxt=i18n_contexts.id_id, icon="OUTLINER_DATA_VOLUME")
+        for prop, type_name, type_icon, type_ctx in datablock_types:
+            if prop is None:
+                col = flow.column()
+                continue
+
+            row = col.row()
+
+            row_checkbox = row.row()
+            if (hasattr(edit, prop)):
+                row_checkbox.prop(edit, prop, text="")
+            elif type_ctx:
+                row_checkbox.prop(edit, prop, text="", text_ctxt=type_ctx)
+
+            row_label = row.row()
+            row_label.label(text=type_name, icon=type_icon)
+
+            row_label.active = getattr(edit, prop)
 
 
 class USERPREF_PT_edit_cursor(EditingPanel, CenterAlignMixIn, Panel):
