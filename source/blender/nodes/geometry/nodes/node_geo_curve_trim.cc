@@ -173,7 +173,7 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
     bke::curves_copy_parameters(src_curves_id, *dst_curves_id);
     geometry_set.replace_curves(dst_curves_id);
   }
-  else if (geometry_set.has_grease_pencil()) {
+  if (geometry_set.has_grease_pencil()) {
     using namespace bke::greasepencil;
     GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
     for (const Layer *layer : grease_pencil.layers()) {
