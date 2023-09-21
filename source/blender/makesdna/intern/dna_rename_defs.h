@@ -29,7 +29,7 @@
  *   Compare the results before & after to ensure all changes are reversed by renaming
  *   and the DNA remains unchanged.
  *
- * \see versioning_dna.c for actual version patching.
+ * \see `versioning_dna.cc` for actual version patching.
  */
 
 /* No include guard (intentional). */
@@ -104,11 +104,16 @@ DNA_STRUCT_RENAME_ELEM(MVert, flag, flag_legacy)
 DNA_STRUCT_RENAME_ELEM(MaskLayer, restrictflag, visibility_flag)
 DNA_STRUCT_RENAME_ELEM(MaterialLineArt, transparency_mask, material_mask_bits)
 DNA_STRUCT_RENAME_ELEM(Mesh, loc, texspace_location)
+DNA_STRUCT_RENAME_ELEM(Mesh, edata, edge_data)
+DNA_STRUCT_RENAME_ELEM(Mesh, fdata, fdata_legacy)
+DNA_STRUCT_RENAME_ELEM(Mesh, ldata, loop_data)
+DNA_STRUCT_RENAME_ELEM(Mesh, pdata, face_data)
 DNA_STRUCT_RENAME_ELEM(Mesh, poly_offset_indices, face_offset_indices)
-DNA_STRUCT_RENAME_ELEM(Mesh, totface, totface_legacy)
-DNA_STRUCT_RENAME_ELEM(Mesh, totpoly, faces_num)
 DNA_STRUCT_RENAME_ELEM(Mesh, size, texspace_size)
 DNA_STRUCT_RENAME_ELEM(Mesh, texflag, texspace_flag)
+DNA_STRUCT_RENAME_ELEM(Mesh, totface, totface_legacy)
+DNA_STRUCT_RENAME_ELEM(Mesh, totpoly, faces_num)
+DNA_STRUCT_RENAME_ELEM(Mesh, vdata, vert_data)
 DNA_STRUCT_RENAME_ELEM(MeshDeformModifierData, totcagevert, cage_verts_num)
 DNA_STRUCT_RENAME_ELEM(MeshDeformModifierData, totinfluence, influences_num)
 DNA_STRUCT_RENAME_ELEM(MeshDeformModifierData, totvert, verts_num)
@@ -178,6 +183,8 @@ DNA_STRUCT_RENAME_ELEM(bPoseChannel, scaleIn, scale_in_x)
 DNA_STRUCT_RENAME_ELEM(bPoseChannel, scaleOut, scale_out_x)
 DNA_STRUCT_RENAME_ELEM(bPoseChannel, scale_in_y, scale_in_z)
 DNA_STRUCT_RENAME_ELEM(bPoseChannel, scale_out_y, scale_out_z)
+DNA_STRUCT_RENAME_ELEM(bNodeTree, inputs, inputs_legacy)
+DNA_STRUCT_RENAME_ELEM(bNodeTree, outputs, outputs_legacy)
 DNA_STRUCT_RENAME_ELEM(bSameVolumeConstraint, flag, free_axis)
 DNA_STRUCT_RENAME_ELEM(bSound, name, filepath)
 DNA_STRUCT_RENAME_ELEM(bTheme, tact, space_action)

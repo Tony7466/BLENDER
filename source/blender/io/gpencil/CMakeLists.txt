@@ -1,16 +1,21 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   ../common
+  ../../blenkernel
   ../../blenloader
+  ../../bmesh
+  ../../depsgraph
   ../../editors/include
   ../../makesdna
   ../../makesrna
+  ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/guardedalloc
-  ../../../../intern/utfconv 
+  ../../../../intern/utfconv
 )
 
 set(INC_SYS
@@ -30,16 +35,12 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::extern::nanosvg
-  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_PUGIXML)

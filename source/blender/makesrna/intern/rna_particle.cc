@@ -22,20 +22,22 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "BKE_mesh.h"
-#include "BKE_mesh_legacy_convert.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_legacy_convert.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 static const EnumPropertyItem part_from_items[] = {
@@ -134,11 +136,10 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
 #  include "BLI_string_utils.h"
 
 #  include "BKE_boids.h"
-#  include "BKE_cloth.h"
+#  include "BKE_cloth.hh"
 #  include "BKE_colortools.h"
 #  include "BKE_context.h"
 #  include "BKE_deform.h"
@@ -215,7 +216,7 @@ static void rna_ParticleHairKey_location_object_get(PointerRNA *ptr, float *valu
     Mesh *hair_mesh = (psmd->psys->flag & PSYS_HAIR_DYNAMICS) ? psmd->psys->hair_out_mesh :
                                                                 nullptr;
     if (hair_mesh) {
-      const float(*positions)[3] = BKE_mesh_vert_positions(hair_mesh);
+      const blender::Span<blender::float3> positions = hair_mesh->vert_positions();
       copy_v3_v3(values, positions[pa->hair_index + (hkey - pa->hair)]);
     }
     else {
@@ -280,7 +281,7 @@ static void hair_key_location_object_set(HairKey *hair_key,
     if (hair_key_index == -1) {
       return;
     }
-    float(*positions)[3] = BKE_mesh_vert_positions_for_write(hair_mesh);
+    blender::MutableSpan<blender::float3> positions = hair_mesh->vert_positions_for_write();
     copy_v3_v3(positions[particle->hair_index + (hair_key_index)], src_co);
     return;
   }
@@ -324,7 +325,7 @@ static void rna_ParticleHairKey_co_object(HairKey *hairkey,
                                                                   nullptr;
   if (particle) {
     if (hair_mesh) {
-      const float(*positions)[3] = BKE_mesh_vert_positions(hair_mesh);
+      const blender::Span<blender::float3> positions = hair_mesh->vert_positions();
       copy_v3_v3(n_co, positions[particle->hair_index + (hairkey - particle->hair)]);
     }
     else {
@@ -345,7 +346,7 @@ static void rna_ParticleHairKey_co_object_set(ID *id,
                                               Object *object,
                                               ParticleSystemModifierData *modifier,
                                               ParticleData *particle,
-                                              float co[3])
+                                              const float co[3])
 {
 
   if (particle == nullptr) {
@@ -384,7 +385,7 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
   int num = particle->num_dmcache;
   int from = modifier->psys->part->from;
 
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     return;
   }
@@ -646,7 +647,7 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
     zero_v2(r_uv);
     return;
   }
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     zero_v2(r_uv);
     return;
@@ -682,7 +683,7 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
                                                int vcol_no,
                                                float r_mcol[3])
 {
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no VCol data");
     zero_v3(r_mcol);
     return;
@@ -966,7 +967,7 @@ static void rna_PartSettings_start_set(PointerRNA *ptr, float value)
   }
 
 #  if 0
-  if (settings->type==PART_REACTOR && value < 1.0)
+  if (settings->type == PART_REACTOR && value < 1.0)
     value = 1.0;
   else
 #  endif
@@ -2223,6 +2224,7 @@ static void rna_def_particle_settings_mtex(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
   /* map to */

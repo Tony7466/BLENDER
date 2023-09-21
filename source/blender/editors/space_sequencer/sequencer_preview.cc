@@ -17,14 +17,14 @@
 #include "BKE_global.h"
 #include "BKE_sound.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct PreviewJob {
   ListBase previews;
@@ -121,7 +121,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
   while (true) {
     /* Wait until there's either a new audio job to process or one of the previously submitted jobs
-     * is done.*/
+     * is done. */
     BLI_mutex_lock(pj->mutex);
 
     while (BLI_listbase_is_empty(&pj->previews) && pj->processed != pj->total) {

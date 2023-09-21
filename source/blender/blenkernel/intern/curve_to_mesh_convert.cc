@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
@@ -789,10 +790,10 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
     return nullptr;
   }
 
-  /* Add the position attribute later so it can be shared in some cases.*/
+  /* Add the position attribute later so it can be shared in some cases. */
   Mesh *mesh = BKE_mesh_new_nomain(
       0, offsets.edge.last(), offsets.face.last(), offsets.loop.last());
-  CustomData_free_layer_named(&mesh->vdata, "position", 0);
+  CustomData_free_layer_named(&mesh->vert_data, "position", 0);
   mesh->totvert = offsets.vert.last();
 
   mesh->flag |= ME_AUTOSMOOTH;

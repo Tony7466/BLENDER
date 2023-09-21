@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup spview3d
  */
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
@@ -14,11 +14,11 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "PIL_time.h"
 
@@ -553,8 +553,7 @@ void VIEW3D_OT_zoom(wmOperatorType *ot)
 /** \} */
 
 const ViewOpsType ViewOpsType_zoom = {
-    /*flag*/ (VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_USE_MOUSE_INIT |
-              VIEWOPS_FLAG_ZOOM_TO_MOUSE),
+    /*flag*/ (VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ZOOM_TO_MOUSE),
     /*idname*/ "VIEW3D_OT_zoom",
     /*poll_fn*/ view3d_zoom_or_dolly_poll,
     /*init_fn*/ viewzoom_invoke_impl,

@@ -1,23 +1,23 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <numeric>
 
 #include "BKE_attribute_math.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -35,7 +35,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "curves_sculpt_intern.hh"
 
@@ -258,12 +258,12 @@ struct DensityAddOperationExecutor {
     self_->new_deformed_root_positions_.extend(new_positions_cu);
 
     /* Find normals. */
-    if (!CustomData_has_layer(&surface_orig_->ldata, CD_NORMAL)) {
+    if (!CustomData_has_layer(&surface_orig_->loop_data, CD_NORMAL)) {
       BKE_mesh_calc_normals_split(surface_orig_);
     }
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_orig_->ldata, CD_NORMAL)),
-        surface_orig_->totloop};
+    const Span<float3> corner_normals_su = {reinterpret_cast<const float3 *>(CustomData_get_layer(
+                                                &surface_orig_->loop_data, CD_NORMAL)),
+                                            surface_orig_->totloop};
 
     const Span<MLoopTri> surface_looptris_orig = surface_orig_->looptris();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};

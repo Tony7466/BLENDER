@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -22,24 +22,26 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 /* for USE_LOOPSLIDE_HACK only */
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
+
+using namespace blender;
 
 struct TransformModeItem {
   const char *idname;
@@ -116,7 +118,7 @@ static TransformModeItem transform_modes[] = {
     {nullptr, 0},
 };
 
-const EnumPropertyItem rna_enum_transform_mode_types[] = {
+const EnumPropertyItem rna_enum_transform_mode_type_items[] = {
     {TFM_INIT, "INIT", 0, "Init", ""},
     {TFM_DUMMY, "DUMMY", 0, "Dummy", ""},
     {TFM_TRANSLATION, "TRANSLATION", 0, "Translation", ""},
@@ -424,7 +426,7 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
   if (t->vod && (exit_code & OPERATOR_PASS_THROUGH)) {
     RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
     const bool is_navigating = (rv3d->rflag & RV3D_NAVIGATING) != 0;
-    if (ED_view3d_navigation_do(C, t->vod, event)) {
+    if (ED_view3d_navigation_do(C, t->vod, event, t->center_global)) {
       if (!is_navigating) {
         /* Navigation has started. */
 
@@ -446,13 +448,11 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
       {
         /* Navigation has ended. */
 
-        /* Make sure `t->mval` is up to date before calling #transformViewUpdate. */
-        copy_v2_v2_int(t->mval, event->mval);
-
         /* Call before #applyMouseInput. */
         tranformViewUpdate(t);
 
         /* Mouse input is outdated. */
+        t->mval = float2(event->mval);
         applyMouseInput(t, &t->mouse, t->mval, t->values);
         t->redraw |= TREDRAW_HARD;
       }
@@ -767,6 +767,12 @@ void Transform_Properties(wmOperatorType *ot, int flags)
     prop = RNA_def_boolean(
         ot->srna, "remove_on_cancel", false, "Remove on Cancel", "Remove elements on cancel");
     RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+    prop = RNA_def_boolean(ot->srna,
+                           "use_duplicated_keyframes",
+                           false,
+                           "Duplicated Keyframes",
+                           "Transform duplicated keyframes");
+    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   }
 
   if (flags & P_CORRECT_UV) {
@@ -803,7 +809,7 @@ void Transform_Properties(wmOperatorType *ot, int flags)
 
   if (flags & P_VIEW3D_ALT_NAVIGATION) {
     prop = RNA_def_boolean(
-        ot->srna, "alt_navigation", 0, "Transform Navigation with Alt", nullptr);
+        ot->srna, "alt_navigation", false, "Transform Navigation with Alt", nullptr);
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
 
@@ -1375,7 +1381,7 @@ static void TRANSFORM_OT_transform(wmOperatorType *ot)
   ot->poll_property = transform_poll_property;
 
   prop = RNA_def_enum(
-      ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+      ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_float_vector(
@@ -1386,7 +1392,7 @@ static void TRANSFORM_OT_transform(wmOperatorType *ot)
   Transform_Properties(ot,
                        P_ORIENT_AXIS | P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR |
                            P_ALIGN_SNAP | P_GPENCIL_EDIT | P_CENTER | P_VIEW3D_ALT_NAVIGATION |
-                           P_POST_TRANSFORM);
+                           P_POST_TRANSFORM | P_OPTIONS);
 }
 
 static int transform_from_gizmo_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)

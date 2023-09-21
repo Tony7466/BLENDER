@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,6 @@
 
 #include "atomic_ops.h"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.h"
@@ -22,9 +21,9 @@
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh.h"
 
 #include "DNA_curve_types.h" /* for Curve */
@@ -166,14 +165,14 @@ static DerivedMesh *cdDM_from_mesh_ex(Mesh *mesh, const CustomData_MeshMasks *ma
           mesh->totloop,
           mesh->faces_num);
 
-  CustomData_merge(&mesh->vdata, &dm->vertData, cddata_masks.vmask, mesh->totvert);
-  CustomData_merge(&mesh->edata, &dm->edgeData, cddata_masks.emask, mesh->totedge);
+  CustomData_merge(&mesh->vert_data, &dm->vertData, cddata_masks.vmask, mesh->totvert);
+  CustomData_merge(&mesh->edge_data, &dm->edgeData, cddata_masks.emask, mesh->totedge);
   CustomData_merge(&mesh->fdata_legacy,
                    &dm->faceData,
                    cddata_masks.fmask | CD_MASK_ORIGINDEX,
                    0 /* `mesh->totface` */);
-  CustomData_merge(&mesh->ldata, &dm->loopData, cddata_masks.lmask, mesh->totloop);
-  CustomData_merge(&mesh->pdata, &dm->polyData, cddata_masks.pmask, mesh->faces_num);
+  CustomData_merge(&mesh->loop_data, &dm->loopData, cddata_masks.lmask, mesh->totloop);
+  CustomData_merge(&mesh->face_data, &dm->polyData, cddata_masks.pmask, mesh->faces_num);
 
   cddm->vert_positions = static_cast<float(*)[3]>(CustomData_get_layer_named_for_write(
       &dm->vertData, CD_PROP_FLOAT3, "position", mesh->totvert));

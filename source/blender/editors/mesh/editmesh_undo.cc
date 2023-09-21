@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,6 +20,7 @@
 #include "BLI_array_utils.h"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_task.hh"
 
 #include "BKE_context.h"
@@ -35,13 +36,13 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_undo.h"
-#include "ED_util.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #define USE_ARRAY_STORE
 
@@ -369,7 +370,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
   blender::threading::parallel_invoke(
       4096 < (me->totvert + me->totedge + me->totloop + me->faces_num),
       [&]() {
-        um_arraystore_cd_compact(&me->vdata,
+        um_arraystore_cd_compact(&me->vert_data,
                                  me->totvert,
                                  create,
                                  ARRAY_STORE_INDEX_VERT,
@@ -377,7 +378,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.vdata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->edata,
+        um_arraystore_cd_compact(&me->edge_data,
                                  me->totedge,
                                  create,
                                  ARRAY_STORE_INDEX_EDGE,
@@ -385,7 +386,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.edata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->ldata,
+        um_arraystore_cd_compact(&me->loop_data,
                                  me->totloop,
                                  create,
                                  ARRAY_STORE_INDEX_LOOP,
@@ -393,7 +394,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.ldata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->pdata,
+        um_arraystore_cd_compact(&me->face_data,
                                  me->faces_num,
                                  create,
                                  ARRAY_STORE_INDEX_POLY,
@@ -559,10 +560,10 @@ static void um_arraystore_expand(UndoMesh *um)
 {
   Mesh *me = &um->me;
 
-  um_arraystore_cd_expand(um->store.vdata, &me->vdata, me->totvert);
-  um_arraystore_cd_expand(um->store.edata, &me->edata, me->totedge);
-  um_arraystore_cd_expand(um->store.ldata, &me->ldata, me->totloop);
-  um_arraystore_cd_expand(um->store.pdata, &me->pdata, me->faces_num);
+  um_arraystore_cd_expand(um->store.vdata, &me->vert_data, me->totvert);
+  um_arraystore_cd_expand(um->store.edata, &me->edge_data, me->totedge);
+  um_arraystore_cd_expand(um->store.ldata, &me->loop_data, me->totloop);
+  um_arraystore_cd_expand(um->store.pdata, &me->face_data, me->faces_num);
 
   if (um->store.keyblocks) {
     const size_t stride = me->key->elemsize;
@@ -824,10 +825,6 @@ static void undomesh_to_editmesh(UndoMesh *um, Object *ob, BMEditMesh *em)
 
   em_tmp = BKE_editmesh_create(bm);
   *em = *em_tmp;
-
-  /* Normals should not be stored in the undo mesh, so recalculate them. The edit
-   * mesh is expected to have valid normals and there is no tracked dirty state. */
-  BLI_assert(BKE_mesh_vert_normals_are_dirty(&um->me));
 
   /* Calculate face normals and tessellation at once since it's multi-threaded. */
   BKE_editmesh_looptri_and_normals_calc(em);

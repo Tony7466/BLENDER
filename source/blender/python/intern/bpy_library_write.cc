@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,15 +23,16 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "BLO_writefile.h"
+#include "BLO_writefile.hh"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_library.h"
 #include "bpy_rna.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 PyDoc_STRVAR(
     bpy_lib_write_doc,
@@ -44,7 +45,7 @@ PyDoc_STRVAR(
     "      Indirectly referenced data-blocks will be expanded and written too.\n"
     "\n"
     "   :arg filepath: The path to write the blend-file.\n"
-    "   :type filepath: string\n"
+    "   :type filepath: string or bytes\n"
     "   :arg datablocks: set of data-blocks (:class:`bpy.types.ID` instances).\n"
     "   :type datablocks: set\n"
     "   :arg path_remap: Optionally remap paths when writing the file:\n"
@@ -62,7 +63,7 @@ PyDoc_STRVAR(
 static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *kw)
 {
   /* args */
-  const char *filepath;
+  PyC_UnicodeAsBytesAndSize_Data filepath_data = {nullptr};
   char filepath_abs[FILE_MAX];
   PyObject *datablocks = nullptr;
 
@@ -86,7 +87,8 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
       nullptr,
   };
   static _PyArg_Parser _parser = {
-      "s"  /* `filepath` */
+      PY_ARG_PARSER_HEAD_COMPAT()
+      "O&" /* `filepath` */
       "O!" /* `datablocks` */
       "|$" /* Optional keyword only arguments. */
       "O&" /* `path_remap` */
@@ -94,12 +96,13 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
       "O&" /* `compress` */
       ":write",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
                                         &_parser,
-                                        &filepath,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &filepath_data,
                                         &PySet_Type,
                                         &datablocks,
                                         PyC_ParseStringEnum,
@@ -119,7 +122,9 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
     write_flags |= G_FILE_COMPRESS;
   }
 
-  STRNCPY(filepath_abs, filepath);
+  STRNCPY(filepath_abs, filepath_data.value);
+  Py_XDECREF(filepath_data.value_coerce);
+
   BLI_path_abs(filepath_abs, BKE_main_blendfile_path_from_global());
 
   BKE_blendfile_write_partial_begin(bmain_src);

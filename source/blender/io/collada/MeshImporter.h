@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,6 @@
 #include "ArmatureImporter.h"
 #include "collada_utils.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_math_vector_types.hh"
 
 #include "DNA_material_types.h"
@@ -134,10 +133,10 @@ class MeshImporter : public MeshImporterBase {
   bool primitive_has_faces(COLLADAFW::MeshPrimitive *mp);
 
   /**
-   * This function is copied from source/blender/editors/mesh/mesh_data.c
+   * This function is copied from `source/blender/editors/mesh/mesh_data.cc`
    *
    * TODO: (As discussed with sergey-) :
-   * Maybe move this function to `blenderkernel/intern/mesh.c`.
+   * Maybe move this function to `blenderkernel/intern/mesh.cc`.
    * and add definition to BKE_mesh.c.
    */
   static void mesh_add_edges(Mesh *mesh, int len);

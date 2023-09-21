@@ -15,7 +15,6 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh_types.h"
 
 struct BMesh;
 struct BMeshCreateParams;
@@ -42,12 +41,28 @@ struct Scene;
 extern "C" {
 #endif
 
+/* TODO: Move to `BKE_mesh_types.hh` when possible. */
+typedef enum eMeshBatchDirtyMode {
+  BKE_MESH_BATCH_DIRTY_ALL = 0,
+  BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
+  BKE_MESH_BATCH_DIRTY_SHADING,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT,
+} eMeshBatchDirtyMode;
+
 /*  mesh_runtime.cc  */
 
 /**
  * Call after changing vertex positions to tag lazily calculated caches for recomputation.
  */
 void BKE_mesh_tag_positions_changed(struct Mesh *mesh);
+
+/**
+ * The same as #BKE_mesh_tag_positions_changed but doesn't tag normals dirty, instead expecting
+ * them to be updated separately.
+ */
+void BKE_mesh_tag_positions_changed_no_normals(struct Mesh *mesh);
 
 /**
  * Call after moving every mesh vertex by the same translation.
@@ -66,7 +81,7 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh);
  */
 void BKE_mesh_tag_face_winding_changed(struct Mesh *mesh);
 
-/* *** mesh.c *** */
+/* `mesh.cc` */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(const struct Mesh *me,
                                    const struct BMeshCreateParams *create_params,
@@ -179,7 +194,7 @@ struct Mesh *BKE_mesh_new_nomain_from_curve_displist(const struct Object *ob,
 bool BKE_mesh_attribute_required(const char *name);
 
 float (*BKE_mesh_orco_verts_get(struct Object *ob))[3];
-void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, int invert);
+void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, bool invert);
 
 /**
  * Add a #CD_ORCO layer to the Mesh if there is none already.
@@ -285,7 +300,6 @@ void BKE_mesh_mselect_active_set(struct Mesh *me, int index, int type);
 void BKE_mesh_count_selected_items(const struct Mesh *mesh, int r_count[3]);
 
 float (*BKE_mesh_vert_coords_alloc(const struct Mesh *mesh, int *r_vert_len))[3];
-void BKE_mesh_vert_coords_get(const struct Mesh *mesh, float (*vert_coords)[3]);
 
 void BKE_mesh_vert_coords_apply_with_mat4(struct Mesh *mesh,
                                           const float (*vert_coords)[3],
@@ -295,7 +309,7 @@ void BKE_mesh_vert_coords_apply(struct Mesh *mesh, const float (*vert_coords)[3]
 /* *** mesh_tessellate.cc *** */
 
 /**
- * Calculate tessellation into #MLoopTri which exist only for this purpose.
+ * See #bke::mesh::looptris_calc
  */
 void BKE_mesh_recalc_looptri(const int *corner_verts,
                              const int *face_offsets,
@@ -307,41 +321,10 @@ void BKE_mesh_recalc_looptri(const int *corner_verts,
 
 /* *** mesh_normals.cc *** */
 
-/**
- * See #Mesh::vert_normals().
- * \warning May return null if the mesh is empty.
- */
-const float (*BKE_mesh_vert_normals_ensure(const struct Mesh *mesh))[3];
-
-/**
- * Retrieve write access to the cached vertex normals, ensuring that they are allocated but *not*
- * that they are calculated. The provided vertex normals should be the same as if they were
- * calculated automatically.
- *
- * \note In order to clear the dirty flag, this function should be followed by a call to
- * #BKE_mesh_vert_normals_clear_dirty. This is separate so that normals are still tagged dirty
- * while they are being assigned.
- *
- * \warning The memory returned by this function is not initialized if it was not previously
- * allocated.
- */
-float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
-
-/**
- * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
- */
-void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
-
-/**
- * Return true if the mesh vertex normals either are not stored or are dirty.
- * This can be used to help decide whether to transfer them when copying a mesh.
- */
+/** Return true if the mesh vertex normals either are not stored or are dirty. */
 bool BKE_mesh_vert_normals_are_dirty(const struct Mesh *mesh);
 
-/**
- * Return true if the mesh face normals either are not stored or are dirty.
- * This can be used to help decide whether to transfer them when copying a mesh.
- */
+/** Return true if the mesh face normals either are not stored or are dirty. */
 bool BKE_mesh_face_normals_are_dirty(const struct Mesh *mesh);
 
 /**
@@ -480,7 +463,7 @@ void BKE_mesh_calc_normals_split(struct Mesh *mesh);
  * That data, among other things, contains 'smooth fan' info, useful e.g.
  * to split geometry along sharp edges.
  */
-void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh,
+void BKE_mesh_calc_normals_split_ex(const struct Mesh *mesh,
                                     struct MLoopNorSpaceArray *r_lnors_spacearr,
                                     float (*r_corner_normals)[3]);
 
@@ -537,40 +520,6 @@ void BKE_mesh_calc_volume(const float (*vert_positions)[3],
  * low level function to be called from face-flipping code which re-arranged the mdisps themselves.
  */
 void BKE_mesh_mdisp_flip(struct MDisps *md, bool use_loop_mdisp_flip);
-
-/**
- * Flip (invert winding of) the given \a face, i.e. reverse order of its loops
- * (keeping the same vertex as 'start point').
- *
- * \param face: the face to flip.
- * \param mloop: the full loops array.
- * \param ldata: the loops custom data.
- */
-void BKE_mesh_face_flip_ex(int face_offset,
-                           int face_size,
-                           int *corner_verts,
-                           int *corner_edges,
-                           struct CustomData *ldata,
-                           float (*lnors)[3],
-                           struct MDisps *mdisp,
-                           bool use_loop_mdisp_flip);
-void BKE_mesh_face_flip(int face_offset,
-                        int face_size,
-                        int *corner_verts,
-                        int *corner_edges,
-                        struct CustomData *ldata,
-                        int totloop);
-
-/**
- * Flip (invert winding of) all faces (used to inverse their normals).
- *
- * \note Invalidates tessellation, caller must handle that.
- */
-void BKE_mesh_faces_flip(const int *face_offsets,
-                         int *corner_verts,
-                         int *corner_edges,
-                         struct CustomData *ldata,
-                         int faces_num);
 
 /**
  * Account for custom-data such as UVs becoming detached because of imprecision
@@ -672,11 +621,11 @@ bool BKE_mesh_validate_arrays(struct Mesh *me,
 /**
  * \returns is_valid.
  */
-bool BKE_mesh_validate_all_customdata(struct CustomData *vdata,
+bool BKE_mesh_validate_all_customdata(struct CustomData *vert_data,
                                       uint totvert,
-                                      struct CustomData *edata,
+                                      struct CustomData *edge_data,
                                       uint totedge,
-                                      struct CustomData *ldata,
+                                      struct CustomData *loop_data,
                                       uint totloop,
                                       struct CustomData *pdata,
                                       uint faces_num,
@@ -713,7 +662,7 @@ void BKE_mesh_batch_cache_free(void *batch_cache);
 extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, eMeshBatchDirtyMode mode);
 extern void (*BKE_mesh_batch_cache_free_cb)(void *batch_cache);
 
-/* mesh_debug.c */
+/* `mesh_debug.cc` */
 
 #ifndef NDEBUG
 char *BKE_mesh_debug_info(const struct Mesh *me)
@@ -731,7 +680,8 @@ void BKE_mesh_debug_print(const struct Mesh *me) ATTR_NONNULL(1);
  */
 BLI_INLINE const int *BKE_mesh_material_indices(const Mesh *mesh)
 {
-  return (const int *)CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, "material_index");
+  return (const int *)CustomData_get_layer_named(
+      &mesh->face_data, CD_PROP_INT32, "material_index");
 }
 
 /**
@@ -741,22 +691,18 @@ BLI_INLINE const int *BKE_mesh_material_indices(const Mesh *mesh)
 BLI_INLINE int *BKE_mesh_material_indices_for_write(Mesh *mesh)
 {
   int *indices = (int *)CustomData_get_layer_named_for_write(
-      &mesh->pdata, CD_PROP_INT32, "material_index", mesh->faces_num);
+      &mesh->face_data, CD_PROP_INT32, "material_index", mesh->faces_num);
   if (indices) {
     return indices;
   }
   return (int *)CustomData_add_layer_named(
-      &mesh->pdata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->faces_num, "material_index");
+      &mesh->face_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->faces_num, "material_index");
 }
 
 BLI_INLINE const float (*BKE_mesh_vert_positions(const Mesh *mesh))[3]
 {
-  return (const float(*)[3])CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT3, "position");
-}
-BLI_INLINE float (*BKE_mesh_vert_positions_for_write(Mesh *mesh))[3]
-{
-  return (float(*)[3])CustomData_get_layer_named_for_write(
-      &mesh->vdata, CD_PROP_FLOAT3, "position", mesh->totvert);
+  return (const float(*)[3])CustomData_get_layer_named(
+      &mesh->vert_data, CD_PROP_FLOAT3, "position");
 }
 
 BLI_INLINE const int *BKE_mesh_face_offsets(const Mesh *mesh)
@@ -766,22 +712,22 @@ BLI_INLINE const int *BKE_mesh_face_offsets(const Mesh *mesh)
 
 BLI_INLINE const int *BKE_mesh_corner_verts(const Mesh *mesh)
 {
-  return (const int *)CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_vert");
+  return (const int *)CustomData_get_layer_named(&mesh->loop_data, CD_PROP_INT32, ".corner_vert");
 }
 
 BLI_INLINE const MDeformVert *BKE_mesh_deform_verts(const Mesh *mesh)
 {
-  return (const MDeformVert *)CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT);
+  return (const MDeformVert *)CustomData_get_layer(&mesh->vert_data, CD_MDEFORMVERT);
 }
 BLI_INLINE MDeformVert *BKE_mesh_deform_verts_for_write(Mesh *mesh)
 {
   MDeformVert *dvert = (MDeformVert *)CustomData_get_layer_for_write(
-      &mesh->vdata, CD_MDEFORMVERT, mesh->totvert);
+      &mesh->vert_data, CD_MDEFORMVERT, mesh->totvert);
   if (dvert) {
     return dvert;
   }
   return (MDeformVert *)CustomData_add_layer(
-      &mesh->vdata, CD_MDEFORMVERT, CD_SET_DEFAULT, mesh->totvert);
+      &mesh->vert_data, CD_MDEFORMVERT, CD_SET_DEFAULT, mesh->totvert);
 }
 
 #ifdef __cplusplus

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -26,7 +27,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_pointcloud.h"
 
 #include "MEM_guardedalloc.h"
@@ -294,7 +295,7 @@ static void mesh_looptri_nearest_point(void *userdata,
     normal_tri_v3(nearest->no, UNPACK3(vtri_co));
   }
 }
-/* copy of function above (warning, should de-duplicate with editmesh_bvh.c) */
+/* Copy of function above (warning, should de-duplicate with `editmesh_bvh.cc`). */
 static void editmesh_looptri_nearest_point(void *userdata,
                                            int index,
                                            const float co[3],
@@ -398,7 +399,7 @@ static void mesh_looptri_spherecast(void *userdata,
     normal_tri_v3(hit->no, UNPACK3(vtri_co));
   }
 }
-/* copy of function above (warning, should de-duplicate with editmesh_bvh.c) */
+/* Copy of function above (warning, should de-duplicate with `editmesh_bvh.cc`). */
 static void editmesh_looptri_spherecast(void *userdata,
                                         int index,
                                         const BVHTreeRay *ray,
@@ -1103,7 +1104,7 @@ static BitVector<> looptri_no_hidden_map_get(const blender::OffsetIndices<int> f
   int looptri_no_hidden_len = 0;
   int looptri_index = 0;
   for (const int64_t i : faces.index_range()) {
-    const int triangles_num = ME_FACE_TRI_TOT(faces[i].size());
+    const int triangles_num = blender::bke::mesh::face_triangles_num(faces[i].size());
     if (hide_poly[i]) {
       looptri_index += triangles_num;
     }

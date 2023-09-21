@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
  *
- * This file defines the animation related methods used in bpy_rna.c
+ * This file defines the animation related methods used in `bpy_rna.cc`.
  */
 
 #include <Python.h>
@@ -20,8 +20,8 @@
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
@@ -32,13 +32,13 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_rna.h"
@@ -260,7 +260,7 @@ static int pyrna_struct_keyframe_parse(PointerRNA *ptr,
   if (r_options) {
     if (pyoptions &&
         (pyrna_enum_bitfield_from_set(
-             rna_enum_keying_flag_items_api, pyoptions, r_options, error_prefix) == -1))
+             rna_enum_keying_flag_api_items, pyoptions, r_options, error_prefix) == -1))
     {
       return -1;
     }
@@ -583,13 +583,13 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
       int i = 0;
       ret = PyList_New(0);
       while ((fcu = BKE_fcurve_find(&adt->drivers, path_full, i++))) {
-        RNA_pointer_create(id, &RNA_FCurve, fcu, &tptr);
+        tptr = RNA_pointer_create(id, &RNA_FCurve, fcu);
         PyList_APPEND(ret, pyrna_struct_CreatePyObject(&tptr));
       }
     }
     else {
       fcu = BKE_fcurve_find(&adt->drivers, path_full, index);
-      RNA_pointer_create(id, &RNA_FCurve, fcu, &tptr);
+      tptr = RNA_pointer_create(id, &RNA_FCurve, fcu);
       ret = pyrna_struct_CreatePyObject(&tptr);
     }
 

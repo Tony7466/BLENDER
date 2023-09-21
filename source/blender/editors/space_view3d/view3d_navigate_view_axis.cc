@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "BLT_translation.h"
@@ -21,25 +22,25 @@
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_vfont.h"
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_mesh.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
+#include "ED_mesh.hh"
+#include "ED_particle.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "view3d_intern.h"
 
@@ -193,10 +194,10 @@ void VIEW3D_OT_view_axis(wmOperatorType *ot)
   RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_EDITOR_VIEW3D);
 
   prop = RNA_def_boolean(
-      ot->srna, "align_active", 0, "Align Active", "Align to the active object's axis");
+      ot->srna, "align_active", false, "Align Active", "Align to the active object's axis");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
-      ot->srna, "relative", 0, "Relative", "Rotate relative to the current orientation");
+      ot->srna, "relative", false, "Relative", "Rotate relative to the current orientation");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 

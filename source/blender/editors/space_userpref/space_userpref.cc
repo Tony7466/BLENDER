@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,18 +17,18 @@
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* ******************** default callbacks for userpref space ***************** */
 
@@ -66,7 +66,7 @@ static SpaceLink *userpref_create(const ScrArea *area, const Scene * /*scene*/)
   BLI_addtail(&spref->regionbase, region);
   region->regiontype = RGN_TYPE_EXECUTE;
   region->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
-  region->flag |= RGN_FLAG_DYNAMIC_SIZE;
+  region->flag |= RGN_FLAG_DYNAMIC_SIZE | RGN_FLAG_NO_USER_RESIZE;
 
   /* main region */
   region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "main region for userpref"));

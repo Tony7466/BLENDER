@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,20 +11,22 @@
 
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
+
 #include "../mathutils/mathutils.h"
 
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_gizmo_wrap.h" /* own include */
@@ -243,6 +245,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O"  /* `key` */
       "O"  /* `owner` */
       "O!" /* `args` */
@@ -251,7 +254,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
       "O!" /* `options` */
       ":subscribe_rna",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
@@ -276,9 +279,9 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
   /* NOTE: we may want to have a way to pass this in. */
   bContext *C = BPY_context_get();
   wmMsgBus *mbus = CTX_wm_message_bus(C);
-  wmMsgParams_RNA msg_key_params = {{0}};
+  wmMsgParams_RNA msg_key_params = {{nullptr}};
 
-  wmMsgSubscribeValue msg_val_params = {0};
+  wmMsgSubscribeValue msg_val_params = {nullptr};
 
   if (py_msgbus_rna_key_from_py(py_sub, &msg_key_params, error_prefix) == -1) {
     return nullptr;
@@ -344,10 +347,11 @@ static PyObject *bpy_msgbus_publish_rna(PyObject * /*self*/, PyObject *args, PyO
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O" /* `key` */
       ":publish_rna",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &py_sub)) {
     return nullptr;
@@ -356,7 +360,7 @@ static PyObject *bpy_msgbus_publish_rna(PyObject * /*self*/, PyObject *args, PyO
   /* NOTE: we may want to have a way to pass this in. */
   bContext *C = BPY_context_get();
   wmMsgBus *mbus = CTX_wm_message_bus(C);
-  wmMsgParams_RNA msg_key_params = {{0}};
+  wmMsgParams_RNA msg_key_params = {{nullptr}};
 
   if (py_msgbus_rna_key_from_py(py_sub, &msg_key_params, error_prefix) == -1) {
     return nullptr;

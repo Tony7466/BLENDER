@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -81,7 +81,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         }
       });
 
-  for (const bke::GeometryComponent *component : geometry_set.get_components_for_read()) {
+  for (const bke::GeometryComponent *component : geometry_set.get_components()) {
     this->component_types.append(component->type());
     switch (component->type()) {
       case bke::GeometryComponent::Type::Mesh: {
@@ -124,6 +124,10 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
+        break;
+      }
+      case bke::GeometryComponent::Type::GreasePencil: {
+        /* TODO. Do nothing for now. */
         break;
       }
     }
@@ -549,7 +553,10 @@ static void find_tree_zone_hash_recursive(
 Map<const bNodeTreeZone *, ComputeContextHash> GeoModifierLog::
     get_context_hash_by_zone_for_node_editor(const SpaceNode &snode, StringRefNull modifier_name)
 {
-  const Vector<const bNodeTreePath *> tree_path = snode.treepath;
+  Vector<const bNodeTreePath *> tree_path;
+  LISTBASE_FOREACH (const bNodeTreePath *, item, &snode.treepath) {
+    tree_path.append(item);
+  }
   if (tree_path.is_empty()) {
     return {};
   }

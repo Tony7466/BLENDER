@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,9 @@
 
 #include "BLI_fileops.h"
 #include "BLI_hash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -58,7 +60,7 @@
 #  include "BKE_customdata.h"
 #  include "BKE_deform.h"
 #  include "BKE_mesh.hh"
-#  include "BKE_mesh_runtime.h"
+#  include "BKE_mesh_runtime.hh"
 #  include "BKE_object.h"
 #  include "BKE_particle.h"
 #  include "BKE_scene.h"
@@ -225,12 +227,14 @@ void BKE_fluid_reallocate_copy_fluid(FluidDomainSettings *fds,
 
           /* Skip if trying to copy from old boundary cell. */
           if (xo < bwidth || yo < bwidth || zo < bwidth || xo >= o_res[0] - bwidth ||
-              yo >= o_res[1] - bwidth || zo >= o_res[2] - bwidth) {
+              yo >= o_res[1] - bwidth || zo >= o_res[2] - bwidth)
+          {
             continue;
           }
           /* Skip if trying to copy into new boundary cell. */
           if (xn < bwidth || yn < bwidth || zn < bwidth || xn >= n_res[0] - bwidth ||
-              yn >= n_res[1] - bwidth || zn >= n_res[2] - bwidth) {
+              yn >= n_res[1] - bwidth || zn >= n_res[2] - bwidth)
+          {
             continue;
           }
 #  endif
@@ -608,8 +612,8 @@ static void clamp_bounds_in_domain(FluidDomainSettings *fds,
 static bool is_static_object(Object *ob)
 {
   /* Check if the object has modifiers that might make the object "dynamic". */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
   for (; md; md = md->next) {
     if (ELEM(md->type,
              eModifierType_Cloth,
@@ -859,7 +863,7 @@ static void update_velocities(FluidEffectorSettings *fes,
   nearest.index = -1;
 
   /* Distance between two opposing vertices in a unit cube.
-   * I.e. the unit cube diagonal or sqrt(3).
+   * I.e. the unit cube diagonal or `sqrt(3)`.
    * This value is our nearest neighbor search distance. */
   const float surface_distance = 1.732;
   /* find_nearest uses squared distance */
@@ -1703,7 +1707,7 @@ static void update_distances(int index,
     BVHTreeNearest nearest = {0};
     nearest.index = -1;
     /* Distance between two opposing vertices in a unit cube.
-     * I.e. the unit cube diagonal or sqrt(3).
+     * I.e. the unit cube diagonal or `sqrt(3)`.
      * This value is our nearest neighbor search distance. */
     const float surface_distance = 1.732;
     /* find_nearest uses squared distance. */
@@ -1825,7 +1829,7 @@ static void sample_mesh(FluidFlowSettings *ffs,
   nearest.index = -1;
 
   /* Distance between two opposing vertices in a unit cube.
-   * I.e. the unit cube diagonal or sqrt(3).
+   * I.e. the unit cube diagonal or `sqrt(3)`.
    * This value is our nearest neighbor search distance. */
   const float surface_distance = 1.732;
   /* find_nearest uses squared distance. */
@@ -2082,7 +2086,7 @@ static void emit_from_mesh(
     const int numverts = me->totvert;
     const MDeformVert *dvert = BKE_mesh_deform_verts(me);
     const float(*mloopuv)[2] = static_cast<const float(*)[2]>(
-        CustomData_get_layer_named(&me->ldata, CD_PROP_FLOAT2, ffs->uvlayer_name));
+        CustomData_get_layer_named(&me->loop_data, CD_PROP_FLOAT2, ffs->uvlayer_name));
 
     if (ffs->flags & FLUID_FLOW_INITVELOCITY) {
       vert_vel = static_cast<float *>(
@@ -3262,7 +3266,7 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds,
   madd_v3fl_v3fl_v3fl_v3i(max, fds->p0, cell_size_scaled, fds->res_max);
   sub_v3_v3v3(size, max, min);
 
-  /* Biggest dimension will be used for upscaling. */
+  /* Biggest dimension will be used for up-scaling. */
   float max_size = MAX3(size[0], size[1], size[2]);
 
   float co_scale[3];

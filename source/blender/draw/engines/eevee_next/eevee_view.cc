@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -118,13 +118,27 @@ void ShadingView::render()
   GPU_framebuffer_bind(combined_fb_);
   GPU_framebuffer_clear_color_depth(combined_fb_, clear_color, 1.0f);
 
+  inst_.hiz_buffer.set_dirty();
+
   inst_.pipelines.background.render(render_view_new_);
 
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
+  inst_.volume.draw_prepass(render_view_new_);
+
+  /* TODO: cleanup. */
+  View main_view_new("MainView", main_view_);
   /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
-  inst_.pipelines.deferred.render(render_view_new_, prepass_fb_, combined_fb_, extent_);
+  inst_.pipelines.deferred.render(main_view_new,
+                                  render_view_new_,
+                                  prepass_fb_,
+                                  combined_fb_,
+                                  extent_,
+                                  rt_buffer_opaque_,
+                                  rt_buffer_refract_);
+
+  inst_.volume.draw_compute(render_view_new_);
 
   // inst_.lookdev.render_overlay(view_fb_);
 

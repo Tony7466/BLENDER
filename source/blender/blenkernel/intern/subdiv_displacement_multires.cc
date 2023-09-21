@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,20 +8,21 @@
 
 #include <cmath>
 
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
-#include "BKE_subdiv_eval.h"
+#include "BKE_multires.hh"
+#include "BKE_subdiv_eval.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -414,7 +415,7 @@ static void displacement_init_data(SubdivDisplacement *displacement,
   data->mesh = mesh;
   data->mmd = mmd;
   data->faces = mesh->faces();
-  data->mdisps = static_cast<const MDisps *>(CustomData_get_layer(&mesh->ldata, CD_MDISPS));
+  data->mdisps = static_cast<const MDisps *>(CustomData_get_layer(&mesh->loop_data, CD_MDISPS));
   data->face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);
   data->is_initialized = false;
   displacement_data_init_mapping(displacement, mesh);
@@ -435,7 +436,7 @@ void BKE_subdiv_displacement_attach_from_multires(Subdiv *subdiv,
   BKE_subdiv_displacement_detach(subdiv);
   /* It is possible to have mesh without CD_MDISPS layer. Happens when using
    * dynamic topology. */
-  if (!CustomData_has_layer(&mesh->ldata, CD_MDISPS)) {
+  if (!CustomData_has_layer(&mesh->loop_data, CD_MDISPS)) {
     return;
   }
   /* Allocate all required memory. */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 
 #include "DNA_listBase.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MEM_guardedalloc.h"
@@ -24,21 +24,21 @@
 
 #include "GHOST_C-api.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_immediate.h"
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm.h"
-#include "wm_draw.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm.hh"
+#include "wm_draw.hh"
+#include "wm_window.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 void wm_stereo3d_draw_sidebyside(wmWindow *win, int view)
 {
@@ -357,30 +357,31 @@ int wm_stereo3d_set_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
 void wm_stereo3d_set_draw(bContext * /*C*/, wmOperator *op)
 {
   Stereo3dData *s3dd = static_cast<Stereo3dData *>(op->customdata);
-  PointerRNA stereo3d_format_ptr;
   uiLayout *layout = op->layout;
   uiLayout *col;
 
-  RNA_pointer_create(nullptr, &RNA_Stereo3dDisplay, &s3dd->stereo3d_format, &stereo3d_format_ptr);
+  PointerRNA stereo3d_format_ptr = RNA_pointer_create(
+      nullptr, &RNA_Stereo3dDisplay, &s3dd->stereo3d_format);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &stereo3d_format_ptr, "display_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, &stereo3d_format_ptr, "display_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   switch (s3dd->stereo3d_format.display_mode) {
     case S3D_DISPLAY_ANAGLYPH: {
-      uiItemR(col, &stereo3d_format_ptr, "anaglyph_type", 0, nullptr, ICON_NONE);
+      uiItemR(col, &stereo3d_format_ptr, "anaglyph_type", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     }
     case S3D_DISPLAY_INTERLACE: {
-      uiItemR(col, &stereo3d_format_ptr, "interlace_type", 0, nullptr, ICON_NONE);
-      uiItemR(col, &stereo3d_format_ptr, "use_interlace_swap", 0, nullptr, ICON_NONE);
+      uiItemR(col, &stereo3d_format_ptr, "interlace_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, &stereo3d_format_ptr, "use_interlace_swap", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     }
     case S3D_DISPLAY_SIDEBYSIDE: {
-      uiItemR(col, &stereo3d_format_ptr, "use_sidebyside_crosseyed", 0, nullptr, ICON_NONE);
+      uiItemR(
+          col, &stereo3d_format_ptr, "use_sidebyside_crosseyed", UI_ITEM_NONE, nullptr, ICON_NONE);
       /* fall-through */
     }
     case S3D_DISPLAY_PAGEFLIP:

@@ -1,10 +1,12 @@
-# SPDX-FileCopyrightText: 2014 Blender Foundation
+# SPDX-FileCopyrightText: 2014 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   intern
+  ../blenkernel
+  ../depsgraph
   ../functions
   ../imbuf
   ../makesrna
@@ -29,14 +31,14 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
 
-if(WITH_OPENMP_STATIC)
+
+if(WITH_OPENMP AND WITH_OPENMP_STATIC)
   list(APPEND LIB
     ${OpenMP_LIBRARIES}
   )

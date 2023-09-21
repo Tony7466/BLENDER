@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,11 +12,13 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -45,7 +47,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -112,29 +114,29 @@ static void expand_mesh(Mesh &mesh,
 {
   /* Remove types that aren't supported for interpolation in this node. */
   if (vert_expand != 0) {
-    CustomData_free_layers(&mesh.vdata, CD_ORCO, mesh.totvert);
-    CustomData_free_layers(&mesh.vdata, CD_SHAPEKEY, mesh.totvert);
-    CustomData_free_layers(&mesh.vdata, CD_CLOTH_ORCO, mesh.totvert);
-    CustomData_free_layers(&mesh.vdata, CD_MVERT_SKIN, mesh.totvert);
+    CustomData_free_layers(&mesh.vert_data, CD_ORCO, mesh.totvert);
+    CustomData_free_layers(&mesh.vert_data, CD_SHAPEKEY, mesh.totvert);
+    CustomData_free_layers(&mesh.vert_data, CD_CLOTH_ORCO, mesh.totvert);
+    CustomData_free_layers(&mesh.vert_data, CD_MVERT_SKIN, mesh.totvert);
     const int old_verts_num = mesh.totvert;
     mesh.totvert += vert_expand;
-    CustomData_realloc(&mesh.vdata, old_verts_num, mesh.totvert);
+    CustomData_realloc(&mesh.vert_data, old_verts_num, mesh.totvert);
   }
   if (edge_expand != 0) {
     if (mesh.totedge == 0) {
       mesh.attributes_for_write().add(
           ".edge_verts", ATTR_DOMAIN_EDGE, CD_PROP_INT32_2D, bke::AttributeInitConstruct());
     }
-    CustomData_free_layers(&mesh.edata, CD_FREESTYLE_EDGE, mesh.totedge);
+    CustomData_free_layers(&mesh.edge_data, CD_FREESTYLE_EDGE, mesh.totedge);
     const int old_edges_num = mesh.totedge;
     mesh.totedge += edge_expand;
-    CustomData_realloc(&mesh.edata, old_edges_num, mesh.totedge);
+    CustomData_realloc(&mesh.edge_data, old_edges_num, mesh.totedge);
   }
   if (face_expand != 0) {
-    CustomData_free_layers(&mesh.pdata, CD_FREESTYLE_FACE, mesh.faces_num);
+    CustomData_free_layers(&mesh.face_data, CD_FREESTYLE_FACE, mesh.faces_num);
     const int old_faces_num = mesh.faces_num;
     mesh.faces_num += face_expand;
-    CustomData_realloc(&mesh.pdata, old_faces_num, mesh.faces_num);
+    CustomData_realloc(&mesh.face_data, old_faces_num, mesh.faces_num);
     implicit_sharing::resize_trivial_array(&mesh.face_offset_indices,
                                            &mesh.runtime->face_offsets_sharing_info,
                                            old_faces_num == 0 ? 0 : (old_faces_num + 1),
@@ -144,16 +146,16 @@ static void expand_mesh(Mesh &mesh,
     mesh.face_offset_indices[mesh.faces_num] = mesh.totloop + loop_expand;
   }
   if (loop_expand != 0) {
-    CustomData_free_layers(&mesh.ldata, CD_NORMAL, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_MDISPS, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_TANGENT, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_PAINT_MASK, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_MLOOPTANGENT, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_GRID_PAINT_MASK, mesh.totloop);
-    CustomData_free_layers(&mesh.ldata, CD_CUSTOMLOOPNORMAL, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_NORMAL, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_MDISPS, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_TANGENT, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_PAINT_MASK, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_MLOOPTANGENT, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_GRID_PAINT_MASK, mesh.totloop);
+    CustomData_free_layers(&mesh.loop_data, CD_CUSTOMLOOPNORMAL, mesh.totloop);
     const int old_loops_num = mesh.totloop;
     mesh.totloop += loop_expand;
-    CustomData_realloc(&mesh.ldata, old_loops_num, mesh.totloop);
+    CustomData_realloc(&mesh.loop_data, old_loops_num, mesh.totloop);
   }
 }
 
@@ -161,16 +163,16 @@ static CustomData &mesh_custom_data_for_domain(Mesh &mesh, const eAttrDomain dom
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT:
-      return mesh.vdata;
+      return mesh.vert_data;
     case ATTR_DOMAIN_EDGE:
-      return mesh.edata;
+      return mesh.edge_data;
     case ATTR_DOMAIN_FACE:
-      return mesh.pdata;
+      return mesh.face_data;
     case ATTR_DOMAIN_CORNER:
-      return mesh.ldata;
+      return mesh.loop_data;
     default:
       BLI_assert_unreachable();
-      return mesh.vdata;
+      return mesh.vert_data;
   }
 }
 
@@ -1185,7 +1187,7 @@ static void extrude_individual_mesh_faces(
         MutableSpan<int> face_verts = corner_verts.slice(face);
         MutableSpan<int> face_edges = corner_edges.slice(face);
 
-        for (const int i : IndexRange(face.size())) {
+        for (const int i : face.index_range()) {
           const int i_extrude = extrude_range[i];
           new_vert_indices[i_extrude] = face_verts[i];
           duplicate_edge_indices[i_extrude] = face_edges[i];
@@ -1194,7 +1196,7 @@ static void extrude_individual_mesh_faces(
           face_edges[i] = duplicate_edge_range[i_extrude];
         }
 
-        for (const int i : IndexRange(face.size())) {
+        for (const int i : face.index_range()) {
           const int i_next = (i == face.size() - 1) ? 0 : i + 1;
           const int i_extrude = extrude_range[i];
           const int i_extrude_next = extrude_range[i_next];
@@ -1259,7 +1261,7 @@ static void extrude_individual_mesh_faces(
 
                 /* For the extruded edges, mix the data from the two neighboring original edges of
                  * the extruded face. */
-                for (const int i : IndexRange(face.size())) {
+                for (const int i : face.index_range()) {
                   const int i_prev = (i == 0) ? face.size() - 1 : i - 1;
                   const int i_extrude = extrude_range[i];
                   const int i_extrude_prev = extrude_range[i_prev];
@@ -1306,7 +1308,7 @@ static void extrude_individual_mesh_faces(
                 const Span<T> face_loop_data = data.slice(face);
                 const IndexRange extrude_range = group_per_face[i_selection];
 
-                for (const int i : IndexRange(face.size())) {
+                for (const int i : face.index_range()) {
                   const int i_next = (i == face.size() - 1) ? 0 : i + 1;
                   const int i_extrude = extrude_range[i];
 
@@ -1435,20 +1437,39 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_extrude_mesh_cc
-
-void register_node_type_geo_extrude_mesh()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_extrude_mesh_cc;
+  static const EnumPropertyItem mode_items[] = {
+      {GEO_NODE_EXTRUDE_MESH_VERTICES, "VERTICES", 0, "Vertices", ""},
+      {GEO_NODE_EXTRUDE_MESH_EDGES, "EDGES", 0, "Edges", ""},
+      {GEO_NODE_EXTRUDE_MESH_FACES, "FACES", 0, "Faces", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_EXTRUDE_MESH_FACES);
+}
+
+static void node_register()
+{
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_EXTRUDE_MESH, "Extrude Mesh", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  ntype.geometry_node_execute = node_geo_exec;
   node_type_storage(
       &ntype, "NodeGeometryExtrudeMesh", node_free_standard_storage, node_copy_standard_storage);
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_extrude_mesh_cc

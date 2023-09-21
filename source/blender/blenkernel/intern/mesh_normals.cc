@@ -7,12 +7,15 @@
  *
  * Mesh normal calculation functions.
  *
- * \see bmesh_mesh_normals.c for the equivalent #BMesh functionality.
+ * \see `bmesh_mesh_normals.cc` for the equivalent #BMesh functionality.
  */
 
 #include <climits>
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -20,7 +23,6 @@
 #include "BLI_array_utils.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
@@ -33,7 +35,7 @@
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "atomic_ops.h"
 
@@ -89,35 +91,38 @@ static void add_v3_v3_atomic(float r[3], const float a[3])
  * Related to managing normals but not directly related to calculating normals.
  * \{ */
 
-float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
+namespace blender::bke {
+
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals)
 {
-  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
+  mesh.runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) { r_data = vert_normals; });
 }
 
-void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals)
 {
-  mesh->runtime->vert_normals_dirty = false;
-  BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
+  mesh.runtime->vert_normals_cache.ensure(
+      [&](Vector<float3> &r_data) { r_data = std::move(vert_normals); });
 }
+
+}  // namespace blender::bke
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->vert_normals_dirty;
+  return mesh->runtime->vert_normals_cache.is_dirty();
 }
 
 bool BKE_mesh_face_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->face_normals_dirty;
+  return mesh->runtime->face_normals_cache.is_dirty();
 }
 
 /** \} */
 
+namespace blender::bke::mesh {
+
 /* -------------------------------------------------------------------- */
 /** \name Mesh Normal Calculation (Polygons)
  * \{ */
-
-namespace blender::bke::mesh {
 
 /*
  * COMPUTE POLY NORMAL
@@ -139,7 +144,8 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
   }
 
   if (UNLIKELY(normalize_v3(normal) == 0.0f)) {
-    normal[2] = 1.0f; /* other axis set to 0.0 */
+    /* Other axis are already set to zero. */
+    normal[2] = 1.0f;
   }
 
   return normal;
@@ -147,25 +153,30 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
 
 float3 face_normal_calc(const Span<float3> vert_positions, const Span<int> face_verts)
 {
-  if (face_verts.size() > 4) {
-    return normal_calc_ngon(vert_positions, face_verts);
-  }
-  if (face_verts.size() == 3) {
-    return math::normal_tri(vert_positions[face_verts[0]],
-                            vert_positions[face_verts[1]],
-                            vert_positions[face_verts[2]]);
-  }
+  float3 normal;
   if (face_verts.size() == 4) {
-    float3 normal;
     normal_quad_v3(normal,
                    vert_positions[face_verts[0]],
                    vert_positions[face_verts[1]],
                    vert_positions[face_verts[2]],
                    vert_positions[face_verts[3]]);
-    return normal;
   }
-  /* horrible, two sided face! */
-  return float3(0);
+  else if (face_verts.size() == 3) {
+    normal = math::normal_tri(vert_positions[face_verts[0]],
+                              vert_positions[face_verts[1]],
+                              vert_positions[face_verts[2]]);
+  }
+  else {
+    BLI_assert(face_verts.size() > 4);
+    normal = normal_calc_ngon(vert_positions, face_verts);
+  }
+
+  if (UNLIKELY(math::is_zero(normal))) {
+    normal.z = 1.0f;
+  }
+
+  BLI_ASSERT_UNIT_V3(normal);
+  return normal;
 }
 
 /** \} */
@@ -185,97 +196,99 @@ void normals_calc_faces(const Span<float3> positions,
   BLI_assert(faces.size() == face_normals.size());
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      face_normals[i] = face_normal_calc(positions, corner_verts.slice(faces[i]));
+      face_normals[i] = normal_calc_ngon(positions, corner_verts.slice(faces[i]));
     }
   });
 }
 
-void normals_calc_face_vert(const Span<float3> positions,
-                            const OffsetIndices<int> faces,
-                            const Span<int> corner_verts,
-                            MutableSpan<float3> face_normals,
-                            MutableSpan<float3> vert_normals)
+static void normalize_and_validate(MutableSpan<float3> normals, const Span<float3> positions)
 {
-
-  /* Zero the vertex normal array for accumulation. */
-  {
-    memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
-  }
-
-  /* Compute face normals, accumulating them into vertex normals. */
-  {
-    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-      for (const int face_i : range) {
-        const Span<int> face_verts = corner_verts.slice(faces[face_i]);
-
-        float3 &pnor = face_normals[face_i];
-
-        const int i_end = face_verts.size() - 1;
-
-        /* Polygon Normal and edge-vector. */
-        /* Inline version of #face_normal_calc, also does edge-vectors. */
-        {
-          zero_v3(pnor);
-          /* Newell's Method */
-          const float *v_curr = positions[face_verts[i_end]];
-          for (int i_next = 0; i_next <= i_end; i_next++) {
-            const float *v_next = positions[face_verts[i_next]];
-            add_newell_cross_v3_v3v3(pnor, v_curr, v_next);
-            v_curr = v_next;
-          }
-          if (UNLIKELY(normalize_v3(pnor) == 0.0f)) {
-            pnor[2] = 1.0f; /* Other axes set to zero. */
-          }
-        }
-
-        /* Accumulate angle weighted face normal into the vertex normal. */
-        /* Inline version of #accumulate_vertex_normals_poly_v3. */
-        {
-          float edvec_prev[3], edvec_next[3], edvec_end[3];
-          const float *v_curr = positions[face_verts[i_end]];
-          sub_v3_v3v3(edvec_prev, positions[face_verts[i_end - 1]], v_curr);
-          normalize_v3(edvec_prev);
-          copy_v3_v3(edvec_end, edvec_prev);
-
-          for (int i_next = 0, i_curr = i_end; i_next <= i_end; i_curr = i_next++) {
-            const float *v_next = positions[face_verts[i_next]];
-
-            /* Skip an extra normalization by reusing the first calculated edge. */
-            if (i_next != i_end) {
-              sub_v3_v3v3(edvec_next, v_curr, v_next);
-              normalize_v3(edvec_next);
-            }
-            else {
-              copy_v3_v3(edvec_next, edvec_end);
-            }
-
-            /* Calculate angle between the two face edges incident on this vertex. */
-            const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
-            const float vnor_add[3] = {pnor[0] * fac, pnor[1] * fac, pnor[2] * fac};
-
-            float *vnor = vert_normals[face_verts[i_curr]];
-            add_v3_v3_atomic(vnor, vnor_add);
-            v_curr = v_next;
-            copy_v3_v3(edvec_prev, edvec_next);
-          }
-        }
+  threading::parallel_for(normals.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert_i : range) {
+      float *no = normals[vert_i];
+      if (UNLIKELY(normalize_v3(no) == 0.0f)) {
+        /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
+        normalize_v3_v3(no, positions[vert_i]);
       }
-    });
-  }
+    }
+  });
+}
 
-  /* Normalize and validate computed vertex normals. */
+static void accumulate_face_normal_to_vert(const Span<float3> positions,
+                                           const Span<int> face_verts,
+                                           const float3 &face_normal,
+                                           MutableSpan<float3> vert_normals)
+{
+  const int i_end = face_verts.size() - 1;
+
+  /* Accumulate angle weighted face normal into the vertex normal. */
+  /* Inline version of #accumulate_vertex_normals_poly_v3. */
   {
-    threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-      for (const int vert_i : range) {
-        float *no = vert_normals[vert_i];
+    float edvec_prev[3], edvec_next[3], edvec_end[3];
+    const float *v_curr = positions[face_verts[i_end]];
+    sub_v3_v3v3(edvec_prev, positions[face_verts[i_end - 1]], v_curr);
+    normalize_v3(edvec_prev);
+    copy_v3_v3(edvec_end, edvec_prev);
 
-        if (UNLIKELY(normalize_v3(no) == 0.0f)) {
-          /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
-          normalize_v3_v3(no, positions[vert_i]);
-        }
+    for (int i_next = 0, i_curr = i_end; i_next <= i_end; i_curr = i_next++) {
+      const float *v_next = positions[face_verts[i_next]];
+
+      /* Skip an extra normalization by reusing the first calculated edge. */
+      if (i_next != i_end) {
+        sub_v3_v3v3(edvec_next, v_curr, v_next);
+        normalize_v3(edvec_next);
       }
-    });
+      else {
+        copy_v3_v3(edvec_next, edvec_end);
+      }
+
+      /* Calculate angle between the two face edges incident on this vertex. */
+      const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
+      const float vnor_add[3] = {face_normal[0] * fac, face_normal[1] * fac, face_normal[2] * fac};
+
+      float *vnor = vert_normals[face_verts[i_curr]];
+      add_v3_v3_atomic(vnor, vnor_add);
+      v_curr = v_next;
+      copy_v3_v3(edvec_prev, edvec_next);
+    }
   }
+}
+
+void normals_calc_verts(const Span<float3> positions,
+                        const OffsetIndices<int> faces,
+                        const Span<int> corner_verts,
+                        const Span<float3> face_normals,
+                        MutableSpan<float3> vert_normals)
+{
+  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
+
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int face_i : range) {
+      const Span<int> face_verts = corner_verts.slice(faces[face_i]);
+      accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
+    }
+  });
+
+  normalize_and_validate(vert_normals, positions);
+}
+
+static void normals_calc_faces_and_verts(const Span<float3> positions,
+                                         const OffsetIndices<int> faces,
+                                         const Span<int> corner_verts,
+                                         MutableSpan<float3> face_normals,
+                                         MutableSpan<float3> vert_normals)
+{
+  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
+
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int face_i : range) {
+      const Span<int> face_verts = corner_verts.slice(faces[face_i]);
+      face_normals[face_i] = normal_calc_ngon(positions, face_verts);
+      accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
+    }
+  });
+
+  normalize_and_validate(vert_normals, positions);
 }
 
 /** \} */
@@ -289,67 +302,50 @@ void normals_calc_face_vert(const Span<float3> positions,
 blender::Span<blender::float3> Mesh::vert_normals() const
 {
   using namespace blender;
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
+  if (this->runtime->vert_normals_cache.is_cached()) {
+    return this->runtime->vert_normals_cache.data();
   }
 
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
+  const Span<float3> positions = this->vert_positions();
+  const OffsetIndices faces = this->faces();
+  const Span<int> corner_verts = this->corner_verts();
+
+  /* Calculating only vertex normals based on precalculated face normals is faster, but if face
+   * normals are dirty, calculating both at the same time can be slightly faster. Since normal
+   * calculation commonly has a significant performance impact, we maintain both code paths. */
+  if (this->runtime->face_normals_cache.is_cached()) {
+    const Span<float3> face_normals = this->face_normals();
+    this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
+      r_data.reinitialize(positions.size());
+      bke::mesh::normals_calc_verts(positions, faces, corner_verts, face_normals, r_data);
+    });
+  }
+  else {
+    Vector<float3> face_normals(faces.size());
+    this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
+      r_data.reinitialize(positions.size());
+      bke::mesh::normals_calc_faces_and_verts(
+          positions, faces, corner_verts, face_normals, r_data);
+    });
+    this->runtime->face_normals_cache.ensure(
+        [&](Vector<float3> &r_data) { r_data = std::move(face_normals); });
   }
 
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
-    const Span<float3> positions = this->vert_positions();
-    const OffsetIndices faces = this->faces();
-    const Span<int> corner_verts = this->corner_verts();
-
-    this->runtime->vert_normals.reinitialize(positions.size());
-    this->runtime->face_normals.reinitialize(faces.size());
-    bke::mesh::normals_calc_face_vert(
-        positions, faces, corner_verts, this->runtime->face_normals, this->runtime->vert_normals);
-
-    this->runtime->vert_normals_dirty = false;
-    this->runtime->face_normals_dirty = false;
-  });
-
-  return this->runtime->vert_normals;
+  return this->runtime->vert_normals_cache.data();
 }
 
 blender::Span<blender::float3> Mesh::face_normals() const
 {
   using namespace blender;
-  if (!this->runtime->face_normals_dirty) {
-    BLI_assert(this->runtime->face_normals.size() == this->faces_num);
-    return this->runtime->face_normals;
-  }
-
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->face_normals_dirty) {
-    BLI_assert(this->runtime->face_normals.size() == this->faces_num);
-    return this->runtime->face_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
+  this->runtime->face_normals_cache.ensure([&](Vector<float3> &r_data) {
     const Span<float3> positions = this->vert_positions();
     const OffsetIndices faces = this->faces();
     const Span<int> corner_verts = this->corner_verts();
 
-    this->runtime->face_normals.reinitialize(faces.size());
-    bke::mesh::normals_calc_faces(positions, faces, corner_verts, this->runtime->face_normals);
-
-    this->runtime->face_normals_dirty = false;
+    r_data.reinitialize(faces.size());
+    bke::mesh::normals_calc_faces(positions, faces, corner_verts, r_data);
   });
-
-  return this->runtime->face_normals;
-}
-
-const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
-{
-  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
+  return this->runtime->face_normals_cache.data();
 }
 
 void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
@@ -700,7 +696,6 @@ struct LoopSplitTaskDataCommon {
    * different elements in the arrays. */
   CornerNormalSpaceArray *lnors_spacearr;
   MutableSpan<float3> loop_normals;
-  MutableSpan<short2> clnors_data;
 
   /* Read-only. */
   Span<float3> positions;
@@ -712,6 +707,7 @@ struct LoopSplitTaskDataCommon {
   Span<int> loop_to_face;
   Span<float3> face_normals;
   Span<float3> vert_normals;
+  Span<short2> clnors_data;
 };
 
 #define INDEX_UNSET INT_MIN
@@ -795,6 +791,7 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
                                 const Span<int> corner_verts,
                                 const Span<int> corner_edges,
                                 const Span<float3> face_normals,
+                                const Span<int> loop_to_face,
                                 const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
@@ -806,9 +803,6 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
 
   /* Mapping edge -> loops. See #bke::mesh::normals_calc_loop for details. */
   Array<int2> edge_to_loops(sharp_edges.size(), int2(0));
-
-  /* Simple mapping from a loop to its face index. */
-  const Array<int> loop_to_face = build_loop_to_face_map(faces);
 
   mesh_edges_sharp_tag(faces,
                        corner_verts,
@@ -826,11 +820,10 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
 static void loop_manifold_fan_around_vert_next(const Span<int> corner_verts,
                                                const OffsetIndices<int> faces,
                                                const Span<int> loop_to_face,
-                                               const int *e2lfan_curr,
+                                               const int2 e2lfan_curr,
                                                const int vert_pivot,
                                                int *r_mlfan_curr_index,
-                                               int *r_mlfan_vert_index,
-                                               int *r_mpfan_curr_index)
+                                               int *r_mlfan_vert_index)
 {
   const int mlfan_curr_orig = *r_mlfan_curr_index;
   const int vert_fan_orig = corner_verts[mlfan_curr_orig];
@@ -843,27 +836,21 @@ static void loop_manifold_fan_around_vert_next(const Span<int> corner_verts,
    * mlfan_curr_index is the index of mlfan_next here, and mlfan_next is not the real next one
    * (i.e. not the future `mlfan_curr`). */
   *r_mlfan_curr_index = (e2lfan_curr[0] == *r_mlfan_curr_index) ? e2lfan_curr[1] : e2lfan_curr[0];
-  *r_mpfan_curr_index = loop_to_face[*r_mlfan_curr_index];
 
   BLI_assert(*r_mlfan_curr_index >= 0);
-  BLI_assert(*r_mpfan_curr_index >= 0);
 
   const int vert_fan_next = corner_verts[*r_mlfan_curr_index];
-  const IndexRange face_fan_next = faces[*r_mpfan_curr_index];
+  const IndexRange face_fan_next = faces[loop_to_face[*r_mlfan_curr_index]];
   if ((vert_fan_orig == vert_fan_next && vert_fan_orig == vert_pivot) ||
       !ELEM(vert_fan_orig, vert_fan_next, vert_pivot))
   {
     /* We need the previous loop, but current one is our vertex's loop. */
     *r_mlfan_vert_index = *r_mlfan_curr_index;
-    if (--(*r_mlfan_curr_index) < face_fan_next.start()) {
-      *r_mlfan_curr_index = face_fan_next.start() + face_fan_next.size() - 1;
-    }
+    *r_mlfan_curr_index = face_corner_prev(face_fan_next, *r_mlfan_curr_index);
   }
   else {
     /* We need the next loop, which is also our vertex's loop. */
-    if (++(*r_mlfan_curr_index) >= face_fan_next.start() + face_fan_next.size()) {
-      *r_mlfan_curr_index = face_fan_next.start();
-    }
+    *r_mlfan_curr_index = face_corner_next(face_fan_next, *r_mlfan_curr_index);
     *r_mlfan_vert_index = *r_mlfan_curr_index;
   }
 }
@@ -923,7 +910,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 {
   CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
-  MutableSpan<short2> clnors_data = common_data->clnors_data;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
@@ -933,6 +919,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<int2> edge_to_loops = common_data->edge_to_loops;
   const Span<int> loop_to_face = common_data->loop_to_face;
   const Span<float3> face_normals = common_data->face_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
   const int face_index = loop_to_face[ml_curr_index];
   const int ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
@@ -953,11 +940,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
-  const short2 *clnor_ref = nullptr;
-  int clnors_count = 0;
-  bool clnors_invalid = false;
 
   Vector<int, 8> processed_corners;
 
@@ -965,11 +948,9 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
    */
   int mlfan_curr_index = ml_prev_index;
   int mlfan_vert_index = ml_curr_index;
-  int mpfan_curr_index = face_index;
 
   BLI_assert(mlfan_curr_index >= 0);
   BLI_assert(mlfan_vert_index >= 0);
-  BLI_assert(mpfan_curr_index >= 0);
 
   /* Only need to compute previous edge's vector once, then we can just reuse old current one! */
   {
@@ -1002,20 +983,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
     /* Code similar to accumulate_vertex_normals_poly_v3. */
     /* Calculate angle between the two face edges incident on this vertex. */
-    lnor += face_normals[mpfan_curr_index] * saacos(math::dot(vec_curr, vec_prev));
-
-    if (!clnors_data.is_empty()) {
-      /* Accumulate all clnors, if they are not all equal we have to fix that! */
-      const short2 &clnor = clnors_data[mlfan_vert_index];
-      if (clnors_count) {
-        clnors_invalid |= *clnor_ref != clnor;
-      }
-      else {
-        clnor_ref = &clnor;
-      }
-      clnors_avg += int2(clnor);
-      clnors_count++;
-    }
+    lnor += face_normals[loop_to_face[mlfan_curr_index]] * saacos(math::dot(vec_curr, vec_prev));
 
     processed_corners.append(mlfan_vert_index);
 
@@ -1026,6 +994,9 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       }
       if (!lnors_spacearr->corners_by_space.is_empty()) {
         lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
+      }
+      if (!clnors_data.is_empty()) {
+        clnors_avg += int2(clnors_data[mlfan_vert_index]);
       }
     }
 
@@ -1044,8 +1015,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
                                        edge_to_loops[corner_edges[mlfan_curr_index]],
                                        vert_pivot,
                                        &mlfan_curr_index,
-                                       &mlfan_vert_index,
-                                       &mpfan_curr_index);
+                                       &mlfan_vert_index);
   }
 
   float length;
@@ -1068,18 +1038,8 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     edge_vectors->clear();
 
     if (!clnors_data.is_empty()) {
-      if (clnors_invalid) {
-        clnors_avg /= clnors_count;
-        /* Fix/update all clnors of this fan with computed average value. */
-        if (G.debug & G_DEBUG) {
-          printf("Invalid clnors in this fan!\n");
-        }
-        clnors_data.fill_indices(processed_corners.as_span(), short2(clnors_avg));
-      }
-      /* Extra bonus: since small-stack is local to this function,
-       * no more need to empty it at all cost! */
-
-      lnor = lnor_space_custom_data_to_normal(lnor_space, *clnor_ref);
+      clnors_avg /= processed_corners.size();
+      lnor = lnor_space_custom_data_to_normal(lnor_space, short2(clnors_avg));
     }
   }
 
@@ -1100,16 +1060,15 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
                                                          const OffsetIndices<int> faces,
                                                          const Span<int2> edge_to_loops,
                                                          const Span<int> loop_to_face,
-                                                         const int *e2l_prev,
+                                                         const int2 e2l_prev,
                                                          MutableBitSpan skip_loops,
                                                          const int ml_curr_index,
-                                                         const int ml_prev_index,
-                                                         const int mp_curr_index)
+                                                         const int ml_prev_index)
 {
   /* The vertex we are "fanning" around. */
   const int vert_pivot = corner_verts[ml_curr_index];
 
-  const int *e2lfan_curr = e2l_prev;
+  int2 e2lfan_curr = e2l_prev;
   if (IS_EDGE_SHARP(e2lfan_curr)) {
     /* Sharp loop, so not a cyclic smooth fan. */
     return false;
@@ -1119,11 +1078,9 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
    */
   int mlfan_curr_index = ml_prev_index;
   int mlfan_vert_index = ml_curr_index;
-  int mpfan_curr_index = mp_curr_index;
 
   BLI_assert(mlfan_curr_index >= 0);
   BLI_assert(mlfan_vert_index >= 0);
-  BLI_assert(mpfan_curr_index >= 0);
 
   BLI_assert(!skip_loops[mlfan_vert_index]);
   skip_loops[mlfan_vert_index].set();
@@ -1136,8 +1093,7 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
                                        e2lfan_curr,
                                        vert_pivot,
                                        &mlfan_curr_index,
-                                       &mlfan_vert_index,
-                                       &mpfan_curr_index);
+                                       &mlfan_vert_index);
 
     e2lfan_curr = edge_to_loops[corner_edges[mlfan_curr_index]];
 
@@ -1215,8 +1171,7 @@ static void loop_split_generator(LoopSplitTaskDataCommon *common_data,
                                             edge_to_loops[corner_edges[ml_prev_index]],
                                             skip_loops,
                                             ml_curr_index,
-                                            ml_prev_index,
-                                            face_index)))
+                                            ml_prev_index)))
       {
         // printf("SKIPPING!\n");
       }
@@ -1253,9 +1208,9 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
@@ -1300,17 +1255,6 @@ void normals_calc_loop(const Span<float3> vert_positions,
    * Note also that loose edges always have both values set to 0! */
   Array<int2> edge_to_loops(edges.size(), int2(0));
 
-  /* Simple mapping from a loop to its face index. */
-  Span<int> loop_to_face;
-  Array<int> local_loop_to_face_map;
-  if (loop_to_face_map.is_empty()) {
-    local_loop_to_face_map = build_loop_to_face_map(faces);
-    loop_to_face = local_loop_to_face_map;
-  }
-  else {
-    loop_to_face = loop_to_face_map;
-  }
-
   /* When using custom loop normals, disable the angle feature! */
   const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
 
@@ -1329,15 +1273,14 @@ void normals_calc_loop(const Span<float3> vert_positions,
   LoopSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
   common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {reinterpret_cast<short2 *>(clnors_data),
-                             clnors_data ? corner_verts.size() : 0};
+  common_data.clnors_data = {clnors_data, clnors_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
   common_data.faces = faces;
   common_data.corner_verts = corner_verts;
   common_data.corner_edges = corner_edges;
   common_data.edge_to_loops = edge_to_loops;
-  common_data.loop_to_face = loop_to_face;
+  common_data.loop_to_face = loop_to_face_map;
   common_data.face_normals = face_normals;
   common_data.vert_normals = vert_normals;
 
@@ -1349,7 +1292,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   mesh_edges_sharp_tag(faces,
                        corner_verts,
                        corner_edges,
-                       loop_to_face,
+                       loop_to_face_map,
                        face_normals,
                        Span<bool>(sharp_faces, sharp_faces ? faces.size() : 0),
                        Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
@@ -1440,9 +1383,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     face_normals,
                     sharp_edges.data(),
                     sharp_faces,
+                    r_clnors_data.data(),
                     use_split_normals,
                     split_angle,
-                    r_clnors_data.data(),
                     &lnors_spacearr,
                     loop_normals);
 
@@ -1562,9 +1505,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       face_normals,
                       sharp_edges.data(),
                       sharp_faces,
+                      r_clnors_data.data(),
                       use_split_normals,
                       split_angle,
-                      r_clnors_data.data(),
                       &lnors_spacearr,
                       loop_normals);
   }
@@ -1668,19 +1611,19 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
 static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const bool use_vertices)
 {
   short2 *clnors = static_cast<short2 *>(
-      CustomData_get_layer_for_write(&mesh->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop));
+      CustomData_get_layer_for_write(&mesh->loop_data, CD_CUSTOMLOOPNORMAL, mesh->totloop));
   if (clnors != nullptr) {
     memset(clnors, 0, sizeof(*clnors) * mesh->totloop);
   }
   else {
-    clnors = static_cast<short2 *>(
-        CustomData_add_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, mesh->totloop));
+    clnors = static_cast<short2 *>(CustomData_add_layer(
+        &mesh->loop_data, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, mesh->totloop));
   }
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
   const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
 
   mesh_normals_loop_custom_set(
       mesh->vert_positions(),

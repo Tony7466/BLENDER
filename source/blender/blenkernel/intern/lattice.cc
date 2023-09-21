@@ -15,7 +15,8 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -45,7 +46,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void lattice_init_data(ID *id)
 {
@@ -116,8 +117,14 @@ static void lattice_free_data(ID *id)
 
 static void lattice_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Lattice *lattice = (Lattice *)id;
+  Lattice *lattice = reinterpret_cast<Lattice *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lattice->key, IDWALK_CB_USER);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, lattice->ipo, IDWALK_CB_USER);
+  }
 }
 
 static void lattice_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -131,11 +138,6 @@ static void lattice_blend_write(BlendWriter *writer, ID *id, const void *id_addr
   /* write LibData */
   BLO_write_id_struct(writer, Lattice, id_address, &lt->id);
   BKE_id_blend_write(writer, &lt->id);
-
-  /* write animdata */
-  if (lt->adt) {
-    BKE_animdata_blend_write(writer, lt->adt);
-  }
 
   /* direct data */
   BLO_write_struct_array(writer, BPoint, lt->pntsu * lt->pntsv * lt->pntsw, lt->def);
@@ -155,23 +157,6 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 
   lt->editlatt = nullptr;
   lt->batch_cache = nullptr;
-
-  BLO_read_data_address(reader, &lt->adt);
-  BKE_animdata_blend_read_data(reader, lt->adt);
-}
-
-static void lattice_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Lattice *lt = (Lattice *)id;
-  BLO_read_id_address(reader, id, &lt->ipo);  // XXX deprecated - old animation system
-  BLO_read_id_address(reader, id, &lt->key);
-}
-
-static void lattice_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Lattice *lt = (Lattice *)id;
-  BLO_expand(expander, lt->ipo);  // XXX deprecated - old animation system
-  BLO_expand(expander, lt->key);
 }
 
 IDTypeInfo IDType_ID_LT = {
@@ -196,8 +181,7 @@ IDTypeInfo IDType_ID_LT = {
 
     /*blend_write*/ lattice_blend_write,
     /*blend_read_data*/ lattice_blend_read_data,
-    /*blend_read_lib*/ lattice_blend_read_lib,
-    /*blend_read_expand*/ lattice_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -529,8 +513,8 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   }
 
   Lattice *lt = static_cast<Lattice *>(ob->data);
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
   float(*vert_coords)[3] = nullptr;
   int numVerts;
   const bool is_editmode = (lt->editlatt != nullptr);
@@ -548,7 +532,7 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     if (is_editmode && !(md->mode & eModifierMode_Editmode)) {
       continue;
     }
-    if (mti->isDisabled && mti->isDisabled(scene, md, false)) {
+    if (mti->is_disabled && mti->is_disabled(scene, md, false)) {
       continue;
     }
     if (mti->type != eModifierTypeType_OnlyDeform) {
@@ -561,7 +545,7 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
       vert_coords = BKE_lattice_vert_coords_alloc(effective_lattice, &numVerts);
     }
 
-    mti->deformVerts(md, &mectx, nullptr, vert_coords, numVerts);
+    mti->deform_verts(md, &mectx, nullptr, vert_coords, numVerts);
   }
 
   if (vert_coords == nullptr) {
@@ -705,9 +689,7 @@ void BKE_lattice_transform(Lattice *lt, const float mat[4][4], bool do_keys)
   }
 
   if (do_keys && lt->key) {
-    KeyBlock *kb;
-
-    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+    LISTBASE_FOREACH (KeyBlock *, kb, &lt->key->block) {
       float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         mul_m4_v3(mat, fp);
@@ -735,9 +717,7 @@ void BKE_lattice_translate(Lattice *lt, const float offset[3], bool do_keys)
   }
 
   if (do_keys && lt->key) {
-    KeyBlock *kb;
-
-    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+    LISTBASE_FOREACH (KeyBlock *, kb, &lt->key->block) {
       float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         add_v3_v3(fp, offset);

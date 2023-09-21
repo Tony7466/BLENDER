@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -530,10 +530,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_python_mathutils
@@ -544,6 +541,9 @@ set(LIB
 
 set(INC
   .
+  ../blenkernel
+  ../blentranslation
+  ../depsgraph
   ../imbuf
   ../makesrna
   ../python

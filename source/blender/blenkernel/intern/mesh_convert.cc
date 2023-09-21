@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,10 +20,8 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -44,8 +42,8 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 /* these 2 are only used by conversion functions */
 #include "BKE_curve.h"
@@ -553,7 +551,8 @@ void BKE_mesh_to_pointcloud(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/
 
   CustomData_free(&pointcloud->pdata, pointcloud->totpoint);
   pointcloud->totpoint = mesh_eval->totvert;
-  CustomData_merge(&mesh_eval->vdata, &pointcloud->pdata, CD_MASK_PROP_ALL, mesh_eval->totvert);
+  CustomData_merge(
+      &mesh_eval->vert_data, &pointcloud->pdata, CD_MASK_PROP_ALL, mesh_eval->totvert);
 
   BKE_id_materials_copy(bmain, (ID *)ob->data, (ID *)pointcloud);
 
@@ -574,9 +573,9 @@ void BKE_pointcloud_to_mesh(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/
 
   Mesh *mesh = BKE_mesh_add(bmain, ob->id.name + 2);
 
-  if (const PointCloud *points = geometry.get_pointcloud_for_read()) {
+  if (const PointCloud *points = geometry.get_pointcloud()) {
     mesh->totvert = points->totpoint;
-    CustomData_merge(&points->pdata, &mesh->vdata, CD_MASK_PROP_ALL, points->totpoint);
+    CustomData_merge(&points->pdata, &mesh->vert_data, CD_MASK_PROP_ALL, points->totpoint);
   }
 
   BKE_id_materials_copy(bmain, (ID *)ob->data, (ID *)mesh);
@@ -688,7 +687,7 @@ static void curve_to_mesh_eval_ensure(Object &object)
 static const Curves *get_evaluated_curves_from_object(const Object *object)
 {
   if (blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
-    return geometry_set_eval->get_curves_for_read();
+    return geometry_set_eval->get_curves();
   }
   return nullptr;
 }
@@ -1032,10 +1031,10 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
 
   /* Using #CD_MASK_MESH ensures that only data that should exist in Main meshes is moved. */
   const CustomData_MeshMasks mask = CD_MASK_MESH;
-  CustomData_copy(&mesh_src->vdata, &mesh_dst->vdata, mask.vmask, mesh_src->totvert);
-  CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, mesh_src->totedge);
-  CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, mesh_src->faces_num);
-  CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, mesh_src->totloop);
+  CustomData_copy(&mesh_src->vert_data, &mesh_dst->vert_data, mask.vmask, mesh_src->totvert);
+  CustomData_copy(&mesh_src->edge_data, &mesh_dst->edge_data, mask.emask, mesh_src->totedge);
+  CustomData_copy(&mesh_src->face_data, &mesh_dst->face_data, mask.pmask, mesh_src->faces_num);
+  CustomData_copy(&mesh_src->loop_data, &mesh_dst->loop_data, mask.lmask, mesh_src->totloop);
   std::swap(mesh_dst->face_offset_indices, mesh_src->face_offset_indices);
   std::swap(mesh_dst->runtime->face_offsets_sharing_info,
             mesh_src->runtime->face_offsets_sharing_info);
@@ -1050,10 +1049,10 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
   /* For original meshes, shape key data is stored in the #Key data-block, so it
    * must be moved from the storage in #CustomData layers used for evaluation. */
   if (Key *key_dst = mesh_dst->key) {
-    if (CustomData_has_layer(&mesh_src->vdata, CD_SHAPEKEY)) {
+    if (CustomData_has_layer(&mesh_src->vert_data, CD_SHAPEKEY)) {
       /* If no object, set to -1 so we don't mess up any shapekey layers. */
       const int uid_active = ob ? find_object_active_key_uid(*key_dst, *ob) : -1;
-      move_shapekey_layers_to_keyblocks(*mesh_dst, mesh_src->vdata, *key_dst, uid_active);
+      move_shapekey_layers_to_keyblocks(*mesh_dst, mesh_src->vert_data, *key_dst, uid_active);
     }
     else if (verts_num_changed) {
       CLOG_WARN(&LOG, "Shape key data lost when replacing mesh '%s' in Main", mesh_src->id.name);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,13 @@
  * \ingroup bke
  */
 
+#include "BLI_index_mask.hh"
+
 #include "BKE_mesh.h"
+#include "BKE_mesh_types.hh"
 
-namespace blender::bke::mesh {
-
+namespace blender::bke {
+namespace mesh {
 /* -------------------------------------------------------------------- */
 /** \name Polygon Data Evaluation
  * \{ */
@@ -70,16 +73,19 @@ void normals_calc_faces(Span<float3> vert_positions,
                         MutableSpan<float3> face_normals);
 
 /**
- * Calculate face and vertex normals directly into result arrays.
+ * Calculate vertex normals directly into the result array.
+ *
+ * \note Vertex and face normals can be calculated at the same time with
+ * #normals_calc_faces_and_verts, which can have performance benefits in some cases.
  *
  * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
  * since they may already be calculated and cached on the mesh.
  */
-void normals_calc_face_vert(Span<float3> vert_positions,
-                            OffsetIndices<int> faces,
-                            Span<int> corner_verts,
-                            MutableSpan<float3> face_normals,
-                            MutableSpan<float3> vert_normals);
+void normals_calc_verts(Span<float3> vert_positions,
+                        OffsetIndices<int> faces,
+                        Span<int> corner_verts,
+                        Span<float3> face_normals,
+                        MutableSpan<float3> vert_normals);
 
 /** \} */
 
@@ -140,7 +146,6 @@ short2 lnor_space_custom_normal_to_data(const CornerNormalSpace &lnor_space,
  * Useful to materialize sharp edges (or non-smooth faces) without actually modifying the geometry
  * (splitting edges).
  *
- * \param loop_to_face_map: Optional pre-created map from corners to their face.
  * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
  * each side of the edge.
  * \param r_lnors_spacearr: Optional return data filled with information about the custom
@@ -156,9 +161,9 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
@@ -198,6 +203,7 @@ void edges_sharp_from_angle_set(OffsetIndices<int> faces,
                                 Span<int> corner_verts,
                                 Span<int> corner_edges,
                                 Span<float3> face_normals,
+                                Span<int> loop_to_face,
                                 const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
@@ -254,6 +260,15 @@ inline int2 face_find_adjecent_verts(const IndexRange face,
 }
 
 /**
+ * Return the number of triangles needed to tessellate a face with \a face_size corners.
+ */
+inline int face_triangles_num(const int face_size)
+{
+  BLI_assert(face_size > 2);
+  return face_size - 2;
+}
+
+/**
  * Return the index of the edge's vertex that is not the \a vert.
  * If neither edge vertex is equal to \a v, returns -1.
  */
@@ -270,7 +285,17 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 
 /** \} */
 
-}  // namespace blender::bke::mesh
+}  // namespace mesh
+
+void mesh_flip_faces(Mesh &mesh, const IndexMask &selection);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
+
+}  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
@@ -279,26 +304,26 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 inline blender::Span<blender::float3> Mesh::vert_positions() const
 {
   return {static_cast<const blender::float3 *>(
-              CustomData_get_layer_named(&this->vdata, CD_PROP_FLOAT3, "position")),
+              CustomData_get_layer_named(&this->vert_data, CD_PROP_FLOAT3, "position")),
           this->totvert};
 }
 inline blender::MutableSpan<blender::float3> Mesh::vert_positions_for_write()
 {
   return {static_cast<blender::float3 *>(CustomData_get_layer_named_for_write(
-              &this->vdata, CD_PROP_FLOAT3, "position", this->totvert)),
+              &this->vert_data, CD_PROP_FLOAT3, "position", this->totvert)),
           this->totvert};
 }
 
 inline blender::Span<blender::int2> Mesh::edges() const
 {
   return {static_cast<const blender::int2 *>(
-              CustomData_get_layer_named(&this->edata, CD_PROP_INT32_2D, ".edge_verts")),
+              CustomData_get_layer_named(&this->edge_data, CD_PROP_INT32_2D, ".edge_verts")),
           this->totedge};
 }
 inline blender::MutableSpan<blender::int2> Mesh::edges_for_write()
 {
   return {static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
-              &this->edata, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
+              &this->edge_data, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
           this->totedge};
 }
 
@@ -317,26 +342,26 @@ inline blender::Span<int> Mesh::face_offsets() const
 inline blender::Span<int> Mesh::corner_verts() const
 {
   return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->ldata, CD_PROP_INT32, ".corner_vert")),
+              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_vert")),
           this->totloop};
 }
 inline blender::MutableSpan<int> Mesh::corner_verts_for_write()
 {
   return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->ldata, CD_PROP_INT32, ".corner_vert", this->totloop)),
+              &this->loop_data, CD_PROP_INT32, ".corner_vert", this->totloop)),
           this->totloop};
 }
 
 inline blender::Span<int> Mesh::corner_edges() const
 {
   return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->ldata, CD_PROP_INT32, ".corner_edge")),
+              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_edge")),
           this->totloop};
 }
 inline blender::MutableSpan<int> Mesh::corner_edges_for_write()
 {
   return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->ldata, CD_PROP_INT32, ".corner_edge", this->totloop)),
+              &this->loop_data, CD_PROP_INT32, ".corner_edge", this->totloop)),
           this->totloop};
 }
 

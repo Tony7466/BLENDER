@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,11 @@
 #include "BLI_array.hh"
 #include "BLI_astar.h"
 #include "BLI_bit_vector.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_solvers.h"
+#include "BLI_math_statistics.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_rand.h"
@@ -29,9 +33,9 @@
 #include "BKE_bvhutils.h"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h" /* own include */
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh" /* own include */
+#include "BKE_mesh_runtime.hh"
 
 #include "BLI_strict_flags.h"
 
@@ -1286,12 +1290,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     blender::Array<blender::float3> face_cents_src;
 
-    Array<int> vert_to_loop_src_offsets;
-    Array<int> vert_to_loop_src_indices;
     GroupedSpan<int> vert_to_loop_map_src;
-
-    Array<int> vert_to_face_src_offsets;
-    Array<int> vert_to_face_src_indices;
     GroupedSpan<int> vert_to_face_map_src;
 
     Array<int> edge_to_face_src_offsets;
@@ -1302,7 +1301,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     int *face_to_looptri_map_src_buff = nullptr;
 
     /* Unlike above, those are one-to-one mappings, simpler! */
-    blender::Array<int> loop_to_face_map_src;
+    blender::Span<int> loop_to_face_map_src;
 
     const blender::Span<blender::float3> positions_src = me_src->vert_positions();
     const int num_verts_src = me_src->totvert;
@@ -1343,8 +1342,8 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         face_normals_dst = mesh_dst->face_normals();
       }
       if (need_lnors_dst) {
-        blender::short2 *custom_nors_dst = static_cast<blender::short2 *>(
-            CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, numloops_dst));
+        const blender::short2 *custom_nors_dst = static_cast<const blender::short2 *>(
+            CustomData_get_layer(ldata_dst, CD_CUSTOMLOOPNORMAL));
 
         /* Cache loop normals into a temporary custom data layer. */
         loop_normals_dst = static_cast<blender::float3 *>(
@@ -1358,23 +1357,23 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         }
         if (dirty_nors_dst || do_loop_normals_dst) {
           const bool *sharp_edges = static_cast<const bool *>(
-              CustomData_get_layer_named(&mesh_dst->edata, CD_PROP_BOOL, "sharp_edge"));
+              CustomData_get_layer_named(&mesh_dst->edge_data, CD_PROP_BOOL, "sharp_edge"));
           const bool *sharp_faces = static_cast<const bool *>(
-              CustomData_get_layer_named(&mesh_dst->pdata, CD_PROP_BOOL, "sharp_face"));
+              CustomData_get_layer_named(&mesh_dst->face_data, CD_PROP_BOOL, "sharp_face"));
           blender::bke::mesh::normals_calc_loop(
               {reinterpret_cast<const blender::float3 *>(vert_positions_dst), numverts_dst},
               {edges_dst, numedges_dst},
               faces_dst,
               {corner_verts_dst, numloops_dst},
               {corner_edges_dst, numloops_dst},
-              {},
+              mesh_dst->corner_to_face_map(),
               mesh_dst->vert_normals(),
               mesh_dst->face_normals(),
               sharp_edges,
               sharp_faces,
+              custom_nors_dst,
               use_split_nors_dst,
               split_angle_dst,
-              custom_nors_dst,
               nullptr,
               {loop_normals_dst, numloops_dst});
         }
@@ -1385,7 +1384,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         }
         if (need_lnors_src) {
           loop_normals_src = {static_cast<const blender::float3 *>(
-                                  CustomData_get_layer(&me_src->ldata, CD_NORMAL)),
+                                  CustomData_get_layer(&me_src->loop_data, CD_NORMAL)),
                               me_src->totloop};
           BLI_assert(loop_normals_src.data() != nullptr);
         }
@@ -1393,15 +1392,9 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     }
 
     if (use_from_vert) {
-      vert_to_loop_map_src = bke::mesh::build_vert_to_loop_map(
-          corner_verts_src, num_verts_src, vert_to_loop_src_offsets, vert_to_loop_src_indices);
-
+      vert_to_loop_map_src = me_src->vert_to_corner_map();
       if (mode & MREMAP_USE_POLY) {
-        vert_to_face_map_src = bke::mesh::build_vert_to_face_map(faces_src,
-                                                                 corner_verts_src,
-                                                                 num_verts_src,
-                                                                 vert_to_face_src_offsets,
-                                                                 vert_to_face_src_indices);
+        vert_to_face_map_src = me_src->vert_to_face_map();
       }
     }
 
@@ -1413,7 +1406,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                                              edge_to_face_src_indices);
 
     if (use_from_vert) {
-      loop_to_face_map_src = blender::bke::mesh::build_loop_to_face_map(faces_src);
+      loop_to_face_map_src = me_src->corner_to_face_map();
       face_cents_src.reinitialize(faces_src.size());
       for (const int64_t i : faces_src.index_range()) {
         face_cents_src[i] = blender::bke::mesh::face_center_calc(
@@ -1431,7 +1424,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     /* First, generate the islands, if possible. */
     if (gen_islands_src) {
       const bool *uv_seams = static_cast<const bool *>(
-          CustomData_get_layer_named(&me_src->edata, CD_PROP_BOOL, ".uv_seam"));
+          CustomData_get_layer_named(&me_src->edge_data, CD_PROP_BOOL, ".uv_seam"));
       use_islands = gen_islands_src(reinterpret_cast<const float(*)[3]>(positions_src.data()),
                                     num_verts_src,
                                     edges_src.data(),
@@ -1801,10 +1794,10 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         for (tindex = 0; tindex < num_trees; tindex++) {
           float island_fac = 0.0f;
 
-          for (plidx_dst = 0; plidx_dst < faces_dst.size(); plidx_dst++) {
+          for (plidx_dst = 0; plidx_dst < face_dst.size(); plidx_dst++) {
             island_fac += islands_res[tindex][plidx_dst].factor;
           }
-          island_fac /= float(faces_dst.size());
+          island_fac /= float(face_dst.size());
 
           if (island_fac > best_island_fac) {
             best_island_fac = island_fac;

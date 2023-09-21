@@ -15,15 +15,17 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_tangent.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_tangent.hh"
 #include "BKE_report.h"
 
 #include "BLI_strict_flags.h"
@@ -123,7 +125,7 @@ void BKE_mesh_calc_loop_tangent_single(Mesh *mesh,
   using namespace blender::bke;
 
   if (!uvmap) {
-    uvmap = CustomData_get_active_layer_name(&mesh->ldata, CD_PROP_FLOAT2);
+    uvmap = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
   }
 
   const AttributeAccessor attributes = mesh->attributes();
@@ -137,7 +139,7 @@ void BKE_mesh_calc_loop_tangent_single(Mesh *mesh,
   }
 
   const float(*loop_normals)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&mesh->ldata, CD_NORMAL));
+      CustomData_get_layer(&mesh->loop_data, CD_NORMAL));
   if (!loop_normals) {
     BKE_report(
         reports, RPT_ERROR, "Tangent space computation needs loop normals, none found, aborting");
@@ -597,18 +599,18 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       me_eval->looptri_faces().data(),
       uint(looptris.size()),
       static_cast<const bool *>(
-          CustomData_get_layer_named(&me_eval->pdata, CD_PROP_BOOL, "sharp_face")),
-      &me_eval->ldata,
+          CustomData_get_layer_named(&me_eval->face_data, CD_PROP_BOOL, "sharp_face")),
+      &me_eval->loop_data,
       calc_active_tangent,
       tangent_names,
       tangent_names_len,
       reinterpret_cast<const float(*)[3]>(me_eval->vert_normals().data()),
       reinterpret_cast<const float(*)[3]>(me_eval->face_normals().data()),
-      static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->ldata, CD_NORMAL)),
+      static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->loop_data, CD_NORMAL)),
       /* may be nullptr */
-      static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->vdata, CD_ORCO)),
+      static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->vert_data, CD_ORCO)),
       /* result */
-      &me_eval->ldata,
+      &me_eval->loop_data,
       uint(me_eval->totloop),
       &tangent_mask);
 }

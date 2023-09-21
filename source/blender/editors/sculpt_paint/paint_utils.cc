@@ -18,14 +18,13 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
@@ -33,16 +32,16 @@
 #include "BKE_layer.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "GPU_framebuffer.h"
@@ -56,17 +55,17 @@
 
 #include "RE_texture.h"
 
-#include "ED_image.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_image.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "BLI_sys_types.h"
-#include "ED_mesh.h" /* for face mask functions */
+#include "ED_mesh.hh" /* for face mask functions */
 
 #include "DRW_select_buffer.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "paint_intern.hh"
 
@@ -196,12 +195,13 @@ void paint_stroke_operator_properties(wmOperatorType *ot)
   prop = RNA_def_collection_runtime(ot->srna, "stroke", &RNA_OperatorStrokeElement, "Stroke", "");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 
-  RNA_def_enum(ot->srna,
-               "mode",
-               stroke_mode_items,
-               BRUSH_STROKE_NORMAL,
-               "Stroke Mode",
-               "Action taken when a paint stroke is made");
+  prop = RNA_def_enum(ot->srna,
+                      "mode",
+                      stroke_mode_items,
+                      BRUSH_STROKE_NORMAL,
+                      "Stroke Mode",
+                      "Action taken when a paint stroke is made");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
 }
 
 /* 3D Paint */
@@ -270,20 +270,18 @@ static void imapaint_pick_uv(const Mesh *me_eval,
                              const int xy[2],
                              float uv[2])
 {
-  int i, findex;
   float p[2], w[3], absw, minabsw;
   float matrix[4][4], proj[4][4];
   int view[4];
   const ePaintCanvasSource mode = ePaintCanvasSource(scene->toolsettings->imapaint.mode);
 
-  const MLoopTri *lt = BKE_mesh_runtime_looptri_ensure(me_eval);
-  const int tottri = BKE_mesh_runtime_looptri_len(me_eval);
-  const int *looptri_faces = BKE_mesh_runtime_looptri_faces_ensure(me_eval);
+  const blender::Span<MLoopTri> tris = me_eval->looptris();
+  const blender::Span<int> looptri_faces = me_eval->looptri_faces();
 
   const blender::Span<blender::float3> positions = me_eval->vert_positions();
   const blender::Span<int> corner_verts = me_eval->corner_verts();
   const int *index_mp_to_orig = static_cast<const int *>(
-      CustomData_get_layer(&me_eval->pdata, CD_ORIGINDEX));
+      CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));
 
   /* get the needed opengl matrices */
   GPU_viewport_size_get_i(view);
@@ -297,13 +295,13 @@ static void imapaint_pick_uv(const Mesh *me_eval,
   uv[0] = uv[1] = 0.0;
 
   const int *material_indices = (const int *)CustomData_get_layer_named(
-      &me_eval->pdata, CD_PROP_INT32, "material_index");
+      &me_eval->face_data, CD_PROP_INT32, "material_index");
 
   /* test all faces in the derivedmesh with the original index of the picked face */
   /* face means poly here, not triangle, indeed */
-  for (i = 0; i < tottri; i++, lt++) {
+  for (const int i : tris.index_range()) {
     const int face_i = looptri_faces[i];
-    findex = index_mp_to_orig ? index_mp_to_orig[face_i] : face_i;
+    const int findex = index_mp_to_orig ? index_mp_to_orig[face_i] : face_i;
 
     if (findex == faceindex) {
       const float(*mloopuv)[2];
@@ -311,7 +309,7 @@ static void imapaint_pick_uv(const Mesh *me_eval,
       float tri_co[3][3];
 
       for (int j = 3; j--;) {
-        copy_v3_v3(tri_co[j], positions[corner_verts[lt->tri[j]]]);
+        copy_v3_v3(tri_co[j], positions[corner_verts[tris[i].tri[j]]]);
       }
 
       if (mode == PAINT_CANVAS_SOURCE_MATERIAL) {
@@ -323,21 +321,21 @@ static void imapaint_pick_uv(const Mesh *me_eval,
         slot = &ma->texpaintslot[ma->paint_active_slot];
 
         if (!(slot && slot->uvname &&
-              (mloopuv = static_cast<const float(*)[2]>(
-                   CustomData_get_layer_named(&me_eval->ldata, CD_PROP_FLOAT2, slot->uvname)))))
+              (mloopuv = static_cast<const float(*)[2]>(CustomData_get_layer_named(
+                   &me_eval->loop_data, CD_PROP_FLOAT2, slot->uvname)))))
         {
           mloopuv = static_cast<const float(*)[2]>(
-              CustomData_get_layer(&me_eval->ldata, CD_PROP_FLOAT2));
+              CustomData_get_layer(&me_eval->loop_data, CD_PROP_FLOAT2));
         }
       }
       else {
         mloopuv = static_cast<const float(*)[2]>(
-            CustomData_get_layer(&me_eval->ldata, CD_PROP_FLOAT2));
+            CustomData_get_layer(&me_eval->loop_data, CD_PROP_FLOAT2));
       }
 
-      tri_uv[0] = mloopuv[lt->tri[0]];
-      tri_uv[1] = mloopuv[lt->tri[1]];
-      tri_uv[2] = mloopuv[lt->tri[2]];
+      tri_uv[0] = mloopuv[tris[i].tri[0]];
+      tri_uv[1] = mloopuv[tris[i].tri[1]];
+      tri_uv[2] = mloopuv[tris[i].tri[2]];
 
       p[0] = xy[0];
       p[1] = xy[1];
@@ -414,14 +412,14 @@ void paint_sample_color(
       Mesh *me = (Mesh *)ob->data;
       const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
       const int *material_indices = (const int *)CustomData_get_layer_named(
-          &me_eval->pdata, CD_PROP_INT32, "material_index");
+          &me_eval->face_data, CD_PROP_INT32, "material_index");
 
       ViewContext vc;
       const int mval[2] = {x, y};
       uint faceindex;
       uint faces_num = me->faces_num;
 
-      if (CustomData_has_layer(&me_eval->ldata, CD_PROP_FLOAT2)) {
+      if (CustomData_has_layer(&me_eval->loop_data, CD_PROP_FLOAT2)) {
         ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
         view3d_operator_needs_opengl(C);
@@ -548,15 +546,16 @@ void paint_sample_color(
 
   /* No sample found; sample directly from the GPU front buffer. */
   {
-    float rgba_f[4];
-    GPU_frontbuffer_read_color(
-        x + region->winrct.xmin, y + region->winrct.ymin, 1, 1, 4, GPU_DATA_FLOAT, &rgba_f);
-
+    float rgb_fl[3];
+    WM_window_pixels_read_sample(C,
+                                 CTX_wm_window(C),
+                                 blender::int2(x + region->winrct.xmin, y + region->winrct.ymin),
+                                 rgb_fl);
     if (use_palette) {
-      copy_v3_v3(color->rgb, rgba_f);
+      copy_v3_v3(color->rgb, rgb_fl);
     }
     else {
-      BKE_brush_color_set(scene, br, rgba_f);
+      BKE_brush_color_set(scene, br, rgb_fl);
     }
   }
 }

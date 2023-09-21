@@ -8,11 +8,13 @@
  * This file contains code for face tessellation
  * (creating triangles from polygons).
  *
- * \see bmesh_mesh_tessellate.c for the #BMesh equivalent of this file.
+ * \see `bmesh_mesh_tessellate.cc` for the #BMesh equivalent of this file.
  */
 
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_task.h"
@@ -304,7 +306,7 @@ void looptris_calc_face_indices(const OffsetIndices<int> faces, MutableSpan<int>
     for (const int64_t i : range) {
       const IndexRange face = faces[i];
       const int start = poly_to_tri_count(int(i), int(face.start()));
-      const int num = ME_FACE_TRI_TOT(int(face.size()));
+      const int num = face_triangles_num(int(face.size()));
       looptri_faces.slice(start, num).fill(int(i));
     }
   });

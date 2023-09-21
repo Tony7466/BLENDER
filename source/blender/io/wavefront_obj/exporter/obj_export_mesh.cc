@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,12 +12,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_sort.hh"
 
 #include "DEG_depsgraph_query.h"
@@ -199,14 +201,12 @@ void OBJMesh::ensure_mesh_normals() const
 void OBJMesh::calc_smooth_groups(const bool use_bitflags)
 {
   const bool *sharp_edges = static_cast<const bool *>(
-      CustomData_get_layer_named(&export_mesh_->edata, CD_PROP_BOOL, "sharp_edge"));
+      CustomData_get_layer_named(&export_mesh_->edge_data, CD_PROP_BOOL, "sharp_edge"));
   const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&export_mesh_->pdata, CD_PROP_BOOL, "sharp_face"));
+      CustomData_get_layer_named(&export_mesh_->face_data, CD_PROP_BOOL, "sharp_face"));
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(mesh_edges_.size(),
-                                                   mesh_faces_.data(),
-                                                   mesh_faces_.size(),
-                                                   export_mesh_->corner_edges().data(),
-                                                   export_mesh_->totloop,
+                                                   mesh_faces_,
+                                                   export_mesh_->corner_edges(),
                                                    sharp_edges,
                                                    sharp_faces,
                                                    &tot_smooth_groups_,
@@ -291,7 +291,7 @@ Span<int> OBJMesh::calc_poly_vertex_indices(const int face_index) const
 
 void OBJMesh::store_uv_coords_and_indices()
 {
-  const StringRef active_uv_name = CustomData_get_active_layer_name(&export_mesh_->ldata,
+  const StringRef active_uv_name = CustomData_get_active_layer_name(&export_mesh_->loop_data,
                                                                     CD_PROP_FLOAT2);
   if (active_uv_name.is_empty()) {
     uv_coords_.clear();
@@ -373,7 +373,7 @@ void OBJMesh::store_normal_coords_and_indices()
   loop_to_normal_index_.resize(export_mesh_->totloop);
   loop_to_normal_index_.fill(-1);
   const float(*lnors)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&export_mesh_->ldata, CD_NORMAL));
+      CustomData_get_layer(&export_mesh_->loop_data, CD_NORMAL));
   for (int face_index = 0; face_index < export_mesh_->faces_num; ++face_index) {
     const IndexRange face = mesh_faces_[face_index];
     bool need_per_loop_normals = lnors != nullptr || !(sharp_faces_[face_index]);

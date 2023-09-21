@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,7 +58,9 @@
 #include "SEQ_iterator.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 
@@ -70,11 +72,11 @@
 #include "NOD_composite.h"
 #include "NOD_socket.hh"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 #include "MEM_guardedalloc.h"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 /* ************************************************** */
@@ -997,7 +999,7 @@ void blo_do_versions_270(FileData *fd, Library * /*lib*/, Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "RenderData", "CurveMapping", "mblur_shutter_curve")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         CurveMapping *curve_mapping = &scene->r.mblur_shutter_curve;
-        BKE_curvemapping_set_defaults(curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f);
+        BKE_curvemapping_set_defaults(curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
         BKE_curvemapping_init(curve_mapping);
         BKE_curvemap_reset(
             curve_mapping->cm, &curve_mapping->clipr, CURVE_PRESET_MAX, CURVEMAP_SLOPE_POS_NEG);
@@ -1386,8 +1388,7 @@ void blo_do_versions_270(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Custom motion paths */
     if (!DNA_struct_elem_find(fd->filesdna, "bMotionPath", "int", "line_thickness")) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        bMotionPath *mpath = ob->mpath;
-        if (mpath) {
+        if (bMotionPath *mpath = ob->mpath) {
           mpath->color[0] = 1.0f;
           mpath->color[1] = 0.0f;
           mpath->color[2] = 0.0f;
@@ -1397,8 +1398,7 @@ void blo_do_versions_270(FileData *fd, Library * /*lib*/, Main *bmain)
         /* bones motion path */
         if (ob->pose) {
           LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-            bMotionPath *mpath = pchan->mpath;
-            if (mpath) {
+            if (bMotionPath *mpath = pchan->mpath) {
               mpath->color[0] = 1.0f;
               mpath->color[1] = 0.0f;
               mpath->color[2] = 0.0f;
@@ -1480,7 +1480,7 @@ void blo_do_versions_270(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Fix related to VGroup modifiers creating named defgroup CD layers! See #51520. */
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
-      CustomData_set_layer_name(&me->vdata, CD_MDEFORMVERT, 0, "");
+      CustomData_set_layer_name(&me->vert_data, CD_MDEFORMVERT, 0, "");
     }
   }
 

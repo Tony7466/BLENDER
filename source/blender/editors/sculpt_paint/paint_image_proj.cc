@@ -22,9 +22,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_geom.h"
 #include "BLI_memarena.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -49,7 +49,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_camera.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
@@ -63,12 +63,12 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -78,30 +78,30 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "ED_image.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_paint.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
-#include "ED_view3d_offscreen.h"
+#include "ED_image.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
+#include "ED_view3d_offscreen.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_init_exit.h"
 
 #include "NOD_shader.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -261,7 +261,14 @@ struct ProjPaintState {
   float dither;
 
   Brush *brush;
-  short tool, blend, mode;
+
+  /**
+   * Based on #Brush::imagepaint_tool but may be overridden by mode (#BrushStrokeMode).
+   * So check this value instead of `brush->imagepaint_tool`.
+   */
+  short tool;
+  short blend;
+  BrushStrokeMode mode;
 
   float brush_size;
   Object *ob;
@@ -442,8 +449,6 @@ struct ProjPaintState {
 
   /* Actual material for each index, either from object or Mesh datablock... */
   Material **mat_array;
-
-  bool use_colormanagement;
 };
 
 union PixelPointer {
@@ -1991,12 +1996,7 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
             uchar rgba_ub[4];
             float rgba[4];
             project_face_pixel(lt_other_tri_uv, ibuf_other, w, rgba_ub, nullptr);
-            if (ps->use_colormanagement) {
-              srgb_to_linearrgb_uchar4(rgba, rgba_ub);
-            }
-            else {
-              rgba_uchar_to_float(rgba, rgba_ub);
-            }
+            srgb_to_linearrgb_uchar4(rgba, rgba_ub);
             straight_to_premul_v4_v4(((ProjPixelClone *)projPixel)->clonepx.f, rgba);
           }
         }
@@ -2005,12 +2005,7 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
             float rgba[4];
             project_face_pixel(lt_other_tri_uv, ibuf_other, w, nullptr, rgba);
             premul_to_straight_v4(rgba);
-            if (ps->use_colormanagement) {
-              linearrgb_to_srgb_uchar3(((ProjPixelClone *)projPixel)->clonepx.ch, rgba);
-            }
-            else {
-              rgb_float_to_uchar(((ProjPixelClone *)projPixel)->clonepx.ch, rgba);
-            }
+            linearrgb_to_srgb_uchar3(((ProjPixelClone *)projPixel)->clonepx.ch, rgba);
             ((ProjPixelClone *)projPixel)->clonepx.ch[3] = rgba[3] * 255;
           }
           else { /* char to char */
@@ -3767,7 +3762,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
 
     if (ps->source == PROJ_SRC_IMAGE_VIEW) {
       /* image stores camera data, tricky */
-      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id, false);
+      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id);
       IDProperty *view_data = IDP_GetPropertyFromGroup(idgroup, PROJ_VIEW_DATA_ID);
 
       const float *array = (float *)IDP_Array(view_data);
@@ -4077,7 +4072,7 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
     return false;
   }
 
-  if (!CustomData_has_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2)) {
     ps->me_eval = nullptr;
     return false;
   }
@@ -4101,13 +4096,13 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   ps->faces_eval = ps->me_eval->faces();
   ps->corner_verts_eval = ps->me_eval->corner_verts();
   ps->select_poly_eval = (const bool *)CustomData_get_layer_named(
-      &ps->me_eval->pdata, CD_PROP_BOOL, ".select_poly");
+      &ps->me_eval->face_data, CD_PROP_BOOL, ".select_poly");
   ps->hide_poly_eval = (const bool *)CustomData_get_layer_named(
-      &ps->me_eval->pdata, CD_PROP_BOOL, ".hide_poly");
+      &ps->me_eval->face_data, CD_PROP_BOOL, ".hide_poly");
   ps->material_indices = (const int *)CustomData_get_layer_named(
-      &ps->me_eval->pdata, CD_PROP_INT32, "material_index");
+      &ps->me_eval->face_data, CD_PROP_INT32, "material_index");
   ps->sharp_faces_eval = static_cast<const bool *>(
-      CustomData_get_layer_named(&ps->me_eval->pdata, CD_PROP_BOOL, "sharp_face"));
+      CustomData_get_layer_named(&ps->me_eval->face_data, CD_PROP_BOOL, "sharp_face"));
 
   ps->totvert_eval = ps->me_eval->totvert;
   ps->faces_num_eval = ps->me_eval->faces_num;
@@ -4134,7 +4129,7 @@ static void proj_paint_layer_clone_init(ProjPaintState *ps, ProjPaintLayerClone 
 
   /* use clone mtface? */
   if (ps->do_layer_clone) {
-    const int layer_num = CustomData_get_clone_layer(&((Mesh *)ps->ob->data)->ldata,
+    const int layer_num = CustomData_get_clone_layer(&((Mesh *)ps->ob->data)->loop_data,
                                                      CD_PROP_FLOAT2);
 
     ps->poly_to_loop_uv_clone = static_cast<const float(**)[2]>(
@@ -4142,13 +4137,13 @@ static void proj_paint_layer_clone_init(ProjPaintState *ps, ProjPaintLayerClone 
 
     if (layer_num != -1) {
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->ldata, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->me_eval->loop_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (mloopuv_clone_base == nullptr) {
       /* get active instead */
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
     }
   }
 
@@ -4178,10 +4173,10 @@ static bool project_paint_clone_face_skip(ProjPaintState *ps,
       if (lc->slot_clone != lc->slot_last_clone) {
         if (!lc->slot_clone->uvname ||
             !(lc->mloopuv_clone_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                  &ps->me_eval->ldata, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
+                  &ps->me_eval->loop_data, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
         {
           lc->mloopuv_clone_base = static_cast<const float(*)[2]>(
-              CustomData_get_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2));
+              CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
         }
         lc->slot_last_clone = lc->slot_clone;
       }
@@ -4204,13 +4199,13 @@ static void proj_paint_face_lookup_init(const ProjPaintState *ps, ProjPaintFaceL
   memset(face_lookup, 0, sizeof(*face_lookup));
   Mesh *orig_mesh = (Mesh *)ps->ob->data;
   face_lookup->index_mp_to_orig = static_cast<const int *>(
-      CustomData_get_layer(&ps->me_eval->pdata, CD_ORIGINDEX));
+      CustomData_get_layer(&ps->me_eval->face_data, CD_ORIGINDEX));
   if (ps->do_face_sel) {
     face_lookup->select_poly_orig = static_cast<const bool *>(
-        CustomData_get_layer_named(&orig_mesh->pdata, CD_PROP_BOOL, ".select_poly"));
+        CustomData_get_layer_named(&orig_mesh->face_data, CD_PROP_BOOL, ".select_poly"));
   }
   face_lookup->hide_poly_orig = static_cast<const bool *>(
-      CustomData_get_layer_named(&orig_mesh->pdata, CD_PROP_BOOL, ".hide_poly"));
+      CustomData_get_layer_named(&orig_mesh->face_data, CD_PROP_BOOL, ".hide_poly"));
 }
 
 /* Return true if face should be considered paintable, false otherwise */
@@ -4364,17 +4359,17 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
       /* all faces should have a valid slot, reassert here */
       if (slot == nullptr) {
         mloopuv_base = static_cast<const float(*)[2]>(
-            CustomData_get_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2));
+            CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
         tpage = ps->canvas_ima;
       }
       else {
         if (slot != slot_last) {
           if (!slot->uvname ||
               !(mloopuv_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                    &ps->me_eval->ldata, CD_PROP_FLOAT2, slot->uvname))))
+                    &ps->me_eval->loop_data, CD_PROP_FLOAT2, slot->uvname))))
           {
             mloopuv_base = static_cast<const float(*)[2]>(
-                CustomData_get_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2));
+                CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
           }
           slot_last = slot;
         }
@@ -4546,16 +4541,17 @@ static void project_paint_begin(const bContext *C,
 
   if (ps->do_layer_stencil || ps->do_stencil_brush) {
     // int layer_num = CustomData_get_stencil_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2);
-    int layer_num = CustomData_get_stencil_layer(&((Mesh *)ps->ob->data)->ldata, CD_PROP_FLOAT2);
+    int layer_num = CustomData_get_stencil_layer(&((Mesh *)ps->ob->data)->loop_data,
+                                                 CD_PROP_FLOAT2);
     if (layer_num != -1) {
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->ldata, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->me_eval->loop_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (ps->mloopuv_stencil_eval == nullptr) {
       /* get active instead */
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
     }
 
     if (ps->do_stencil_brush) {
@@ -5091,12 +5087,7 @@ static void do_projectpaint_draw(ProjPaintState *ps,
   if (ps->is_texbrush) {
     mul_v3_v3v3(rgb, texrgb, ps->paint_color_linear);
     /* TODO(sergey): Support texture paint color space. */
-    if (ps->use_colormanagement) {
-      linearrgb_to_srgb_v3_v3(rgb, rgb);
-    }
-    else {
-      copy_v3_v3(rgb, rgb);
-    }
+    linearrgb_to_srgb_v3_v3(rgb, rgb);
   }
   else {
     copy_v3_v3(rgb, ps->paint_color);
@@ -5799,12 +5790,7 @@ static void paint_proj_stroke_ps(const bContext * /*C*/,
                           pressure,
                           ps->paint_color,
                           nullptr);
-    if (ps->use_colormanagement) {
-      srgb_to_linearrgb_v3_v3(ps->paint_color_linear, ps->paint_color);
-    }
-    else {
-      copy_v3_v3(ps->paint_color_linear, ps->paint_color);
-    }
+    srgb_to_linearrgb_v3_v3(ps->paint_color_linear, ps->paint_color);
   }
   else if (ps->tool == PAINT_TOOL_MASK) {
     ps->stencil_value = brush->weight;
@@ -5868,15 +5854,18 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
   ToolSettings *settings = scene->toolsettings;
 
   /* brush */
-  ps->mode = mode;
+  ps->mode = BrushStrokeMode(mode);
   ps->brush = BKE_paint_brush(&settings->imapaint.paint);
   if (ps->brush) {
     Brush *brush = ps->brush;
     ps->tool = brush->imagepaint_tool;
     ps->blend = brush->blend;
+    if (mode == BRUSH_STROKE_SMOOTH) {
+      ps->tool = PAINT_TOOL_SOFTEN;
+    }
     /* only check for inversion for the soften tool, elsewhere,
      * a resident brush inversion flag can cause issues */
-    if (brush->imagepaint_tool == PAINT_TOOL_SOFTEN) {
+    if (ps->tool == PAINT_TOOL_SOFTEN) {
       ps->mode = (((ps->mode == BRUSH_STROKE_INVERT) ^ ((brush->flag & BRUSH_DIR_IN) != 0)) ?
                       BRUSH_STROKE_INVERT :
                       BRUSH_STROKE_NORMAL);
@@ -5886,8 +5875,7 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
 
     /* disable for 3d mapping also because painting on mirrored mesh can create "stripes" */
     ps->do_masking = paint_use_opacity_masking(brush);
-    ps->is_texbrush = (brush->mtex.tex && brush->imagepaint_tool == PAINT_TOOL_DRAW) ? true :
-                                                                                       false;
+    ps->is_texbrush = (brush->mtex.tex && ps->tool == PAINT_TOOL_DRAW) ? true : false;
     ps->is_maskbrush = (brush->mask_mtex.tex) ? true : false;
   }
   else {
@@ -5933,7 +5921,7 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
     ps->do_layer_clone = (settings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_CLONE);
   }
 
-  ps->do_stencil_brush = (ps->brush && ps->brush->imagepaint_tool == PAINT_TOOL_MASK);
+  ps->do_stencil_brush = (ps->tool == PAINT_TOOL_MASK);
   /* deactivate stenciling for the stencil brush :) */
   ps->do_layer_stencil = ((settings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_STENCIL) &&
                           !(ps->do_stencil_brush) && ps->stencil_ima);
@@ -5967,8 +5955,6 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
   ps->normal_angle_inner__cos = cosf(ps->normal_angle_inner);
 
   ps->dither = settings->imapaint.dither;
-
-  ps->use_colormanagement = BKE_scene_check_color_management_enabled(CTX_data_scene(C));
 }
 
 void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int mode)
@@ -5982,11 +5968,13 @@ void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int m
   ps_handle->scene = scene;
   ps_handle->brush = BKE_paint_brush(&settings->imapaint.paint);
 
-  /* bypass regular stroke logic */
-  if ((ps_handle->brush->imagepaint_tool == PAINT_TOOL_CLONE) && (mode == BRUSH_STROKE_INVERT)) {
-    view3d_operator_needs_opengl(C);
-    ps_handle->is_clone_cursor_pick = true;
-    return ps_handle;
+  if (mode == BRUSH_STROKE_INVERT) {
+    /* Bypass regular stroke logic. */
+    if (ps_handle->brush->imagepaint_tool == PAINT_TOOL_CLONE) {
+      view3d_operator_needs_opengl(C);
+      ps_handle->is_clone_cursor_pick = true;
+      return ps_handle;
+    }
   }
 
   ps_handle->orig_brush_size = BKE_brush_size_get(scene, ps_handle->brush);
@@ -6160,7 +6148,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  idgroup = IDP_GetProperties(&image->id, false);
+  idgroup = IDP_GetProperties(&image->id);
 
   if (idgroup) {
     view_data = IDP_GetPropertyTypeFromGroup(idgroup, PROJ_VIEW_DATA_ID, IDP_ARRAY);
@@ -6250,7 +6238,7 @@ void PAINT_OT_project_image(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_enum(ot->srna, "image", DummyRNA_NULL_items, 0, "Image", "");
+  prop = RNA_def_enum(ot->srna, "image", rna_enum_dummy_NULL_items, 0, "Image", "");
   RNA_def_enum_funcs(prop, RNA_image_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -6353,7 +6341,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
     /* now for the trickiness. store the view projection here!
      * re-projection will reuse this */
     IDPropertyTemplate val;
-    IDProperty *idgroup = IDP_GetProperties(&image->id, true);
+    IDProperty *idgroup = IDP_EnsureProperties(&image->id);
     IDProperty *view_data;
     bool is_ortho;
     float *array;
@@ -6466,7 +6454,7 @@ bool ED_paint_proj_mesh_data_check(
   }
 
   me = BKE_mesh_from_object(ob);
-  layernum = CustomData_number_of_layers(&me->ldata, CD_PROP_FLOAT2);
+  layernum = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
 
   if (layernum == 0) {
     hasuvs = false;
@@ -6844,11 +6832,11 @@ static int texture_paint_add_texture_paint_slot_exec(bContext *C, wmOperator *op
 static void get_default_texture_layer_name_for_object(Object *ob,
                                                       int texture_type,
                                                       char *dst,
-                                                      int dst_length)
+                                                      int dst_maxncpy)
 {
   Material *ma = BKE_object_material_get(ob, ob->actcol);
   const char *base_name = ma ? &ma->id.name[2] : &ob->id.name[2];
-  BLI_snprintf(dst, dst_length, "%s %s", base_name, layer_type_items[texture_type].name);
+  BLI_snprintf(dst, dst_maxncpy, "%s %s", base_name, layer_type_items[texture_type].name);
 }
 
 static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
@@ -6887,17 +6875,17 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
     uiItemR(layout, op->ptr, "slot_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, op->ptr, "name", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "name", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   switch (slot_type) {
     case PAINT_CANVAS_SOURCE_IMAGE: {
       uiLayout *col = uiLayoutColumn(layout, true);
-      uiItemR(col, op->ptr, "width", 0, nullptr, ICON_NONE);
-      uiItemR(col, op->ptr, "height", 0, nullptr, ICON_NONE);
+      uiItemR(col, op->ptr, "width", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, op->ptr, "height", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-      uiItemR(layout, op->ptr, "alpha", 0, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "generated_type", 0, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "float", 0, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "alpha", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "generated_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "float", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     }
     case PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE:
@@ -6909,7 +6897,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
       break;
   }
 
-  uiItemR(layout, op->ptr, "color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "color", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 #define IMA_DEF_NAME N_("Untitled")

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,8 +29,8 @@
 #include "DNA_vec_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -92,7 +92,7 @@ static void blf_face_finalizer(void *object)
  */
 static FT_Error blf_cache_face_requester(FTC_FaceID faceID,
                                          FT_Library lib,
-                                         FT_Pointer /*reqData*/,
+                                         FT_Pointer /*req_data*/,
                                          FT_Face *face)
 {
   FontBLF *font = (FontBLF *)faceID;
@@ -364,10 +364,7 @@ static void blf_batch_draw_end()
 BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(
     FontBLF *font, GlyphCacheBLF *gc, const char *str, size_t str_len, size_t *i_p)
 {
-  uint charcode = BLI_str_utf8_as_unicode_step(str, str_len, i_p);
-  /* Invalid unicode sequences return the byte value, stepping forward one.
-   * This allows `latin1` to display (which is sometimes used for file-paths). */
-  BLI_assert(charcode != BLI_UTF8_ERR);
+  uint charcode = BLI_str_utf8_as_unicode_step_safe(str, str_len, i_p);
   return blf_glyph_ensure(font, gc, charcode);
 }
 
@@ -462,7 +459,7 @@ void blf_font_draw(FontBLF *font, const char *str, const size_t str_len, ResultB
 int blf_font_draw_mono(FontBLF *font, const char *str, const size_t str_len, int cwidth)
 {
   GlyphBLF *g;
-  int col, columns = 0;
+  int columns = 0;
   ft_pix pen_x = 0, pen_y = 0;
   ft_pix cwidth_fpx = ft_pix_from_int(cwidth);
 
@@ -481,11 +478,7 @@ int blf_font_draw_mono(FontBLF *font, const char *str, const size_t str_len, int
     /* do not return this loop if clipped, we want every character tested */
     blf_glyph_draw(font, gc, g, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
 
-    col = BLI_wcwidth(char32_t(g->c));
-    if (col < 0) {
-      col = 1;
-    }
-
+    const int col = BLI_wcwidth_safe(char32_t(g->c));
     columns += col;
     pen_x += cwidth_fpx * col;
   }
@@ -989,9 +982,11 @@ size_t blf_str_offset_from_cursor_position(FontBLF *font,
     /* We are to the right of the string, so return position of null terminator. */
     data.r_offset = BLI_strnlen(str, str_len);
   }
-  else if (BLI_str_utf8_char_width(&str[data.r_offset]) < 1) {
-    /* This is a combining character (or invalid), so move to previous visible valid char. */
-    BLI_str_cursor_step_prev_utf8(str, str_len, (int *)&data.r_offset);
+  else if (BLI_str_utf8_char_width_or_error(&str[data.r_offset]) == 0) {
+    /* This is a combining character, so move to previous visible valid char. */
+    int offset = int(data.r_offset);
+    BLI_str_cursor_step_prev_utf8(str, int(str_len), &offset);
+    data.r_offset = size_t(offset);
   }
 
   return data.r_offset;
@@ -1643,7 +1638,7 @@ void blf_ensure_size(FontBLF *font)
     return;
   }
 
-  FTC_ScalerRec scaler = {0};
+  FTC_ScalerRec scaler = {nullptr};
   scaler.face_id = font;
   scaler.width = 0;
   scaler.height = round_fl_to_uint(font->size * 64.0f);
@@ -1672,7 +1667,7 @@ bool blf_font_size(FontBLF *font, float size)
 
   if (font->size != size) {
     if (font->flags & BLF_CACHED) {
-      FTC_ScalerRec scaler = {0};
+      FTC_ScalerRec scaler = {nullptr};
       scaler.face_id = font;
       scaler.width = 0;
       scaler.height = ft_size;

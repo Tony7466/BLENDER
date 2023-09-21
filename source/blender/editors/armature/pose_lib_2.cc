@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,9 +9,10 @@
 #include <cmath>
 #include <cstring>
 
+#include "AS_asset_representation.hh"
+
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -30,19 +31,21 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_asset.h"
-#include "ED_keyframing.h"
-#include "ED_screen.h"
-#include "ED_util.h"
+#include "ED_asset.hh"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "armature_intern.h"
 
@@ -284,14 +287,11 @@ static void poselib_tempload_exit(PoseBlendData *pbd)
 
 static bAction *poselib_blend_init_get_action(bContext *C, wmOperator *op)
 {
-  bool asset_handle_valid;
-  const AssetHandle asset_handle = CTX_wm_asset_handle(C, &asset_handle_valid);
-  /* Poll callback should check. */
-  BLI_assert(asset_handle_valid);
+  const AssetRepresentationHandle *asset = CTX_wm_asset(C);
 
   PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
 
-  pbd->temp_id_consumer = ED_asset_temp_id_consumer_create(&asset_handle);
+  pbd->temp_id_consumer = ED_asset_temp_id_consumer_create(asset);
   return (bAction *)ED_asset_temp_id_consumer_ensure_local_id(
       pbd->temp_id_consumer, ID_AC, CTX_data_main(C), op->reports);
 }
@@ -550,11 +550,9 @@ static int poselib_blend_exec(bContext *C, wmOperator *op)
 
 static bool poselib_asset_in_context(bContext *C)
 {
-  bool asset_handle_valid;
   /* Check whether the context provides the asset data needed to add a pose. */
-  const AssetHandle asset_handle = CTX_wm_asset_handle(C, &asset_handle_valid);
-
-  return asset_handle_valid && (ED_asset_handle_get_id_type(&asset_handle) == ID_AC);
+  const AssetRepresentationHandle *asset = CTX_wm_asset(C);
+  return asset && (asset->get_id_type() == ID_AC);
 }
 
 /* Poll callback for operators that require existing PoseLib data (with poses) to work. */

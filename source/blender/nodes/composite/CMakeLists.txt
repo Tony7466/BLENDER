@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021 Blender Foundation
+# SPDX-FileCopyrightText: 2021 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,11 +7,15 @@ set(INC
   ..
   ../intern
   ../../editors/include
+  ../../blenkernel
+  ../../blentranslation
+  ../../depsgraph
   ../../functions
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../render
+  ../../windowmanager
   ../../compositor/realtime_compositor
   ../../compositor/realtime_compositor/algorithms
   ../../compositor/realtime_compositor/cached_resources
@@ -123,14 +127,10 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_IMAGE_OPENEXR)

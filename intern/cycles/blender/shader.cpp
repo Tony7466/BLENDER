@@ -254,8 +254,9 @@ static void set_default_value(ShaderInput *input,
 
 static void get_tex_mapping(TextureNode *mapping, BL::TexMapping &b_mapping)
 {
-  if (!b_mapping)
+  if (!b_mapping) {
     return;
+  }
 
   mapping->set_tex_mapping_translation(get_float3(b_mapping.translation()));
   mapping->set_tex_mapping_rotation(get_float3(b_mapping.rotation()));
@@ -624,10 +625,14 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfHairPrincipled)) {
     BL::ShaderNodeBsdfHairPrincipled b_principled_hair_node(b_node);
     PrincipledHairBsdfNode *principled_hair = graph->create_node<PrincipledHairBsdfNode>();
+    principled_hair->set_model((NodePrincipledHairModel)get_enum(b_principled_hair_node.ptr,
+                                                                 "model",
+                                                                 NODE_PRINCIPLED_HAIR_MODEL_NUM,
+                                                                 NODE_PRINCIPLED_HAIR_HUANG));
     principled_hair->set_parametrization(
         (NodePrincipledHairParametrization)get_enum(b_principled_hair_node.ptr,
                                                     "parametrization",
-                                                    NODE_PRINCIPLED_HAIR_NUM,
+                                                    NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
                                                     NODE_PRINCIPLED_HAIR_REFLECTANCE));
     node = principled_hair;
   }
@@ -930,6 +935,7 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = graph->create_node<NoiseTextureNode>();
     noise->set_dimensions(b_noise_node.noise_dimensions());
+    noise->set_use_normalize(b_noise_node.normalize());
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
@@ -1079,8 +1085,9 @@ static ShaderNode *add_node(Scene *scene,
 
 static bool node_use_modified_socket_name(ShaderNode *node)
 {
-  if (node->special_type == SHADER_SPECIAL_TYPE_OSL)
+  if (node->special_type == SHADER_SPECIAL_TYPE_OSL) {
     return false;
+  }
 
   return true;
 }

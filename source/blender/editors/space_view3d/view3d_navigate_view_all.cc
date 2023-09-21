@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,27 +8,28 @@
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
-
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
+
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_mesh.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
+#include "ED_mesh.hh"
+#include "ED_particle.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */
@@ -285,7 +286,7 @@ void VIEW3D_OT_view_all(wmOperatorType *ot)
 
   /* properties */
   view3d_operator_properties_common(ot, V3D_OP_PROP_USE_ALL_REGIONS);
-  RNA_def_boolean(ot->srna, "center", 0, "Center", "");
+  RNA_def_boolean(ot->srna, "center", false, "Center", "");
 }
 
 /** \} */
@@ -412,7 +413,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     BKE_paint_stroke_get_average(scene, ob_eval, min);
     copy_v3_v3(max, min);
     ok = true;
-    ok_dist = 0; /* don't zoom */
+    ok_dist = false; /* don't zoom */
   }
   else {
     LISTBASE_FOREACH (Base *, base_eval, BKE_view_layer_object_bases_get(view_layer_eval)) {
@@ -423,7 +424,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
           continue;
         }
         view3d_object_calc_minmax(depsgraph, scene, base_eval->object, only_center, min, max);
-        ok = 1;
+        ok = true;
       }
     }
   }

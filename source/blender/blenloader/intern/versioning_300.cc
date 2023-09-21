@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_path_util.h"
@@ -62,23 +64,23 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
+#include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.h"
-#include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_readfile.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
@@ -87,7 +89,7 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
@@ -299,7 +301,7 @@ static void do_versions_idproperty_ui_data(Main *bmain)
   /* ID data. */
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
-    IDProperty *idprop_group = IDP_GetProperties(id, false);
+    IDProperty *idprop_group = IDP_GetProperties(id);
     version_idproperty_ui_data(idprop_group);
   }
   FOREACH_MAIN_ID_END;
@@ -316,10 +318,10 @@ static void do_versions_idproperty_ui_data(Main *bmain)
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       version_idproperty_ui_data(node->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
   }
@@ -542,8 +544,11 @@ static bNodeTree *add_realize_node_tree(Main *bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(bmain, "Realize Instances 2.93 Legacy", "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  node_tree->tree_interface.add_socket("Geometry",
+                                       "",
+                                       "NodeSocketGeometry",
+                                       NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                       nullptr);
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -400.0f;
@@ -1048,6 +1053,27 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
   }
 }
 
+/* Change the action strip (if a NLA strip is preset) to HOLD instead of HOLD FORWARD to maintain
+ * backwards compatibility. */
+static void version_nla_action_strip_hold(Main *bmain)
+{
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    AnimData *adt = BKE_animdata_from_id(id);
+    /* We only want to preserve existing behavior if there's an action and 1 or more NLA strips. */
+    if (adt == nullptr || adt->action == nullptr ||
+        adt->act_extendmode != NLASTRIP_EXTEND_HOLD_FORWARD)
+    {
+      continue;
+    }
+
+    if (BKE_nlatrack_has_strips(&adt->nla_tracks)) {
+      adt->act_extendmode = NLASTRIP_EXTEND_HOLD;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+}
+
 void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
 {
   if (MAIN_VERSION_FILE_ATLEAST(bmain, 300, 0) && !MAIN_VERSION_FILE_ATLEAST(bmain, 300, 1)) {
@@ -1337,13 +1363,17 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 13)) {
+    version_nla_action_strip_hold(bmain);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_300 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -1764,7 +1794,12 @@ static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_dat
 
   seq->speed_factor = 1.0f;
   SEQ_retiming_data_clear(seq);
-  seq->startofs = 0.0f;
+
+  /* Broken files do have negative start offset, which should not be present in sound strips. */
+  if (seq->startofs < 0) {
+    seq->startofs = 0.0f;
+  }
+
   return true;
 }
 
@@ -3540,19 +3575,19 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         int vact1, vact2;
 
         if (step) {
-          vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_render_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_render_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
         else {
-          vact1 = CustomData_get_active_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_active_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_active_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
 
         if (vact1 != -1) {
-          actlayer = me->vdata.layers + vact1;
+          actlayer = me->vert_data.layers + vact1;
         }
         else if (vact2 != -1) {
-          actlayer = me->ldata.layers + vact2;
+          actlayer = me->loop_data.layers + vact2;
         }
 
         if (actlayer) {
@@ -3705,19 +3740,19 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         int vact1, vact2;
 
         if (step) {
-          vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_render_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_render_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
         else {
-          vact1 = CustomData_get_active_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_active_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_active_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
 
         if (vact1 != -1) {
-          actlayer = me->vdata.layers + vact1;
+          actlayer = me->vert_data.layers + vact1;
         }
         else if (vact2 != -1) {
-          actlayer = me->ldata.layers + vact2;
+          actlayer = me->loop_data.layers + vact2;
         }
 
         if (actlayer) {
@@ -4026,7 +4061,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Face sets no longer store whether the corresponding face is hidden. */
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      int *face_sets = (int *)CustomData_get_layer(&mesh->pdata, CD_SCULPT_FACE_SETS);
+      int *face_sets = (int *)CustomData_get_layer(&mesh->face_data, CD_SCULPT_FACE_SETS);
       if (face_sets) {
         for (int i = 0; i < mesh->faces_num; i++) {
           face_sets[i] = abs(face_sets[i]);
@@ -4480,22 +4515,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 11)) {
     BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, nullptr);
 
-    /* Store simulation bake directory in geometry nodes modifier. */
-    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-        if (md->type != eModifierType_Nodes) {
-          continue;
-        }
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (nmd->simulation_bake_directory) {
-          continue;
-        }
-        const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
-            *bmain, *ob, *md);
-        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
-      }
-    }
-
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -4516,6 +4535,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        version_node_socket_name(ntree, CMP_NODE_LENSDIST, "Distort", "Distortion");
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
@@ -4523,8 +4549,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_300 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,8 +10,8 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -20,12 +20,12 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_build.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 /* roles of objects in RigidBody Sims */
 const EnumPropertyItem rna_enum_rigidbody_object_type_items[] = {
@@ -139,7 +139,7 @@ static const EnumPropertyItem rigidbody_mesh_source_items[] = {
 
 #  include "BKE_rigidbody.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 /* ******************************** */
 
@@ -820,8 +820,8 @@ static void rna_RigidBodyCon_motor_ang_target_velocity_set(PointerRNA *ptr, floa
 static void rna_RigidBodyWorld_convex_sweep_test(RigidBodyWorld *rbw,
                                                  ReportList *reports,
                                                  Object *object,
-                                                 float ray_start[3],
-                                                 float ray_end[3],
+                                                 const float ray_start[3],
+                                                 const float ray_end[3],
                                                  float r_location[3],
                                                  float r_hitpoint[3],
                                                  float r_normal[3],

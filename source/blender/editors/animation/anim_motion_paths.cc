@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -30,8 +30,10 @@
 #include "GPU_batch.h"
 #include "GPU_vertex_buffer.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_keylist.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_keylist.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "CLG_log.h"
 
@@ -108,11 +110,8 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
   /* bones */
   if ((ob->pose) && (ob->pose->avs.recalc & ANIMVIZ_RECALC_PATHS)) {
     bArmature *arm = static_cast<bArmature *>(ob->data);
-    bPoseChannel *pchan;
-
-    for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next)
-    {
-      if ((pchan->bone) && (arm->layer & pchan->bone->layer) && (pchan->mpath)) {
+    LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+      if ((pchan->bone) && ANIM_bonecoll_is_visible_pchan(arm, pchan) && (pchan->mpath)) {
         /* new target for bone */
         mpt = static_cast<MPathTarget *>(MEM_callocN(sizeof(MPathTarget), "MPathTarget PoseBone"));
         BLI_addtail(targets, mpt);
@@ -130,10 +129,8 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 /* perform baking for the targets on the current frame */
 static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
 {
-  MPathTarget *mpt;
-
   /* for each target, check if it can be baked on the current frame */
-  for (mpt = static_cast<MPathTarget *>(targets->first); mpt; mpt = mpt->next) {
+  LISTBASE_FOREACH (MPathTarget *, mpt, targets) {
     bMotionPath *mpath = mpt->mpath;
 
     /* current frame must be within the range the cache works for
@@ -463,7 +460,7 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
 
         if (agrp) {
           fcurve_list = &agrp->channels;
-          agroup_to_keylist(adt, agrp, mpt->keylist, 0);
+          action_group_to_keylist(adt, agrp, mpt->keylist, 0);
         }
       }
       else {
