@@ -161,11 +161,6 @@ void GLBackend::platform_init()
                 << " SSBO binding locations\n";
       support_level = GPU_SUPPORT_LEVEL_UNSUPPORTED;
     }
-
-    /* Check Draw Parameters Support. */
-    if (!epoxy_has_gl_extension("GL_ARB_shader_draw_parameters")) {
-      support_level = GPU_SUPPORT_LEVEL_UNSUPPORTED;
-    }
   }
 
   GPG.init(device, os, driver, support_level, GPU_BACKEND_OPENGL, vendor, renderer, version);
@@ -258,26 +253,30 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
     /* Turn off OpenGL 4.5 features. */
     GLContext::direct_state_access_support = false;
+    /* Turn off OpenGL 4.6 features. */
+    GLContext::texture_filter_anisotropic_support = false;
+    GCaps.shader_draw_parameters_support = false;
+    GLContext::shader_draw_parameters_support = false;
+
     /* Turn off vendor specific extensions. */
     GLContext::native_barycentric_support = false;
-    GLContext::texture_filter_anisotropic_support = false;
-    /* Do not alter OpenGL 4.3 features. */
-    // GCaps.shader_image_load_store_support = false;
-    // GLContext::base_instance_support = false;
-    // GLContext::copy_image_support = false;
-    // GLContext::debug_layer_support = false;
-    // GLContext::fixed_restart_index_support = false;
-    // GLContext::geometry_shader_invocations = false;
-    // GLContext::layered_rendering_support = false;
-    // GLContext::multi_draw_indirect_support = false;
-    // GLContext::texture_cube_map_array_support = false;
-    // GLContext::texture_gather_support = false;
-    // GLContext::texture_storage_support = false;
-    // GLContext::vertex_attrib_binding_support = false;
 
-    /* Do not alter Required extensions. */
-    // GCaps.shader_draw_parameters_support = false;
-    // GLContext::shader_draw_parameters_support = false;
+    /* Do not alter OpenGL 4.3 features.
+     * These code paths should be removed. */
+    /*
+    GCaps.shader_image_load_store_support = false;
+    GLContext::base_instance_support = false;
+    GLContext::copy_image_support = false;
+    GLContext::debug_layer_support = false;
+    GLContext::fixed_restart_index_support = false;
+    GLContext::geometry_shader_invocations = false;
+    GLContext::layered_rendering_support = false;
+    GLContext::multi_draw_indirect_support = false;
+    GLContext::texture_cube_map_array_support = false;
+    GLContext::texture_gather_support = false;
+    GLContext::texture_storage_support = false;
+    GLContext::vertex_attrib_binding_support = false;
+    */
 
     return;
   }
