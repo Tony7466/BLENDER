@@ -2072,7 +2072,7 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 static const EnumPropertyItem prop_graphkeys_select_key_handles_actions[] = {
     {GRAPHKEYS_KEYHANDLESSEL_SELECT, "SELECT", 0, "Select", ""},
     {GRAPHKEYS_KEYHANDLESSEL_DESELECT, "DESELECT", 0, "Deselect", ""},
-    {GRAPHKEYS_KEYHANDLESSEL_KEEP, "KEEP", 0, "Keep", "Leave as-is"},
+    {GRAPHKEYS_KEYHANDLESSEL_KEEP, "KEEP", 0, "Keep", "Leave as is"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2198,7 +2198,7 @@ void GRAPH_OT_select_key_handles(wmOperatorType *ot)
   ot->name = "Select Key / Handles";
   ot->idname = "GRAPH_OT_select_key_handles";
   ot->description =
-      "Select/deselect the different parts of keys that have at least one part already selected";
+      "Select/deselect any combination of the key and handles of selected keyframes";
 
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
