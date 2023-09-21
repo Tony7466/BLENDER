@@ -257,6 +257,9 @@ static void detect_workarounds()
     GLContext::texture_filter_anisotropic_support = false;
     GCaps.shader_draw_parameters_support = false;
     GLContext::shader_draw_parameters_support = false;
+    /* Although an OpenGL 4.3 feature, our implementation requires shader_draw_parameters_support.
+     * NOTE: we should untangle this by checking both features for clarity. */
+    GLContext::multi_draw_indirect_support = false;
 
     /* Turn off vendor specific extensions. */
     GLContext::native_barycentric_support = false;
@@ -271,7 +274,6 @@ static void detect_workarounds()
     GLContext::fixed_restart_index_support = false;
     GLContext::geometry_shader_invocations = false;
     GLContext::layered_rendering_support = false;
-    GLContext::multi_draw_indirect_support = false;
     GLContext::texture_cube_map_array_support = false;
     GLContext::texture_gather_support = false;
     GLContext::texture_storage_support = false;
