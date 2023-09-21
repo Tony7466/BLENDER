@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,10 +10,10 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "grease_pencil_intern.hh"
 
@@ -24,7 +24,8 @@ class PaintOperation : public GreasePencilStrokeOperation {
  public:
   ~PaintOperation() override {}
 
-  void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 };
 
@@ -36,9 +37,7 @@ struct PaintOperationExecutor {
 
   PaintOperationExecutor(const bContext & /*C*/) {}
 
-  void execute(PaintOperation & /*self*/,
-               const bContext &C,
-               const StrokeExtension &stroke_extension)
+  void execute(PaintOperation & /*self*/, const bContext &C, const InputSample &extension_sample)
   {
     using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
@@ -55,10 +54,10 @@ struct PaintOperationExecutor {
 
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     float3 proj_pos;
-    ED_view3d_win_to_3d_on_plane(region, plane, stroke_extension.mouse_position, false, proj_pos);
+    ED_view3d_win_to_3d_on_plane(region, plane, extension_sample.mouse_position, false, proj_pos);
 
     bke::greasepencil::StrokePoint new_point{
-        proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
+        proj_pos, extension_sample.pressure * 100.0f, 1.0f, float4(1.0f)};
 
     grease_pencil.runtime->stroke_cache.points.append(std::move(new_point));
 
@@ -66,10 +65,14 @@ struct PaintOperationExecutor {
   }
 };
 
-void PaintOperation::on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension)
+void PaintOperation::on_stroke_begin(const bContext & /*C*/, const InputSample & /*start_sample*/)
+{
+}
+
+void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
   PaintOperationExecutor executor{C};
-  executor.execute(*this, C, stroke_extension);
+  executor.execute(*this, C, extension_sample);
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)
@@ -87,7 +90,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
 
   bke::greasepencil::Drawing &drawing_orig =
-      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings()[index_orig])->wrap();
+      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawing(index_orig))->wrap();
 
   const Span<bke::greasepencil::StrokePoint> stroke_points =
       grease_pencil_eval.runtime->stroke_buffer();

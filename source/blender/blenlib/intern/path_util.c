@@ -272,12 +272,12 @@ static int path_normalize_impl(char *path, bool check_blend_relative_prefix)
     /* Step over directories, always starting out on the character after the slash. */
     char *start = start_base;
     char *start_temp;
-    while (((start_temp = strstr(start, SEP_STR ".." SEP_STR)) ||
-            /* Check if the string ends with `/..` & assign when found, else NULL. */
-            (start_temp = ((start <= &path[path_len - 3]) &&
-                           STREQ(&path[path_len - 3], SEP_STR "..")) ?
-                              &path[path_len - 3] :
-                              NULL)))
+    while ((start_temp = strstr(start, SEP_STR ".." SEP_STR)) ||
+           /* Check if the string ends with `/..` & assign when found, else NULL. */
+           (start_temp = ((start <= &path[path_len - 3]) &&
+                          STREQ(&path[path_len - 3], SEP_STR "..")) ?
+                             &path[path_len - 3] :
+                             NULL))
     {
       start = start_temp + 1; /* Skip the `/`. */
       BLI_assert(start_base != start);
@@ -446,13 +446,13 @@ bool BLI_path_make_safe_filename_ex(char *filename, bool allow_tokens)
 
 #ifdef WIN32
   {
-    const size_t len = strlen(filename);
     const char *invalid_names[] = {
         "con",  "prn",  "aux",  "null", "com1", "com2", "com3", "com4",
         "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2", "lpt3",
         "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9", NULL,
     };
-    char *filename_lower = BLI_strdup(filename);
+    const size_t len = strlen(filename);
+    char *filename_lower = BLI_strdupn(filename, len);
     const char **iname;
 
     /* Forbid trailing dot (trailing space has already been replaced above). */

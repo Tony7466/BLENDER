@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 #include "BLI_vector.hh"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -184,18 +185,15 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
   int i = 0, layer_idx = 0;
-  LayerGroup &root_group = grease_pencil.root_group.wrap();
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     /* Create a new layer. */
     Layer &new_layer = grease_pencil.add_layer(
-        root_group, StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
+        grease_pencil.root_group(), StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
-    SET_FLAG_FROM_TEST(new_layer.base.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
-    SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_LOCKED), GP_LAYER_TREE_NODE_LOCKED);
-    SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_SELECT), GP_LAYER_TREE_NODE_SELECT);
+    new_layer.set_visible((gpl->flag & GP_LAYER_HIDE) == 0);
+    new_layer.set_locked((gpl->flag & GP_LAYER_LOCKED) != 0);
+    new_layer.set_selected((gpl->flag & GP_LAYER_SELECT) != 0);
     SET_FLAG_FROM_TEST(
         new_layer.base.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
     SET_FLAG_FROM_TEST(

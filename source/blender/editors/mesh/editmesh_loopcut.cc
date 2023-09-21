@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -24,20 +24,20 @@
 #include "BKE_report.h"
 #include "BKE_unit.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_mesh.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -59,7 +59,7 @@ struct RingSelOpData {
   ARegion *region;   /* region that ringsel was activated in */
   void *draw_handle; /* for drawing preview loop */
 
-  struct EditMesh_PreSelEdgeRing *presel_edgering;
+  EditMesh_PreSelEdgeRing *presel_edgering;
 
   ViewContext vc;
 
@@ -68,7 +68,7 @@ struct RingSelOpData {
   Base **bases;
   uint bases_len;
 
-  struct MeshCoordsCache *geom_cache;
+  MeshCoordsCache *geom_cache;
 
   /* These values switch objects based on the object under the cursor. */
   uint base_index;
@@ -132,7 +132,7 @@ static void edgering_select(RingSelOpData *lcd)
 static void ringsel_find_edge(RingSelOpData *lcd, const int previewlines)
 {
   if (lcd->eed) {
-    struct MeshCoordsCache *gcache = &lcd->geom_cache[lcd->base_index];
+    MeshCoordsCache *gcache = &lcd->geom_cache[lcd->base_index];
     if (gcache->is_init == false) {
       Scene *scene_eval = (Scene *)DEG_get_evaluated_id(lcd->vc.depsgraph, &lcd->vc.scene->id);
       Object *ob_eval = DEG_get_evaluated_object(lcd->vc.depsgraph, lcd->ob);
@@ -256,7 +256,7 @@ static void ringsel_exit(bContext * /*C*/, wmOperator *op)
   EDBM_preselect_edgering_destroy(lcd->presel_edgering);
 
   for (uint i = 0; i < lcd->bases_len; i++) {
-    struct MeshCoordsCache *gcache = &lcd->geom_cache[i];
+    MeshCoordsCache *gcache = &lcd->geom_cache[i];
     if (gcache->is_alloc) {
       MEM_freeN((void *)gcache->coords);
     }
@@ -374,15 +374,19 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
 /* called by both init() and exec() */
 static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const bool is_interactive = (event != nullptr);
+  /* Check whether both `rv3d` and `event` is present, this way we allow the loopcut operator to
+   * run non-interactively no matter whether the graphical UI is present or not (e.g. from scripts
+   * with UI running, or entirely in the background with `blender -b`). */
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  const bool is_interactive = (rv3d != nullptr) && (event != nullptr);
 
   /* Use for redo - intentionally wrap int to uint. */
   struct {
     uint base_index;
     uint e_index;
   } exec_data{};
-  exec_data.base_index = (uint)RNA_int_get(op->ptr, "object_index");
-  exec_data.e_index = (uint)RNA_int_get(op->ptr, "edge_index");
+  exec_data.base_index = uint(RNA_int_get(op->ptr, "object_index"));
+  exec_data.e_index = uint(RNA_int_get(op->ptr, "edge_index"));
 
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -404,7 +408,9 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  view3d_operator_needs_opengl(C);
+  if (is_interactive) {
+    view3d_operator_needs_opengl(C);
+  }
 
   /* for re-execution, check edge index is in range before we setup ringsel */
   bool ok = true;
@@ -641,12 +647,12 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
  *
  * If numeric input changes we'll need to add this back see: D2973 */
 #if 0
-if (!has_numinput)
+        if (!has_numinput)
 #endif
         {
           lcd->vc.mval[0] = event->mval[0];
           lcd->vc.mval[1] = event->mval[1];
-          loopcut_mouse_move(lcd, (int)lcd->cuts);
+          loopcut_mouse_move(lcd, int(lcd->cuts));
 
           ED_region_tag_redraw(lcd->region);
           handled = true;
@@ -668,8 +674,8 @@ if (!has_numinput)
     /* allow zero so you can backspace and type in a value
      * otherwise 1 as minimum would make more sense */
     lcd->cuts = clamp_f(cuts, 0, SUBD_CUTS_MAX);
-    RNA_int_set(op->ptr, "number_cuts", (int)lcd->cuts);
-    ringsel_find_edge(lcd, (int)lcd->cuts);
+    RNA_int_set(op->ptr, "number_cuts", int(lcd->cuts));
+    ringsel_find_edge(lcd, int(lcd->cuts));
     show_cuts = true;
     ED_region_tag_redraw(lcd->region);
   }
@@ -689,7 +695,7 @@ if (!has_numinput)
       outputNumInput(&lcd->num, str_rep, &sce->unit);
     }
     else {
-      BLI_snprintf(str_rep, NUM_STR_REP_LEN, "%d", (int)lcd->cuts);
+      BLI_snprintf(str_rep, NUM_STR_REP_LEN, "%d", int(lcd->cuts));
       BLI_snprintf(str_rep + NUM_STR_REP_LEN, NUM_STR_REP_LEN, "%.2f", smoothness);
     }
     SNPRINTF(
@@ -706,19 +712,19 @@ if (!has_numinput)
 
 void MESH_OT_edgering_select(wmOperatorType *ot)
 {
-/* description */
-ot->name = "Edge Ring Select";
-ot->idname = "MESH_OT_edgering_select";
-ot->description = "Select an edge ring";
+  /* description */
+  ot->name = "Edge Ring Select";
+  ot->idname = "MESH_OT_edgering_select";
+  ot->description = "Select an edge ring";
 
-/* callbacks */
-ot->invoke = ringsel_invoke;
-ot->poll = ED_operator_editmesh_region_view3d;
+  /* callbacks */
+  ot->invoke = ringsel_invoke;
+  ot->poll = ED_operator_editmesh_region_view3d;
 
-/* flags */
-ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
+  RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
 }
 
 #endif
@@ -737,7 +743,8 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   ot->exec = loopcut_exec;
   ot->modal = loopcut_modal;
   ot->cancel = ringcut_cancel;
-  ot->poll = ED_operator_editmesh_region_view3d;
+  /* Note the #RegionView3D is needed for interactive use, the operator must check this. */
+  ot->poll = ED_operator_editmesh;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,9 @@
  * \ingroup edanimation
  */
 
-#include <ctype.h>
-#include <stdio.h>
-#include <string.h>
+#include <cctype>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -30,17 +30,17 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "anim_intern.h"
@@ -294,15 +294,15 @@ int ANIM_add_driver_with_target(ReportList *reports,
                                 int driver_type,
                                 short mapping_type)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
 
-  PointerRNA id_ptr2, ptr2;
+  PointerRNA ptr2;
   PropertyRNA *prop2;
   int done_tot = 0;
 
   /* validate pointers first - exit if failure */
-  RNA_id_pointer_create(dst_id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(dst_id);
   if (RNA_path_resolve_property(&id_ptr, dst_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -313,7 +313,7 @@ int ANIM_add_driver_with_target(ReportList *reports,
     return 0;
   }
 
-  RNA_id_pointer_create(src_id, &id_ptr2);
+  PointerRNA id_ptr2 = RNA_id_pointer_create(src_id);
   if ((RNA_path_resolve_property(&id_ptr2, src_path, &ptr2, &prop2) == false) ||
       (mapping_type == CREATEDRIVER_MAPPING_NONE))
   {
@@ -324,9 +324,8 @@ int ANIM_add_driver_with_target(ReportList *reports,
 
   /* handle curve-property mappings based on mapping_type */
   switch (mapping_type) {
-    case CREATEDRIVER_MAPPING_N_N: /* N-N - Try to match as much as possible, * then use the first
-    one */
-    {
+    /* N-N - Try to match as much as possible, then use the first one. */
+    case CREATEDRIVER_MAPPING_N_N: {
       /* Use the shorter of the two (to avoid out of bounds access) */
       int dst_len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr, prop) : 1;
       int src_len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr2, prop2) : 1;
@@ -350,8 +349,8 @@ int ANIM_add_driver_with_target(ReportList *reports,
       }
       break;
     }
-
-    case CREATEDRIVER_MAPPING_1_N: /* 1-N - Specified target index for all */
+      /* 1-N - Specified target index for all. */
+    case CREATEDRIVER_MAPPING_1_N:
     default: {
       int len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr, prop) : 1;
 
@@ -373,8 +372,8 @@ int ANIM_add_driver_with_target(ReportList *reports,
       break;
     }
 
-    case CREATEDRIVER_MAPPING_1_1: /* 1-1 - Use the specified index (unless -1) */
-    {
+      /* 1-1 - Use the specified index (unless -1). */
+    case CREATEDRIVER_MAPPING_1_1: {
       done_tot = add_driver_with_target(reports,
                                         dst_id,
                                         dst_path,
@@ -401,14 +400,14 @@ int ANIM_add_driver_with_target(ReportList *reports,
 int ANIM_add_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short flag, int type)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
   int array_index_max;
   int done_tot = 0;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -592,12 +591,12 @@ bool ANIM_driver_can_paste()
 bool ANIM_copy_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short /*flag*/)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -605,7 +604,7 @@ bool ANIM_copy_driver(
                 "path = %s)",
                 id->name,
                 rna_path);
-    return 0;
+    return false;
   }
 
   /* try to get F-Curve with Driver */
@@ -630,22 +629,22 @@ bool ANIM_copy_driver(
     fcu->rna_path = tmp_path;
 
     /* copied... */
-    return 1;
+    return true;
   }
 
   /* done */
-  return 0;
+  return false;
 }
 
 bool ANIM_paste_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short /*flag*/)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -653,13 +652,13 @@ bool ANIM_paste_driver(
         "Could not paste driver, as RNA path is invalid for the given ID (ID = %s, path = %s)",
         id->name,
         rna_path);
-    return 0;
+    return false;
   }
 
   /* if the buffer is empty, cannot paste... */
   if (channeldriver_copypaste_buf == nullptr) {
     BKE_report(reports, RPT_ERROR, "Paste driver: no driver to paste");
-    return 0;
+    return false;
   }
 
   /* create Driver F-Curve, but without data which will be copied across... */
@@ -1140,7 +1139,7 @@ void ANIM_OT_driver_button_remove(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Delete drivers for all elements of the array");
+  RNA_def_boolean(ot->srna, "all", true, "All", "Delete drivers for all elements of the array");
 }
 
 /* Edit Driver Button Operator ------------------------ */

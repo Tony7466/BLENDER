@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,7 +26,7 @@
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "draw_curves_private.hh"
 #include "draw_hair_private.h"
 #include "draw_manager.h"
@@ -38,9 +38,7 @@ BLI_INLINE eParticleRefineShaderType drw_curves_shader_type_get()
    * Metal and Apple Silicon GPUs. This is also because vertex work can more easily be executed in
    * parallel with fragment work, whereas compute inserts an explicit dependency,
    * due to switching of command encoder types. */
-  if (GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support() &&
-      (GPU_backend_get_type() != GPU_BACKEND_METAL))
-  {
+  if (GPU_compute_shader_support() && (GPU_backend_get_type() != GPU_BACKEND_METAL)) {
     return PART_REFINE_SHADER_COMPUTE;
   }
   if (GPU_transform_feedback_support()) {
@@ -410,6 +408,18 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
 void DRW_curves_update()
 {
+
+  /* Ensure there's a valid active view.
+   * "Next" engines use this function, but this still uses the old Draw Manager. */
+  if (DRW_view_default_get() == nullptr) {
+    /* Create a dummy default view, it's not really used. */
+    DRW_view_default_set(DRW_view_create(
+        float4x4::identity().ptr(), float4x4::identity().ptr(), nullptr, nullptr, nullptr));
+  }
+  if (DRW_view_get_active() == nullptr) {
+    DRW_view_set_active(DRW_view_default_get());
+  }
+
   /* Update legacy hair too, to avoid verbosity in callers. */
   DRW_hair_update();
 
@@ -493,7 +503,7 @@ void DRW_curves_update()
     GPUFrameBuffer *temp_fb = nullptr;
     GPUFrameBuffer *prev_fb = nullptr;
     if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_METAL)) {
-      if (!(GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support())) {
+      if (!(GPU_compute_shader_support())) {
         prev_fb = GPU_framebuffer_active_get();
         char errorOut[256];
         /* if the frame-buffer is invalid we need a dummy frame-buffer to be bound. */

@@ -1,9 +1,10 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../gpu
@@ -18,11 +19,11 @@ set(INC_SYS
 )
 
 set(SRC
-  space_statusbar.c
+  space_statusbar.cc
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

@@ -150,8 +150,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
     const float size = lamp->get_size();
     float3 strength = lamp->get_strength();
 
-    centroid = scene->lights[object_id]->get_co();
-    measure.bcone.axis = normalize(lamp->get_dir());
+    centroid = lamp->get_co();
+    measure.bcone.axis = safe_normalize(lamp->get_dir());
 
     if (type == LIGHT_AREA) {
       measure.bcone.theta_o = 0;
@@ -406,6 +406,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
       left, root_.get(), num_emissive_triangles, num_local_lights, emitters_.data(), 0, 1);
   task_pool.wait_work();
 
+  if (progress_.get_cancel()) {
+    root_.reset();
+    return nullptr;
+  }
+
   /* All distant lights are grouped to the right child as a leaf node. */
   root_->get_inner().children[right] = create_node(LightTreeMeasure::empty, 1);
   for (int i = 0; i < num_distant_lights; i++) {
@@ -458,7 +463,7 @@ void LightTree::recursive_build(const Child child,
   if (should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim)) {
 
     if (split_dim != -1) {
-      /* Partition the emitters between start and end based on the centroids.  */
+      /* Partition the emitters between start and end based on the centroids. */
       std::nth_element(emitters + start,
                        emitters + middle,
                        emitters + end,

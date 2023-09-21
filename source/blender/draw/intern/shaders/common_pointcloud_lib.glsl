@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* NOTE: To be used with UNIFORM_RESOURCE_ID and INSTANCED_ATTR as define. */
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -10,7 +13,10 @@
 
 int pointcloud_get_point_id()
 {
+#  ifdef GPU_VERTEX_SHADER
   return gl_VertexID / 32;
+#  endif
+  return 0;
 }
 
 mat3 pointcloud_get_facing_matrix(vec3 p)
@@ -40,8 +46,12 @@ void pointcloud_get_pos_nor_radius(out vec3 outpos, out vec3 outnor, out float o
 
   mat3 facing_mat = pointcloud_get_facing_matrix(p);
 
+  int vert_id = 0;
+#  ifdef GPU_VERTEX_SHADER
   /* NOTE: Avoid modulo by non-power-of-two in shader. See Index buffer setup. */
-  int vert_id = gl_VertexID % 32;
+  vert_id = gl_VertexID % 32;
+#  endif
+
   vec3 pos_inst = vec3(0.0);
 
   switch (vert_id) {

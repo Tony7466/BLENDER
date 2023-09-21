@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,8 +35,8 @@
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_undofile.h"
-#include "BLO_writefile.h"
+#include "BLO_undofile.hh"
+#include "BLO_writefile.hh"
 
 #include "BKE_blender.h"
 #include "BKE_blendfile.h"
@@ -50,6 +50,7 @@
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_node.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -61,7 +62,7 @@
 #include "BKE_mask.h"     /* free mask clipboard */
 #include "BKE_material.h" /* BKE_material_copybuf_clear */
 #include "BKE_studiolight.h"
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 #include "BKE_tracking.h" /* free tracking clipboard */
 
 #include "RE_engine.h"
@@ -80,38 +81,38 @@
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
-#include "wm_cursors.h"
+#include "wm.hh"
+#include "wm_cursors.hh"
 #include "wm_event_system.h"
-#include "wm_files.h"
+#include "wm_files.hh"
 #include "wm_platform_support.h"
-#include "wm_surface.h"
-#include "wm_window.h"
+#include "wm_surface.hh"
+#include "wm_window.hh"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_asset.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_node.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_undo.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_asset.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_node.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "BLF_api.h"
 #include "BLT_lang.h"
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "GPU_context.h"
 #include "GPU_init_exit.h"
@@ -131,6 +132,8 @@ CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_KEYMAPS, "wm.keymap");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_TOOLS, "wm.tool");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_PUB, "wm.msgbus.pub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_SUB, "wm.msgbus.sub");
+
+static void wm_init_scripts_extensions_once(bContext *C);
 
 static void wm_init_reports(bContext *C)
 {
@@ -254,10 +257,11 @@ void WM_init(bContext *C, int argc, const char **argv)
    * since versioning code may create new IDs. See #57066. */
   BLT_lang_set(nullptr);
 
-  /* Init icons before reading .blend files for preview icons, which can
+  /* Init icons & previews before reading .blend files for preview icons, which can
    * get triggered by the depsgraph. This is also done in background mode
    * for scripts that do background processing with preview icons. */
-  BKE_icons_init(BIFICONID_LAST);
+  BKE_icons_init(BIFICONID_LAST_STATIC);
+  BKE_preview_images_init();
 
   /* Reports can't be initialized before the window-manager,
    * but keep before file reading, since that may report errors */
@@ -356,6 +360,13 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   STRNCPY(G.lib, BKE_main_blendfile_path_from_global());
 
+  CTX_py_init_set(C, true);
+  WM_keyconfig_init(C);
+
+  /* Load add-ons after key-maps have been initialized (but before the blend file has been read),
+   * important to guarantee default key-maps have been declared & before post-read handlers run. */
+  wm_init_scripts_extensions_once(C);
+
   wm_homefile_read_post(C, params_file_read_post);
 }
 
@@ -412,6 +423,13 @@ void WM_init_splash(bContext *C)
   CTX_wm_window_set(C, static_cast<wmWindow *>(wm->windows.first));
   WM_operator_name_call(C, "WM_OT_splash", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
   CTX_wm_window_set(C, prevwin);
+}
+
+/** Load add-ons & app-templates once on startup. */
+static void wm_init_scripts_extensions_once(bContext *C)
+{
+  const char *imports[] = {"bpy", nullptr};
+  BPY_run_string_eval(C, imports, "bpy.utils.load_scripts_extensions()");
 }
 
 /* free strings of open recent files */
@@ -472,7 +490,7 @@ void wm_exit_schedule_delayed(const bContext *C)
 
 void UV_clipboard_free();
 
-void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actions)
+void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_actions)
 {
   wmWindowManager *wm = C ? CTX_wm_manager(C) : nullptr;
 
@@ -590,7 +608,7 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
     wm_free_reports(wm);
   }
 
-  SEQ_clipboard_free(); /* sequencer.c */
+  SEQ_clipboard_free(); /* `sequencer.cc` */
   BKE_tracking_clipboard_free();
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();
@@ -645,8 +663,8 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
   //  free_txt_data();
 
 #ifdef WITH_PYTHON
-  /* option not to close python so we can use 'atexit' */
-  if (do_python && ((C == nullptr) || CTX_py_init_get(C))) {
+  /* Option not to exit Python so this function can be called from 'atexit'. */
+  if ((C == nullptr) || CTX_py_init_get(C)) {
     /* NOTE: (old note)
      * before BKE_blender_free so Python's garbage-collection happens while library still exists.
      * Needed at least for a rare crash that can happen in python-drivers.
@@ -654,10 +672,10 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
      * Update for Blender 2.5, move after #BKE_blender_free because Blender now holds references
      * to #PyObject's so #Py_DECREF'ing them after Python ends causes bad problems every time
      * the python-driver bug can be fixed if it happens again we can deal with it then. */
-    BPY_python_end();
+    BPY_python_end(do_python_exit);
   }
 #else
-  (void)do_python;
+  (void)do_python_exit;
 #endif
 
   ED_file_exit(); /* For file-selector menu data. */
