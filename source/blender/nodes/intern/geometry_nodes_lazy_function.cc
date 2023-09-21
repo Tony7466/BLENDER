@@ -890,7 +890,9 @@ class LazyFunctionForArrowGizmoNode : public LazyFunction {
     }
 
     const float3 &position = params.get_input<float3>(1);
+    const float3 &direction = params.get_input<float3>(2);
     tree_logger->log_value(bnode_, bnode_.input_socket(1), &position);
+    tree_logger->log_value(bnode_, bnode_.input_socket(2), &direction);
   }
 };
 

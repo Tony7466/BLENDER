@@ -21,6 +21,8 @@
 #include "BKE_object.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.hh"
 #include "BLI_math_vector.h"
 
 #include "RNA_access.hh"
@@ -96,13 +98,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   for (bNode *gizmo_node : ntree.nodes_by_type("GeometryNodeGizmoArrow")) {
     bNodeSocket &value_input = gizmo_node->input_socket(0);
     bNodeSocket &position_input = gizmo_node->input_socket(1);
+    bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    auto *value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+    auto *position_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
         tree_log.find_socket_value_log(position_input));
-    if (value_log == nullptr) {
+    auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+        tree_log.find_socket_value_log(direction_input));
+    if (ELEM(nullptr, position_value_log, direction_value_log)) {
       continue;
     }
-    const float3 position = *value_log->value.get<float3>();
+    const float3 position = *position_value_log->value.get<float3>();
+    const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
 
     const Span<bNodeSocket *> origin_sockets = value_input.directly_linked_sockets();
     if (origin_sockets.size() != 1) {
@@ -126,7 +132,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     }
 
     if (node_gizmo_data->gizmo->interaction_data == nullptr) {
-      copy_v3_v3(node_gizmo_data->gizmo->matrix_offset[3], position);
+      // copy_v3_v3(node_gizmo_data->gizmo->matrix_offset[3], position);
+      const math::Quaternion rotation = math::from_vector(
+          math::normalize(direction), math::AxisSigned::Z_NEG, math::Axis::X);
+      float4x4 mat = math::from_rotation<float4x4>(rotation);
+      mat.location() = position;
+      mat = float4x4(ob->object_to_world) * mat;
+      copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
 
       PointerRNA value_owner_ptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &origin_socket);
       PropertyRNA *value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
@@ -192,7 +204,7 @@ static void WIDGETGROUP_geometry_nodes_draw_prepare(const bContext *C, wmGizmoGr
   Object *ob = CTX_data_active_object(C);
   for (auto item : gzgroup_data->gizmo_by_node_id.items()) {
     wmGizmo *gz = item.value->gizmo;
-    normalize_m4_m4(gz->matrix_basis, ob->object_to_world);
+    // normalize_m4_m4(gz->matrix_basis, ob->object_to_world);
   }
 }
 
