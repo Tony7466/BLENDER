@@ -66,28 +66,27 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
       return GVArray::ForSingle(varray.type(), domain_size, value);
     }
   }
-  else if (dynamic_cast<const GeometryFieldInput *>(&field_input) ||
-           dynamic_cast<const CurvesFieldInput *>(&field_input))
-  {
-    if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
-      return {};
-    }
-    const bke::greasepencil::Layer &layer = *grease_pencil_.layers()[layer_index_];
-    const int drawing_index = layer.drawing_index_at(grease_pencil_.runtime->eval_frame);
-    if (drawing_index == -1) {
-      return {};
-    }
-    GreasePencilDrawingBase *drawing_base = grease_pencil_.drawings(drawing_index);
-    if (drawing_base->type != GP_DRAWING) {
-      return {};
-    }
-    const bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-    const CurvesGeometry &curves = drawing.strokes();
-    CurvesFieldContext field_context{curves, domain_};
-    return field_context.get_varray_for_input(field_input, mask, scope);
+
+  /* In the default case, for now, we construct a `CurvesFieldContext` for this layer and pass on
+   * the field input to it. This has the consequence that the layer attributes are no longer
+   * accessible afterwards. We would need a `GeometryFieldContext` that can represent a layer. */
+  if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
+    return {};
   }
-  return {};
+  const bke::greasepencil::Layer &layer = *grease_pencil_.layers()[layer_index_];
+  const int drawing_index = layer.drawing_index_at(grease_pencil_.runtime->eval_frame);
+  if (drawing_index == -1) {
+    return {};
+  }
+  GreasePencilDrawingBase *drawing_base = grease_pencil_.drawings(drawing_index);
+  if (drawing_base->type != GP_DRAWING) {
+    return {};
+  }
+  const bke::greasepencil::Drawing &drawing =
+      reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+  const CurvesGeometry &curves = drawing.strokes();
+  CurvesFieldContext field_context{curves, domain_};
+  return field_context.get_varray_for_input(field_input, mask, scope);
 }
 
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
