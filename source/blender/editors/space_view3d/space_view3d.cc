@@ -1153,6 +1153,9 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   wmGizmoMap *gzmap = region->gizmo_map;
 
+  /* The refresh is necessary after changing id properties in the geometry nodes modifier. */
+  WM_gizmomap_tag_refresh(gzmap);
+
   /* context changes */
   switch (wmn->category) {
     case NC_WM:

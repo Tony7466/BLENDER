@@ -16,6 +16,7 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
+#include "BKE_idprop.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
@@ -112,12 +113,35 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     const float3 position = *position_value_log->value.get<float3>();
     const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
 
-    const Span<bNodeSocket *> origin_sockets = value_input.directly_linked_sockets();
+    const Span<const bNodeSocket *> origin_sockets = value_input.logically_linked_sockets();
     if (origin_sockets.size() != 1) {
       continue;
     }
-    bNodeSocket &origin_socket = *origin_sockets[0];
-    if (origin_socket.owner_node().type != SH_NODE_VALUE) {
+    const bNodeSocket &origin_socket = *origin_sockets[0];
+    PointerRNA value_owner_ptr{};
+    PropertyRNA *value_prop;
+    if (origin_socket.owner_node().type == SH_NODE_VALUE) {
+      value_owner_ptr = RNA_pointer_create(
+          &ntree.id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&origin_socket));
+      value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
+    }
+    else if (origin_socket.owner_node().is_group_input()) {
+      const StringRefNull input_identifier =
+          ntree.interface_inputs()[origin_socket.index()]->identifier;
+      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                      input_identifier.c_str());
+
+      if (property == nullptr) {
+        continue;
+      }
+      if (property->type != IDP_FLOAT) {
+        continue;
+      }
+      value_owner_ptr = RNA_pointer_create(
+          &ob->id, &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
+      value_prop = reinterpret_cast<PropertyRNA *>(property);
+    }
+    else {
       continue;
     }
 
@@ -140,9 +164,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       mat.location() = position;
       mat = float4x4(ob->object_to_world) * mat;
       copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
-
-      PointerRNA value_owner_ptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &origin_socket);
-      PropertyRNA *value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
 
       struct UserData {
         bContext *C;
@@ -202,12 +223,35 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     const float3 position = *position_value_log->value.get<float3>();
     const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
 
-    const Span<bNodeSocket *> origin_sockets = value_input.directly_linked_sockets();
+    const Span<const bNodeSocket *> origin_sockets = value_input.logically_linked_sockets();
     if (origin_sockets.size() != 1) {
       continue;
     }
-    bNodeSocket &origin_socket = *origin_sockets[0];
-    if (origin_socket.owner_node().type != SH_NODE_VALUE) {
+    const bNodeSocket &origin_socket = *origin_sockets[0];
+    PointerRNA value_owner_ptr{};
+    PropertyRNA *value_prop;
+    if (origin_socket.owner_node().type == SH_NODE_VALUE) {
+      value_owner_ptr = RNA_pointer_create(
+          &ntree.id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&origin_socket));
+      value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
+    }
+    else if (origin_socket.owner_node().is_group_input()) {
+      const StringRefNull input_identifier =
+          ntree.interface_inputs()[origin_socket.index()]->identifier;
+      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                      input_identifier.c_str());
+
+      if (property == nullptr) {
+        continue;
+      }
+      if (property->type != IDP_FLOAT) {
+        continue;
+      }
+      value_owner_ptr = RNA_pointer_create(
+          &ob->id, &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
+      value_prop = reinterpret_cast<PropertyRNA *>(property);
+    }
+    else {
       continue;
     }
 
@@ -230,9 +274,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       mat.location() = position;
       mat = float4x4(ob->object_to_world) * mat;
       copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
-
-      PointerRNA value_owner_ptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &origin_socket);
-      PropertyRNA *value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
 
       struct UserData {
         bContext *C;
