@@ -558,6 +558,26 @@ static void find_side_effect_nodes_for_viewer_path(
   }
 }
 
+static void find_side_effect_nodes_for_gizmos(const NodesModifierData &nmd,
+                                              const ModifierEvalContext & /*ctx*/,
+                                              nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
+{
+  ComputeContextBuilder compute_context_builder;
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+  const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*nmd.node_group);
+  if (lf_graph_info == nullptr) {
+    return;
+  }
+  for (const bNode *node : nmd.node_group->nodes_by_type("GeometryNodeGizmoArrow")) {
+    const lf::FunctionNode *lf_gizmo_node = lf_graph_info->mapping.gizmo_node_map.lookup_default(
+        node, nullptr);
+    if (lf_gizmo_node == nullptr) {
+      continue;
+    }
+    r_side_effect_nodes.nodes_by_context.add(compute_context_builder.hash(), lf_gizmo_node);
+  }
+}
+
 static void find_side_effect_nodes(const NodesModifierData &nmd,
                                    const ModifierEvalContext &ctx,
                                    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
@@ -584,6 +604,7 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
       }
     }
   }
+  find_side_effect_nodes_for_gizmos(nmd, ctx, r_side_effect_nodes);
 }
 
 static void find_socket_log_contexts(const NodesModifierData &nmd,

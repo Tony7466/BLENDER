@@ -13,9 +13,12 @@ set(INC
   ../../bmesh
   ../../depsgraph
   ../../draw
+  ../../functions
   ../../gpu
   ../../imbuf
   ../../makesrna
+  ../../modifiers
+  ../../nodes
   ../../render
   ../../windowmanager
   ../../../../intern/mantaflow/extern

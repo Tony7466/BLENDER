@@ -867,6 +867,33 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   }
 };
 
+class LazyFunctionForArrowGizmoNode : public LazyFunction {
+ private:
+  const bNode &bnode_;
+
+ public:
+  LazyFunctionForArrowGizmoNode(const bNode &bnode, MutableSpan<int> r_lf_index_by_bsocket)
+      : bnode_(bnode)
+  {
+    debug_name_ = "Arrow Gizmo";
+    lazy_function_interface_from_node(bnode, inputs_, outputs_, r_lf_index_by_bsocket);
+    inputs_[0].usage = lf::ValueUsage::Unused;
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+    geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data);
+    if (tree_logger == nullptr) {
+      return;
+    }
+
+    const float3 &position = params.get_input<float3>(1);
+    tree_logger->log_value(bnode_, bnode_.input_socket(1), &position);
+  }
+};
+
 class LazyFunctionForSimulationInputsUsage : public LazyFunction {
  private:
   const bNode *output_bnode_;
@@ -2873,6 +2900,10 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_switch_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_GIZMO_ARROW: {
+        this->build_array_gizmo_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3279,6 +3310,22 @@ struct GeometryNodesLazyFunctionBuilder {
         }
       }
     }
+  }
+
+  void build_array_gizmo_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    auto &lazy_function = scope_.construct<LazyFunctionForArrowGizmoNode>(
+        bnode, mapping_->lf_index_by_bsocket);
+    lf::FunctionNode &lf_gizmo_node = graph_params.lf_graph.add_function(lazy_function);
+
+    for (const int i : bnode.input_sockets().index_range()) {
+      lf::InputSocket &lf_socket = lf_gizmo_node.input(i);
+      const bNodeSocket &bsocket = bnode.input_socket(i);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+
+    mapping_->gizmo_node_map.add(&bnode, &lf_gizmo_node);
   }
 
   lf::FunctionNode *insert_simulation_input_node(const bNodeTree &node_tree,
