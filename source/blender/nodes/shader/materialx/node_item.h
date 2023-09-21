@@ -51,9 +51,12 @@ class NodeItem {
   MaterialX::OutputPtr output;
 
  private:
-  MaterialX::GraphElement *graph_;
+  MaterialX::GraphElement *graph_ = nullptr;
 
  public:
+  /* NOTE: Default constructor added to allow easy work with std::map.
+   * Don't use this constructor to create NodeItem. */
+  NodeItem() = default;
   NodeItem(MaterialX::GraphElement *graph);
   ~NodeItem() = default;
 

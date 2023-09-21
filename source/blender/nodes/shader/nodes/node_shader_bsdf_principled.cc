@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <map>
+
 #include "BLI_string.h"
 
 #include "node_shader_util.hh"
@@ -287,83 +289,287 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  if (to_type_ != NodeItem::Type::SurfaceShader) {
-    /* TODO: implement for BSDF and EDF */
-    return empty();
+  /* NOTE: commented inputs aren't used for node creation. */
+  auto bsdf_inputs = [&]() {
+    return std::map<std::string, NodeItem>{
+        {"base_color", get_input_value("Base Color", NodeItem::Type::Color3)},
+        {"subsurface", get_input_value("Subsurface", NodeItem::Type::Float)},
+        {"subsurface_scale", get_input_value("Subsurface Scale", NodeItem::Type::Float)},
+        {"subsurface_radius", get_input_value("Subsurface Radius", NodeItem::Type::Vector3)},
+        //{"subsurface_ior", get_input_value("Subsurface IOR", NodeItem::Type::Vector3)},
+        {"subsurface_anisotropy", get_input_value("Subsurface Anisotropy", NodeItem::Type::Float)},
+        {"metallic", get_input_value("Metallic", NodeItem::Type::Float)},
+        {"specular", get_input_value("Specular", NodeItem::Type::Float)},
+        {"specular_tint", get_input_value("Specular Tint", NodeItem::Type::Color3)},
+        {"roughness", get_input_value("Roughness", NodeItem::Type::Float)},
+        {"anisotropic", get_input_value("Anisotropic", NodeItem::Type::Float)},
+        {"anisotropic_rotation", get_input_value("Anisotropic Rotation", NodeItem::Type::Float)},
+        {"sheen", get_input_value("Sheen", NodeItem::Type::Float)},
+        {"sheen_roughness", get_input_value("Sheen Roughness", NodeItem::Type::Float)},
+        {"sheen_tint", get_input_value("Sheen Tint", NodeItem::Type::Color3)},
+        {"coat", get_input_value("Coat", NodeItem::Type::Float)},
+        {"coat_roughness", get_input_value("Coat Roughness", NodeItem::Type::Float)},
+        {"coat_ior", get_input_value("Coat IOR", NodeItem::Type::Float)},
+        {"coat_tint", get_input_value("Coat Tint", NodeItem::Type::Color3)},
+        {"ior", get_input_value("IOR", NodeItem::Type::Float)},
+        {"transmission", get_input_value("Transmission", NodeItem::Type::Float)},
+        //{"alpha", get_input_value("Alpha", NodeItem::Type::Float)},
+        {"normal", get_input_link("Normal", NodeItem::Type::Vector3)},
+        {"coat_normal", get_input_link("Coat Normal", NodeItem::Type::Vector3)},
+        {"tangent", get_input_link("Tangent", NodeItem::Type::Vector3)},
+    };
+  };
+
+  auto edf_inputs = [&]() {
+    return std::map<std::string, NodeItem>{
+        {"emission", get_input_value("Emission Strength", NodeItem::Type::Float)},
+        {"emission_color", get_input_value("Emission", NodeItem::Type::Color3)}};
+  };
+
+  NodeItem res = empty();
+  if (to_type_ == NodeItem::Type::BSDF) {
+    auto in = bsdf_inputs();
+
+    NodeItem roughness = in["roughness"];
+    NodeItem anisotropy = in["anisotropic"];
+    NodeItem rotation = in["anisotropic_rotation"];
+    NodeItem base_color = in["base_color"];
+    NodeItem specular = in["specular"];
+    NodeItem coat = in["coat"];
+    NodeItem ior = in["ior"];
+    NodeItem normal = in["normal"];
+    NodeItem tangent = in["tangent"];
+    NodeItem coat_normal = in["coat_normal"];
+
+    NodeItem n_main_tangent = empty();
+    if (tangent && normal) {
+      NodeItem n_tangent_rotate = create_node(
+          "rotate3d",
+          NodeItem::Type::Vector3,
+          {{"in", tangent}, {"amount", rotation * val(360.0f)}, {"axis", normal}});
+
+      NodeItem n_tangent_rotate_normalize = create_node(
+          "normalize", NodeItem::Type::Vector3, {{"in", n_tangent_rotate}});
+
+      n_main_tangent = anisotropy.if_else(
+          NodeItem::CompareOp::Greater, val(0.0f), n_tangent_rotate_normalize, tangent);
+    }
+
+    NodeItem n_coat_roughness_vector = create_node(
+        "roughness_anisotropy",
+        NodeItem::Type::Vector2,
+        {{"roughness", in["coat_roughness"]}, {"anisotropy", anisotropy}});
+
+    NodeItem n_coat_bsdf = create_node("dielectric_bsdf",
+                                       NodeItem::Type::BSDF,
+                                       {{"weight", coat},
+                                        {"tint", in["coat_tint"]},
+                                        {"ior", in["coat_ior"]},
+                                        {"scatter_mode", val(std::string("R"))},
+                                        {"roughness", n_coat_roughness_vector},
+                                        {"normal", coat_normal}});
+
+    if (tangent && coat_normal) {
+      NodeItem n_coat_tangent_rotate = create_node(
+          "rotate3d",
+          NodeItem::Type::Vector3,
+          {{"in", tangent}, {"amount", rotation * val(360.0f)}, {"axis", coat_normal}});
+
+      NodeItem n_coat_tangent_rotate_normalize = create_node(
+          "normalize", NodeItem::Type::Vector3, {{"in", n_coat_tangent_rotate}});
+
+      NodeItem n_coat_tangent = anisotropy.if_else(
+          NodeItem::CompareOp::Greater, val(0.0f), n_coat_tangent_rotate_normalize, tangent);
+
+      n_coat_bsdf.set_input("tangent", n_coat_tangent);
+    }
+
+    NodeItem n_thin_film_bsdf = create_node(
+        "thin_film_bsdf", NodeItem::Type::BSDF, {{"thickness", val(0.0f)}, {"ior", val(1.5f)}});
+
+    NodeItem n_artistic_ior = create_node(
+        "artistic_ior",
+        NodeItem::Type::Multioutput,
+        {{"reflectivity", base_color * val(1.0f)}, {"edge_color", base_color * specular}});
+
+    NodeItem n_ior_out = n_artistic_ior.add_output("ior", NodeItem::Type::Color3);
+    NodeItem n_extinction_out = n_artistic_ior.add_output("extinction", NodeItem::Type::Color3);
+
+    NodeItem n_coat_affect_roughness_multiply2 = coat * val(0.0f) * in["coat_roughness"];
+    NodeItem n_coat_affected_roughness = create_node(
+        "mix",
+        NodeItem::Type::Float,
+        {{"fg", val(1.0f)}, {"bg", roughness}, {"mix", n_coat_affect_roughness_multiply2}});
+
+    NodeItem n_main_roughness = create_node(
+        "roughness_anisotropy",
+        NodeItem::Type::Vector2,
+        {{"roughness", n_coat_affected_roughness}, {"anisotropy", anisotropy}});
+
+    NodeItem n_metal_bsdf = create_node("conductor_bsdf",
+                                        NodeItem::Type::BSDF,
+                                        {{"ior", n_ior_out},
+                                         {"extinction", n_extinction_out},
+                                         {"roughness", n_main_roughness},
+                                         {"normal", normal},
+                                         {"tangent", n_main_tangent}});
+
+    NodeItem n_specular_bsdf = create_node("dielectric_bsdf",
+                                           NodeItem::Type::BSDF,
+                                           {{"weight", specular},
+                                            {"tint", in["specular_tint"]},
+                                            {"ior", ior},
+                                            {"scatter_mode", val(std::string("R"))},
+                                            {"roughness", n_main_roughness},
+                                            {"normal", normal},
+                                            {"tangent", n_main_tangent}});
+
+    NodeItem n_coat_affected_transmission_roughness = create_node(
+        "mix",
+        NodeItem::Type::Float,
+        {{"fg", val(1.0f)},
+         {"bg", (roughness + roughness).clamp(0.0f, 1.0f)},
+         {"mix", n_coat_affect_roughness_multiply2}});
+
+    NodeItem n_transmission_roughness = create_node(
+        "roughness_anisotropy",
+        NodeItem::Type::Vector2,
+        {{"roughness", n_coat_affected_transmission_roughness}, {"anisotropy", anisotropy}});
+
+    NodeItem n_transmission_bsdf = create_node("dielectric_bsdf",
+                                               NodeItem::Type::BSDF,
+                                               {{"tint", base_color},
+                                                {"ior", ior},
+                                                {"roughness", n_transmission_roughness},
+                                                {"normal", normal},
+                                                {"tangent", n_main_tangent}});
+
+    NodeItem n_coat_gamma = coat.clamp(0.0f, 1.0f) * val(0.0f) + val(1.0f);
+    NodeItem n_coat_affected_subsurface_color = base_color.max(val(0.0f)) ^ n_coat_gamma;
+    NodeItem n_translucent_bsdf = create_node(
+        "translucent_bsdf",
+        NodeItem::Type::BSDF,
+        {{"color", n_coat_affected_subsurface_color}, {"normal", normal}});
+
+    NodeItem n_subsurface_bsdf = create_node(
+        "subsurface_bsdf",
+        NodeItem::Type::BSDF,
+        {{"color", n_coat_affected_subsurface_color},
+         {"radius", in["subsurface_radius"] * in["subsurface_scale"]},
+         {"anisotropy", in["subsurface_anisotropy"]},
+         {"normal", normal}});
+
+    NodeItem n_selected_subsurface_bsdf = create_node(
+        "mix",
+        NodeItem::Type::BSDF,
+        {{"fg", n_translucent_bsdf}, {"bg", n_subsurface_bsdf}, {"mix", val(0.0f)}});
+
+    NodeItem n_sheen_bsdf = create_node("sheen_bsdf",
+                                        NodeItem::Type::BSDF,
+                                        {{"weight", in["sheen"]},
+                                         {"color", in["sheen_tint"]},
+                                         {"roughness", in["sheen_roughness"]},
+                                         {"normal", normal}});
+
+    NodeItem n_diffuse_bsdf = create_node("oren_nayar_diffuse_bsdf",
+                                          NodeItem::Type::BSDF,
+                                          {{"color", base_color.max(val(0.0f)) ^ n_coat_gamma},
+                                           {"roughness", roughness},
+                                           {"weight", val(1.0f)},
+                                           {"normal", normal}});
+
+    NodeItem n_subsurface_mix = create_node(
+        "mix",
+        NodeItem::Type::BSDF,
+        {{"fg", n_selected_subsurface_bsdf}, {"bg", n_diffuse_bsdf}, {"mix", in["subsurface"]}});
+
+    NodeItem n_sheen_layer = create_node(
+        "layer", NodeItem::Type::BSDF, {{"top", n_sheen_bsdf}, {"base", n_subsurface_mix}});
+
+    NodeItem n_transmission_mix = create_node(
+        "mix",
+        NodeItem::Type::BSDF,
+        {{"fg", n_transmission_bsdf}, {"bg", n_sheen_layer}, {"mix", in["transmission"]}});
+
+    NodeItem n_specular_layer = create_node(
+        "layer", NodeItem::Type::BSDF, {{"top", n_specular_bsdf}, {"base", n_transmission_mix}});
+
+    NodeItem n_metalness_mix = create_node(
+        "mix",
+        NodeItem::Type::BSDF,
+        {{"fg", n_metal_bsdf}, {"bg", n_specular_layer}, {"mix", in["metallic"]}});
+
+    NodeItem n_thin_film_layer = create_node(
+        "layer", NodeItem::Type::BSDF, {{"top", n_thin_film_bsdf}, {"base", n_metalness_mix}});
+
+    NodeItem n_opacity_luminance = create_node(
+        "luminance", NodeItem::Type::Color3, {{"in", val(MaterialX::Color3(1.0f, 1.0f, 1.0f))}});
+
+    NodeItem n_coat_attenuation = create_node("mix",
+                                              NodeItem::Type::Color3,
+                                              {{"fg", in["coat_tint"]},
+                                               {"bg", val(MaterialX::Color3(1.0f, 1.0f, 1.0f))},
+                                               {"mix", coat}});
+
+    res = create_node("layer",
+                      NodeItem::Type::BSDF,
+                      {{"top", n_coat_bsdf}, {"base", n_thin_film_layer * n_coat_attenuation}});
+  }
+  else if (to_type_ == NodeItem::Type::EDF) {
+    auto in = edf_inputs();
+
+    res = create_node(
+        "uniform_edf", NodeItem::Type::EDF, {{"color", in["emission_color"] * in["emission"]}});
+  }
+  else if (to_type_ == NodeItem::Type::SurfaceShader) {
+    auto in = bsdf_inputs();
+    auto e_in = edf_inputs();
+    in.insert(e_in.begin(), e_in.end());
+
+    NodeItem roughness = in["roughness"];
+    NodeItem base_color = in["base_color"];
+    NodeItem anisotropic = in["anisotropic"];
+    NodeItem rotation = in["anisotropic_rotation"];
+
+    res = create_node("standard_surface",
+                      NodeItem::Type::SurfaceShader,
+                      {{"base", val(1.0f)},
+                       {"base_color", base_color},
+                       {"diffuse_roughness", roughness},
+                       {"metalness", in["metallic"]},
+                       {"specular", in["specular"]},
+                       {"specular_color", in["specular_tint"]},
+                       {"specular_roughness", roughness},
+                       {"specular_IOR", in["ior"]},
+                       {"specular_anisotropy", anisotropic},
+                       {"specular_rotation", rotation},
+                       {"transmission", in["transmission"]},
+                       {"transmission_color", base_color},
+                       {"transmission_extra_roughness", roughness},
+                       {"subsurface", in["subsurface"]},
+                       {"subsurface_color", base_color},
+                       {"subsurface_radius", in["subsurface_radius"] * in["subsurface_scale"]},
+                       {"subsurface_anisotropy", in["subsurface_anisotropy"]},
+                       {"sheen", in["sheen"]},
+                       {"sheen_color", in["sheen_tint"]},
+                       {"sheen_roughness", in["sheen_roughness"]},
+                       {"coat", in["coat"]},
+                       {"coat_color", in["coat_tint"]},
+                       {"coat_roughness", in["coat_roughness"]},
+                       {"coat_IOR", in["coat_ior"]},
+                       {"coat_anisotropy", anisotropic},
+                       {"coat_rotation", rotation},
+                       {"coat_normal", in["coat_normal"]},
+                       {"emission", in["emission"]},
+                       {"emission_color", in["emission_color"]},
+                       {"normal", in["normal"]},
+                       {"tangent", in["tangent"]}});
+  }
+  else {
+    BLI_assert_unreachable();
   }
 
-  NodeItem base_color = get_input_value("Base Color", NodeItem::Type::Color3);
-
-  NodeItem subsurface = get_input_value("Subsurface", NodeItem::Type::Float);
-  NodeItem subsurface_radius = get_input_value("Subsurface Radius", NodeItem::Type::Color3);
-  NodeItem subsurface_scale = get_input_value("Subsurface Scale", NodeItem::Type::Float);
-
-  NodeItem metallic = get_input_value("Metallic", NodeItem::Type::Float);
-  NodeItem specular = get_input_value("Specular", NodeItem::Type::Float);
-  // NodeItem specular_tint = get_input_value("Specular Tint");
-  NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Float);
-
-  /* TODO: use Specular Tint input */
-  NodeItem anisotropic = get_input_value("Anisotropic", NodeItem::Type::Float);
-  NodeItem anisotropic_rotation = get_input_value("Anisotropic Rotation", NodeItem::Type::Float);
-  // anisotropic_rotation = 0.5 - (anisotropic_rotation % 1.0)
-
-  NodeItem sheen = get_input_value("Sheen", NodeItem::Type::Float);
-  // sheen_tint = get_input_value("Sheen Tint");
-
-  NodeItem coat = get_input_value("Coat", NodeItem::Type::Float);
-  NodeItem coat_roughness = get_input_value("Coat Roughness", NodeItem::Type::Float);
-
-  NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
-
-  NodeItem transmission = get_input_value("Transmission", NodeItem::Type::Float);
-
-  NodeItem emission = get_input_value("Emission", NodeItem::Type::Color3);
-  NodeItem emission_strength = get_input_value("Emission Strength", NodeItem::Type::Float);
-
-  NodeItem alpha = get_input_value("Alpha", NodeItem::Type::Float);
-  // transparency = 1.0 - alpha
-
-  NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
-  NodeItem coat_normal = get_input_link("Coat Normal", NodeItem::Type::Vector3);
-  NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
-
-  subsurface_radius = subsurface_radius * subsurface_scale;
-
-  /* Creating standard_surface */
-  return create_node("standard_surface",
-                     NodeItem::Type::SurfaceShader,
-                     {{"base", val(1.0f)},
-                      {"base_color", base_color},
-                      {"diffuse_roughness", roughness},
-                      {"normal", normal},
-                      {"tangent", tangent},
-                      {"metalness", metallic},
-                      {"specular", specular},
-                      {"specular_color", base_color},
-                      {"specular_roughness", roughness},
-                      {"specular_IOR", ior},
-                      {"specular_anisotropy", anisotropic},
-                      {"specular_rotation", anisotropic_rotation},
-                      {"transmission", transmission},
-                      {"transmission_color", base_color},
-                      {"transmission_extra_roughness", roughness},
-                      {"subsurface", subsurface},
-                      {"subsurface_color", base_color},
-                      {"subsurface_radius", subsurface_radius},
-                      {"subsurface_anisotropy", anisotropic},
-                      {"sheen", sheen},
-                      {"sheen_color", base_color},
-                      {"sheen_roughness", roughness},
-                      {"coat", coat},
-                      {"coat_color", base_color},
-                      {"coat_roughness", coat_roughness},
-                      {"coat_IOR", ior},
-                      {"coat_anisotropy", anisotropic},
-                      {"coat_rotation", anisotropic_rotation},
-                      {"coat_normal", coat_normal},
-                      {"emission", emission_strength},
-                      {"emission_color", emission}});
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END
