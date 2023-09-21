@@ -769,7 +769,7 @@ static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
 
   /* Calculate if strip is wide enough for showing the labels. */
   size_t numstr_len = SNPRINTF_RLEN(
-      numstr, "%d%d", strip_ctx->left_handle, strip_ctx->right_handle);
+      numstr, "%d%d", int(strip_ctx->left_handle), int(strip_ctx->right_handle));
   float tot_width = BLF_width(BLF_default(), numstr, numstr_len);
 
   if (strip_ctx->strip_length / timeline_ctx->pixelx > 20 + tot_width) {
