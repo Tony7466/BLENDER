@@ -568,13 +568,16 @@ static void find_side_effect_nodes_for_gizmos(const NodesModifierData &nmd,
   if (lf_graph_info == nullptr) {
     return;
   }
-  for (const bNode *node : nmd.node_group->nodes_by_type("GeometryNodeGizmoArrow")) {
-    const lf::FunctionNode *lf_gizmo_node = lf_graph_info->mapping.gizmo_node_map.lookup_default(
-        node, nullptr);
-    if (lf_gizmo_node == nullptr) {
-      continue;
+  for (const StringRefNull gizmo_node_idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"})
+  {
+    for (const bNode *node : nmd.node_group->nodes_by_type(gizmo_node_idname)) {
+      const lf::FunctionNode *lf_gizmo_node = lf_graph_info->mapping.gizmo_node_map.lookup_default(
+          node, nullptr);
+      if (lf_gizmo_node == nullptr) {
+        continue;
+      }
+      r_side_effect_nodes.nodes_by_context.add(compute_context_builder.hash(), lf_gizmo_node);
     }
-    r_side_effect_nodes.nodes_by_context.add(compute_context_builder.hash(), lf_gizmo_node);
   }
 }
 

@@ -132,7 +132,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     }
 
     if (node_gizmo_data->gizmo->interaction_data == nullptr) {
-      // copy_v3_v3(node_gizmo_data->gizmo->matrix_offset[3], position);
       const math::Quaternion rotation = math::from_vector(
           math::normalize(direction), math::AxisSigned::Z_NEG, math::Axis::X);
       float4x4 mat = math::from_rotation<float4x4>(rotation);
@@ -197,15 +196,16 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   gzgroup_data->gizmo_by_node_id = std::move(new_gizmo_by_node_id);
 }
 
-static void WIDGETGROUP_geometry_nodes_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
+static void WIDGETGROUP_geometry_nodes_draw_prepare(const bContext * /*C*/,
+                                                    wmGizmoGroup * /*gzgroup*/)
 {
-  GeometryNodesGizmoGroup *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(
-      gzgroup->customdata);
-  Object *ob = CTX_data_active_object(C);
-  for (auto item : gzgroup_data->gizmo_by_node_id.items()) {
-    wmGizmo *gz = item.value->gizmo;
-    // normalize_m4_m4(gz->matrix_basis, ob->object_to_world);
-  }
+  // GeometryNodesGizmoGroup *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(
+  //     gzgroup->customdata);
+  // Object *ob = CTX_data_active_object(C);
+  // for (auto item : gzgroup_data->gizmo_by_node_id.items()) {
+  //   wmGizmo *gz = item.value->gizmo;
+  //   normalize_m4_m4(gz->matrix_basis, ob->object_to_world);
+  // }
 }
 
 }  // namespace blender::ed::view3d

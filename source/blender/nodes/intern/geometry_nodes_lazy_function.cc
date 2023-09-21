@@ -867,16 +867,17 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   }
 };
 
-class LazyFunctionForArrowGizmoNode : public LazyFunction {
+class LazyFunctionForGizmoNode : public LazyFunction {
  private:
   const bNode &bnode_;
 
  public:
-  LazyFunctionForArrowGizmoNode(const bNode &bnode, MutableSpan<int> r_lf_index_by_bsocket)
+  LazyFunctionForGizmoNode(const bNode &bnode, MutableSpan<int> r_lf_index_by_bsocket)
       : bnode_(bnode)
   {
-    debug_name_ = "Arrow Gizmo";
+    debug_name_ = "Gizmo";
     lazy_function_interface_from_node(bnode, inputs_, outputs_, r_lf_index_by_bsocket);
+    /* First input is expected to be the value that is driven by this gizmo. */
     inputs_[0].usage = lf::ValueUsage::Unused;
   }
 
@@ -889,10 +890,12 @@ class LazyFunctionForArrowGizmoNode : public LazyFunction {
       return;
     }
 
-    const float3 &position = params.get_input<float3>(1);
-    const float3 &direction = params.get_input<float3>(2);
-    tree_logger->log_value(bnode_, bnode_.input_socket(1), &position);
-    tree_logger->log_value(bnode_, bnode_.input_socket(2), &direction);
+    for (const int i : inputs_.index_range().drop_front(1)) {
+      const bNodeSocket &socket = bnode_.input_socket(i);
+      const CPPType &type = *inputs_[i].type;
+      void *value = params.try_get_input_data_ptr(i);
+      tree_logger->log_value(bnode_, socket, GPointer{type, value});
+    }
   }
 };
 
@@ -2902,8 +2905,9 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_switch_node(bnode, graph_params);
         break;
       }
-      case GEO_NODE_GIZMO_ARROW: {
-        this->build_array_gizmo_node(bnode, graph_params);
+      case GEO_NODE_GIZMO_ARROW:
+      case GEO_NODE_GIZMO_DIAL: {
+        this->build_gizmo_node(bnode, graph_params);
         break;
       }
       default: {
@@ -3314,9 +3318,9 @@ struct GeometryNodesLazyFunctionBuilder {
     }
   }
 
-  void build_array_gizmo_node(const bNode &bnode, BuildGraphParams &graph_params)
+  void build_gizmo_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    auto &lazy_function = scope_.construct<LazyFunctionForArrowGizmoNode>(
+    auto &lazy_function = scope_.construct<LazyFunctionForGizmoNode>(
         bnode, mapping_->lf_index_by_bsocket);
     lf::FunctionNode &lf_gizmo_node = graph_params.lf_graph.add_function(lazy_function);
 
