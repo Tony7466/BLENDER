@@ -2107,9 +2107,9 @@ static void graphkeys_select_key_handles(
       continue;
     }
 
-    int i = 0;
-    BezTriple *bezt = fcu->bezt;
-    for (; i < fcu->totvert; bezt++, i++) {
+    for (int i = 0; i < fcu->totvert; i++) {
+      BezTriple *bezt = &fcu->bezt[i];
+
       if (!BEZT_ISSEL_ANY(bezt)) {
         continue;
       }
