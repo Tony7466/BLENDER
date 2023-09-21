@@ -407,8 +407,8 @@ static bool node_update_basis_socket(const bContext &C,
                                      const int &locx,
                                      int &locy)
 {
-  if ((!input_socket || !input_socket->is_visible_or_panel_collapsed()) &&
-      (!output_socket || !output_socket->is_visible_or_panel_collapsed()))
+  if ((!input_socket || !input_socket->is_visible()) &&
+      (!output_socket || !output_socket->is_visible()))
   {
     return false;
   }
@@ -685,7 +685,13 @@ static void node_update_basis_from_declaration(
 
       /* Round the socket location to stop it from jiggling. */
       item.runtime->location_y = round(locy + NODE_DYS);
+      if (!is_collapsed) {
+        locy -= NODE_ITEM_SPACING_Y / 2; /* Space at bottom of panel header. */
+      }
       item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
+      if (!is_collapsed) {
+        locy -= NODE_ITEM_SPACING_Y; /* Space at top of panel contents. */
+      }
     }
     else if (item.is_valid_socket()) {
       if (item.input) {
@@ -701,8 +707,8 @@ static void node_update_basis_from_declaration(
         }
         else {
           /* Space between items. */
-          if (!is_first && item.input->is_visible_or_panel_collapsed()) {
-            locy -= NODE_SOCKDY;
+          if (!is_first && item.input->is_visible()) {
+            locy -= NODE_ITEM_SPACING_Y;
           }
         }
       }
@@ -714,8 +720,8 @@ static void node_update_basis_from_declaration(
         }
         else {
           /* Space between items. */
-          if (!is_first && item.output->is_visible_or_panel_collapsed()) {
-            locy -= NODE_SOCKDY;
+          if (!is_first && item.output->is_visible()) {
+            locy -= NODE_ITEM_SPACING_Y;
           }
         }
       }
@@ -739,8 +745,14 @@ static void node_update_basis_from_declaration(
         /* Incomplete panel, continue adding items. */
         break;
       }
-      /* Finalize the vertical extent of the content. */
-      top_panel.runtime->min_content_y = round(locy - NODE_DYS / 4);
+
+      if (!top_panel.is_collapsed) {
+        /* Finalize the vertical extent of the content. */
+        locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
+        top_panel.runtime->min_content_y = round(locy);
+        locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
+      }
+
       /* Close panel and continue checking parent. */
       panel_updates.pop();
     }
@@ -779,7 +791,7 @@ static void node_update_basis_from_socket_lists(
 
     if (node_update_basis_socket(C, ntree, node, nullptr, socket, block, locx, locy)) {
       if (socket->next) {
-        locy -= NODE_SOCKDY;
+        locy -= NODE_ITEM_SPACING_Y;
       }
       add_output_space = true;
     }
@@ -798,7 +810,7 @@ static void node_update_basis_from_socket_lists(
 
     if (node_update_basis_socket(C, ntree, node, socket, nullptr, block, locx, locy)) {
       if (socket->next) {
-        locy -= NODE_SOCKDY;
+        locy -= NODE_ITEM_SPACING_Y;
       }
     }
   }
@@ -865,12 +877,12 @@ static void node_update_hidden(bNode &node, uiBlock &block)
 
   /* Calculate minimal radius. */
   for (const bNodeSocket *socket : node.input_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       totin++;
     }
   }
   for (const bNodeSocket *socket : node.output_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       totout++;
     }
   }
@@ -891,7 +903,7 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   float drad = rad;
 
   for (bNodeSocket *socket : node.output_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
           round(node.runtime->totr.xmax - hiddenrad + sinf(rad) * hiddenrad),
@@ -904,7 +916,7 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   rad = drad = -float(M_PI) / (1.0f + float(totin));
 
   for (bNodeSocket *socket : node.input_sockets()) {
-    if (socket->is_visible_or_panel_collapsed()) {
+    if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
           round(node.runtime->totr.xmin + hiddenrad + sinf(rad) * hiddenrad),
@@ -1077,7 +1089,13 @@ static void node_socket_outline_color_get(const bool selected,
 
 void node_socket_color_get(const bNodeSocketType &type, float r_color[4])
 {
-  type.draw_color_simple(&type, r_color);
+  if (type.draw_color_simple) {
+    float color[4];
+    type.draw_color_simple(&type, color);
+  }
+  else {
+    copy_v4_v4(r_color, float4(1.0f, 0.0f, 1.0f, 1.0f));
+  }
 }
 
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
@@ -1751,7 +1769,8 @@ static void node_draw_sockets(const View2D &v2d,
   /* Socket inputs. */
   int selected_input_len = 0;
   for (const bNodeSocket *sock : node.input_sockets()) {
-    if (!sock->is_visible()) {
+    /* In "hidden" nodes: draw sockets even when panels are collapsed. */
+    if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
     if (select_all || (sock->flag & SELECT)) {
@@ -1774,7 +1793,8 @@ static void node_draw_sockets(const View2D &v2d,
   int selected_output_len = 0;
   if (draw_outputs) {
     for (const bNodeSocket *sock : node.output_sockets()) {
-      if (!sock->is_visible()) {
+      /* In "hidden" nodes: draw sockets even when panels are collapsed. */
+      if (!node.is_socket_icon_drawn(*sock)) {
         continue;
       }
       if (select_all || (sock->flag & SELECT)) {
@@ -1802,7 +1822,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_input_len) {
       /* Socket inputs. */
       for (const bNodeSocket *sock : node.input_sockets()) {
-        if (!sock->is_visible()) {
+        if (!node.is_socket_icon_drawn(*sock)) {
           continue;
         }
         /* Don't draw multi-input sockets here since they are drawn in a different batch. */
@@ -1831,7 +1851,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_output_len) {
       /* Socket outputs. */
       for (const bNodeSocket *sock : node.output_sockets()) {
-        if (!sock->is_visible()) {
+        if (!node.is_socket_icon_drawn(*sock)) {
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
@@ -1864,7 +1884,7 @@ static void node_draw_sockets(const View2D &v2d,
   /* Draw multi-input sockets after the others because they are drawn with `UI_draw_roundbox`
    * rather than with `GL_POINT`. */
   for (const bNodeSocket *socket : node.input_sockets()) {
-    if (!socket->is_visible()) {
+    if (!node.is_socket_icon_drawn(*socket)) {
       continue;
     }
     if (!(socket->flag & SOCK_MULTI_INPUT)) {
@@ -2658,12 +2678,7 @@ static void node_draw_basis(const bContext &C,
   }
 
   /* Shadow. */
-  if (!ELEM(node.type,
-            GEO_NODE_SIMULATION_INPUT,
-            GEO_NODE_SIMULATION_OUTPUT,
-            GEO_NODE_REPEAT_INPUT,
-            GEO_NODE_REPEAT_OUTPUT))
-  {
+  if (!bke::all_zone_node_types().contains(node.type)) {
     node_draw_shadow(snode, node, BASIS_RAD, 1.0f);
   }
 
@@ -2972,12 +2987,8 @@ static void node_draw_basis(const bContext &C,
     else if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColor4fv(TH_REDALERT, color_outline);
     }
-    else if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
-      UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, color_outline);
-      color_outline[3] = 1.0f;
-    }
-    else if (ELEM(node.type, GEO_NODE_REPEAT_INPUT, GEO_NODE_REPEAT_OUTPUT)) {
-      UI_GetThemeColor4fv(TH_NODE_ZONE_REPEAT, color_outline);
+    else if (const bke::bNodeZoneType *zone_type = bke::zone_type_by_node_type(node.type)) {
+      UI_GetThemeColor4fv(zone_type->theme_id, color_outline);
       color_outline[3] = 1.0f;
     }
     else {
@@ -3716,10 +3727,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
   const auto get_theme_id = [&](const int zone_i) {
     const bNode *node = zones->zones[zone_i]->output_node;
-    if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      return TH_NODE_ZONE_SIMULATION;
-    }
-    return TH_NODE_ZONE_REPEAT;
+    return bke::zone_type_by_node_type(node->type)->theme_id;
   };
 
   const uint pos = GPU_vertformat_attr_add(
