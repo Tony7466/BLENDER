@@ -67,10 +67,6 @@
 
 #include "PIL_time.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum { SB_EDGE = 1, SB_BEND = 2, SB_STIFFQUAD = 3, SB_HANDLE = 4 } type_spring;
 typedef struct BodySpring {
   int v1, v2;
@@ -261,7 +257,3 @@ void softbody_update_positions(Object *ob, SoftBody *sb, float (*vertexCos)[3], 
 void softbody_reset(Object *ob, SoftBody *sb, float (*vertexCos)[3], int numVerts);
 void softbody_step(Depsgraph *depsgraph, Scene *scene, Object *ob, SoftBody *sb, float dtime);
 void sbStoreLastFrame(Depsgraph *depsgraph, Object *object, float framenr);
-
-#ifdef __cplusplus
-}
-#endif
