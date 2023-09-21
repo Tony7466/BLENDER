@@ -1609,7 +1609,7 @@ int sb_detect_vertex_collisionCached(float opco[3],
 
           if ((facedist > innerfacethickness) && (facedist < outerfacethickness)) {
             if (isect_point_tri_prism_v3(opco, nv1, nv2, nv3)) {
-              force_mag_norm = (float)exp(-ee * facedist);
+              force_mag_norm = (float)exp(double(-ee * facedist));
               if (facedist > outerfacethickness * ff) {
                 force_mag_norm = (float)force_mag_norm * fa * (facedist - outerfacethickness) *
                                  (facedist - outerfacethickness);
@@ -1645,7 +1645,7 @@ int sb_detect_vertex_collisionCached(float opco[3],
   } /* while () */
 
   if (deflected == 1) { /* no face but 'outer' edge cylinder sees vert */
-    force_mag_norm = (float)exp(-ee * mindistedge);
+    force_mag_norm = (float)exp(double(-ee * mindistedge));
     if (mindistedge > outerfacethickness * ff) {
       force_mag_norm = (float)force_mag_norm * fa * (mindistedge - outerfacethickness) *
                        (mindistedge - outerfacethickness);
