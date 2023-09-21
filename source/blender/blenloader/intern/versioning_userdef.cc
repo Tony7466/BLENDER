@@ -112,6 +112,19 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.header_back);
   }
 
+  if (!USER_VERSION_ATLEAST(400, 24)) {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -123,17 +136,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
-
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
-    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
