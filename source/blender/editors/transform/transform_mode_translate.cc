@@ -305,6 +305,9 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
                                   TIP_("left");
         ofs += BLI_snprintf_rlen(str, UI_MAX_DRAW_STR, TIP_("Auto-offset direction: %s"), str_dir);
       }
+      else {
+        ofs += BLI_snprintf_rlen(str, UI_MAX_DRAW_STR, TIP_("Auto-offset direction: OFF"));
+      }
     }
     else {
       if (t->flag & T_2D_EDIT) {
@@ -564,7 +567,7 @@ static bool clip_uv_transform_translation(TransInfo *t, float vec[2])
 
 static void applyTranslation(TransInfo *t)
 {
-  char str[UI_MAX_DRAW_STR];
+  char str[UI_MAX_DRAW_STR] = "";
   float global_dir[3] = {0.0f};
 
   if (t->flag & T_INPUT_IS_VALUES_FINAL) {
