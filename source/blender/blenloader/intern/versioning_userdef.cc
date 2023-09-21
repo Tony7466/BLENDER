@@ -114,7 +114,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 
   /**
    * Versioning code until next subversion bump goes here.
-   *
+   *git
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_userdef in this file.
    * - "versioning_{BLENDER_VERSION}.c"

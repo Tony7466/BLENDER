@@ -693,6 +693,21 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
 
   sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
 
+  if (seq1 == nullptr) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
+
+  const View2D *v2d = &region->v2d;
+  float scale_x = UI_view2d_scale_get_x(v2d);
+  float scale_y = UI_view2d_scale_get_y(v2d);
+  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq1) -
+                        SEQ_time_left_handle_frame_get(scene, seq1);
+
+  if (strip_len * scale_x < 25 * U.pixelsize || scale_y < 16 * U.pixelsize) {
+    return;
+  }
+
   if (seq1 != nullptr && seq2 != nullptr) {
     wmcursor = WM_CURSOR_BOTH_HANDLES;
   }
