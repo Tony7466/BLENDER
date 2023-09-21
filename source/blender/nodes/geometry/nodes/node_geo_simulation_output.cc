@@ -922,12 +922,6 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayout *row = uiLayoutRow(col, true);
     {
       char bake_label[1024] = N_("Bake");
-      if (simulation_range.has_value()) {
-        SNPRINTF(bake_label,
-                 N_("Bake %d - %d"),
-                 int(simulation_range->first()),
-                 int(simulation_range->last()));
-      }
 
       PointerRNA ptr;
       uiItemFullO(row,
@@ -957,12 +951,20 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       RNA_int_set(&ptr, "bake_id", bake->id);
     }
     if (is_baked) {
-      char baked_range_label[1024];
+      char baked_range_label[64];
       SNPRINTF(baked_range_label,
                N_("Baked %d - %d"),
                int(baked_range->first()),
                int(baked_range->last()));
       uiItemL(layout, baked_range_label, ICON_NONE);
+    }
+    else if (simulation_range.has_value()) {
+      char simulation_range_label[64];
+      SNPRINTF(simulation_range_label,
+               N_("Frames %d - %d"),
+               int(simulation_range->first()),
+               int(simulation_range->last()));
+      uiItemL(layout, simulation_range_label, ICON_NONE);
     }
   }
   {
