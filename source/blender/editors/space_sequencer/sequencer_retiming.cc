@@ -754,7 +754,7 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
       const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, &key);
       const int strip_start = SEQ_time_left_handle_frame_get(scene, seq);
       const int strip_end = SEQ_time_right_handle_frame_get(scene, seq);
-      if (key_frame <= strip_start || key_frame > strip_end) {
+      if (key_frame < strip_start || key_frame > strip_end) {
         continue;
       }
       if (key_frame > rectf.xmax || key_frame < rectf.xmin) {
