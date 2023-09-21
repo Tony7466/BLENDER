@@ -172,7 +172,6 @@ struct FileListEntryPreview {
   char filepath[FILE_MAX_LIBEXTRA];
   uint flags;
   int index;
-  int attributes; /* from FileDirEntry. */
   int icon_id;
 };
 

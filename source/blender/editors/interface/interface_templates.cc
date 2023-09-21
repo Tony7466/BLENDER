@@ -2876,6 +2876,7 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
 
     PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
+    bool all_booleans = true;
     RNA_STRUCT_BEGIN (&ptr, prop) {
       if (RNA_property_flag(prop) & PROP_HIDDEN) {
         continue;
@@ -2885,10 +2886,14 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
-        return false;
+        all_booleans = false;
+        break;
       }
     }
     RNA_STRUCT_END;
+    if (all_booleans == false) {
+      return false;
+    }
   }
 
   return true;
@@ -3474,7 +3479,7 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_ARROW_LEFTRIGHT,
                      IFACE_("Flip Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3517,12 +3522,16 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
                      CB_FUNC_DISTRIBUTE_EVENLY,
                      "");
 
+    uiItemS(layout);
+
     uiItemO(layout, IFACE_("Eyedropper"), ICON_EYEDROPPER, "UI_OT_eyedropper_colorramp");
+
+    uiItemS(layout);
 
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_LOOP_BACK,
                      IFACE_("Reset Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -6397,6 +6406,21 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   uiBlock *block = uiLayoutGetBlock(ui_abs);
   eUIEmbossType previous_emboss = UI_block_emboss_get(block);
 
+  uchar report_icon_color[4];
+  uchar report_text_color[4];
+
+  UI_GetThemeColorType4ubv(
+      UI_icon_colorid_from_report_type(report->type), SPACE_INFO, report_icon_color);
+  UI_GetThemeColorType4ubv(
+      UI_text_colorid_from_report_type(report->type), SPACE_INFO, report_text_color);
+  report_text_color[3] = 255; /* This theme color is RGB only, so have to set alpha here. */
+
+  if (rti->flash_progress <= 1.0) {
+    /* Flash report briefly according to progress through fade-out duration. */
+    const int brighten_amount = int(32 * (1.0f - rti->flash_progress));
+    add_v3_uchar_clamped(report_icon_color, brighten_amount);
+  }
+
   UI_fontstyle_set(&style->widgetlabel);
   int width = BLF_width(style->widgetlabel.uifont_id, report->message, report->len);
   width = min_ii(int(rti->widthfac * width), width);
@@ -6420,7 +6444,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  "");
   /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v4_v4_uchar(but->col, report_icon_color);
 
   /* Background for the rest of the message. */
   but = uiDefBut(block,
@@ -6437,9 +6461,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  0,
                  "");
-
   /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v3_v3_uchar(but->col, report_icon_color);
   but->col[3] = 64;
 
   UI_block_align_end(block);
@@ -6456,8 +6479,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                       UI_UNIT_X,
                       UI_UNIT_Y,
                       TIP_("Click to open the info editor"));
-  UI_GetThemeColorType4ubv(UI_text_colorid_from_report_type(report->type), SPACE_INFO, but->col);
-  but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
+  copy_v4_v4_uchar(but->col, report_text_color);
 
   /* The report message. */
   but = uiDefButO(block,

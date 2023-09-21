@@ -675,7 +675,7 @@ struct ShaderCreateInfo {
   }
 
   /**
-   * Allows to fetch framebuffer values from previous render sub-pass.
+   * Allows to fetch frame-buffer values from previous render sub-pass.
    *
    * On Apple Silicon, the additional `raster_order_group` is there to set the sub-pass
    * dependencies. Any sub-pass input need to have the same `raster_order_group` defined in the
@@ -1030,11 +1030,6 @@ struct ShaderCreateInfo {
   bool has_resource_image() const
   {
     return has_resource_type(Resource::BindType::IMAGE);
-  }
-
-  bool has_resource_storage() const
-  {
-    return has_resource_type(Resource::BindType::STORAGE_BUFFER);
   }
 
   /** \} */

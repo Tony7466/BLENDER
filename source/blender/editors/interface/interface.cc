@@ -2001,7 +2001,9 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     UI_block_layout_resolve(block, nullptr, nullptr);
   }
   ui_block_align_calc(block, CTX_wm_region(C));
-  if ((block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_NUMSELECT)) {
+  if ((block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_NUMSELECT) &&
+      (block->flag & UI_BLOCK_NO_ACCELERATOR_KEYS) == 0)
+  {
     ui_menu_block_set_keyaccels(block); /* could use a different flag to check */
   }
 
@@ -3339,7 +3341,8 @@ void ui_but_range_set_soft(uiBut *but)
   if (but->rnaprop) {
     const PropertyType type = RNA_property_type(but->rnaprop);
     const PropertySubType subtype = RNA_property_subtype(but->rnaprop);
-    double softmin, softmax /*, step, precision*/;
+    double softmin, softmax;
+    // double step, precision; /* UNUSED. */
     double value_min;
     double value_max;
 
@@ -4467,9 +4470,8 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
                              -1,
                              item->description);
       }
-      item_but->flag |= UI_BUT_LIST_ITEM;
       if (item->value == current_value) {
-        item_but->flag |= UI_BUT_ACTIVE_DEFAULT;
+        item_but->flag |= UI_SELECT_DRAW;
       }
     }
   }
@@ -5000,8 +5002,7 @@ int UI_preview_tile_size_x(const int size_px)
 
 int UI_preview_tile_size_y(const int size_px)
 {
-  const uiStyle *style = UI_style_get();
-  const float font_height = style->widget.points * UI_SCALE_FAC;
+  const float font_height = UI_UNIT_Y;
   /* Add some extra padding to make things less tight vertically. */
   const float pad = PREVIEW_TILE_PAD;
 
@@ -5848,6 +5849,11 @@ void UI_but_flag_enable(uiBut *but, int flag)
   but->flag |= flag;
 }
 
+void UI_but_flag2_enable(uiBut *but, int flag)
+{
+  but->flag2 |= flag;
+}
+
 void UI_but_flag_disable(uiBut *but, int flag)
 {
   but->flag &= ~flag;
@@ -6039,6 +6045,19 @@ void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const u
 void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFreeArgFunc free_arg)
 {
   but->tip_func = func;
+  if (but->tip_arg_free) {
+    but->tip_arg_free(but->tip_arg);
+  }
+  but->tip_arg = arg;
+  but->tip_arg_free = free_arg;
+}
+
+void UI_but_func_tooltip_custom_set(uiBut *but,
+                                    uiButToolTipCustomFunc func,
+                                    void *arg,
+                                    uiFreeArgFunc free_arg)
+{
+  but->tip_custom_func = func;
   if (but->tip_arg_free) {
     but->tip_arg_free(but->tip_arg);
   }
