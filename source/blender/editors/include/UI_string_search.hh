@@ -14,7 +14,10 @@ namespace blender::ui::string_search {
  */
 void add_recent_search(StringRef chosen_str);
 
-const blender::string_search::RecentCache *get_recent_cache();
+/**
+ * Depending on the user preferences, either outputs the recent cache or null.
+ */
+const blender::string_search::RecentCache *get_recent_cache_or_null();
 
 void write_recent_searches_file();
 void read_recent_searches_file();
@@ -25,7 +28,7 @@ void read_recent_searches_file();
  */
 template<typename T> class StringSearch : public blender::string_search::StringSearch<T> {
  public:
-  StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache()) {}
+  StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache_or_null()) {}
 };
 
 }  // namespace blender::ui::string_search

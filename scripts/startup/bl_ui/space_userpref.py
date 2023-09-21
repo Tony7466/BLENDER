@@ -216,6 +216,8 @@ class USERPREF_PT_interface_display(InterfacePanel, CenterAlignMixIn, Panel):
         sub.active = view.show_tooltips
         sub.prop(view, "show_tooltips_python")
 
+        layout.prop(prefs, "use_recent_searches")
+
 
 class USERPREF_PT_interface_text(InterfacePanel, CenterAlignMixIn, Panel):
     bl_label = "Text Rendering"

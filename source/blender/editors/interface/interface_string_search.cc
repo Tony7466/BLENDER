@@ -6,6 +6,8 @@
 
 #include "BKE_appdir.h"
 
+#include "DNA_userdef_types.h"
+
 #include "UI_string_search.hh"
 
 #include "BLI_fileops.hh"
@@ -38,8 +40,11 @@ void add_recent_search(const StringRef chosen_str)
   storage.logical_clock++;
 }
 
-const RecentCache *get_recent_cache()
+const RecentCache *get_recent_cache_or_null()
 {
+  if (U.flag & USER_FLAG_RECENT_SEARCHES_DISABLE) {
+    return nullptr;
+  }
   RecentCacheStorage &storage = get_recent_cache_storage();
   return &storage.cache;
 }
