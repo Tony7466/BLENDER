@@ -906,9 +906,9 @@ void ED_region_image_metadata_draw(
 
     UI_FontThemeColor(blf_mono_font, TH_METADATA_TEXT);
     metadata_draw_imbuf(ibuf, &rect, blf_mono_font, false);
-    GPU_blend(GPU_BLEND_NONE);
 
     BLF_disable(blf_mono_font, BLF_CLIPPING);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   GPU_matrix_pop();
