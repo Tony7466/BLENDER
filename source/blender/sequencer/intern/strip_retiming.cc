@@ -205,20 +205,20 @@ static void seq_retiming_line_segments_tangent_circle(const SeqRetimingKey *star
 
 bool SEQ_retiming_key_is_transition_type(const SeqRetimingKey *key)
 {
-  return (key->flag & SPEED_TRANSITION_IN) != 0 || (key->flag & SPEED_TRANSITION_OUT) != 0;
+  return (key->flag & SEQ_SPEED_TRANSITION_IN) != 0 || (key->flag & SEQ_SPEED_TRANSITION_OUT) != 0;
 }
 
 bool SEQ_retiming_key_is_transition_start(const SeqRetimingKey *key)
 {
-  return (key->flag & SPEED_TRANSITION_IN) != 0;
+  return (key->flag & SEQ_SPEED_TRANSITION_IN) != 0;
 }
 
 SeqRetimingKey *SEQ_retiming_transition_start_get(SeqRetimingKey *key)
 {
-  if ((key->flag & SPEED_TRANSITION_OUT)) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_OUT)) {
     return key - 1;
   }
-  if ((key->flag & SPEED_TRANSITION_IN)) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_IN)) {
     return key;
   }
   return nullptr;
@@ -226,7 +226,7 @@ SeqRetimingKey *SEQ_retiming_transition_start_get(SeqRetimingKey *key)
 
 bool SEQ_retiming_key_is_freeze_frame(const SeqRetimingKey *key)
 {
-  return (key->flag & FREEZE_FRAME_IN) != 0 || (key->flag & FREEZE_FRAME_OUT) != 0;
+  return (key->flag & SEQ_FREEZE_FRAME_IN) != 0 || (key->flag & SEQ_FREEZE_FRAME_OUT) != 0;
 }
 
 /* Check colinearity of 2 segments allowing for some imprecision.
@@ -295,7 +295,7 @@ SeqRetimingKey *SEQ_retiming_add_key(const Scene *scene, Sequence *seq, const in
     return start_key; /* Retiming key already exists. */
   }
 
-  if ((start_key->flag & SPEED_TRANSITION_IN) != 0 || (start_key->flag & FREEZE_FRAME_IN) != 0) {
+  if ((start_key->flag & SEQ_SPEED_TRANSITION_IN) != 0 || (start_key->flag & SEQ_FREEZE_FRAME_IN) != 0) {
     return nullptr;
   }
 
@@ -412,24 +412,24 @@ void SEQ_retiming_remove_key(const Scene *scene, Sequence *seq, SeqRetimingKey *
 {
   SeqRetimingKey *previous_key = key - 1;
 
-  if ((key->flag & SPEED_TRANSITION_IN) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
     seq_retiming_remove_transition(scene, seq, key);
     return;
   }
 
-  if ((key->flag & SPEED_TRANSITION_OUT) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_OUT) != 0) {
     seq_retiming_remove_transition(scene, seq, previous_key);
     return;
   }
 
-  if ((key->flag & FREEZE_FRAME_IN) != 0) {
+  if ((key->flag & SEQ_FREEZE_FRAME_IN) != 0) {
     SeqRetimingKey *next_key = key - 1;
-    key->flag &= ~FREEZE_FRAME_IN;
-    next_key->flag &= ~FREEZE_FRAME_OUT;
+    key->flag &= ~SEQ_FREEZE_FRAME_IN;
+    next_key->flag &= ~SEQ_FREEZE_FRAME_OUT;
   }
-  if ((key->flag & FREEZE_FRAME_OUT) != 0) {
-    key->flag &= ~FREEZE_FRAME_OUT;
-    previous_key->flag &= ~FREEZE_FRAME_IN;
+  if ((key->flag & SEQ_FREEZE_FRAME_OUT) != 0) {
+    key->flag &= ~SEQ_FREEZE_FRAME_OUT;
+    previous_key->flag &= ~SEQ_FREEZE_FRAME_IN;
   }
 
   seq_retiming_remove_key_ex(seq, key);
@@ -460,18 +460,18 @@ SeqRetimingKey *SEQ_retiming_add_freeze_frame(const Scene *scene,
   const int orig_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
   const float orig_retiming_factor = key->retiming_factor;
   key->strip_frame_index += clamped_offset;
-  key->flag |= FREEZE_FRAME_OUT;
+  key->flag |= SEQ_FREEZE_FRAME_OUT;
 
   SeqRetimingKey *new_key = SEQ_retiming_add_key(scene, seq, orig_timeline_frame);
 
   if (new_key == nullptr) {
     key->strip_frame_index -= clamped_offset;
-    key->flag &= ~FREEZE_FRAME_OUT;
+    key->flag &= ~SEQ_FREEZE_FRAME_OUT;
     return nullptr;
   }
 
   new_key->retiming_factor = orig_retiming_factor;
-  new_key->flag |= FREEZE_FRAME_IN;
+  new_key->flag |= SEQ_FREEZE_FRAME_IN;
 
   /* Tag previous key as freeze frame key. This is only a convenient way to prevent creating
    * speed transitions. When freeze frame is deleted, this flag should be cleared. */
@@ -484,11 +484,11 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
                                             const int offset)
 {
   SeqRetimingKey *prev_key = key - 1;
-  if ((key->flag & SPEED_TRANSITION_IN) != 0 || (prev_key->flag & SPEED_TRANSITION_IN) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0 || (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
     return nullptr;
   }
 
-  if ((key->flag & FREEZE_FRAME_IN) != 0 || (prev_key->flag & FREEZE_FRAME_IN) != 0) {
+  if ((key->flag & SEQ_FREEZE_FRAME_IN) != 0 || (prev_key->flag & SEQ_FREEZE_FRAME_IN) != 0) {
     return nullptr;
   }
 
@@ -501,11 +501,11 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
 
   SeqRetimingKey *transition_out = SEQ_retiming_add_key(
       scene, seq, orig_timeline_frame + clamped_offset);
-  transition_out->flag |= SPEED_TRANSITION_OUT;
+  transition_out->flag |= SEQ_SPEED_TRANSITION_OUT;
 
   SeqRetimingKey *transition_in = SEQ_retiming_add_key(
       scene, seq, orig_timeline_frame - clamped_offset);
-  transition_in->flag |= SPEED_TRANSITION_IN;
+  transition_in->flag |= SEQ_SPEED_TRANSITION_IN;
   transition_in->original_strip_frame_index = orig_frame_index;
   transition_in->original_retiming_factor = orig_retiming_factor;
 
@@ -885,7 +885,7 @@ static void seq_retiming_key_offset(const Scene *scene,
                                     SeqRetimingKey *key,
                                     const int offset)
 {
-  if ((key->flag & SPEED_TRANSITION_IN) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
     seq_retiming_transition_offset(scene, seq, key, offset);
   }
   else {
@@ -899,7 +899,7 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
                                          SeqRetimingKey *key,
                                          const int timeline_frame)
 {
-  if ((key->flag & SPEED_TRANSITION_OUT) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_OUT) != 0) {
     return;
   }
 
@@ -962,8 +962,8 @@ bool SEQ_retiming_selection_clear(const Editing *ed)
 
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      was_empty &= (key.flag & KEY_SELECTED) == 0;
-      key.flag &= ~KEY_SELECTED;
+      was_empty &= (key.flag & SEQ_KEY_SELECTED) == 0;
+      key.flag &= ~SEQ_KEY_SELECTED;
     }
   }
   return !was_empty;
@@ -973,12 +973,12 @@ void SEQ_retiming_selection_append(
 
     SeqRetimingKey *key)
 {
-  key->flag |= KEY_SELECTED;
+  key->flag |= SEQ_KEY_SELECTED;
 }
 
 void SEQ_retiming_selection_remove(SeqRetimingKey *key)
 {
-  key->flag &= ~KEY_SELECTED;
+  key->flag &= ~SEQ_KEY_SELECTED;
 }
 
 blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Editing *ed)
@@ -987,7 +987,7 @@ blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Edit
 
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      if ((key.flag & KEY_SELECTED) != 0) {
+      if ((key.flag & SEQ_KEY_SELECTED) != 0) {
         selection.add(&key, seq);
       }
     }
@@ -999,7 +999,7 @@ bool SEQ_retiming_selection_contains(const Editing *ed, const SeqRetimingKey *ke
 {
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     for (SeqRetimingKey &key_iter : SEQ_retiming_keys_get(seq)) {
-      if ((key_iter.flag & KEY_SELECTED) != 0 && &key_iter == key) {
+      if ((key_iter.flag & SEQ_KEY_SELECTED) != 0 && &key_iter == key) {
         return true;
       }
     }

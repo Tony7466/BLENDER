@@ -785,7 +785,7 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
         continue;
       }
       for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-        if (key.flag & KEY_SELECTED) {
+        if (key.flag & SEQ_KEY_SELECTED) {
           action = SEL_DESELECT;
           break;
         }
@@ -804,14 +804,14 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       switch (action) {
         case SEL_SELECT:
-          key.flag |= KEY_SELECTED;
+          key.flag |= SEQ_KEY_SELECTED;
           break;
         case SEL_INVERT:
-          if (key.flag & KEY_SELECTED) {
-            key.flag &= ~KEY_SELECTED;
+          if (key.flag & SEQ_KEY_SELECTED) {
+            key.flag &= ~SEQ_KEY_SELECTED;
           }
           else {
-            key.flag |= KEY_SELECTED;
+            key.flag |= SEQ_KEY_SELECTED;
           }
           break;
       }
@@ -830,7 +830,7 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 
   for (auto item : SEQ_retiming_selection_get(SEQ_editing_get(scene)).items()) {
     strips_to_handle.append_non_duplicates(item.value);
-    item.key->flag |= DELETE_KEY;
+    item.key->flag |= SEQ_DELETE_KEY;
   }
 
   for (Sequence *seq : strips_to_handle) {
@@ -838,7 +838,7 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
       SeqRetimingKey *key = seq->retiming_keys + i;
       i++;
 
-      if ((key->flag & DELETE_KEY) == 0) {
+      if ((key->flag & SEQ_DELETE_KEY) == 0) {
         continue;
       }
 

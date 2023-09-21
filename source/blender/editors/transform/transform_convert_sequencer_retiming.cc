@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,7 +49,7 @@ static TransData *SeqToTransData(const Scene *scene,
 
   td2d->loc[0] = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
   td2d->loc[1] = key->retiming_factor;
-  td2d->loc2d = NULL;
+  td2d->loc2d = nullptr;
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
   copy_v3_v3(td->center, td->loc);
@@ -62,8 +62,8 @@ static TransData *SeqToTransData(const Scene *scene,
   tdseq->orig_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
   tdseq->key_index = SEQ_retiming_key_index_get(seq, key);
 
-  td->extra = (void *)tdseq;
-  td->ext = NULL;
+  td->extra = static_cast<void *>(tdseq);
+  td->ext = nullptr;
   td->flag |= TD_SELECTED;
   td->dist = 0.0;
 
@@ -101,7 +101,6 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
   TransData *td = tc->data;
   TransData2D *td2d = tc->data_2d;
 
-  /*for elem*/
   for (auto item : selection.items()) {
     SeqToTransData(t->scene, item.value, item.key, td++, td2d++, tdseq++);
   }
@@ -126,8 +125,8 @@ static void seq_resize_speed_transition(const Scene *scene,
 static void recalcData_sequencer_retiming(TransInfo *t)
 {
   const TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  const TransData *td = NULL;
-  const TransData2D *td2d = NULL;
+  const TransData *td = nullptr;
+  const TransData2D *td2d = nullptr;
   int i;
 
   for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
