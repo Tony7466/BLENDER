@@ -14,7 +14,7 @@
 #include "BLT_translation.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_meshdata_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
@@ -39,6 +39,53 @@
 #include <cmath>
 #include <cstdlib>
 
+void SCULPT_mask_write_array(SculptSession *ss,
+                             const Span<PBVHNode *> nodes,
+                             const Span<float> mask)
+{
+  switch (BKE_pbvh_type(ss->pbvh)) {
+    case PBVH_FACES: {
+      Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
+      float *layer = static_cast<float *>(
+          CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          layer[vd.index] = mask[vd.index];
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+    case PBVH_BMESH: {
+      const int offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(ss->pbvh)->vdata,
+                                               CD_PAINT_MASK);
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          BM_ELEM_CD_SET_FLOAT(vd.bm_vert, offset, mask[vd.index]);
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+    case PBVH_GRIDS: {
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          *CCG_elem_mask(&vd.key, vd.grid) = mask[vd.index];
+          break;
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+  }
+}
+
 static void sculpt_mask_expand_cancel(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
@@ -47,22 +94,18 @@ static void sculpt_mask_expand_cancel(bContext *C, wmOperator *op)
 
   MEM_freeN(op->customdata);
 
-  for (int n = 0; n < ss->filter_cache->nodes.size(); n++) {
-    PBVHNode *node = ss->filter_cache->nodes[n];
-    if (create_face_set) {
+  if (create_face_set) {
+    for (int n = 0; n < ss->filter_cache->nodes.size(); n++) {
+      PBVHNode *node = ss->filter_cache->nodes[n];
       for (int i = 0; i < ss->totfaces; i++) {
         ss->face_sets[i] = ss->filter_cache->prev_face_set[i];
       }
+      BKE_pbvh_node_mark_redraw(node);
     }
-    else {
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-        *vd.mask = ss->filter_cache->prev_mask[vd.index];
-      }
-      BKE_pbvh_vertex_iter_end;
-    }
-
-    BKE_pbvh_node_mark_redraw(node);
+  }
+  else {
+    SCULPT_mask_write_array(
+        ss, ss->filter_cache->nodes, {ss->filter_cache->prev_mask, SCULPT_vertex_count_get(ss)});
   }
 
   if (!create_face_set) {
@@ -80,6 +123,7 @@ static void sculpt_expand_task(Object *ob,
                                const bool mask_expand_create_face_set,
                                const bool mask_expand_keep_prev_mask,
                                const bool mask_expand_invert_mask,
+                               const SculptMaskWriteInfo mask_write,
                                PBVHNode *node)
 {
   SculptSession *ss = ob->sculpt;
@@ -130,7 +174,7 @@ static void sculpt_expand_task(Object *ob,
       }
 
       if (*vd.mask != final_mask) {
-        *vd.mask = final_mask;
+        SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, final_mask, vd);
         BKE_pbvh_node_mark_update_mask(node);
       }
     }
@@ -268,7 +312,7 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
     const bool invert_mask = RNA_boolean_get(op->ptr, "invert");
     const bool keep_prev_mask = RNA_boolean_get(op->ptr, "keep_previous_mask");
     const bool create_face_set = RNA_boolean_get(op->ptr, "create_face_set");
-
+    const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
     threading::parallel_for(ss->filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
         sculpt_expand_task(ob,
@@ -277,6 +321,7 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
                            create_face_set,
                            keep_prev_mask,
                            invert_mask,
+                           mask_write,
                            ss->filter_cache->nodes[i]);
       }
     });
@@ -448,6 +493,8 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
   const bool invert_mask = RNA_boolean_get(op->ptr, "invert");
   const bool keep_prev_mask = RNA_boolean_get(op->ptr, "keep_previous_mask");
 
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
+
   threading::parallel_for(ss->filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       sculpt_expand_task(ob,
@@ -456,6 +503,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
                          create_face_set,
                          keep_prev_mask,
                          invert_mask,
+                         mask_write,
                          ss->filter_cache->nodes[i]);
     }
   });

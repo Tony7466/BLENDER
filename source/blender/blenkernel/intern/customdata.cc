@@ -2717,7 +2717,7 @@ void CustomData_set_layer_active(CustomData *data, const eCustomDataType type, c
 #endif
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(n) < uint(layer_num));
+      BLI_assert(n < layer_num);
       data->layers[i].active = n;
     }
   }
@@ -2730,7 +2730,7 @@ void CustomData_set_layer_render(CustomData *data, const eCustomDataType type, c
 #endif
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(n) < uint(layer_num));
+      BLI_assert(n < layer_num);
       data->layers[i].active_rnd = n;
     }
   }
@@ -2743,7 +2743,7 @@ void CustomData_set_layer_clone(CustomData *data, const eCustomDataType type, co
 #endif
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(n) < uint(layer_num));
+      BLI_assert(n < layer_num);
       data->layers[i].active_clone = n;
     }
   }
@@ -2756,7 +2756,7 @@ void CustomData_set_layer_stencil(CustomData *data, const eCustomDataType type, 
 #endif
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(n) < uint(layer_num));
+      BLI_assert(n < layer_num);
       data->layers[i].active_mask = n;
     }
   }
@@ -2772,7 +2772,7 @@ void CustomData_set_layer_active_index(CustomData *data, const eCustomDataType t
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(layer_index) < uint(layer_num));
+      BLI_assert(layer_index < layer_num);
       data->layers[i].active = layer_index;
     }
   }
@@ -2788,7 +2788,7 @@ void CustomData_set_layer_render_index(CustomData *data, const eCustomDataType t
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(layer_index) < uint(layer_num));
+      BLI_assert(layer_index < layer_num);
       data->layers[i].active_rnd = layer_index;
     }
   }
@@ -2804,7 +2804,7 @@ void CustomData_set_layer_clone_index(CustomData *data, const eCustomDataType ty
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(layer_index) < uint(layer_num));
+      BLI_assert(layer_index < layer_num);
       data->layers[i].active_clone = layer_index;
     }
   }
@@ -2820,7 +2820,7 @@ void CustomData_set_layer_stencil_index(CustomData *data, const eCustomDataType 
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
-      BLI_assert(uint(layer_index) < uint(layer_num));
+      BLI_assert(layer_index < layer_num);
       data->layers[i].active_mask = layer_index;
     }
   }
