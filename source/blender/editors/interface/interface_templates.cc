@@ -27,6 +27,7 @@
 #include "DNA_texture_types.h"
 
 #include "BLI_alloca.h"
+#include "BLI_fileops.h"
 #include "BLI_fnmatch.h"
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
@@ -69,6 +70,8 @@
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
+#include "BLO_readfile.h"
+
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -79,6 +82,11 @@
 #include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
+
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
+#include "IMB_metadata.h"
+#include "IMB_thumbs.h"
 
 #include "RE_engine.h"
 
@@ -7174,10 +7182,99 @@ void uiTemplateCacheFile(uiLayout *layout,
 /* -------------------------------------------------------------------- */
 /** \name Recent Files Template
  * \{ */
+static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
+                                               struct uiTooltipData *tip,
+                                               void *argN)
+{
+  char *path = (char *)argN;
+  eFileAttributes attributes = BLI_file_attributes(path);
+
+  /* Filename. */
+  UI_tooltip_text_field_add(
+      tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+
+  /* Add pad variable to the very next field only. */
+  bool pad = true;
+
+  /* Blender version. */
+  char version_st[128] = {0};
+  ImBuf *thumb = IMB_thumb_read(path, THB_LARGE);
+  if (thumb) {
+    /* Look for version in existing thumbnail if available. */
+    IMB_metadata_get_field(
+        thumb->metadata, "Thumb::Blender::Version", version_st, sizeof(version_st));
+  }
+
+  if (!version_st[0] && !(attributes & FILE_ATTR_OFFLINE)) {
+    /* Load Blender version directly from the file. */
+    short version = BLO_version_from_file(path);
+    if (version != 0) {
+      SNPRINTF(version_st, "%d.%01d", version / 100, version % 100);
+    }
+  }
+
+  if (version_st[0]) {
+    UI_tooltip_text_field_add(tip,
+                              BLI_sprintfN("Blender: %s", version_st),
+                              nullptr,
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL, pad);
+    pad = false;
+  }
+
+  BLI_stat_t status;
+  if (BLI_stat(path, &status) != -1) {
+    char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
+    bool is_today, is_yesterday;
+    std::string day_string = ("");
+    BLI_filelist_entry_datetime_to_string(
+        nullptr, int64_t(status.st_mtime), false, time_st, date_st, &is_today, &is_yesterday);
+    if (is_today || is_yesterday) {
+      day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
+    }
+    UI_tooltip_text_field_add(
+        tip,
+        BLI_sprintfN("%s: %s%s %s", N_("Modified"), day_string.c_str(), date_st, time_st),
+        nullptr,
+        UI_TIP_STYLE_NORMAL,
+        UI_TIP_LC_NORMAL, pad);
+    pad = false;
+
+    if (status.st_size > 0) {
+      char size[16];
+      char size_full[16];
+      BLI_filelist_entry_size_to_string(NULL, status.st_size, false, size);
+      BLI_str_format_uint64_grouped(size_full, status.st_size);
+      UI_tooltip_text_field_add(
+          tip,
+          BLI_sprintfN("%s: %s (%s %s)", N_("Size"), size, size_full, N_("bytes")),
+          nullptr,
+          UI_TIP_STYLE_NORMAL,
+          UI_TIP_LC_NORMAL);
+    }
+  }
+
+  if (!thumb) {
+    /* try to load from the blend file itself. */
+    BlendThumbnail *data = BLO_thumbnail_from_file(path);
+    thumb = BKE_main_thumbnail_to_imbuf(nullptr, data);
+    if (data) {
+      MEM_freeN(data);
+    }
+  }
+
+  if (thumb) {
+    float scale = (256.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
+    UI_tooltip_image_field_add(tip, thumb, size);
+    IMB_freeImBuf(thumb);
+  }
+
+}
 
 int uiTemplateRecentFiles(uiLayout *layout, int rows)
 {
-  int i;
+  int i = 0;
   LISTBASE_FOREACH_INDEX (RecentFile *, recent, &G.recent_files, i) {
     if (i >= rows) {
       break;
@@ -7193,8 +7290,14 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
                 WM_OP_INVOKE_DEFAULT,
                 UI_ITEM_NONE,
                 &ptr);
+
     RNA_string_set(&ptr, "filepath", recent->filepath);
     RNA_boolean_set(&ptr, "display_file_selector", false);
+
+    uiBlock *block = uiLayoutGetBlock(layout);
+    uiBut *but = ui_but_last(block);
+    UI_but_func_tooltip_custom_set(
+        but, uiTemplateRecentFiles_tooltip_func, BLI_strdup(recent->filepath), MEM_freeN);
   }
 
   return i;
