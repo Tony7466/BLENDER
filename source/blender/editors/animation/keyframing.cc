@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -46,29 +48,30 @@
 #include "BKE_material.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
 #include "ED_screen.hh"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "anim_intern.h"
@@ -219,17 +222,8 @@ FCurve *ED_action_fcurve_ensure(Main *bmain,
 
         /* sync bone group colors if applicable */
         if (ptr && (ptr->type == &RNA_PoseBone)) {
-          Object *ob = (Object *)ptr->owner_id;
           bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
-          bPose *pose = ob->pose;
-          bActionGroup *grp;
-
-          /* find bone group (if present), and use the color from that */
-          grp = (bActionGroup *)BLI_findlink(&pose->agroups, (pchan->agrp_index - 1));
-          if (grp) {
-            agrp->customCol = grp->customCol;
-            action_group_colors_sync(agrp, grp);
-          }
+          action_group_colors_set_from_posebone(agrp, pchan);
         }
       }
 
@@ -1486,7 +1480,7 @@ int insert_keyframe(Main *bmain,
                     ListBase *nla_cache,
                     eInsertKeyFlags flag)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop = nullptr;
   AnimData *adt;
   ListBase tmp_nla_cache = {nullptr, nullptr};
@@ -1504,7 +1498,7 @@ int insert_keyframe(Main *bmain,
     return 0;
   }
 
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1756,7 +1750,7 @@ int delete_keyframe(Main *bmain,
                     float cfra)
 {
   AnimData *adt = BKE_animdata_from_id(id);
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   int array_index_max = array_index + 1;
   int ret = 0;
@@ -1768,7 +1762,7 @@ int delete_keyframe(Main *bmain,
   }
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1863,7 +1857,7 @@ static int clear_keyframe(Main *bmain,
                           eInsertKeyFlags /*flag*/)
 {
   AnimData *adt = BKE_animdata_from_id(id);
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   int array_index_max = array_index + 1;
   int ret = 0;
@@ -1875,7 +1869,7 @@ static int clear_keyframe(Main *bmain,
   }
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1984,8 +1978,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
-  const float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  const float cfra = BKE_scene_frame_get(scene);
   int num_channels;
   const bool confirm = op->flag & OP_IS_INVOKE;
 
@@ -2064,7 +2057,7 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2116,7 +2109,8 @@ static int insert_key_menu_invoke(bContext *C, wmOperator *op, const wmEvent * /
    * to assign shortcuts to arbitrarily named keying sets. See #89560.
    * These menu items perform the key-frame insertion (not this operator)
    * hence the #OPERATOR_INTERFACE return. */
-  uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+  uiPopupMenu *pup = UI_popup_menu_begin(
+      C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   /* Even though `ANIM_OT_keyframe_insert_menu` can show a menu in one line,
@@ -2177,7 +2171,7 @@ void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2206,8 +2200,7 @@ static int delete_key_exec(bContext *C, wmOperator *op)
 static int delete_key_using_keying_set(bContext *C, wmOperator *op, KeyingSet *ks)
 {
   Scene *scene = CTX_data_scene(C);
-  float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  float cfra = BKE_scene_frame_get(scene);
   int num_channels;
   const bool confirm = op->flag & OP_IS_INVOKE;
 
@@ -2262,7 +2255,7 @@ void ANIM_OT_keyframe_delete(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2384,7 +2377,7 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  float cfra = float(scene->r.cfra);
+  const float cfra = BKE_scene_frame_get(scene);
 
   int selected_objects_len = 0;
   int selected_objects_success_len = 0;
@@ -2535,7 +2528,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   char *path;
   uiBut *but;
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      CTX_data_depsgraph_pointer(C), float(scene->r.cfra));
+      CTX_data_depsgraph_pointer(C), BKE_scene_frame_get(scene));
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -2711,8 +2704,7 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop = nullptr;
   Main *bmain = CTX_data_main(C);
   char *path;
-  float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  const float cfra = BKE_scene_frame_get(scene);
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -2886,7 +2878,7 @@ void ANIM_OT_keyframe_clear_button(wmOperatorType *ot)
 
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 {
-  float cfra = float(scene->r.cfra); /* XXX for now, this will do */
+  const float cfra = BKE_scene_frame_get(scene);
 
   /* only filter if auto-key mode requires this */
   if (IS_AUTOKEY_ON(scene) == 0) {
@@ -3071,7 +3063,8 @@ bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks
      * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, nullptr, nullptr);
-    ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+    ANIM_apply_keyingset(
+        C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, BKE_scene_frame_get(scene));
     BLI_freelistN(&dsources);
 
     return true;
@@ -3091,7 +3084,8 @@ bool ED_autokeyframe_pchan(
      * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, &RNA_PoseBone, pchan);
-    ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+    ANIM_apply_keyingset(
+        C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, BKE_scene_frame_get(scene));
     BLI_freelistN(&dsources);
 
     return true;

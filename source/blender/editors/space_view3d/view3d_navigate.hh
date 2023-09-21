@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -143,7 +143,7 @@ struct ViewOpsData {
     float mousevec[3];
 
     /** Used for roll */
-    struct Dial *dial;
+    Dial *dial;
   } init;
 
   /** Previous state (previous modal event handled). */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_clip.h"
+#include "ED_clip.hh"
 
 #include "clip_intern.h"
 

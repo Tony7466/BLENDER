@@ -24,8 +24,8 @@
 #include "DNA_workspace_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -54,21 +54,21 @@
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "object_intern.h"
 
@@ -313,7 +313,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         ebone->flag &= ~BONE_HIDDEN_A;
-        ANIM_armature_ensure_layer_enabled_from_ebone(arm, ebone);
+        ANIM_armature_bonecoll_show_from_ebone(arm, ebone);
       }
 
       /* Select it. */
@@ -337,7 +337,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         pchan->bone->flag &= ~BONE_HIDDEN_P;
-        ANIM_armature_ensure_layer_enabled_from_pchan(arm, pchan);
+        ANIM_armature_bonecoll_show_from_pchan(arm, pchan);
       }
 
       /* Select it. */
@@ -850,7 +850,7 @@ static bool select_grouped_collection(bContext *C, Object *ob)
     collection = ob_collections[i];
     uiItemStringO(layout,
                   collection->id.name + 2,
-                  0,
+                  ICON_NONE,
                   "OBJECT_OT_select_same_collection",
                   "collection",
                   collection->id.name + 2);

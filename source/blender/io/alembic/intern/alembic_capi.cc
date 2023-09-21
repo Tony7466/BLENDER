@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  */
 
 #include "../ABC_alembic.h"
-#include "IO_types.h"
+#include "IO_types.hh"
 
 #include <Alembic/AbcMaterial/IMaterial.h>
 
@@ -43,13 +43,13 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 #include "BLI_compiler_compat.h"
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
@@ -154,7 +154,7 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   return parent_is_part_of_this_object;
 }
 
-CacheArchiveHandle *ABC_create_handle(Main *bmain,
+CacheArchiveHandle *ABC_create_handle(const Main *bmain,
                                       const char *filepath,
                                       const CacheFileLayer *layers,
                                       ListBase *object_paths)

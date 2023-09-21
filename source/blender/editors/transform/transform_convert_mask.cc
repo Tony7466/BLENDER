@@ -11,15 +11,16 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_mask.h"
 
-#include "ED_clip.h"
-#include "ED_image.h"
-#include "ED_keyframing.h"
-#include "ED_mask.h"
+#include "ED_clip.hh"
+#include "ED_image.hh"
+#include "ED_keyframing.hh"
+#include "ED_mask.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

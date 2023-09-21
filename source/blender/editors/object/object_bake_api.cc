@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,12 +13,13 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_math_geom.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
@@ -56,10 +57,10 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 #include "ED_screen.hh"
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 
 #include "object_intern.h"
 
@@ -1505,7 +1506,6 @@ static int bake(const BakeAPIRender *bkr,
   }
 
   if (bkr->is_selected_to_active) {
-    CollectionPointerLink *link;
     int i = 0;
 
     /* prepare cage mesh */
@@ -1561,8 +1561,7 @@ static int bake(const BakeAPIRender *bkr,
         MEM_callocN(sizeof(BakeHighPolyData) * tot_highpoly, "bake high poly objects"));
 
     /* populate highpoly array */
-    for (link = static_cast<CollectionPointerLink *>(selected_objects->first); link;
-         link = link->next) {
+    LISTBASE_FOREACH (CollectionPointerLink *, link, selected_objects) {
       Object *ob_iter = static_cast<Object *>(link->ptr.data);
 
       if (ob_iter == ob_low) {

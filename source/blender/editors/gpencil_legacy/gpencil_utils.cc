@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,8 @@
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -55,21 +56,21 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_clip.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
+#include "ED_clip.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_select_utils.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -98,7 +99,7 @@ bGPdata **ED_gpencil_data_get_pointers_direct(ScrArea *area, Object *ob, Pointer
         if (ob && (ob->type == OB_GPENCIL_LEGACY)) {
           /* GP Object. */
           if (r_ptr) {
-            RNA_id_pointer_create(&ob->id, r_ptr);
+            *r_ptr = RNA_id_pointer_create(&ob->id);
           }
           return (bGPdata **)&ob->data;
         }
@@ -133,7 +134,7 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
       case SPACE_VIEW3D: /* 3D-View */
       {
         if (r_ptr) {
-          RNA_id_pointer_create(&scene->id, r_ptr);
+          *r_ptr = RNA_id_pointer_create(&scene->id);
         }
         return &scene->gpd;
 
@@ -148,7 +149,7 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
           /* for now, as long as there's an active node tree,
            * default to using that in the Nodes Editor */
           if (r_ptr) {
-            RNA_id_pointer_create(&snode->nodetree->id, r_ptr);
+            *r_ptr = RNA_id_pointer_create(&snode->nodetree->id);
           }
           return &snode->nodetree->gpd;
         }
@@ -163,7 +164,7 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
         /* For now, Grease Pencil data is associated with the space
          * (actually preview region only). */
         if (r_ptr) {
-          RNA_pointer_create(screen_id, &RNA_SpaceSequenceEditor, sseq, r_ptr);
+          *r_ptr = RNA_pointer_create(screen_id, &RNA_SpaceSequenceEditor, sseq);
         }
         return &sseq->gpd;
       }
@@ -173,7 +174,7 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
 
         /* For now, Grease Pencil data is associated with the space... */
         if (r_ptr) {
-          RNA_pointer_create(screen_id, &RNA_SpaceImageEditor, sima, r_ptr);
+          *r_ptr = RNA_pointer_create(screen_id, &RNA_SpaceImageEditor, sima);
         }
         return &sima->gpd;
       }
@@ -193,12 +194,12 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
             }
 
             if (r_ptr) {
-              RNA_pointer_create(&clip->id, &RNA_MovieTrackingTrack, track, r_ptr);
+              *r_ptr = RNA_pointer_create(&clip->id, &RNA_MovieTrackingTrack, track);
             }
             return &track->gpd;
           }
           if (r_ptr) {
-            RNA_id_pointer_create(&clip->id, r_ptr);
+            *r_ptr = RNA_id_pointer_create(&clip->id);
           }
           return &clip->gpd;
         }
@@ -349,7 +350,7 @@ const EnumPropertyItem *ED_gpencil_layers_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, gpd)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Existing layers */
@@ -386,7 +387,7 @@ const EnumPropertyItem *ED_gpencil_layers_with_new_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, gpd)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Create new layer */
@@ -437,7 +438,7 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, ob)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Existing materials */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,7 @@
 
 /* For debug cursor position. */
 #include "WM_api.hh"
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "DNA_curve_types.h"
 #include "DNA_mesh_types.h"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -82,7 +82,7 @@ void ACTION_OT_keyframe_insert(wmOperatorType *ot);
 void ACTION_OT_duplicate(wmOperatorType *ot);
 void ACTION_OT_delete(wmOperatorType *ot);
 void ACTION_OT_clean(wmOperatorType *ot);
-void ACTION_OT_sample(wmOperatorType *ot);
+void ACTION_OT_bake_keys(wmOperatorType *ot);
 
 void ACTION_OT_keyframe_type(wmOperatorType *ot);
 void ACTION_OT_handle_type(wmOperatorType *ot);
@@ -108,7 +108,7 @@ void ACTION_OT_layer_prev(wmOperatorType *ot);
 void ACTION_OT_markers_make_local(wmOperatorType *ot);
 
 /* defines for snap keyframes
- * NOTE: keep in sync with eEditKeyframes_Snap (in ED_keyframes_edit.h)
+ * NOTE: keep in sync with eEditKeyframes_Snap (in ED_keyframes_edit.hh)
  */
 enum eActKeys_Snap_Mode {
   ACTKEYS_SNAP_CFRA = 1,
@@ -118,7 +118,7 @@ enum eActKeys_Snap_Mode {
 };
 
 /* defines for mirror keyframes
- * NOTE: keep in sync with eEditKeyframes_Mirror (in ED_keyframes_edit.h)
+ * NOTE: keep in sync with eEditKeyframes_Mirror (in ED_keyframes_edit.hh)
  */
 enum eActKeys_Mirror_Mode {
   ACTKEYS_MIRROR_CFRA = 1,
@@ -130,5 +130,5 @@ enum eActKeys_Mirror_Mode {
 /* ***************************************** */
 /* `action_ops.cc` */
 
-void action_operatortypes(void);
+void action_operatortypes();
 void action_keymap(wmKeyConfig *keyconf);

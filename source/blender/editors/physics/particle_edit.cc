@@ -22,7 +22,7 @@
 #include "BLI_kdtree.h"
 #include "BLI_lasso_2d.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_rect.h"
 #include "BLI_task.h"
@@ -45,27 +45,27 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_particle.h"
-#include "ED_physics.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_particle.hh"
+#include "ED_physics.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -3540,7 +3540,7 @@ static void PE_mirror_x(Depsgraph *depsgraph, Scene *scene, Object *ob, int tagg
   }
 
   const bool use_dm_final_indices = (psys->part->use_modifier_stack &&
-                                     !BKE_mesh_is_deformed_only(psmd_eval->mesh_final));
+                                     !psmd_eval->mesh_final->runtime->deformed_only);
 
   /* NOTE: this is not nice to use tessfaces but hard to avoid since pa->num uses tessfaces */
   BKE_mesh_tessface_ensure(me);
@@ -4001,49 +4001,19 @@ static void brush_puff(PEData *data, int point_index, float mouse_distance)
 /* NOLINTNEXTLINE: readability-redundant-preprocessor */
 #  if 0 /* Kind of works but looks worse than what's below. */
 
+            /* Move the unselected point on a vector based on the
+             * hair direction and the offset */
+            float c1[3], c2[3];
+            sub_v3_v3v3(dco, lastco, co);
+            mul_mat3_m4_v3(imat, dco); /* into particle space */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Move the unselected point on a vector based on the
-* hair direction and the offset */
-float c1[3], c2[3];
-sub_v3_v3v3(dco, lastco, co);
-mul_mat3_m4_v3(imat, dco); /* into particle space */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* move the point along a vector perpendicular to the
-* hairs direction, reduces odd kinks, */
-cross_v3_v3v3(c1, ofs, dco);
-cross_v3_v3v3(c2, c1, dco);
-normalize_v3(c2);
-mul_v3_fl(c2, len_v3(ofs));
-add_v3_v3(key->co, c2);
+            /* move the point along a vector perpendicular to the
+             * hairs direction, reduces odd kinks, */
+            cross_v3_v3v3(c1, ofs, dco);
+            cross_v3_v3v3(c2, c1, dco);
+            normalize_v3(c2);
+            mul_v3_fl(c2, len_v3(ofs));
+            add_v3_v3(key->co, c2);
 #  else
             /* Move the unselected point on a vector based on the
              * the normal of the closest geometry */
@@ -4393,7 +4363,7 @@ static void brush_add_count_iter(void *__restrict iter_data_v,
                               0,
                               nullptr))
   {
-    if (psys->part->use_modifier_stack && !BKE_mesh_is_deformed_only(psmd_eval->mesh_final)) {
+    if (psys->part->use_modifier_stack && !psmd_eval->mesh_final->runtime->deformed_only) {
       add_pars[iter].num = add_pars[iter].num_dmcache;
       add_pars[iter].num_dmcache = DMCACHE_ISCHILD;
     }
@@ -4471,7 +4441,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
 
   timestep = psys_get_timestep(&sim);
 
-  if (psys->part->use_modifier_stack || BKE_mesh_is_deformed_only(psmd_eval->mesh_final)) {
+  if (psys->part->use_modifier_stack || psmd_eval->mesh_final->runtime->deformed_only) {
     mesh = psmd_eval->mesh_final;
   }
   else {

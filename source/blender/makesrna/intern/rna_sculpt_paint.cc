@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,12 +8,11 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -29,7 +28,7 @@
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 
-#include "ED_image.h"
+#include "ED_image.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -117,9 +116,9 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
-#  include "ED_gpencil_legacy.h"
-#  include "ED_paint.h"
-#  include "ED_particle.h"
+#  include "ED_gpencil_legacy.hh"
+#  include "ED_paint.hh"
+#  include "ED_particle.hh"
 
 static void rna_GPencil_update(Main * /*bmain*/, Scene *scene, PointerRNA * /*ptr*/)
 {

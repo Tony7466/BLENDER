@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,9 +12,10 @@
 #include <ctime>
 
 #include "BLI_kdopbvh.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_constraint_types.h"
 #include "DNA_layer_types.h"
@@ -26,7 +27,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_outliner.h"
+#include "ED_outliner.hh"
 
 #include "rna_internal.h" /* own include */
 
@@ -50,8 +51,6 @@ static const EnumPropertyItem space_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
 #  include "BKE_bvhutils.h"
 #  include "BKE_constraint.h"
 #  include "BKE_context.h"
@@ -68,7 +67,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 
-#  include "ED_object.h"
+#  include "ED_object.hh"
 #  include "ED_screen.hh"
 
 #  include "DNA_curve_types.h"
@@ -467,9 +466,7 @@ static PointerRNA rna_Object_shape_key_add(
   KeyBlock *kb = nullptr;
 
   if ((kb = BKE_object_shapekey_insert(bmain, ob, name, from_mix))) {
-    PointerRNA keyptr;
-
-    RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb, &keyptr);
+    PointerRNA keyptr = RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -556,7 +553,7 @@ static void rna_Mesh_assign_verts_to_group(
 /* don't call inside a loop */
 static int mesh_looptri_to_face_index(Mesh *me_eval, const int tri_index)
 {
-  const int *looptri_faces = BKE_mesh_runtime_looptri_faces_ensure(me_eval);
+  const blender::Span<int> looptri_faces = me_eval->looptri_faces();
   const int face_i = looptri_faces[tri_index];
   const int *index_mp_to_orig = static_cast<const int *>(
       CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));

@@ -14,8 +14,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -46,12 +46,12 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "ED_image.h"
-#include "ED_object.h"
-#include "ED_paint.h"
+#include "ED_image.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
@@ -59,8 +59,8 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "IMB_colormanagement.h"
 

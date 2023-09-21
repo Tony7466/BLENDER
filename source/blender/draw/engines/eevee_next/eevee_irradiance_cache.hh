@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -119,6 +119,13 @@ class IrradianceBake {
    */
   float max_virtual_offset_ = 0.1f;
 
+  /** True if world lighting is recorded during irradiance capture. */
+  bool capture_world_ = false;
+  /** True if indirect lighting is recorded during the light propagation. */
+  bool capture_indirect_ = false;
+  /** True if emission is recorded during the light propagation. */
+  bool capture_emission_ = false;
+
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};
 
@@ -156,9 +163,9 @@ class IrradianceBake {
   LightProbeGridCacheFrame *read_result_packed();
 
  private:
-  /** Read surfel data back to CPU into \a cache_frame . */
+  /** Read surfel data back to CPU into \a cache_frame. */
   void read_surfels(LightProbeGridCacheFrame *cache_frame);
-  /** Read virtual offset back to CPU into \a cache_frame . */
+  /** Read virtual offset back to CPU into \a cache_frame. */
   void read_virtual_offset(LightProbeGridCacheFrame *cache_frame);
 };
 
@@ -169,6 +176,10 @@ class IrradianceBake {
 class IrradianceCache {
  public:
   IrradianceBake bake;
+
+  /** True if world irradiance need to be updated. */
+  /* TODO(fclem): move to private once world irradiance extraction is moved to irradiance cache. */
+  bool do_update_world_ = true;
 
  private:
   Instance &inst_;

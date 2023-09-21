@@ -18,7 +18,10 @@
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -45,12 +48,14 @@
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "BIK_api.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -128,12 +133,45 @@ static void armature_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, c
 
   armature_dst->edbo = nullptr;
   armature_dst->act_edbone = nullptr;
+
+  /* Duplicate bone collections & assignments. */
+  BLI_duplicatelist(&armature_dst->collections, &armature_src->collections);
+  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature_dst->collections) {
+    /* ID properties. */
+    if (bcoll->prop) {
+      bcoll->prop = IDP_CopyProperty(bcoll->prop);
+    }
+
+    /* Bone references. */
+    BLI_duplicatelist(&bcoll->bones, &bcoll->bones);
+    LISTBASE_FOREACH (BoneCollectionMember *, member, &bcoll->bones) {
+      member->bone = BKE_armature_find_bone_name(armature_dst, member->bone->name);
+    }
+  }
+
+  ANIM_armature_bonecoll_active_index_set(armature_dst,
+                                          armature_src->runtime.active_collection_index);
+  ANIM_armature_runtime_refresh(armature_dst);
 }
 
 /** Free (or release) any data used by this armature (does not free the armature itself). */
 static void armature_free_data(ID *id)
 {
   bArmature *armature = (bArmature *)id;
+  ANIM_armature_runtime_free(armature);
+
+  /* Free all BoneCollectionMembership objects. */
+  LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, &armature->collections) {
+    /* ID properties. */
+    if (bcoll->prop) {
+      IDP_FreeProperty(bcoll->prop);
+      bcoll->prop = nullptr;
+    }
+
+    /* Bone references. */
+    BLI_freelistN(&bcoll->bones);
+  }
+  BLI_freelistN(&armature->collections);
 
   BKE_armature_bone_hash_free(armature);
   BKE_armature_bonelist_free(&armature->bonebase, false);
@@ -168,6 +206,16 @@ static void armature_foreach_id_editbone(EditBone *edit_bone, LibraryForeachIDDa
                            data));
 }
 
+static void armature_foreach_id_bone_collection(BoneCollection *bcoll, LibraryForeachIDData *data)
+{
+  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
+      data,
+      IDP_foreach_property(bcoll->prop,
+                           IDP_TYPE_FILTER_ID,
+                           BKE_lib_query_idpropertiesForeachIDLink_callback,
+                           data));
+}
+
 static void armature_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   bArmature *arm = (bArmature *)id;
@@ -180,6 +228,11 @@ static void armature_foreach_id(ID *id, LibraryForeachIDData *data)
       BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, armature_foreach_id_editbone(edit_bone, data));
     }
   }
+
+  LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
+    BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data,
+                                            armature_foreach_id_bone_collection(bcoll, data));
+  }
 }
 
 static void write_bone(BlendWriter *writer, Bone *bone)
@@ -187,8 +240,11 @@ static void write_bone(BlendWriter *writer, Bone *bone)
   /* PATCH for upward compatibility after 2.37+ armature recode */
   bone->size[0] = bone->size[1] = bone->size[2] = 1.0f;
 
-  /* Write this bone */
+  /* Write this bone, except for its runtime data. */
+  const Bone_Runtime runtime_backup = bone->runtime;
+  memset(&bone->runtime, 0, sizeof(bone->runtime));
   BLO_write_struct(writer, Bone, bone);
+  bone->runtime = runtime_backup;
 
   /* Write ID Properties -- and copy this comment EXACTLY for easy finding
    * of library blocks that implement this. */
@@ -202,6 +258,20 @@ static void write_bone(BlendWriter *writer, Bone *bone)
   }
 }
 
+static void write_bone_collection(BlendWriter *writer, BoneCollection *bcoll)
+{
+  /* Write this bone collection. */
+  BLO_write_struct(writer, BoneCollection, bcoll);
+
+  /* Write ID Properties -- and copy this comment EXACTLY for easy finding
+   * of library blocks that implement this. */
+  if (bcoll->prop) {
+    IDP_BlendWrite(writer, bcoll->prop);
+  }
+
+  BLO_write_struct_list(writer, BoneCollectionMember, &bcoll->bones);
+}
+
 static void armature_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
   bArmature *arm = (bArmature *)id;
@@ -213,16 +283,20 @@ static void armature_blend_write(BlendWriter *writer, ID *id, const void *id_add
   arm->needs_flush_to_id = 0;
   arm->act_edbone = nullptr;
 
+  const bArmature_Runtime runtime_backup = arm->runtime;
+  memset(&arm->runtime, 0, sizeof(arm->runtime));
+
   BLO_write_id_struct(writer, bArmature, id_address, &arm->id);
   BKE_id_blend_write(writer, &arm->id);
 
-  if (arm->adt) {
-    BKE_animdata_blend_write(writer, arm->adt);
-  }
+  arm->runtime = runtime_backup;
 
   /* Direct data */
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     write_bone(writer, bone);
+  }
+  LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
+    write_bone_collection(writer, bcoll);
   }
 }
 
@@ -242,6 +316,19 @@ static void direct_link_bones(BlendDataReader *reader, Bone *bone)
   LISTBASE_FOREACH (Bone *, child, &bone->childbase) {
     direct_link_bones(reader, child);
   }
+
+  memset(&bone->runtime, 0, sizeof(bone->runtime));
+}
+
+static void direct_link_bone_collection(BlendDataReader *reader, BoneCollection *bcoll)
+{
+  BLO_read_data_address(reader, &bcoll->prop);
+  IDP_BlendDataRead(reader, &bcoll->prop);
+
+  BLO_read_list(reader, &bcoll->bones);
+  LISTBASE_FOREACH (BoneCollectionMember *, member, &bcoll->bones) {
+    BLO_read_data_address(reader, &member->bone);
+  }
 }
 
 static void armature_blend_read_data(BlendDataReader *reader, ID *id)
@@ -253,51 +340,31 @@ static void armature_blend_read_data(BlendDataReader *reader, ID *id)
   /* Must always be cleared (armatures don't have their own edit-data). */
   arm->needs_flush_to_id = 0;
 
-  BLO_read_data_address(reader, &arm->adt);
-  BKE_animdata_blend_read_data(reader, arm->adt);
-
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     direct_link_bones(reader, bone);
+  }
+
+  BLO_read_list(reader, &arm->collections);
+
+  /* Bone collections added via an override can be edited, but ones that already exist in another
+   * blend file (so on the linked Armature) should not be touched. */
+  const bool reset_bcoll_override_flag = ID_IS_LINKED(&arm->id);
+  LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
+    direct_link_bone_collection(reader, bcoll);
+    if (reset_bcoll_override_flag) {
+      /* The linked Armature may have overrides in the library file already, and
+       * those should *not* be editable here. */
+      bcoll->flags &= ~BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL;
+    }
   }
 
   BLO_read_data_address(reader, &arm->act_bone);
   arm->act_edbone = nullptr;
 
   BKE_armature_bone_hash_make(arm);
-}
 
-static void lib_link_bones(BlendLibReader *reader, ID *self_id, Bone *bone)
-{
-  IDP_BlendReadLib(reader, self_id, bone->prop);
-
-  LISTBASE_FOREACH (Bone *, curbone, &bone->childbase) {
-    lib_link_bones(reader, self_id, curbone);
-  }
-}
-
-static void armature_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bArmature *arm = (bArmature *)id;
-  LISTBASE_FOREACH (Bone *, curbone, &arm->bonebase) {
-    lib_link_bones(reader, id, curbone);
-  }
-}
-
-static void expand_bones(BlendExpander *expander, Bone *bone)
-{
-  IDP_BlendReadExpand(expander, bone->prop);
-
-  LISTBASE_FOREACH (Bone *, curBone, &bone->childbase) {
-    expand_bones(expander, curBone);
-  }
-}
-
-static void armature_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bArmature *arm = (bArmature *)id;
-  LISTBASE_FOREACH (Bone *, curBone, &arm->bonebase) {
-    expand_bones(expander, curBone);
-  }
+  memset(&arm->runtime, 0, sizeof(arm->runtime));
+  ANIM_armature_runtime_refresh(arm);
 }
 
 IDTypeInfo IDType_ID_AR = {
@@ -322,8 +389,7 @@ IDTypeInfo IDType_ID_AR = {
 
     /*blend_write*/ armature_blend_write,
     /*blend_read_data*/ armature_blend_read_data,
-    /*blend_read_lib*/ armature_blend_read_lib,
-    /*blend_read_expand*/ armature_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -368,6 +434,7 @@ void BKE_armature_bonelist_free(ListBase *lb, const bool do_id_user)
     if (bone->prop) {
       IDP_FreeProperty_ex(bone->prop, do_id_user);
     }
+    BLI_freelistN(&bone->runtime.collections);
     BKE_armature_bonelist_free(&bone->childbase, do_id_user);
   }
 
@@ -400,6 +467,11 @@ static void copy_bonechildren(Bone *bone_dst,
   if (bone_src->prop) {
     bone_dst->prop = IDP_CopyProperty_ex(bone_src->prop, flag);
   }
+
+  /* Clear the runtime cache of the collection relations, these will be
+   * reconstructed after the entire armature duplication is done. Don't free,
+   * just clear, as these pointers refer to the original and not the copy. */
+  BLI_listbase_clear(&bone_dst->runtime.collections);
 
   /* Copy this bone's list */
   BLI_duplicatelist(&bone_dst->childbase, &bone_src->childbase);
@@ -665,38 +737,7 @@ bool BKE_armature_bone_flag_test_recursive(const Bone *bone, int flag)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Armature Layer Refresh Used
- * \{ */
-
-static void armature_refresh_layer_used_recursive(bArmature *arm, ListBase *bones)
-{
-  LISTBASE_FOREACH (Bone *, bone, bones) {
-    arm->layer_used |= bone->layer;
-    armature_refresh_layer_used_recursive(arm, &bone->childbase);
-  }
-}
-
-void BKE_armature_refresh_layer_used(Depsgraph *depsgraph, bArmature *arm)
-{
-  if (arm->edbo != nullptr) {
-    /* Don't perform this update when the armature is in edit mode. In that case it should be
-     * handled by ED_armature_edit_refresh_layer_used(). */
-    return;
-  }
-
-  arm->layer_used = 0;
-  armature_refresh_layer_used_recursive(arm, &arm->bonebase);
-
-  if (depsgraph == nullptr || DEG_is_active(depsgraph)) {
-    bArmature *arm_orig = (bArmature *)DEG_get_original_id(&arm->id);
-    arm_orig->layer_used = arm->layer_used;
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Armature Layer Refresh Used
+/** \name Bone auto-side name support
  * \{ */
 
 bool bone_autoside_name(

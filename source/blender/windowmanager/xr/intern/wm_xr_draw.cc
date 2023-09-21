@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,9 +15,11 @@
 #include "BKE_context.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "ED_view3d_offscreen.h"
+#include "ED_view3d_offscreen.hh"
 
 #include "GHOST_C-api.h"
 #include "GPU_batch_presets.h"

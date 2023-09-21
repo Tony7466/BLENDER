@@ -18,7 +18,7 @@
 #include "DNA_space_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -31,10 +31,10 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_image.h"
-#include "ED_uvedit.h"
+#include "ED_image.hh"
+#include "ED_uvedit.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

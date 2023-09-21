@@ -6,25 +6,26 @@
  * \ingroup spfile
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_appdir.h"
 
-#include "ED_fileselect.h"
+#include "ED_fileselect.hh"
 
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -42,7 +43,7 @@ struct FSMenu {
 
 static FSMenu *g_fsmenu = nullptr;
 
-FSMenu *ED_fsmenu_get(void)
+FSMenu *ED_fsmenu_get()
 {
   if (!g_fsmenu) {
     g_fsmenu = MEM_cnew<FSMenu>(__func__);
@@ -293,14 +294,7 @@ void fsmenu_insert_entry(FSMenu *fsmenu,
   }
 
   fsm_iter = static_cast<FSMenuEntry *>(MEM_mallocN(sizeof(*fsm_iter), "fsme"));
-  if (has_trailing_slash) {
-    fsm_iter->path = BLI_strdup(path);
-  }
-  else {
-    fsm_iter->path = BLI_strdupn(path, path_len + 1);
-    fsm_iter->path[path_len] = SEP;
-    fsm_iter->path[path_len + 1] = '\0';
-  }
+  fsm_iter->path = has_trailing_slash ? BLI_strdup(path) : BLI_string_joinN(path, SEP_STR);
   fsm_iter->save = (flag & FS_INSERT_SAVE) != 0;
 
   /* If entry is also in another list, use that icon and maybe name. */
@@ -537,7 +531,7 @@ static void fsmenu_free_ex(FSMenu **fsmenu)
   *fsmenu = nullptr;
 }
 
-void fsmenu_free(void)
+void fsmenu_free()
 {
   fsmenu_free_ex(&g_fsmenu);
 }
@@ -594,9 +588,10 @@ int fsmenu_get_active_indices(FSMenu *fsmenu, enum FSMenuCategory category, cons
   return -1;
 }
 
-/* Thanks to some bookmarks sometimes being network drives that can have tens of seconds of delay
- * before being defined as unreachable by the OS, we need to validate the bookmarks in an async
- * job...
+/**
+ * Thanks to some bookmarks sometimes being network drives that can have tens of seconds of delay
+ * before being defined as unreachable by the OS, we need to validate the bookmarks in an
+ * asynchronous job.
  */
 static void fsmenu_bookmark_validate_job_startjob(
     void *fsmenuv,

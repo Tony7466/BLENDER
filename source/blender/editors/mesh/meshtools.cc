@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_virtual_array.hh"
 
 #include "DNA_key_types.h"
@@ -48,9 +49,9 @@
 
 #include "DRW_select_buffer.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_view3d.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,7 +21,7 @@ namespace blender::eevee {
 class Instance;
 
 /* -------------------------------------------------------------------- */
-/** \name Raytracing Buffers
+/** \name Ray-tracing Buffers
  *
  * Contain persistent data used for temporal denoising. Similar to \class GBuffer but only contains
  * persistent data.
@@ -54,7 +54,7 @@ struct RayTraceBuffer {
    * One for each closure type. Not to be mistaken with deferred layer type.
    * For instance the opaque deferred layer will only used the reflection history buffer.
    */
-  DenoiseBuffer reflection, refraction;
+  DenoiseBuffer reflection, refraction, diffuse;
 };
 
 /**
@@ -66,7 +66,7 @@ class RayTraceResult {
  private:
   /** Result is in a temporary texture that needs to be released. */
   TextureFromPool *result_ = nullptr;
-  /** History buffer to swap the tmp texture that does not need to be released. */
+  /** History buffer to swap the temporary texture that does not need to be released. */
   Texture *history_ = nullptr;
 
  public:
@@ -94,7 +94,7 @@ class RayTraceResult {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Raytracing
+/** \name Ray-tracing
  * \{ */
 
 class RayTraceModule {
@@ -103,13 +103,18 @@ class RayTraceModule {
 
   draw::PassSimple tile_classify_ps_ = {"TileClassify"};
   draw::PassSimple tile_compact_ps_ = {"TileCompact"};
+  draw::PassSimple generate_diffuse_ps_ = {"RayGenerate.Diffuse"};
   draw::PassSimple generate_reflect_ps_ = {"RayGenerate.Reflection"};
   draw::PassSimple generate_refract_ps_ = {"RayGenerate.Refraction"};
+  draw::PassSimple trace_diffuse_ps_ = {"Trace.Diffuse"};
   draw::PassSimple trace_reflect_ps_ = {"Trace.Reflection"};
   draw::PassSimple trace_refract_ps_ = {"Trace.Refraction"};
+  draw::PassSimple trace_fallback_ps_ = {"Trace.Fallback"};
+  draw::PassSimple denoise_spatial_diffuse_ps_ = {"DenoiseSpatial.Diffuse"};
   draw::PassSimple denoise_spatial_reflect_ps_ = {"DenoiseSpatial.Reflection"};
   draw::PassSimple denoise_spatial_refract_ps_ = {"DenoiseSpatial.Refraction"};
   draw::PassSimple denoise_temporal_ps_ = {"DenoiseTemporal"};
+  draw::PassSimple denoise_bilateral_diffuse_ps_ = {"DenoiseBilateral.Diffuse"};
   draw::PassSimple denoise_bilateral_reflect_ps_ = {"DenoiseBilateral.Reflection"};
   draw::PassSimple denoise_bilateral_refract_ps_ = {"DenoiseBilateral.Refraction"};
 
@@ -119,14 +124,14 @@ class RayTraceModule {
   int3 tile_compact_dispatch_size_ = int3(1);
   /** 2D tile mask to check which unused adjacent tile we need to clear. */
   TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
-  /** Indirect dispatch rays. Avoid dispatching workgroups that ultimately won't do any tracing. */
+  /** Indirect dispatch rays. Avoid dispatching work-groups that will not trace anything.*/
   DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
   /** Indirect dispatch denoise full-resolution tiles. */
   DispatchIndirectBuf denoise_dispatch_buf_ = {"denoise_dispatch_buf_"};
   /** Tile buffer that contains tile coordinates. */
   RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
   RayTraceTileBuf denoise_tiles_buf_ = {"denoise_tiles_buf_"};
-  /** Texture containing the ray direction and pdf. */
+  /** Texture containing the ray direction and PDF. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit time. */
   TextureFromPool ray_time_tx_ = {"ray_data_tx"};
@@ -146,22 +151,26 @@ class RayTraceModule {
   GPUTexture *radiance_history_tx_ = nullptr;
   GPUTexture *variance_history_tx_ = nullptr;
   GPUTexture *tilemask_history_tx_ = nullptr;
+  /** Radiance input for screen space tracing. */
+  GPUTexture *screen_radiance_tx_ = nullptr;
 
   /** Dummy texture when the tracing is disabled. */
   TextureFromPool dummy_result_tx_ = {"dummy_result_tx"};
-  /** Pointer to inst_.render_buffers.depth_tx.stencil_view() updated before submission. */
+  /** Pointer to `inst_.render_buffers.depth_tx.stencil_view()` updated before submission. */
   GPUTexture *renderbuf_stencil_view_ = nullptr;
-  /** Pointer to inst_.render_buffers.depth_tx updated before submission. */
+  /** Pointer to `inst_.render_buffers.depth_tx` updated before submission. */
   GPUTexture *renderbuf_depth_view_ = nullptr;
 
   /** Copy of the scene options to avoid changing parameters during motion blur. */
   RaytraceEEVEE reflection_options_;
   RaytraceEEVEE refraction_options_;
 
-  RayTraceDataBuf data_;
+  RaytraceEEVEE_Method tracing_method_ = RAYTRACE_EEVEE_METHOD_NONE;
+
+  RayTraceData &data_;
 
  public:
-  RayTraceModule(Instance &inst) : inst_(inst){};
+  RayTraceModule(Instance &inst, RayTraceData &data) : inst_(inst), data_(data){};
 
   void init();
 
@@ -171,18 +180,25 @@ class RayTraceModule {
    * RayTrace the scene and resolve a radiance buffer for the corresponding `closure_bit` into the
    * given `out_radiance_tx`.
    *
-   * Should not be conditionally executed as it manages the RayTraceResult.
+   * IMPORTANT: Should not be conditionally executed as it manages the RayTraceResult.
+   * IMPORTANT: The screen tracing will use the Hierarchical-Z Buffer in its current state.
    *
+   * \arg screen_radiance_tx is the texture used for screen space rays.
+   * \arg screen_radiance_persmat is the view projection matrix used to render screen_radiance_tx.
    * \arg active_closures is a mask of all active closures in a deferred layer.
    * \arg raytrace_closure is type of closure the rays are to be casted for.
    * \arg main_view is the un-jittered view.
    * \arg render_view is the TAA jittered view.
+   * \arg force_no_tracing will run the pipeline without any tracing, relying only on local probes.
    */
   RayTraceResult trace(RayTraceBuffer &rt_buffer,
+                       GPUTexture *screen_radiance_tx,
+                       const float4x4 &screen_radiance_persmat,
                        eClosureBits active_closures,
                        eClosureBits raytrace_closure,
                        View &main_view,
-                       View &render_view);
+                       View &render_view,
+                       bool force_no_tracing = false);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);

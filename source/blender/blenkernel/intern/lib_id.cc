@@ -62,9 +62,9 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -100,8 +100,7 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
 
     /*blend_write*/ nullptr,
     /*blend_read_data*/ nullptr,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -936,7 +935,6 @@ void BKE_lib_id_swap_full(
 bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
 {
   ID *newid = nullptr;
-  PointerRNA idptr;
 
   if (id && (ID_REAL_USERS(id) > 1)) {
     /* If property isn't editable,
@@ -951,7 +949,7 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
         id_us_min(newid);
 
         /* assign copy */
-        RNA_id_pointer_create(newid, &idptr);
+        PointerRNA idptr = RNA_id_pointer_create(newid);
         RNA_property_pointer_set(ptr, prop, idptr, nullptr);
         RNA_property_update(C, ptr, prop);
 
@@ -2225,6 +2223,8 @@ void BKE_id_blend_write(BlendWriter *writer, ID *id)
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_BlendWrite(writer, id->properties);
   }
+
+  BKE_animdata_blend_write(writer, id);
 
   if (id->override_library) {
     BLO_write_struct(writer, IDOverrideLibrary, id->override_library);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 #include "ED_screen.hh"
 #include "PIL_time.h"
 

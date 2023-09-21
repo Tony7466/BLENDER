@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,10 +9,11 @@
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_sort.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -50,6 +51,9 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 #include "MEM_guardedalloc.h"
+
+#include "RE_pipeline.h"
+#include "intern/render_types.h"
 
 #include "lineart_intern.h"
 
@@ -4990,34 +4994,42 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartData *ld;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   int intersections_only = 0; /* Not used right now, but preserve for future. */
-  Object *use_camera;
+  Object *lineart_camera = nullptr;
 
   double t_start;
   if (G.debug_value == 4000) {
     t_start = PIL_check_seconds_timer();
   }
 
+  bool use_render_camera_override = false;
   if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA) {
     if (!lmd->source_camera ||
-        (use_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type != OB_CAMERA)
+        (lineart_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type !=
+            OB_CAMERA)
     {
       return false;
     }
   }
   else {
-
-    BKE_scene_camera_switch_update(scene);
-
-    if (!scene->camera) {
-      return false;
+    Render *render = RE_GetSceneRender(scene);
+    if (render && render->camera_override) {
+      lineart_camera = DEG_get_evaluated_object(depsgraph, render->camera_override);
+      use_render_camera_override = true;
     }
-    use_camera = scene->camera;
+    if (!lineart_camera) {
+      BKE_scene_camera_switch_update(scene);
+      if (!scene->camera) {
+        return false;
+      }
+      lineart_camera = scene->camera;
+    }
   }
 
   LineartCache *lc = lineart_init_cache();
   *cached_result = lc;
 
-  ld = lineart_create_render_buffer(scene, lmd, use_camera, scene->camera, lc);
+  ld = lineart_create_render_buffer(
+      scene, lmd, lineart_camera, use_render_camera_override ? lineart_camera : scene->camera, lc);
 
   /* Triangle thread testing data size varies depending on the thread count.
    * See definition of LineartTriangleThread for details. */
@@ -5041,7 +5053,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
 
   lineart_main_load_geometries(depsgraph,
                                scene,
-                               use_camera,
+                               lineart_camera,
                                ld,
                                lmd->calculation_flags & LRT_ALLOW_DUPLI_OBJECTS,
                                false,

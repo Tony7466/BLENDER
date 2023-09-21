@@ -10,7 +10,8 @@
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
@@ -21,7 +22,7 @@
 
 #include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLT_translation.h"
 
@@ -293,10 +294,7 @@ static void apply_shear(TransInfo *t)
       apply_shear_value(t, t->values_final[0]);
     }
 
-    /* In proportional edit it can happen that */
-    /* vertices in the radius of the brush end */
-    /* outside the clipping area               */
-    /* XXX HACK - dg */
+    /* Not ideal, see #clipUVData code-comment. */
     if (t->flag & T_PROP_EDIT) {
       clipUVData(t);
     }

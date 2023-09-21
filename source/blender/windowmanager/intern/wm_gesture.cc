@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,6 @@
 #include "BLI_bitmap_draw_2d.h"
 #include "BLI_blenlib.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -26,14 +25,14 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "wm.h"
-#include "wm_draw.h"
+#include "wm.hh"
+#include "wm_draw.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent *event, int type)
 {

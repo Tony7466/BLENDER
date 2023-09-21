@@ -9,7 +9,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -28,15 +27,15 @@
 
 #include "WM_api.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "DEG_depsgraph.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 using blender::MutableSpan;
 

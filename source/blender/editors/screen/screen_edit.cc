@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,12 +34,12 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_node.h"
+#include "ED_clip.hh"
+#include "ED_node.hh"
 #include "ED_screen.hh"
-#include "ED_screen_types.h"
+#include "ED_screen_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "WM_message.hh"
 #include "WM_toolsystem.h"
@@ -390,7 +390,7 @@ static bool screen_areas_can_align(bScreen *screen, ScrArea *sa1, ScrArea *sa2, 
       if (area->v3->vec.x - area->v1->vec.x < tolerance &&
           (area->v1->vec.x == xmin || area->v3->vec.x == xmax))
       {
-        /* There is a narrow vertical area sharing an edge of the combined bounds. */
+        WM_report(RPT_ERROR, "A narrow vertical area interferes with this operation");
         return false;
       }
     }
@@ -405,7 +405,7 @@ static bool screen_areas_can_align(bScreen *screen, ScrArea *sa1, ScrArea *sa2, 
       if (area->v3->vec.y - area->v1->vec.y < tolerance &&
           (area->v1->vec.y == ymin || area->v3->vec.y == ymax))
       {
-        /* There is a narrow horizontal area sharing an edge of the combined bounds. */
+        WM_report(RPT_ERROR, "A narrow horizontal area interferes with this operation");
         return false;
       }
     }
@@ -895,7 +895,10 @@ static void screen_cursor_set(wmWindow *win, const int xy[2])
   ScrArea *area = nullptr;
 
   LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
-    if ((az = ED_area_actionzone_find_xy(area_iter, xy))) {
+    az = ED_area_actionzone_find_xy(area_iter, xy);
+    /* Scrollers use default cursor and their zones extend outside of their
+     * areas. Ignore here so we can always detect screen edges - #110085. */
+    if (az && az->type != AZONE_REGION_SCROLL) {
       area = area_iter;
       break;
     }
@@ -976,7 +979,7 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
 
       LISTBASE_FOREACH (ARegion *, region, &area_iter->regionbase) {
         /* Call old area's deactivate if assigned. */
-        if (region == region_prev && area_iter->type->deactivate) {
+        if (region == region_prev && area_iter->type && area_iter->type->deactivate) {
           area_iter->type->deactivate(area_iter);
         }
 
@@ -1674,32 +1677,6 @@ ScrArea *ED_screen_temp_space_open(bContext *C,
   }
 
   return area;
-}
-
-void ED_refresh_viewport_fps(bContext *C)
-{
-  wmTimer *animtimer = CTX_wm_screen(C)->animtimer;
-  Scene *scene = CTX_data_scene(C);
-
-  /* is anim playback running? */
-  if (animtimer && (U.uiflag & USER_SHOW_FPS)) {
-    ScreenFrameRateInfo *fpsi = static_cast<ScreenFrameRateInfo *>(scene->fps_info);
-
-    /* if there isn't any info, init it first */
-    if (fpsi == nullptr) {
-      fpsi = static_cast<ScreenFrameRateInfo *>(
-          scene->fps_info = MEM_callocN(sizeof(ScreenFrameRateInfo),
-                                        "refresh_viewport_fps fps_info"));
-    }
-
-    /* update the values */
-    fpsi->redrawtime = fpsi->lredrawtime;
-    fpsi->lredrawtime = animtimer->ltime;
-  }
-  else {
-    /* playback stopped or shouldn't be running */
-    MEM_SAFE_FREE(scene->fps_info);
-  }
 }
 
 void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)

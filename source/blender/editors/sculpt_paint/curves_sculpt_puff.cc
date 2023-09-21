@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include "BKE_mesh_runtime.hh"
 
 #include "ED_screen.hh"
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -22,6 +22,7 @@
 #include "WM_api.hh"
 
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 

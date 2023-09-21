@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,9 @@
 #include "DNA_shader_fx_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -37,14 +39,14 @@
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "BLI_sys_types.h" /* needed for intptr_t used in ED_mesh.h */
-#include "ED_mesh.h"
+#include "BLI_sys_types.h" /* needed for intptr_t used in ED_mesh.hh */
+#include "ED_mesh.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -312,8 +314,6 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
 #  include "DNA_ID.h"
 #  include "DNA_constraint_types.h"
 #  include "DNA_gpencil_legacy_types.h"
@@ -343,10 +343,10 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
-#  include "ED_curve.h"
-#  include "ED_lattice.h"
-#  include "ED_object.h"
-#  include "ED_particle.h"
+#  include "ED_curve.hh"
+#  include "ED_lattice.hh"
+#  include "ED_object.hh"
+#  include "ED_particle.hh"
 
 static void rna_Object_internal_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -361,7 +361,7 @@ static void rna_Object_internal_update_draw(Main * /*bmain*/, Scene * /*scene*/,
 
 static void rna_Object_matrix_world_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  /* don't use compat so we get predictable rotation */
+  /* Don't use compatibility so we get predictable rotation. */
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   BKE_object_apply_mat4(ob, ob->object_to_world, false, true);
   rna_Object_internal_update(bmain, scene, ptr);
@@ -859,6 +859,13 @@ static void rna_Object_dup_collection_set(PointerRNA *ptr,
         "Cannot set instance-collection as object belongs in collection being instanced, thus "
         "causing a cycle");
   }
+}
+
+static void rna_Object_vertex_groups_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
+{
+  Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  WM_main_add_notifier(NC_GEOM | ND_VERTEX_GROUP, ob->data);
+  rna_Object_internal_update_data_impl(ptr);
 }
 
 static void rna_Object_vertex_groups_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -1485,13 +1492,12 @@ static void rna_Object_material_slots_next(CollectionPropertyIterator *iter)
 
 static PointerRNA rna_Object_material_slots_get(CollectionPropertyIterator *iter)
 {
-  PointerRNA ptr;
   ID *id = static_cast<ID *>(iter->internal.count.ptr);
-  RNA_pointer_create(id,
-                     &RNA_MaterialSlot,
-                     /* Add offset, so that `ptr->data` is not null and unique across IDs. */
-                     (void *)(iter->internal.count.item + uintptr_t(id)),
-                     &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      id,
+      &RNA_MaterialSlot,
+      /* Add offset, so that `ptr->data` is not null and unique across IDs. */
+      (void *)(iter->internal.count.item + uintptr_t(id)));
   return ptr;
 }
 
@@ -1551,14 +1557,13 @@ static PointerRNA rna_Object_active_shape_key_get(PointerRNA *ptr)
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Key *key = BKE_key_from_object(ob);
   KeyBlock *kb;
-  PointerRNA keyptr;
 
   if (key == nullptr) {
     return PointerRNA_NULL;
   }
 
   kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, ob->shapenr - 1));
-  RNA_pointer_create(reinterpret_cast<ID *>(key), &RNA_ShapeKey, kb, &keyptr);
+  PointerRNA keyptr = RNA_pointer_create(reinterpret_cast<ID *>(key), &RNA_ShapeKey, kb);
   return keyptr;
 }
 
@@ -2236,7 +2241,7 @@ static int rna_Object_mesh_symmetry_yz_editable(PointerRNA *ptr, const char ** /
 
   const Mesh *mesh = static_cast<Mesh *>(ob->data);
   if (ob->mode == OB_MODE_WEIGHT_PAINT && mesh->editflag & ME_EDIT_MIRROR_VERTEX_GROUPS) {
-    /* Only X symmetry is available in weightpaint mode. */
+    /* Only X symmetry is available in weight-paint mode. */
     return 0;
   }
 
@@ -2275,10 +2280,8 @@ static char *rna_ObjectLightLinking_path(const PointerRNA * /*ptr*/)
 static PointerRNA rna_LightLinking_receiver_collection_get(PointerRNA *ptr)
 {
   Object *object = reinterpret_cast<Object *>(ptr->owner_id);
-  PointerRNA collection_ptr;
-  RNA_id_pointer_create(
-      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_RECEIVER)),
-      &collection_ptr);
+  PointerRNA collection_ptr = RNA_id_pointer_create(
+      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_RECEIVER)));
   return collection_ptr;
 }
 
@@ -2295,10 +2298,8 @@ static void rna_LightLinking_receiver_collection_set(PointerRNA *ptr,
 static PointerRNA rna_LightLinking_blocker_collection_get(PointerRNA *ptr)
 {
   Object *object = reinterpret_cast<Object *>(ptr->owner_id);
-  PointerRNA collection_ptr;
-  RNA_id_pointer_create(
-      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_BLOCKER)),
-      &collection_ptr);
+  PointerRNA collection_ptr = RNA_id_pointer_create(
+      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_BLOCKER)));
   return collection_ptr;
 }
 
@@ -2543,7 +2544,8 @@ static void rna_def_object_modifiers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active EditBone", "Armatures active edit bone");
   // RNA_def_property_update(prop, 0, "rna_Armature_act_editbone_update");
-  RNA_def_property_pointer_funcs(prop, nullptr, "rna_Armature_act_edit_bone_set", nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, "rna_Armature_act_edit_bone_set", nullptr, nullptr);
 
   /* TODO: redraw. */
   // RNA_def_property_collection_active(prop, prop_act);
@@ -2749,7 +2751,7 @@ static void rna_def_object_vertex_groups(BlenderRNA *brna, PropertyRNA *cprop)
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Vertex Group", "Vertex groups of the object");
-  RNA_def_property_update(prop, NC_GEOM | ND_DATA, "rna_Object_internal_update_data");
+  RNA_def_property_update(prop, NC_GEOM | ND_DATA, "rna_Object_vertex_groups_update");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -2759,7 +2761,7 @@ static void rna_def_object_vertex_groups(BlenderRNA *brna, PropertyRNA *cprop)
                              "rna_Object_active_vertex_group_index_range");
   RNA_def_property_ui_text(
       prop, "Active Vertex Group Index", "Active index in vertex group array");
-  RNA_def_property_update(prop, NC_GEOM | ND_DATA, "rna_Object_internal_update_data");
+  RNA_def_property_update(prop, NC_GEOM | ND_DATA, "rna_Object_vertex_groups_update");
 
   /* vertex groups */ /* add_vertex_group */
   func = RNA_def_function(srna, "new", "rna_Object_vgroup_new");
@@ -3391,8 +3393,16 @@ static void rna_def_object(BlenderRNA *brna)
       prop, "Constraints", "Constraints affecting the transformation of the object");
   RNA_def_property_override_funcs(prop, nullptr, nullptr, "rna_Object_constraints_override_apply");
 #  if 0
-  RNA_def_property_collection_funcs(
-      prop, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "constraints__add", "constraints__remove");
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "constraints__add",
+                                    "constraints__remove");
 #  endif
   rna_def_object_constraints(brna, prop);
 

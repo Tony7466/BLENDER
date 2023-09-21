@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include "BKE_context.h"
 
-#include "ED_gizmo_library.h"
+#include "ED_gizmo_library.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

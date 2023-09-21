@@ -22,9 +22,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_geom.h"
 #include "BLI_memarena.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -78,30 +78,30 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "ED_image.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_paint.h"
+#include "ED_image.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
-#include "ED_view3d_offscreen.h"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
+#include "ED_view3d_offscreen.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_init_exit.h"
 
 #include "NOD_shader.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -3762,7 +3762,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
 
     if (ps->source == PROJ_SRC_IMAGE_VIEW) {
       /* image stores camera data, tricky */
-      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id, false);
+      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id);
       IDProperty *view_data = IDP_GetPropertyFromGroup(idgroup, PROJ_VIEW_DATA_ID);
 
       const float *array = (float *)IDP_Array(view_data);
@@ -6148,7 +6148,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  idgroup = IDP_GetProperties(&image->id, false);
+  idgroup = IDP_GetProperties(&image->id);
 
   if (idgroup) {
     view_data = IDP_GetPropertyTypeFromGroup(idgroup, PROJ_VIEW_DATA_ID, IDP_ARRAY);
@@ -6238,7 +6238,7 @@ void PAINT_OT_project_image(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_enum(ot->srna, "image", DummyRNA_NULL_items, 0, "Image", "");
+  prop = RNA_def_enum(ot->srna, "image", rna_enum_dummy_NULL_items, 0, "Image", "");
   RNA_def_enum_funcs(prop, RNA_image_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -6341,7 +6341,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
     /* now for the trickiness. store the view projection here!
      * re-projection will reuse this */
     IDPropertyTemplate val;
-    IDProperty *idgroup = IDP_GetProperties(&image->id, true);
+    IDProperty *idgroup = IDP_EnsureProperties(&image->id);
     IDProperty *view_data;
     bool is_ortho;
     float *array;
@@ -6832,11 +6832,11 @@ static int texture_paint_add_texture_paint_slot_exec(bContext *C, wmOperator *op
 static void get_default_texture_layer_name_for_object(Object *ob,
                                                       int texture_type,
                                                       char *dst,
-                                                      int dst_length)
+                                                      int dst_maxncpy)
 {
   Material *ma = BKE_object_material_get(ob, ob->actcol);
   const char *base_name = ma ? &ma->id.name[2] : &ob->id.name[2];
-  BLI_snprintf(dst, dst_length, "%s %s", base_name, layer_type_items[texture_type].name);
+  BLI_snprintf(dst, dst_maxncpy, "%s %s", base_name, layer_type_items[texture_type].name);
 }
 
 static int texture_paint_add_texture_paint_slot_invoke(bContext *C,

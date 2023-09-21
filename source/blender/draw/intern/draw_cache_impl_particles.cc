@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,7 @@
 
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
+#include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -30,7 +31,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
-#include "ED_particle.h"
+#include "ED_particle.hh"
 
 #include "GPU_batch.h"
 #include "GPU_capabilities.h"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,6 @@
 #include "BLI_blenlib.h"
 #include "BLI_hash.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_task.h"
@@ -39,14 +38,14 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 #include "ED_screen.hh"
-#include "ED_sculpt.h"
+#include "ED_sculpt.hh"
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 

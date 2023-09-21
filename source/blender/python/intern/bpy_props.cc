@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 
 #include <Python.h>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
@@ -26,9 +26,9 @@
 
 #include "BKE_idprop.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h" /* for defining our own rna */
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh" /* for defining our own rna */
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "MEM_guardedalloc.h"
@@ -37,6 +37,7 @@
 
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 /* Disabled duplicating strings because the array can still be freed and
  * the strings from it referenced, for now we can't support dynamically
@@ -1605,6 +1606,7 @@ static bool bpy_prop_string_visit_fn_call(PyObject *py_func,
         nullptr,
     };
     static _PyArg_Parser _parser = {
+        PY_ARG_PARSER_HEAD_COMPAT()
         "s" /* `text` */
         "s" /* `info` */
         ":search",
@@ -2217,7 +2219,7 @@ static const EnumPropertyItem *bpy_prop_enum_itemf_fn(bContext *C,
   else {
     PyC_Err_PrintWithFunc(py_func);
 
-    eitems = DummyRNA_NULL_items;
+    eitems = rna_enum_dummy_NULL_items;
   }
 
   if (C) {
@@ -2267,10 +2269,8 @@ static void bpy_prop_callback_assign_update(PropertyRNA *prop, PyObject *update_
   if (update_fn && update_fn != Py_None) {
     BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
 
-    RNA_def_property_update_runtime(prop, reinterpret_cast<const void *>(bpy_prop_update_fn));
+    RNA_def_property_update_runtime_with_context_and_property(prop, bpy_prop_update_fn);
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.update_fn, update_fn);
-
-    RNA_def_property_flag(prop, PROP_CONTEXT_PROPERTY_UPDATE);
   }
 }
 
@@ -2749,8 +2749,7 @@ static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
 #if 0
 static int bpy_struct_id_used(StructRNA *srna, char *identifier)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, srna, nullptr, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, srna, nullptr);
   return (RNA_struct_find_property(&ptr, identifier) != nullptr);
 }
 #endif
@@ -2839,6 +2838,7 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -2998,6 +2998,7 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -3188,6 +3189,7 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -3358,6 +3360,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
       "get",      "set",     nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -3555,6 +3558,7 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
       "update",   "get",  "set",         nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -3739,6 +3743,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -3949,6 +3954,7 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "|$" /* Optional, keyword only arguments. */
       "s"  /* `name` */
@@ -4154,6 +4160,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "O"  /* `items` */
       "|$" /* Optional, keyword only arguments. */
@@ -4233,7 +4240,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
     }
 
     is_itemf = true;
-    eitems = DummyRNA_NULL_items;
+    eitems = rna_enum_dummy_NULL_items;
   }
   else {
     if (!(items_fast = PySequence_Fast(
@@ -4382,6 +4389,7 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "O"  /* `type` */
       "|$" /* Optional, keyword only arguments. */
@@ -4524,6 +4532,7 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `attr` */
       "O"  /* `type` */
       "|$" /* Optional, keyword only arguments. */
@@ -4642,6 +4651,7 @@ static PyObject *BPy_RemoveProperty(PyObject *self, PyObject *args, PyObject *kw
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "s" /* `attr` */
       ":RemoveProperty",
       _keywords,

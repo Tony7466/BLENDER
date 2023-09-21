@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,11 +29,12 @@
 #include "BLI_alloca.h"
 #include "BLI_fnmatch.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.h"
+#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -72,24 +73,24 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "ED_fileselect.h"
-#include "ED_info.h"
-#include "ED_object.h"
-#include "ED_render.h"
+#include "ED_fileselect.hh"
+#include "ED_info.hh"
+#include "ED_object.hh"
+#include "ED_render.hh"
 #include "ED_screen.hh"
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 #include "interface_intern.hh"
 
 #include "PIL_time.h"
@@ -347,9 +348,7 @@ static void template_ID_set_property_exec_fn(bContext *C, void *arg_template, vo
 
   /* ID */
   if (item) {
-    PointerRNA idptr;
-
-    RNA_id_pointer_create(static_cast<ID *>(item), &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(static_cast<ID *>(item));
     RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
     RNA_property_update(C, &template_ui->ptr, template_ui->prop);
   }
@@ -366,8 +365,7 @@ static bool id_search_allows_id(TemplateID *template_ui, const int flag, ID *id,
 
   /* Use filter. */
   if (RNA_property_type(template_ui->prop) == PROP_POINTER) {
-    PointerRNA ptr;
-    RNA_id_pointer_create(id, &ptr);
+    PointerRNA ptr = RNA_id_pointer_create(id);
     if (RNA_property_pointer_poll(&template_ui->ptr, template_ui->prop, &ptr) == 0) {
       return false;
     }
@@ -425,26 +423,22 @@ static void id_search_cb(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  StringSearch *search = BLI_string_search_new();
+  blender::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
     if (id_search_allows_id(template_ui, flag, id, str)) {
-      BLI_string_search_add(search, id->name + 2, id, 0);
+      search.add(id->name + 2, id);
     }
   }
 
-  ID **filtered_ids;
-  const int filtered_amount = BLI_string_search_query(search, str, (void ***)&filtered_ids);
+  const blender::Vector<ID *> filtered_ids = search.query(str);
 
-  for (int i = 0; i < filtered_amount; i++) {
-    if (!id_search_add(C, template_ui, items, filtered_ids[i])) {
+  for (ID *id : filtered_ids) {
+    if (!id_search_add(C, template_ui, items, id)) {
       break;
     }
   }
-
-  MEM_freeN(filtered_ids);
-  BLI_string_search_free(search);
 }
 
 /**
@@ -459,29 +453,25 @@ static void id_search_cb_tagged(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  StringSearch *search = BLI_string_search_new();
+  blender::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
     if (id->tag & LIB_TAG_DOIT) {
       if (id_search_allows_id(template_ui, flag, id, str)) {
-        BLI_string_search_add(search, id->name + 2, id, 0);
+        search.add(id->name + 2, id);
       }
       id->tag &= ~LIB_TAG_DOIT;
     }
   }
 
-  ID **filtered_ids;
-  const int filtered_amount = BLI_string_search_query(search, str, (void ***)&filtered_ids);
+  blender::Vector<ID *> filtered_ids = search.query(str);
 
-  for (int i = 0; i < filtered_amount; i++) {
-    if (!id_search_add(C, template_ui, items, filtered_ids[i])) {
+  for (ID *id : filtered_ids) {
+    if (!id_search_add(C, template_ui, items, id)) {
       break;
     }
   }
-
-  MEM_freeN(filtered_ids);
-  BLI_string_search_free(search);
 }
 
 /**
@@ -938,7 +928,7 @@ static void template_id_liboverride_hierarchy_make(bContext *C,
      * Otherwise, owner ID will also have been overridden, and remapped already to use it's
      * override of the data too. */
     if (!ID_IS_LINKED(owner_id)) {
-      RNA_id_pointer_create(id_override, idptr);
+      *idptr = RNA_id_pointer_create(id_override);
     }
   }
   else {
@@ -1319,7 +1309,7 @@ static void template_ID(const bContext *C,
     type = idptr.type;
   }
 
-  if (text) {
+  if (text && text[0]) {
     /* Add label respecting the separated layout property split state. */
     uiItemL_respect_property_split(layout, text, ICON_NONE);
   }
@@ -2031,9 +2021,8 @@ static void template_search_exec_fn(bContext *C, void *arg_template, void *item)
   TemplateSearch *template_search = static_cast<TemplateSearch *>(arg_template);
   uiRNACollectionSearch *coll_search = &template_search->search_data;
   StructRNA *type = RNA_property_pointer_type(&coll_search->target_ptr, coll_search->target_prop);
-  PointerRNA item_ptr;
 
-  RNA_pointer_create(nullptr, type, item, &item_ptr);
+  PointerRNA item_ptr = RNA_pointer_create(nullptr, type, item);
   RNA_property_pointer_set(&coll_search->target_ptr, coll_search->target_prop, item_ptr, nullptr);
   RNA_property_update(C, &coll_search->target_ptr, coll_search->target_prop);
 }
@@ -2318,7 +2307,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 
       /* Create custom data RNA pointer. */
       PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_Modifier, md, md_ptr);
+      *md_ptr = RNA_pointer_create(&ob->id, &RNA_Modifier, md);
 
       UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
     }
@@ -2340,7 +2329,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
       }
 
       PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_Modifier, md, md_ptr);
+      *md_ptr = RNA_pointer_create(&ob->id, &RNA_Modifier, md);
       UI_panel_custom_data_set(panel, md_ptr);
 
       panel = panel->next;
@@ -2484,7 +2473,7 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
 
       /* Create custom data RNA pointer. */
       PointerRNA *con_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_Constraint, con, con_ptr);
+      *con_ptr = RNA_pointer_create(&ob->id, &RNA_Constraint, con);
 
       Panel *new_panel = UI_panel_add_instanced(C, region, &region->panels, panel_idname, con_ptr);
 
@@ -2519,7 +2508,7 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
       }
 
       PointerRNA *con_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_Constraint, con, con_ptr);
+      *con_ptr = RNA_pointer_create(&ob->id, &RNA_Constraint, con);
       UI_panel_custom_data_set(panel, con_ptr);
 
       panel = panel->next;
@@ -2568,7 +2557,7 @@ void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
 
       /* Create custom data RNA pointer. */
       PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, md_ptr);
+      *md_ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
 
       UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
     }
@@ -2591,7 +2580,7 @@ void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
       }
 
       PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, md_ptr);
+      *md_ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
       UI_panel_custom_data_set(panel, md_ptr);
 
       panel = panel->next;
@@ -2635,7 +2624,7 @@ void uiTemplateShaderFx(uiLayout * /*layout*/, bContext *C)
 
       /* Create custom data RNA pointer. */
       PointerRNA *fx_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, fx_ptr);
+      *fx_ptr = RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx);
 
       UI_panel_add_instanced(C, region, &region->panels, panel_idname, fx_ptr);
     }
@@ -2657,7 +2646,7 @@ void uiTemplateShaderFx(uiLayout * /*layout*/, bContext *C)
       }
 
       PointerRNA *fx_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, fx_ptr);
+      *fx_ptr = RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx);
       UI_panel_custom_data_set(panel, fx_ptr);
 
       panel = panel->next;
@@ -2725,7 +2714,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   UI_block_lock_clear(block);
 
   if (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_TITLE) {
-    uiItemL(layout, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+    uiItemL(layout, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
   }
 
   /* menu */
@@ -2766,8 +2755,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
     user_data.flag = layout_flags;
     const bool use_prop_split = (layout_flags & UI_TEMPLATE_OP_PROPS_NO_SPLIT_LAYOUT) == 0;
 
-    PointerRNA ptr;
-    RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
     uiLayoutSetPropSep(layout, use_prop_split);
     uiLayoutSetPropDecorate(layout, false);
@@ -2885,10 +2873,10 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
     user_data.C = C;
     user_data.op = op;
     user_data.flag = layout_flags;
-    PointerRNA ptr;
 
-    RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
+    bool all_booleans = true;
     RNA_STRUCT_BEGIN (&ptr, prop) {
       if (RNA_property_flag(prop) & PROP_HIDDEN) {
         continue;
@@ -2898,10 +2886,14 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
-        return false;
+        all_booleans = false;
+        break;
       }
     }
     RNA_STRUCT_END;
+    if (all_booleans == false) {
+      return false;
+    }
   }
 
   return true;
@@ -2984,10 +2976,9 @@ static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v
   uiLayout *row;
   bConstraint *con = (bConstraint *)con_v;
 
-  PointerRNA ptr;
   Object *ob = ED_object_active_context(C);
 
-  RNA_pointer_create(&ob->id, &RNA_Constraint, con, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_Constraint, con);
   uiLayoutSetContextPointer(layout, "constraint", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
@@ -3050,8 +3041,7 @@ static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *co
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_func_set(block, constraint_active_func, ob, con);
 
-  PointerRNA ptr;
-  RNA_pointer_create(&ob->id, &RNA_Constraint, con, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_Constraint, con);
 
   if (block->panel) {
     UI_panel_context_pointer_set(block->panel, "constraint", &ptr);
@@ -3144,8 +3134,6 @@ void uiTemplatePreview(uiLayout *layout,
   Material *ma = nullptr;
   Tex *tex = (Tex *)id;
   short *pr_texture = nullptr;
-  PointerRNA material_ptr;
-  PointerRNA texture_ptr;
 
   char _preview_id[UI_MAX_NAME_STR];
 
@@ -3257,7 +3245,7 @@ void uiTemplatePreview(uiLayout *layout,
       }
 
       /* Create RNA Pointer */
-      RNA_pointer_create(&ma->id, &RNA_Material, ma, &material_ptr);
+      PointerRNA material_ptr = RNA_pointer_create(&ma->id, &RNA_Material, ma);
 
       col = uiLayoutColumn(row, true);
       uiLayoutSetScaleX(col, 1.5);
@@ -3273,7 +3261,7 @@ void uiTemplatePreview(uiLayout *layout,
 
     if (pr_texture) {
       /* Create RNA Pointer */
-      RNA_pointer_create(id, &RNA_Texture, tex, &texture_ptr);
+      PointerRNA texture_ptr = RNA_pointer_create(id, &RNA_Texture, tex);
 
       uiLayoutRow(layout, true);
       uiDefButS(block,
@@ -3481,8 +3469,7 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
                                      style);
   UI_block_layout_set_current(block, layout);
   {
-    PointerRNA coba_ptr;
-    RNA_pointer_create(nullptr, &RNA_ColorRamp, coba, &coba_ptr);
+    PointerRNA coba_ptr = RNA_pointer_create(nullptr, &RNA_ColorRamp, coba);
     uiLayoutSetContextPointer(layout, "color_ramp", &coba_ptr);
   }
 
@@ -3492,7 +3479,7 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_ARROW_LEFTRIGHT,
                      IFACE_("Flip Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3535,12 +3522,16 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
                      CB_FUNC_DISTRIBUTE_EVENLY,
                      "");
 
+    uiItemS(layout);
+
     uiItemO(layout, IFACE_("Eyedropper"), ICON_EYEDROPPER, "UI_OT_eyedropper_colorramp");
+
+    uiItemS(layout);
 
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_LOOP_BACK,
                      IFACE_("Reset Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3613,8 +3604,7 @@ static void colorband_buttons_layout(uiLayout *layout,
   const float xs = butr->xmin;
   const float ys = butr->ymin;
 
-  PointerRNA ptr;
-  RNA_pointer_create(cb->ptr.owner_id, &RNA_ColorRamp, coba, &ptr);
+  PointerRNA ptr = RNA_pointer_create(cb->ptr.owner_id, &RNA_ColorRamp, coba);
 
   uiLayout *split = uiLayoutSplit(layout, 0.4f, false);
 
@@ -3706,7 +3696,7 @@ static void colorband_buttons_layout(uiLayout *layout,
   if (coba->tot) {
     CBData *cbd = coba->data + coba->cur;
 
-    RNA_pointer_create(cb->ptr.owner_id, &RNA_ColorRampElement, cbd, &ptr);
+    ptr = RNA_pointer_create(cb->ptr.owner_id, &RNA_ColorRampElement, cbd);
 
     if (!expand) {
       split = uiLayoutSplit(layout, 0.3f, false);
@@ -3868,7 +3858,7 @@ static uiBlock *ui_icon_view_menu_cb(bContext *C, ARegion *region, void *arg_lit
   const int h = UI_UNIT_X * (args.icon_scale + args.show_labels);
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS_PULLDOWN);
-  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_NO_FLIP);
+  UI_block_flag_enable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   bool free;
@@ -4749,20 +4739,28 @@ static void curvemap_buttons_layout(uiLayout *layout,
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   if (brush && neg_slope) {
-    bt = uiDefIconBlockBut(
-        block, curvemap_brush_tools_negslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+    bt = uiDefIconBlockBut(block,
+                           curvemap_brush_tools_negslope_func,
+                           cumap,
+                           0,
+                           ICON_NONE,
+                           0,
+                           0,
+                           dx,
+                           dx,
+                           TIP_("Tools"));
   }
   else if (brush) {
     bt = uiDefIconBlockBut(
-        block, curvemap_brush_tools_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_brush_tools_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   else if (neg_slope) {
     bt = uiDefIconBlockBut(
-        block, curvemap_tools_negslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_tools_negslope_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   else {
     bt = uiDefIconBlockBut(
-        block, curvemap_tools_posslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_tools_posslope_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
@@ -5415,8 +5413,16 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   UI_but_funcN_set(bt, CurveProfile_clipping_toggle, MEM_dupallocN(cb), profile);
 
   /* Reset view, reset curve */
-  bt = uiDefIconBlockBut(
-      block, CurveProfile_buttons_tools, profile, 0, 0, 0, 0, UI_UNIT_X, UI_UNIT_X, TIP_("Tools"));
+  bt = uiDefIconBlockBut(block,
+                         CurveProfile_buttons_tools,
+                         profile,
+                         0,
+                         ICON_NONE,
+                         0,
+                         0,
+                         UI_UNIT_X,
+                         UI_UNIT_X,
+                         TIP_("Tools"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), nullptr);
@@ -5481,8 +5487,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
 
     row = uiLayoutRow(layout, true);
 
-    PointerRNA point_ptr;
-    RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, point, &point_ptr);
+    PointerRNA point_ptr = RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, point);
     PropertyRNA *prop_handle_type = RNA_struct_find_property(&point_ptr, "handle_type_1");
     uiItemFullR(row,
                 &point_ptr,
@@ -5914,8 +5919,7 @@ void uiTemplatePalette(uiLayout *layout, PointerRNA *ptr, const char *propname, 
       row_cols = 0;
     }
 
-    PointerRNA color_ptr;
-    RNA_pointer_create(&palette->id, &RNA_PaletteColor, color, &color_ptr);
+    PointerRNA color_ptr = RNA_pointer_create(&palette->id, &RNA_PaletteColor, color);
     uiButColor *color_but = (uiButColor *)uiDefButR(block,
                                                     UI_BTYPE_COLOR,
                                                     0,
@@ -6318,7 +6322,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       uiButProgress *but_progress = (uiButProgress *)uiDefIconTextBut(block,
                                                                       UI_BTYPE_PROGRESS,
                                                                       0,
-                                                                      0,
+                                                                      ICON_NONE,
                                                                       text,
                                                                       UI_UNIT_X,
                                                                       0,
@@ -6402,6 +6406,21 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   uiBlock *block = uiLayoutGetBlock(ui_abs);
   eUIEmbossType previous_emboss = UI_block_emboss_get(block);
 
+  uchar report_icon_color[4];
+  uchar report_text_color[4];
+
+  UI_GetThemeColorType4ubv(
+      UI_icon_colorid_from_report_type(report->type), SPACE_INFO, report_icon_color);
+  UI_GetThemeColorType4ubv(
+      UI_text_colorid_from_report_type(report->type), SPACE_INFO, report_text_color);
+  report_text_color[3] = 255; /* This theme color is RGB only, so have to set alpha here. */
+
+  if (rti->flash_progress <= 1.0) {
+    /* Flash report briefly according to progress through fade-out duration. */
+    const int brighten_amount = int(32 * (1.0f - rti->flash_progress));
+    add_v3_uchar_clamped(report_icon_color, brighten_amount);
+  }
+
   UI_fontstyle_set(&style->widgetlabel);
   int width = BLF_width(style->widgetlabel.uifont_id, report->message, report->len);
   width = min_ii(int(rti->widthfac * width), width);
@@ -6425,7 +6444,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  "");
   /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v4_v4_uchar(but->col, report_icon_color);
 
   /* Background for the rest of the message. */
   but = uiDefBut(block,
@@ -6442,9 +6461,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  0,
                  "");
-
   /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v3_v3_uchar(but->col, report_icon_color);
   but->col[3] = 64;
 
   UI_block_align_end(block);
@@ -6460,9 +6478,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                       0,
                       UI_UNIT_X,
                       UI_UNIT_Y,
-                      TIP_("Click to see the remaining reports in text block: 'Recent Reports'"));
-  UI_GetThemeColorType4ubv(UI_text_colorid_from_report_type(report->type), SPACE_INFO, but->col);
-  but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
+                      TIP_("Click to open the info editor"));
+  copy_v4_v4_uchar(but->col, report_text_color);
 
   /* The report message. */
   but = uiDefButO(block,

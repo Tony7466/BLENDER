@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,8 +20,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -30,7 +30,7 @@
 #include "ED_screen.hh"
 
 /* only for own init/exit calls (wm_gizmotype_init/wm_gizmotype_free) */
-#include "wm.h"
+#include "wm.hh"
 
 /* own includes */
 #include "wm_gizmo_intern.h"

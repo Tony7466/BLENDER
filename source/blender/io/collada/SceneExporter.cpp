@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -141,6 +141,7 @@ void SceneExporter::writeNode(Object *ob)
 
     /* <instance_controller> */
     else if (ob->type == OB_ARMATURE) {
+      arm_exporter->add_bone_collections(ob, colladaNode);
       arm_exporter->add_armature_bones(ob, view_layer, this, child_objects);
     }
 
@@ -198,7 +199,6 @@ void SceneExporter::writeNode(Object *ob)
 
           ListBase targets = {nullptr, nullptr};
           if (BKE_constraint_targets_get(con, &targets)) {
-            bConstraintTarget *ct;
             Object *obtar;
 
             LISTBASE_FOREACH (bConstraintTarget *, ct, &targets) {

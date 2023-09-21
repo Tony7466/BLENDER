@@ -15,7 +15,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
 #include "BKE_action.h"
@@ -34,22 +36,22 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
 #include "ED_screen.hh"
 #include "ED_util.hh"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "armature_intern.h"
 
@@ -469,9 +471,8 @@ static void apply_armature_pose2bones_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   wmWindowManager *wm = CTX_wm_manager(C);
-  PointerRNA ptr;
 
-  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
   uiItemR(layout, &ptr, "selected", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
@@ -794,7 +795,14 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
 
   Object ob_copy = blender::dna::shallow_copy(*ob);
   ob_copy.adt = nullptr;
-  bArmature arm_copy = *((bArmature *)ob->data);
+
+  /* Copy the armature without using the default copy constructor. This prevents
+   * the compiler from complaining that the `layer`, `layer_used`, and
+   * `layer_protected` fields are DNA_DEPRECATED.
+   */
+  bArmature arm_copy;
+  memcpy(&arm_copy, ob->data, sizeof(arm_copy));
+
   arm_copy.adt = nullptr;
   ob_copy.data = &arm_copy;
   BLI_addtail(&temp_bmain->objects, &ob_copy);

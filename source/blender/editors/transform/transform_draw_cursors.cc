@@ -6,19 +6,19 @@
  * \ingroup edtransform
  */
 
-#include "BLI_math.h"
-
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
+
+#include "BLI_math_rotation.h"
 
 #include "BKE_context.h"
 
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "transform.hh"
 #include "transform_draw_cursors.hh" /* Own include. */

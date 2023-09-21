@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 #include "DEG_depsgraph.hh"
 
 #include "ED_curves.hh"
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 #include "MEM_guardedalloc.h"
 

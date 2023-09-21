@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,9 +31,9 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_mball.h"
-#include "ED_object.h"
-#include "ED_undo.h"
+#include "ED_mball.hh"
+#include "ED_object.hh"
+#include "ED_undo.hh"
 #include "ED_util.hh"
 
 #include "WM_api.hh"

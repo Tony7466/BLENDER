@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -54,10 +54,10 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
+
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
@@ -84,6 +84,36 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         col.prop(scene.sequencer_colorspace_settings, "name", text="Sequencer")
 
 
+class RENDER_PT_color_management_display_settings(RenderButtonsPanel, Panel):
+    bl_label = "Display"
+    bl_parent_id = "RENDER_PT_color_management"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        scene = context.scene
+        view = scene.view_settings
+
+        # Only enable display sub-section if HDR support is available.
+        import gpu
+        layout.enabled = gpu.capabilities.hdr_support_get()
+
+        # Only display HDR toggle for non-Filmic display transforms.
+        col = layout.column(align=True)
+        sub = col.row()
+        sub.active = (not view.view_transform.startswith("Filmic") and
+                      not view.view_transform.startswith("AgX"))
+        sub.prop(view, "use_hdr_view")
+
+
 class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
     bl_label = "Use Curves"
     bl_parent_id = "RENDER_PT_color_management"
@@ -92,8 +122,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
 
@@ -453,6 +482,27 @@ class RENDER_PT_eevee_next_volumetric_lighting(RenderButtonsPanel, Panel):
         layout.prop(props, "volumetric_light_clamp", text="Light Clamping")
 
 
+class RENDER_PT_eevee_next_volumetric_shadows(RenderButtonsPanel, Panel):
+    bl_label = "Volumetric Shadows"
+    bl_parent_id = "RENDER_PT_eevee_next_volumetric"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw_header(self, context):
+        scene = context.scene
+        props = scene.eevee
+        self.layout.prop(props, "use_volumetric_shadows", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+
+        layout.active = props.use_volumetric_shadows
+        layout.prop(props, "volumetric_shadow_samples", text="Samples")
+
+
 class RENDER_PT_eevee_subsurface_scattering(RenderButtonsPanel, Panel):
     bl_label = "Subsurface Scattering"
     bl_options = {'DEFAULT_CLOSED'}
@@ -601,7 +651,7 @@ class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
 
     def draw_header(self, context):
         layout = self.layout
-        if context.scene.eevee.ray_split_settings == "UNIFIED":
+        if context.scene.eevee.ray_split_settings == 'UNIFIED':
             layout.label(text="Reflection & Refraction")
         else:
             layout.label(text="Reflection")
@@ -633,7 +683,7 @@ class RENDER_PT_eevee_next_raytracing_refraction(EeveeRaytracingOptionsPanel):
 
     @classmethod
     def poll(cls, context):
-        return (context.scene.eevee.ray_split_settings == "SPLIT")
+        return (context.scene.eevee.ray_split_settings == 'SPLIT')
 
     def draw(self, context):
         self.draw_internal(context, context.scene.eevee.refraction_options)
@@ -808,8 +858,10 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = "ALL"
-        col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = "ALL"
+        col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = 'ALL'
+        col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = 'ALL'
+
+        col.prop(props, "gi_irradiance_pool_size", text="Pool Size")
 
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
@@ -948,7 +1000,7 @@ class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
     bl_label = "Performance"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -973,8 +1025,7 @@ class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -990,7 +1041,7 @@ class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_sampling(RenderButtonsPanel, Panel):
     bl_label = "Sampling"
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -1012,7 +1063,7 @@ class RENDER_PT_opengl_sampling(RenderButtonsPanel, Panel):
 class RENDER_PT_opengl_film(RenderButtonsPanel, Panel):
     bl_label = "Film"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -1025,7 +1076,7 @@ class RENDER_PT_opengl_film(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
     bl_label = "Lighting"
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -1037,7 +1088,7 @@ class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
     bl_label = "Color"
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -1049,7 +1100,7 @@ class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
 
 class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
     bl_label = "Options"
-    COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -1066,8 +1117,7 @@ class RENDER_PT_simplify(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
         rd = context.scene.render
@@ -1084,8 +1134,7 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -1118,8 +1167,7 @@ class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+        'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -1151,7 +1199,7 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSim
         'BLENDER_CLAY',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT',
+        'BLENDER_WORKBENCH',
     }
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -1201,6 +1249,7 @@ classes = (
     RENDER_PT_eevee_volumetric_shadows,
     RENDER_PT_eevee_next_volumetric,
     RENDER_PT_eevee_next_volumetric_lighting,
+    RENDER_PT_eevee_next_volumetric_shadows,
     RENDER_PT_eevee_performance,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
@@ -1221,6 +1270,7 @@ classes = (
     RENDER_PT_opengl_film,
     RENDER_PT_hydra_debug,
     RENDER_PT_color_management,
+    RENDER_PT_color_management_display_settings,
     RENDER_PT_color_management_curves,
     RENDER_PT_simplify,
     RENDER_PT_simplify_viewport,

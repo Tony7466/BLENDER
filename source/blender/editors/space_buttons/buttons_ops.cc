@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,13 +29,13 @@
 #include "WM_types.hh"
 
 #include "ED_screen.hh"
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "buttons_intern.h" /* own include */
 
@@ -106,15 +106,13 @@ static int toggle_pin_exec(bContext *C, wmOperator * /*op*/)
   sbuts->flag ^= SB_PIN_CONTEXT;
 
   /* Create the properties space pointer. */
-  PointerRNA sbuts_ptr;
   bScreen *screen = CTX_wm_screen(C);
-  RNA_pointer_create(&screen->id, &RNA_SpaceProperties, sbuts, &sbuts_ptr);
+  PointerRNA sbuts_ptr = RNA_pointer_create(&screen->id, &RNA_SpaceProperties, sbuts);
 
   /* Create the new ID pointer and set the pin ID with RNA
    * so we can use the property's RNA update functionality. */
   ID *new_id = (sbuts->flag & SB_PIN_CONTEXT) ? buttons_context_id_path(C) : nullptr;
-  PointerRNA new_id_ptr;
-  RNA_id_pointer_create(new_id, &new_id_ptr);
+  PointerRNA new_id_ptr = RNA_id_pointer_create(new_id);
   RNA_pointer_set(&sbuts_ptr, "pin_id", new_id_ptr);
 
   ED_area_tag_redraw(CTX_wm_area(C));

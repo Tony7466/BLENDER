@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,8 @@
 #include "BLI_string_utf8.h"
 #include "BLI_task.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -209,8 +209,8 @@ static std::optional<TextLayout> get_text_layout(GeoNodeExecParams &params)
   cu.pos = len_chars;
   /* The reason for the additional character here is unknown, but reflects other code elsewhere. */
   cu.str = static_cast<char *>(MEM_mallocN(len_bytes + sizeof(char32_t), __func__));
-  cu.strinfo = static_cast<CharInfo *>(MEM_callocN((len_chars + 1) * sizeof(CharInfo), __func__));
   memcpy(cu.str, layout.text.c_str(), len_bytes + 1);
+  cu.strinfo = static_cast<CharInfo *>(MEM_callocN((len_chars + 1) * sizeof(CharInfo), __func__));
 
   CharTrans *chartransdata = nullptr;
   int text_len;
@@ -233,7 +233,8 @@ static std::optional<TextLayout> get_text_layout(GeoNodeExecParams &params)
     layout.positions.append(float2(ct.xof, ct.yof) * layout.final_font_size);
 
     if ((info[i].flag & CU_CHINFO_OVERFLOW) && (cu.overflow == CU_OVERFLOW_TRUNCATE)) {
-      const int offset = BLI_str_utf8_offset_from_index(layout.text.c_str(), i + 1);
+      const int offset = BLI_str_utf8_offset_from_index(
+          layout.text.c_str(), layout.text.size(), i + 1);
       layout.truncated_text = layout.text.substr(offset);
       layout.text = layout.text.substr(0, offset);
       break;
@@ -383,24 +384,23 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve Instances", GeometrySet::from_instances(instances.release()));
 }
 
-}  // namespace blender::nodes::node_geo_string_to_curves_cc
-
-void register_node_type_geo_string_to_curves()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_string_to_curves_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_STRING_TO_CURVES, "String to Curves", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   blender::bke::node_type_size(&ntype, 190, 120, 700);
   node_type_storage(&ntype,
                     "NodeGeometryStringToCurves",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_string_to_curves_cc

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -72,7 +72,9 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
+  intern/bake_geometry_nodes_modifier.cc
   intern/bake_items.cc
+  intern/bake_items_paths.cc
   intern/bake_items_serialize.cc
   intern/bake_items_socket.cc
   intern/blender.cc
@@ -235,6 +237,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
+  intern/node_tree_interface.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
@@ -262,15 +265,14 @@ set(SRC
   intern/pointcloud.cc
   intern/pose_backup.cc
   intern/preferences.cc
+  intern/preview_image.cc
   intern/report.cc
   intern/rigidbody.cc
   intern/scene.cc
   intern/screen.cc
   intern/shader_fx.cc
   intern/shrinkwrap.cc
-  intern/simulation_state.cc
-  intern/simulation_state_serialize.cc
-  intern/softbody.c
+  intern/softbody.cc
   intern/sound.cc
   intern/speaker.cc
   intern/studiolight.cc
@@ -331,7 +333,9 @@ set(SRC
   BKE_attribute.hh
   BKE_attribute_math.hh
   BKE_autoexec.h
+  BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_items.hh
+  BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh
   BKE_blender.h
@@ -350,7 +354,7 @@ set(SRC
   BKE_camera.h
   BKE_ccg.h
   BKE_cdderivedmesh.h
-  BKE_cloth.h
+  BKE_cloth.hh
   BKE_collection.h
   BKE_collision.h
   BKE_colorband.h
@@ -454,6 +458,7 @@ set(SRC
   BKE_node_runtime.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
+  BKE_node_tree_interface.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
   BKE_object.h
@@ -470,6 +475,7 @@ set(SRC
   BKE_pointcloud.h
   BKE_pose_backup.h
   BKE_preferences.h
+  BKE_preview_image.hh
   BKE_report.h
   BKE_rigidbody.h
   BKE_scene.h
@@ -477,8 +483,6 @@ set(SRC
   BKE_sequencer_offscreen.h
   BKE_shader_fx.h
   BKE_shrinkwrap.h
-  BKE_simulation_state.hh
-  BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -532,6 +536,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   bf_asset_system
   bf_blenfont
   PRIVATE bf::blenlib

@@ -11,7 +11,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_crazyspace.h"
@@ -19,7 +20,7 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "DEG_depsgraph_query.hh"
 

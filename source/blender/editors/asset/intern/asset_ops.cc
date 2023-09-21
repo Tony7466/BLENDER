@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
+#include "BKE_asset.h"
 #include "BKE_bpath.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
@@ -22,17 +23,18 @@
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 
-#include "ED_asset.h"
+#include "ED_asset.hh"
 #include "ED_asset_catalog.hh"
 #include "ED_screen.hh"
 #include "ED_util.hh"
 /* XXX needs access to the file list, should all be done via the asset system in future. */
-#include "ED_fileselect.h"
+#include "ED_fileselect.hh"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -285,12 +287,9 @@ void AssetClearHelper::operator()(PointerRNAVec &ids)
 void AssetClearHelper::reportResults(const bContext *C, ReportList &reports) const
 {
   if (!wasSuccessful()) {
-    bool is_valid;
     /* Dedicated error message for when there is an active asset detected, but it's not an ID local
      * to this file. Helps users better understanding what's going on. */
-    if (AssetHandle active_asset = CTX_wm_asset_handle(C, &is_valid);
-        is_valid && !ED_asset_handle_get_representation(&active_asset)->local_id())
-    {
+    if (AssetRepresentationHandle *active_asset = CTX_wm_asset(C); !active_asset->is_local_id()) {
       BKE_report(&reports,
                  RPT_ERROR,
                  "No asset data-blocks from the current file selected (assets must be stored in "
@@ -352,18 +351,17 @@ static bool asset_clear_poll(bContext *C)
   return true;
 }
 
-static char *asset_clear_get_description(bContext * /*C*/,
-                                         wmOperatorType * /*op*/,
-                                         PointerRNA *values)
+static std::string asset_clear_get_description(bContext * /*C*/,
+                                               wmOperatorType * /*op*/,
+                                               PointerRNA *values)
 {
   const bool set_fake_user = RNA_boolean_get(values, "set_fake_user");
   if (!set_fake_user) {
-    return nullptr;
+    return "";
   }
-
-  return BLI_strdup(
-      TIP_("Delete all asset metadata, turning the selected asset data-blocks back into normal "
-           "data-blocks, and set Fake User to ensure the data-blocks will still be saved"));
+  return TIP_(
+      "Delete all asset metadata, turning the selected asset data-blocks back into normal "
+      "data-blocks, and set Fake User to ensure the data-blocks will still be saved");
 }
 
 static void ASSET_OT_clear(wmOperatorType *ot)
@@ -819,7 +817,7 @@ static void ASSET_OT_bundle_install(wmOperatorType *ot)
   ot->invoke = asset_bundle_install_invoke;
   ot->poll = asset_bundle_install_poll;
 
-  ot->prop = RNA_def_property(ot->srna, "asset_library_ref", PROP_ENUM, PROP_NONE);
+  ot->prop = RNA_def_property(ot->srna, "asset_library_reference", PROP_ENUM, PROP_NONE);
   RNA_def_property_flag(ot->prop, PROP_HIDDEN);
   RNA_def_enum_funcs(ot->prop, rna_asset_library_reference_itemf);
 
@@ -842,9 +840,9 @@ static bool could_be_asset_bundle(const Main *bmain)
 
 static const bUserAssetLibrary *selected_asset_library(wmOperator *op)
 {
-  const int enum_value = RNA_enum_get(op->ptr, "asset_library_ref");
+  const int enum_value = RNA_enum_get(op->ptr, "asset_library_reference");
   const AssetLibraryReference lib_ref = ED_asset_library_reference_from_enum_value(enum_value);
-  const bUserAssetLibrary *lib = BKE_preferences_asset_library_find_from_index(
+  const bUserAssetLibrary *lib = BKE_preferences_asset_library_find_index(
       &U, lib_ref.custom_library_index);
   return lib;
 }
@@ -859,7 +857,7 @@ static bool is_contained_in_selected_asset_library(wmOperator *op, const char *f
 }
 
 /**
- * Set the "filepath" RNA property based on selected "asset_library_ref".
+ * Set the "filepath" RNA property based on selected "asset_library_reference".
  * \return true if ok, false if error.
  */
 static bool set_filepath_for_asset_lib(const Main *bmain, wmOperator *op)

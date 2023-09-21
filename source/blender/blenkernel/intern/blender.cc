@@ -93,6 +93,9 @@ void BKE_blender_free()
 
 static char blender_version_string[48] = "";
 
+/* Only includes patch if non-zero. */
+static char blender_version_string_compact[48] = "";
+
 static void blender_version_init()
 {
   const char *version_cycle = "";
@@ -118,6 +121,12 @@ static void blender_version_init()
            BLENDER_VERSION % 100,
            BLENDER_VERSION_PATCH,
            version_cycle);
+
+  SNPRINTF(blender_version_string_compact,
+           "%d.%01d%s",
+           BLENDER_VERSION / 100,
+           BLENDER_VERSION % 100,
+           version_cycle);
 }
 
 const char *BKE_blender_version_string()
@@ -125,8 +134,13 @@ const char *BKE_blender_version_string()
   return blender_version_string;
 }
 
+const char *BKE_blender_version_string_compact()
+{
+  return blender_version_string_compact;
+}
+
 void BKE_blender_version_blendfile_string_from_values(char *str_buff,
-                                                      const size_t str_buff_len,
+                                                      const size_t str_buff_maxncpy,
                                                       const short file_version,
                                                       const short file_subversion)
 {
@@ -134,14 +148,14 @@ void BKE_blender_version_blendfile_string_from_values(char *str_buff,
   const short file_version_minor = file_version % 100;
   if (file_subversion >= 0) {
     BLI_snprintf(str_buff,
-                 str_buff_len,
+                 str_buff_maxncpy,
                  "%d.%d (sub %d)",
                  file_version_major,
                  file_version_minor,
                  file_subversion);
   }
   else {
-    BLI_snprintf(str_buff, str_buff_len, "%d.%d", file_version_major, file_version_minor);
+    BLI_snprintf(str_buff, str_buff_maxncpy, "%d.%d", file_version_major, file_version_minor);
   }
 }
 
@@ -327,6 +341,7 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
   BLI_freelistN(&userdef->autoexec_paths);
   BLI_freelistN(&userdef->script_directories);
   BLI_freelistN(&userdef->asset_libraries);
+  BLI_freelistN(&userdef->extension_repos);
 
   BLI_freelistN(&userdef->uistyles);
   BLI_freelistN(&userdef->uifonts);
@@ -356,7 +371,7 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   } \
   ((void)0)
 
-#define LIST_SWAP(id) \
+#define LISTBASE_SWAP(id) \
   { \
     SWAP(ListBase, userdef_a->id, userdef_b->id); \
   } \
@@ -373,12 +388,12 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   } \
   ((void)0)
 
-  LIST_SWAP(uistyles);
-  LIST_SWAP(uifonts);
-  LIST_SWAP(themes);
-  LIST_SWAP(addons);
-  LIST_SWAP(user_keymaps);
-  LIST_SWAP(user_keyconfig_prefs);
+  LISTBASE_SWAP(uistyles);
+  LISTBASE_SWAP(uifonts);
+  LISTBASE_SWAP(themes);
+  LISTBASE_SWAP(addons);
+  LISTBASE_SWAP(user_keymaps);
+  LISTBASE_SWAP(user_keyconfig_prefs);
 
   DATA_SWAP(font_path_ui);
   DATA_SWAP(font_path_ui_mono);
@@ -394,7 +409,7 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
 
 #undef SWAP_TYPELESS
 #undef DATA_SWAP
-#undef LIST_SWAP
+#undef LISTBASE_SWAP
 #undef FLAG_SWAP
 }
 

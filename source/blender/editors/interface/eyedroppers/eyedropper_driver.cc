@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,16 +23,16 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
 #include "eyedropper_intern.hh"
 #include "interface_intern.hh"

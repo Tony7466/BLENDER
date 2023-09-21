@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,10 +24,10 @@
 #include "BKE_bpath.h"
 #include "BKE_global.h" /* XXX, G_MAIN only */
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "GPU_state.h"
 
@@ -49,6 +49,7 @@
 #include "bpy_utils_units.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
 
 /* external util modules */
@@ -121,6 +122,7 @@ static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *
 
   static const char *_keywords[] = {"absolute", "packed", "local", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional keyword only arguments. */
       "O&" /* `absolute` */
       "O&" /* `packed` */
@@ -184,6 +186,7 @@ static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw
 
   static const char *_keywords[] = {"", "strip_digits", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "s#" /* `name` */
       "|$" /* Optional, keyword only arguments. */
       "O&" /* `strip_digits` */
@@ -221,27 +224,33 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
       {0, nullptr},
   };
   PyC_StringEnum type = {type_items};
-
-  const char *subdir = nullptr;
-
-  const char *path;
+  PyC_UnicodeAsBytesAndSize_Data subdir_data = {nullptr};
 
   static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
-      "s"  /* `path` */
+      "O&" /* `path` */
       ":user_resource",
       _keywords,
       nullptr,
   };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kw,
+                                        &_parser,
+                                        PyC_ParseStringEnum,
+                                        &type,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &subdir_data))
+  {
     return nullptr;
   }
 
   /* same logic as BKE_appdir_folder_id_create(),
    * but best leave it up to the script author to create */
-  path = BKE_appdir_folder_id_user_notest(type.value_found, subdir);
+  const char *path = BKE_appdir_folder_id_user_notest(type.value_found, subdir_data.value);
+  Py_XDECREF(subdir_data.value_coerce);
 
   return PyC_UnicodeFromBytes(path ? path : "");
 }
@@ -254,7 +263,7 @@ PyDoc_STRVAR(bpy_system_resource_doc,
              "   :arg type: string in ['DATAFILES', 'SCRIPTS', 'PYTHON'].\n"
              "   :type type: string\n"
              "   :arg path: Optional subdirectory.\n"
-             "   :type path: string\n");
+             "   :type path: string or bytes\n");
 static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const PyC_StringEnumItems type_items[] = {
@@ -265,24 +274,31 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
   };
   PyC_StringEnum type = {type_items};
 
-  const char *subdir = nullptr;
-
-  const char *path;
+  PyC_UnicodeAsBytesAndSize_Data subdir_data = {nullptr};
 
   static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
-      "s"  /* `path` */
+      "O&" /* `path` */
       ":system_resource",
       _keywords,
       nullptr,
   };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kw,
+                                        &_parser,
+                                        PyC_ParseStringEnum,
+                                        &type,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &subdir_data))
+  {
     return nullptr;
   }
 
-  path = BKE_appdir_folder_id(type.value_found, subdir);
+  const char *path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
+  Py_XDECREF(subdir_data.value_coerce);
 
   return PyC_UnicodeFromBytes(path ? path : "");
 }
@@ -316,6 +332,7 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
 
   static const char *_keywords[] = {"type", "major", "minor", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `major` */
@@ -356,6 +373,7 @@ static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args
   const bool verbose = false;
   static const char *_keywords[] = {"code", "namespace", "verbose", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O!" /* `expression` */
       "|$" /* Optional keyword only arguments. */
       "O!" /* `namespace` */
@@ -527,7 +545,7 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
     const char *id;
     const EnumPropertyItem *items;
   } enum_info[] = {
-#include "RNA_enum_items.h"
+#include "RNA_enum_items.hh"
   };
   PyObject *result = _PyDict_NewPresized(ARRAY_SIZE(enum_info));
   for (int i = 0; i < ARRAY_SIZE(enum_info); i++) {
@@ -536,8 +554,8 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
     const int items_count = RNA_enum_items_count(items);
     PyObject *value = PyTuple_New(items_count);
     for (int item_index = 0; item_index < items_count; item_index++) {
-      PointerRNA ptr;
-      RNA_pointer_create(nullptr, &RNA_EnumPropertyItem, (void *)&items[item_index], &ptr);
+      PointerRNA ptr = RNA_pointer_create(
+          nullptr, &RNA_EnumPropertyItem, (void *)&items[item_index]);
       PyTuple_SET_ITEM(value, item_index, pyrna_struct_CreatePyObject(&ptr));
     }
     PyDict_SetItemString(result, enum_info[i].id, value);
@@ -622,7 +640,6 @@ static PyObject *bpy_import_test(const char *modname)
 
 void BPy_init_modules(bContext *C)
 {
-  PointerRNA ctx_ptr;
   PyObject *mod;
 
   /* Needs to be first since this dir is needed for future modules */
@@ -630,7 +647,7 @@ void BPy_init_modules(bContext *C)
   if (modpath) {
     // printf("bpy: found module path '%s'.\n", modpath);
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
-    PyObject *py_modpath = PyUnicode_FromString(modpath);
+    PyObject *py_modpath = PyC_UnicodeFromBytes(modpath);
     PyList_Insert(sys_path, 0, py_modpath); /* add first */
     Py_DECREF(py_modpath);
   }
@@ -671,7 +688,7 @@ void BPy_init_modules(bContext *C)
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
 
-  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
   bpy_context_module = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ctx_ptr);
   /* odd that this is needed, 1 ref on creation and another for the module
    * but without we get a crash on exit */

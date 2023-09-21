@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2015-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2015-2023 Blender Authors
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -84,7 +84,7 @@ def main():
     else:
         report = render_report.Report("Storm USD", output_dir, idiff)
         report.set_reference_dir("storm_usd_renders")
-        report.set_compare_engine('hydra_storm')
+        report.set_compare_engine('storm_hydra')
 
     report.set_pixelated(True)
 

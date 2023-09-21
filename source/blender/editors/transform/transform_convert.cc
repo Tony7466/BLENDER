@@ -15,7 +15,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -30,13 +31,13 @@
 #include "BKE_nla.h"
 #include "BKE_scene.h"
 
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_particle.h"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_particle.hh"
 #include "ED_screen.hh"
-#include "ED_screen_types.h"
+#include "ED_screen_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "WM_types.hh"
 
@@ -485,6 +486,13 @@ TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *b
 
 void clipUVData(TransInfo *t)
 {
+  /* NOTE(@ideasman42): Often used to clip UV's after proportional editing:
+   * In this case the radius of the proportional region can end outside the clipping area,
+   * while not ideal an elegant solution here would likely be computationally expensive
+   * as it would need to calculate the transform value that would meet the UV bounds.
+   * While it would be technically correct to handle this properly,
+   * there isn't a strong use case for it. */
+
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
     for (int a = 0; a < tc->data_len; a++, td++) {

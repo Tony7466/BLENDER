@@ -22,13 +22,15 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -134,11 +136,10 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
 #  include "BLI_string_utils.h"
 
 #  include "BKE_boids.h"
-#  include "BKE_cloth.h"
+#  include "BKE_cloth.hh"
 #  include "BKE_colortools.h"
 #  include "BKE_context.h"
 #  include "BKE_deform.h"
@@ -966,7 +967,7 @@ static void rna_PartSettings_start_set(PointerRNA *ptr, float value)
   }
 
 #  if 0
-  if (settings->type==PART_REACTOR && value < 1.0)
+  if (settings->type == PART_REACTOR && value < 1.0)
     value = 1.0;
   else
 #  endif
@@ -2223,6 +2224,7 @@ static void rna_def_particle_settings_mtex(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
   /* map to */

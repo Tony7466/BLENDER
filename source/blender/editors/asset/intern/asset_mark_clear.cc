@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,14 +13,14 @@
 #include "BKE_asset.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
+#include "BKE_preview_image.hh"
 
-#include "UI_interface_icons.h"
+#include "UI_interface_icons.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_asset_list.h"

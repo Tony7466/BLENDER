@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -37,15 +36,15 @@
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 
@@ -347,11 +346,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     TimeGpencilModifierData *gpmd = static_cast<TimeGpencilModifierData *>(ptr->data);
     if (gpmd->segment_active_index >= 0 && gpmd->segment_active_index < gpmd->segments_len) {
-      PointerRNA ds_ptr;
-      RNA_pointer_create(ptr->owner_id,
-                         &RNA_TimeGpencilModifierSegment,
-                         &gpmd->segments[gpmd->segment_active_index],
-                         &ds_ptr);
+      PointerRNA ds_ptr = RNA_pointer_create(ptr->owner_id,
+                                             &RNA_TimeGpencilModifierSegment,
+                                             &gpmd->segments[gpmd->segment_active_index]);
 
       sub = uiLayoutColumn(layout, true);
       uiItemR(sub, &ds_ptr, "seg_mode", UI_ITEM_NONE, nullptr, ICON_NONE);

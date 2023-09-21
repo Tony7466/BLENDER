@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,7 @@
 
 #include "BLI_sys_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_utildefines.h"
 
@@ -53,13 +53,13 @@
 #include "GPU_state.h"
 #include "GPU_uniform_buffer.h"
 
-#include "ED_gpencil_legacy.h"
+#include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "IMB_imbuf_types.h"
 

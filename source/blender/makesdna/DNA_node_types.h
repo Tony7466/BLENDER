@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
 #include "DNA_vec_types.h"   /* for #rctf */
 
@@ -33,6 +34,7 @@ namespace blender::bke {
 class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
+struct bNodeTreeInterfaceCache;
 }  // namespace blender::bke
 namespace blender::bke {
 class bNodeTreeZones;
@@ -181,14 +183,12 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
-  /* UI panel of the socket. */
-  struct bNodePanel *panel;
-
   bNodeSocketRuntimeHandle *runtime;
 
 #ifdef __cplusplus
   bool is_hidden() const;
   bool is_available() const;
+  bool is_panel_collapsed() const;
   bool is_visible() const;
   bool is_multi_input() const;
   bool is_input() const;
@@ -306,7 +306,29 @@ typedef enum eNodeSocketFlag {
    * Only used for geometry nodes. Don't show the socket value in the modifier interface.
    */
   SOCK_HIDE_IN_MODIFIER = (1 << 13),
+  /** The panel containing the socket is collapsed. */
+  SOCK_PANEL_COLLAPSED = (1 << 14),
 } eNodeSocketFlag;
+
+typedef enum eNodePanelFlag {
+  /* Panel is collapsed (user setting). */
+  NODE_PANEL_COLLAPSED = (1 << 0),
+  /* The parent panel is collapsed. */
+  NODE_PANEL_PARENT_COLLAPSED = (1 << 1),
+} eNodePanelFlag;
+
+typedef struct bNodePanelState {
+  /* Unique identifier for validating state against panels in node declaration. */
+  int identifier;
+  /* eNodePanelFlag */
+  char flag;
+  char _pad[3];
+
+#ifdef __cplusplus
+  bool is_collapsed() const;
+  bool is_parent_collapsed() const;
+#endif
+} bNodePanelState;
 
 typedef struct bNode {
   struct bNode *next, *prev;
@@ -346,7 +368,7 @@ typedef struct bNode {
 
   char _pad1[2];
 
-  /** Used for some builtin nodes that store properties but don't have a storage struct . */
+  /** Used for some builtin nodes that store properties but don't have a storage struct. */
   int16_t custom1, custom2;
   float custom3, custom4;
 
@@ -385,7 +407,9 @@ typedef struct bNode {
   /** Custom user-defined color. */
   float color[3];
 
-  char _pad2[4];
+  /** Panel states for this node instance. */
+  int num_panel_states;
+  bNodePanelState *panel_states_array;
 
   bNodeRuntimeHandle *runtime;
 
@@ -402,6 +426,11 @@ typedef struct bNode {
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
+
+  /* True if the socket is visible and has a valid location. The icon may not be visible. */
+  bool is_socket_drawn(const bNodeSocket &socket) const;
+  /* True if the socket is drawn and the icon is visible. */
+  bool is_socket_icon_drawn(const bNodeSocket &socket) const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
@@ -425,6 +454,8 @@ typedef struct bNode {
   bNodeSocket &output_by_identifier(blender::StringRef identifier);
   /** If node is frame, will return all children nodes. */
   blender::Span<bNode *> direct_children_in_frame() const;
+  blender::Span<bNodePanelState> panel_states() const;
+  blender::MutableSpan<bNodePanelState> panel_states();
   /** Node tree this node belongs to. */
   const bNodeTree &owner_tree() const;
 #endif
@@ -566,12 +597,6 @@ enum {
   NTREE_CHUNKSIZE_1024 = 1024,
 };
 
-/** Panel in node tree for grouping sockets. */
-typedef struct bNodePanel {
-  /** UI name of the panel (not unique). */
-  char *name;
-} bNodePanel;
-
 typedef struct bNestedNodePath {
   /** ID of the node that is or contains the nested node. */
   int32_t node_id;
@@ -644,7 +669,9 @@ typedef struct bNodeTree {
    * Warning! Don't make links to these sockets, input/output nodes are used for that.
    * These sockets are used only for generating external interfaces.
    */
-  ListBase inputs, outputs;
+  ListBase inputs_legacy DNA_DEPRECATED, outputs_legacy DNA_DEPRECATED;
+
+  bNodeTreeInterface tree_interface;
 
   /**
    * Node preview hash table.
@@ -668,11 +695,6 @@ typedef struct bNodeTree {
 
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
-
-  /* UI panels */
-  struct bNodePanel **panels_array;
-  int panels_num;
-  int active_panel;
 
   bNodeTreeRuntimeHandle *runtime;
 
@@ -746,14 +768,20 @@ typedef struct bNodeTree {
   const bNode *group_output_node() const;
   /** Get all input nodes of the node group. */
   blender::Span<const bNode *> group_input_nodes() const;
-  /** Inputs and outputs of the entire node group. */
-  blender::Span<const bNodeSocket *> interface_inputs() const;
-  blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<const bNodePanel *> panels() const;
-  blender::MutableSpan<bNodePanel *> panels_for_write();
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;
+
+  /**
+   * Update a run-time cache for the node tree interface based on it's current state.
+   * This should be done before accessing interface item spans below.
+   */
+  void ensure_interface_cache() const;
+
+  /* Cached interface item lists. */
+  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs() const;
+  blender::Span<bNodeTreeInterfaceItem *> interface_items() const;
 #endif
 } bNodeTree;
 
@@ -880,6 +908,7 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_MESH = (1 << 3),
   GEO_NODE_ASSET_CURVE = (1 << 4),
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
+  GEO_NODE_ASSET_MODIFIER = (1 << 6),
 } GeometryNodeAssetTraitFlag;
 ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
 
@@ -1012,7 +1041,9 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
+  float sharpness;
+  float eccentricity;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
@@ -1228,7 +1259,8 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
-  char _pad[4];
+  uint8_t normalize;
+  char _pad[3];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -1295,6 +1327,12 @@ typedef struct NodeShaderPrincipled {
   char use_subsurface_auto_radius;
   char _pad[3];
 } NodeShaderPrincipled;
+
+typedef struct NodeShaderHairPrincipled {
+  short model;
+  short parametrization;
+  char _pad[4];
+} NodeShaderHairPrincipled;
 
 /** TEX_output. */
 typedef struct TexNodeOutput {
@@ -1927,7 +1965,13 @@ enum {
   SHD_HAIR_TRANSMISSION = 1,
 };
 
-/* principled hair parametrization */
+/* principled hair models */
+enum {
+  SHD_PRINCIPLED_HAIR_CHIANG = 0,
+  SHD_PRINCIPLED_HAIR_HUANG = 1,
+};
+
+/* principled hair color parametrization */
 enum {
   SHD_PRINCIPLED_HAIR_REFLECTANCE = 0,
   SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
@@ -2140,6 +2184,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_PINGPONG = 37,
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
+  NODE_MATH_FLOORED_MODULO = 40,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {

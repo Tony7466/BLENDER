@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "instancer.h"
 
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
+
+#include "BLI_string.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -144,7 +147,7 @@ void InstancerData::update_instance(DupliObject *dupli)
     else {
       m_inst->data->update();
     }
-    ID_LOG(2, "Mesh %s %d", m_inst->data->id->name, (int)mesh_transforms_.size());
+    ID_LOG(2, "Mesh %s %d", m_inst->data->id->name, int(mesh_transforms_.size()));
     m_inst->indices.push_back(mesh_transforms_.size());
     mesh_transforms_.push_back(gf_matrix_from_transform(dupli->mat));
   }
@@ -154,14 +157,14 @@ void InstancerData::update_instance(DupliObject *dupli)
       nm_inst = &nonmesh_instances_.lookup_or_add_default(p_id);
       nm_inst->data = ObjectData::create(scene_delegate_, object, p_id);
     }
-    ID_LOG(2, "Light %s %d", nm_inst->data->id->name, (int)nm_inst->transforms.size());
+    ID_LOG(2, "Light %s %d", nm_inst->data->id->name, int(nm_inst->transforms.size()));
     nm_inst->transforms.push_back(gf_matrix_from_transform(dupli->mat));
   }
 }
 
 void InstancerData::post_update()
 {
-  /* Remove mesh intances without indices */
+  /* Remove mesh instances without indices. */
   mesh_instances_.remove_if([&](auto item) {
     bool res = item.value.indices.empty();
     if (res) {
@@ -170,13 +173,13 @@ void InstancerData::post_update()
     return res;
   });
 
-  /* Update light intances and remove instances without transforms */
+  /* Update light instances and remove instances without transforms. */
   for (auto &l_inst : nonmesh_instances_.values()) {
     update_nonmesh_instance(l_inst);
   }
   nonmesh_instances_.remove_if([&](auto item) { return item.value.transforms.empty(); });
 
-  /* Insert/remove/update instancer in RenderIndex */
+  /* Insert/remove/update instancer in RenderIndex. */
   pxr::HdRenderIndex &index = scene_delegate_->GetRenderIndex();
   if (mesh_instances_.is_empty()) {
     /* Important: removing instancer when nonmesh_instances_ are empty too */
@@ -201,14 +204,14 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  snprintf(name, sizeof(name), "O_%p", object);
+  SNPRINTF(name, "O_%p", object);
   return prim_id.AppendElementString(name);
 }
 
 pxr::SdfPath InstancerData::nonmesh_prim_id(pxr::SdfPath const &prim_id, int index) const
 {
   char name[16];
-  snprintf(name, sizeof(name), "NM_%08d", index);
+  SNPRINTF(name, "NM_%08d", index);
   return prim_id.AppendElementString(name);
 }
 

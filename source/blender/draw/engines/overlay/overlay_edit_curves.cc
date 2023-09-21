@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "DRW_render.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph_query.hh"
 

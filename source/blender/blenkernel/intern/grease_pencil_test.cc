@@ -1,8 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "testing/testing.h"
+
+#include "BLI_string.h"
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
@@ -53,15 +55,14 @@ TEST(greasepencil, add_empty_drawings)
   EXPECT_EQ(grease_pencil.drawings().size(), 3);
 }
 
-TEST(greasepencil, remove_drawing)
+TEST(greasepencil, remove_drawings)
 {
   GreasePencilIDTestContext ctx;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
   grease_pencil.add_empty_drawings(3);
 
-  GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(
-      grease_pencil.drawings(1));
-  drawing->geometry.wrap().resize(0, 10);
+  GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(grease_pencil.drawing(1));
+  drawing->wrap().strokes_for_write().resize(0, 10);
 
   Layer &layer1 = grease_pencil.root_group().add_layer("Layer1");
   Layer &layer2 = grease_pencil.root_group().add_layer("Layer2");
@@ -71,8 +72,10 @@ TEST(greasepencil, remove_drawing)
   layer1.add_frame(20, 2);
 
   layer2.add_frame(0, 1);
+  drawing->wrap().add_user();
 
-  grease_pencil.remove_drawing(1);
+  grease_pencil.remove_frames(layer1, {10});
+  grease_pencil.remove_frames(layer2, {0});
   EXPECT_EQ(grease_pencil.drawings().size(), 2);
 
   static int expected_frames_size[] = {2, 0};
@@ -130,7 +133,7 @@ TEST(greasepencil, layer_tree_pre_order_iteration)
   Span<const TreeNode *> children = ex.root.nodes();
   for (const int i : children.index_range()) {
     const TreeNode &child = *children[i];
-    EXPECT_STREQ(child.name, ex.names[i].data());
+    EXPECT_STREQ(child.name().data(), ex.names[i].data());
   }
 }
 
@@ -142,7 +145,7 @@ TEST(greasepencil, layer_tree_pre_order_iteration2)
   char name[64];
   for (const int i : layers.index_range()) {
     const Layer &layer = *layers[i];
-    snprintf(name, 64, "%s%d", "Layer", i + 1);
+    SNPRINTF(name, "%s%d", "Layer", i + 1);
     EXPECT_STREQ(layer.name().data(), name);
   }
 }

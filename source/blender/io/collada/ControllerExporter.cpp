@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,9 +23,10 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 
-#include "ED_armature.h"
+#include "ED_armature.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 
 #include "ArmatureExporter.h"
 #include "ControllerExporter.h"
@@ -70,7 +71,6 @@ bool ControllerExporter::add_instance_controller(Object *ob)
   }
 
   /* write root bone URLs */
-  Bone *bone;
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     write_bone_URLs(ins, ob_arm, bone);
   }
@@ -424,7 +424,6 @@ std::string ControllerExporter::add_joints_source(Object *ob_arm,
   std::string source_id = controller_id + JOINTS_SOURCE_ID_SUFFIX;
 
   int totjoint = 0;
-  bDeformGroup *def;
   LISTBASE_FOREACH (bDeformGroup *, def, defbase) {
     if (is_bone_defgroup(ob_arm, def)) {
       totjoint++;

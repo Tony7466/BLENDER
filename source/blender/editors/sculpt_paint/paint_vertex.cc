@@ -13,11 +13,13 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "CLG_log.h"
+
 #include "BLI_array_utils.h"
 #include "BLI_color.hh"
 #include "BLI_color_mix.hh"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -30,7 +32,8 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
@@ -54,11 +57,11 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 /* For IMB_BlendMode only. */
 #include "IMB_imbuf.h"
@@ -74,6 +77,8 @@ using namespace blender;
 using namespace blender::color;
 using namespace blender::ed::sculpt_paint; /* For vwpaint namespace. */
 using blender::ed::sculpt_paint::vwpaint::NormalAnglePrecalc;
+
+static CLG_LogRef LOG = {"ed.sculpt_paint"};
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities
@@ -236,15 +241,9 @@ void init_session_data(const ToolSettings *ts, Object *ob)
   }
 
   Mesh *me = (Mesh *)ob->data;
-  const blender::OffsetIndices faces = me->faces();
-  const Span<int> corner_verts = me->corner_verts();
 
-  if (gmap->vert_to_loop_indices.is_empty()) {
-    gmap->vert_to_loop = blender::bke::mesh::build_vert_to_loop_map(
-        corner_verts, me->totvert, gmap->vert_to_loop_offsets, gmap->vert_to_loop_indices);
-    gmap->vert_to_face = blender::bke::mesh::build_vert_to_face_map(
-        faces, corner_verts, me->totvert, gmap->vert_to_face_offsets, gmap->vert_to_face_indices);
-  }
+  gmap->vert_to_loop = me->vert_to_corner_map();
+  gmap->vert_to_face = me->vert_to_face_map();
 
   /* Create average brush arrays */
   if (ob->mode == OB_MODE_WEIGHT_PAINT) {
@@ -288,10 +287,11 @@ Vector<PBVHNode *> pbvh_gather_generic(Object *ob, VPaint *wp, Sculpt *sd, Brush
     data.radius_squared = ss->cache->radius_squared;
     data.original = true;
 
-    nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+    nodes = blender::bke::pbvh::search_gather(
+        ss->pbvh, [&](PBVHNode &node) { return SCULPT_search_sphere(&node, &data); });
 
     if (use_normal) {
-      SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->cache->sculpt_normal_symm);
+      SCULPT_pbvh_calc_area_normal(brush, ob, nodes, ss->cache->sculpt_normal_symm);
     }
     else {
       zero_v3(ss->cache->sculpt_normal_symm);
@@ -308,7 +308,8 @@ Vector<PBVHNode *> pbvh_gather_generic(Object *ob, VPaint *wp, Sculpt *sd, Brush
     data.original = true;
     data.dist_ray_to_aabb_precalc = &dist_ray_to_aabb_precalc;
 
-    nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_circle_cb, &data);
+    nodes = blender::bke::pbvh::search_gather(
+        ss->pbvh, [&](PBVHNode &node) { return SCULPT_search_circle(&node, &data); });
 
     if (use_normal) {
       copy_v3_v3(ss->cache->sculpt_normal_symm, ss->cache->view_normal);
@@ -433,16 +434,18 @@ bool mode_toggle_poll_test(bContext *C)
 void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   Brush *brush = BKE_paint_brush(paint);
   /* The current brush should match with what we have stored in the cache. */
   BLI_assert(brush == cache->brush);
 
-  /* Try to switch back to the saved/previous brush. */
-  BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-  brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, cache->saved_active_brush_name);
-  if (brush) {
-    BKE_paint_brush_set(paint, brush);
+  /* If saved_active_brush_name is not set, brush was not switched/affected in
+   * smooth_brush_toggle_on(). */
+  Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
+      bmain, ID_BR, cache->saved_active_brush_name);
+  if (saved_active_brush) {
+    Scene *scene = CTX_data_scene(C);
+    BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
+    BKE_paint_brush_set(paint, saved_active_brush);
   }
 }
 /* Initialize the stroke cache invariants from operator properties */
@@ -587,19 +590,26 @@ void last_stroke_update(Scene *scene, const float location[3])
 void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Scene *scene = CTX_data_scene(C);
-  Brush *brush = paint->brush;
-  int cur_brush_size = BKE_brush_size_get(scene, brush);
 
-  STRNCPY(cache->saved_active_brush_name, brush->id.name + 2);
-
-  /* Switch to the blur (smooth) brush. */
-  brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
-  if (brush) {
-    BKE_paint_brush_set(paint, brush);
-    cache->saved_smooth_size = BKE_brush_size_get(scene, brush);
-    BKE_brush_size_set(scene, brush, cur_brush_size);
-    BKE_curvemapping_init(brush->curve);
+  /* Switch to the blur (smooth) brush if possible. */
+  /* Note: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
+   * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
+  Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
+  if (!smooth_brush) {
+    CLOG_WARN(&LOG, "Switching to the blur (smooth) brush not possible, corresponding brush not");
+    cache->saved_active_brush_name[0] = '\0';
+    return;
   }
+
+  Brush *cur_brush = paint->brush;
+  int cur_brush_size = BKE_brush_size_get(scene, cur_brush);
+
+  STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
+
+  BKE_paint_brush_set(paint, smooth_brush);
+  cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
+  BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
+  BKE_curvemapping_init(smooth_brush->curve);
 }
 /** \} */
 }  // namespace blender::ed::sculpt_paint::vwpaint
@@ -2113,7 +2123,8 @@ static void fill_mesh_face_or_corner_attribute(Mesh &mesh,
                                                const eAttrDomain domain,
                                                const MutableSpan<T> data,
                                                const bool use_vert_sel,
-                                               const bool use_face_sel)
+                                               const bool use_face_sel,
+                                               const bool affect_alpha)
 {
   const VArray<bool> select_vert = *mesh.attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
@@ -2132,11 +2143,12 @@ static void fill_mesh_face_or_corner_attribute(Mesh &mesh,
       if (use_vert_sel && !select_vert[vert]) {
         continue;
       }
-      if (domain == ATTR_DOMAIN_CORNER) {
-        data[corner] = value;
-      }
-      else {
-        data[vert] = value;
+      const int data_index = domain == ATTR_DOMAIN_CORNER ? corner : vert;
+      data[data_index].r = value.r;
+      data[data_index].g = value.g;
+      data[data_index].b = value.b;
+      if (affect_alpha) {
+        data[data_index].a = value.a;
       }
     }
   }
@@ -2148,7 +2160,8 @@ static void fill_mesh_color(Mesh &mesh,
                             const ColorPaint4f &color,
                             const StringRef attribute_name,
                             const bool use_vert_sel,
-                            const bool use_face_sel)
+                            const bool use_face_sel,
+                            const bool affect_alpha)
 {
   if (mesh.edit_mesh) {
     BMesh *bm = mesh.edit_mesh->bm;
@@ -2174,7 +2187,8 @@ static void fill_mesh_color(Mesh &mesh,
           attribute.domain,
           attribute.span.typed<ColorGeometry4f>().cast<ColorPaint4f>(),
           use_vert_sel,
-          use_face_sel);
+          use_face_sel,
+          affect_alpha);
     }
     else if (attribute.span.type().is<ColorGeometry4b>()) {
       fill_mesh_face_or_corner_attribute<ColorPaint4b>(
@@ -2183,7 +2197,8 @@ static void fill_mesh_color(Mesh &mesh,
           attribute.domain,
           attribute.span.typed<ColorGeometry4b>().cast<ColorPaint4b>(),
           use_vert_sel,
-          use_face_sel);
+          use_face_sel,
+          affect_alpha);
     }
     attribute.finish();
   }
@@ -2194,7 +2209,8 @@ static void fill_mesh_color(Mesh &mesh,
  */
 static bool paint_object_attributes_active_color_fill_ex(Object *ob,
                                                          ColorPaint4f fill_color,
-                                                         bool only_selected = true)
+                                                         bool only_selected = true,
+                                                         bool affect_alpha = true)
 {
   Mesh *me = BKE_mesh_from_object(ob);
   if (!me) {
@@ -2203,7 +2219,8 @@ static bool paint_object_attributes_active_color_fill_ex(Object *ob,
 
   const bool use_face_sel = only_selected ? (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0 : false;
   const bool use_vert_sel = only_selected ? (me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0 : false;
-  fill_mesh_color(*me, fill_color, me->active_color_attribute, use_vert_sel, use_face_sel);
+  fill_mesh_color(
+      *me, fill_color, me->active_color_attribute, use_vert_sel, use_face_sel, affect_alpha);
 
   DEG_id_tag_update(&me->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -2220,18 +2237,37 @@ bool BKE_object_attributes_active_color_fill(Object *ob,
   return paint_object_attributes_active_color_fill_ex(ob, ColorPaint4f(fill_color), only_selected);
 }
 
-static int vertex_color_set_exec(bContext *C, wmOperator * /*op*/)
+static int vertex_color_set_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   Object *obact = CTX_data_active_object(C);
 
-  ColorPaint4f paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
-
-  if (paint_object_attributes_active_color_fill_ex(obact, paintcol)) {
-    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
-    return OPERATOR_FINISHED;
+  if (!BKE_mesh_from_object(obact)) {
+    return OPERATOR_CANCELLED;
   }
-  return OPERATOR_CANCELLED;
+
+  ColorPaint4f paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
+  const bool affect_alpha = RNA_boolean_get(op->ptr, "use_alpha");
+
+  /* Ensure valid sculpt state. */
+  BKE_sculpt_update_object_for_edit(
+      CTX_data_ensure_evaluated_depsgraph(C), obact, true, false, true);
+
+  SCULPT_undo_push_begin(obact, op);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(obact->sculpt->pbvh, {});
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(obact, node, SCULPT_UNDO_COLOR);
+  }
+
+  paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha);
+
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_color(node);
+  }
+  SCULPT_undo_push_end(obact);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
+  return OPERATOR_FINISHED;
 }
 
 void PAINT_OT_vertex_color_set(wmOperatorType *ot)
@@ -2247,6 +2283,12 @@ void PAINT_OT_vertex_color_set(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(ot->srna,
+                  "use_alpha",
+                  true,
+                  "Affect Alpha",
+                  "Set color completely opaque instead of reusing existing alpha");
 }
 
 /** \} */

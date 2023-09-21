@@ -35,7 +35,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -92,33 +93,35 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_curve.h"
+#include "ED_armature.hh"
+#include "ED_curve.hh"
 #include "ED_curves.hh"
-#include "ED_gpencil_legacy.h"
-#include "ED_grease_pencil.h"
-#include "ED_mball.h"
-#include "ED_mesh.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_physics.h"
-#include "ED_render.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
+#include "ED_mball.hh"
+#include "ED_mesh.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_physics.hh"
+#include "ED_render.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "ANIM_bone_collections.h"
+
+#include "UI_resources.hh"
 
 #include "object_intern.h"
 
@@ -416,7 +419,7 @@ void ED_object_add_generic_props(wmOperatorType *ot, bool do_editmode)
   /* NOTE: this property gets hidden for add-camera operator. */
   prop = RNA_def_enum(
       ot->srna, "align", align_options, ALIGN_WORLD, "Align", "The alignment of the new object");
-  RNA_def_property_update_runtime(prop, (void *)view_align_update);
+  RNA_def_property_update_runtime(prop, view_align_update);
 
   prop = RNA_def_float_vector_xyz(ot->srna,
                                   "location",
@@ -1142,6 +1145,11 @@ static int object_armature_add_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "Cannot create editmode armature");
     return OPERATOR_CANCELLED;
   }
+
+  /* Give the Armature its default bone collection. */
+  bArmature *armature = static_cast<bArmature *>(obedit->data);
+  BoneCollection *default_bonecoll = ANIM_armature_bonecoll_new(armature, "");
+  ANIM_armature_bonecoll_active_set(armature, default_bonecoll);
 
   dia = RNA_float_get(op->ptr, "radius");
   ED_armature_ebone_add_primitive(obedit, dia, view_aligned);
@@ -1902,7 +1910,7 @@ void OBJECT_OT_collection_instance_add(wmOperatorType *ot)
   /* properties */
   RNA_def_string(
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Collection name to add");
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -2019,7 +2027,7 @@ void OBJECT_OT_collection_external_asset_drop(wmOperatorType *ot)
 
   object_add_drop_xy_props(ot);
 
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop,
                         (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE));
@@ -4029,7 +4037,7 @@ void OBJECT_OT_duplicate(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(
-      ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+      ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -4292,7 +4300,7 @@ static bool object_join_poll(bContext *C)
   }
 
   if (ELEM(ob->type, OB_MESH, OB_CURVES_LEGACY, OB_SURF, OB_ARMATURE, OB_GPENCIL_LEGACY)) {
-    return ED_operator_screenactive(C);
+    return true;
   }
   return false;
 }

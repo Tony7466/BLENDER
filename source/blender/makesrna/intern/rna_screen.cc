@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,8 +9,8 @@
 #include <cstddef>
 #include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -18,7 +18,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_workspace_types.h"
 
-#include "ED_info.h"
+#include "ED_info.hh"
 
 const EnumPropertyItem rna_enum_region_type_items[] = {
     {RGN_TYPE_WINDOW, "WINDOW", 0, "Window", ""},
@@ -47,7 +47,7 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_global.h"
 #  include "BKE_screen.h"
@@ -55,7 +55,7 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
-#  include "UI_view2d.h"
+#  include "UI_view2d.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -282,8 +282,7 @@ static PointerRNA rna_Region_data_get(PointerRNA *ptr)
       /* We could make this static, it won't change at run-time. */
       SpaceType *st = BKE_spacetype_from_id(SPACE_VIEW3D);
       if (region->type == BKE_regiontype_from_id(st, region->regiontype)) {
-        PointerRNA newptr;
-        RNA_pointer_create(&screen->id, &RNA_RegionView3D, region->regiondata, &newptr);
+        PointerRNA newptr = RNA_pointer_create(&screen->id, &RNA_RegionView3D, region->regiondata);
         return newptr;
       }
     }
@@ -390,7 +389,7 @@ static void rna_def_area(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Area_type_update");
 
   prop = RNA_def_property(srna, "ui_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, DummyRNA_NULL_items); /* in fact dummy */
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items); /* in fact dummy */
   RNA_def_property_enum_default(prop, SPACE_VIEW3D << 16);
   RNA_def_property_enum_funcs(
       prop, "rna_Area_ui_type_get", "rna_Area_ui_type_set", "rna_Area_ui_type_itemf");

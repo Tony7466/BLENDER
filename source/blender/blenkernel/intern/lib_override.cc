@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <map>
 #include <queue>
 
@@ -56,10 +57,10 @@
 
 #include "PIL_time.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "atomic_ops.h"
 
@@ -1773,16 +1774,20 @@ void BKE_lib_override_library_main_hierarchy_root_ensure(Main *bmain)
     int best_level = 0;
     ID *id_root = lib_override_root_find(bmain, id, best_level, &best_level);
 
-    if (!ELEM(id_root->override_library->hierarchy_root, id_root, nullptr)) {
-      /* FIXME This is probably never actually reached with current code? Check above for non-null
-       * hierarchy root pointer either skip the rest of the loop, or reset it to nullptr. */
+    if (!ELEM(id->override_library->hierarchy_root, id_root, nullptr)) {
+      /* In case the detected hierarchy root does not match with the currently defined one, this is
+       * likely an issue and is worth a warning. */
       CLOG_WARN(&LOG,
                 "Potential inconsistency in library override hierarchy of ID '%s' (current root "
                 "%s), detected as part of the hierarchy of '%s' (current root '%s')",
                 id->name,
-                id->override_library->hierarchy_root->name,
+                id->override_library->hierarchy_root != nullptr ?
+                    id->override_library->hierarchy_root->name :
+                    "<NONE>",
                 id_root->name,
-                id_root->override_library->hierarchy_root->name);
+                id_root->override_library->hierarchy_root != nullptr ?
+                    id_root->override_library->hierarchy_root->name :
+                    "<NONE>");
       processed_ids.add(id);
       continue;
     }
@@ -2289,9 +2294,8 @@ static bool lib_override_library_resync(Main *bmain,
       /* Apply rules on new override ID using old one as 'source' data. */
       /* Note that since we already remapped ID pointers in old override IDs to new ones, we
        * can also apply ID pointer override rules safely here. */
-      PointerRNA rnaptr_src, rnaptr_dst;
-      RNA_id_pointer_create(id_override_old, &rnaptr_src);
-      RNA_id_pointer_create(id_override_new, &rnaptr_dst);
+      PointerRNA rnaptr_src = RNA_id_pointer_create(id_override_old);
+      PointerRNA rnaptr_dst = RNA_id_pointer_create(id_override_new);
 
       /* In case the parent of the liboverride object matches hierarchy-wise the parent of its
        * linked reference, also enforce clearing any override of the other related parenting
@@ -3752,15 +3756,73 @@ void BKE_lib_override_library_property_delete(IDOverrideLibrary *liboverride,
   lib_override_library_property_delete(liboverride, liboverride_property, true);
 }
 
+static IDOverrideLibraryPropertyOperation *liboverride_opop_find_name_lib_iterative(
+    ListBase *liboverride_operations,
+    const char *subitem_main_name,
+    const char *subitem_other_name,
+    const std::optional<const ID *> &subitem_main_id,
+    const std::optional<const ID *> &subitem_other_id,
+    const size_t offesetof_opop_main_name,
+    const size_t offesetof_opop_other_name,
+    const size_t offesetof_opop_main_id,
+    const size_t offesetof_opop_other_id)
+{
+  const bool do_ids(subitem_main_id);
+  IDOverrideLibraryPropertyOperation *opop;
+  for (opop = static_cast<IDOverrideLibraryPropertyOperation *>(BLI_findstring_ptr(
+           liboverride_operations, subitem_main_name, int(offesetof_opop_main_name)));
+       opop;
+       opop = static_cast<IDOverrideLibraryPropertyOperation *>(BLI_listbase_findafter_string_ptr(
+           reinterpret_cast<Link *>(opop), subitem_main_name, int(offesetof_opop_main_name))))
+  {
+    const char *opop_other_name = *reinterpret_cast<const char **>(reinterpret_cast<char *>(opop) +
+                                                                   offesetof_opop_other_name);
+    const bool opop_use_id = (opop->flag & LIBOVERRIDE_OP_FLAG_IDPOINTER_ITEM_USE_ID) != 0;
+
+    if (do_ids && opop_use_id) {
+      /* Skip if ID pointers are expected valid and they do not exactly match. */
+      const ID *opop_main_id = *reinterpret_cast<const ID **>(reinterpret_cast<char *>(opop) +
+                                                              offesetof_opop_main_id);
+      if (*subitem_main_id != opop_main_id) {
+        continue;
+      }
+      const ID *opop_other_id = *reinterpret_cast<const ID **>(reinterpret_cast<char *>(opop) +
+                                                               offesetof_opop_other_id);
+      if (*subitem_other_id != opop_other_id) {
+        continue;
+      }
+    }
+
+    /* Only check other name if ID handling is matching between given search parameters and
+     * current liboverride operation (i.e. if both have valid ID pointers, or both have none). */
+    if ((do_ids && opop_use_id) || (!do_ids && !opop_use_id)) {
+      if (!subitem_other_name && !opop_other_name) {
+        return opop;
+      }
+      if (subitem_other_name && opop_other_name && STREQ(subitem_other_name, opop_other_name)) {
+        return opop;
+      }
+    }
+
+    /* No exact match found, keep checking the rest of the list of operations. */
+  }
+
+  return nullptr;
+}
+
 IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_find(
     IDOverrideLibraryProperty *liboverride_property,
     const char *subitem_refname,
     const char *subitem_locname,
+    const std::optional<const ID *> &subitem_refid,
+    const std::optional<const ID *> &subitem_locid,
     const int subitem_refindex,
     const int subitem_locindex,
     const bool strict,
     bool *r_strict)
 {
+  BLI_assert(!subitem_refid == !subitem_locid);
+
   IDOverrideLibraryPropertyOperation *opop;
   const int subitem_defindex = -1;
 
@@ -3769,41 +3831,37 @@ IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_
   }
 
   if (subitem_locname != nullptr) {
-    opop = static_cast<IDOverrideLibraryPropertyOperation *>(
-        BLI_findstring_ptr(&liboverride_property->operations,
-                           subitem_locname,
-                           offsetof(IDOverrideLibraryPropertyOperation, subitem_local_name)));
+    opop = liboverride_opop_find_name_lib_iterative(
+        &liboverride_property->operations,
+        subitem_locname,
+        subitem_refname,
+        subitem_locid,
+        subitem_refid,
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_local_name),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_reference_name),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_local_id),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_reference_id));
 
-    if (opop == nullptr) {
-      return nullptr;
+    if (opop != nullptr) {
+      return opop;
     }
-
-    if (subitem_refname == nullptr || opop->subitem_reference_name == nullptr) {
-      return subitem_refname == opop->subitem_reference_name ? opop : nullptr;
-    }
-    return (subitem_refname != nullptr && opop->subitem_reference_name != nullptr &&
-            STREQ(subitem_refname, opop->subitem_reference_name)) ?
-               opop :
-               nullptr;
   }
 
   if (subitem_refname != nullptr) {
-    opop = static_cast<IDOverrideLibraryPropertyOperation *>(
-        BLI_findstring_ptr(&liboverride_property->operations,
-                           subitem_refname,
-                           offsetof(IDOverrideLibraryPropertyOperation, subitem_reference_name)));
+    opop = liboverride_opop_find_name_lib_iterative(
+        &liboverride_property->operations,
+        subitem_refname,
+        subitem_locname,
+        subitem_refid,
+        subitem_locid,
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_reference_name),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_local_name),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_reference_id),
+        offsetof(IDOverrideLibraryPropertyOperation, subitem_local_id));
 
-    if (opop == nullptr) {
-      return nullptr;
+    if (opop != nullptr) {
+      return opop;
     }
-
-    if (subitem_locname == nullptr || opop->subitem_local_name == nullptr) {
-      return subitem_locname == opop->subitem_local_name ? opop : nullptr;
-    }
-    return (subitem_locname != nullptr && opop->subitem_local_name != nullptr &&
-            STREQ(subitem_locname, opop->subitem_local_name)) ?
-               opop :
-               nullptr;
   }
 
   if ((opop = static_cast<IDOverrideLibraryPropertyOperation *>(BLI_listbase_bytes_find(
@@ -3847,16 +3905,22 @@ IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_
     const short operation,
     const char *subitem_refname,
     const char *subitem_locname,
+    const std::optional<ID *> &subitem_refid,
+    const std::optional<ID *> &subitem_locid,
     const int subitem_refindex,
     const int subitem_locindex,
     const bool strict,
     bool *r_strict,
     bool *r_created)
 {
+  BLI_assert(!subitem_refid == !subitem_locid);
+
   IDOverrideLibraryPropertyOperation *opop = BKE_lib_override_library_property_operation_find(
       liboverride_property,
       subitem_refname,
       subitem_locname,
+      subitem_refid,
+      subitem_locid,
       subitem_refindex,
       subitem_locindex,
       strict,
@@ -3873,6 +3937,12 @@ IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_
     }
     opop->subitem_local_index = subitem_locindex;
     opop->subitem_reference_index = subitem_refindex;
+
+    if (subitem_refid) {
+      opop->subitem_reference_id = *subitem_refid;
+      opop->subitem_local_id = *subitem_locid;
+      opop->flag |= LIBOVERRIDE_OP_FLAG_IDPOINTER_ITEM_USE_ID;
+    }
 
     BLI_addtail(&liboverride_property->operations, opop);
 
@@ -4028,9 +4098,8 @@ bool BKE_lib_override_library_status_check_local(Main *bmain, ID *local)
 
   /* Note that reference is assumed always valid, caller has to ensure that itself. */
 
-  PointerRNA rnaptr_local, rnaptr_reference;
-  RNA_id_pointer_create(local, &rnaptr_local);
-  RNA_id_pointer_create(reference, &rnaptr_reference);
+  PointerRNA rnaptr_local = RNA_id_pointer_create(local);
+  PointerRNA rnaptr_reference = RNA_id_pointer_create(reference);
 
   if (!RNA_struct_override_matches(
           bmain,
@@ -4087,9 +4156,8 @@ bool BKE_lib_override_library_status_check_reference(Main *bmain, ID *local)
     }
   }
 
-  PointerRNA rnaptr_local, rnaptr_reference;
-  RNA_id_pointer_create(local, &rnaptr_local);
-  RNA_id_pointer_create(reference, &rnaptr_reference);
+  PointerRNA rnaptr_local = RNA_id_pointer_create(local);
+  PointerRNA rnaptr_reference = RNA_id_pointer_create(reference);
 
   if (!RNA_struct_override_matches(bmain,
                                    &rnaptr_local,
@@ -4138,9 +4206,8 @@ static void lib_override_library_operations_create(Main *bmain,
       }
     }
 
-    PointerRNA rnaptr_local, rnaptr_reference;
-    RNA_id_pointer_create(local, &rnaptr_local);
-    RNA_id_pointer_create(local->override_library->reference, &rnaptr_reference);
+    PointerRNA rnaptr_local = RNA_id_pointer_create(local);
+    PointerRNA rnaptr_reference = RNA_id_pointer_create(local->override_library->reference);
 
     eRNAOverrideMatchResult local_report_flags = RNA_OVERRIDE_MATCH_RESULT_INIT;
     RNA_struct_override_matches(bmain,
@@ -4190,9 +4257,8 @@ void BKE_lib_override_library_operations_restore(Main *bmain, ID *local, int *r_
     return;
   }
 
-  PointerRNA rnaptr_src, rnaptr_dst;
-  RNA_id_pointer_create(local, &rnaptr_dst);
-  RNA_id_pointer_create(local->override_library->reference, &rnaptr_src);
+  PointerRNA rnaptr_src = RNA_id_pointer_create(local);
+  PointerRNA rnaptr_dst = RNA_id_pointer_create(local->override_library->reference);
   RNA_struct_override_apply(
       bmain,
       &rnaptr_dst,
@@ -4374,14 +4440,12 @@ static bool lib_override_library_id_reset_do(Main *bmain,
     bool do_op_delete = true;
     const bool is_collection = op->rna_prop_type == PROP_COLLECTION;
     if (is_collection || op->rna_prop_type == PROP_POINTER) {
-      PointerRNA ptr_root, ptr_root_lib, ptr, ptr_lib;
+      PointerRNA ptr, ptr_lib;
       PropertyRNA *prop, *prop_lib;
 
-      RNA_pointer_create(id_root, &RNA_ID, id_root, &ptr_root);
-      RNA_pointer_create(id_root->override_library->reference,
-                         &RNA_ID,
-                         id_root->override_library->reference,
-                         &ptr_root_lib);
+      PointerRNA ptr_root = RNA_pointer_create(id_root, &RNA_ID, id_root);
+      PointerRNA ptr_root_lib = RNA_pointer_create(
+          id_root->override_library->reference, &RNA_ID, id_root->override_library->reference);
 
       bool prop_exists = RNA_path_resolve_property(&ptr_root, op->rna_path, &ptr, &prop);
       if (prop_exists) {
@@ -4571,6 +4635,9 @@ void BKE_lib_override_library_id_unused_cleanup(ID *local)
             BKE_lib_override_library_property_operation_delete(op, opop);
           }
         }
+        if (BLI_listbase_is_empty(&op->operations)) {
+          BKE_lib_override_library_property_delete(local->override_library, op);
+        }
       }
     }
   }
@@ -4672,12 +4739,12 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
     STRNCPY(tmp_key->id.name, local_key->id.name);
   }
 
-  PointerRNA rnaptr_src, rnaptr_dst, rnaptr_storage_stack, *rnaptr_storage = nullptr;
-  RNA_id_pointer_create(local, &rnaptr_src);
-  RNA_id_pointer_create(tmp_id, &rnaptr_dst);
+  PointerRNA rnaptr_src = RNA_id_pointer_create(local);
+  PointerRNA rnaptr_dst = RNA_id_pointer_create(tmp_id);
+  PointerRNA rnaptr_storage_stack, *rnaptr_storage = nullptr;
   if (local->override_library->storage) {
+    rnaptr_storage_stack = RNA_id_pointer_create(local->override_library->storage);
     rnaptr_storage = &rnaptr_storage_stack;
-    RNA_id_pointer_create(local->override_library->storage, rnaptr_storage);
   }
 
   RNA_struct_override_apply(bmain,
@@ -4813,8 +4880,8 @@ void BKE_lib_override_debug_print(IDOverrideLibrary *liboverride, const char *in
       }
       std::cout << "] ";
       if (opop->subitem_reference_name || opop->subitem_local_name) {
-        std::cout << "(" << opop->subitem_reference_name << " -> " << opop->subitem_local_name
-                  << ")";
+        std::cout << "(" << opop->subitem_reference_name << " <" << opop->subitem_reference_id
+                  << "> -> " << opop->subitem_local_name << " <" << opop->subitem_local_id << ">)";
       }
       else if (opop->subitem_reference_index >= 0 || opop->subitem_local_index >= 0) {
         std::cout << "(" << opop->subitem_reference_index << " -> " << opop->subitem_local_index
@@ -4887,10 +4954,9 @@ ID *BKE_lib_override_library_operations_store_start(Main *bmain,
   storage_id = BKE_id_copy(reinterpret_cast<Main *>(liboverride_storage), local);
 
   if (storage_id != nullptr) {
-    PointerRNA rnaptr_reference, rnaptr_final, rnaptr_storage;
-    RNA_id_pointer_create(local->override_library->reference, &rnaptr_reference);
-    RNA_id_pointer_create(local, &rnaptr_final);
-    RNA_id_pointer_create(storage_id, &rnaptr_storage);
+    PointerRNA rnaptr_reference = RNA_id_pointer_create(local->override_library->reference);
+   PointerRNA rnaptr_final = RNA_id_pointer_create(local);
+   PointerRNA rnaptr_storage = RNA_id_pointer_create(storage_id);
 
     if (!RNA_struct_override_store(
             bmain, &rnaptr_final, &rnaptr_reference, &rnaptr_storage, local->override_library))

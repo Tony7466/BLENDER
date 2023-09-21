@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2005-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 #include "wm_cursors.hh"
-#include "wm_window.h"
+#include "wm_window.hh"
 
 /* Blender custom cursor. */
 struct BCursor {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
@@ -24,17 +25,17 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 #include "wm_event_system.h"
 #include "wm_event_types.hh"
 
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Gesture Utilities

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,7 @@
 #include "BLI_vector.hh"
 
 #include "UI_abstract_view.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 struct bContext;
 struct uiBlock;
@@ -40,8 +40,6 @@ class AbstractGridViewItem : public AbstractViewItem {
  protected:
   /** Reference to a string that uniquely identifies this item in the view. */
   StringRef identifier_{};
-  /** Every visible item gets a button of type #UI_BTYPE_VIEW_ITEM during the layout building. */
-  uiButViewItem *view_item_but_ = nullptr;
 
  public:
   /* virtual */ ~AbstractGridViewItem() override = default;

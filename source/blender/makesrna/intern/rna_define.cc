@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,9 +26,9 @@
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h" /* For things like UI_PRECISION_FLOAT_MAX... */
+#include "UI_interface.hh" /* For things like UI_PRECISION_FLOAT_MAX... */
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -2920,9 +2920,21 @@ void RNA_def_property_update(PropertyRNA *prop, int noteflag, const char *func)
   prop->update = (UpdateFunc)func;
 }
 
-void RNA_def_property_update_runtime(PropertyRNA *prop, const void *func)
+void RNA_def_property_update_runtime(PropertyRNA *prop, RNAPropertyUpdateFunc func)
 {
   prop->update = (UpdateFunc)func;
+}
+
+void RNA_def_property_update_runtime_with_context_and_property(
+    PropertyRNA *prop, RNAPropertyUpdateFuncWithContextAndProperty func)
+{
+  prop->update = (UpdateFunc)func;
+  RNA_def_property_flag(prop, PROP_CONTEXT_PROPERTY_UPDATE);
+}
+
+void RNA_def_property_update_notifier(PropertyRNA *prop, const int noteflag)
+{
+  prop->noteflag = noteflag;
 }
 
 void RNA_def_property_poll_runtime(PropertyRNA *prop, const void *func)

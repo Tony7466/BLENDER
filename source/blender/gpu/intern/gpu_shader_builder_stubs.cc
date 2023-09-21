@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,12 +31,13 @@
 
 #include "bmesh.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 extern "C" {
 Global G;
-UserDef U;
 }
+
+UserDef U;
 
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BLI_imbuf_types.h
@@ -59,49 +60,46 @@ extern "C" struct ImBuf *IMB_allocImBuf(unsigned int /*x*/,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of UI_resources.h
+/** \name Stubs of UI_resources.hh
  * \{ */
 
-extern "C" void UI_GetThemeColor4fv(int /*colorid*/, float[4] /*col*/)
+void UI_GetThemeColor4fv(int /*colorid*/, float[4] /*col*/)
 {
   BLI_assert_unreachable();
 }
 
-extern "C" void UI_GetThemeColor3fv(int /*colorid*/, float[3] /*col*/)
+void UI_GetThemeColor3fv(int /*colorid*/, float[3] /*col*/)
 {
   BLI_assert_unreachable();
 }
 
-extern "C" void UI_GetThemeColorShade4fv(int /*colorid*/, int /*offset*/, float[4] /*col*/)
+void UI_GetThemeColorShade4fv(int /*colorid*/, int /*offset*/, float[4] /*col*/)
 {
   BLI_assert_unreachable();
 }
 
-extern "C" void UI_GetThemeColorShadeAlpha4fv(int /*colorid*/,
-                                              int /*coloffset*/,
-                                              int /*alphaoffset*/,
-                                              float[4] /*col*/)
+void UI_GetThemeColorShadeAlpha4fv(int /*colorid*/,
+                                   int /*coloffset*/,
+                                   int /*alphaoffset*/,
+                                   float[4] /*col*/)
 {
   BLI_assert_unreachable();
 }
-extern "C" void UI_GetThemeColorBlendShade4fv(
+void UI_GetThemeColorBlendShade4fv(
     int /*colorid1*/, int /*colorid2*/, float /*fac*/, int /*offset*/, float[4] /*col*/)
 {
   BLI_assert_unreachable();
 }
 
-extern "C" void UI_GetThemeColorBlend3ubv(int /*colorid1*/,
-                                          int /*colorid2*/,
-                                          float /*fac*/,
-                                          uchar[3] /*col*/)
+void UI_GetThemeColorBlend3ubv(int /*colorid1*/, int /*colorid2*/, float /*fac*/, uchar[3] /*col*/)
 {
   BLI_assert_unreachable();
 }
 
-extern "C" void UI_GetThemeColorShadeAlpha4ubv(int /*colorid*/,
-                                               int /*coloffset*/,
-                                               int /*alphaoffset*/,
-                                               uchar[4] /*col*/)
+void UI_GetThemeColorShadeAlpha4ubv(int /*colorid*/,
+                                    int /*coloffset*/,
+                                    int /*alphaoffset*/,
+                                    uchar[4] /*col*/)
 {
   BLI_assert_unreachable();
 }
@@ -123,13 +121,6 @@ extern "C" eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BKE_paint.hh
  * \{ */
-bool paint_is_face_hidden(const int * /*looptri_faces*/,
-                          const bool * /*hide_poly*/,
-                          int /*tri_index*/)
-{
-  BLI_assert_unreachable();
-  return false;
-}
 
 void BKE_paint_face_set_overlay_color_get(const int /*face_set*/,
                                           const int /*seed*/,

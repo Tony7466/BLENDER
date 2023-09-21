@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -908,6 +908,7 @@ class LoadImageAsEmpty:
     )
 
     filter_image: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+    filter_movie: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
     filter_folder: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
 
     view_align: BoolProperty(

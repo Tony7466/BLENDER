@@ -13,7 +13,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -51,28 +51,28 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 /* For menu, popup, icons, etc. */
-#include "ED_fileselect.h"
-#include "ED_keyframing.h"
-#include "ED_numinput.h"
-#include "ED_outliner.h"
-#include "ED_scene.h"
+#include "ED_fileselect.hh"
+#include "ED_keyframing.hh"
+#include "ED_numinput.hh"
+#include "ED_outliner.hh"
+#include "ED_scene.hh"
 #include "ED_screen.hh"
-#include "ED_sequencer.h"
+#include "ED_sequencer.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Structs & Enums
@@ -603,6 +603,11 @@ static void sequencer_slip_recursively(Scene *scene, SlipData *data, int offset)
 {
   for (int i = data->num_seq - 1; i >= 0; i--) {
     Sequence *seq = data->seq_array[i];
+
+    ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
+    if (SEQ_transform_is_locked(channels, seq)) {
+      continue;
+    }
 
     seq->start = data->ts[i].start + offset;
     if (data->trim[i]) {
@@ -1779,11 +1784,16 @@ static int sequencer_offset_clear_exec(bContext *C, wmOperator * /*op*/)
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
   Sequence *seq;
+  ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
 
   /* For effects, try to find a replacement input. */
   for (seq = static_cast<Sequence *>(ed->seqbasep->first); seq;
        seq = static_cast<Sequence *>(seq->next))
   {
+    if (SEQ_transform_is_locked(channels, seq)) {
+      continue;
+    }
+
     if ((seq->type & SEQ_TYPE_EFFECT) == 0 && (seq->flag & SELECT)) {
       seq->startofs = seq->endofs = 0;
     }
@@ -2290,6 +2300,11 @@ static int sequencer_swap_exec(bContext *C, wmOperator *op)
     if ((SEQ_effect_get_num_inputs(active_seq->type) >= 1) &&
         (active_seq->effectdata || active_seq->seq1 || active_seq->seq2 || active_seq->seq3))
     {
+      return OPERATOR_CANCELLED;
+    }
+
+    ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
+    if (SEQ_transform_is_locked(channels, seq) || SEQ_transform_is_locked(channels, active_seq)) {
       return OPERATOR_CANCELLED;
     }
 
@@ -2879,6 +2894,7 @@ void SEQUENCER_OT_change_effect_type(wmOperatorType *ot)
                           SEQ_TYPE_CROSS,
                           "Type",
                           "Sequencer effect type");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_SEQUENCE);
 }
 
 /** \} */
@@ -2953,7 +2969,7 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
      * Important not to set seq->len = len; allow the function to handle it. */
     SEQ_add_reload_new_file(bmain, scene, seq, true);
   }
-  else if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+  else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     bSound *sound = seq->sound;
     if (sound == nullptr) {
       return OPERATOR_CANCELLED;
@@ -2965,11 +2981,10 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Lame, set rna filepath. */
-    PointerRNA seq_ptr;
     PropertyRNA *prop;
     char filepath[FILE_MAX];
 
-    RNA_pointer_create(&scene->id, &RNA_Sequence, seq, &seq_ptr);
+    PointerRNA seq_ptr = RNA_pointer_create(&scene->id, &RNA_Sequence, seq);
 
     RNA_string_get(op->ptr, "filepath", filepath);
     prop = RNA_struct_find_property(&seq_ptr, "filepath");
@@ -3107,7 +3122,7 @@ void SEQUENCER_OT_change_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Properties. */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_without_active_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -3298,9 +3313,9 @@ static int sequencer_set_range_to_strips_exec(bContext *C, wmOperator *op)
     if (seq->flag & SELECT) {
       selected = true;
       sfra = min_ii(sfra, SEQ_time_left_handle_frame_get(scene, seq));
-      /* Offset of -1 is needed because in VSE every frame has width. Range from 1 to 1 is drawn
-       * as range 1 to 2, because 1 frame long strip starts at frame 1 and ends at frame 2.
-       * See #106480. */
+      /* Offset of -1 is needed because in the sequencer every frame has width.
+       * Range from 1 to 1 is drawn as range 1 to 2, because 1 frame long strip starts at frame 1
+       * and ends at frame 2. See #106480. */
       efra = max_ii(efra, SEQ_time_right_handle_frame_get(scene, seq) - 1);
     }
   }

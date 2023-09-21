@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -90,7 +90,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
 
   bke::greasepencil::Drawing &drawing_orig =
-      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings(index_orig))->wrap();
+      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawing(index_orig))->wrap();
 
   const Span<bke::greasepencil::StrokePoint> stroke_points =
       grease_pencil_eval.runtime->stroke_buffer();

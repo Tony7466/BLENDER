@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
 
 #include "MOD_lineart.h"
 
@@ -1321,8 +1321,8 @@ void MOD_lineart_chain_split_angle(LineartData *ld, float angle_threshold_rad)
         new_ec->chain.first = eci;
         new_ec->chain.last = ec->chain.last;
         ec->chain.last = eci->prev;
-        ((LineartEdgeChainItem *)ec->chain.last)->next = 0;
-        eci->prev = 0;
+        ((LineartEdgeChainItem *)ec->chain.last)->next = nullptr;
+        eci->prev = nullptr;
 
         /* End the previous one. */
         lineart_chain_append_point(ld,

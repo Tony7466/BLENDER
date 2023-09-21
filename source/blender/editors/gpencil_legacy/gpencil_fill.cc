@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_stack.h"
 #include "BLI_utildefines.h"
 
@@ -39,14 +39,14 @@
 #include "BKE_report.h"
 #include "BKE_screen.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
 #include "ED_screen.hh"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -56,7 +56,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

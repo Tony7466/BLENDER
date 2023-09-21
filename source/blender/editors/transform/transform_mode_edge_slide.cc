@@ -10,7 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
@@ -24,16 +24,16 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BLT_translation.h"
 

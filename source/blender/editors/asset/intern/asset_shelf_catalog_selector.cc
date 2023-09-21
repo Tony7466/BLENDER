@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,8 @@
 #include "AS_asset_catalog_tree.hh"
 #include "AS_asset_library.hh"
 
+#include "BLI_string.h"
+
 #include "DNA_screen_types.h"
 
 #include "BKE_context.h"
@@ -22,7 +24,6 @@
 #include "ED_asset_filter.hh"
 #include "ED_asset_list.hh"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
@@ -44,8 +45,10 @@ class AssetCatalogSelectorTree : public ui::AbstractTreeView {
       : shelf_(shelf), shelf_settings_(shelf_.settings)
   {
     catalog_tree_ = build_filtered_catalog_tree(
-        library, asset_system::all_library_reference(), [this](const AssetHandle asset_handle) {
-          return (!shelf_.type->asset_poll || shelf_.type->asset_poll(shelf_.type, &asset_handle));
+        library,
+        asset_system::all_library_reference(),
+        [this](const asset_system::AssetRepresentation &asset) {
+          return (!shelf_.type->asset_poll || shelf_.type->asset_poll(shelf_.type, &asset));
         });
   }
 

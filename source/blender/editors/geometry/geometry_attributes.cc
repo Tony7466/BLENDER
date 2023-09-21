@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,21 +22,21 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_geometry.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_geometry.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "geometry_intern.hh"
 
@@ -74,12 +74,12 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
                                                                bool *r_free)
 {
   if (C == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   Object *ob = ED_object_context(C);
   if (ob == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   return rna_enum_attribute_domain_itemf(static_cast<ID *>(ob->data), false, r_free);

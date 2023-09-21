@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,15 +30,15 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
-#include "ED_spreadsheet.h"
+#include "ED_spreadsheet.hh"
 
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_geometry_nodes_log.hh"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
 #include "FN_field_cpp_type.hh"
 

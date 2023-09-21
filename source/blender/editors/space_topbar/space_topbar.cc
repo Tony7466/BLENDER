@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,15 +23,15 @@
 #include "BKE_undo_system.h"
 
 #include "ED_screen.hh"
-#include "ED_space_api.h"
+#include "ED_space_api.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -91,7 +91,7 @@ static void topbar_main_region_init(wmWindowManager *wm, ARegion *region)
   }
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_HEADER, region->winx, region->winy);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -188,12 +188,10 @@ static void topbar_header_region_message_subscribe(const wmRegionMessageSubscrib
 
 static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
 {
-  RecentFile *recent;
   uiLayout *layout = menu->layout;
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
   if (!BLI_listbase_is_empty(&G.recent_files)) {
-    for (recent = static_cast<RecentFile *>(G.recent_files.first); (recent); recent = recent->next)
-    {
+    LISTBASE_FOREACH (RecentFile *, recent, &G.recent_files) {
       const char *file = BLI_path_basename(recent->filepath);
       const int icon = BKE_blendfile_extension_check(file) ? ICON_FILE_BLEND : ICON_FILE_BACKUP;
       PointerRNA ptr;

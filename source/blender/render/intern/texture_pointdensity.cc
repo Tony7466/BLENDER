@@ -14,7 +14,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_kdopbvh.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -366,8 +368,8 @@ static void pointdensity_cache_vertex_weight(PointDensity *pd,
 static void pointdensity_cache_vertex_normal(Mesh *mesh, float *data_color)
 {
   BLI_assert(data_color);
-  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(mesh);
-  memcpy(data_color, vert_normals, sizeof(float[3]) * mesh->totvert);
+  const blender::Span<blender::float3> normals = mesh->vert_normals();
+  memcpy(data_color, normals.data(), sizeof(float[3]) * mesh->totvert);
 }
 
 static void pointdensity_cache_object(PointDensity *pd, Object *ob)

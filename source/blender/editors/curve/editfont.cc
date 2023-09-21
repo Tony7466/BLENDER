@@ -15,7 +15,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_utildefines.h"
 
@@ -41,19 +43,19 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "curve_intern.h"
 
@@ -1751,13 +1753,13 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       if (accentcode) {
         if (ef->pos > 0) {
           inserted_text[0] = findaccent(ef->textbuf[ef->pos - 1],
-                                        BLI_str_utf8_as_unicode(event->utf8_buf));
+                                        BLI_str_utf8_as_unicode_or_error(event->utf8_buf));
           ef->textbuf[ef->pos - 1] = inserted_text[0];
         }
         accentcode = false;
       }
       else if (event->utf8_buf[0]) {
-        inserted_text[0] = BLI_str_utf8_as_unicode(event->utf8_buf);
+        inserted_text[0] = BLI_str_utf8_as_unicode_or_error(event->utf8_buf);
         insert_into_textbuf(obedit, inserted_text[0]);
         accentcode = false;
       }
@@ -2243,7 +2245,6 @@ static int font_open_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   VFont *font;
   PropertyPointerRNA *pprop;
-  PointerRNA idptr;
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
@@ -2268,7 +2269,7 @@ static int font_open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&font->id);
 
-    RNA_id_pointer_create(&font->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&font->id);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
@@ -2351,7 +2352,6 @@ static int font_unlink_exec(bContext *C, wmOperator *op)
 {
   VFont *builtin_font;
 
-  PointerRNA idptr;
   PropertyPointerRNA pprop;
 
   UI_context_active_but_prop_get_templateID(C, &pprop.ptr, &pprop.prop);
@@ -2363,7 +2363,7 @@ static int font_unlink_exec(bContext *C, wmOperator *op)
 
   builtin_font = BKE_vfont_builtin_get();
 
-  RNA_id_pointer_create(&builtin_font->id, &idptr);
+  PointerRNA idptr = RNA_id_pointer_create(&builtin_font->id);
   RNA_property_pointer_set(&pprop.ptr, pprop.prop, idptr, nullptr);
   RNA_property_update(C, &pprop.ptr, pprop.prop);
 

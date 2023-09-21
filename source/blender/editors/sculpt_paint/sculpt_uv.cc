@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2002-2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2002-2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
@@ -29,21 +31,21 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
 #include "ED_screen.hh"
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "paint_intern.hh"
 #include "uvedit_intern.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 /* When set, the UV element is on the boundary of the graph.
  * i.e. Instead of a 2-dimensional laplace operator, use a 1-dimensional version.

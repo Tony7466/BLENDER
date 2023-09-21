@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -183,6 +183,7 @@
     .gi_irradiance_draw_size = 0.1f, \
     .gi_irradiance_smoothing = 0.1f, \
     .gi_filter_quality = 3.0f, \
+    .gi_irradiance_pool_size = 16, \
  \
     .taa_samples = 16, \
     .taa_render_samples = 64, \
@@ -364,7 +365,9 @@
     .snap_mode = SCE_SNAP_TO_INCREMENT, \
     .snap_node_mode = SCE_SNAP_TO_GRID, \
     .snap_uv_mode = SCE_SNAP_TO_INCREMENT, \
+    .snap_anim_mode = SCE_SNAP_TO_FRAME, \
     .snap_flag = SCE_SNAP_TO_INCLUDE_EDITED | SCE_SNAP_TO_INCLUDE_NONEDITED, \
+    .snap_flag_anim = SCE_SNAP, \
     .snap_transform_mode_flag = SCE_SNAP_TRANSFORM_MODE_TRANSLATE, \
     .snap_face_nearest_steps = 1, \
  \

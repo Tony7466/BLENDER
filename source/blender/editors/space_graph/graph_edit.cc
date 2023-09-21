@@ -20,15 +20,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLT_translation.h"
@@ -43,15 +44,15 @@
 
 #include "DEG_depsgraph_build.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_markers.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_markers.hh"
 #include "ED_screen.hh"
-#include "ED_transform.h"
+#include "ED_transform.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -602,17 +603,17 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *graphkeys_paste_description(bContext * /*C*/,
-                                         wmOperatorType * /*op*/,
-                                         PointerRNA *ptr)
+static std::string graphkeys_paste_description(bContext * /*C*/,
+                                               wmOperatorType * /*op*/,
+                                               PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
-    return BLI_strdup(TIP_("Paste keyframes from mirrored bones if they exist"));
+    return TIP_("Paste keyframes from mirrored bones if they exist");
   }
 
   /* Use the default description in the other cases. */
-  return nullptr;
+  return "";
 }
 
 void GRAPH_OT_paste(wmOperatorType *ot)
@@ -646,7 +647,7 @@ void GRAPH_OT_paste(wmOperatorType *ot)
                "Paste time offset of keys");
   RNA_def_enum(ot->srna,
                "value_offset",
-               rna_enum_keyframe_paste_offset_value,
+               rna_enum_keyframe_paste_offset_value_items,
                KEYFRAME_PASTE_VALUE_OFFSET_NONE,
                "Value Offset",
                "Paste keys with a value offset");
@@ -729,7 +730,7 @@ void GRAPH_OT_duplicate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* To give to transform. */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */
@@ -893,13 +894,13 @@ void GRAPH_OT_clean(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Bake F-Curve Operator
+/** \name Keys to Samples Operator
  *
  * This operator bakes the data of the selected F-Curves to F-Points.
  * \{ */
 
 /* Bake each F-Curve into a set of samples. */
-static void bake_graph_curves(bAnimContext *ac, int start, int end)
+static void convert_keys_to_samples(bAnimContext *ac, int start, int end)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
@@ -933,7 +934,7 @@ static void bake_graph_curves(bAnimContext *ac, int start, int end)
 
 /* ------------------- */
 
-static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
+static int graphkeys_keys_to_samples_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   Scene *scene = nullptr;
@@ -950,8 +951,8 @@ static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
   start = PSFRA;
   end = PEFRA;
 
-  /* Bake keyframes. */
-  bake_graph_curves(&ac, start, end);
+  /* Sample keyframes. */
+  convert_keys_to_samples(&ac, start, end);
 
   /* Set notifier that keyframes have changed. */
   /* NOTE: some distinction between order/number of keyframes and type should be made? */
@@ -960,16 +961,17 @@ static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_bake(wmOperatorType *ot)
+void GRAPH_OT_keys_to_samples(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Bake Curve";
-  ot->idname = "GRAPH_OT_bake";
-  ot->description = "Bake selected F-Curves to a set of sampled points defining a similar curve";
+  ot->name = "Keys to Samples";
+  ot->idname = "GRAPH_OT_keys_to_samples";
+  ot->description =
+      "Convert selected channels to an uneditable set of samples to save storage space";
 
   /* API callbacks */
   ot->invoke = WM_operator_confirm_or_exec;
-  ot->exec = graphkeys_bake_exec;
+  ot->exec = graphkeys_keys_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
@@ -982,13 +984,13 @@ void GRAPH_OT_bake(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Un-Bake F-Curve Operator
+/** \name Samples to Keys Operator
  *
- * This operator un-bakes the data of the selected F-Points to F-Curves.
+ * This operator converts the data of the selected F-Points to F-Curves.
  * \{ */
 
-/* Un-Bake F-Points into F-Curves. */
-static void unbake_graph_curves(bAnimContext *ac, int start, int end)
+/* Convert F-Points into F-Curves. */
+static void convert_samples_to_keys(bAnimContext *ac, int start, int end)
 {
   ListBase anim_data = {nullptr, nullptr};
 
@@ -1013,7 +1015,7 @@ static void unbake_graph_curves(bAnimContext *ac, int start, int end)
 
 /* ------------------- */
 
-static int graphkeys_unbake_exec(bContext *C, wmOperator * /*op*/)
+static int graphkeys_samples_to_keys_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   Scene *scene = nullptr;
@@ -1028,8 +1030,7 @@ static int graphkeys_unbake_exec(bContext *C, wmOperator * /*op*/)
   start = PSFRA;
   end = PEFRA;
 
-  /* Unbake keyframes. */
-  unbake_graph_curves(&ac, start, end);
+  convert_samples_to_keys(&ac, start, end);
 
   /* Set notifier that keyframes have changed. */
   /* NOTE: some distinction between order/number of keyframes and type should be made? */
@@ -1038,15 +1039,15 @@ static int graphkeys_unbake_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_unbake(wmOperatorType *ot)
+void GRAPH_OT_samples_to_keys(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Un-Bake Curve";
-  ot->idname = "GRAPH_OT_unbake";
-  ot->description = "Un-Bake selected F-Points to F-Curves";
+  ot->name = "Samples to Keys";
+  ot->idname = "GRAPH_OT_samples_to_keys";
+  ot->description = "Convert selected channels from samples to keyframes";
 
   /* API callbacks */
-  ot->exec = graphkeys_unbake_exec;
+  ot->exec = graphkeys_samples_to_keys_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
@@ -1058,9 +1059,9 @@ void GRAPH_OT_unbake(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Sound Bake F-Curve Operator
+/** \name Sound to Samples Operator
  *
- * This operator bakes the given sound to the selected F-Curves.
+ * This operator converts the given sound to samples on the selected F-Curves.
  * \{ */
 
 /* ------------------- */
@@ -1093,7 +1094,7 @@ static float fcurve_samplingcb_sound(FCurve * /*fcu*/, void *data, float evaltim
 
 /* ------------------- */
 
-static int graphkeys_sound_bake_exec(bContext *C, wmOperator *op)
+static int graphkeys_sound_to_samples_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};
@@ -1174,7 +1175,7 @@ static int graphkeys_sound_bake_exec(bContext *C, wmOperator *op)
 
 #else /* WITH_AUDASPACE */
 
-static int graphkeys_sound_bake_exec(bContext * /*C*/, wmOperator *op)
+static int graphkeys_sound_to_samples_exec(bContext * /*C*/, wmOperator *op)
 {
   BKE_report(op->reports, RPT_ERROR, "Compiled without sound support");
 
@@ -1183,7 +1184,7 @@ static int graphkeys_sound_bake_exec(bContext * /*C*/, wmOperator *op)
 
 #endif /* WITH_AUDASPACE */
 
-static int graphkeys_sound_bake_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int graphkeys_sound_to_samples_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   bAnimContext ac;
 
@@ -1195,16 +1196,16 @@ static int graphkeys_sound_bake_invoke(bContext *C, wmOperator *op, const wmEven
   return WM_operator_filesel(C, op, event);
 }
 
-void GRAPH_OT_sound_bake(wmOperatorType *ot)
+void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Bake Sound to F-Curves";
-  ot->idname = "GRAPH_OT_sound_bake";
-  ot->description = "Bakes a sound wave to selected F-Curves";
+  ot->name = "Sound to Samples";
+  ot->idname = "GRAPH_OT_sound_to_samples";
+  ot->description = "Bakes a sound wave to samples on selected channels";
 
   /* API callbacks */
-  ot->invoke = graphkeys_sound_bake_invoke;
-  ot->exec = graphkeys_sound_bake_exec;
+  ot->invoke = graphkeys_sound_to_samples_invoke;
+  ot->exec = graphkeys_sound_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
@@ -1304,7 +1305,7 @@ void GRAPH_OT_sound_bake(wmOperatorType *ot)
  * \{ */
 
 /* Evaluates the curves between each selected keyframe on each frame, and keys the value. */
-static void sample_graph_keys(bAnimContext *ac)
+static void bake_graph_keys(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
@@ -1317,7 +1318,7 @@ static void sample_graph_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    sample_fcurve((FCurve *)ale->key_data);
+    bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
@@ -1328,7 +1329,7 @@ static void sample_graph_keys(bAnimContext *ac)
 
 /* ------------------- */
 
-static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
+static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
@@ -1337,8 +1338,8 @@ static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  /* Sample keyframes. */
-  sample_graph_keys(&ac);
+  /* Bake keyframes. */
+  bake_graph_keys(&ac);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
@@ -1346,15 +1347,15 @@ static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_sample(wmOperatorType *ot)
+void GRAPH_OT_bake_keys(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Sample Keyframes";
-  ot->idname = "GRAPH_OT_sample";
+  ot->name = "Bake Keyframes";
+  ot->idname = "GRAPH_OT_bake_keys";
   ot->description = "Add keyframes on every frame between the selected keyframes";
 
   /* API callbacks */
-  ot->exec = graphkeys_sample_exec;
+  ot->exec = graphkeys_bake_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags */
@@ -2259,10 +2260,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 
   const float current_frame = BKE_scene_frame_get(scene);
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    const FCurve *fcu = static_cast<const FCurve *>(ale->key_data);
+    FCurve *fcu = static_cast<FCurve *>(ale->key_data);
     if (!fcu->bezt) {
       continue;
     }
+    AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, true);
     float closest_fcu_frame;
     if (!find_closest_frame(fcu, current_frame, next, &closest_fcu_frame)) {
       continue;
@@ -2272,6 +2275,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
       closest_frame = closest_fcu_frame;
       found = true;
     }
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, true);
   }
 
   if (!found) {
@@ -2280,6 +2284,8 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   BKE_scene_frame_set(scene, closest_frame);
+
+  ANIM_animdata_freelist(&anim_data);
 
   /* Set notifier that things have changed. */
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);

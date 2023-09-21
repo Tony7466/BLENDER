@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,15 +26,15 @@
 #include "BKE_report.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 #include "wm_event_system.h"
 
 #include "ED_screen.hh"
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 /* own includes */
 #include "wm_gizmo_intern.h"

@@ -11,14 +11,13 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 
 #include "BKE_context.h"
 
 #include "ED_screen.hh"
-#include "ED_transform.h"
+#include "ED_transform.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
@@ -379,7 +378,7 @@ bool ED_transform_snap_sequencer_to_closest_strip_calc(Scene *scene,
                                                        int *r_snap_distance,
                                                        float *r_snap_frame)
 {
-  TransInfo t;
+  TransInfo t = {nullptr};
   t.scene = scene;
   t.region = region;
   t.values[0] = 0;
@@ -391,15 +390,17 @@ bool ED_transform_snap_sequencer_to_closest_strip_calc(Scene *scene,
   return validSnap(&t);
 }
 
-void ED_draw_sequencer_snap_point(bContext *C, float snap_point)
+void ED_draw_sequencer_snap_point(ARegion *region, const float snap_point)
 {
   /* Reuse the snapping drawing code from the transform system. */
-  TransInfo t;
+  TransInfo t = {nullptr};
   t.mode = TFM_SEQ_SLIDE;
   t.modifiers = MOD_SNAP;
   t.spacetype = SPACE_SEQ;
+  t.tsnap.flag = SCE_SNAP;
   t.tsnap.status = (SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
   t.tsnap.snap_target[0] = snap_point;
+  t.region = region;
 
-  drawSnapping(C, &t);
+  drawSnapping(&t);
 }

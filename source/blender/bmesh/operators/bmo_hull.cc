@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 
 #  include "BLI_array.h"
 #  include "BLI_listbase.h"
-#  include "BLI_math.h"
+#  include "BLI_math_geom.h"
 
 #  include "RBI_hull_api.h"
 
@@ -158,8 +158,6 @@ struct HullFinalEdges {
 
 static LinkData *final_edges_find_link(ListBase *adj, BMVert *v)
 {
-  LinkData *link;
-
   LISTBASE_FOREACH (LinkData *, link, adj) {
     if (link->data == v) {
       return link;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,9 @@
 #include "BKE_screen.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "DEG_depsgraph.hh"
@@ -27,7 +29,7 @@
 #include "DRW_engine.h"
 
 #include "ED_screen.hh"
-#include "ED_space_api.h"
+#include "ED_space_api.hh"
 
 #include "GHOST_C-api.h"
 
@@ -43,7 +45,7 @@
 
 #include "wm_event_system.h"
 #include "wm_surface.hh"
-#include "wm_window.h"
+#include "wm_window.hh"
 #include "wm_xr_intern.h"
 
 static wmSurface *g_xr_surface = nullptr;

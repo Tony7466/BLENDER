@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,7 +32,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 
 #include "BLT_translation.h"
 
@@ -53,25 +53,25 @@
 #include "BKE_screen.h"
 #include "BKE_unit.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_armature.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframes_keylist.h"
-#include "ED_keyframing.h"
-#include "ED_markers.h"
-#include "ED_numinput.h"
+#include "ED_armature.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframes_keylist.hh"
+#include "ED_keyframing.hh"
+#include "ED_markers.hh"
+#include "ED_numinput.hh"
 #include "ED_screen.hh"
-#include "ED_space_api.h"
+#include "ED_space_api.hh"
 #include "ED_util.hh"
 
 #include "GPU_immediate.h"
@@ -476,11 +476,10 @@ static void pose_slide_apply_props(tPoseSlideOp *pso,
                                    tPChanFCurveLink *pfl,
                                    const char prop_prefix[])
 {
-  PointerRNA ptr = {nullptr};
   int len = strlen(pfl->pchan_path);
 
   /* Setup pointer RNA for resolving paths. */
-  RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan);
 
   /* - custom properties are just denoted using ["..."][etc.] after the end of the base path,
    *   so just check for opening pair after the end of the path
