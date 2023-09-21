@@ -1,1 +1,2 @@
 Referenced by issue #109244, Library changes for Blender 4.0
+Referenced by commit 3d15a07bdee3c8529f6630e3305e1d093aa0e96d, Revert "install_linux_packages: Raise LLVM default version to 15.0.7."
