@@ -198,12 +198,12 @@ static void stats_object(Object *ob,
       if (!is_selected) {
         break;
       }
-      using namespace blender;
+
       const GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
 
       for (const GreasePencilDrawingBase *drawing_base : grease_pencil->drawings()) {
         const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
-        const bke::CurvesGeometry &curves = drawing->wrap().strokes();
+        const blender::bke::CurvesGeometry &curves = drawing->wrap().strokes();
 
         stats->totgppoint += curves.points_num();
         stats->totgpstroke += curves.curves_num();
