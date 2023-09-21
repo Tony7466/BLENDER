@@ -2197,8 +2197,7 @@ void GRAPH_OT_select_key_handles(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Select Key / Handles";
   ot->idname = "GRAPH_OT_select_key_handles";
-  ot->description =
-      "Select/deselect any combination of the key and handles of selected keyframes";
+  ot->description = "Select/deselect any combination of the key and handles of selected keyframes";
 
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
