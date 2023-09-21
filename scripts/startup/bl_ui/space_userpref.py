@@ -1999,6 +1999,36 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
 
 
 # -----------------------------------------------------------------------------
+# Extension Panels
+
+class ExtensionsPanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+    bl_context = "extensions"
+
+
+class USERPREF_PT_extensions(ExtensionsPanel, Panel):
+    bl_label = "Extensions"
+    bl_options = {'HIDE_HEADER'}
+
+    # NOTE: currently disabled by an add-on when used.
+    unused = True
+
+    @classmethod
+    def poll(cls, _context):
+        return cls.unused
+
+    def draw(self, context):
+        layout = self.layout
+
+        row = layout.row()
+        row.label(text="The add-on to use extensions is disabled! See:")
+        row.operator(
+            "wm.url_open", text="Extension Add-on Repo", icon='URL',
+        ).url = "https://projects.blender.org/ideasman42/bl_ext"
+
+
+# -----------------------------------------------------------------------------
 # Add-On Panels
 
 class AddOnPanel:
@@ -2275,6 +2305,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
 # -----------------------------------------------------------------------------
 # Studio Light Panels
+
 
 class StudioLightPanel:
     bl_space_type = 'PREFERENCES'
@@ -2637,6 +2668,8 @@ classes = (
     USERPREF_PT_navigation_fly_walk_gravity,
 
     USERPREF_PT_keymap,
+
+    USERPREF_PT_extensions,
     USERPREF_PT_addons,
 
     USERPREF_PT_studiolight_lights,
