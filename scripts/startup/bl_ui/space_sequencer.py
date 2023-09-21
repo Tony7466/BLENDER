@@ -941,8 +941,12 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_reset")
         layout.separator()
 
+        icon = "CHECKBOX_DEHLT"
+        if context.active_sequence_strip.show_retiming_keys:
+            icon = "CHECKBOX_HLT"
+
         layout.operator("sequencer.retiming_segment_speed_set")
-        layout.operator("sequencer.retiming_show")
+        layout.operator("sequencer.retiming_show", icon=icon)
 
     def draw_retiming_context(self, context):
         layout = self.layout
@@ -952,15 +956,15 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_transition_add")
         layout.separator()
 
-        layout.operator("sequencer.retiming_key_remove")
+        layout.operator("sequencer.delete")
         layout.separator()
 
-        layout.operator("sequencer.retiming_select_box")
-        layout.operator("sequencer.retiming_deselect_all")
+        layout.operator("sequencer.select_box")
+        layout.operator("sequencer.select_all")
         layout.separator()
 
         layout.operator("sequencer.retiming_segment_speed_set")
-        layout.operator("sequencer.retiming_show")
+        layout.operator("sequencer.retiming_show", icon="CHECKBOX_HLT")
 
 
     def draw(self, context):

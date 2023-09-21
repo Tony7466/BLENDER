@@ -2344,6 +2344,12 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_OVERRIDE);
   RNA_def_property_ui_text(prop, "Override Cache Settings", "Override global cache settings");
 
+  prop = RNA_def_property(srna, "show_retiming_keys", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_SHOW_RETIMING);
+  RNA_def_property_ui_text(prop,
+                           "Show Retiming Keys",
+                           "Show retiming keys, so they can be moved.");
+
   RNA_api_sequence_strip(srna);
 }
 

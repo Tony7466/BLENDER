@@ -26,6 +26,7 @@
 #include "SEQ_relations.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
+#include "SEQ_select.h"
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
@@ -54,23 +55,53 @@ bool sequencer_retiming_mode_is_active(const bContext *C)
 /** \name Retiming Data Show
  * \{ */
 
+static void sequencer_retiming_data_show_selection(ListBase *seqbase)
+{
+  LISTBASE_FOREACH (Sequence *, seq, seqbase) {
+    if ((seq->flag & SELECT) == 0) {
+      continue;
+    }
+    seq->flag |= SEQ_SHOW_RETIMING;
+  }
+}
+
+static void sequencer_retiming_data_hide_selection(ListBase *seqbase)
+{
+  LISTBASE_FOREACH (Sequence *, seq, seqbase) {
+    if ((seq->flag & SELECT) == 0) {
+      continue;
+    }
+    seq->flag &= ~SEQ_SHOW_RETIMING;
+  }
+}
+
+static void sequencer_retiming_data_hide_all(ListBase *seqbase)
+{
+  LISTBASE_FOREACH (Sequence *, seq, seqbase) {
+    seq->flag &= ~SEQ_SHOW_RETIMING;
+  }
+}
+
 static int sequencer_retiming_data_show_exec(bContext *C, wmOperator * /* op */)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
+  Sequence *seq_act = SEQ_select_active_get(scene);
 
-  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if ((seq->flag & SELECT) == 0) {
-      continue;
-    }
-    if (!sequencer_retiming_data_is_editable(seq)) {
-      seq->flag |= SEQ_SHOW_RETIMING;
-    }
-    else {
-      seq->flag &= ~SEQ_SHOW_RETIMING;
-    }
+  if (seq_act == nullptr) {
+    return OPERATOR_CANCELLED;
   }
 
+  if (sequencer_retiming_mode_is_active(C)){
+    sequencer_retiming_data_hide_all(ed->seqbasep);
+  }
+  else if (sequencer_retiming_data_is_editable(seq_act)) {
+    sequencer_retiming_data_hide_selection(ed->seqbasep);
+  }
+  else {
+    sequencer_retiming_data_show_selection(ed->seqbasep);
+  }
+  
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
