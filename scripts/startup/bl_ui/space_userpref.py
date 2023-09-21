@@ -747,7 +747,7 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         row.prop(view, "show_playback_fps", text="")
         subrow = row.row()
         subrow.active = view.show_playback_fps
-        subrow.prop(view, "playback_fps_samples", text="")
+        subrow.prop(view, "playback_fps_samples", text="Samples")
 
         layout.separator()
 
