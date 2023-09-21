@@ -1,3 +1,4 @@
 Referenced by pull request #110517, Fix #110497: Quick favorites can be duplicated
 Referenced by issue #110497, Quick favorites can be duplicated
 Referenced by commit 6f5873de5f93446d2fbc50b6380eb3d122e4a643, Fix #110497: Quick favorites can be duplicated
+Referenced by pull request #112660, Fix crash when toggling link linking state in the list
