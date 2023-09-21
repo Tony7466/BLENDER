@@ -896,7 +896,7 @@ void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    /* For easy calculation of the curve, the  values are normalized. */
+    /* For easy calculation of the curve, the values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
     const float linear = left_key->vec[1][1] + key_y_range * normalized_x;

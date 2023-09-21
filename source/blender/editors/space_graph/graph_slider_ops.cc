@@ -2140,7 +2140,7 @@ void GRAPH_OT_push_pull(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Push Pull Keyframes";
   ot->idname = "GRAPH_OT_push_pull";
-  ot->description = "Exagerates or minimize the value of the selected keys";
+  ot->description = "Exaggerate or minimize the value of the selected keys";
 
   /* API callbacks. */
   ot->invoke = push_pull_invoke;
