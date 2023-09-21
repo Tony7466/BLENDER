@@ -765,16 +765,11 @@ static void timeline_cache_draw_simulation_nodes(
   }
 
   bool has_bake = false;
-  bool has_valid = false;
-  bool has_invalid = false;
 
   for (const SimulationRange &sim_range : simulation_ranges) {
     switch (sim_range.status) {
       case blender::bke::bake::CacheStatus::Invalid:
-        has_invalid = true;
-        break;
       case blender::bke::bake::CacheStatus::Valid:
-        has_valid = true;
         break;
       case blender::bke::bake::CacheStatus::Baked:
         has_bake = true;
