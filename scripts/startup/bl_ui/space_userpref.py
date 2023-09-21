@@ -2637,11 +2637,11 @@ classes = (
     USERPREF_PT_file_paths_render,
     USERPREF_PT_file_paths_asset_libraries,
     USERPREF_PT_file_paths_script_directories,
+    USERPREF_PT_file_paths_extension_repos,
     USERPREF_PT_file_paths_applications,
     USERPREF_PT_text_editor,
     USERPREF_PT_text_editor_presets,
     USERPREF_PT_file_paths_development,
-    USERPREF_PT_file_paths_extension_repos,
 
     USERPREF_PT_saveload_blend,
     USERPREF_PT_saveload_autorun,
