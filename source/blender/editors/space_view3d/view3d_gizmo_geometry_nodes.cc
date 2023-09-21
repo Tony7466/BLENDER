@@ -41,7 +41,8 @@ struct NodeGizmoData {
 };
 
 struct GeometryNodesGizmoGroup {
-  Map<int, std::unique_ptr<NodeGizmoData>> gizmo_by_node_id;
+  Map<int, std::unique_ptr<NodeGizmoData>> arrow_gizmo_by_node_id;
+  Map<int, std::unique_ptr<NodeGizmoData>> dial_gizmo_by_node_id;
 };
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -93,7 +94,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
   tree_log.ensure_socket_values();
 
-  Map<int, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node_id;
+  Map<int, std::unique_ptr<NodeGizmoData>> new_arrow_gizmo_by_node_id;
+  Map<int, std::unique_ptr<NodeGizmoData>> new_dial_gizmo_by_node_id;
 
   for (bNode *gizmo_node : ntree.nodes_by_type("GeometryNodeGizmoArrow")) {
     bNodeSocket &value_input = gizmo_node->input_socket(0);
@@ -120,8 +122,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     }
 
     std::unique_ptr<NodeGizmoData> node_gizmo_data;
-    if (gzgroup_data->gizmo_by_node_id.contains(gizmo_node->identifier)) {
-      node_gizmo_data = gzgroup_data->gizmo_by_node_id.pop(gizmo_node->identifier);
+    if (gzgroup_data->arrow_gizmo_by_node_id.contains(gizmo_node->identifier)) {
+      node_gizmo_data = gzgroup_data->arrow_gizmo_by_node_id.pop(gizmo_node->identifier);
     }
     else {
       node_gizmo_data = std::make_unique<NodeGizmoData>();
@@ -183,17 +185,118 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       WM_gizmo_target_property_def_func(node_gizmo_data->gizmo, "offset", &params);
     }
 
-    new_gizmo_by_node_id.add(gizmo_node->identifier, std::move(node_gizmo_data));
+    new_arrow_gizmo_by_node_id.add(gizmo_node->identifier, std::move(node_gizmo_data));
+  }
+  for (bNode *gizmo_node : ntree.nodes_by_type("GeometryNodeGizmoDial")) {
+    bNodeSocket &value_input = gizmo_node->input_socket(0);
+    bNodeSocket &position_input = gizmo_node->input_socket(1);
+    bNodeSocket &direction_input = gizmo_node->input_socket(2);
+
+    auto *position_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+        tree_log.find_socket_value_log(position_input));
+    auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+        tree_log.find_socket_value_log(direction_input));
+    if (ELEM(nullptr, position_value_log, direction_value_log)) {
+      continue;
+    }
+    const float3 position = *position_value_log->value.get<float3>();
+    const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
+
+    const Span<bNodeSocket *> origin_sockets = value_input.directly_linked_sockets();
+    if (origin_sockets.size() != 1) {
+      continue;
+    }
+    bNodeSocket &origin_socket = *origin_sockets[0];
+    if (origin_socket.owner_node().type != SH_NODE_VALUE) {
+      continue;
+    }
+
+    std::unique_ptr<NodeGizmoData> node_gizmo_data;
+    if (gzgroup_data->dial_gizmo_by_node_id.contains(gizmo_node->identifier)) {
+      node_gizmo_data = gzgroup_data->dial_gizmo_by_node_id.pop(gizmo_node->identifier);
+    }
+    else {
+      node_gizmo_data = std::make_unique<NodeGizmoData>();
+      wmGizmo *gz = WM_gizmo_new("GIZMO_GT_dial_3d", gzgroup, nullptr);
+      node_gizmo_data->gizmo = gz;
+      copy_v4_fl4(gz->color, 1.0f, 0.0f, 0.0f, 1.0f);
+      copy_v4_fl4(gz->color_hi, 0.0f, 1.0f, 0.0f, 1.0f);
+    }
+
+    if (node_gizmo_data->gizmo->interaction_data == nullptr) {
+      const math::Quaternion rotation = math::from_vector(
+          math::normalize(direction), math::AxisSigned::Z_POS, math::Axis::X);
+      float4x4 mat = math::from_rotation<float4x4>(rotation);
+      mat.location() = position;
+      mat = float4x4(ob->object_to_world) * mat;
+      copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
+
+      PointerRNA value_owner_ptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &origin_socket);
+      PropertyRNA *value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
+
+      struct UserData {
+        bContext *C;
+        PointerRNA value_owner_ptr;
+        PropertyRNA *value_prop;
+        float initial_value;
+      } *user_data = MEM_new<UserData>(__func__);
+      /* The code that calls `value_set_fn` has the context, but its not passed into the callback
+       * currently. */
+      user_data->C = const_cast<bContext *>(C);
+      user_data->value_owner_ptr = value_owner_ptr;
+      user_data->value_prop = value_prop;
+      user_data->initial_value = RNA_property_float_get(&value_owner_ptr, value_prop);
+
+      wmGizmoPropertyFnParams params{};
+      params.user_data = user_data;
+      params.free_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop) {
+        MEM_delete(static_cast<UserData *>(gz_prop->custom_func.user_data));
+      };
+      params.value_set_fn =
+          [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
+            UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+            const float gizmo_value = *static_cast<const float *>(value_ptr);
+            RNA_property_float_set(&user_data->value_owner_ptr,
+                                   user_data->value_prop,
+                                   gizmo_value + user_data->initial_value);
+            RNA_property_update(user_data->C, &user_data->value_owner_ptr, user_data->value_prop);
+          };
+      params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
+        UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+        *static_cast<float *>(value_ptr) = RNA_property_float_get(&user_data->value_owner_ptr,
+                                                                  user_data->value_prop) -
+                                           user_data->initial_value;
+      };
+
+      wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
+      if (gz_prop->custom_func.free_fn) {
+        gz_prop->custom_func.free_fn(node_gizmo_data->gizmo, gz_prop);
+      }
+      WM_gizmo_target_property_def_func(node_gizmo_data->gizmo, "offset", &params);
+    }
+
+    new_dial_gizmo_by_node_id.add(gizmo_node->identifier, std::move(node_gizmo_data));
   }
 
-  for (std::unique_ptr<NodeGizmoData> &node_gizmo_data : gzgroup_data->gizmo_by_node_id.values()) {
+  for (std::unique_ptr<NodeGizmoData> &node_gizmo_data :
+       gzgroup_data->arrow_gizmo_by_node_id.values())
+  {
+    WM_gizmo_unlink(&gzgroup->gizmos,
+                    gzgroup->parent_gzmap,
+                    node_gizmo_data->gizmo,
+                    const_cast<bContext *>(C));
+  }
+  for (std::unique_ptr<NodeGizmoData> &node_gizmo_data :
+       gzgroup_data->dial_gizmo_by_node_id.values())
+  {
     WM_gizmo_unlink(&gzgroup->gizmos,
                     gzgroup->parent_gzmap,
                     node_gizmo_data->gizmo,
                     const_cast<bContext *>(C));
   }
 
-  gzgroup_data->gizmo_by_node_id = std::move(new_gizmo_by_node_id);
+  gzgroup_data->arrow_gizmo_by_node_id = std::move(new_arrow_gizmo_by_node_id);
+  gzgroup_data->dial_gizmo_by_node_id = std::move(new_dial_gizmo_by_node_id);
 }
 
 static void WIDGETGROUP_geometry_nodes_draw_prepare(const bContext * /*C*/,
