@@ -200,18 +200,16 @@ static void stats_object(Object *ob,
       }
       using namespace blender;
       const GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
-      const Span<GreasePencilDrawingBase *> drawings = grease_pencil->drawings();
 
-      for (int range : drawings.index_range()) {
-        GreasePencilDrawingBase *drawing_base = drawings[range];
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+      for (const GreasePencilDrawingBase *drawing_base : grease_pencil->drawings()) {
+        const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
         const bke::CurvesGeometry &curves = drawing->wrap().strokes();
 
         stats->totgppoint += curves.points_num();
         stats->totgpstroke += curves.curves_num();
       }
 
-      for (auto layer : grease_pencil->layers()) {
+      for (const blender::bke::greasepencil::Layer *layer : grease_pencil->layers()) {
         stats->totgpframe += layer->frames().size();
       }
 
