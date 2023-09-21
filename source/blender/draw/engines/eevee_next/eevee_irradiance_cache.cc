@@ -433,6 +433,10 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 
     LightProbeGridCacheFrame *cache = grid.cache->grid_static_cache;
 
+    if (cache == nullptr) {
+      continue;
+    }
+
     switch (inst_.debug_mode) {
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER:
