@@ -837,7 +837,7 @@ static void timeline_cache_draw_simulation_nodes(
       if (has_valid_at_frame || has_invalid_at_frame) {
         immUniformColor4fv(has_invalid_at_frame ? invalid_color : valid_color);
         immBeginAtMost(GPU_PRIM_TRIS, 6);
-        const float top = has_bake ? 1.5f : 1.0f;
+        const float top = has_bake ? 2.0f : 1.0f;
         immRectf_fast(pos_id, start_frame, 0.0f, end_frame + 1.0f, top);
         immEnd();
         max_used_height = top;
@@ -845,7 +845,7 @@ static void timeline_cache_draw_simulation_nodes(
       if (has_bake_at_frame) {
         immUniformColor4fv(baked_color);
         immBeginAtMost(GPU_PRIM_TRIS, 6);
-        immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 0.5f);
+        immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 1.0f);
         immEnd();
       }
     }
