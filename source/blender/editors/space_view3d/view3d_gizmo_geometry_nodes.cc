@@ -62,9 +62,17 @@ static void WIDGETGROUP_geometry_nodes_setup(const bContext * /*C*/, wmGizmoGrou
 
 static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  std::cout << __func__ << "\n";
-
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
+
+  for (const std::unique_ptr<NodeGizmoData> &node_gizmo_data :
+       gzgroup_data->gizmo_by_node_id.values())
+  {
+    wmGizmo *gz = node_gizmo_data->gizmo;
+    if (gz->interaction_data != nullptr) {
+      return;
+    }
+  }
+
   Object *ob = CTX_data_active_object(C);
   const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(
       BKE_object_active_modifier(ob));
@@ -135,6 +143,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                                                                 user_data->value_prop) -
                                          user_data->initial_value;
     };
+
+    wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
+    if (gz_prop->custom_func.free_fn) {
+      gz_prop->custom_func.free_fn(node_gizmo_data->gizmo, gz_prop);
+    }
     WM_gizmo_target_property_def_func(node_gizmo_data->gizmo, "offset", &params);
 
     new_gizmo_by_node_id.add(gizmo_node->identifier, std::move(node_gizmo_data));
