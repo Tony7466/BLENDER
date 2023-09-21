@@ -622,10 +622,6 @@ class PanelDeclarationBuilder {
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
   template<typename DeclType>
   typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
-  template<typename DeclType>
-  typename DeclType::Builder &add_input_output(StringRef name,
-                                               StringRef identifier_in = "",
-                                               StringRef identifier_out = "");
 };
 
 using PanelDeclarationPtr = std::unique_ptr<PanelDeclaration>;
@@ -695,10 +691,6 @@ class NodeDeclarationBuilder {
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
   template<typename DeclType>
   typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
-  template<typename DeclType>
-  typename DeclType::Builder &add_input_output(StringRef name,
-                                               StringRef identifier_in = "",
-                                               StringRef identifier_out = "");
   PanelDeclarationBuilder &add_panel(StringRef name, int identifier = -1);
 
   aal::RelationsInNode &get_anonymous_attribute_relations()
@@ -910,21 +902,6 @@ typename DeclType::Builder &PanelDeclarationBuilder::add_output(StringRef name,
   return node_decl_builder_->add_socket<DeclType>(name, "", identifier, SOCK_OUT);
 }
 
-template<typename DeclType>
-typename DeclType::Builder &PanelDeclarationBuilder::add_input_output(StringRef name,
-                                                                      StringRef identifier_in,
-                                                                      StringRef identifier_out)
-{
-  if (is_complete_) {
-    static typename DeclType::Builder dummy_builder = {};
-    BLI_assert_unreachable();
-    return dummy_builder;
-  }
-  ++this->decl_->num_child_decls;
-  return node_decl_builder_->add_socket<DeclType>(
-      name, identifier_in, identifier_out, SOCK_IN | SOCK_OUT);
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -955,14 +932,6 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_output(StringRef 
 {
   set_active_panel_builder(nullptr);
   return this->add_socket<DeclType>(name, "", identifier, SOCK_OUT);
-}
-
-template<typename DeclType>
-inline typename DeclType::Builder &NodeDeclarationBuilder::add_input_output(
-    StringRef name, StringRef identifier_in, StringRef identifier_out)
-{
-  set_active_panel_builder(nullptr);
-  return this->add_socket<DeclType>(name, identifier_in, identifier_out, SOCK_IN | SOCK_OUT);
 }
 
 template<typename DeclType>
