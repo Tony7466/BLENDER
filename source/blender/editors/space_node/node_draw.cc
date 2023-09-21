@@ -3011,9 +3011,6 @@ static void node_draw_basis(const bContext &C,
     node_draw_panels(ntree, node, block);
   }
 
-  /* Hack to force update of the button state after drawing, see #112462. */
-  WM_event_add_mousemove(CTX_wm_window(&C));
-
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
 }
