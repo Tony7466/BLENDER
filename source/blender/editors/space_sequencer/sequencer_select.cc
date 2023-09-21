@@ -982,6 +982,7 @@ bool sequencer_handle_selection_refine(const Scene *scene,
     }
     break;
   }
+  return true;
 }
 
 static int sequencer_select_exec(bContext *C, wmOperator *op)
