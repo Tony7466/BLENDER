@@ -531,7 +531,6 @@ set(SRC
   intern/pbvh_intern.hh
   intern/pbvh_pixels_copy.hh
   intern/pbvh_uv_islands.hh
-  intern/softbody_intern.h
   intern/subdiv_converter.hh
   intern/subdiv_inline.hh
 )
