@@ -22,6 +22,9 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
+
 #include "view3d_intern.h" /* own include */
 
 namespace blender::ed::view3d {
@@ -73,6 +76,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &value_input = gizmo_node->input_socket(0);
     bNodeSocket &position_input = gizmo_node->input_socket(1);
 
+    const Span<bNodeSocket *> origin_sockets = value_input.directly_linked_sockets();
+    if (origin_sockets.size() != 1) {
+      continue;
+    }
+    bNodeSocket &origin_socket = *origin_sockets[0];
+    if (origin_socket.owner_node().type != SH_NODE_VALUE) {
+      continue;
+    }
+
     std::unique_ptr<NodeGizmoData> node_gizmo_data;
     if (gzgroup_data->gizmo_by_node_id.contains(gizmo_node->identifier)) {
       node_gizmo_data = gzgroup_data->gizmo_by_node_id.pop(gizmo_node->identifier);
@@ -88,12 +100,21 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     copy_v3_v3(node_gizmo_data->gizmo->matrix_offset[3],
                position_input.default_value_typed<bNodeSocketValueVector>()->value);
 
+    PointerRNA value_owner_ptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &origin_socket);
+    PropertyRNA *value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
+
     struct UserData {
-      bNodeSocket *value_input_socket;
+      bContext *C;
+      PointerRNA value_owner_ptr;
+      PropertyRNA *value_prop;
       float initial_value;
     } *user_data = MEM_new<UserData>(__func__);
-    user_data->value_input_socket = &value_input;
-    user_data->initial_value = value_input.default_value_typed<bNodeSocketValueFloat>()->value;
+    /* The code that calls `value_set_fn` has the context, but its not passed into the callback
+     * currently. */
+    user_data->C = const_cast<bContext *>(C);
+    user_data->value_owner_ptr = value_owner_ptr;
+    user_data->value_prop = value_prop;
+    user_data->initial_value = RNA_property_float_get(&value_owner_ptr, value_prop);
 
     wmGizmoPropertyFnParams params{};
     params.user_data = user_data;
@@ -103,15 +124,16 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     params.value_set_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, const void *value_ptr) {
       UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
       const float gizmo_value = *static_cast<const float *>(value_ptr);
-      user_data->value_input_socket->default_value_typed<bNodeSocketValueFloat>()->value =
-          gizmo_value + user_data->initial_value;
-      WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
+      RNA_property_float_set(&user_data->value_owner_ptr,
+                             user_data->value_prop,
+                             gizmo_value + user_data->initial_value);
+      RNA_property_update(user_data->C, &user_data->value_owner_ptr, user_data->value_prop);
     };
     params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
       UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-      *(float *)value_ptr =
-          user_data->value_input_socket->default_value_typed<bNodeSocketValueFloat>()->value -
-          user_data->initial_value;
+      *static_cast<float *>(value_ptr) = RNA_property_float_get(&user_data->value_owner_ptr,
+                                                                user_data->value_prop) -
+                                         user_data->initial_value;
     };
     WM_gizmo_target_property_def_func(node_gizmo_data->gizmo, "offset", &params);
 
