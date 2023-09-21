@@ -83,11 +83,6 @@ static void armature_init_data(ID *id)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(armature, id));
 
   MEMCPY_STRUCT_AFTER(armature, DNA_struct_default_get(bArmature), id);
-
-  /* Give the Armature its default bone collection. */
-  BoneCollection *default_bonecoll = ANIM_bonecoll_new("");
-  BLI_addhead(&armature->collections, default_bonecoll);
-  ANIM_armature_bonecoll_active_set(armature, default_bonecoll);
 }
 
 /**
@@ -350,10 +345,18 @@ static void armature_blend_read_data(BlendDataReader *reader, ID *id)
   }
 
   BLO_read_list(reader, &arm->collections);
+
+  /* Bone collections added via an override can be edited, but ones that already exist in another
+   * blend file (so on the linked Armature) should not be touched. */
+  const bool reset_bcoll_override_flag = ID_IS_LINKED(&arm->id);
   LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
     direct_link_bone_collection(reader, bcoll);
+    if (reset_bcoll_override_flag) {
+      /* The linked Armature may have overrides in the library file already, and
+       * those should *not* be editable here. */
+      bcoll->flags &= ~BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL;
+    }
   }
-  BLO_read_data_address(reader, &arm->active_collection);
 
   BLO_read_data_address(reader, &arm->act_bone);
   arm->act_edbone = nullptr;
