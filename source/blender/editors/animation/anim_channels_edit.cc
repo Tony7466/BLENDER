@@ -4483,7 +4483,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "remove_existing",
                channel_bake_remove_options,
-               int(BakeCurveRemove::REMOVE_NONE),
+               int(BakeCurveRemove::REMOVE_IN_RANGE),
                "Remove Existing Keys",
                "If enabled removes the keys that currently make up the curve");
 
