@@ -233,7 +233,8 @@ NodeItem NodeItem::max(const NodeItem &other) const
 
 NodeItem NodeItem::dotproduct(const NodeItem &other) const
 {
-  NodeItem d = arithmetic(other, "dotproduct", [](float a, float b) { return a * b; });
+  NodeItem d = arithmetic(
+      other, "dotproduct", [](float a, float b) { return a * b; }, Type::Float);
   if (d.value) {
     float f = 0.0f;
     switch (d.type()) {
@@ -830,12 +831,13 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
 
 NodeItem NodeItem::arithmetic(const NodeItem &other,
                               const std::string &category,
-                              std::function<float(float, float)> func) const
+                              std::function<float(float, float)> func,
+                              Type to_type) const
 {
   NodeItem res = empty();
   NodeItem item1 = *this;
   NodeItem item2 = other;
-  Type to_type = cast_types(item1, item2);
+  to_type = (to_type == Type::Any) ? cast_types(item1, item2) : to_type;
   if (to_type == Type::Empty) {
     return res;
   }

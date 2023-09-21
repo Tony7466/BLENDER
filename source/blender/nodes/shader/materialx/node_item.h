@@ -127,7 +127,8 @@ class NodeItem {
   NodeItem arithmetic(const std::string &category, std::function<float(float)> func) const;
   NodeItem arithmetic(const NodeItem &other,
                       const std::string &category,
-                      std::function<float(float, float)> func) const;
+                      std::function<float(float, float)> func,
+                      Type to_type = Type::Any) const;
 };
 
 template<class T> NodeItem NodeItem::val(const T &data) const
