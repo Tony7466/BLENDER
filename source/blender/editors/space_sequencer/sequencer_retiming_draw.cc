@@ -426,11 +426,11 @@ static void retime_keys_draw(const bContext *C)
       continue;
     }
 
-    fake_keys_draw(C, seq);
-
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       draw_continuity(C, seq, &key);
     }
+
+    fake_keys_draw(C, seq);
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       retime_key_draw(C, seq, &key);
     }
