@@ -1296,13 +1296,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
-<<<<<<< HEAD
-    /* Unhide all Reroute nodes. */
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        if (node->is_reroute()) {
-          blender::bke::node_find_enabled_input_socket(*node, "Input")->flag &= ~SOCK_HIDDEN;
-=======
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type == NTREE_SHADER) {
         /* Convert coat inputs on the Principled BSDF. */
@@ -1333,7 +1326,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
               }
             }
           }
->>>>>>> main
         }
       }
     }
@@ -1356,6 +1348,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         const int position = ntree->tree_interface.find_item_position(socket->item);
         bNodeTreeInterfacePanel *parent = ntree->tree_interface.find_item_parent(socket->item);
         version_node_group_split_socket(ntree->tree_interface, *socket, parent, position + 1);
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 25)) {
+    /* Convert sockets with both input and output flag into two separate sockets. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->is_reroute()) {
+          blender::bke::node_find_enabled_input_socket(*node, "Input")->flag &= ~SOCK_HIDDEN;
+          blender::bke::node_find_enabled_output_socket(*node, "Output")->flag &= ~SOCK_HIDDEN;
+        }
       }
     }
     FOREACH_NODETREE_END;
