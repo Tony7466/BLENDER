@@ -46,8 +46,29 @@ struct GeometryNodesGizmoGroup {
   Map<int, std::unique_ptr<NodeGizmoData>> dial_gizmo_by_node_id;
 };
 
-struct FloatController {
-  std::function<void(bContext *C, float diff)> apply_diff;
+struct FloatValuePath {
+  PointerRNA owner;
+  PropertyRNA *property;
+  int index = -1;
+
+  float get()
+  {
+    if (this->index == -1) {
+      return RNA_property_float_get(&this->owner, this->property);
+    }
+    return RNA_property_float_get_index(&this->owner, this->property, this->index);
+  }
+
+  void set_and_update(bContext *C, const float value)
+  {
+    if (this->index == -1) {
+      RNA_property_float_set(&this->owner, this->property, value);
+    }
+    else {
+      RNA_property_float_set_index(&this->owner, this->property, this->index, value);
+    }
+    RNA_property_update(C, &this->owner, this->property);
+  }
 };
 
 struct SocketItem {
@@ -55,13 +76,13 @@ struct SocketItem {
   int elem_index = -1;
 };
 
-static std::optional<FloatController> find_float_controller_for_input_socket(
+static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     const SocketItem &input_socket,
     const ComputeContext &compute_context,
     const Object &object,
     const NodesModifierData &nmd);
 
-static std::optional<FloatController> find_float_controller_for_output_socket(
+static std::optional<FloatValuePath> find_float_value_path_for_output_socket(
     const SocketItem &output_socket,
     const ComputeContext &compute_context,
     const Object &object,
@@ -70,7 +91,7 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
   const bNodeTree &ntree = output_socket.socket.owner_tree();
   const bNode &node = output_socket.socket.owner_node();
   if (node.is_reroute()) {
-    return find_float_controller_for_input_socket(
+    return find_float_value_path_for_input_socket(
         {node.input_socket(0), output_socket.elem_index}, compute_context, object, nmd);
   }
   if (node.type == SH_NODE_VALUE) {
@@ -78,12 +99,7 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
                                           &RNA_NodeSocket,
                                           const_cast<bNodeSocket *>(&output_socket.socket));
     PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
-    const float initial_value = RNA_property_float_get(&owner, prop);
-    auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
-      RNA_property_float_set(&owner, prop, initial_value + diff);
-      RNA_property_update(C, &owner, prop);
-    };
-    return FloatController{apply_diff};
+    return FloatValuePath{owner, prop};
   }
   if (node.type == FN_NODE_INPUT_VECTOR) {
     if (output_socket.elem_index < 0 || output_socket.elem_index >= 3) {
@@ -92,19 +108,12 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
     PointerRNA owner = RNA_pointer_create(
         const_cast<ID *>(&ntree.id), &RNA_Node, const_cast<bNode *>(&node));
     PropertyRNA *prop = RNA_struct_find_property(&owner, "vector");
-    const float initial_value = RNA_property_float_get_index(
-        &owner, prop, output_socket.elem_index);
-    auto apply_diff = [owner, prop, initial_value, index = output_socket.elem_index](
-                          bContext *C, const float diff) mutable {
-      RNA_property_float_set_index(&owner, prop, index, initial_value + diff);
-      RNA_property_update(C, &owner, prop);
-    };
-    return FloatController{apply_diff};
+    return FloatValuePath{owner, prop, output_socket.elem_index};
   }
   if (node.type == SH_NODE_SEPXYZ) {
     const int axis = output_socket.socket.index();
     const bNodeSocket &input_socket = node.input_socket(0);
-    return find_float_controller_for_input_socket(
+    return find_float_value_path_for_input_socket(
         {input_socket, axis}, compute_context, object, nmd);
   }
   if (node.type == SH_NODE_COMBXYZ) {
@@ -113,7 +122,7 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
       return std::nullopt;
     }
     const bNodeSocket &input_socket = node.input_socket(axis);
-    return find_float_controller_for_input_socket({input_socket}, compute_context, object, nmd);
+    return find_float_value_path_for_input_socket({input_socket}, compute_context, object, nmd);
   }
   if (node.type == NODE_GROUP_INPUT) {
     if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
@@ -131,12 +140,7 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
         if (id_property->type != IDP_FLOAT) {
           return std::nullopt;
         }
-        const float initial_value = RNA_property_float_get(&owner, prop);
-        auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
-          RNA_property_float_set(&owner, prop, initial_value + diff);
-          RNA_property_update(C, &owner, prop);
-        };
-        return FloatController{apply_diff};
+        return FloatValuePath{owner, prop};
       }
       else {
         if (id_property->type != IDP_ARRAY) {
@@ -148,28 +152,20 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
         if (id_property->len <= output_socket.elem_index) {
           return std::nullopt;
         }
-        const float initial_value = RNA_property_float_get_index(
-            &owner, prop, output_socket.elem_index);
-        auto apply_diff = [owner, prop, initial_value, index = output_socket.elem_index](
-                              bContext *C, const float diff) mutable {
-          RNA_property_float_set_index(&owner, prop, index, initial_value + diff);
-          RNA_property_update(C, &owner, prop);
-        };
-        return FloatController{apply_diff};
+        return FloatValuePath{owner, prop, output_socket.elem_index};
       }
     }
   }
   return std::nullopt;
 }
 
-static std::optional<FloatController> find_float_controller_for_input_socket(
+static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     const SocketItem &input_socket,
     const ComputeContext &compute_context,
     const Object &object,
     const NodesModifierData &nmd)
 {
   const bNodeTree &ntree = input_socket.socket.owner_tree();
-  const bNode &node = input_socket.socket.owner_node();
   if ((input_socket.socket.flag & SOCK_HIDE_VALUE) == 0 &&
       input_socket.socket.type == SOCK_FLOAT && !input_socket.socket.is_directly_linked())
   {
@@ -177,12 +173,7 @@ static std::optional<FloatController> find_float_controller_for_input_socket(
                                           &RNA_NodeSocket,
                                           const_cast<bNodeSocket *>(&input_socket.socket));
     PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
-    const float initial_value = RNA_property_float_get(&owner, prop);
-    auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
-      RNA_property_float_set(&owner, prop, initial_value + diff);
-      RNA_property_update(C, &owner, prop);
-    };
-    return FloatController{apply_diff};
+    return FloatValuePath{owner, prop};
   }
   const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
   for (const bNodeLink *link : links) {
@@ -193,7 +184,7 @@ static std::optional<FloatController> find_float_controller_for_input_socket(
     if (!origin_socket.is_available()) {
       continue;
     }
-    if (std::optional<FloatController> controller = find_float_controller_for_output_socket(
+    if (std::optional<FloatValuePath> controller = find_float_value_path_for_output_socket(
             {origin_socket, input_socket.elem_index}, compute_context, object, nmd))
     {
       return controller;
@@ -259,9 +250,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    std::optional<FloatController> controller = find_float_controller_for_input_socket(
+    std::optional<FloatValuePath> value_path = find_float_value_path_for_input_socket(
         {value_input}, compute_context, *ob, nmd);
-    if (!controller) {
+    if (!value_path) {
       continue;
     }
 
@@ -297,13 +288,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        FloatController controller;
+        float initial_value;
+        FloatValuePath value_path;
         float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->controller = std::move(*controller);
+      user_data->initial_value = value_path->get();
+      user_data->value_path = *value_path;
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -315,7 +308,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             user_data->gizmo_value = new_gizmo_value;
-            user_data->controller.apply_diff(user_data->C, new_gizmo_value);
+            user_data->value_path.set_and_update(user_data->C,
+                                                 user_data->initial_value + new_gizmo_value);
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
@@ -336,9 +330,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    std::optional<FloatController> controller = find_float_controller_for_input_socket(
+    std::optional<FloatValuePath> value_path = find_float_value_path_for_input_socket(
         {value_input}, compute_context, *ob, nmd);
-    if (!controller) {
+    if (!value_path) {
       continue;
     }
 
@@ -374,13 +368,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        FloatController controller;
+        float initial_value;
+        FloatValuePath value_path;
         float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->controller = std::move(*controller);
+      user_data->initial_value = value_path->get();
+      user_data->value_path = *value_path;
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -392,7 +388,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             user_data->gizmo_value = new_gizmo_value;
-            user_data->controller.apply_diff(user_data->C, new_gizmo_value);
+            user_data->value_path.set_and_update(user_data->C,
+                                                 new_gizmo_value + user_data->initial_value);
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
