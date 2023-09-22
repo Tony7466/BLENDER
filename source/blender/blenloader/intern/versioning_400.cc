@@ -1187,11 +1187,44 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+<<<<<<< HEAD
     /* Unhide all Reroute nodes. */
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (node->is_reroute()) {
           blender::bke::node_find_enabled_input_socket(*node, "Input")->flag &= ~SOCK_HIDDEN;
+=======
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Convert coat inputs on the Principled BSDF. */
+        version_principled_bsdf_coat(ntree);
+        /* Convert subsurface inputs on the Principled BSDF. */
+        version_principled_bsdf_subsurface(ntree);
+        /* Convert emission on the Principled BSDF. */
+        version_principled_bsdf_emission(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            LISTBASE_FOREACH (ARegion *, region, regionbase) {
+              if (region->regiontype != RGN_TYPE_ASSET_SHELF) {
+                continue;
+              }
+
+              RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
+              if (shelf_data && shelf_data->active_shelf &&
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                shelf_data->active_shelf->preferred_row_count = 1;
+              }
+            }
+          }
+>>>>>>> main
         }
       }
     }
@@ -1209,17 +1242,5 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type == NTREE_SHADER) {
-        /* Convert coat inputs on the Principled BSDF. */
-        version_principled_bsdf_coat(ntree);
-        /* Convert subsurface inputs on the Principled BSDF. */
-        version_principled_bsdf_subsurface(ntree);
-        /* Convert emission on the Principled BSDF. */
-        version_principled_bsdf_emission(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
   }
 }
