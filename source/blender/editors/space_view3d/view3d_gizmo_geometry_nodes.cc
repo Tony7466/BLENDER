@@ -46,6 +46,89 @@ struct GeometryNodesGizmoGroup {
   Map<int, std::unique_ptr<NodeGizmoData>> dial_gizmo_by_node_id;
 };
 
+struct FloatController {
+  std::function<void(bContext *C, float diff)> apply_diff;
+};
+
+static std::optional<FloatController> find_float_controller_for_input_socket(
+    const bNodeSocket &input_socket,
+    const ComputeContext &compute_context,
+    const Object &object,
+    const NodesModifierData &nmd);
+
+static std::optional<FloatController> find_float_controller_for_output_socket(
+    const bNodeSocket &output_socket,
+    const ComputeContext &compute_context,
+    const Object &object,
+    const NodesModifierData &nmd)
+{
+  const bNodeTree &ntree = output_socket.owner_tree();
+  const bNode &node = output_socket.owner_node();
+  if (node.is_reroute()) {
+    return find_float_controller_for_input_socket(
+        node.input_socket(0), compute_context, object, nmd);
+  }
+  if (node.type == SH_NODE_VALUE) {
+    PointerRNA owner = RNA_pointer_create(
+        const_cast<ID *>(&ntree.id), &RNA_NodeSocket, const_cast<bNodeSocket *>(&output_socket));
+    PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
+    const float initial_value = RNA_property_float_get(&owner, prop);
+    auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
+      RNA_property_float_set(&owner, prop, initial_value + diff);
+      RNA_property_update(C, &owner, prop);
+    };
+    return FloatController{apply_diff};
+  }
+  if (node.type == NODE_GROUP_INPUT) {
+    if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
+      const StringRefNull input_identifier =
+          ntree.interface_inputs()[output_socket.index()]->identifier;
+      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                      input_identifier.c_str());
+      if (property == nullptr) {
+        return std::nullopt;
+      }
+      if (property->type != IDP_FLOAT) {
+        return std::nullopt;
+      }
+      PointerRNA owner = RNA_pointer_create(
+          const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
+      PropertyRNA *prop = reinterpret_cast<PropertyRNA *>(property);
+      const float initial_value = RNA_property_float_get(&owner, prop);
+      auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
+        RNA_property_float_set(&owner, prop, initial_value + diff);
+        RNA_property_update(C, &owner, prop);
+      };
+      return FloatController{apply_diff};
+    }
+  }
+  return std::nullopt;
+}
+
+static std::optional<FloatController> find_float_controller_for_input_socket(
+    const bNodeSocket &input_socket,
+    const ComputeContext &compute_context,
+    const Object &object,
+    const NodesModifierData &nmd)
+{
+  const Span<const bNodeLink *> links = input_socket.directly_linked_links();
+  for (const bNodeLink *link : links) {
+    if (link->is_muted()) {
+      continue;
+    }
+    const bNodeSocket &origin_socket = *link->fromsock;
+    if (!origin_socket.is_available()) {
+      continue;
+    }
+    if (std::optional<FloatController> controller = find_float_controller_for_output_socket(
+            origin_socket, compute_context, object, nmd))
+    {
+      return controller;
+    }
+  }
+  return std::nullopt;
+}
+
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 {
   if (Object *object = CTX_data_active_object(C)) {
@@ -103,6 +186,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
+    std::optional<FloatController> controller = find_float_controller_for_input_socket(
+        value_input, compute_context, *ob, nmd);
+    if (!controller) {
+      continue;
+    }
+
     auto *position_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
         tree_log.find_socket_value_log(position_input));
     auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
@@ -112,38 +201,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     }
     const float3 position = *position_value_log->value.get<float3>();
     const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
-
-    const Span<const bNodeSocket *> origin_sockets = value_input.logically_linked_sockets();
-    if (origin_sockets.size() != 1) {
-      continue;
-    }
-    const bNodeSocket &origin_socket = *origin_sockets[0];
-    PointerRNA value_owner_ptr{};
-    PropertyRNA *value_prop;
-    if (origin_socket.owner_node().type == SH_NODE_VALUE) {
-      value_owner_ptr = RNA_pointer_create(
-          &ntree.id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&origin_socket));
-      value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
-    }
-    else if (origin_socket.owner_node().is_group_input()) {
-      const StringRefNull input_identifier =
-          ntree.interface_inputs()[origin_socket.index()]->identifier;
-      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                      input_identifier.c_str());
-
-      if (property == nullptr) {
-        continue;
-      }
-      if (property->type != IDP_FLOAT) {
-        continue;
-      }
-      value_owner_ptr = RNA_pointer_create(
-          &ob->id, &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-      value_prop = reinterpret_cast<PropertyRNA *>(property);
-    }
-    else {
-      continue;
-    }
 
     std::unique_ptr<NodeGizmoData> node_gizmo_data;
     if (gzgroup_data->arrow_gizmo_by_node_id.contains(gizmo_node->identifier)) {
@@ -167,16 +224,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        PointerRNA value_owner_ptr;
-        PropertyRNA *value_prop;
-        float initial_value;
+        FloatController controller;
+        float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->value_owner_ptr = value_owner_ptr;
-      user_data->value_prop = value_prop;
-      user_data->initial_value = RNA_property_float_get(&value_owner_ptr, value_prop);
+      user_data->controller = std::move(*controller);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -186,17 +240,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       params.value_set_fn =
           [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-            const float gizmo_value = *static_cast<const float *>(value_ptr);
-            RNA_property_float_set(&user_data->value_owner_ptr,
-                                   user_data->value_prop,
-                                   gizmo_value + user_data->initial_value);
-            RNA_property_update(user_data->C, &user_data->value_owner_ptr, user_data->value_prop);
+            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+            user_data->gizmo_value = new_gizmo_value;
+            user_data->controller.apply_diff(user_data->C, new_gizmo_value);
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-        *static_cast<float *>(value_ptr) = RNA_property_float_get(&user_data->value_owner_ptr,
-                                                                  user_data->value_prop) -
-                                           user_data->initial_value;
+        *static_cast<float *>(value_ptr) = user_data->gizmo_value;
       };
 
       wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
@@ -213,6 +263,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
+    std::optional<FloatController> controller = find_float_controller_for_input_socket(
+        value_input, compute_context, *ob, nmd);
+    if (!controller) {
+      continue;
+    }
+
     auto *position_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
         tree_log.find_socket_value_log(position_input));
     auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
@@ -222,38 +278,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     }
     const float3 position = *position_value_log->value.get<float3>();
     const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
-
-    const Span<const bNodeSocket *> origin_sockets = value_input.logically_linked_sockets();
-    if (origin_sockets.size() != 1) {
-      continue;
-    }
-    const bNodeSocket &origin_socket = *origin_sockets[0];
-    PointerRNA value_owner_ptr{};
-    PropertyRNA *value_prop;
-    if (origin_socket.owner_node().type == SH_NODE_VALUE) {
-      value_owner_ptr = RNA_pointer_create(
-          &ntree.id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&origin_socket));
-      value_prop = RNA_struct_find_property(&value_owner_ptr, "default_value");
-    }
-    else if (origin_socket.owner_node().is_group_input()) {
-      const StringRefNull input_identifier =
-          ntree.interface_inputs()[origin_socket.index()]->identifier;
-      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                      input_identifier.c_str());
-
-      if (property == nullptr) {
-        continue;
-      }
-      if (property->type != IDP_FLOAT) {
-        continue;
-      }
-      value_owner_ptr = RNA_pointer_create(
-          &ob->id, &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-      value_prop = reinterpret_cast<PropertyRNA *>(property);
-    }
-    else {
-      continue;
-    }
 
     std::unique_ptr<NodeGizmoData> node_gizmo_data;
     if (gzgroup_data->dial_gizmo_by_node_id.contains(gizmo_node->identifier)) {
@@ -277,16 +301,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        PointerRNA value_owner_ptr;
-        PropertyRNA *value_prop;
-        float initial_value;
+        FloatController controller;
+        float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->value_owner_ptr = value_owner_ptr;
-      user_data->value_prop = value_prop;
-      user_data->initial_value = RNA_property_float_get(&value_owner_ptr, value_prop);
+      user_data->controller = std::move(*controller);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -296,17 +317,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       params.value_set_fn =
           [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-            const float gizmo_value = *static_cast<const float *>(value_ptr);
-            RNA_property_float_set(&user_data->value_owner_ptr,
-                                   user_data->value_prop,
-                                   gizmo_value + user_data->initial_value);
-            RNA_property_update(user_data->C, &user_data->value_owner_ptr, user_data->value_prop);
+            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+            user_data->gizmo_value = new_gizmo_value;
+            user_data->controller.apply_diff(user_data->C, new_gizmo_value);
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-        *static_cast<float *>(value_ptr) = RNA_property_float_get(&user_data->value_owner_ptr,
-                                                                  user_data->value_prop) -
-                                           user_data->initial_value;
+        *static_cast<float *>(value_ptr) = user_data->gizmo_value;
       };
 
       wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
