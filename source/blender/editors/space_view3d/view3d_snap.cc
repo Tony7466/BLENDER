@@ -609,7 +609,7 @@ enum {
 static const EnumPropertyItem snap_transform_mode_items[] = {
     {SNAP_LOC, "LOC", 0, "Location", ""},
     {SNAP_ROT, "ROT", 0, "Rotation", ""},
-    {SNAP_LOC_ROT, "LOC_ROT", 0, "Loc & Rot", ""},
+    {SNAP_LOC_ROT, "LOC_ROT", 0, "Location & Rotation", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

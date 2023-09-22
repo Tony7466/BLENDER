@@ -208,7 +208,7 @@ bool ED_object_calc_active_world_rot_for_editmode(Object *obedit,
 
 bool ED_object_calc_active_rot_for_posemode(Object *ob, bool select_only, float r_rot[3][3])
 {
-  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+  bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
   if (pchan && (!select_only || (pchan->bone->flag & BONE_SELECTED))) {
     copy_m3_m4(r_rot, pchan->pose_mat);
     return true;
