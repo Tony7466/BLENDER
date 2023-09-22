@@ -35,6 +35,8 @@
 
 #include "UI_resources.hh"
 
+#include "ED_gizmo_library.hh"
+
 #include "view3d_intern.h" /* own include */
 
 namespace blender::ed::view3d {
