@@ -16,7 +16,10 @@
 
 #include "DNA_node_types.h"
 
+struct bContext;
 struct bNode;
+struct PointerRNA;
+struct uiLayout;
 
 namespace blender::nodes {
 
@@ -568,6 +571,8 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
 
 using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 
+typedef void (*PanelDrawButtonsFunction)(uiLayout *, bContext *, PointerRNA *);
+
 /**
  * Describes a panel containing sockets or other panels.
  */
@@ -579,6 +584,7 @@ class PanelDeclaration : public ItemDeclaration {
   std::string translation_context;
   bool default_collapsed = false;
   int num_child_decls = 0;
+  PanelDrawButtonsFunction draw_buttons = nullptr;
 
  private:
   friend NodeDeclarationBuilder;
@@ -615,6 +621,12 @@ class PanelDeclarationBuilder {
   Self &default_closed(bool closed)
   {
     decl_->default_collapsed = closed;
+    return *this;
+  }
+
+  Self &draw_buttons(PanelDrawButtonsFunction func)
+  {
+    decl_->draw_buttons = func;
     return *this;
   }
 
