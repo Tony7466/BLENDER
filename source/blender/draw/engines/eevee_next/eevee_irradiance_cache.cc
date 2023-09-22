@@ -624,9 +624,7 @@ void IrradianceBake::init(const Object &probe_object)
   capture_emission_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_EMISSION);
 
   /* Initialice views data, since they're used by other modules.*/
-  float3 _min(0.0f);
-  float3 _max(1.0f);
-  surfel_raster_views_sync(_min, _max);
+  surfel_raster_views_sync(float3(0.0f), float3(1.0f), float4x4::identity());
 }
 
 void IrradianceBake::sync()
@@ -730,45 +728,61 @@ void IrradianceBake::sync()
   }
 }
 
-void IrradianceBake::surfel_raster_views_sync(float3 &scene_min,
-                                              float3 &scene_max,
-                                              const Object *probe_object)
+void IrradianceBake::surfel_raster_views_sync(float3 scene_min,
+                                              float3 scene_max,
+                                              float4x4 probe_to_world)
 {
   using namespace blender::math;
 
-  if (probe_object && clip_distance_ > 0.0f) {
-    /** Get probe axis-aligned bounding box. */
-    float3 aabb_min(FLT_MAX);
-    float3 aabb_max(-FLT_MAX);
-    float4x4 object_to_world = float4x4(probe_object->object_to_world);
-    for (int x : {-1, 1}) {
-      for (int y : {-1, 1}) {
-        for (int z : {-1, 1}) {
-          float3 wP = transform_point(object_to_world, float3(x, y, z));
-          aabb_min = min(aabb_min, wP);
-          aabb_max = max(aabb_max, wP);
-        }
+  float3 location, scale;
+  Quaternion rotation;
+  to_loc_rot_scale(probe_to_world, location, rotation, scale);
+  /* Remove scale from view matrix. */
+  float4x4 viewinv = from_loc_rot_scale<float4x4>(location, rotation, float3(1.0f));
+  float4x4 viewmat = invert(viewinv);
+
+  /* Compute the intersection between the grid and the scene extents. */
+  float3 extent_min = float3(FLT_MAX);
+  float3 extent_max = float3(-FLT_MAX);
+  for (int x : {0, 1}) {
+    for (int y : {0, 1}) {
+      for (int z : {0, 1}) {
+        float3 ws_corner = scene_min + ((scene_max - scene_min) * float3(x, y, z));
+        float3 ls_corner = transform_point(viewmat, ws_corner);
+        extent_min = min(extent_min, ls_corner);
+        extent_max = max(extent_max, ls_corner);
       }
     }
-    /** Clamp surfel scene aabb to probe aabb + clip distance. */
-    scene_min = max(scene_min, aabb_min - float3(clip_distance_));
-    scene_max = min(scene_max, aabb_max + float3(clip_distance_));
   }
+  /* Clip distance is added to every axis in both directions, not just Z. */
+  float3 target_extent = scale + clip_distance_;
+  extent_min = max(extent_min, -target_extent);
+  extent_max = min(extent_max, target_extent);
 
-  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * (scene_max - scene_min)));
-
+  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * (extent_max - extent_min)));
   grid_pixel_extent_ = min(grid_pixel_extent_, int3(16384));
+
+  float3 ls_midpoint = midpoint(extent_min, extent_max);
+  scene_bound_sphere_ = float4(transform_point(viewinv, ls_midpoint),
+                               distance(extent_min, extent_max) / 2.0f);
 
   /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
   auto sync_view = [&](View &view, CartesianBasis basis) {
-    float3 extent_min = transform_point(invert(basis), scene_min);
-    float3 extent_max = transform_point(invert(basis), scene_max);
-    float4x4 winmat = projection::orthographic(
-        extent_min.x, extent_max.x, extent_min.y, extent_max.y, -extent_min.z, -extent_max.z);
-    float4x4 viewinv = from_rotation<float4x4>(to_quaternion<float>(basis));
+    float4x4 _viewinv = viewinv * from_rotation<float4x4>(basis);
+
+    float3 _extent_min = transform_point(invert(basis), extent_min);
+    float3 _extent_max = transform_point(invert(basis), extent_max);
+
+    float4x4 winmat = projection::orthographic(_extent_min.x,
+                                               _extent_max.x,
+                                               _extent_min.y,
+                                               _extent_max.y,
+                                               -_extent_min.z,
+                                               -_extent_max.z);
+
     view.visibility_test(false);
-    view.sync(invert(viewinv), winmat);
+    view.sync(invert(_viewinv), winmat);
   };
 
   sync_view(view_x_, basis_x_);
@@ -888,10 +902,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   float epsilon = 1.0f / surfel_density_;
   scene_min -= epsilon;
   scene_max += epsilon;
-  surfel_raster_views_sync(scene_min, scene_max, &probe_object);
-
-  scene_bound_sphere_ = float4(midpoint(scene_max, scene_min),
-                               distance(scene_max, scene_min) / 2.0f);
+  surfel_raster_views_sync(scene_min, scene_max, float4x4(probe_object.object_to_world));
 
   DRW_stats_group_end();
 
