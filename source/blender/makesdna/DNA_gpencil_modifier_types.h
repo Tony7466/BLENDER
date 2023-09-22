@@ -8,6 +8,7 @@
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
+//#include "DNA_gpencil_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +49,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Shrinkwrap = 24,
   eGpencilModifierType_Envelope = 25,
   eGpencilModifierType_Outline = 26,
+  eGpencilModifierType_SurDeform = 27,
   /* Keep last. */
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
@@ -1311,6 +1313,161 @@ typedef enum eEnvelopeGpencil_Mode {
   GP_ENVELOPE_SEGMENTS = 1,
   GP_ENVELOPE_FILLS = 2,
 } eEnvelopeGpencil_Mode;
+
+/* SURFACE DEFORM MODIFIER START */
+
+typedef struct bGPDstroke bGPDstroke;
+typedef struct bGPDframe bGPDframe;
+typedef struct bGPDlayer bGPDlayer;
+
+typedef struct SDefGPBind {
+  unsigned int *vert_inds;
+  unsigned int verts_num;
+  int mode;
+  float *vert_weights;
+  float normal_dist;
+  float influence;
+} SDefGPBind;
+
+typedef struct SDefGPVert {
+  SDefGPBind *binds;
+  unsigned int binds_num;
+  unsigned int vertex_idx;
+} SDefGPVert;
+
+typedef struct SDefGPStroke {
+  struct SDefGPStroke *first;
+  SDefGPVert *verts;
+  unsigned int stroke_idx;
+  /* Number of of vertices on the deformed stroke upon the bind process. former bind_verts_num */
+  int stroke_verts_num;
+  /*Keep a pointer to the bGPDstroke UNUSED*/
+  bGPDstroke *blender_stroke;
+} SDefGPStroke;
+
+typedef struct SDefGPFrame{
+  struct SDefGPFrame *first;
+  /*SDefGPStroke in this SDefGPFrame*/
+  SDefGPStroke *strokes;
+  /*Number on the timeline this frame sits on.*/
+  unsigned int frame_number;
+  /*Index of inside the modifier*/
+  unsigned int frame_idx;
+  /* Number of strokes */
+  unsigned int strokes_num;
+
+  unsigned int _paddypad;
+  /*Keep a pointer to the bGPDframe UNUSED */
+  bGPDframe *blender_frame;
+} SDefGPFrame;
+
+typedef struct SDefGPLayer{
+  struct SDefGPLayer *first;
+  SDefGPFrame *frames;
+  /*Index of inside the modifier*/
+  unsigned int layer_idx; 
+  /*It is actually the name but for some reason it's called info :(*/
+  char layer_info[128]; //unused for now
+  /* Number of frames */
+  unsigned int num_of_frames;
+  /*Keep a pointer to the bGPDlayer UNUSED */
+  bGPDlayer *blender_layer;
+} SDefGPLayer;
+
+/*Bound frames to be displayed in the UI list.
+typedef struct SDefGPBoundFrame {
+  struct SDefGPBoundFrame *first;
+  /*name for list ui
+  char name[128];
+  /*index for list ui
+  unsigned int index;
+  /* layers involved in the frame 
+  bGPDlayer *layers[64];
+  /* Frame number. This is how we match it with its SDefGPFrame.
+  We could use the UI to move the frame, and change the data in SDefGPFrame with no risk.  
+  int framenum;
+  }
+  SDefGPBoundFrame;
+  */
+
+typedef struct SurDeformGpencilModifierData {
+  GpencilModifierData modifier;
+
+  struct Depsgraph *depsgraph;
+  /** Bind target object. */
+  struct Object *target;
+  /** Vertex bind data. */
+  SDefGPLayer *layers;
+  
+  void *_pad1;
+
+  /*frame list ui*/
+  //unsigned int uilist_frame_active_index;
+  //unsigned int uilist_totframes;
+  //SDefGPBoundFrame *uilist_frame_active;
+  
+  
+  int bake_range_start;
+  int bake_range_end;
+  float falloff;
+
+  /* Number of layers in the `frames` array of this modifier. */
+  unsigned int num_of_layers;
+  /* Number of vertices and polygons on the target mesh upon bind process. */
+  unsigned int target_verts_num, target_polys_num;
+  
+  int flags;
+
+  int bound_flags;
+  int bind_modes;
+  float strength;
+
+  char curr_frame_or_all_frames;
+  char curr_layer_or_all_layers;
+  char _pad3[6];
+
+  float mat[4][4];
+  char defgrp_name[64];
+} SurDeformGpencilModifierData;
+
+/** Surface Deform  Data mode (bind_modes)*/
+enum {
+  GP_MOD_SDEF_BIND_CURRENT_FRAME = (1 << 0),
+  GP_MOD_SDEF_BIND_ALL_FRAMES = (1 << 1),
+
+  GP_MOD_SDEF_BIND_CURRENT_LAYER = (1 << 2),
+  GP_MOD_SDEF_BIND_ALL_LAYERS = (1 << 3),
+
+  GP_MOD_SDEF_UNBIND_MODE = (1 << 4),
+};
+/*Frame-layer bound combination flags (bound_flags)*/
+enum {
+  GP_MOD_SDEF_ALL_LAYERS_AND_FRAMES_BOUND = (1 << 0),
+  GP_MOD_SDEF_ALL_LAYERS_CURRENT_FRAMES_BOUND = (1 << 1),
+  GP_MOD_SDEF_CURRENT_LAYER_ALL_FRAMES_BOUND = (1 << 2),
+  GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND = (1 << 3),
+
+  /*So that bound_flags is not 0 and the data doesn't get freed if a frame is added*/
+  GP_MOD_SDEF_SOMETHING_BOUND = (1 << 4),
+};
+/** Surface Deform modifier flags. (flags) */
+enum {
+  /* This indicates "do bind on next modifier evaluation" as well as "is bound". */
+  GP_MOD_SDEF_DO_BIND = (1 << 0),
+  GP_MOD_SDEF_INVERT_VGROUP = (1 << 1),
+  /* Only store bind data for nonzero vgroup weights at the time of bind. */
+  GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
+  GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3)
+  
+
+};
+
+/** Surface Deform vertex bind modes. */
+enum {
+  GP_MOD_SDEF_MODE_LOOPTRI = 0,
+  GP_MOD_SDEF_MODE_NGON = 1,
+  GP_MOD_SDEF_MODE_CENTROID = 2,
+};
 
 #ifdef __cplusplus
 }

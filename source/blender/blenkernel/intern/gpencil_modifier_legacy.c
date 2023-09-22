@@ -911,6 +911,95 @@ void BKE_gpencil_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
       BLO_write_struct_array(
           writer, TimeGpencilModifierSegment, gpmd->segments_len, gpmd->segments);
     }
+        else if (md->type == eGpencilModifierType_SurDeform) {
+      SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
+      //const bool is_undo = BLO_write_is_undo(writer);
+
+      // if (BKE_gpencil_modifier_is_nonlocal_in_liboverride(md->, md) &&
+      //    !is_undo) {
+      /* Modifier coming from linked data cannot be bound from an override, so we can remove
+       * all binding data, can save a significant amount of memory. */
+      //    smd->strokes_num = 0;
+      //    smd->strokes = NULL;
+      // }
+
+     // BLO_write_struct_at_address(writer, SurDeformGpencilModifierData, md, &smd);
+      if (smd->layers != NULL)
+      {  
+        BLO_write_struct_array( writer, SDefGPLayer, 
+                                  smd->num_of_layers, 
+                                  smd->layers);
+        for (int l = 0; l < smd->num_of_layers; l++) 
+        {
+          smd->layers[l].blender_layer = NULL;
+          if (smd->layers[l].frames != NULL)
+          {
+            BLO_write_struct_array( writer, SDefGPFrame, 
+                                  smd->layers[l].num_of_frames, 
+                                  smd->layers[l].frames);
+            for (int f = 0; f < smd->layers[l].num_of_frames; f++) 
+            {
+              smd->layers[l].frames[f].blender_frame = NULL;
+              if (smd->layers[l].frames[f].strokes != NULL) 
+              {
+                //SDefGPStroke *strokes = smd->layers[l].frames[f].strokes;
+                
+                while (smd->layers[l].frames[f].strokes->stroke_idx > 0) 
+                {
+                  (smd->layers[l].frames[f].strokes)--;
+                } /*Rewind stroke array */
+                BLO_write_struct_array( writer, SDefGPStroke, 
+                                  smd->layers[l].frames[f].strokes_num, 
+                                  smd->layers[l].frames[f].strokes);
+                for (int k = 0; k < smd->layers[l].frames[f].strokes_num; k++) 
+                {
+                  if (smd->layers[l].frames[f].strokes[k].verts != NULL) 
+                  {
+                    SDefGPVert *bind_verts = smd->layers[l].frames[f].strokes[k].verts;
+                    BLO_write_struct_array(
+                        writer, SDefGPVert, smd->layers[l].frames[f].strokes[k].stroke_verts_num, 
+                        smd->layers[l].frames[f].strokes[k].verts);
+
+                    for (int i = 0; i < smd->layers[l].frames[f].strokes[k].stroke_verts_num; i++) 
+                    {
+                      if (bind_verts[i].binds) 
+                      {
+                        BLO_write_struct_array(
+                        writer, SDefGPBind, bind_verts[i].binds_num, bind_verts[i].binds);
+
+                      
+                        for (int j = 0; j < bind_verts[i].binds_num; j++) 
+                        {
+                          BLO_write_uint32_array(
+                              writer, bind_verts[i].binds[j].verts_num, bind_verts[i].binds[j].vert_inds);
+
+                          if (ELEM(bind_verts[i].binds[j].mode,
+                                  MOD_SDEF_MODE_CENTROID,
+                                  MOD_SDEF_MODE_LOOPTRI)) 
+                          {
+                            BLO_write_float3_array(writer, 1, bind_verts[i].binds[j].vert_weights);
+                          }
+                          else 
+                          {
+                            BLO_write_float_array(writer,
+                                                  bind_verts[i].binds[j].verts_num,
+                                                  bind_verts[i].binds[j].vert_weights);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+
+
+
+    }
   }
 }
 
@@ -1004,10 +1093,82 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
         gpmd->segments[i].gpmd = gpmd;
       }
     }
-    if (md->type == eGpencilModifierType_Shrinkwrap) {
+
+    else if (md->type == eGpencilModifierType_SurDeform) 
+    {
+      SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
+      SDefGPLayer *first_layer;
+      SDefGPFrame *first_frame;
+      SDefGPStroke *first_stroke;
+
+      BLO_read_data_address(reader, &smd->layers);
+      if (smd->layers != NULL)
+      {
+        first_layer = smd->layers;
+        for (int l = 0; l < smd->num_of_layers; l++) 
+        {
+          smd->layers[l].first = first_layer;
+          BLO_read_data_address(reader, &(smd->layers[l].frames));
+          if (smd->layers[l].frames != NULL)
+          {
+            first_frame = smd->layers[l].frames;
+            for (int f = 0; f < smd->layers[l].num_of_frames; f++)
+            {
+              smd->layers[l].frames[f].first = first_frame;
+              BLO_read_data_address(reader, &(smd->layers[l].frames[f].strokes));
+              if (smd->layers[l].frames[f].strokes != NULL) 
+              {
+                first_stroke = smd->layers[l].frames[f].strokes;
+                for (int k = 0; k < smd->layers[l].frames[f].strokes_num; k++) 
+                {
+                  smd->layers[l].frames[f].strokes[k].first = first_stroke;
+                  BLO_read_data_address(reader, &smd->layers[l].frames[f].strokes[k].verts);
+                  SDefGPVert *bind_verts = smd->layers[l].frames[f].strokes[k].verts;
+                  if (smd->layers[l].frames[f].strokes[k].verts != NULL) 
+                  {
+                   
+                    for (int i = 0; i < smd->layers[l].frames[f].strokes[k].stroke_verts_num; i++) 
+                    {
+                      
+                      BLO_read_data_address(reader, &bind_verts[i].binds);
+                      SDefGPBind *binds = bind_verts[i].binds;
+                      if (bind_verts[i].binds) 
+                      {
+                        for (int j = 0; j < bind_verts[i].binds_num; j++) 
+                        {
+                          BLO_read_uint32_array(
+                              reader, bind_verts[i].binds[j].verts_num, &bind_verts[i].binds[j].vert_inds);
+
+                          if (ELEM(bind_verts[i].binds[j].mode,
+                                  MOD_SDEF_MODE_CENTROID,
+                                  MOD_SDEF_MODE_LOOPTRI)) 
+                          {
+                            BLO_read_float3_array(reader, 1, &bind_verts[i].binds[j].vert_weights);
+                          }
+                          else 
+                          {
+                            BLO_read_float_array(reader,
+                                                  bind_verts[i].binds[j].verts_num,
+                                                  &bind_verts[i].binds[j].vert_weights);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if (md->type == eGpencilModifierType_Shrinkwrap) 
+    {
       ShrinkwrapGpencilModifierData *gpmd = (ShrinkwrapGpencilModifierData *)md;
       gpmd->cache_data = NULL;
     }
+
   }
 }
 

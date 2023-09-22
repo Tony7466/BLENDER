@@ -143,6 +143,12 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_THICKNESS,
      "Thickness",
      "Change stroke thickness"},
+    
+    {eGpencilModifierType_SurDeform,
+     "GP_SURFACEDEFORM",
+     ICON_MOD_MESHDEFORM,
+     "Surface Deform",
+     "Opacity of the strokes"},
     RNA_ENUM_ITEM_HEADING(N_("Color"), NULL),
     {eGpencilModifierType_Color,
      "GP_COLOR",
@@ -265,6 +271,16 @@ static const EnumPropertyItem modifier_noise_random_mode_items[] = {
     {GP_NOISE_RANDOM_KEYFRAME, "KEYFRAME", 0, "Keyframes", "Randomize on keyframes only"},
     {0, NULL, 0, NULL, NULL},
 };
+static const EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
+    {GP_MOD_SDEF_BIND_CURRENT_FRAME, "CURR_FRAME", 0, "Current Frame", "Bind the current frame"},
+    {GP_MOD_SDEF_BIND_ALL_FRAMES, "ALL_FRAMES", 0, "All Frames", "Bind all the frames in the layer(s)"},
+    {0, NULL, 0, NULL, NULL},
+};
+static const EnumPropertyItem gpsurdef_curr_layer_or_all_layers_items[] = {
+    {GP_MOD_SDEF_BIND_CURRENT_LAYER, "CURR_LAYER", 0, "Current Layer", "Bind the current frame"},
+    {GP_MOD_SDEF_BIND_ALL_LAYERS, "ALL_LAYERS", 0, "All Layers", "Bind all the frames in the layer(s)"},
+    {0, NULL, 0, NULL, NULL},
+};
 #endif
 
 #ifdef RNA_RUNTIME
@@ -340,6 +356,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_DashGpencilModifierData;
     case eGpencilModifierType_Envelope:
       return &RNA_EnvelopeGpencilModifier;
+    case eGpencilModifierType_SurDeform:
+      return &RNA_SurDeformGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -417,6 +435,7 @@ RNA_GP_MOD_VGROUP_NAME_SET(WeightAngle, vgname);
 RNA_GP_MOD_VGROUP_NAME_SET(Lineart, vgname);
 RNA_GP_MOD_VGROUP_NAME_SET(Shrinkwrap, vgname);
 RNA_GP_MOD_VGROUP_NAME_SET(Envelope, vgname);
+RNA_GP_MOD_VGROUP_NAME_SET(SurDeform, defgrp_name);
 RNA_GP_MOD_VGROUP_NAME_SET(Build, target_vgname);
 
 #  undef RNA_GP_MOD_VGROUP_NAME_SET
@@ -452,6 +471,7 @@ RNA_GP_MOD_OBJECT_SET(Mirror, object, OB_EMPTY);
 RNA_GP_MOD_OBJECT_SET(WeightProx, object, OB_EMPTY);
 RNA_GP_MOD_OBJECT_SET(Shrinkwrap, target, OB_MESH);
 RNA_GP_MOD_OBJECT_SET(Shrinkwrap, aux_target, OB_MESH);
+RNA_GP_MOD_OBJECT_SET(SurDeform, target, OB_MESH);
 RNA_GP_MOD_OBJECT_SET(Build, object, OB_EMPTY);
 
 #  undef RNA_GP_MOD_OBJECT_SET
@@ -811,7 +831,14 @@ static void rna_GpencilDash_segments_begin(CollectionPropertyIterator *iter, Poi
   rna_iterator_array_begin(
       iter, dmd->segments, sizeof(DashGpencilModifierSegment), dmd->segments_len, false, NULL);
 }
-
+/*
+static void rna_GpencilSurDef_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)ptr->data;
+  rna_iterator_array_begin(
+      iter, smd->uilist_frame_active, sizeof(SurDeformGpencilModifierData), smd->uilist_totframes, false, NULL);
+}
+*/
 static void rna_GpencilTime_segments_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)ptr->data;
@@ -970,6 +997,10 @@ const EnumPropertyItem *gpencil_build_time_mode_filter(bContext *UNUSED(C),
   *r_free = true;
 
   return item_list;
+}
+static bool rna_SurDeformGpencilModifier_is_bound_get(PointerRNA *ptr) /* 83771 - RNA properties which are not in the DNA data. */
+{
+  return ((((SurDeformGpencilModifierData *)ptr->data)->flags) & (1 << 0));
 }
 
 #else
@@ -4625,7 +4656,130 @@ static void rna_def_modifier_gpencilenvelope(BlenderRNA *brna)
 
   RNA_define_lib_overridable(false);
 }
+static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  StructRNA *srna_framelist;
+  PropertyRNA *prop;
 
+  srna = RNA_def_struct(brna, "SurDeformGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Surface Deform Modifier", "Envelope stroke effect modifier");
+  RNA_def_struct_sdna(srna, "SurDeformGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_MESHDEFORM);
+
+
+  prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Target", "Mesh object to deform with");
+  RNA_def_property_pointer_funcs(
+      prop, NULL, "rna_SurDeformGpencilModifier_target_set", NULL, "rna_Mesh_object_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
+
+  prop = RNA_def_property(srna, "falloff", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 2.0f, 16.0f);
+  RNA_def_property_ui_text(
+      prop, "Interpolation Falloff", "Controls how much nearby polygons influence deformation");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_start", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Range Start", "The first timeline frame to start baking");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_end", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Range End", "The last timeline frame to bake");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "is_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_SurDeformGpencilModifier_is_bound_get", NULL);
+  RNA_def_property_ui_text(prop, "Bound", "Whether geometry has been bound to target mesh");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "defgrp_name");
+  RNA_def_property_ui_text(
+      prop, "Vertex Group", "Vertex group name for selecting/weighting the affected areas");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SurDeformGpencilModifier_defgrp_name_set");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "invert_vertex_group", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MOD_SDEF_INVERT_VGROUP);
+  RNA_def_property_ui_text(prop, "Invert", "Invert vertex group influence");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "use_sparse_bind", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MOD_SDEF_SPARSE_BIND);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Sparse Bind",
+      "Only record binding data for vertices matching the vertex group at the time of bind");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "strength", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -100, 100);
+  RNA_def_property_ui_range(prop, -100, 100, 10, 2);
+  RNA_def_property_ui_text(prop, "Strength", "Strength of modifier deformations");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "curr_frame_or_all_frames", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "curr_frame_or_all_frames");
+  RNA_def_property_enum_items(prop, gpsurdef_curr_frame_or_all_frames_items);
+  RNA_def_property_enum_default(prop, GP_MOD_SDEF_BIND_CURRENT_FRAME);
+  RNA_def_property_ui_text(prop, " ", "Current frame or all frames");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+
+  prop = RNA_def_property(srna, "unbind_mode", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_UNBIND_MODE);
+  RNA_def_property_ui_text(prop, "Unbind", "Unbind");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /*Frame-layer bound combination flags (bound_flags)*/
+  prop = RNA_def_property(srna, "all_layers_and_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_ALL_LAYERS_AND_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "all_layers_current_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_ALL_LAYERS_CURRENT_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "current_layer_all_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_CURRENT_LAYER_ALL_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+  prop = RNA_def_property(srna, "current_layer_current_frame_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /*UI list frames*/
+  /*
+  prop = RNA_def_property(srna, "uilist_frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "SDefGPBoundFrame");
+  RNA_def_property_collection_sdna(prop, NULL, "uilist_frame_active", NULL);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GpencilSurDef_frames_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    NULL,
+                                    NULL,
+                                    NULL,
+                                    NULL);
+  RNA_def_property_ui_text(prop, "Frames", "");
+
+  prop = RNA_def_property(srna, "frame_active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Active Surface Deform Frame Index", "Active index in the segment list");
+
+  RNA_define_lib_overridable(false);
+  
+  srna_framelist = RNA_def_struct(brna, "SDefGPBoundFrame", NULL);
+  RNA_def_struct_ui_text(
+      srna, "Surface Deform GP Modifier Frame", "Bound frames to be displayed in the UI list.");
+  RNA_def_struct_sdna(srna, "SDefGPBoundFrame");
+  // RNA_def_struct_path_func(srna, "rna_DashGpencilModifierSegment_path");*/
+
+  RNA_define_lib_overridable(false);
+
+}
 void RNA_def_greasepencil_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -4718,6 +4872,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencildash(brna);
   rna_def_modifier_gpencilshrinkwrap(brna);
   rna_def_modifier_gpencilenvelope(brna);
+  rna_def_modifier_gpencilsurdeform(brna);
 }
 
 #endif
