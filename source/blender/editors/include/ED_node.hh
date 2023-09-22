@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "BLI_vector_set.hh"
 #include "ED_node_c.hh"
 
@@ -32,5 +34,10 @@ void node_insert_on_link_flags_clear(bNodeTree &node_tree);
  *       optimized drawing of multiple/all sockets of a node.
  */
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale);
+
+/**
+ * Find the nested node id of a currently visible node in the root tree.
+ */
+std::optional<int32_t> find_nested_node_id_in_root(const SpaceNode &snode, const bNode &node);
 
 }  // namespace blender::ed::space_node
