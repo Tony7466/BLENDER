@@ -46,6 +46,11 @@ struct GeometryNodesGizmoGroup {
   Map<int, std::unique_ptr<NodeGizmoData>> dial_gizmo_by_node_id;
 };
 
+struct SocketItem {
+  const bNodeSocket &socket;
+  int elem_index = -1;
+};
+
 struct FloatValuePath {
   PointerRNA owner;
   PropertyRNA *property;
@@ -69,11 +74,6 @@ struct FloatValuePath {
     }
     RNA_property_update(C, &this->owner, this->property);
   }
-};
-
-struct SocketItem {
-  const bNodeSocket &socket;
-  int elem_index = -1;
 };
 
 static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
