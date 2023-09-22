@@ -1716,7 +1716,7 @@ void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range)
   const int removed_index_count = index_range[1] - index_range[0];
   memmove(&fcu->bezt[index_range[0]],
           &fcu->bezt[index_range[1]],
-          sizeof(BezTriple) * (fcu->totvert - removed_index_count));
+          sizeof(BezTriple) * (fcu->totvert - index_range[1]));
   fcu->totvert -= removed_index_count;
 
   if (fcu->totvert == 0) {
