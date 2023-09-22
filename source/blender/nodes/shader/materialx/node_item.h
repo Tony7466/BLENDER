@@ -39,6 +39,7 @@ class NodeItem {
      * NOTE: There are only supported types */
     BSDF,
     EDF,
+    Displacementshader,
     SurfaceShader,
     Material,
   };
@@ -109,6 +110,7 @@ class NodeItem {
 
   /* Useful functions */
   NodeItem empty() const;
+  NodeItem rotate3d(NodeItem rotation, bool invert = false);
   template<class T> NodeItem val(const T &data) const;
   Type type() const;
 

@@ -126,7 +126,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeShaderNormalMap *normal_map_node = static_cast<NodeShaderNormalMap *>(node_->storage);
-  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem color = get_input_value("Color", NodeItem::Type::Vector3);
   NodeItem strength = get_input_value("Strength", NodeItem::Type::Float);
 
   std::string space;

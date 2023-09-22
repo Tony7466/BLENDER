@@ -74,6 +74,44 @@ static void node_shader_update_mapping(bNodeTree *ntree, bNode *node)
       ntree, sock, ELEM(node->custom1, NODE_MAPPING_TYPE_POINT, NODE_MAPPING_TYPE_TEXTURE));
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem res = empty();
+  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
+
+  if (!vector) {
+    return res;
+  }
+
+  NodeItem scale = get_input_value("Scale", NodeItem::Type::Vector3);
+  NodeItem location = get_input_value("Location", NodeItem::Type::Vector3);
+  NodeItem rotation = (get_input_value("Rotation", NodeItem::Type::Vector3) *
+                       val(float(180.0f / M_PI)));
+
+  switch (node_->custom1) {
+    case NODE_MAPPING_TYPE_POINT:
+      res = (vector * scale).rotate3d(rotation) + location;
+      break;
+    case NODE_MAPPING_TYPE_TEXTURE:
+      res = (vector - location).rotate3d(rotation, true) / scale;
+      break;
+    case NODE_MAPPING_TYPE_VECTOR:
+      res = (vector * scale).rotate3d(rotation * val(MaterialX::Vector3(1.0f, 1.0f, -1.0f)));
+      break;
+    case NODE_MAPPING_TYPE_NORMAL:
+      res = create_node(
+          "normalize", NodeItem::Type::Vector3, {{"in", (vector / scale).rotate3d(rotation)}});
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+
+  return res;
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_mapping_cc
 
 void register_node_type_sh_mapping()
@@ -87,6 +125,7 @@ void register_node_type_sh_mapping()
   ntype.draw_buttons = file_ns::node_shader_buts_mapping;
   ntype.gpu_fn = file_ns::gpu_shader_mapping;
   ntype.updatefunc = file_ns::node_shader_update_mapping;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

@@ -53,6 +53,9 @@ NodeItem::Type NodeItem::type(const std::string &type_str)
   if (type_str == "EDF") {
     return Type::EDF;
   }
+  if (type_str == "displacementshader") {
+    return Type::Displacementshader;
+  }
   if (type_str == "surfaceshader") {
     return Type::SurfaceShader;
   }
@@ -94,6 +97,8 @@ std::string NodeItem::type(Type type)
       return "BSDF";
     case Type::EDF:
       return "EDF";
+    case Type::Displacementshader:
+      return "displacementshader";
     case Type::SurfaceShader:
       return "surfaceshader";
     case Type::Material:
@@ -611,6 +616,23 @@ NodeItem NodeItem::extract(const int index) const
 NodeItem NodeItem::empty() const
 {
   return NodeItem(graph_);
+}
+
+NodeItem NodeItem::rotate3d(NodeItem rotation, bool invert)
+{
+  NodeItem res = *this;
+  if (res.type() == Type::Vector3 && rotation.type() == Type::Vector3) {
+    for (int i = 0; i <= 2; i++) {
+      int j = invert ? 2 - i : i;
+      MaterialX::Vector3 axis_vector = MaterialX::Vector3();
+      axis_vector[j] = 1.0f;
+      res = create_node(
+          "rotate3d",
+          NodeItem::Type::Vector3,
+          {{"in", res}, {"amount", rotation.extract(j)}, {"axis", val(axis_vector)}});
+    }
+  }
+  return res;
 }
 
 NodeItem::Type NodeItem::type() const

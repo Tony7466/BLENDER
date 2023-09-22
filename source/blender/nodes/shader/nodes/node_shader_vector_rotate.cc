@@ -212,6 +212,69 @@ static void node_shader_update_vector_rotate(bNodeTree *ntree, bNode *node)
       ntree, sock_angle, !ELEM(node->custom1, NODE_VECTOR_ROTATE_TYPE_EULER_XYZ));
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
+
+  if (!vector) {
+    return empty();
+  }
+
+  NodeItem angle = empty();
+  NodeItem axis = empty();
+  NodeItem center = get_input_value("Center", NodeItem::Type::Vector3) *
+                    val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
+  NodeItem res = vector - center;
+  int mode = node_->custom1;
+  bool invert = node_->custom1;
+
+  if (mode == NODE_VECTOR_ROTATE_TYPE_EULER_XYZ) {
+    angle = get_input_value("Rotation", NodeItem::Type::Vector3);
+    angle = angle * val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
+  }
+  else {
+    angle = get_input_value("Angle", NodeItem::Type::Float);
+  }
+
+  angle = angle * val(float(180.0f / M_PI));
+  angle = invert ? angle * val(-1.0f) : angle;
+
+  switch (mode) {
+    case NODE_VECTOR_ROTATE_TYPE_EULER_XYZ: {
+      return res.rotate3d(angle, invert) + center;
+    }
+    case NODE_VECTOR_ROTATE_TYPE_AXIS: {
+      axis = get_input_value("Axis", NodeItem::Type::Vector3) *
+             val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
+      break;
+    }
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_X: {
+      axis = val(MaterialX::Vector3(1.0f, 0.0f, 0.0f));
+      break;
+    }
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_Y: {
+      axis = val(MaterialX::Vector3(0.0f, 1.0f, 0.0f));
+      break;
+    }
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_Z: {
+      axis = val(MaterialX::Vector3(0.0f, 0.0f, -1.0f));
+      break;
+    }
+    default: {
+      BLI_assert_unreachable();
+      return vector;
+    }
+  }
+
+  return create_node("rotate3d",
+                     NodeItem::Type::Vector3,
+                     {{"in", res}, {"amount", angle}, {"axis", axis}}) +
+         center;
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_vector_rotate_cc
 
 void register_node_type_sh_vector_rotate()
@@ -226,6 +289,7 @@ void register_node_type_sh_vector_rotate()
   ntype.gpu_fn = file_ns::gpu_shader_vector_rotate;
   ntype.updatefunc = file_ns::node_shader_update_vector_rotate;
   ntype.build_multi_function = file_ns::sh_node_vector_rotate_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
