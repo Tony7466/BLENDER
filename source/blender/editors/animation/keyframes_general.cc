@@ -1289,7 +1289,7 @@ void bake_fcurve(FCurve *fcu,
 
   for (int i = 0; i < sample_count; i++) {
     insert_vert_fcurve(
-        fcu, range[0] + i * step, samples[i], BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NOFLAGS);
+        fcu, range[0] + i * step, samples[i], BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
   }
   MEM_freeN(samples);
   BKE_fcurve_handles_recalc(fcu);
