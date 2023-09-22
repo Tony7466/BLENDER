@@ -8,7 +8,7 @@ namespace blender::nodes::node_geo_gizmo_arrow_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Value").hide_value();
+  b.add_input<decl::Float>("Value").hide_value().multi_input();
   b.add_input<decl::Vector>("Position");
   b.add_input<decl::Vector>("Direction").default_value({0, 0, 1});
 }

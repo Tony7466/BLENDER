@@ -166,8 +166,9 @@ static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     const NodesModifierData &nmd)
 {
   const bNodeTree &ntree = input_socket.socket.owner_tree();
+  const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
   if ((input_socket.socket.flag & SOCK_HIDE_VALUE) == 0 &&
-      input_socket.socket.type == SOCK_FLOAT && !input_socket.socket.is_directly_linked())
+      input_socket.socket.type == SOCK_FLOAT && links.is_empty())
   {
     PointerRNA owner = RNA_pointer_create(const_cast<ID *>(&ntree.id),
                                           &RNA_NodeSocket,
@@ -175,7 +176,28 @@ static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
     return FloatValuePath{owner, prop};
   }
-  const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
+  if (links.size() != 1) {
+    return std::nullopt;
+  }
+  const bNodeLink &link = *links[0];
+  if (link.is_muted()) {
+    return std::nullopt;
+  }
+  const bNodeSocket &origin_socket = *link.fromsock;
+  if (!origin_socket.is_available()) {
+    return std::nullopt;
+  }
+  return find_float_value_path_for_output_socket(
+      {origin_socket, input_socket.elem_index}, compute_context, object, nmd);
+}
+
+static Vector<FloatValuePath> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
+                                                      const ComputeContext &compute_context,
+                                                      const Object &object,
+                                                      const NodesModifierData &nmd)
+{
+  Vector<FloatValuePath> value_paths;
+  const Span<const bNodeLink *> links = gizmo_value_socket.directly_linked_links();
   for (const bNodeLink *link : links) {
     if (link->is_muted()) {
       continue;
@@ -184,13 +206,13 @@ static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     if (!origin_socket.is_available()) {
       continue;
     }
-    if (std::optional<FloatValuePath> controller = find_float_value_path_for_output_socket(
-            {origin_socket, input_socket.elem_index}, compute_context, object, nmd))
+    if (std::optional<FloatValuePath> value_path = find_float_value_path_for_output_socket(
+            {origin_socket}, compute_context, object, nmd))
     {
-      return controller;
+      value_paths.append(*value_path);
     }
   }
-  return std::nullopt;
+  return value_paths;
 }
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -250,9 +272,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    std::optional<FloatValuePath> value_path = find_float_value_path_for_input_socket(
-        {value_input}, compute_context, *ob, nmd);
-    if (!value_path) {
+    Vector<FloatValuePath> value_paths = find_float_values_paths(
+        value_input, compute_context, *ob, nmd);
+    if (value_paths.is_empty()) {
       continue;
     }
 
@@ -288,15 +310,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        float initial_value;
-        FloatValuePath value_path;
+        Vector<float> initial_values;
+        Vector<FloatValuePath> value_paths;
         float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->initial_value = value_path->get();
-      user_data->value_path = *value_path;
+      for (FloatValuePath &value_path : value_paths) {
+        user_data->initial_values.append(value_path.get());
+      }
+      user_data->value_paths = std::move(value_paths);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -308,8 +332,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             user_data->gizmo_value = new_gizmo_value;
-            user_data->value_path.set_and_update(user_data->C,
-                                                 user_data->initial_value + new_gizmo_value);
+            for (const int i : user_data->value_paths.index_range()) {
+              user_data->value_paths[i].set_and_update(
+                  user_data->C, user_data->initial_values[i] + new_gizmo_value);
+            }
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
@@ -330,9 +356,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    std::optional<FloatValuePath> value_path = find_float_value_path_for_input_socket(
-        {value_input}, compute_context, *ob, nmd);
-    if (!value_path) {
+    Vector<FloatValuePath> value_paths = find_float_values_paths(
+        value_input, compute_context, *ob, nmd);
+    if (value_paths.is_empty()) {
       continue;
     }
 
@@ -368,15 +394,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
       struct UserData {
         bContext *C;
-        float initial_value;
-        FloatValuePath value_path;
+        Vector<float> initial_values;
+        Vector<FloatValuePath> value_paths;
         float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      user_data->initial_value = value_path->get();
-      user_data->value_path = *value_path;
+      for (FloatValuePath &value_path : value_paths) {
+        user_data->initial_values.append(value_path.get());
+      }
+      user_data->value_paths = std::move(value_paths);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
@@ -388,8 +416,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             user_data->gizmo_value = new_gizmo_value;
-            user_data->value_path.set_and_update(user_data->C,
-                                                 new_gizmo_value + user_data->initial_value);
+            for (const int i : user_data->value_paths.index_range()) {
+              user_data->value_paths[i].set_and_update(
+                  user_data->C, user_data->initial_values[i] + new_gizmo_value);
+            }
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
