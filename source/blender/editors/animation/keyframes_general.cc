@@ -1221,30 +1221,53 @@ static void remove_fcurve_key_range(FCurve *fcu,
                                     const blender::int2 range,
                                     const BakeCurveRemove removal_mode)
 {
-  /* Iterating backwards to not cause issues because the bezt array is modified during the
-   * loop. */
-  for (int i = fcu->totvert - 1; i >= 0; i--) {
-    BezTriple key = fcu->bezt[i];
-    switch (removal_mode) {
-      case BakeCurveRemove::REMOVE_ALL:
-        BKE_fcurve_delete_key(fcu, i);
-        break;
+  switch (removal_mode) {
 
-      case BakeCurveRemove::REMOVE_IN_RANGE:
-        if (key.vec[1][0] >= range[0] && key.vec[1][0] <= range[1]) {
-          BKE_fcurve_delete_key(fcu, i);
-        }
-        break;
-
-      case BakeCurveRemove::REMOVE_OUT_RANGE:
-        if (key.vec[1][0] < range[0] || key.vec[1][0] > range[1]) {
-          BKE_fcurve_delete_key(fcu, i);
-        }
-        break;
-
-      default:
-        break;
+    case BakeCurveRemove::REMOVE_ALL: {
+      BKE_fcurve_delete_keys_all(fcu);
+      break;
     }
+
+    case BakeCurveRemove::REMOVE_OUT_RANGE: {
+      bool replace;
+
+      int before_index = BKE_fcurve_bezt_binarysearch_index(
+          fcu->bezt, range[0], fcu->totvert, &replace);
+
+      if (before_index > 0) {
+        BKE_fcurve_delete_keys(fcu, {0, uint(before_index)});
+      }
+
+      int after_index = BKE_fcurve_bezt_binarysearch_index(
+          fcu->bezt, range[1], fcu->totvert, &replace);
+      /* REMOVE_OUT_RANGE is treated as exlusive on both ends. */
+      if (replace) {
+        after_index++;
+      }
+      if (after_index < fcu->totvert) {
+        BKE_fcurve_delete_keys(fcu, {uint(after_index), fcu->totvert});
+      }
+      break;
+    }
+
+    case BakeCurveRemove::REMOVE_IN_RANGE: {
+      bool replace;
+      const int range_start_index = BKE_fcurve_bezt_binarysearch_index(
+          fcu->bezt, range[0], fcu->totvert, &replace);
+      int range_end_index = BKE_fcurve_bezt_binarysearch_index(
+          fcu->bezt, range[1], fcu->totvert, &replace);
+      if (replace) {
+        range_end_index++;
+      }
+
+      if (range_end_index > range_start_index) {
+        BKE_fcurve_delete_keys(fcu, {uint(range_start_index), uint(range_end_index)});
+      }
+      break;
+    }
+
+    default:
+      break;
   }
 }
 

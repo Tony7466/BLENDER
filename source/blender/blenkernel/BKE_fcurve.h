@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include "BLI_math_vector_types.hh"
 #include "DNA_curve_types.h"
 
 #ifdef __cplusplus
@@ -487,6 +488,12 @@ void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);
  * Delete a keyframe from an F-curve at a specific index.
  */
 void BKE_fcurve_delete_key(struct FCurve *fcu, int index);
+
+/** Delete an index range of keyframes from an F-curve. This is more performant than individually
+ * removing keys.
+ * \param index_range: is exclusive.
+ */
+void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range);
 
 /**
  * Delete selected keyframes from an F-curve.

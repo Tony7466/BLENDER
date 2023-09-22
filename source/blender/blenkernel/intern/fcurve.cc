@@ -22,6 +22,7 @@
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_sort_utils.h"
 #include "BLI_string_utils.h"
 
@@ -1700,6 +1701,24 @@ void BKE_fcurve_delete_key(FCurve *fcu, int index)
   fcu->totvert--;
 
   /* Free the array of BezTriples if there are not keyframes */
+  if (fcu->totvert == 0) {
+    fcurve_bezt_free(fcu);
+  }
+}
+
+void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range)
+{
+  BLI_assert(fcu != nullptr);
+  BLI_assert(fcu->bezt != nullptr);
+  BLI_assert(index_range[1] > index_range[0]);
+  BLI_assert(index_range[1] <= fcu->totvert);
+
+  const int removed_index_count = index_range[1] - index_range[0];
+  memmove(&fcu->bezt[index_range[0]],
+          &fcu->bezt[index_range[1]],
+          sizeof(BezTriple) * (fcu->totvert - removed_index_count));
+  fcu->totvert -= removed_index_count;
+
   if (fcu->totvert == 0) {
     fcurve_bezt_free(fcu);
   }
