@@ -1915,7 +1915,7 @@ static void WM_OT_search_single_menu(wmOperatorType *ot)
   RNA_def_string(ot->srna,
                  "initial_query",
                  nullptr,
-                 0,
+                 2,
                  "Initial Query",
                  "Query to insert into the search box");
 }
