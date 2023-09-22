@@ -225,14 +225,17 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
                          int slot,
                          void *r_data)
 {
+  VKContext &context = *VKContext::get();
   VKTexture *texture = nullptr;
   switch (plane) {
     case GPU_COLOR_BIT:
-      texture = unwrap(unwrap(attachments_[GPU_FB_COLOR_ATTACHMENT0 + slot].tex));
+      color_attachment_layout_ensure(context, slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      texture = unwrap(unwrap(color_tex(slot)));
       break;
 
     case GPU_DEPTH_BIT:
-      texture = unwrap(unwrap(attachments_[GPU_FB_DEPTH_ATTACHMENT].tex));
+      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      texture = unwrap(unwrap(depth_tex()));
       break;
 
     default:
