@@ -36,6 +36,7 @@
 #include "intern/usd_exporter_context.h"
 #include "intern/usd_writer_material.h"
 #ifdef WITH_MATERIALX
+#  include "shader/materialx/node_parser.h"
 #  include "shader/materialx/material.h"
 #endif
 namespace blender::io::hydra {
@@ -79,7 +80,7 @@ void MaterialData::init()
 #ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-        scene_delegate_->depsgraph, (Material *)id);
+        scene_delegate_->depsgraph, (Material *)id, cache_or_get_image_file);
     pxr::UsdMtlxRead(doc, stage);
 
     /* Logging stage: creating lambda stage_str() for not to call stage->ExportToString()

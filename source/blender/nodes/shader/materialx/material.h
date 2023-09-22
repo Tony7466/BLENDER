@@ -9,8 +9,12 @@
 struct Depsgraph;
 struct Material;
 
+class ExportImageFunction;
+
 namespace blender::nodes::materialx {
 
-MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material);
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
+                                           Material *material,
+                                           ExportImageFunction export_image_fn);
 
 }  // namespace blender::nodes::materialx

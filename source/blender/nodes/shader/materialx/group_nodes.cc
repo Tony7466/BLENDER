@@ -32,8 +32,14 @@ NodeItem GroupNodeParser::compute()
 #endif
 
   NodeItem out =
-      GroupOutputNodeParser(
-          graph, depsgraph_, material_, node_out, socket_out_, NodeItem::Type::Any, this)
+      GroupOutputNodeParser(graph,
+                                       depsgraph_,
+                                       material_,
+                                       node_out,
+                                       socket_out_,
+                                       NodeItem::Type::Any,
+                                       this,
+                                       export_image_fn_)
           .compute_full();
 
 #ifdef USE_MATERIALX_NODEGRAPH

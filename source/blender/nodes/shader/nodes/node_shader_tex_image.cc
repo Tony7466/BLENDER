@@ -11,8 +11,6 @@
 
 #include "IMB_colormanagement.h"
 
-#include "hydra/image.h"
-
 #include "DEG_depsgraph_query.h"
 
 namespace blender::nodes::node_shader_tex_image_cc {
@@ -191,13 +189,13 @@ NODE_SHADER_MATERIALX_BEGIN
     Image *image = (Image *)node_->id;
     if (image) {
       NodeTexImage *tex_image = static_cast<NodeTexImage *>(node_->storage);
-      Scene *scene = DEG_get_input_scene(depsgraph_);
-      Main *bmain = DEG_get_bmain(depsgraph_);
 
-      /* TODO: What if Blender built without Hydra? Also io::hydra::cache_or_get_image_file
-       * contains pretty general code, so could be moved from bf_usd project. */
-      std::string image_path = io::hydra::cache_or_get_image_file(
-          bmain, scene, image, &tex_image->iuser);
+      std::string image_path = image->id.name;
+      if (export_image_fn_) {
+        Scene *scene = DEG_get_input_scene(depsgraph_);
+        Main *bmain = DEG_get_bmain(depsgraph_);
+        image_path = export_image_fn_(bmain, scene, image, &tex_image->iuser);
+      }
 
       NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector2);
       if (!vector) {

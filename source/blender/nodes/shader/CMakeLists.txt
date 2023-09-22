@@ -22,13 +22,6 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
-if(WITH_HYDRA)
-  list(APPEND INC
-    ../../io/usd
-  )
-  add_definitions(-DWITH_HYDRA)
-endif()
-
 set(INC_SYS
 )
 

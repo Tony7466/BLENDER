@@ -20,14 +20,16 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const bNode *node,
                        const bNodeSocket *socket_out,
                        NodeItem::Type to_type,
-                       GroupNodeParser *group_parser)
+                       GroupNodeParser *group_parser,
+                       ExportImageFunction export_image_fn)
     : graph_(graph),
       depsgraph_(depsgraph),
       material_(material),
       node_(node),
       socket_out_(socket_out),
       to_type_(to_type),
-      group_parser_(group_parser)
+      group_parser_(group_parser),
+      export_image_fn_(export_image_fn)
 {
 }
 
@@ -207,13 +209,25 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
   }
 
   if (from_node->is_group()) {
-    return GroupNodeParser(
-               graph_, depsgraph_, material_, from_node, link->fromsock, to_type, group_parser_)
+    return GroupNodeParser(graph_,
+                           depsgraph_,
+                           material_,
+                           from_node,
+                           link->fromsock,
+                           to_type,
+                           group_parser_,
+                           export_image_fn_)
         .compute_full();
   }
   if (from_node->is_group_input()) {
-    return GroupInputNodeParser(
-               graph_, depsgraph_, material_, from_node, link->fromsock, to_type, group_parser_)
+    return GroupInputNodeParser(graph_,
+                                depsgraph_,
+                                material_,
+                                from_node,
+                                link->fromsock,
+                                to_type,
+                                group_parser_,
+                                export_image_fn_)
         .compute_full();
   }
 
@@ -225,7 +239,8 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
     return empty();
   }
 
-  NodeParserData data = {graph_, depsgraph_, material_, to_type, group_parser_, empty()};
+  NodeParserData data = {
+      graph_, depsgraph_, material_, to_type, group_parser_, empty(), export_image_fn_};
   from_node->typeinfo->materialx_fn(&data, const_cast<bNode *>(from_node), link->fromsock);
   return data.result;
 }

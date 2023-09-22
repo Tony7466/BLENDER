@@ -18,6 +18,8 @@ extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
 class GroupNodeParser;
 
+using ExportImageFunction = std::function<std::string(Main *,Scene *, Image *, ImageUser *)>;
+
 class NodeParser {
  protected:
   MaterialX::GraphElement *graph_;
@@ -27,6 +29,7 @@ class NodeParser {
   const bNodeSocket *socket_out_;
   NodeItem::Type to_type_;
   GroupNodeParser *group_parser_;
+  ExportImageFunction export_image_fn_;
 
  public:
   NodeParser(MaterialX::GraphElement *graph,
@@ -35,7 +38,8 @@ class NodeParser {
              const bNode *node,
              const bNodeSocket *socket_out,
              NodeItem::Type to_type,
-             GroupNodeParser *group_parser);
+             GroupNodeParser *group_parser,
+             ExportImageFunction export_image_fn);
   virtual ~NodeParser() = default;
 
   virtual NodeItem compute() = 0;
@@ -82,6 +86,7 @@ struct NodeParserData {
   NodeItem::Type to_type;
   GroupNodeParser *group_parser;
   NodeItem result;
+  ExportImageFunction export_image_fn;
 };
 
 #define NODE_SHADER_MATERIALX_BEGIN \
@@ -102,7 +107,14 @@ struct NodeParserData {
   { \
     materialx::NodeParserData *d = reinterpret_cast<materialx::NodeParserData *>(data); \
     d->result = MaterialXNodeParser( \
-                    d->graph, d->depsgraph, d->material, node, out, d->to_type, d->group_parser) \
+                    d->graph, \
+                                    d->depsgraph, \
+                                    d->material, \
+                                    node, \
+                                    out, \
+                                    d->to_type, \
+                                    d->group_parser, \
+                                    d->export_image_fn) \
                     .compute_full(); \
   }
 

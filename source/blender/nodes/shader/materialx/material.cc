@@ -54,7 +54,9 @@ class DefaultMaterialNodeParser : public NodeParser {
   }
 };
 
-MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material)
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
+                                           Material *material,
+                                           ExportImageFunction export_image_fn)
 {
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
 
@@ -63,19 +65,36 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *mater
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
     if (output_node) {
-      NodeParserData data = {
-          doc.get(), depsgraph, material, NodeItem::Type::Material, nullptr, NodeItem(doc.get())};
+      NodeParserData data = {doc.get(),
+                             depsgraph,
+                             material,
+                             NodeItem::Type::Material,
+                             nullptr,
+                             NodeItem(doc.get()),
+                             export_image_fn};
       output_node->typeinfo->materialx_fn(&data, output_node, nullptr);
     }
     else {
-      DefaultMaterialNodeParser(
-          doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material, nullptr)
+      DefaultMaterialNodeParser(doc.get(),
+                                depsgraph,
+                                material,
+                                nullptr,
+                                nullptr,
+                                NodeItem::Type::Material,
+                                nullptr,
+                                export_image_fn)
           .compute_error();
     }
   }
   else {
-    DefaultMaterialNodeParser(
-        doc.get(), depsgraph, material, nullptr, nullptr, NodeItem::Type::Material, nullptr)
+    DefaultMaterialNodeParser(doc.get(),
+                              depsgraph,
+                              material,
+                              nullptr,
+                              nullptr,
+                              NodeItem::Type::Material,
+                              nullptr,
+                              export_image_fn)
         .compute();
   }
 
