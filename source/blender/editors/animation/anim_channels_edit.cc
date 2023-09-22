@@ -4452,7 +4452,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   /* Identifiers */
   ot->name = "Bake Channels";
   ot->idname = "ANIM_OT_channels_bake";
-  ot->description = "Create keyframes on the F-Curves of selected channels";
+  ot->description = "Create keyframes at a given interval on the F-Curves of selected channels";
 
   /* API callbacks */
   ot->exec = channels_bake_exec;
@@ -4485,7 +4485,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                channel_bake_remove_options,
                int(BakeCurveRemove::REMOVE_IN_RANGE),
                "Remove Existing Keys",
-               "If enabled removes the keys that currently make up the curve");
+               "Removes keys in relation to the given frame range");
 
   RNA_def_enum(ot->srna,
                "interpolation_type",
