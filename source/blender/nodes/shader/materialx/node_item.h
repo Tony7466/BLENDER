@@ -10,9 +10,11 @@
 
 namespace blender::nodes::materialx {
 
-/* This class serves as abstraction from MateralX API. It implements arithmetic operations,
+/**
+ * This class serves as abstraction from MateralX API. It implements arithmetic operations,
  * convertions between different types, adding new nodes, setting inputs, etc.
- * All work should be done via this class instead of using MaterialX API directly. */
+ * All work should be done via this class instead of using MaterialX API directly.
+ */
 class NodeItem {
  public:
   using Inputs = std::vector<std::pair<std::string, NodeItem>>;
@@ -21,22 +23,22 @@ class NodeItem {
     Any = 0,
     Empty,
     Multioutput,
+
     /* Value types */
     String,
     Filename,
     Boolean,
     Integer,
-    /* Block of arithmetic types. Ordered by type cast */
+
+    /* Arithmetic types. NOTE: Ordered by type cast */
     Float,
     Vector2,
     Vector3,
     Color3,
     Vector4,
     Color4,
-    /* End of arithmetic types */
 
-    /* Shader types
-     * NOTE: There are only supported types */
+    /* Shader types. NOTE: There are only supported types */
     BSDF,
     EDF,
     Displacementshader,
@@ -74,6 +76,7 @@ class NodeItem {
   NodeItem operator/(const NodeItem &other) const;
   NodeItem operator%(const NodeItem &other) const;
   NodeItem operator^(const NodeItem &other) const;
+  NodeItem operator[](int index) const;
   bool operator==(const NodeItem &other) const;
   bool operator!=(const NodeItem &other) const;
 
@@ -81,12 +84,16 @@ class NodeItem {
   NodeItem abs() const;
   NodeItem floor() const;
   NodeItem ceil() const;
+  NodeItem length() const;
+  NodeItem normalize() const;
   NodeItem min(const NodeItem &other) const;
   NodeItem max(const NodeItem &other) const;
   NodeItem dotproduct(const NodeItem &other) const;
-  NodeItem blend(const NodeItem &a, const NodeItem &b) const;
+  NodeItem mix(const NodeItem &val1, const NodeItem &val2) const;
   NodeItem clamp(const NodeItem &min_val, const NodeItem &max_val) const;
   NodeItem clamp(float min_val = 0.0f, float max_val = 1.0f) const;
+  NodeItem rotate(const NodeItem &angle, const NodeItem &axis);    /* angle in degrees */
+  NodeItem rotate(const NodeItem &angle_xyz, bool invert = false); /* angle in degrees */
   NodeItem sin() const;
   NodeItem cos() const;
   NodeItem tan() const;
@@ -102,15 +109,14 @@ class NodeItem {
   NodeItem sign() const;
   NodeItem exp() const;
   NodeItem convert(Type to_type) const;
+  NodeItem to_vector() const;
   NodeItem if_else(CompareOp op,
                    const NodeItem &other,
                    const NodeItem &if_val,
                    const NodeItem &else_val) const;
-  NodeItem extract(const int index) const;
 
   /* Useful functions */
   NodeItem empty() const;
-  NodeItem rotate3d(NodeItem rotation, bool invert = false);
   template<class T> NodeItem val(const T &data) const;
   Type type() const;
 

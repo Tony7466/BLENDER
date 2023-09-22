@@ -160,21 +160,21 @@ NODE_SHADER_MATERIALX_BEGIN
 
   switch (gradient_type) {
     case SHD_BLEND_LINEAR:
-      res = vector.extract(0);
+      res = vector[0];
       break;
     case SHD_BLEND_QUADRATIC:
-      res = vector.extract(0);
+      res = vector[0];
       res = res * res;
       break;
     case SHD_BLEND_EASING:
-      res = vector.extract(0).clamp(val(0.0f), val(1.0f));
+      res = vector[0].clamp();
       res = res * res * (val(3.0f) - val(2.0f) * res);
       break;
     case SHD_BLEND_DIAGONAL:
-      res = (vector.extract(0) + vector.extract(1)) * val(0.5f);
+      res = (vector[0] + vector[1]) * val(0.5f);
       break;
     case SHD_BLEND_RADIAL:
-      res = vector.extract(1).atan2(vector.extract(0)) / (val(float(M_PI * 2.0f))) + val(0.5f);
+      res = vector[1].atan2(vector[0]) / (val(float(M_PI * 2.0f))) + val(0.5f);
       break;
     case SHD_BLEND_QUADRATIC_SPHERE:
       res = (val(1.0f) - vector.dotproduct(vector).sqrt()).max(val(0.0f));

@@ -223,59 +223,59 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeTexWave *tex = (NodeTexWave *)node_->storage;
-  const int wave_type = tex->wave_type;
-  const int bands_direction = tex->bands_direction;
-  const int rings_direction = tex->rings_direction;
-  const int wave_profile = tex->wave_profile;
 
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
-  NodeItem distortion = get_input_value("Distortion", NodeItem::Type::Float) /
-                        val(10.0f);  // noise adjusment to get result as Cycles
-  NodeItem detail = get_input_value("Detail", NodeItem::Type::Float);
-  NodeItem detail_scale = get_input_value("Detail Scale", NodeItem::Type::Float) *
-                          val(10.0f);  // noise adjusment to get result as Cycles
+  NodeItem distortion = get_input_value("Distortion", NodeItem::Type::Float);
+  NodeItem detail = get_input_default("Detail", NodeItem::Type::Float);
+  NodeItem detail_scale = get_input_value("Detail Scale", NodeItem::Type::Float);
   NodeItem detail_rough = get_input_value("Detail Roughness", NodeItem::Type::Float);
   NodeItem phase_offset = get_input_value("Phase Offset", NodeItem::Type::Float);
   NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
   if (!vector) {
-    vector = texcoord_node();
+    vector = texcoord_node(NodeItem::Type::Vector3);
   }
 
-  NodeItem p = vector * scale;
-  p = (p + val(0.000001f)) * val(0.999999f);
-  NodeItem n = val(0.0f);
-  NodeItem value = val(0.0f);
+  /* adjusment to get result as Cycles */
+  distortion = distortion * val(10.0f);
+  detail_scale = detail_scale * val(10.0f);
 
-  switch (wave_type) {
+  NodeItem pos = vector * scale;
+  NodeItem fractal = create_node("fractal3d",
+                                 NodeItem::Type::Float,
+                                 {{"position", pos},
+                                  {"octaves", val(int(detail.value->asA<float>()))},
+                                  {"lacunarity", val(2.0f)}});
+  NodeItem value = val(0.0f);
+  switch (tex->wave_type) {
     case SHD_WAVE_BANDS:
-      switch (bands_direction) {
+      switch (tex->bands_direction) {
         case SHD_WAVE_BANDS_DIRECTION_X:
-          n = p.extract(0) * val(20.0f);
+          value = pos[0] * val(20.0f);
           break;
         case SHD_WAVE_BANDS_DIRECTION_Y:
-          n = p.extract(1) * val(20.0f);
+          value = pos[1] * val(20.0f);
           break;
         case SHD_WAVE_BANDS_DIRECTION_Z:
-          n = p.extract(2) * val(20.0f);
+          value = pos[2] * val(20.0f);
           break;
         case SHD_WAVE_BANDS_DIRECTION_DIAGONAL:
-          n = (p.extract(0) + p.extract(1) + p.extract(2)) * val(10.0f);
+          value = (pos[0] + pos[1] + pos[2]) * val(10.0f);
           break;
         default:
           BLI_assert_unreachable();
       }
       break;
     case SHD_WAVE_RINGS:
-      NodeItem rp = p;
-      switch (rings_direction) {
+      NodeItem rpos = pos;
+      switch (tex->rings_direction) {
         case SHD_WAVE_RINGS_DIRECTION_X:
-          rp = rp * val(MaterialX::Vector3(0.0f, 1.0f, 1.0f));
+          rpos = pos * val(MaterialX::Vector3(0.0f, 1.0f, 1.0f));
           break;
         case SHD_WAVE_RINGS_DIRECTION_Y:
-          rp = rp * val(MaterialX::Vector3(1.0f, 0.0f, 1.0f));
+          rpos = pos * val(MaterialX::Vector3(1.0f, 0.0f, 1.0f));
           break;
         case SHD_WAVE_RINGS_DIRECTION_Z:
-          rp = rp * val(MaterialX::Vector3(1.0f, 1.0f, 0.0f));
+          rpos = pos * val(MaterialX::Vector3(1.0f, 1.0f, 0.0f));
           break;
         case SHD_WAVE_RINGS_DIRECTION_SPHERICAL:
           /* Ignore. */
@@ -283,33 +283,28 @@ NODE_SHADER_MATERIALX_BEGIN
         default:
           BLI_assert_unreachable();
       }
-      n = rp.dotproduct(rp).sqrt() * val(20.0f);
+      value = rpos.length() * val(20.0f);
       break;
   }
-  n = n + phase_offset;
-  n = n + distortion * detail_scale *
-              create_node("fractal3d",
-                          NodeItem::Type::Float,
-                          {{"position", p},
-                           {"octaves", val(int(detail.value->asA<float>()))},
-                           {"lacunarity", val(2.0f)}});
+  value = value + phase_offset + distortion * detail_scale * fractal;
 
-  switch (wave_profile) {
+  NodeItem res = empty();
+  switch (tex->wave_profile) {
     case SHD_WAVE_PROFILE_SIN:
-      value = val(0.5f) + val(0.5f) * (n - val(float(M_PI_2))).sin();
+      res = val(0.5f) + val(0.5f) * (value - val(float(M_PI_2))).sin();
       break;
     case SHD_WAVE_PROFILE_SAW:
-      n = n / val(float(M_PI * 2.0f));
-      value = n - n.floor();
+      value = value / val(float(M_PI * 2.0f));
+      res = value - value.floor();
       break;
     case SHD_WAVE_PROFILE_TRI:
-      n = n / val(float(M_PI * 2.0f));
-      value = (n - (n + val(0.5f)).floor()).abs() * val(2.0f);
+      value = value / val(float(M_PI * 2.0f));
+      res = (value - (value + val(0.5f)).floor()).abs() * val(2.0f);
       break;
     default:
       BLI_assert_unreachable();
   }
-  return value;
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END

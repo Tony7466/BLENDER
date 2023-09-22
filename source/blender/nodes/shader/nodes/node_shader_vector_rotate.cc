@@ -215,62 +215,42 @@ static void node_shader_update_vector_rotate(bNodeTree *ntree, bNode *node)
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
+  int mode = node_->custom1;
+  bool invert = node_->custom2;
 
-  if (!vector) {
-    return empty();
-  }
-
-  NodeItem angle = empty();
-  NodeItem axis = empty();
+  NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
   NodeItem center = get_input_value("Center", NodeItem::Type::Vector3) *
                     val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
-  NodeItem res = vector - center;
-  int mode = node_->custom1;
-  bool invert = node_->custom1;
+  vector = vector - center;
 
   if (mode == NODE_VECTOR_ROTATE_TYPE_EULER_XYZ) {
-    angle = get_input_value("Rotation", NodeItem::Type::Vector3);
-    angle = angle * val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
-  }
-  else {
-    angle = get_input_value("Angle", NodeItem::Type::Float);
+    NodeItem rotation = get_input_value("Rotation", NodeItem::Type::Vector3) *
+                        val(MaterialX::Vector3(1.0f, 1.0f, -1.0f) * 180.0f / M_PI);
+
+    return vector.rotate(invert ? -rotation : rotation, invert) + center;
   }
 
-  angle = angle * val(float(180.0f / M_PI));
-  angle = invert ? angle * val(-1.0f) : angle;
-
+  NodeItem angle = get_input_value("Angle", NodeItem::Type::Float) * val(float(180.0f / M_PI));
+  NodeItem axis = empty();
   switch (mode) {
-    case NODE_VECTOR_ROTATE_TYPE_EULER_XYZ: {
-      return res.rotate3d(angle, invert) + center;
-    }
-    case NODE_VECTOR_ROTATE_TYPE_AXIS: {
+    case NODE_VECTOR_ROTATE_TYPE_AXIS:
       axis = get_input_value("Axis", NodeItem::Type::Vector3) *
              val(MaterialX::Vector3(1.0f, 1.0f, -1.0f));
       break;
-    }
-    case NODE_VECTOR_ROTATE_TYPE_AXIS_X: {
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_X:
       axis = val(MaterialX::Vector3(1.0f, 0.0f, 0.0f));
       break;
-    }
-    case NODE_VECTOR_ROTATE_TYPE_AXIS_Y: {
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_Y:
       axis = val(MaterialX::Vector3(0.0f, 1.0f, 0.0f));
       break;
-    }
-    case NODE_VECTOR_ROTATE_TYPE_AXIS_Z: {
+    case NODE_VECTOR_ROTATE_TYPE_AXIS_Z:
       axis = val(MaterialX::Vector3(0.0f, 0.0f, -1.0f));
       break;
-    }
-    default: {
+    default:
       BLI_assert_unreachable();
-      return vector;
-    }
   }
 
-  return create_node("rotate3d",
-                     NodeItem::Type::Vector3,
-                     {{"in", res}, {"amount", angle}, {"axis", axis}}) +
-         center;
+  return vector.rotate(invert ? -angle : angle, axis) + center;
 }
 #endif
 NODE_SHADER_MATERIALX_END

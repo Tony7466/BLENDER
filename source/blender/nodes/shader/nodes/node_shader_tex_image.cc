@@ -248,7 +248,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
 
   if (STREQ(socket_out_->name, "Alpha")) {
-    res = res.extract(3);
+    res = res[3];
   }
   return res;
 }

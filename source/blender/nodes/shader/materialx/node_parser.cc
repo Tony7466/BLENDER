@@ -148,13 +148,18 @@ NodeItem NodeParser::empty() const
   return NodeItem(graph_);
 }
 
-NodeItem NodeParser::texcoord_node()
+NodeItem NodeParser::texcoord_node(NodeItem::Type type)
 {
+  BLI_assert(ELEM(type, NodeItem::Type::Vector2, NodeItem::Type::Vector3));
+  std::string name = TEXCOORD_NODE_NAME;
+  if (type == NodeItem::Type::Vector3) {
+    name += "_vector3";
+  }
   NodeItem res = empty();
-  res.node = graph_->getNode(TEXCOORD_NODE_NAME);
+  res.node = graph_->getNode(name);
   if (!res.node) {
-    res = create_node("texcoord", NodeItem::Type::Vector2);
-    res.node->setName(TEXCOORD_NODE_NAME);
+    res = create_node("texcoord", type);
+    res.node->setName(name);
   }
   return res;
 }

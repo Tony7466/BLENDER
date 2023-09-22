@@ -83,7 +83,7 @@ void MaterialData::init()
         scene_delegate_->depsgraph, (Material *)id, cache_or_get_image_file);
     pxr::UsdMtlxRead(doc, stage);
 
-    /* Logging stage: creating lambda stage_str() for not to call stage->ExportToString()
+    /* Logging stage: creating lambda stage_str() to not call stage->ExportToString()
      * if log won't be printed. */
     auto stage_str = [&stage]() {
       std::string str;

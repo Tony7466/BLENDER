@@ -77,37 +77,31 @@ static void node_shader_update_mapping(bNodeTree *ntree, bNode *node)
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  NodeItem res = empty();
-  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
-
-  if (!vector) {
-    return res;
-  }
-
+  NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Vector3);
-  NodeItem location = get_input_value("Location", NodeItem::Type::Vector3);
-  NodeItem rotation = (get_input_value("Rotation", NodeItem::Type::Vector3) *
-                       val(float(180.0f / M_PI)));
+  NodeItem rotation = get_input_value("Rotation", NodeItem::Type::Vector3) *
+                      val(float(180.0f / M_PI));
 
-  switch (node_->custom1) {
-    case NODE_MAPPING_TYPE_POINT:
-      res = (vector * scale).rotate3d(rotation) + location;
-      break;
-    case NODE_MAPPING_TYPE_TEXTURE:
-      res = (vector - location).rotate3d(rotation, true) / scale;
-      break;
-    case NODE_MAPPING_TYPE_VECTOR:
-      res = (vector * scale).rotate3d(rotation * val(MaterialX::Vector3(1.0f, 1.0f, -1.0f)));
-      break;
-    case NODE_MAPPING_TYPE_NORMAL:
-      res = create_node(
-          "normalize", NodeItem::Type::Vector3, {{"in", (vector / scale).rotate3d(rotation)}});
-      break;
+  int type = node_->custom1;
+  switch (type) {
+    case NODE_MAPPING_TYPE_POINT: {
+      NodeItem location = get_input_value("Location", NodeItem::Type::Vector3);
+      return (vector * scale).rotate(rotation) + location;
+    }
+    case NODE_MAPPING_TYPE_TEXTURE: {
+      NodeItem location = get_input_value("Location", NodeItem::Type::Vector3);
+      return (vector - location).rotate(rotation, true) / scale;
+    }
+    case NODE_MAPPING_TYPE_VECTOR: {
+      return (vector * scale).rotate(rotation * val(MaterialX::Vector3(1.0f, 1.0f, -1.0f)));
+    }
+    case NODE_MAPPING_TYPE_NORMAL: {
+      return (vector / scale).rotate(rotation).normalize();
+    }
     default:
       BLI_assert_unreachable();
   }
-
-  return res;
+  return empty();
 }
 #endif
 NODE_SHADER_MATERIALX_END

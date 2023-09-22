@@ -89,7 +89,7 @@ NODE_SHADER_MATERIALX_BEGIN
   }
 
   int index = STREQ(socket_out_->name, "Red") ? 0 : STREQ(socket_out_->name, "Green") ? 1 : 2;
-  return convert.extract(index);
+  return convert[index];
 }
 #endif
 NODE_SHADER_MATERIALX_END

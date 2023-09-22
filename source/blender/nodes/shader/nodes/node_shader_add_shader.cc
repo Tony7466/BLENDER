@@ -25,36 +25,23 @@ static int node_shader_gpu_add_shader(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  NodeItem res = empty();
-  switch (to_type_) {
-    case NodeItem::Type::BSDF:
-    case NodeItem::Type::EDF: {
-      NodeItem shader1 = get_input_link(0, to_type_);
-      NodeItem shader2 = get_input_link(1, to_type_);
-
-      if (shader1 && !shader2) {
-        res = shader1;
-      }
-      else if (!shader1 && shader2) {
-        res = shader2;
-      }
-      else if (shader1 && shader2) {
-        res = shader1 + shader2;
-      }
-      break;
-    }
-    case NodeItem::Type::SurfaceShader: {
-      /* SurfaceShaders can't be added, returning the first one connected */
-      res = get_input_link(0, to_type_);
-      if (!res) {
-        res = get_input_link(1, to_type_);
-      }
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
+  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
+    return empty();
   }
-  return res;
+
+  NodeItem shader1 = get_input_link(0, to_type_);
+  NodeItem shader2 = get_input_link(1, to_type_);
+  if (!shader1 && !shader2) {
+    return empty();
+  }
+
+  if (shader1 && !shader2) {
+    return shader1;
+  }
+  if (!shader1 && shader2) {
+    return shader2;
+  }
+  return shader1 + shader2;
 }
 #endif
 NODE_SHADER_MATERIALX_END

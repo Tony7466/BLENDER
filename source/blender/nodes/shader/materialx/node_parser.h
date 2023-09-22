@@ -20,6 +20,10 @@ class GroupNodeParser;
 
 using ExportImageFunction = std::function<std::string(Main *,Scene *, Image *, ImageUser *)>;
 
+/**
+ * This is base abstraction class for parsing Blender nodes into MaterialX nodes.
+ * NodeParser::compute() should be overrided in child classes.
+ */
 class NodeParser {
  protected:
   MaterialX::GraphElement *graph_;
@@ -63,7 +67,7 @@ class NodeParser {
   NodeItem get_input_value(int index, NodeItem::Type to_type);
   NodeItem empty() const;
   template<class T> NodeItem val(const T &data) const;
-  NodeItem texcoord_node();
+  NodeItem texcoord_node(NodeItem::Type type = NodeItem::Type::Vector2);
 
  private:
   NodeItem get_default(const bNodeSocket &socket, NodeItem::Type to_type);
@@ -76,8 +80,21 @@ template<class T> NodeItem NodeParser::val(const T &data) const
   return empty().val(data);
 }
 
-/*
+/**
  * Defines for including MaterialX node parsing code into node_shader_<name>.cc
+ *
+ * Example:
+ * \code{.c}
+ * NODE_SHADER_MATERIALX_BEGIN
+ * #ifdef WITH_MATERIALX
+ * {
+ *   NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
+ *   NodeItem gamma = get_input_value("Gamma", NodeItem::Type::Float);
+ *   return color ^ gamma;
+ * }
+ * #endif
+ * NODE_SHADER_MATERIALX_END
+ * \endcode
  */
 struct NodeParserData {
   MaterialX::GraphElement *graph;

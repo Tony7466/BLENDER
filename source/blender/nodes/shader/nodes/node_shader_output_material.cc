@@ -46,20 +46,19 @@ static int node_shader_gpu_output_material(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  NodeItem bsdf = get_input_link("Surface", NodeItem::Type::BSDF);
-  NodeItem edf = get_input_link("Surface", NodeItem::Type::EDF);
-  NodeItem surface = empty();
-  if (bsdf || edf) {
-    surface = create_node("surface", NodeItem::Type::SurfaceShader);
-    if (bsdf) {
-      surface.set_input("bsdf", bsdf);
+  NodeItem surface = get_input_link("Surface", NodeItem::Type::SurfaceShader);
+  if (!surface) {
+    NodeItem bsdf = get_input_link("Surface", NodeItem::Type::BSDF);
+    NodeItem edf = get_input_link("Surface", NodeItem::Type::EDF);
+    if (bsdf || edf) {
+      surface = create_node("surface", NodeItem::Type::SurfaceShader);
+      if (bsdf) {
+        surface.set_input("bsdf", bsdf);
+      }
+      if (edf) {
+        surface.set_input("edf", edf);
+      }
     }
-    if (edf) {
-      surface.set_input("edf", edf);
-    }
-  }
-  else {
-    surface = get_input_link("Surface", NodeItem::Type::SurfaceShader);
   }
   return create_node("surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});
 }

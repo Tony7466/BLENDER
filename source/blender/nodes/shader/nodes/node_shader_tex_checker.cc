@@ -118,7 +118,7 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
 
   vector = (vector * scale) % val(2.0f);
-  return (vector.extract(0).floor() + vector.extract(1).floor())
+  return (vector[0].floor() + vector[1].floor())
       .if_else(NodeItem::CompareOp::Eq, val(1.0f), value1, value2);
 }
 #endif

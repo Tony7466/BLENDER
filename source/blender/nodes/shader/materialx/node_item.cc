@@ -182,6 +182,38 @@ NodeItem NodeItem::operator^(const NodeItem &other) const
   return arithmetic(other, "power", [](float a, float b) { return std::powf(a, b); });
 }
 
+NodeItem NodeItem::operator[](int index) const
+{
+  BLI_assert(is_arithmetic(type()));
+
+  if (value) {
+    float v = 0.0f;
+    switch (type()) {
+      case Type::Float:
+        v = value->asA<float>();
+        break;
+      case Type::Vector2:
+        v = value->asA<MaterialX::Vector2>()[index];
+      case Type::Vector3:
+        v = value->asA<MaterialX::Vector3>()[index];
+        break;
+      case Type::Vector4:
+        v = value->asA<MaterialX::Vector4>()[index];
+        break;
+      case Type::Color3:
+        v = value->asA<MaterialX::Color3>()[index];
+        break;
+      case Type::Color4:
+        v = value->asA<MaterialX::Color4>()[index];
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+    return val(v);
+  }
+  return create_node("extract", Type::Float, {{"in", *this}, {"index", val(index)}});
+}
+
 bool NodeItem::operator==(const NodeItem &other) const
 {
   if (!*this) {
@@ -226,6 +258,22 @@ NodeItem NodeItem::ceil() const
   return arithmetic("ceil", [](float a) { return std::ceilf(a); });
 }
 
+NodeItem NodeItem::length() const
+{
+  if (value) {
+    return dotproduct(*this).sqrt();
+  }
+  return create_node("magnitude", Type::Float, {{"in", to_vector()}});
+}
+
+NodeItem NodeItem::normalize() const
+{
+  if (value) {
+    return *this / length();
+  }
+  return create_node("normalize", Type::Vector3, {{"in", to_vector()}});
+}
+
 NodeItem NodeItem::min(const NodeItem &other) const
 {
   return arithmetic(other, "min", [](float a, float b) { return std::min(a, b); });
@@ -238,56 +286,86 @@ NodeItem NodeItem::max(const NodeItem &other) const
 
 NodeItem NodeItem::dotproduct(const NodeItem &other) const
 {
-  NodeItem d = arithmetic(
-      other, "dotproduct", [](float a, float b) { return a * b; }, Type::Float);
-  if (d.value) {
+  if (value && other.value) {
+    NodeItem d = *this * other;
     float f = 0.0f;
     switch (d.type()) {
       case Type::Float: {
-        f = value->asA<float>();
+        f = d.value->asA<float>();
         break;
       }
       case Type::Vector2: {
-        auto v = value->asA<MaterialX::Vector2>();
+        auto v = d.value->asA<MaterialX::Vector2>();
         f = v[0] + v[1];
         break;
       }
       case Type::Vector3: {
-        auto v = value->asA<MaterialX::Vector3>();
+        auto v = d.value->asA<MaterialX::Vector3>();
         f = v[0] + v[1] + v[2];
         break;
       }
       case Type::Vector4: {
-        auto v = value->asA<MaterialX::Vector4>();
+        auto v = d.value->asA<MaterialX::Vector4>();
         f = v[0] + v[1] + v[2] + v[3];
         break;
       }
       case Type::Color3: {
-        auto v = value->asA<MaterialX::Color3>();
+        auto v = d.value->asA<MaterialX::Color3>();
         f = v[0] + v[1] + v[2];
         break;
       }
       case Type::Color4: {
-        auto v = value->asA<MaterialX::Color4>();
+        auto v = d.value->asA<MaterialX::Color4>();
         f = v[0] + v[1] + v[2] + v[3];
         break;
       }
       default:
         BLI_assert_unreachable();
     }
-    d.value = MaterialX::Value::createValue(f);
+    return val(f);
   }
-  return d;
+
+  NodeItem item1 = to_vector();
+  NodeItem item2 = other.to_vector();
+  cast_types(item1, item2);
+  return create_node("dotproduct", Type::Float, {{"in1", item1}, {"in2", item2}});
 }
 
-NodeItem NodeItem::blend(const NodeItem &a, const NodeItem &b) const
+NodeItem NodeItem::mix(const NodeItem &val1, const NodeItem &val2) const
 {
-  return (val(1.0f) - *this) * a + *this * b;
+  if ((value && val1.value && val2.value) || type() != Type::Float) {
+    return (val(1.0f) - *this) * val1 + *this * val2;
+  }
+
+  Type type1 = val1.type();
+  if (ELEM(type1, Type::BSDF, Type::EDF)) {
+    BLI_assert(val2.type() == type1);
+
+    /* Special case: mix BSDF/EDF shaders */
+    return create_node("mix", type1, {{"bg", val1}, {"fg", val2}, {"mix", *this}});
+  };
+
+  NodeItem item1 = val1;
+  NodeItem item2 = val2;
+  Type to_type = cast_types(item1, item2);
+  return create_node("mix", to_type, {{"bg", item1}, {"fg", item2}, {"mix", *this}});
 }
 
 NodeItem NodeItem::clamp(const NodeItem &min_val, const NodeItem &max_val) const
 {
-  return min(max_val).max(min_val);
+  if (value && min_val.value && max_val.value) {
+    return min(max_val).max(min_val);
+  }
+
+  if (min_val.type() == Type::Float && max_val.type() == Type::Float) {
+    return create_node("clamp", type(), {{"in", *this}, {"low", min_val}, {"high", max_val}});
+  }
+
+  Type type = this->type();
+  return create_node(
+      "clamp",
+      type,
+      {{"in", *this}, {"low", min_val.convert(type)}, {"high", max_val.convert(type)}});
 }
 
 NodeItem NodeItem::clamp(float min_val, float max_val) const
@@ -295,64 +373,95 @@ NodeItem NodeItem::clamp(float min_val, float max_val) const
   return clamp(val(min_val), val(max_val));
 }
 
+NodeItem NodeItem::rotate(const NodeItem &angle, const NodeItem &axis)
+{
+  BLI_assert(type() == Type::Vector3);
+  BLI_assert(angle.type() == Type::Float);
+  BLI_assert(axis.type() == Type::Vector3);
+
+  return create_node(
+      "rotate3d", NodeItem::Type::Vector3, {{"in", *this}, {"amount", angle}, {"axis", axis}});
+}
+
+NodeItem NodeItem::rotate(const NodeItem &angle_xyz, bool invert)
+{
+  NodeItem x = angle_xyz[0];
+  NodeItem y = angle_xyz[1];
+  NodeItem z = angle_xyz[2];
+  if (invert) {
+    return rotate(z, val(MaterialX::Vector3(0.0f, 0.0f, 1.0f)))
+        .rotate(y, val(MaterialX::Vector3(0.0f, 1.0f, 0.0f)))
+        .rotate(x, val(MaterialX::Vector3(1.0f, 0.0f, 0.0f)));
+  }
+  return rotate(x, val(MaterialX::Vector3(1.0f, 0.0f, 0.0f)))
+      .rotate(y, val(MaterialX::Vector3(0.0f, 1.0f, 0.0f)))
+      .rotate(z, val(MaterialX::Vector3(0.0f, 0.0f, 1.0f)));
+}
+
 NodeItem NodeItem::sin() const
 {
-  return arithmetic("sin", [](float a) { return std::sinf(a); });
+  return to_vector().arithmetic("sin", [](float a) { return std::sinf(a); });
 }
 
 NodeItem NodeItem::cos() const
 {
-  return arithmetic("cos", [](float a) { return std::cosf(a); });
+  return to_vector().arithmetic("cos", [](float a) { return std::cosf(a); });
 }
 
 NodeItem NodeItem::tan() const
 {
-  return arithmetic("tan", [](float a) { return std::tanf(a); });
+  return to_vector().arithmetic("tan", [](float a) { return std::tanf(a); });
 }
 
 NodeItem NodeItem::asin() const
 {
-  return arithmetic("asin", [](float a) { return std::asinf(a); });
+  return to_vector().arithmetic("asin", [](float a) { return std::asinf(a); });
 }
 
 NodeItem NodeItem::acos() const
 {
-  return arithmetic("acos", [](float a) { return std::acosf(a); });
+  return to_vector().arithmetic("acos", [](float a) { return std::acosf(a); });
 }
 
 NodeItem NodeItem::atan() const
 {
-  return arithmetic("atan", [](float a) { return std::atanf(a); });
+  return to_vector().arithmetic("atan", [](float a) { return std::atanf(a); });
 }
 
 NodeItem NodeItem::atan2(const NodeItem &other) const
 {
-  return arithmetic(other, "atan2", [](float a, float b) { return std::atan2f(a, b); });
+  return to_vector().arithmetic(
+      other, "atan2", [](float a, float b) { return std::atan2f(a, b); });
 }
 
 NodeItem NodeItem::sinh() const
 {
-  return (exp() - (-*this).exp()) / val(2.0f);
+  NodeItem v = to_vector();
+  return (v.exp() - (-v).exp()) / val(2.0f);
 }
 
 NodeItem NodeItem::cosh() const
 {
-  return (exp() - (-*this).exp()) / val(2.0f);
+  NodeItem v = to_vector();
+  return (v.exp() + (-v).exp()) / val(2.0f);
 }
 
 NodeItem NodeItem::tanh() const
 {
-  return sinh() / cosh();
+  NodeItem v = to_vector();
+  NodeItem a = v.exp();
+  NodeItem b = (-v).exp();
+  return (a - b) / (a + b);
 }
 
 NodeItem NodeItem::ln() const
 {
-  return arithmetic("ln", [](float a) { return std::logf(a); });
+  return to_vector().arithmetic("ln", [](float a) { return std::logf(a); });
 }
 
 NodeItem NodeItem::sqrt() const
 {
-  return arithmetic("sqrt", [](float a) { return std::sqrtf(a); });
+  return to_vector().arithmetic("sqrt", [](float a) { return std::sqrtf(a); });
 }
 
 NodeItem NodeItem::sign() const
@@ -362,7 +471,7 @@ NodeItem NodeItem::sign() const
 
 NodeItem NodeItem::exp() const
 {
-  return arithmetic("exp", [](float a) { return std::expf(a); });
+  return to_vector().arithmetic("exp", [](float a) { return std::expf(a); });
 }
 
 NodeItem NodeItem::convert(Type to_type) const
@@ -380,7 +489,7 @@ NodeItem NodeItem::convert(Type to_type) const
   }
 
   if (to_type == Type::Float) {
-    return extract(0);
+    return (*this)[0];
   }
 
   /* Converting types which requires > 1 iteration */
@@ -548,6 +657,27 @@ NodeItem NodeItem::convert(Type to_type) const
   return res;
 }
 
+NodeItem NodeItem::to_vector() const
+{
+  switch (type()) {
+    case Type::Float:
+    case Type::Vector2:
+    case Type::Vector3:
+    case Type::Vector4:
+      return *this;
+
+    case Type::Color3:
+      return convert(Type::Vector3);
+
+    case Type::Color4:
+      return convert(Type::Vector4);
+
+    default:
+      BLI_assert_unreachable();
+  }
+  return empty();
+}
+
 NodeItem NodeItem::if_else(CompareOp op,
                            const NodeItem &other,
                            const NodeItem &if_val,
@@ -606,33 +736,9 @@ NodeItem NodeItem::if_else(CompareOp op,
   return res;
 }
 
-NodeItem NodeItem::extract(const int index) const
-{
-  /* TODO: Add check if (value) { ... } */
-  NodeItem res = create_node("extract", Type::Float, {{"in", *this}, {"index", val(index)}});
-  return res;
-}
-
 NodeItem NodeItem::empty() const
 {
   return NodeItem(graph_);
-}
-
-NodeItem NodeItem::rotate3d(NodeItem rotation, bool invert)
-{
-  NodeItem res = *this;
-  if (res.type() == Type::Vector3 && rotation.type() == Type::Vector3) {
-    for (int i = 0; i <= 2; i++) {
-      int j = invert ? 2 - i : i;
-      MaterialX::Vector3 axis_vector = MaterialX::Vector3();
-      axis_vector[j] = 1.0f;
-      res = create_node(
-          "rotate3d",
-          NodeItem::Type::Vector3,
-          {{"in", res}, {"amount", rotation.extract(j)}, {"axis", val(axis_vector)}});
-    }
-  }
-  return res;
 }
 
 NodeItem::Type NodeItem::type() const
@@ -794,9 +900,7 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
 {
   NodeItem res = empty();
   Type type = this->type();
-  if (!is_arithmetic(type)) {
-    return res;
-  }
+  BLI_assert(is_arithmetic(type));
 
   if (value) {
     switch (type) {
@@ -838,15 +942,7 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
     }
   }
   else {
-    NodeItem v = *this;
-    if (ELEM(type, Type::Color3, Type::Color4) &&
-        ELEM(category, "sin", "cos", "tan", "asin", "acos", "atan2", "sqrt", "ln", "exp"))
-    {
-      /* These functions haven't implementation in MaterialX, converting to Vector types */
-      type = type == Type::Color3 ? Type::Vector3 : Type::Vector4;
-      v = v.convert(type);
-    }
-    res = create_node(category, type, {{"in", v}});
+    res = create_node(category, type, {{"in", *this}});
   }
   return res;
 }

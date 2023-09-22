@@ -26,37 +26,25 @@ static int node_shader_gpu_mix_shader(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  NodeItem res = empty();
-  switch (to_type_) {
-    case NodeItem::Type::BSDF:
-    case NodeItem::Type::EDF: {
-      NodeItem fac = get_input_value(0, NodeItem::Type::Float);
-      NodeItem shader1 = get_input_link(1, to_type_);
-      NodeItem shader2 = get_input_link(2, to_type_);
-
-      if (shader1 && !shader2) {
-        res = shader1 * (val(1.0f) - fac);
-      }
-      else if (!shader1 && shader2) {
-        res = shader2 * fac;
-      }
-      else if (shader1 && shader2) {
-        res = create_node("mix", to_type_, {{"fg", shader2}, {"bg", shader1}, {"mix", fac}});
-      }
-      break;
-    }
-    case NodeItem::Type::SurfaceShader: {
-      /* SurfaceShaders can't be mixed, returning the first one connected */
-      res = get_input_link(1, NodeItem::Type::SurfaceShader);
-      if (!res) {
-        res = get_input_link(2, NodeItem::Type::SurfaceShader);
-      }
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
+  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
+    return empty();
   }
-  return res;
+
+  NodeItem shader1 = get_input_link(1, to_type_);
+  NodeItem shader2 = get_input_link(2, to_type_);
+  if (!shader1 && !shader2) {
+    return empty();
+  }
+
+  NodeItem fac = get_input_value(0, NodeItem::Type::Float);
+
+  if (shader1 && !shader2) {
+    return shader1 * (val(1.0f) - fac);
+  }
+  if (!shader1 && shader2) {
+    return shader2 * fac;
+  }
+  return fac.mix(shader1, shader2);
 }
 #endif
 NODE_SHADER_MATERIALX_END
