@@ -6742,7 +6742,6 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
       {96, "NORMAL", 0, "Medium", ""},
       {128, "BIG", 0, "Big", ""},
       {192, "LARGE", 0, "Large", ""},
-      {256, "HUGE", 0, "Huge", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
