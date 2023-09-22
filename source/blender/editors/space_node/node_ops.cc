@@ -93,7 +93,6 @@ void node_operatortypes()
 
   WM_operatortype_append(NODE_OT_parent_set);
   WM_operatortype_append(NODE_OT_join);
-  WM_operatortype_append(NODE_OT_attach);
   WM_operatortype_append(NODE_OT_detach);
 
   WM_operatortype_append(NODE_OT_clipboard_copy);
@@ -143,7 +142,6 @@ void ED_operatormacros_node()
                                     "Move nodes and attach to frame",
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   mot = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-  WM_operatortype_macro_define(ot, "NODE_OT_attach");
 
   /* NODE_OT_translate_attach with remove_on_cancel set to true. */
   ot = WM_operatortype_append_macro("NODE_OT_translate_attach_remove_on_cancel",
@@ -153,7 +151,6 @@ void ED_operatormacros_node()
   mot = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
   RNA_boolean_set(mot->ptr, "remove_on_cancel", true);
   RNA_boolean_set(mot->ptr, "view2d_edge_pan", true);
-  WM_operatortype_macro_define(ot, "NODE_OT_attach");
 
   /* NOTE: Currently not in a default keymap or menu due to messy keymaps
    * and tricky invoke functionality.
@@ -165,7 +162,6 @@ void ED_operatormacros_node()
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   WM_operatortype_macro_define(ot, "NODE_OT_detach");
   mot = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-  WM_operatortype_macro_define(ot, "NODE_OT_attach");
 
   ot = WM_operatortype_append_macro("NODE_OT_duplicate_move",
                                     "Duplicate",

@@ -26,6 +26,7 @@
 #include "BLI_bounds.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_map.hh"
+#include "BLI_math_color_blend.h"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
@@ -883,6 +884,8 @@ static void node_update_basis(const bContext &C,
   node.runtime->totr.ymax = loc.y;
   node.runtime->totr.ymin = min_ff(dy, loc.y - 2 * NODE_DY);
 
+  node.height = BLI_rctf_size_y(&node.runtime->totr) / UI_SCALE_FAC;
+
   /* Set the block bounds to clip mouse events from underlying nodes.
    * Add a margin for sockets on each side. */
   UI_block_bounds_set_explicit(&block,
@@ -927,6 +930,8 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   node.runtime->totr.xmax = loc.x + max_ff(NODE_WIDTH(node), 2 * hiddenrad);
   node.runtime->totr.ymax = loc.y + (hiddenrad - 0.5f * NODE_DY);
   node.runtime->totr.ymin = node.runtime->totr.ymax - 2 * hiddenrad;
+
+  node.height = BLI_rctf_size_y(&node.runtime->totr);
 
   /* Output sockets. */
   float rad = float(M_PI) / (1.0f + float(totout));
@@ -3377,6 +3382,7 @@ static void reroute_node_prepare_for_draw(bNode &node)
 
   const float size = 8.0f;
   node.width = size * 2;
+  node.height = size * 2;
   node.runtime->totr.xmin = loc.x - size;
   node.runtime->totr.xmax = loc.x + size;
   node.runtime->totr.ymax = loc.y + size;
@@ -3515,9 +3521,9 @@ static void frame_node_draw(const bContext &C,
     return;
   }
 
-  float color[4];
+  ColorTheme4f color;
   UI_GetThemeColor4fv(TH_NODE_FRAME, color);
-  const float alpha = color[3];
+  const float alpha = color.a;
 
   node_draw_shadow(snode, node, BASIS_RAD, alpha);
 
@@ -3526,6 +3532,12 @@ static void frame_node_draw(const bContext &C,
   }
   else {
     UI_GetThemeColor4fv(TH_NODE_FRAME, color);
+  }
+
+  if (node.flag & NODE_FRAME_HILITE) {
+    ColorTheme4f active_color;
+    UI_GetThemeColorShadeAlpha4fv(TH_ACTIVE, 0, -40, active_color);
+    blend_color_interpolate_float(color, color, active_color, 0.1f);
   }
 
   const rctf &rct = node.runtime->totr;
@@ -3540,6 +3552,12 @@ static void frame_node_draw(const bContext &C,
     else {
       UI_GetThemeColorShadeAlpha4fv(TH_SELECT, 0, -40, color);
     }
+    UI_draw_roundbox_aa(&rct, false, BASIS_RAD, color);
+  }
+  else if (node.flag & NODE_FRAME_HILITE) {
+    ColorTheme4f active_color;
+    UI_GetThemeColor4fv(TH_ACTIVE, active_color);
+    blend_color_interpolate_float(color, color, active_color, 0.3f);
 
     UI_draw_roundbox_aa(&rct, false, BASIS_RAD, color);
   }

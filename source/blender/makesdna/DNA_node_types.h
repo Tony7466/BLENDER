@@ -417,6 +417,7 @@ typedef struct bNode {
   /** The index in the owner node tree. */
   int index() const;
   blender::StringRefNull label_or_name() const;
+  bool is_selected() const;
   bool is_muted() const;
   bool is_reroute() const;
   bool is_frame() const;
@@ -508,6 +509,8 @@ enum {
   // NODE_ACTIVE_PREVIEW = 1 << 18, /* deprecated */
   /** Active node that is used to paint on. */
   NODE_ACTIVE_PAINT_CANVAS = 1 << 19,
+  /** Temporary highlight for the frame node to indicate transformed nodes will be attached. */
+  NODE_FRAME_HILITE = 1 << 20,
 };
 
 /** bNode::update */

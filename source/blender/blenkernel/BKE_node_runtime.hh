@@ -669,6 +669,11 @@ inline blender::StringRefNull bNode::label_or_name() const
   return this->label;
 }
 
+inline bool bNode::is_selected() const
+{
+  return this->flag & NODE_SELECT;
+}
+
 inline bool bNode::is_muted() const
 {
   return this->flag & NODE_MUTED;

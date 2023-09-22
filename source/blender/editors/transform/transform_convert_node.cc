@@ -22,6 +22,7 @@
 #include "BKE_report.h"
 
 #include "ED_node.hh"
+#include "ED_space_api.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -32,21 +33,30 @@
 
 #include "WM_api.hh"
 
-struct TransCustomDataNode {
+struct TransInfoCustomDataNode {
   View2DEdgePanData edgepan_data;
 
   /* Compare if the view has changed so we can update with `transformViewUpdate`. */
   rctf viewrect_prev;
+
+  eTModifier attachment_state;
+
+  blender::float2 selection_center;
+  bool indicate_frame_joining;
+  void *draw_handle;
+};
+
+struct TransCustomDataNode {
+  /* For reversible unparenting during transform. */
+  bNode *parent;
 };
 
 /* -------------------------------------------------------------------- */
 /** \name Node Transform Creation
  * \{ */
 
-static void create_transform_data_for_node(TransData &td,
-                                           TransData2D &td2d,
-                                           bNode &node,
-                                           const float dpi_fac)
+static void create_transform_data_for_node(
+    TransData &td, TransData2D &td2d, TransCustomDataNode &tdc, bNode &node, const float dpi_fac)
 {
   /* account for parents (nested nodes) */
   const blender::float2 node_offset = {node.offsetx, node.offsety};
@@ -80,6 +90,8 @@ static void create_transform_data_for_node(TransData &td,
   unit_m3(td.smtx);
 
   td.extra = &node;
+
+  tdc.parent = node.parent;
 }
 
 static bool is_node_parent_select(const bNode *node)
@@ -92,10 +104,91 @@ static bool is_node_parent_select(const bNode *node)
   return false;
 }
 
-static void createTransNodeData(bContext * /*C*/, TransInfo *t)
+static void node_transform_restore_parenting_hierarchy(TransDataContainer *tc,
+                                                       bNodeTree &node_tree)
+{
+  for (int i = 0; i < tc->data_len; i++) {
+    TransData *td = &tc->data[i];
+    bNode *node = static_cast<bNode *>(td->extra);
+
+    TransCustomDataNode *tdc = static_cast<TransCustomDataNode *>(tc->custom.type.data);
+    bNode *parent_node = tdc[i].parent;
+
+    if (parent_node == nullptr) {
+      continue;
+    }
+
+    nodeAttachNode(&node_tree, node, parent_node);
+  }
+}
+
+static void draw_hitzone(const bContext * /*C*/, ARegion *region, void *arg)
+{
+  using namespace blender;
+
+  TransInfoCustomDataNode *td = static_cast<TransInfoCustomDataNode *>(arg);
+  const View2D *v2d = &region->v2d;
+
+  float2 sc_view = td->selection_center * UI_SCALE_FAC;
+  float radius = 0.15f * U.widget_unit;
+  float2 center;
+  UI_view2d_view_to_region_fl(v2d, sc_view.x, sc_view.y, &center.x, &center.y);
+
+  rctf rect;
+  BLI_rctf_init_pt_radius(&rect, center, radius);
+
+  float text_col[4];
+
+  UI_GetThemeColor4fv(TH_TEXT, text_col);
+  text_col[3] = 0.4f;
+
+  UI_draw_roundbox_aa(&rect, td->indicate_frame_joining, radius, text_col);
+}
+
+static void draw_hitzone_activate(ARegion &region, TransInfoCustomDataNode *customdata)
+{
+  if (customdata->draw_handle == nullptr) {
+    customdata->draw_handle = ED_region_draw_cb_activate(
+        region.type, draw_hitzone, customdata, REGION_DRAW_POST_PIXEL);
+  }
+}
+
+static void draw_hitzone_deactivate(const ARegion &region, TransInfoCustomDataNode *customdata)
+{
+  if (customdata->draw_handle) {
+    ED_region_draw_cb_exit(region.type, customdata->draw_handle);
+    customdata->draw_handle = nullptr;
+  }
+}
+
+static blender::float2 get_center_of_selection(bNodeTree &node_tree)
+{
+  using namespace blender;
+  using namespace blender::ed::space_node;
+  rctf bounds_rect;
+  BLI_rctf_init_minmax(&bounds_rect);
+
+  for (const bNode *node : get_selected_nodes(node_tree)) {
+    /* We get the selection center in node space, because by the time the selection indicator is
+     * drawn `totr` hasn't been updated, yet. */
+    rctf node_rect;
+    float2 node_loc = blender::bke::nodeToView(node,
+                                               math::round(float2(node->offsetx, node->offsety)));
+    node_rect.xmin = node_loc.x;
+    node_rect.xmax = node_loc.x + node->width;
+    node_rect.ymin = node_loc.y - node->height;
+    node_rect.ymax = node_loc.y;
+    BLI_rctf_union(&bounds_rect, &node_rect);
+  }
+
+  return float2(BLI_rctf_cent_x(&bounds_rect), BLI_rctf_cent_y(&bounds_rect));
+}
+
+static void createTransNodeData(bContext *C, TransInfo *t)
 {
   using namespace blender;
   using namespace blender::ed;
+  using namespace blender::ed::space_node;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
   bNodeTree *node_tree = snode->edittree;
   if (!node_tree) {
@@ -103,7 +196,7 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
   }
 
   /* Custom data to enable edge panning during the node transform */
-  TransCustomDataNode *customdata = MEM_cnew<TransCustomDataNode>(__func__);
+  TransInfoCustomDataNode *customdata = MEM_cnew<TransInfoCustomDataNode>(__func__);
   UI_view2d_edge_pan_init(t->context,
                           &customdata->edgepan_data,
                           NODE_EDGE_PAN_INSIDE_PAD,
@@ -113,12 +206,13 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
                           NODE_EDGE_PAN_DELAY,
                           NODE_EDGE_PAN_ZOOM_INFLUENCE);
   customdata->viewrect_prev = customdata->edgepan_data.initial_rect;
+  customdata->attachment_state = t->modifiers & (MOD_NODE_LINK_ATTACH | MOD_NODE_FRAME_DETACH);
 
-  if (t->modifiers & MOD_NODE_ATTACH) {
+  if (t->modifiers & MOD_NODE_LINK_ATTACH) {
     space_node::node_insert_on_link_flags_set(*snode, *t->region);
   }
   else {
-    space_node::node_insert_on_link_flags_clear(*snode->edittree);
+    space_node::node_insert_on_link_flags_clear(*node_tree);
   }
 
   t->custom.type.data = customdata;
@@ -135,12 +229,25 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
     return;
   }
 
+  float2 selection_center = get_center_of_selection(*node_tree);
+  customdata->selection_center = selection_center;
+  customdata->indicate_frame_joining = space_node::node_insert_on_frame_flags_set(
+      *node_tree, selection_center);
+
   tc->data_len = nodes.size();
   tc->data = MEM_cnew_array<TransData>(tc->data_len, __func__);
   tc->data_2d = MEM_cnew_array<TransData2D>(tc->data_len, __func__);
+  tc->custom.type.data = MEM_cnew_array<TransCustomDataNode>(tc->data_len, __func__);
+  tc->custom.type.use_free = true;
 
   for (const int i : nodes.index_range()) {
-    create_transform_data_for_node(tc->data[i], tc->data_2d[i], *nodes[i], UI_SCALE_FAC);
+    TransCustomDataNode *data_node = static_cast<TransCustomDataNode *>(tc->custom.type.data);
+    create_transform_data_for_node(
+        tc->data[i], tc->data_2d[i], data_node[i], *nodes[i], UI_SCALE_FAC);
+  }
+
+  if (nodes.size() > 1) {
+    draw_hitzone_activate(*CTX_wm_region(C), customdata);
   }
 }
 
@@ -192,13 +299,30 @@ static void node_snap_grid_apply(TransInfo *t)
   }
 }
 
+static void node_transform_detach_parents(bNodeTree &node_tree)
+{
+  for (bNode *node : blender::ed::space_node::get_selected_nodes(node_tree)) {
+    if (node->parent == nullptr) {
+      continue;
+    }
+    if (is_node_parent_select(node)) {
+      /* When a parent frame is transformed together with the node we don't need to clear
+       * the parenting. */
+      continue;
+    }
+
+    nodeDetachNode(&node_tree, node);
+  }
+}
+
 static void flushTransNodes(TransInfo *t)
 {
   using namespace blender::ed;
   const float dpi_fac = UI_SCALE_FAC;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
+  bNodeTree &node_tree = *snode->edittree;
 
-  TransCustomDataNode *customdata = (TransCustomDataNode *)t->custom.type.data;
+  TransInfoCustomDataNode *customdata = (TransInfoCustomDataNode *)t->custom.type.data;
 
   if (t->options & CTX_VIEW2D_EDGE_PAN) {
     if (t->state == TRANS_CANCEL) {
@@ -246,17 +370,43 @@ static void flushTransNodes(TransInfo *t)
       node->locx = location.x;
       node->locy = location.y;
     }
+  }
 
-    /* handle intersection with noodles */
-    if (tc->data_len == 1) {
-      if (t->modifiers & MOD_NODE_ATTACH) {
-        space_node::node_insert_on_link_flags_set(*snode, *t->region);
-      }
-      else {
-        space_node::node_insert_on_link_flags_clear(*snode->edittree);
-      }
+  TransDataContainer *tc = t->data_container;
+  /* Handle intersection with node links. */
+  if (tc->data_len == 1) {
+    if (t->modifiers & MOD_NODE_LINK_ATTACH) {
+      space_node::node_insert_on_link_flags_set(*snode, *t->region);
+    }
+    else {
+      space_node::node_insert_on_link_flags_clear(node_tree);
     }
   }
+
+  /* Handle intersection with frame nodes. */
+
+  const bool frame_attachment_state_has_changed = (t->modifiers & MOD_NODE_FRAME_DETACH) !=
+                                                  (customdata->attachment_state &
+                                                   MOD_NODE_FRAME_DETACH);
+
+  // TODO(Leon): This needs to update frame sizes, when the childs are attached.
+  if (t->modifiers & MOD_NODE_FRAME_DETACH) {
+    if (frame_attachment_state_has_changed) {
+      node_transform_detach_parents(node_tree);
+    }
+    customdata->attachment_state = MOD_NODE_FRAME_DETACH;
+  }
+  else {
+    if (frame_attachment_state_has_changed) {
+      node_transform_restore_parenting_hierarchy(tc, node_tree);
+    }
+    customdata->attachment_state &= ~MOD_NODE_FRAME_DETACH;
+  }
+
+  blender::float2 selection_center = get_center_of_selection(node_tree);
+  customdata->selection_center = selection_center;
+  customdata->indicate_frame_joining = space_node::node_insert_on_frame_flags_set(
+      node_tree, selection_center);
 }
 
 /** \} */
@@ -288,12 +438,20 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
 
   if (!canceled) {
     ED_node_post_apply_transform(C, snode->edittree);
-    if (t->modifiers & MOD_NODE_ATTACH) {
+    if (t->modifiers & MOD_NODE_LINK_ATTACH) {
       space_node::node_insert_on_link_flags(*bmain, *snode);
     }
+
+    space_node::node_insert_on_frame_flags(*ntree);
+    ED_node_tree_propagate_change(C, bmain, ntree);
   }
 
   space_node::node_insert_on_link_flags_clear(*ntree);
+  space_node::node_insert_on_frame_flags_clear(*ntree);
+
+  TransInfoCustomDataNode *customdata = static_cast<TransInfoCustomDataNode *>(
+      t->custom.type.data);
+  draw_hitzone_deactivate(*CTX_wm_region(C), customdata);
 
   wmOperatorType *ot = WM_operatortype_find("NODE_OT_insert_offset", true);
   BLI_assert(ot);

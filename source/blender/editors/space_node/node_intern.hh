@@ -309,7 +309,6 @@ void NODE_OT_links_mute(wmOperatorType *ot);
 
 void NODE_OT_parent_set(wmOperatorType *ot);
 void NODE_OT_join(wmOperatorType *ot);
-void NODE_OT_attach(wmOperatorType *ot);
 void NODE_OT_detach(wmOperatorType *ot);
 
 void NODE_OT_link_viewer(wmOperatorType *ot);

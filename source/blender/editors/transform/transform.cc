@@ -619,8 +619,10 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       break;
     }
     case TFM_MODAL_INSERTOFS_TOGGLE_DIR:
-    case TFM_MODAL_NODE_ATTACH_ON:
-    case TFM_MODAL_NODE_ATTACH_OFF: {
+    case TFM_MODAL_NODE_LINK_ATTACH_ON:
+    case TFM_MODAL_NODE_LINK_ATTACH_OFF:
+    case TFM_MODAL_NODE_FRAME_DETACH_ON:
+    case TFM_MODAL_NODE_FRAME_DETACH_OFF: {
       if (t->spacetype != SPACE_NODE) {
         return false;
       }
@@ -746,8 +748,18 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
        0,
        "Toggle Direction for Node Auto-Offset",
        ""},
-      {TFM_MODAL_NODE_ATTACH_ON, "NODE_ATTACH_ON", 0, "Node Attachment", ""},
-      {TFM_MODAL_NODE_ATTACH_OFF, "NODE_ATTACH_OFF", 0, "Node Attachment (Off)", ""},
+      {TFM_MODAL_NODE_LINK_ATTACH_ON, "NODE_LINK_ATTACH_ON", 0, "Node Link Attachment", ""},
+      {TFM_MODAL_NODE_LINK_ATTACH_OFF,
+       "NODE_LINK_ATTACH_OFF",
+       0,
+       "Node Link Attachment (Off)",
+       ""},
+      {TFM_MODAL_NODE_FRAME_DETACH_ON, "NODE_FRAME_DETACH_ON", 0, "Detach Nodes From Frame", ""},
+      {TFM_MODAL_NODE_FRAME_DETACH_OFF,
+       "NODE_FRAME_DETACH_OFF",
+       0,
+       "Detach Nodes From Frame (Off)",
+       ""},
       {TFM_MODAL_TRANSLATE, "TRANSLATE", 0, "Move", ""},
       {TFM_MODAL_VERT_EDGE_SLIDE, "VERT_EDGE_SLIDE", 0, "Vert/Edge Slide", ""},
       {TFM_MODAL_ROTATE, "ROTATE", 0, "Rotate", ""},
@@ -1209,13 +1221,23 @@ int transformEvent(TransInfo *t, const wmEvent *event)
           t->redraw |= TREDRAW_SOFT;
         }
         break;
-      case TFM_MODAL_NODE_ATTACH_ON:
-        t->modifiers |= MOD_NODE_ATTACH;
+      case TFM_MODAL_NODE_LINK_ATTACH_ON:
+        t->modifiers |= MOD_NODE_LINK_ATTACH;
         t->redraw |= TREDRAW_HARD;
         handled = true;
         break;
-      case TFM_MODAL_NODE_ATTACH_OFF:
-        t->modifiers &= ~MOD_NODE_ATTACH;
+      case TFM_MODAL_NODE_LINK_ATTACH_OFF:
+        t->modifiers &= ~MOD_NODE_LINK_ATTACH;
+        t->redraw |= TREDRAW_HARD;
+        handled = true;
+        break;
+      case TFM_MODAL_NODE_FRAME_DETACH_ON:
+        t->modifiers |= MOD_NODE_FRAME_DETACH;
+        t->redraw |= TREDRAW_HARD;
+        handled = true;
+        break;
+      case TFM_MODAL_NODE_FRAME_DETACH_OFF:
+        t->modifiers &= ~MOD_NODE_FRAME_DETACH;
         t->redraw |= TREDRAW_HARD;
         handled = true;
         break;
@@ -2006,13 +2028,13 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     if (t->data_type == &TransConvertType_Node) {
       /* Set the initial auto-attach flag based on whether the chosen keymap key is pressed at the
        * start of the operator. */
-      t->modifiers |= MOD_NODE_ATTACH;
+      t->modifiers |= MOD_NODE_LINK_ATTACH;
       LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &t->keymap->items) {
         if (kmi->flag & KMI_INACTIVE) {
           continue;
         }
 
-        if (kmi->propvalue == TFM_MODAL_NODE_ATTACH_OFF && kmi->val == KM_PRESS) {
+        if (kmi->propvalue == TFM_MODAL_NODE_LINK_ATTACH_OFF && kmi->val == KM_PRESS) {
           if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
                (event->modifier & KM_CTRL)) ||
               (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
@@ -2020,7 +2042,28 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
               (ELEM(kmi->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY) && (event->modifier & KM_ALT)) ||
               ((kmi->type == EVT_OSKEY) && (event->modifier & KM_OSKEY)))
           {
-            t->modifiers &= ~MOD_NODE_ATTACH;
+            t->modifiers &= ~MOD_NODE_LINK_ATTACH;
+          }
+          break;
+        }
+      }
+
+      /* Set the initial detach flag based on whether the chosen keymap key is pressed at the
+       * start of the operator. */
+      t->modifiers &= ~MOD_NODE_FRAME_DETACH;
+      LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &t->keymap->items) {
+        if (kmi->flag & KMI_INACTIVE) {
+          continue;
+        }
+        if (kmi->propvalue == TFM_MODAL_NODE_LINK_ATTACH_ON && kmi->val == KM_PRESS) {
+          if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
+               (event->modifier & KM_CTRL)) ||
+              (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
+               (event->modifier & KM_SHIFT)) ||
+              (ELEM(kmi->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY) && (event->modifier & KM_ALT)) ||
+              ((kmi->type == EVT_OSKEY) && (event->modifier & KM_OSKEY)))
+          {
+            t->modifiers |= MOD_NODE_FRAME_DETACH;
           }
           break;
         }
