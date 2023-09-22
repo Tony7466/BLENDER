@@ -661,7 +661,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
       BKE_gpencil_modifier_set_error(
           md, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
       //TODO: free_frame
-      return;
+      //return;
     } 
   }
 
@@ -669,7 +669,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   if (smd->layers->frames->strokes->stroke_verts_num != gps->totpoints) {
     BKE_gpencil_modifier_set_error(
         md, "Stroke %u: Points changed from %i to %i", smd->layers->frames->strokes->stroke_idx, smd->layers->frames->strokes->stroke_verts_num, gps->totpoints);
-    return;
+    //return;
   } 
 
   /* Geometry count on the target mesh. */
