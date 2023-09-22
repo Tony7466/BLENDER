@@ -933,6 +933,7 @@ void convert_host_to_device(void *dst_buffer,
   convert_buffer(dst_buffer, src_buffer, buffer_size, device_format, conversion_type);
 }
 
+#if 0
 void convert_host_to_device(void *dst_buffer,
                             const void *src_buffer,
                             uint2 src_size,
@@ -954,6 +955,7 @@ void convert_host_to_device(void *dst_buffer,
                    conversion_type);
   }
 }
+#endif
 
 void convert_device_to_host(void *dst_buffer,
                             const void *src_buffer,

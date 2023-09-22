@@ -259,6 +259,17 @@ static void blit_to_aspect(VKCommandBuffer &command_buffer,
                            int dst_offset_y,
                            VkImageAspectFlagBits image_aspect)
 {
+  /* Prefer texture copy, as some platforms doesn't support using D32_SFLOAT_S8_UINT to be used as
+   * a blit destination. */
+  if (dst_offset_x == 0 && dst_offset_y == 0 &&
+      dst_texture.format_get() == src_texture.format_get() &&
+      src_texture.width_get() == dst_texture.width_get() &&
+      src_texture.height_get() == dst_texture.height_get())
+  {
+    src_texture.copy_to(dst_texture, image_aspect);
+    return;
+  }
+
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = image_aspect;
   image_blit.srcSubresource.mipLevel = 0;

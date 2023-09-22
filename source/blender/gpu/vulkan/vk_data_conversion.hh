@@ -32,7 +32,7 @@ void convert_host_to_device(void *dst_buffer,
                             size_t buffer_size,
                             eGPUDataFormat host_format,
                             eGPUTextureFormat device_format);
-
+#if 0
 /**
  * Convert host buffer to device buffer with row length.
  *
@@ -53,7 +53,7 @@ void convert_host_to_device(void *dst_buffer,
                             uint src_row_length,
                             eGPUDataFormat host_format,
                             eGPUTextureFormat device_format);
-
+#endif
 /**
  * Convert device buffer to host buffer.
  *
