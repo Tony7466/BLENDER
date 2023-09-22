@@ -10298,7 +10298,6 @@ static int ui_handle_menu_letter_press(
       after->opptr = MEM_cnew<PointerRNA>(__func__);
       WM_operator_properties_create_ptr(after->opptr, ot);
       RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
-      RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
       menu->menuretval = UI_RETURN_OK;
       return WM_UI_HANDLER_BREAK;
     }
