@@ -231,6 +231,9 @@ static void ui_searchbox_select(bContext *C, ARegion *region, uiBut *but, int st
   ED_region_tag_redraw(region);
 }
 
+/**
+ * Calculates the bounding rectangle \a r_rect around the visible search result item \a itemnr.
+ */
 static void ui_searchbox_butrect(rcti *r_rect, uiSearchboxData *data, int itemnr)
 {
   const float zoom = data->zoom;
@@ -546,6 +549,11 @@ int ui_searchbox_autocomplete(bContext *C, ARegion *region, uiBut *but, char *st
   return match;
 }
 
+/**
+ * Draws a downwards facing triangle.
+ * \param rect: Rectangle under which the triangle icon is drawn. Usually from the last result item
+ *              that can be displayed.
+ */
 static void ui_searchbox_draw_clip_tri_down(rcti *rect, const float zoom)
 {
   const float x = BLI_rcti_cent_x(rect) - 0.5f * zoom * UI_ICON_SIZE;
@@ -564,6 +572,11 @@ static void ui_searchbox_draw_clip_tri_down(rcti *rect, const float zoom)
   GPU_blend(GPU_BLEND_NONE);
 }
 
+/**
+ * Draws an upwards facing triangle.
+ * \param rect: Rectangle above which the triangle icon is drawn. Usually from the first result
+ *              item that can be displayed.
+ */
 static void ui_searchbox_draw_clip_tri_up(rcti *rect, const float zoom)
 {
   const float x = BLI_rcti_cent_x(rect) - 0.5f * zoom * UI_ICON_SIZE;
@@ -711,7 +724,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
             rect.xmin += UI_UNIT_X / 8;
           }
 
-          /* The previous menu item draws the active selection. */
+          /* No backdrop. The previous menu item draws the active selection. */
           ui_draw_menu_item(&data->fstyle,
                             &rect,
                             nullptr,
@@ -803,7 +816,7 @@ static void ui_searchbox_region_layout_fn(const bContext *C, ARegion *region)
     const int padding = zoom * UI_SEARCHBOX_BOUNDS - (data->preview ? 0 : U.pixelsize);
     const int search_but_h = BLI_rctf_size_y(&but->rect) + zoom * UI_SEARCHBOX_BOUNDS;
 
-    /* This case is search menu inside other menu, we copy region size. */
+    /* In this case the search menu is inside another menu, so we copy region size. */
     region->winrct = butregion->winrct;
 
     /* Widget rect, in region coordinates. */
