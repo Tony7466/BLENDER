@@ -9,8 +9,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_set.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io::hydra {
 
@@ -239,7 +240,7 @@ pxr::SdfPath HydraSceneDelegate::prim_id(const ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  snprintf(name, sizeof(name), "%s_%p", prefix, id);
+  SNPRINTF(name, "%s_%p", prefix, id);
   return GetDelegateID().AppendElementString(name);
 }
 

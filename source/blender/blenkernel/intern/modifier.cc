@@ -67,12 +67,12 @@
 #include "BKE_main.h"
 /* end */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_modifiertypes.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -458,7 +458,7 @@ void BKE_modifier_set_error(const Object *ob, ModifierData *md, const char *_for
   }
 #endif
 
-  CLOG_ERROR(&LOG, "Object: \"%s\", Modifier: \"%s\", %s", ob->id.name + 2, md->name, md->error);
+  CLOG_WARN(&LOG, "Object: \"%s\", Modifier: \"%s\", %s", ob->id.name + 2, md->name, md->error);
 }
 
 void BKE_modifier_set_warning(const Object *ob, ModifierData *md, const char *_format, ...)
@@ -1513,11 +1513,6 @@ void BKE_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb, Object 
       mti->blend_read(reader, md);
     }
   }
-}
-
-void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_modifiers_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
 }
 
 namespace blender::bke {

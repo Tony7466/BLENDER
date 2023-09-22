@@ -43,13 +43,13 @@
 #include "BKE_screen.h"
 #include "BKE_shrinkwrap.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_gpencil_legacy_modifiertypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -1033,9 +1033,4 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb,
       gpmd->cache_data = nullptr;
     }
   }
-}
-
-void BKE_gpencil_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_gpencil_modifiers_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
 }

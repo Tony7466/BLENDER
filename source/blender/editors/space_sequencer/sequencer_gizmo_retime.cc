@@ -31,7 +31,7 @@
 #include "SEQ_sequencer.h"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct GizmoGroup_retime {
   wmGizmo *add_handle_gizmo;
@@ -71,7 +71,7 @@ static bool gizmogroup_retime_poll(const bContext *C, wmGizmoGroupType *gzgt)
   return true;
 }
 
-static void gizmogroup_retime_setup(const bContext * /* C */, wmGizmoGroup *gzgroup)
+static void gizmogroup_retime_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   GizmoGroup_retime *ggd = (GizmoGroup_retime *)MEM_callocN(sizeof(GizmoGroup_retime), __func__);
 

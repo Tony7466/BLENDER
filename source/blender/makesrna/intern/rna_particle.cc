@@ -150,8 +150,8 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 #  include "BKE_pointcache.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 /* use for object space hair get/set */
 static void rna_ParticleHairKey_location_object_info(PointerRNA *ptr,
@@ -2224,6 +2224,7 @@ static void rna_def_particle_settings_mtex(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
   /* map to */

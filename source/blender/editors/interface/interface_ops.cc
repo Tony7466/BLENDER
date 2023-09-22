@@ -27,6 +27,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
+#include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
@@ -39,7 +40,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -669,7 +670,7 @@ static bool override_remove_button_poll(bContext *C)
 static int override_remove_button_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  PointerRNA ptr, id_refptr, src;
+  PointerRNA ptr, src;
   PropertyRNA *prop;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -688,7 +689,7 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
    * If this is an override template, we obviously do not need to restore anything. */
   if (!is_template) {
     PropertyRNA *src_prop;
-    RNA_id_pointer_create(id->override_library->reference, &id_refptr);
+    PointerRNA id_refptr = RNA_id_pointer_create(id->override_library->reference);
     if (!RNA_path_resolve_property(&id_refptr, oprop->rna_path, &src, &src_prop)) {
       BLI_assert_msg(0, "Failed to create matching source (linked data) RNA pointer");
     }
@@ -827,7 +828,6 @@ static int override_idtemplate_make_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  PointerRNA idptr;
   /* `idptr` is re-assigned to owner property to ensure proper updates etc. Here we also use it
    * to ensure remapping of the owner property from the linked data to the newly created
    * liboverride (note that in theory this remapping has already been done by code above), but
@@ -836,7 +836,7 @@ static int override_idtemplate_make_exec(bContext *C, wmOperator * /*op*/)
    * Otherwise, owner ID will also have been overridden, and remapped already to use it's
    * override of the data too. */
   if (!ID_IS_LINKED(owner_id)) {
-    RNA_id_pointer_create(id_override, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(id_override);
     RNA_property_pointer_set(&owner_ptr, prop, idptr, nullptr);
   }
   RNA_property_update(C, &owner_ptr, prop);
@@ -889,9 +889,8 @@ static int override_idtemplate_reset_exec(bContext *C, wmOperator * /*op*/)
 
   BKE_lib_override_library_id_reset(CTX_data_main(C), id, false);
 
-  PointerRNA idptr;
   /* `idptr` is re-assigned to owner property to ensure proper updates etc. */
-  RNA_id_pointer_create(id, &idptr);
+  PointerRNA idptr = RNA_id_pointer_create(id);
   RNA_property_pointer_set(&owner_ptr, prop, idptr, nullptr);
   RNA_property_update(C, &owner_ptr, prop);
 
@@ -1049,11 +1048,38 @@ static void ui_context_selected_bones_via_pose(bContext *C, ListBase *r_lb)
   if (!BLI_listbase_is_empty(&lb)) {
     LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
       bPoseChannel *pchan = static_cast<bPoseChannel *>(link->ptr.data);
-      RNA_pointer_create(link->ptr.owner_id, &RNA_Bone, pchan->bone, &link->ptr);
+      link->ptr = RNA_pointer_create(link->ptr.owner_id, &RNA_Bone, pchan->bone);
     }
   }
 
   *r_lb = lb;
+}
+
+static void ui_context_fcurve_modifiers_via_fcurve(bContext *C, ListBase *r_lb, FModifier *source)
+{
+  ListBase /* CollectionPointerLink */ fcurve_links;
+  fcurve_links = CTX_data_collection_get(C, "selected_editable_fcurves");
+  if (BLI_listbase_is_empty(&fcurve_links)) {
+    return;
+  }
+  LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, &fcurve_links) {
+    FCurve *fcu = static_cast<FCurve *>(link->ptr.data);
+    bool found_modifier = false;
+    LISTBASE_FOREACH (FModifier *, mod, &fcu->modifiers) {
+      if (STREQ(mod->name, source->name) && mod->type == source->type) {
+        link->ptr = RNA_pointer_create(link->ptr.owner_id, &RNA_FModifier, mod);
+        found_modifier = true;
+        /* Since names are unique it is safe to break here. */
+        break;
+      }
+    }
+    if (!found_modifier) {
+      /* FCurves that don't have a modifier named the same must be removed to avoid segfaults. */
+      BLI_freelinkN(&fcurve_links, link);
+    }
+  }
+
+  *r_lb = fcurve_links;
 }
 
 bool UI_context_copy_to_selected_list(bContext *C,
@@ -1092,7 +1118,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
       }
       else {
         bPoseChannel *pchan = static_cast<bPoseChannel *>(owner_ptr.data);
-        RNA_pointer_create(owner_ptr.owner_id, &RNA_Bone, pchan->bone, &owner_ptr);
+        owner_ptr = RNA_pointer_create(owner_ptr.owner_id, &RNA_Bone, pchan->bone);
 
         if (NOT_NULL(idpath = RNA_path_from_struct_to_idproperty(
                          &owner_ptr, static_cast<IDProperty *>(ptr->data))))
@@ -1131,6 +1157,44 @@ bool UI_context_copy_to_selected_list(bContext *C,
   else if (RNA_struct_is_a(ptr->type, &RNA_Bone)) {
     ui_context_selected_bones_via_pose(C, r_lb);
   }
+  else if (RNA_struct_is_a(ptr->type, &RNA_BoneColor)) {
+    /* Get the things that own the bone color (bones, pose bones, or edit bones). */
+    ListBase list_of_things = {}; /* First this will be bones, then gets remapped to colors. */
+    switch (GS(ptr->owner_id->name)) {
+      case ID_OB:
+        list_of_things = CTX_data_collection_get(C, "selected_pose_bones");
+        break;
+      case ID_AR: {
+        /* Armature-owned bones can be accessed from both edit mode and pose mode.
+         * - Edit mode: visit selected edit bones.
+         * - Pose mode: visit the armature bones of selected pose bones.
+         */
+        const bArmature *arm = reinterpret_cast<bArmature *>(ptr->owner_id);
+        if (arm->edbo) {
+          list_of_things = CTX_data_collection_get(C, "selected_editable_bones");
+        }
+        else {
+          list_of_things = CTX_data_collection_get(C, "selected_pose_bones");
+          CTX_data_collection_remap_property(list_of_things, "bone");
+        }
+        break;
+      }
+      default:
+        printf("BoneColor is unexpectedly owned by %s '%s'\n",
+               BKE_idtype_idcode_to_name(GS(ptr->owner_id->name)),
+               ptr->owner_id->name + 2);
+        BLI_assert(!"expected BoneColor to be owned by the Armature (bone & edit bone) or the Object (pose bone)");
+        return false;
+    }
+
+    /* Remap from some bone to its color, to ensure the items of r_lb are of
+     * type ptr->type. Since all three structs `bPoseChan`, `Bone`, and
+     * `EditBone` have the same name for their embedded `BoneColor` struct, this
+     * code is suitable for all of them. */
+    CTX_data_collection_remap_property(list_of_things, "color");
+
+    *r_lb = list_of_things;
+  }
   else if (RNA_struct_is_a(ptr->type, &RNA_Sequence)) {
     /* Special case when we do this for 'Sequence.lock'.
      * (if the sequence is locked, it won't be in "selected_editable_sequences"). */
@@ -1146,6 +1210,10 @@ bool UI_context_copy_to_selected_list(bContext *C,
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_FCurve)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_fcurves");
+  }
+  else if (RNA_struct_is_a(ptr->type, &RNA_FModifier)) {
+    FModifier *mod = static_cast<FModifier *>(ptr->data);
+    ui_context_fcurve_modifiers_via_fcurve(C, r_lb, mod);
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Keyframe)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_keyframes");
@@ -1241,7 +1309,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
           }
           else {
             /* Avoid prepending 'data' to the path. */
-            RNA_id_pointer_create(id_data, &link->ptr);
+            link->ptr = RNA_id_pointer_create(id_data);
           }
 
           if (id_data) {
@@ -1301,7 +1369,6 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
                                        PointerRNA *r_ptr,
                                        PropertyRNA **r_prop)
 {
-  PointerRNA idptr;
   PropertyRNA *lprop;
   PointerRNA lptr;
 
@@ -1312,7 +1379,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
   if (use_path_from_id) {
     /* Path relative to ID. */
     lprop = nullptr;
-    RNA_id_pointer_create(ptr_link->owner_id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(ptr_link->owner_id);
     RNA_path_resolve_property(&idptr, path, &lptr, &lprop);
   }
   else if (path) {
@@ -1852,7 +1919,7 @@ static void edittranslation_find_po_file(const char *root,
     return;
   }
 
-  /* Now try without the second ISO code part (`_ES` in `es_ES`). */
+  /* Now try without the second ISO code part (`_BR` in `pt_BR`). */
   {
     const char *tc = nullptr;
     size_t szt = 0;
@@ -2347,13 +2414,16 @@ static void UI_OT_list_start_filter(wmOperatorType *ot)
 
 static bool ui_view_focused_poll(bContext *C)
 {
+  const wmWindow *win = CTX_wm_window(C);
+  if (!(win && win->eventstate)) {
+    return false;
+  }
+
   const ARegion *region = CTX_wm_region(C);
   if (!region) {
     return false;
   }
-  const wmWindow *win = CTX_wm_window(C);
   const uiViewHandle *view = UI_region_view_find_at(region, win->eventstate->xy, 0);
-
   return view != nullptr;
 }
 
@@ -2390,6 +2460,9 @@ static void UI_OT_view_start_filter(wmOperatorType *ot)
 static bool ui_view_drop_poll(bContext *C)
 {
   const wmWindow *win = CTX_wm_window(C);
+  if (!(win && win->eventstate)) {
+    return false;
+  }
   const ARegion *region = CTX_wm_region(C);
   if (region == nullptr) {
     return false;
@@ -2595,7 +2668,7 @@ void ED_operatortypes_ui()
 
 void ED_keymap_ui(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "User Interface", 0, 0);
+  WM_keymap_ensure(keyconf, "User Interface", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   eyedropper_modal_keymap(keyconf);
   eyedropper_colorband_modal_keymap(keyconf);

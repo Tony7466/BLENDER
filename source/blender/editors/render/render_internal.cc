@@ -14,6 +14,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
+#include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
 #include "BLI_timecode.h"
@@ -45,7 +46,7 @@
 
 #include "NOD_composite.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

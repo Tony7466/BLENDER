@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -29,7 +30,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"

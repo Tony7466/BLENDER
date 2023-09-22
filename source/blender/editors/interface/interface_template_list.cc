@@ -121,8 +121,7 @@ static void uilist_draw_item_default(uiList *ui_list,
 
 static void uilist_draw_filter_default(uiList *ui_list, const bContext * /*C*/, uiLayout *layout)
 {
-  PointerRNA listptr;
-  RNA_pointer_create(nullptr, &RNA_UIList, ui_list, &listptr);
+  PointerRNA listptr = RNA_pointer_create(nullptr, &RNA_UIList, ui_list);
 
   uiLayout *row = uiLayoutRow(layout, false);
 
@@ -176,9 +175,9 @@ uiListNameFilter::~uiListNameFilter()
   MEM_SAFE_FREE(storage_.filter_dyn);
 }
 
-eUIListFilterResult uiListNameFilter::operator()(const PointerRNA & /* itemptr */,
+eUIListFilterResult uiListNameFilter::operator()(const PointerRNA & /*itemptr*/,
                                                  StringRefNull name,
-                                                 int /* index */)
+                                                 int /*index*/)
 {
   if (!filter_) {
     return UI_LIST_ITEM_FILTER_MATCHES;

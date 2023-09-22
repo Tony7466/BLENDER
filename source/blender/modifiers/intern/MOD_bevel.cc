@@ -37,12 +37,12 @@
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 static void init_data(ModifierData *md)
 {

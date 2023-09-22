@@ -14,10 +14,6 @@
 #include "DNA_image_types.h"
 #include "DNA_movieclip_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct AnimData;
 struct Ipo;
 struct Object;
@@ -95,7 +91,7 @@ typedef struct Camera {
   char panorama_type;
   char _pad[2];
 
-  /** Fisheye properties. */
+  /* Fish-eye properties. */
   float fisheye_fov;
   float fisheye_lens;
   float latitude_min, latitude_max;
@@ -234,7 +230,3 @@ enum {
 enum {
   CAM_DOF_ENABLED = (1 << 0),
 };
-
-#ifdef __cplusplus
-}
-#endif

@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 
 #include "BKE_global.h"
 #include "BKE_lib_remap.h"
@@ -25,9 +26,9 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 
@@ -154,7 +155,7 @@ static SpaceLink *spreadsheet_duplicate(SpaceLink *sl)
 static void spreadsheet_keymap(wmKeyConfig *keyconf)
 {
   /* Entire editor only. */
-  WM_keymap_ensure(keyconf, "Spreadsheet Generic", SPACE_SPREADSHEET, 0);
+  WM_keymap_ensure(keyconf, "Spreadsheet Generic", SPACE_SPREADSHEET, RGN_TYPE_WINDOW);
 }
 
 static void spreadsheet_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
@@ -181,12 +182,13 @@ static void spreadsheet_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
   {
-    wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", 0, 0);
+    wmKeyMap *keymap = WM_keymap_ensure(
+        wm->defaultconf, "View2D Buttons List", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_event_add_keymap_handler(&region->handlers, keymap);
   }
   {
     wmKeyMap *keymap = WM_keymap_ensure(
-        wm->defaultconf, "Spreadsheet Generic", SPACE_SPREADSHEET, 0);
+        wm->defaultconf, "Spreadsheet Generic", SPACE_SPREADSHEET, RGN_TYPE_WINDOW);
     WM_event_add_keymap_handler(&region->handlers, keymap);
   }
 }
@@ -653,7 +655,7 @@ static void spreadsheet_sidebar_init(wmWindowManager *wm, ARegion *region)
   ED_region_panels_init(wm, region);
 
   wmKeyMap *keymap = WM_keymap_ensure(
-      wm->defaultconf, "Spreadsheet Generic", SPACE_SPREADSHEET, 0);
+      wm->defaultconf, "Spreadsheet Generic", SPACE_SPREADSHEET, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -681,12 +683,6 @@ static void spreadsheet_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   }
 
   BKE_viewer_path_blend_read_data(reader, &sspreadsheet->viewer_path);
-}
-
-static void spreadsheet_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)sl;
-  BKE_viewer_path_blend_read_lib(reader, parent_id, &sspreadsheet->viewer_path);
 }
 
 static void spreadsheet_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -729,7 +725,7 @@ void ED_spacetype_spreadsheet()
   st->id_remap = spreadsheet_id_remap;
   st->foreach_id = spreadsheet_foreach_id;
   st->blend_read_data = spreadsheet_blend_read_data;
-  st->blend_read_lib = spreadsheet_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = spreadsheet_blend_write;
 
   /* regions: main window */

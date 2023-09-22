@@ -15,8 +15,8 @@
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BKE_object.h"
 
@@ -34,7 +34,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "wm_window.hh"
 

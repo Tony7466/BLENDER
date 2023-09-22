@@ -38,7 +38,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
@@ -534,7 +534,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           faces,
                                           corner_verts,
                                           corner_edges,
-                                          {},
+                                          result->corner_to_face_map(),
                                           result->vert_normals(),
                                           result->face_normals(),
                                           sharp_edges.span.data(),

@@ -43,11 +43,11 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Camera Data-Block
@@ -95,12 +95,18 @@ static void camera_free_data(ID *id)
 
 static void camera_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Camera *camera = (Camera *)id;
+  Camera *camera = reinterpret_cast<Camera *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, camera->dof.focus_object, IDWALK_CB_NOP);
   LISTBASE_FOREACH (CameraBGImage *, bgpic, &camera->bg_images) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, bgpic->ima, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, bgpic->clip, IDWALK_CB_USER);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, camera->ipo, IDWALK_CB_USER);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, camera->dof_ob, IDWALK_CB_NOP);
   }
 }
 
@@ -148,10 +154,9 @@ static CameraCyclesCompatibilityData camera_write_cycles_compatibility_data_crea
 
   /* For forward compatibility, still write panoramic properties as ID properties for
    * previous blender versions. */
-  IDProperty *idprop_prev = IDP_GetProperties(id, false);
+  IDProperty *idprop_prev = IDP_GetProperties(id);
   /* Make a copy to avoid modifying the original. */
-  IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) :
-                                          IDP_GetProperties(id, true);
+  IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) : IDP_EnsureProperties(id);
 
   Camera *cam = (Camera *)id;
   IDProperty *cycles_cam = cycles_data_ensure(idprop_temp);
@@ -224,31 +229,6 @@ static void camera_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void camera_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Camera *ca = (Camera *)id;
-  BLO_read_id_address(reader, id, &ca->ipo); /* deprecated, for versioning */
-
-  BLO_read_id_address(reader, id, &ca->dof_ob); /* deprecated, for versioning */
-  BLO_read_id_address(reader, id, &ca->dof.focus_object);
-
-  LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
-    BLO_read_id_address(reader, id, &bgpic->ima);
-    BLO_read_id_address(reader, id, &bgpic->clip);
-  }
-}
-
-static void camera_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Camera *ca = (Camera *)id;
-  BLO_expand(expander, ca->ipo);  // XXX deprecated - old animation system
-
-  LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
-    BLO_expand(expander, bgpic->ima);
-    BLO_expand(expander, bgpic->clip);
-  }
-}
-
 IDTypeInfo IDType_ID_CA = {
     /*id_code*/ ID_CA,
     /*id_filter*/ FILTER_ID_CA,
@@ -271,8 +251,7 @@ IDTypeInfo IDType_ID_CA = {
 
     /*blend_write*/ camera_blend_write,
     /*blend_read_data*/ camera_blend_read_data,
-    /*blend_read_lib*/ camera_blend_read_lib,
-    /*blend_read_expand*/ camera_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
