@@ -17,7 +17,7 @@
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -25,9 +25,9 @@
 #include "BKE_scene.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_geom.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
@@ -41,9 +41,9 @@
 
 #include "RNA_access.h"
 
-#include "MOD_gpencil_modifiertypes.h"
-#include "MOD_gpencil_ui_common.h"
-#include "MOD_gpencil_util.h"
+#include "MOD_gpencil_legacy_modifiertypes.h"
+#include "MOD_gpencil_legacy_ui_common.h"
+#include "MOD_gpencil_legacy_util.h"
 
 #include "MEM_guardedalloc.h"
 

@@ -3,7 +3,7 @@
 /** \file
  * \ingroup editors
  */
-
+#define DNA_DEPRECATED_ALLOW
 #include <stdlib.h>
 
 #include "MEM_guardedalloc.h"
@@ -16,9 +16,9 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_object.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 #include "BKE_bvhutils.h"
@@ -27,7 +27,7 @@
 #include "BKE_mesh_wrapper.h"
 #include "BKE_report.h"
 
-#include "MOD_gpencil_util.h"
+#include "MOD_gpencil_legacy_util.h"
 
 #include "DEG_depsgraph_query.h"
 #include "ED_object.h"
@@ -41,9 +41,11 @@
 #include "RNA_define.h"
 
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
+
 
 static void freeData_a(SurDeformGpencilModifierData *smd)
 {
