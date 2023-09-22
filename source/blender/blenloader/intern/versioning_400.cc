@@ -1240,9 +1240,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         bNodeTreeInterfacePanel *parent = ntree->tree_interface.find_item_parent(socket->item);
         bNodeTreeInterfaceSocket *socket_copy = reinterpret_cast<bNodeTreeInterfaceSocket *>(
             ntree->tree_interface.insert_item_copy(socket->item, parent, position + 1));
-        /* Original socket becomes output */
+        /* Original socket becomes output. */
         socket->flag &= ~NODE_INTERFACE_SOCKET_INPUT;
-        /* Copied socket becomes input */
+        /* Copied socket becomes input. */
         socket_copy->flag &= ~NODE_INTERFACE_SOCKET_OUTPUT;
       }
     }
