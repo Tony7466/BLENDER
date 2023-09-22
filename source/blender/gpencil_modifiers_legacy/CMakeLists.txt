@@ -59,7 +59,7 @@ set(SRC
   intern/MOD_gpencil_legacy_weight_angle.c
   intern/MOD_gpencil_legacy_weight_proximity.c
   intern/MOD_gpencilsurdeform.c
-  intern/MOD_gpencilsurdeform_ops.c
+  intern/MOD_gpencilsurdeform_ops.cc
 
   MOD_gpencil_legacy_lineart.h
   MOD_gpencil_legacy_modifiertypes.h
