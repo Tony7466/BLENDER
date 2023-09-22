@@ -50,27 +50,33 @@ struct FloatController {
   std::function<void(bContext *C, float diff)> apply_diff;
 };
 
+struct SocketItem {
+  const bNodeSocket &socket;
+  int index = -1;
+};
+
 static std::optional<FloatController> find_float_controller_for_input_socket(
-    const bNodeSocket &input_socket,
+    const SocketItem &input_socket,
     const ComputeContext &compute_context,
     const Object &object,
     const NodesModifierData &nmd);
 
 static std::optional<FloatController> find_float_controller_for_output_socket(
-    const bNodeSocket &output_socket,
+    const SocketItem &output_socket,
     const ComputeContext &compute_context,
     const Object &object,
     const NodesModifierData &nmd)
 {
-  const bNodeTree &ntree = output_socket.owner_tree();
-  const bNode &node = output_socket.owner_node();
+  const bNodeTree &ntree = output_socket.socket.owner_tree();
+  const bNode &node = output_socket.socket.owner_node();
   if (node.is_reroute()) {
     return find_float_controller_for_input_socket(
-        node.input_socket(0), compute_context, object, nmd);
+        {node.input_socket(0), output_socket.index}, compute_context, object, nmd);
   }
   if (node.type == SH_NODE_VALUE) {
-    PointerRNA owner = RNA_pointer_create(
-        const_cast<ID *>(&ntree.id), &RNA_NodeSocket, const_cast<bNodeSocket *>(&output_socket));
+    PointerRNA owner = RNA_pointer_create(const_cast<ID *>(&ntree.id),
+                                          &RNA_NodeSocket,
+                                          const_cast<bNodeSocket *>(&output_socket.socket));
     PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
     const float initial_value = RNA_property_float_get(&owner, prop);
     auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
@@ -79,39 +85,81 @@ static std::optional<FloatController> find_float_controller_for_output_socket(
     };
     return FloatController{apply_diff};
   }
+  if (node.type == FN_NODE_INPUT_VECTOR) {
+    if (output_socket.index < 0 || output_socket.index >= 3) {
+      return std::nullopt;
+    }
+    PointerRNA owner = RNA_pointer_create(
+        const_cast<ID *>(&ntree.id), &RNA_Node, const_cast<bNode *>(&node));
+    PropertyRNA *prop = RNA_struct_find_property(&owner, "vector");
+    const float initial_value = RNA_property_float_get_index(&owner, prop, output_socket.index);
+    auto apply_diff = [owner, prop, initial_value, index = output_socket.index](
+                          bContext *C, const float diff) mutable {
+      RNA_property_float_set_index(&owner, prop, index, initial_value + diff);
+      RNA_property_update(C, &owner, prop);
+    };
+    return FloatController{apply_diff};
+  }
+  if (node.type == SH_NODE_SEPXYZ) {
+    const int axis = output_socket.socket.index();
+    const bNodeSocket &input_socket = node.input_socket(0);
+    return find_float_controller_for_input_socket(
+        {input_socket, axis}, compute_context, object, nmd);
+  }
   if (node.type == NODE_GROUP_INPUT) {
     if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
       const StringRefNull input_identifier =
-          ntree.interface_inputs()[output_socket.index()]->identifier;
-      IDProperty *property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                      input_identifier.c_str());
-      if (property == nullptr) {
-        return std::nullopt;
-      }
-      if (property->type != IDP_FLOAT) {
+          ntree.interface_inputs()[output_socket.socket.index()]->identifier;
+      IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                         input_identifier.c_str());
+      if (id_property == nullptr) {
         return std::nullopt;
       }
       PointerRNA owner = RNA_pointer_create(
           const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-      PropertyRNA *prop = reinterpret_cast<PropertyRNA *>(property);
-      const float initial_value = RNA_property_float_get(&owner, prop);
-      auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
-        RNA_property_float_set(&owner, prop, initial_value + diff);
-        RNA_property_update(C, &owner, prop);
-      };
-      return FloatController{apply_diff};
+      PropertyRNA *prop = reinterpret_cast<PropertyRNA *>(id_property);
+      if (output_socket.index == -1) {
+        if (id_property->type != IDP_FLOAT) {
+          return std::nullopt;
+        }
+        const float initial_value = RNA_property_float_get(&owner, prop);
+        auto apply_diff = [owner, prop, initial_value](bContext *C, const float diff) mutable {
+          RNA_property_float_set(&owner, prop, initial_value + diff);
+          RNA_property_update(C, &owner, prop);
+        };
+        return FloatController{apply_diff};
+      }
+      else {
+        if (id_property->type != IDP_ARRAY) {
+          return std::nullopt;
+        }
+        if (id_property->subtype != IDP_FLOAT) {
+          return std::nullopt;
+        }
+        if (id_property->len <= output_socket.index) {
+          return std::nullopt;
+        }
+        const float initial_value = RNA_property_float_get_index(
+            &owner, prop, output_socket.index);
+        auto apply_diff = [owner, prop, initial_value, index = output_socket.index](
+                              bContext *C, const float diff) mutable {
+          RNA_property_float_set_index(&owner, prop, index, initial_value + diff);
+          RNA_property_update(C, &owner, prop);
+        };
+        return FloatController{apply_diff};
+      }
     }
   }
   return std::nullopt;
 }
 
 static std::optional<FloatController> find_float_controller_for_input_socket(
-    const bNodeSocket &input_socket,
+    const SocketItem &input_socket,
     const ComputeContext &compute_context,
     const Object &object,
     const NodesModifierData &nmd)
 {
-  const Span<const bNodeLink *> links = input_socket.directly_linked_links();
+  const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
   for (const bNodeLink *link : links) {
     if (link->is_muted()) {
       continue;
@@ -121,7 +169,7 @@ static std::optional<FloatController> find_float_controller_for_input_socket(
       continue;
     }
     if (std::optional<FloatController> controller = find_float_controller_for_output_socket(
-            origin_socket, compute_context, object, nmd))
+            {origin_socket, input_socket.index}, compute_context, object, nmd))
     {
       return controller;
     }
@@ -187,7 +235,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
     std::optional<FloatController> controller = find_float_controller_for_input_socket(
-        value_input, compute_context, *ob, nmd);
+        {value_input}, compute_context, *ob, nmd);
     if (!controller) {
       continue;
     }
@@ -264,7 +312,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
     std::optional<FloatController> controller = find_float_controller_for_input_socket(
-        value_input, compute_context, *ob, nmd);
+        {value_input}, compute_context, *ob, nmd);
     if (!controller) {
       continue;
     }

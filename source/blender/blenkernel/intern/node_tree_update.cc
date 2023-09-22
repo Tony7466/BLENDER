@@ -888,7 +888,7 @@ class NodeTreeMainUpdater {
     if (node.typeinfo->nclass == NODE_CLASS_OUTPUT) {
       return true;
     }
-    if (node.type == NODE_GROUP_OUTPUT) {
+    if (ELEM(node.type, NODE_GROUP_OUTPUT, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
       return true;
     }
     /* Assume node groups without output sockets are outputs. */
