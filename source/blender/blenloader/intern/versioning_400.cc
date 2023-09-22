@@ -128,7 +128,7 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
   char custom_prop_name[MAX_NAME];
 
   LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-    IDProperty *arm_idprops = IDP_GetProperties(&arm->id, false);
+    IDProperty *arm_idprops = IDP_GetProperties(&arm->id);
 
     BLI_assert_msg(arm->edbo == nullptr, "did not expect an Armature to be saved in edit mode");
     const uint layer_used = arm->layer_used;
@@ -1186,6 +1186,42 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Convert coat inputs on the Principled BSDF. */
+        version_principled_bsdf_coat(ntree);
+        /* Convert subsurface inputs on the Principled BSDF. */
+        version_principled_bsdf_subsurface(ntree);
+        /* Convert emission on the Principled BSDF. */
+        version_principled_bsdf_emission(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            LISTBASE_FOREACH (ARegion *, region, regionbase) {
+              if (region->regiontype != RGN_TYPE_ASSET_SHELF) {
+                continue;
+              }
+
+              RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
+              if (shelf_data && shelf_data->active_shelf &&
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                shelf_data->active_shelf->preferred_row_count = 1;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1207,17 +1243,5 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.shadow_normal_bias = default_scene_eevee.shadow_normal_bias;
       }
     }
-
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type == NTREE_SHADER) {
-        /* Convert coat inputs on the Principled BSDF. */
-        version_principled_bsdf_coat(ntree);
-        /* Convert subsurface inputs on the Principled BSDF. */
-        version_principled_bsdf_subsurface(ntree);
-        /* Convert emission on the Principled BSDF. */
-        version_principled_bsdf_emission(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
   }
 }
