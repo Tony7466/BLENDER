@@ -4452,7 +4452,8 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   /* Identifiers */
   ot->name = "Bake Channels";
   ot->idname = "ANIM_OT_channels_bake";
-  ot->description = "Create keyframes at a given interval on the F-Curves of selected channels";
+  ot->description =
+      "Create keyframes following the current shape of F-Curves of selected channels";
 
   /* API callbacks */
   ot->exec = channels_bake_exec;
