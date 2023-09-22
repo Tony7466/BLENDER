@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "group_nodes.h"
+#include "node_item.h"
 #include "node_parser.h"
 
 #include "BLI_vector.hh"
@@ -37,7 +38,7 @@ NodeItem GroupNodeParser::compute()
                                        material_,
                                        node_out,
                                        socket_out_,
-                                       NodeItem::Type::Any,
+                                       to_type_,
                                        this,
                                        export_image_fn_)
           .compute_full();
@@ -79,7 +80,10 @@ NodeItem GroupOutputNodeParser::compute()
   }
   return outputs[socket_out_->index()];
 #else
-  return get_input_value(socket_out_->index(), NodeItem::Type::Any);
+  if (NodeItem::is_arithmetic(to_type_)) {
+    return get_input_value(socket_out_->index(), to_type_);
+  }
+  return get_input_link(socket_out_->index(), to_type_);
 #endif
 }
 
@@ -121,6 +125,9 @@ NodeItem GroupInputNodeParser::compute()
   }
   return create_input("input" + std::to_string(socket_out_->index() + 1), value);
 #else
+  if (NodeItem::is_arithmetic(to_type_)) {
+    return group_parser_->get_input_value(socket_out_->index(), to_type_);
+  }
   return group_parser_->get_input_link(socket_out_->index(), to_type_);
 #endif
 }
