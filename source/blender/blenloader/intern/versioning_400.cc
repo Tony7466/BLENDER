@@ -409,8 +409,7 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute"))
-        {
+                     "GeometryNodeInputNamedAttribute")) {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -588,11 +587,11 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     if (node->type == SH_NODE_TEX_MUSGRAVE_DEPRECATED) {
       STRNCPY(node->idname, "ShaderNodeTexNoise");
       node->type = SH_NODE_TEX_NOISE;
-      NodeTexNoise *data = (NodeTexNoise *)MEM_callocN(sizeof(NodeTexNoise), __func__);
-      data->base = ((NodeTexMusgrave *)node->storage)->base;
-      data->dimensions = ((NodeTexMusgrave *)node->storage)->dimensions;
+      NodeTexNoise *data = MEM_cnew<NodeTexNoise>(__func__);
+      data->base = (static_cast<NodeTexMusgrave *>(node->storage))->base;
+      data->dimensions = (static_cast<NodeTexMusgrave *>(node->storage))->dimensions;
       data->normalize = false;
-      data->type = ((NodeTexMusgrave *)node->storage)->musgrave_type;
+      data->type = (static_cast<NodeTexMusgrave *>(node->storage))->musgrave_type;
       node->storage = data;
 
       bNodeSocket *sockDetail = nodeFindSocket(node, SOCK_IN, "Detail");
@@ -603,10 +602,11 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         sockFac->label[0] = '\0';
       }
 
+      uint8_t noise_type = (static_cast<NodeTexNoise *>(node->storage))->type;
       float locyoffset = 0.0f;
 
       if (version_node_socket_is_used(sockDetail) && sockDetail->link != nullptr) {
-        locyoffset = 80.0f;
+        locyoffset -= 40.0f;
 
         /* Add Subtract Math node before Detail input. */
 
@@ -629,9 +629,10 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         nodeAddLink(ntree, detailFromNode, detailFromSock, subNode1, subSock1A);
         nodeAddLink(ntree, subNode1, subSock1Out, node, sockDetail);
 
-        if ((((NodeTexNoise *)node->storage)->type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
-            (((NodeTexNoise *)node->storage)->type == SHD_NOISE_HETERO_TERRAIN))
-        {
+        if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
+            (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
+          locyoffset -= 40.0f;
+
           /* Add Greater Than Math node before Subtract Math node. */
 
           bNode *greaterNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -678,7 +679,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
           *version_cycles_node_socket_float_value(clampSockMin) = 0.0f;
           *version_cycles_node_socket_float_value(clampSockMax) = 1.0f;
 
-          if (((NodeTexNoise *)node->storage)->type == SHD_NOISE_MULTIFRACTAL) {
+          if (noise_type == SHD_NOISE_MULTIFRACTAL) {
             /* Add Add Math node and Subtract Math node after Multiply Math node. */
 
             bNode *subNode2 = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -733,9 +734,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       }
       else {
         if (*detail < 1.0f) {
-          if ((((NodeTexNoise *)node->storage)->type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-              (((NodeTexNoise *)node->storage)->type != SHD_NOISE_HETERO_TERRAIN))
-          {
+          if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
+              (noise_type != SHD_NOISE_HETERO_TERRAIN)) {
             /* Add Multiply Math node behind Fac output. */
 
             bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -750,7 +750,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
             *version_cycles_node_socket_float_value(mulSockB) = *detail;
 
-            if (((NodeTexNoise *)node->storage)->type == SHD_NOISE_MULTIFRACTAL) {
+            if (noise_type == SHD_NOISE_MULTIFRACTAL) {
               /* Add Add Math node after Multiply Math node. */
 
               bNode *addNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -806,7 +806,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       mulNode->parent = node->parent;
       mulNode->custom1 = NODE_MATH_MULTIPLY;
       mulNode->locx = node->locx;
-      mulNode->locy = node->locy - 340.0f - locyoffset;
+      mulNode->locy = node->locy - 340.0f + locyoffset;
       mulNode->flag |= NODE_HIDDEN;
       bNodeSocket *mulSockA = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 0));
       bNodeSocket *mulSockB = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 1));
@@ -816,7 +816,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       powNode->parent = node->parent;
       powNode->custom1 = NODE_MATH_POWER;
       powNode->locx = node->locx;
-      powNode->locy = node->locy - 300.0f - locyoffset;
+      powNode->locy = node->locy - 300.0f + locyoffset;
       powNode->flag |= NODE_HIDDEN;
       bNodeSocket *powSockA = static_cast<bNodeSocket *>(BLI_findlink(&powNode->inputs, 0));
       bNodeSocket *powSockB = static_cast<bNodeSocket *>(BLI_findlink(&powNode->inputs, 1));
@@ -1415,8 +1415,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         /* Set default values of existing Noise Texture nodes. */
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == SH_NODE_TEX_NOISE) {
-            ((NodeTexNoise *)node->storage)->type = SHD_NOISE_FBM;
-            ((NodeTexNoise *)node->storage)->normalize = true;
+            (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
+            (static_cast<NodeTexNoise *>(node->storage))->normalize = true;
           }
         }
       }
@@ -1597,8 +1597,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0))
-              {
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -1614,8 +1613,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
-          {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
             sockets_to_split.append(&socket);
           }
         }
