@@ -45,6 +45,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_curve_types.h"
 
 
 static void freeData_a(SurDeformGpencilModifierData *smd)
