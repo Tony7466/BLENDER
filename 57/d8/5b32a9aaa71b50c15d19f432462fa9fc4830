@@ -1,1 +1,2 @@
 Referenced by pull request #112728, Fix: bl_previews_render.py still using lamp.falloff_type
+Referenced by commit 29dfb73eb769920d85710ecc11ea6af0de0d4956, Fix: bl_previews_render.py still using lamp.falloff_type
