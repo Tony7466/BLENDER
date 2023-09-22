@@ -28,7 +28,11 @@ const bTheme U_theme_default = {
     .wcol_regular = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x1d1d1d80),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -37,7 +41,11 @@ const bTheme U_theme_default = {
     .wcol_tool = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -46,7 +54,11 @@ const bTheme U_theme_default = {
     .wcol_toolbar_item = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x282828ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffb3),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -64,7 +76,11 @@ const bTheme U_theme_default = {
     .wcol_radio = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x252525ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -73,7 +89,11 @@ const bTheme U_theme_default = {
     .wcol_option = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -82,7 +102,11 @@ const bTheme U_theme_default = {
     .wcol_toggle = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x252525ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -92,7 +116,7 @@ const bTheme U_theme_default = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
       .inner_sel = RGBA(0x222222ff),
-      .item = RGBA(0x4772b3ff),
+      .item = RGBA(0x4772b3e6),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
       .roundness = 0.2f,
@@ -101,7 +125,11 @@ const bTheme U_theme_default = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
       .inner_sel = RGBA(0x222222ff),
+<<<<<<< HEAD
       .item = RGBA(0x45679bcc),
+=======
+      .item = RGBA(0x466da7e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
       .roundness = 0.2f,
@@ -118,7 +146,11 @@ const bTheme U_theme_default = {
     .wcol_menu = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x282828ff),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xd9d9d9ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -136,7 +168,7 @@ const bTheme U_theme_default = {
     .wcol_menu_back = {
       .outline = RGBA(0x242424ff),
       .inner = RGBA(0x181818ff),
-      .inner_sel = RGBA(0x4772b3ff),
+      .inner_sel = RGBA(0x4772b3e6),
       .item = RGBA(0xd9d9d9ff),
       .text = RGBA(0x999999ff),
       .text_sel = RGBA(0xffffffff),
@@ -145,7 +177,11 @@ const bTheme U_theme_default = {
     .wcol_menu_item = {
       .outline = RGBA(0x3d3d3d00),
       .inner = RGBA(0x18181800),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffff8f),
       .text = RGBA(0xddddddff),
       .text_sel = RGBA(0xffffffff),
@@ -154,7 +190,7 @@ const bTheme U_theme_default = {
     .wcol_tooltip = {
       .outline = RGBA(0x242424ff),
       .inner = RGBA(0x1d1d1dff),
-      .inner_sel = RGBA(0x4772b3ff),
+      .inner_sel = RGBA(0x4772b3e6),
       .item = RGBA(0xd9d9d9ff),
       .text = RGBA(0xd9d9d9ff),
       .text_sel = RGBA(0xffffffff),
@@ -181,8 +217,8 @@ const bTheme U_theme_default = {
     .wcol_progress = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x222222ff),
-      .inner_sel = RGBA(0x4772b3ff),
-      .item = RGBA(0x4772b3ff),
+      .inner_sel = RGBA(0x4772b3e6),
+      .item = RGBA(0x4772b3e6),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
       .roundness = 0.2f,
@@ -190,7 +226,11 @@ const bTheme U_theme_default = {
     .wcol_list_item = {
       .outline = RGBA(0x2d2d2dff),
       .inner = RGBA(0xffffff00),
+<<<<<<< HEAD
       .inner_sel = RGBA(0x4772b3cc),
+=======
+      .inner_sel = RGBA(0x4772b3e6),
+>>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffff33),
       .text = RGBA(0xccccccff),
       .text_sel = RGBA(0xffffffff),
@@ -656,6 +696,18 @@ const bTheme U_theme_default = {
     .time_scrub_background = RGBA(0x121212ff),
     .time_marker_line = RGBA(0xffffff4d),
     .time_marker_line_selected = RGBA(0xffffffb3),
+    .keytype_keyframe = RGBA(0xbfbfbfff),
+    .keytype_extreme = RGBA(0xe8b3ccff),
+    .keytype_breakdown = RGBA(0xb3dbe8ff),
+    .keytype_jitter = RGBA(0x94e575ff),
+    .keytype_movehold = RGBA(0x808080ff),
+    .keytype_keyframe_select = RGBA(0xffbe33ff),
+    .keytype_extreme_select = RGBA(0xf28080ff),
+    .keytype_breakdown_select = RGBA(0x54bfedff),
+    .keytype_jitter_select = RGBA(0x61c042ff),
+    .keytype_movehold_select = RGBA(0xffaf23ff),
+    .keyborder = RGBA(0x000000ff),
+    .keyborder_select = RGBA(0x000000ff),
     .vertex_size = 3,
     .outline_width = 1,
     .facedot_size = 4,
@@ -677,18 +729,6 @@ const bTheme U_theme_default = {
     .row_alternate = RGBA(0xffffff05),
     .anim_preview_range = RGBA(0xa14d0066),
     .metadatatext = RGBA(0xffffffff),
-    .keytype_keyframe = RGBA(0xbfbfbfff),
-    .keytype_extreme = RGBA(0xe8b3ccff),
-    .keytype_breakdown = RGBA(0xb3dbe8ff),
-    .keytype_jitter = RGBA(0x94e575ff),
-    .keytype_movehold = RGBA(0x808080ff),
-    .keytype_keyframe_select = RGBA(0xffbe33ff),
-    .keytype_extreme_select = RGBA(0xf28080ff),
-    .keytype_breakdown_select = RGBA(0x54bfedff),
-    .keytype_jitter_select = RGBA(0x61c042ff),
-    .keytype_movehold_select = RGBA(0xffaf23ff),
-    .keyborder = RGBA(0x000000ff),
-    .keyborder_select = RGBA(0x000000ff),
   },
   .space_image = {
     .back = RGBA(0x30303000),
