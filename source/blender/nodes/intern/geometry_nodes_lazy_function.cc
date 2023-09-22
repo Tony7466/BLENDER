@@ -875,7 +875,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
   LazyFunctionForGizmoNode(const bNode &bnode, MutableSpan<int> r_lf_index_by_bsocket)
       : bnode_(bnode)
   {
-    debug_name_ = "Gizmo";
+    debug_name_ = bnode.name;
     for (const bNodeSocket *socket : bnode.input_sockets().drop_front(1)) {
       r_lf_index_by_bsocket[socket->index_in_tree()] = inputs_.append_and_get_index_as(
           socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
@@ -3090,7 +3090,8 @@ struct GeometryNodesLazyFunctionBuilder {
         break;
       }
       case GEO_NODE_GIZMO_ARROW:
-      case GEO_NODE_GIZMO_DIAL: {
+      case GEO_NODE_GIZMO_DIAL:
+      case GEO_NODE_GIZMO_VARIABLE: {
         this->build_gizmo_node(bnode, graph_params);
         break;
       }

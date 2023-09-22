@@ -36,6 +36,7 @@
 #include "view3d_intern.h" /* own include */
 
 namespace blender::ed::view3d {
+namespace geo_eval_log = nodes::geo_eval_log;
 
 struct NodeGizmoData {
   wmGizmo *gizmo;
@@ -76,6 +77,11 @@ struct FloatValuePath {
   }
 };
 
+struct GizmoFloatVariable {
+  FloatValuePath path;
+  float derivative;
+};
+
 static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     const SocketItem &input_socket,
     const ComputeContext &compute_context,
@@ -88,6 +94,7 @@ static std::optional<FloatValuePath> find_float_value_path_for_output_socket(
     const Object &object,
     const NodesModifierData &nmd)
 {
+  BLI_assert(output_socket.socket.is_output());
   const bNodeTree &ntree = output_socket.socket.owner_tree();
   const bNode &node = output_socket.socket.owner_node();
   if (node.is_reroute()) {
@@ -165,6 +172,7 @@ static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
     const Object &object,
     const NodesModifierData &nmd)
 {
+  BLI_assert(input_socket.socket.is_input());
   const bNodeTree &ntree = input_socket.socket.owner_tree();
   const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
   if ((input_socket.socket.flag & SOCK_HIDE_VALUE) == 0 &&
@@ -191,25 +199,49 @@ static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
       {origin_socket, input_socket.elem_index}, compute_context, object, nmd);
 }
 
-static Vector<FloatValuePath> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
-                                                      const ComputeContext &compute_context,
-                                                      const Object &object,
-                                                      const NodesModifierData &nmd)
+static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
+                                                          const ComputeContext &compute_context,
+                                                          const Object &object,
+                                                          const NodesModifierData &nmd)
 {
-  Vector<FloatValuePath> value_paths;
+  BLI_assert(gizmo_value_socket.is_input());
+  Vector<GizmoFloatVariable> value_paths;
   const Span<const bNodeLink *> links = gizmo_value_socket.directly_linked_links();
   for (const bNodeLink *link : links) {
     if (link->is_muted()) {
       continue;
     }
-    const bNodeSocket &origin_socket = *link->fromsock;
-    if (!origin_socket.is_available()) {
+    const bNodeSocket *origin_socket = link->fromsock;
+    if (!origin_socket->is_available()) {
       continue;
     }
+    float derivative = 1.0f;
+    const bNode &origin_node = origin_socket->owner_node();
+    if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
+      geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
+          compute_context.hash());
+      tree_log.ensure_socket_values();
+      auto *derivative_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+          tree_log.find_socket_value_log(origin_node.input_socket(1)));
+      if (derivative_value_log == nullptr) {
+        continue;
+      }
+      derivative = *derivative_value_log->value.get<float>();
+
+      const bNodeSocket *input_socket = &origin_node.input_socket(0);
+      if (input_socket->directly_linked_links().size() != 1) {
+        continue;
+      }
+      const bNodeLink *origin_link = input_socket->directly_linked_links()[0];
+      if (link->is_muted() || !link->fromsock->is_available()) {
+        continue;
+      }
+      origin_socket = origin_link->fromsock;
+    }
     if (std::optional<FloatValuePath> value_path = find_float_value_path_for_output_socket(
-            {origin_socket}, compute_context, object, nmd))
+            {*origin_socket}, compute_context, object, nmd))
     {
-      value_paths.append(*value_path);
+      value_paths.append({*value_path, derivative});
     }
   }
   return value_paths;
@@ -248,7 +280,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   if (!nmd.runtime->eval_log) {
     return;
   }
-  namespace geo_eval_log = nodes::geo_eval_log;
+
   bNodeTree &ntree = *nmd.node_group;
 
   bke::ModifierComputeContext compute_context{nullptr, nmd.modifier.name};
@@ -263,9 +295,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    Vector<FloatValuePath> value_paths = find_float_values_paths(
+    Vector<GizmoFloatVariable> variables = find_float_values_paths(
         value_input, compute_context, *ob, nmd);
-    if (value_paths.is_empty()) {
+    if (variables.is_empty()) {
       continue;
     }
 
@@ -291,7 +323,25 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       copy_v4_fl4(gz->color_hi, 0.0f, 1.0f, 0.0f, 1.0f);
     }
 
-    if (node_gizmo_data->gizmo->interaction_data == nullptr) {
+    const bool is_interacting = node_gizmo_data->gizmo->interaction_data != nullptr;
+
+    struct UserData {
+      bContext *C;
+      Vector<float> initial_values;
+      Vector<GizmoFloatVariable> variables;
+      float gizmo_value = 0.0f;
+    };
+
+    wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
+    if (is_interacting) {
+      UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+      for (const int i : user_data->variables.index_range()) {
+        const GizmoFloatVariable &new_variable = variables[i];
+        GizmoFloatVariable &variable = user_data->variables[i];
+        variable.derivative = new_variable.derivative;
+      }
+    }
+    else {
       const math::Quaternion rotation = math::from_vector(
           math::normalize(direction), math::AxisSigned::Z_NEG, math::Axis::X);
       float4x4 mat = math::from_rotation<float4x4>(rotation);
@@ -299,41 +349,38 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       mat = float4x4(ob->object_to_world) * mat;
       copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
 
-      struct UserData {
-        bContext *C;
-        Vector<float> initial_values;
-        Vector<FloatValuePath> value_paths;
-        float gizmo_value = 0.0f;
-      } *user_data = MEM_new<UserData>(__func__);
+      UserData *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      for (FloatValuePath &value_path : value_paths) {
-        user_data->initial_values.append(value_path.get());
+      for (GizmoFloatVariable &variable : variables) {
+        user_data->initial_values.append(variable.path.get());
       }
-      user_data->value_paths = std::move(value_paths);
+      user_data->variables = std::move(variables);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
       params.free_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop) {
         MEM_delete(static_cast<UserData *>(gz_prop->custom_func.user_data));
       };
-      params.value_set_fn =
-          [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
-            UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-            user_data->gizmo_value = new_gizmo_value;
-            for (const int i : user_data->value_paths.index_range()) {
-              user_data->value_paths[i].set_and_update(
-                  user_data->C, user_data->initial_values[i] + new_gizmo_value);
-            }
-          };
+      params.value_set_fn = [](const wmGizmo * /*gz*/,
+                               wmGizmoProperty *gz_prop,
+                               const void *value_ptr) {
+        UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+        const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+        user_data->gizmo_value = new_gizmo_value;
+        for (const int i : user_data->variables.index_range()) {
+          GizmoFloatVariable &variable = user_data->variables[i];
+          std::cout << variable.derivative << "\n";
+          variable.path.set_and_update(
+              user_data->C, user_data->initial_values[i] + new_gizmo_value * variable.derivative);
+        }
+      };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
         *static_cast<float *>(value_ptr) = user_data->gizmo_value;
       };
 
-      wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(node_gizmo_data->gizmo, "offset");
       if (gz_prop->custom_func.free_fn) {
         gz_prop->custom_func.free_fn(node_gizmo_data->gizmo, gz_prop);
       }
@@ -347,9 +394,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     bNodeSocket &position_input = gizmo_node->input_socket(1);
     bNodeSocket &direction_input = gizmo_node->input_socket(2);
 
-    Vector<FloatValuePath> value_paths = find_float_values_paths(
+    Vector<GizmoFloatVariable> variables = find_float_values_paths(
         value_input, compute_context, *ob, nmd);
-    if (value_paths.is_empty()) {
+    if (variables.is_empty()) {
       continue;
     }
 
@@ -386,32 +433,34 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       struct UserData {
         bContext *C;
         Vector<float> initial_values;
-        Vector<FloatValuePath> value_paths;
+        Vector<GizmoFloatVariable> variables;
         float gizmo_value = 0.0f;
       } *user_data = MEM_new<UserData>(__func__);
       /* The code that calls `value_set_fn` has the context, but its not passed into the callback
        * currently. */
       user_data->C = const_cast<bContext *>(C);
-      for (FloatValuePath &value_path : value_paths) {
-        user_data->initial_values.append(value_path.get());
+      for (GizmoFloatVariable &variable : variables) {
+        user_data->initial_values.append(variable.path.get());
       }
-      user_data->value_paths = std::move(value_paths);
+      user_data->variables = std::move(variables);
 
       wmGizmoPropertyFnParams params{};
       params.user_data = user_data;
       params.free_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop) {
         MEM_delete(static_cast<UserData *>(gz_prop->custom_func.user_data));
       };
-      params.value_set_fn =
-          [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
-            UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-            user_data->gizmo_value = new_gizmo_value;
-            for (const int i : user_data->value_paths.index_range()) {
-              user_data->value_paths[i].set_and_update(
-                  user_data->C, user_data->initial_values[i] + new_gizmo_value);
-            }
-          };
+      params.value_set_fn = [](const wmGizmo * /*gz*/,
+                               wmGizmoProperty *gz_prop,
+                               const void *value_ptr) {
+        UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+        const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+        user_data->gizmo_value = new_gizmo_value;
+        for (const int i : user_data->variables.index_range()) {
+          GizmoFloatVariable &variable = user_data->variables[i];
+          variable.path.set_and_update(
+              user_data->C, user_data->initial_values[i] + new_gizmo_value * variable.derivative);
+        }
+      };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
         UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
         *static_cast<float *>(value_ptr) = user_data->gizmo_value;

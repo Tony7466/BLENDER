@@ -574,7 +574,8 @@ static void find_side_effect_nodes_for_gizmos(const NodesModifierData &nmd,
   if (lf_graph_info == nullptr) {
     return;
   }
-  for (const StringRefNull gizmo_node_idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"})
+  for (const StringRefNull gizmo_node_idname :
+       {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial", "GeometryNodeGizmoVariable"})
   {
     for (const bNode *node : nmd.node_group->nodes_by_type(gizmo_node_idname)) {
       const lf::FunctionNode *lf_gizmo_node = lf_graph_info->mapping.gizmo_node_map.lookup_default(

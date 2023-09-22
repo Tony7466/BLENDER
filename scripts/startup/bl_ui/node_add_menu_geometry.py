@@ -457,8 +457,6 @@ class NODE_MT_category_GEO_OUTPUT(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "NodeGroupOutput")
         node_add_menu.add_node_type(layout, "GeometryNodeViewer")
-        node_add_menu.add_node_type(layout, "GeometryNodeGizmoArrow")
-        node_add_menu.add_node_type(layout, "GeometryNodeGizmoDial")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -646,6 +644,18 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
+class NODE_MT_category_GEO_GIZMO(Menu):
+    bl_idname = "NODE_MT_category_GEO_GIZMO"
+    bl_label = "Gizmo"
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeGizmoArrow")
+        node_add_menu.add_node_type(layout, "GeometryNodeGizmoDial")
+        node_add_menu.add_node_type(layout, "GeometryNodeGizmoVariable")
+        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
 class NODE_MT_category_GEO_GROUP(Menu):
     bl_idname = "NODE_MT_category_GEO_GROUP"
     bl_label = "Group"
@@ -681,6 +691,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_TEXTURE")
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
+        layout.menu("NODE_MT_category_GEO_GIZMO")
         layout.menu("NODE_MT_category_GEO_GROUP")
         layout.menu("NODE_MT_category_layout")
         node_add_menu.draw_root_assets(layout)
@@ -727,6 +738,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_FIELD,
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
+    NODE_MT_category_GEO_GIZMO,
     NODE_MT_category_GEO_GROUP,
 )
 
