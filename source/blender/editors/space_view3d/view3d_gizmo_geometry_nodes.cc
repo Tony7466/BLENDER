@@ -33,6 +33,8 @@
 
 #include "MOD_nodes.hh"
 
+#include "UI_resources.hh"
+
 #include "view3d_intern.h" /* own include */
 
 namespace blender::ed::view3d {
@@ -319,8 +321,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       node_gizmo_data = std::make_unique<NodeGizmoData>();
       wmGizmo *gz = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, nullptr);
       node_gizmo_data->gizmo = gz;
-      copy_v4_fl4(gz->color, 1.0f, 0.0f, 0.0f, 1.0f);
-      copy_v4_fl4(gz->color_hi, 0.0f, 1.0f, 0.0f, 1.0f);
+      UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
+      UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
     }
 
     const bool is_interacting = node_gizmo_data->gizmo->interaction_data != nullptr;
@@ -417,8 +419,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       node_gizmo_data = std::make_unique<NodeGizmoData>();
       wmGizmo *gz = WM_gizmo_new("GIZMO_GT_dial_3d", gzgroup, nullptr);
       node_gizmo_data->gizmo = gz;
-      copy_v4_fl4(gz->color, 1.0f, 0.0f, 0.0f, 1.0f);
-      copy_v4_fl4(gz->color_hi, 0.0f, 1.0f, 0.0f, 1.0f);
+      UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
+      UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
     }
 
     if (node_gizmo_data->gizmo->interaction_data == nullptr) {
