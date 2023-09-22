@@ -225,6 +225,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
     return submission_id_;
   }
 
+  void begin_query(VkQueryPool vk_query_pool, uint32_t query_index);
+  void end_query(VkQueryPool vk_query_pool, uint32_t query_index);
+
  private:
   void submit_commands();
 

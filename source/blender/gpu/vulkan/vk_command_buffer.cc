@@ -394,6 +394,23 @@ void VKCommandBuffer::submit_commands()
 }
 
 /* -------------------------------------------------------------------- */
+/** \name Queries
+ * \{ */
+void VKCommandBuffer::begin_query(VkQueryPool vk_query_pool, uint32_t query_index)
+{
+  ensure_active_framebuffer();
+  vkCmdBeginQuery(vk_command_buffer_, vk_query_pool, query_index, 0);
+}
+
+void VKCommandBuffer::end_query(VkQueryPool vk_query_pool, uint32_t query_index)
+{
+  ensure_active_framebuffer();
+  vkCmdEndQuery(vk_command_buffer_, vk_query_pool, query_index);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name FrameBuffer/RenderPass state tracking
  * \{ */
 

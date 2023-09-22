@@ -19,6 +19,7 @@
 #include "vk_mem_alloc.h"
 
 #include "gpu_index_buffer_private.hh"
+#include "gpu_query.hh"
 #include "gpu_shader_create_info.hh"
 #include "gpu_texture_private.hh"
 
@@ -54,6 +55,7 @@ VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const voi
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
+VkQueryType to_vk_query_type(const GPUQueryType query_type);
 const char *to_string(VkObjectType type);
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)

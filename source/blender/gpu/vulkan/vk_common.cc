@@ -854,6 +854,16 @@ VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test)
   return VK_CULL_MODE_NONE;
 }
 
+VkQueryType to_vk_query_type(const GPUQueryType query_type)
+{
+  switch (query_type) {
+    case GPU_QUERY_OCCLUSION:
+      return VK_QUERY_TYPE_OCCLUSION;
+  }
+  BLI_assert_unreachable();
+  return VK_QUERY_TYPE_OCCLUSION;
+}
+
 const char *to_string(VkObjectType type)
 {
 
