@@ -78,8 +78,8 @@
 #include "wm_window.hh"
 #include "wm_window_private.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 
@@ -5694,11 +5694,23 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
                      utf8_buf_len);
         }
 
-        if (BLI_str_utf8_size(event.utf8_buf) == -1) {
+        const int utf8_buf_len = BLI_str_utf8_size_or_error(event.utf8_buf);
+        if (utf8_buf_len == -1) {
           CLOG_ERROR(WM_LOG_EVENTS,
                      "ghost detected an invalid unicode character '%d'",
                      int(uchar(event.utf8_buf[0])));
           event.utf8_buf[0] = '\0';
+        }
+        else {
+#ifndef NDEBUG
+          /* Ensure callers don't accidentally treat this as a "string",
+           * it's not null terminated. */
+          if (utf8_buf_len > 0) {
+            for (int i = utf8_buf_len; i < ARRAY_SIZE(event.utf8_buf); i++) {
+              event.utf8_buf[i] = 0xff;
+            }
+          }
+#endif /* !NDEBUG */
         }
       }
 
@@ -6277,10 +6289,11 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
       if (handler->op != nullptr) {
         /* 'handler->keymap' could be checked too, seems not to be used. */
-        wmKeyMap *keymap_test = WM_keymap_active(wm, handler->op->type->modalkeymap);
+        wmOperator *op_test = handler->op->opm ? handler->op->opm : handler->op;
+        wmKeyMap *keymap_test = WM_keymap_active(wm, op_test->type->modalkeymap);
         if (keymap_test && keymap_test->modal_items) {
           keymap = keymap_test;
-          op = handler->op;
+          op = op_test;
           break;
         }
       }
