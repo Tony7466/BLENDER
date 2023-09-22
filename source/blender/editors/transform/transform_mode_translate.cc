@@ -305,9 +305,6 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
                                   TIP_("left");
         ofs += BLI_snprintf_rlen(str, UI_MAX_DRAW_STR, TIP_("Auto-offset direction: %s"), str_dir);
       }
-      else {
-        ofs += BLI_snprintf_rlen(str, UI_MAX_DRAW_STR, TIP_("Auto-offset direction: OFF"));
-      }
     }
     else {
       if (t->flag & T_2D_EDIT) {
@@ -643,7 +640,7 @@ static void applyTranslation(TransInfo *t)
   headerTranslation(t, (t->con.mode & CON_APPLY) ? t->values_final : global_dir, str);
 
   recalc_data(t);
-  ED_area_status_text(t->area, str);
+  ED_area_status_text(t->area, (str[0] == '\0') ? nullptr : str);
 }
 
 static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])
