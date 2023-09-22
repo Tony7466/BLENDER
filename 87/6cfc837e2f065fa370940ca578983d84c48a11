@@ -1,1 +1,2 @@
 Referenced by commit be40f31d039, Keyframing: replace mat3_to_quat_is_ok with mat4_to_quat
+Referenced by issue #76791, Different results when keyframing visual transforms and applying transforms manually on IK constraint
