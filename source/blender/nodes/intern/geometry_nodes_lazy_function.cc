@@ -876,9 +876,10 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       : bnode_(bnode)
   {
     debug_name_ = "Gizmo";
-    lazy_function_interface_from_node(bnode, inputs_, outputs_, r_lf_index_by_bsocket);
-    /* First input is expected to be the value that is driven by this gizmo. */
-    inputs_[0].usage = lf::ValueUsage::Unused;
+    for (const bNodeSocket *socket : bnode.input_sockets().drop_front(1)) {
+      r_lf_index_by_bsocket[socket->index_in_tree()] = inputs_.append_and_get_index_as(
+          socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
+    }
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
@@ -890,8 +891,8 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       return;
     }
 
-    for (const int i : inputs_.index_range().drop_front(1)) {
-      const bNodeSocket &socket = bnode_.input_socket(i);
+    for (const int i : inputs_.index_range()) {
+      const bNodeSocket &socket = bnode_.input_socket(i + 1);
       const CPPType &type = *inputs_[i].type;
       void *value = params.try_get_input_data_ptr(i);
       tree_logger->log_value(bnode_, socket, GPointer{type, value});
@@ -3507,8 +3508,8 @@ struct GeometryNodesLazyFunctionBuilder {
         bnode, mapping_->lf_index_by_bsocket);
     lf::FunctionNode &lf_gizmo_node = graph_params.lf_graph.add_function(lazy_function);
 
-    for (const int i : bnode.input_sockets().index_range()) {
-      lf::InputSocket &lf_socket = lf_gizmo_node.input(i);
+    for (const int i : bnode.input_sockets().index_range().drop_front(1)) {
+      lf::InputSocket &lf_socket = lf_gizmo_node.input(i - 1);
       const bNodeSocket &bsocket = bnode.input_socket(i);
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
