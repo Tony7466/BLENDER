@@ -131,6 +131,10 @@ if(WITH_COMPOSITOR_CPU)
     nodes/COM_SwitchViewNode.h
     nodes/COM_TextureNode.cc
     nodes/COM_TextureNode.h
+    nodes/COM_TextureCoordinateNode.cc
+    nodes/COM_TextureCoordinateNode.h
+    nodes/COM_TextureNoiseNode.cc
+    nodes/COM_TextureNoiseNode.h
     nodes/COM_TimeNode.cc
     nodes/COM_TimeNode.h
     nodes/COM_ValueNode.cc
@@ -410,6 +414,10 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_MultilayerImageOperation.h
     operations/COM_TextureOperation.cc
     operations/COM_TextureOperation.h
+    operations/COM_TextureCoordinateOperation.cc
+    operations/COM_TextureCoordinateOperation.h
+    operations/COM_TextureNoiseOperation.cc
+    operations/COM_TextureNoiseOperation.h
 
 
     operations/COM_SocketProxyOperation.cc
