@@ -371,7 +371,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         user_data->gizmo_value = new_gizmo_value;
         for (const int i : user_data->variables.index_range()) {
           GizmoFloatVariable &variable = user_data->variables[i];
-          std::cout << variable.derivative << "\n";
           variable.path.set_and_update(
               user_data->C, user_data->initial_values[i] + new_gizmo_value * variable.derivative);
         }
