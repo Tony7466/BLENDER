@@ -242,15 +242,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 {
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
 
-  // for (const std::unique_ptr<NodeGizmoData> &node_gizmo_data :
-  //      gzgroup_data->gizmo_by_node_id.values())
-  // {
-  //   wmGizmo *gz = node_gizmo_data->gizmo;
-  //   if (gz->interaction_data != nullptr) {
-  //     return;
-  //   }
-  // }
-
   Object *ob = CTX_data_active_object(C);
   const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(
       BKE_object_active_modifier(ob));
