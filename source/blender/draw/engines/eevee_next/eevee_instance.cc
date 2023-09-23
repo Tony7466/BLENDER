@@ -13,7 +13,7 @@
 #include "BKE_global.h"
 #include "BKE_object.h"
 #include "BLI_rect.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_ID.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
@@ -350,7 +350,8 @@ void Instance::render_sample()
 void Instance::render_read_result(RenderLayer *render_layer, const char *view_name)
 {
   eViewLayerEEVEEPassType pass_bits = film.enabled_passes_get();
-  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT)) {
+
+  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
     eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(pass_bits & (1 << i));
     if (pass_type == 0) {
       continue;
@@ -471,6 +472,11 @@ void Instance::draw_viewport(DefaultFramebufferList *dfbl)
     ss << "Compiling Shaders (" << materials.queued_shaders_count << " remaining)";
     info = ss.str();
   }
+  else if (materials.queued_optimize_shaders_count > 0) {
+    std::stringstream ss;
+    ss << "Optimizing Shaders (" << materials.queued_optimize_shaders_count << " remaining)";
+    info = ss.str();
+  }
 }
 
 void Instance::store_metadata(RenderResult *render_result)
@@ -498,6 +504,8 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   CHECK_PASS_LEGACY(Z, SOCK_FLOAT, 1, "Z");
   CHECK_PASS_LEGACY(MIST, SOCK_FLOAT, 1, "Z");
   CHECK_PASS_LEGACY(NORMAL, SOCK_VECTOR, 3, "XYZ");
+  CHECK_PASS_LEGACY(POSITION, SOCK_VECTOR, 3, "XYZ");
+  CHECK_PASS_LEGACY(VECTOR, SOCK_VECTOR, 4, "XYZW");
   CHECK_PASS_LEGACY(DIFFUSE_DIRECT, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(DIFFUSE_COLOR, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(GLOSSY_DIRECT, SOCK_RGBA, 3, "RGB");

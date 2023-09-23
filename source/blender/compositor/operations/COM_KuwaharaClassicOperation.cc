@@ -43,8 +43,8 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
                                                      float y,
                                                      PixelSampler sampler)
 {
-  float3 mean_of_color[] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
-  float3 mean_of_squared_color[] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+  float4 mean_of_color[] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
+  float4 mean_of_squared_color[] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
   int quadrant_pixel_count[] = {0, 0, 0, 0};
 
   if (use_sat_) {
@@ -126,9 +126,9 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   for (int i = 0; i < 4; i++) {
     mean_of_color[i] /= quadrant_pixel_count[i];
     mean_of_squared_color[i] /= quadrant_pixel_count[i];
-    float3 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
+    float4 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
 
-    float variance = math::dot(color_variance, float3(1.0f));
+    float variance = math::dot(color_variance.xyz(), float3(1.0f));
     if (variance < min_var) {
       min_var = variance;
       min_index = i;
@@ -138,11 +138,7 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   output[0] = mean_of_color[min_index].x;
   output[1] = mean_of_color[min_index].y;
   output[2] = mean_of_color[min_index].z;
-
-  /* No changes for alpha channel. */
-  float tmp[4];
-  image_reader_->read_sampled(tmp, x, y, sampler);
-  output[3] = tmp[3];
+  output[3] = mean_of_color[min_index].w; /* Also apply filter to alpha channel. */
 }
 
 void KuwaharaClassicOperation::set_kernel_size(int kernel_size)
@@ -262,9 +258,9 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     for (int i = 0; i < 4; i++) {
       mean_of_color[i] /= quadrant_pixel_count[i];
       mean_of_squared_color[i] /= quadrant_pixel_count[i];
-      float3 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
+      float4 color_variance = mean_of_squared_color[i] - mean_of_color[i] * mean_of_color[i];
 
-      float variance = math::dot(color_variance, float3(1.0f));
+      float variance = math::dot(color_variance.xyz(), float3(1.0f));
       if (variance < min_var) {
         min_var = variance;
         min_index = i;
@@ -274,9 +270,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     it.out[0] = mean_of_color[min_index].x;
     it.out[1] = mean_of_color[min_index].y;
     it.out[2] = mean_of_color[min_index].z;
-
-    /* No changes for alpha channel. */
-    it.out[3] = image->get_value(x, y, 3);
+    it.out[3] = mean_of_color[min_index].w; /* Also apply filter to alpha channel. */
   }
 }
 
