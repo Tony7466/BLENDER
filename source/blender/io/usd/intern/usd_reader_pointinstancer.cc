@@ -19,10 +19,15 @@
 
 #include "usd_reader_pointinstancer.h"
 
+#include "BKE_node_tree_update.h"
+#include "BLI_string.h"
+#include "BKE_modifier.h"
+#include "BKE_node.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_object.h"
 #include "DNA_object_types.h"
 #include "BKE_attribute.hh"
+#include "BKE_node_runtime.hh"
 #include "BLI_math_quaternion.hh"
 
 #include <iostream>
@@ -76,11 +81,15 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
         positions_span[i] = float3(positions[i][0], positions[i][1], positions[i][2]);
     }
 
+    //positions_span.save();
+
     auto scales_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<float3>("scales", ATTR_DOMAIN_POINT);
 
     for (int i = 0; i < scales.size(); i++) {
         scales_attribute.span[i] = float3(scales[i][0], scales[i][1], scales[i][2]);
     }
+
+    scales_attribute.span.save();
 
     auto orientations_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<math::Quaternion>("orientations", ATTR_DOMAIN_POINT);
 
@@ -88,13 +97,93 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
         orientations_attribute.span[i] = math::Quaternion(orientations[i].GetImaginary()[0], orientations[i].GetImaginary()[1], orientations[i].GetImaginary()[2], orientations[i].GetReal());
     }
 
+    orientations_attribute.span.save();
+
     auto proto_indices_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<int>("proto_indices", ATTR_DOMAIN_POINT);
 
     for (int i = 0; i < proto_indices.size(); i++) {
         proto_indices_attribute.span[i] = proto_indices[i];
     }
 
+    proto_indices_attribute.span.save();
+
     BKE_pointcloud_nomain_to_pointcloud(point_cloud, base_point_cloud);
+
+    ModifierData *md = BKE_modifier_new(eModifierType_Nodes);
+    BLI_addtail(&object_->modifiers, md);
+    NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+    nmd.node_group = ntreeAddTree(NULL, "Instances", "GeometryNodeTree");
+
+    bNodeTree *ntree = nmd.node_group;
+
+    ntree->tree_interface.add_socket("Geometry",
+                                   "",
+                                   "NodeSocketGeometry",
+                                   NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                   nullptr);
+
+    bNode *group_input = nodeAddStaticNode(NULL, ntree, NODE_GROUP_INPUT);
+    group_input->locx = -400.0f;
+    bNode *group_output = nodeAddStaticNode(NULL, ntree, NODE_GROUP_OUTPUT);
+    group_output->locx = 500.0f;
+    group_output->flag |= NODE_DO_OUTPUT;
+
+    bNode *input_orientation_node = nodeAddStaticNode(NULL, ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE);
+    input_orientation_node->locx = -100.0f;
+    input_orientation_node->locy = -100.0f;
+    NodeGeometryInputNamedAttribute *input_orientation_node_storage = (NodeGeometryInputNamedAttribute *)input_orientation_node->storage;
+    input_orientation_node_storage->data_type = CD_PROP_QUATERNION;
+    bNodeSocket *input_orientation_name = nodeFindSocket(input_orientation_node, SOCK_IN, "Name");
+    STRNCPY(input_orientation_name->default_value_typed<bNodeSocketValueString>()->value, "orientations");
+
+    bNode *input_scale_node = nodeAddStaticNode(NULL, ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE);
+    input_scale_node->locx = 100.0f;
+    input_scale_node->locy = -300.0f;
+    NodeGeometryInputNamedAttribute &input_scale_node_storage = *(NodeGeometryInputNamedAttribute *)input_scale_node->storage;
+    input_scale_node_storage.data_type = CD_PROP_FLOAT3;
+    bNodeSocket *input_scale_name = nodeFindSocket(input_scale_node, SOCK_IN, "Name");
+    STRNCPY(input_scale_name->default_value_typed<bNodeSocketValueString>()->value, "scales");
+
+    bNode *instance_on_points_node = nodeAddStaticNode(NULL, ntree, GEO_NODE_INSTANCE_ON_POINTS);
+    instance_on_points_node->locx = 300.0f;
+    bNode *rotation_to_euler_node = nodeAddStaticNode(NULL, ntree, FN_NODE_ROTATION_TO_EULER);
+    rotation_to_euler_node->locx = 100.0f;
+    rotation_to_euler_node->locy = -100.0f;
+
+    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+
+    nodeAddLink(ntree,
+              group_input,
+              static_cast<bNodeSocket *>(group_input->outputs.first),
+              instance_on_points_node,
+              static_cast<bNodeSocket *>(instance_on_points_node->inputs.first));
+
+    nodeAddLink(ntree,
+              input_scale_node,
+              static_cast<bNodeSocket *>(input_scale_node->outputs.first),
+              instance_on_points_node,
+              static_cast<bNodeSocket *>(BLI_findlink(&instance_on_points_node->inputs, 6)));
+
+    nodeAddLink(ntree,
+              input_orientation_node,
+              static_cast<bNodeSocket *>(input_orientation_node->outputs.first),
+              rotation_to_euler_node,
+              static_cast<bNodeSocket *>(rotation_to_euler_node->inputs.first));
+
+    nodeAddLink(ntree,
+            rotation_to_euler_node,
+            static_cast<bNodeSocket *>(rotation_to_euler_node->outputs.first),
+            instance_on_points_node,
+              static_cast<bNodeSocket *>(BLI_findlink(&instance_on_points_node->inputs, 5)));
+
+    nodeAddLink(ntree,
+              instance_on_points_node,
+              static_cast<bNodeSocket *>(instance_on_points_node->outputs.first),
+              group_output,
+              static_cast<bNodeSocket *>(group_output->inputs.first));
+
+    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+
 
     USDXformReader::read_object_data(bmain, motionSampleTime);
 }
