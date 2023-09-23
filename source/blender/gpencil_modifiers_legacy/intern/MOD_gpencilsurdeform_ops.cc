@@ -130,7 +130,6 @@ typedef struct SDefBindCalcData {
   const SDefAdjacencyArray *vert_edges;
   const SDefEdgePolys *edge_polys;
   SDefGPStroke *current_stroke;  // formerly bind_verts
-  const MLoopTri *looptri;
   const MPoly *mpoly;
   const MEdge *medge;
   const MLoop *mloop;
@@ -1425,6 +1424,8 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
       MEM_calloc_arrayN(verts_num, sizeof(*current_stroke->verts), "SDefBindVerts"));
   char error_label[128];
   uint framenum = smd_orig->layers->frames->frame_number;
+  const blender::Span<int> corner_verts = target->corner_verts();
+  const blender::Span<int> corner_edges = target->corner_edges();
 
   if (current_stroke->verts == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1441,17 +1442,20 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   SDefBindCalcData data{};
   
-      data.treeData = &treeData;
+  data.treeData = &treeData;
   data.vert_edges = vert_edges;
-      data.edge_polys = edge_polys;
+  data.edge_polys = edge_polys;
   data.polys = polys;
-      data.edges = edges;
-      data.looptri = BKE_mesh_runtime_looptri_ensure(target);
+  data.edges = edges;
+  data.corner_verts = corner_verts;
+  data.corner_edges = corner_edges;
+  data.looptris = target->looptris();
+  data.looptri_polys = target->looptri_polys();
   data.targetCos = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetBindVertArray"));
-      data.current_stroke = current_stroke;
+  data.current_stroke = current_stroke;
   data.gps = gps;
-      data.falloff = smd_orig->falloff;
+  data.falloff = smd_orig->falloff;
   data.success = MOD_SDEF_BIND_RESULT_SUCCESS;
       /*.dvert = dvert,
       .defgrp_index = defgrp_index,
