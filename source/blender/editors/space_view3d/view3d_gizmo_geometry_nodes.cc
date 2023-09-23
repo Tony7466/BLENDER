@@ -160,7 +160,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
     }
 
     const std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt =
-        nodes::gizmos::find_scalar_gizmo_source(*origin_socket);
+        nodes::gizmos::find_gizmo_source(*origin_socket, std::nullopt);
     if (!gizmo_source_opt) {
       continue;
     }

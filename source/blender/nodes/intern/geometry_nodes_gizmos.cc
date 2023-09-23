@@ -76,17 +76,32 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
   }
 }
 
-std::optional<GizmoSource> find_scalar_gizmo_source(const bNodeSocket &socket)
+std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
+                                             std::optional<int> elem_index)
 {
-  if (!is_scalar_socket_type(socket.type)) {
+  /* Only scalar values are supported currently. */
+  if (!is_scalar_socket_type(socket.type) && !elem_index) {
     return std::nullopt;
   }
-  return find_scalar_gizmo_source_recursive(socket, std::nullopt);
+  return find_scalar_gizmo_source_recursive(socket, elem_index);
+}
+
+static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_result,
+                                        const GizmoInput &gizmo_input,
+                                        const GizmoSource &gizmo_source_variant)
+{
+  if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&gizmo_source_variant)) {
+    inferencing_result.gizmo_inputs_for_value_node.add(gizmo_source->value_node, gizmo_input);
+  }
+  else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
+    inferencing_result.gizmo_inputs_for_interface_input.add(
+        {gizmo_source->interface_input_index, gizmo_source->elem_index}, gizmo_input);
+  }
 }
 
 static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &tree)
 {
-  GizmoInferencingResult result;
+  GizmoInferencingResult inferencing_result;
 
   for (const bNode *group_node : tree.group_nodes()) {
     const bNodeTree *group = reinterpret_cast<const bNodeTree *>(group_node->id);
@@ -96,19 +111,53 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
     if (!group->runtime->gizmo_inferencing) {
       continue;
     }
-    for (const int input_index :
-         group->runtime->gizmo_inferencing->gizmo_inputs_by_interface_input.keys())
+    for (const InterfaceGizmoInput interface_gizmo_input :
+         group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.keys())
     {
-      result.gizmo_inputs_in_group_node.add(group_node, &group_node->input_socket(input_index));
+      const bNodeSocket &input_socket = group_node->input_socket(
+          interface_gizmo_input.input_index);
+      const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem_index};
+
+      if (const std::optional<GizmoSource> gizmo_source_opt = find_gizmo_source(
+              input_socket, interface_gizmo_input.elem_index))
+      {
+        add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
+      }
     }
   }
 
   for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
+      const bNodeSocket &multi_gizmo_socket = gizmo_node->input_socket(0);
+      const GizmoInput gizmo_input{&multi_gizmo_socket, std::nullopt};
+      for (const bNodeLink *link : multi_gizmo_socket.directly_linked_links()) {
+        if (link->is_muted()) {
+          continue;
+        }
+        const bNodeSocket &origin_socket = *link->fromsock;
+        if (!origin_socket.is_available()) {
+          continue;
+        }
+        const bNode &origin_node = origin_socket.owner_node();
+        std::optional<GizmoSource> gizmo_source;
+        if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
+          const bNodeSocket &gizmo_variable_input = origin_node.input_socket(0);
+          gizmo_source = find_gizmo_source(gizmo_variable_input, std::nullopt);
+        }
+        else {
+          if (is_scalar_socket_type(origin_socket.type)) {
+            gizmo_source = find_gizmo_source(origin_socket, std::nullopt);
+          }
+        }
+        if (!gizmo_source) {
+          continue;
+        }
+        add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source);
+      }
     }
   }
 
-  return result;
+  return inferencing_result;
 }
 
 bool update_gizmo_inferencing(bNodeTree &tree)
@@ -121,27 +170,10 @@ bool update_gizmo_inferencing(bNodeTree &tree)
   }
 
   GizmoInferencingResult result = compute_gizmo_inferencing_result(tree);
-
-  Vector<int> old_inputs_with_gizmo;
-  Vector<int> new_inputs_with_gizmo;
-
-  if (tree.runtime->gizmo_inferencing) {
-    auto keys = tree.runtime->gizmo_inferencing->gizmo_inputs_by_interface_input.keys();
-    old_inputs_with_gizmo.extend(keys.begin(), keys.end());
-  }
-  {
-    auto keys = result.gizmo_inputs_by_interface_input.keys();
-    new_inputs_with_gizmo.extend(keys.begin(), keys.end());
-  }
-  std::sort(old_inputs_with_gizmo.begin(), old_inputs_with_gizmo.end());
-  std::sort(new_inputs_with_gizmo.begin(), new_inputs_with_gizmo.end());
-
-  const bool group_interface_changed = !tree.runtime->gizmo_inferencing ||
-                                       old_inputs_with_gizmo != new_inputs_with_gizmo;
-
   tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
 
-  return group_interface_changed;
+  /* TODO: Check if interface changed. */
+  return true;
 }
 
 }  // namespace blender::nodes::gizmos
