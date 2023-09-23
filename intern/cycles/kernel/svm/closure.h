@@ -150,7 +150,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       float alpha_x = sqr(roughness), alpha_y = sqr(roughness);
       if (anisotropic > 0.0f) {
-        float aspect = sqrtf(1.0f - saturatef(anisotropic) * 0.9f);
+        float aspect = sqrtf(1.0f - anisotropic * 0.9f);
         alpha_x /= aspect;
         alpha_y *= aspect;
         if (anisotropic_rotation != 0.0f)
