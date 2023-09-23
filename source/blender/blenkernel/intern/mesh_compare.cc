@@ -598,12 +598,12 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
 
   std::cout << "sorted edge domain" << std::endl;
 
-  Array<int> sorted_corners1(mesh1.totloop);
-  Array<int> sorted_corners2(mesh1.totloop);
+  Array<int> sorted_to_corners1(mesh1.totloop);
+  Array<int> sorted_to_corners2(mesh1.totloop);
   Array<int> corner_set_ids(mesh1.totloop);
   Array<int> corner_set_sizes(mesh1.totloop);
-  std::iota(sorted_corners1.begin(), sorted_corners1.end(), 0);
-  std::iota(sorted_corners2.begin(), sorted_corners2.end(), 0);
+  std::iota(sorted_to_corners1.begin(), sorted_to_corners1.end(), 0);
+  std::iota(sorted_to_corners2.begin(), sorted_to_corners2.end(), 0);
   corner_set_ids.fill(0);
   corner_set_sizes.fill(corner_set_ids.size());
 
@@ -612,8 +612,8 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                    verts1_to_sorted,
                                    verts2_to_sorted,
                                    vertex_set_ids,
-                                   sorted_corners1,
-                                   sorted_corners2,
+                                   sorted_to_corners1,
+                                   sorted_to_corners2,
                                    corner_set_ids,
                                    corner_set_sizes))
   {
@@ -627,8 +627,8 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                    edges1_to_sorted,
                                    edges2_to_sorted,
                                    edge_set_ids,
-                                   sorted_corners1,
-                                   sorted_corners2,
+                                   sorted_to_corners1,
+                                   sorted_to_corners2,
                                    corner_set_ids,
                                    corner_set_sizes))
   {
@@ -641,8 +641,8 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                           mesh2_attributes,
                                           ATTR_DOMAIN_CORNER,
                                           {".corner_vert", ".corner_edge"},
-                                          sorted_corners1,
-                                          sorted_corners2,
+                                          sorted_to_corners1,
+                                          sorted_to_corners2,
                                           corner_set_ids,
                                           corner_set_sizes);
   if (mismatch) {
@@ -651,12 +651,12 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
 
   std::cout << "sorted corner domain" << std::endl;
 
-  Array<int> sorted_faces1(mesh1.faces_num);
-  Array<int> sorted_faces2(mesh1.faces_num);
+  Array<int> sorted_to_faces1(mesh1.faces_num);
+  Array<int> sorted_to_faces2(mesh1.faces_num);
   Array<int> face_set_ids(mesh1.faces_num);
   Array<int> face_set_sizes(mesh1.faces_num);
-  std::iota(sorted_faces1.begin(), sorted_faces1.end(), 0);
-  std::iota(sorted_faces2.begin(), sorted_faces2.end(), 0);
+  std::iota(sorted_to_faces1.begin(), sorted_to_faces1.end(), 0);
+  std::iota(sorted_to_faces2.begin(), sorted_to_faces2.end(), 0);
   face_set_ids.fill(0);
   face_set_sizes.fill(face_set_ids.size());
   /* TODO: sort the faces using the corner set ids. */
@@ -664,8 +664,8 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                           mesh2_attributes,
                                           ATTR_DOMAIN_FACE,
                                           {},
-                                          sorted_faces1,
-                                          sorted_faces2,
+                                          sorted_to_faces1,
+                                          sorted_to_faces2,
                                           face_set_ids,
                                           face_set_sizes);
   if (mismatch) {
