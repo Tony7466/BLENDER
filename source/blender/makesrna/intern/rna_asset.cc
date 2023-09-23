@@ -425,6 +425,20 @@ static int rna_AssetRepresentation_full_library_path_length(PointerRNA *ptr)
   return full_library_path.size();
 }
 
+static void rna_AssetRepresentation_full_path_get(PointerRNA* ptr, char* value)
+{
+  const AssetRepresentation* asset = static_cast<const AssetRepresentation*>(ptr->data);
+  const std::string full_path = asset->get_identifier().full_path();
+  BLI_strncpy(value, full_path.c_str(), full_path.size() + 1);
+}
+
+static int rna_AssetRepresentation_full_path_length(PointerRNA* ptr)
+{
+  const AssetRepresentation* asset = static_cast<const AssetRepresentation*>(ptr->data);
+  const std::string full_path = asset->get_identifier().full_path();
+  return full_path.size();
+}
+
 const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*/,
                                                           PointerRNA * /*ptr*/,
                                                           PropertyRNA * /*prop*/,
@@ -651,6 +665,14 @@ static void rna_def_asset_representation(BlenderRNA *brna)
                                 "rna_AssetRepresentation_full_library_path_get",
                                 "rna_AssetRepresentation_full_library_path_length",
                                 nullptr);
+
+  prop = RNA_def_property(srna, "full_path", PROP_STRING, PROP_FILENAME);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_AssetRepresentation_full_path_get",
+                                "rna_AssetRepresentation_full_path_length",
+                                nullptr);
+
   RNA_def_property_ui_text(
       prop,
       "Full Library Path",
