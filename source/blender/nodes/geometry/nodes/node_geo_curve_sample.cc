@@ -425,7 +425,10 @@ class SampleCurveFunction : public mf::MultiFunction {
       IndexMask::from_groups<int>(
           mask,
           memory,
-          [&](const int i) { return used_curves.index_of(curve_indices[i]); },
+          [&](const int i) {
+            const int64_t group = used_curves.index_of_try(curve_indices[i]);
+            return group >= 0L ? group : 0L;
+          },
           mask_by_curve);
 
       for (const int i : mask_by_curve.index_range()) {
