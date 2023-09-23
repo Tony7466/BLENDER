@@ -666,6 +666,11 @@ static void rna_def_asset_representation(BlenderRNA *brna)
                                 "rna_AssetRepresentation_full_library_path_length",
                                 nullptr);
 
+  RNA_def_property_ui_text(
+    prop,
+    "Full Library Path",
+    "Absolute path to the .blend file containing this asset");
+
   prop = RNA_def_property(srna, "full_path", PROP_STRING, PROP_FILENAME);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(prop,
@@ -675,7 +680,7 @@ static void rna_def_asset_representation(BlenderRNA *brna)
 
   RNA_def_property_ui_text(
       prop,
-      "Full Library Path",
+      "Full Path",
       "Absolute path to the .blend file containing this asset extended with the path "
       "of the asset inside the file");
 }
