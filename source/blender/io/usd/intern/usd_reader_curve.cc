@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  * Adapted from the Blender Alembic importer implementation. Copyright 2016 Kévin Dietrich.
@@ -156,7 +156,7 @@ void USDCurvesReader::read_curve_sample(Curve *cu, const double motionSampleTime
         else {
           /* When the number of width values is less than the number of points,
            * continue using the last available value. */
-          radius = usdWidths[usdWidths.size()-1];
+          radius = usdWidths[usdWidths.size() - 1];
         }
 
         bp->radius = radius;
@@ -170,7 +170,7 @@ void USDCurvesReader::read_curve_sample(Curve *cu, const double motionSampleTime
   }
 }
 
-Mesh *USDCurvesReader::read_mesh(struct Mesh *existing_mesh,
+Mesh *USDCurvesReader::read_mesh(Mesh *existing_mesh,
                                  const USDMeshReadParams params,
                                  const char ** /* err_str */)
 {

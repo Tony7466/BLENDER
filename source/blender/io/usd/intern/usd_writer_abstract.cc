@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_abstract.h"
@@ -14,7 +14,7 @@
 #include "BLI_assert.h"
 #include "DNA_mesh_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /* TfToken objects are not cheap to construct, so we do it once. */
 namespace usdtokens {
@@ -66,7 +66,7 @@ static std::string get_mesh_active_uvlayer_name(const Object *ob)
 
   const Mesh *me = static_cast<Mesh *>(ob->data);
 
-  const char *name = CustomData_get_active_layer_name(&me->ldata, CD_PROP_FLOAT2);
+  const char *name = CustomData_get_active_layer_name(&me->loop_data, CD_PROP_FLOAT2);
 
   return name ? name : "";
 }
@@ -148,7 +148,10 @@ static void create_vector_attrib(const pxr::UsdPrim &prim,
 }
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
-    : usd_export_context_(usd_export_context), frame_has_been_written_(false), is_animated_(false)
+    : usd_export_context_(usd_export_context),
+      frame_has_been_written_(false),
+      is_animated_(false),
+      hierarchy_iterator_(nullptr)
 {
 }
 
@@ -159,16 +162,17 @@ bool USDAbstractWriter::is_supported(const HierarchyContext * /*context*/) const
 
 std::string USDAbstractWriter::get_export_file_path() const
 {
-  return usd_export_context_.hierarchy_iterator->get_export_file_path();
+  return usd_export_context_.export_file_path;
 }
 
 pxr::UsdTimeCode USDAbstractWriter::get_export_time_code() const
 {
   if (is_animated_) {
-    return usd_export_context_.hierarchy_iterator->get_export_time_code();
+    BLI_assert(usd_export_context_.get_time_code);
+    return usd_export_context_.get_time_code();
   }
-  /* By using the default timecode USD won't even write a single `timeSample` for non-animated
-   * data. Instead, it writes it as non-timesampled. */
+  /* By using the default time-code USD won't even write a single `timeSample` for non-animated
+   * data. Instead, it writes it as non-time-sampled. */
   static pxr::UsdTimeCode default_timecode = pxr::UsdTimeCode::Default();
   return default_timecode;
 }
@@ -194,14 +198,27 @@ const pxr::SdfPath &USDAbstractWriter::usd_path() const
   return usd_export_context_.usd_path;
 }
 
+void USDAbstractWriter::set_iterator(const USDHierarchyIterator *iter)
+{
+  hierarchy_iterator_ = iter;
+}
+
+bool USDAbstractWriter::is_prototype(const Object *obj) const
+{
+  if (hierarchy_iterator_) {
+    return hierarchy_iterator_->is_prototype(obj);
+  }
+
+  return false;
+}
+
+
 pxr::SdfPath USDAbstractWriter::get_material_library_path(const HierarchyContext &context) const
 {
   std::string material_library_path;
 
   /* For instance prototypes, create the material beneath the prototyp prim. */
-  if (usd_export_context_.export_params.use_instancing && !context.is_instance() &&
-      usd_export_context_.hierarchy_iterator->is_prototype(context.object))
-  {
+  if (usd_export_context_.export_params.use_instancing && this->is_prototype(context.object)) {
 
     material_library_path += std::string(usd_export_context_.export_params.root_prim_path);
     if (context.object->data) {
@@ -226,49 +243,18 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  pxr::TfToken material_name(usd_export_context_.hierarchy_iterator->get_id_name(&material->id));
+  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(material->id.name + 2));
   pxr::SdfPath usd_path = get_material_library_path(context).AppendChild(material_name);
+
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
   if (usd_material) {
     return usd_material;
   }
 
-  usd_material = (usd_export_context_.export_params.export_as_overs) ?
-                     pxr::UsdShadeMaterial(usd_export_context_.stage->OverridePrim(usd_path)) :
-                     pxr::UsdShadeMaterial::Define(usd_export_context_.stage, usd_path);
+  std::string active_uv = get_mesh_active_uvlayer_name(context.object);
 
-  bool textures_exported = false;
+  usd_material = create_usd_material(usd_export_context_, usd_path, material, active_uv);
 
-  // TODO(bskinner) maybe always export viewport material as variant...
-  if (material->use_nodes && this->usd_export_context_.export_params.generate_mdl) {
-    create_mdl_material(this->usd_export_context_, material, usd_material);
-    if (this->usd_export_context_.export_params.export_textures) {
-      export_textures(material,
-                      this->usd_export_context_.stage,
-                      this->usd_export_context_.export_params.overwrite_textures);
-      textures_exported = true;
-    }
-  }
-  if (material->use_nodes && this->usd_export_context_.export_params.generate_cycles_shaders) {
-    create_usd_cycles_material(this->usd_export_context_.stage,
-                               material,
-                               usd_material,
-                               this->usd_export_context_.export_params);
-    if (!textures_exported && this->usd_export_context_.export_params.export_textures) {
-      export_textures(material,
-                      this->usd_export_context_.stage,
-                      this->usd_export_context_.export_params.overwrite_textures);
-      textures_exported = true;
-    }
-  }
-  if (material->use_nodes && this->usd_export_context_.export_params.generate_preview_surface) {
-    std::string active_uv = get_mesh_active_uvlayer_name(context.object);
-    create_usd_preview_surface_material(
-        this->usd_export_context_, material, usd_material, active_uv);
-  }
-  else {
-    create_usd_viewport_material(this->usd_export_context_, material, usd_material);
-  }
   if (usd_export_context_.export_params.export_custom_properties && material) {
     auto prim = usd_material.GetPrim();
     write_id_properties(prim, material->id, get_export_time_code());
@@ -291,7 +277,7 @@ void USDAbstractWriter::write_visibility(const HierarchyContext &context,
   usd_value_writer_.SetAttribute(attr_visibility, pxr::VtValue(visibility), timecode);
 }
 
-void USDAbstractWriter::write_kind(pxr::UsdPrim& prim, pxr::TfToken kind)
+void USDAbstractWriter::write_kind(pxr::UsdPrim &prim, pxr::TfToken kind)
 {
   pxr::UsdModelAPI api(prim);
   api.SetKind(kind);
@@ -372,7 +358,8 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
   for (prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
     if (kind_identifier == prop->name) {
       if (prop->type == IDP_STRING && usd_export_context_.export_params.export_usd_kind &&
-          prop->data.pointer) {
+          prop->data.pointer)
+      {
         write_kind(prim, pxr::TfToken(static_cast<char *>(prop->data.pointer)));
       }
       continue;
@@ -397,25 +384,29 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
     switch (prop->type) {
       case IDP_INT:
         if (pxr::UsdAttribute int_attr = prim.CreateAttribute(
-                prop_token, pxr::SdfValueTypeNames->Int, true)) {
+                prop_token, pxr::SdfValueTypeNames->Int, true))
+        {
           int_attr.Set<int>(prop->data.val, timecode);
         }
         break;
       case IDP_FLOAT:
         if (pxr::UsdAttribute float_attr = prim.CreateAttribute(
-                prop_token, pxr::SdfValueTypeNames->Float, true)) {
+                prop_token, pxr::SdfValueTypeNames->Float, true))
+        {
           float_attr.Set<float>(*reinterpret_cast<float *>(&prop->data.val), timecode);
         }
         break;
       case IDP_DOUBLE:
         if (pxr::UsdAttribute double_attr = prim.CreateAttribute(
-                prop_token, pxr::SdfValueTypeNames->Double, true)) {
+                prop_token, pxr::SdfValueTypeNames->Double, true))
+        {
           double_attr.Set<double>(*reinterpret_cast<double *>(&prop->data.val), timecode);
         }
         break;
       case IDP_STRING:
         if (pxr::UsdAttribute str_attr = prim.CreateAttribute(
-                prop_token, pxr::SdfValueTypeNames->String, true)) {
+                prop_token, pxr::SdfValueTypeNames->String, true))
+        {
           str_attr.Set<std::string>(static_cast<const char *>(prop->data.pointer), timecode);
         }
         break;

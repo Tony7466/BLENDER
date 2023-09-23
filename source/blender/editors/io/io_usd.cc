@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,35 +25,33 @@
 
 #  include "BLT_translation.h"
 
-#  include "ED_fileselect.h"
-#  include "ED_object.h"
+#  include "ED_fileselect.hh"
+#  include "ED_object.hh"
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_access.hh"
+#  include "RNA_define.hh"
 
-#  include "RNA_enum_types.h"
+#  include "RNA_enum_types.hh"
 
-#  include "UI_interface.h"
-#  include "UI_resources.h"
+#  include "UI_interface.hh"
+#  include "UI_resources.hh"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 #  include "DEG_depsgraph.h"
 
-#  include "IO_orientation.h"
+#  include "IO_orientation.hh"
 #  include "io_ops.hh"
 #  include "io_usd.hh"
 #  include "usd.h"
 
 #  include <cstdio>
 
-
 static const char *WM_OT_USD_EXPORT_IDNAME = "WM_OT_usd_export";
 static const char *WM_OT_USD_IMPORT_IDNAME = "WM_OT_usd_import";
-
 
 const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
     {DAG_EVAL_RENDER,
@@ -165,8 +163,8 @@ const EnumPropertyItem rna_enum_usd_attr_import_mode_items[] = {
 
 const EnumPropertyItem prop_usdz_downscale_size[] = {
     {USD_TEXTURE_SIZE_KEEP, "KEEP", 0, "Keep", "Keep all current texture sizes"},
-    {USD_TEXTURE_SIZE_256,  "256", 0, "256", "Resize to a maximum of 256 pixels"},
-    {USD_TEXTURE_SIZE_512,  "512", 0, "512", "Resize to a maximum of 512 pixels"},
+    {USD_TEXTURE_SIZE_256, "256", 0, "256", "Resize to a maximum of 256 pixels"},
+    {USD_TEXTURE_SIZE_512, "512", 0, "512", "Resize to a maximum of 512 pixels"},
     {USD_TEXTURE_SIZE_1024, "1024", 0, "1024", "Resize to a maximum of 1024 pixels"},
     {USD_TEXTURE_SIZE_2048, "2048", 0, "2048", "Resize to a maximum of 256 pixels"},
     {USD_TEXTURE_SIZE_4096, "4096", 0, "4096", "Resize to a maximum of 256 pixels"},
@@ -175,11 +173,11 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
 };
 
 const EnumPropertyItem prop_default_prim_kind_items[] = {
-    { USD_KIND_NONE,      "NONE", 0, "None", "No kind is exported for default prim" },
-    { USD_KIND_COMPONENT, "COMPONENT", 0, "Component", "Set Default Prim Kind to Component" },
-    { USD_KIND_GROUP,     "GROUP", 0, "Group", "Set Default Prim Kind to Group" },
-    { USD_KIND_ASSEMBLY,  "ASSEMBLY", 0, "Assembly", "Set Default Prim Kind to Assembly" },
-    { USD_KIND_CUSTOM,    "CUSTOM", 0, "Custom", "Specify a custom Kind for the Default Prim" },
+    {USD_KIND_NONE, "NONE", 0, "None", "No kind is exported for default prim"},
+    {USD_KIND_COMPONENT, "COMPONENT", 0, "Component", "Set Default Prim Kind to Component"},
+    {USD_KIND_GROUP, "GROUP", 0, "Group", "Set Default Prim Kind to Group"},
+    {USD_KIND_ASSEMBLY, "ASSEMBLY", 0, "Assembly", "Set Default Prim Kind to Assembly"},
+    {USD_KIND_CUSTOM, "CUSTOM", 0, "Custom", "Specify a custom Kind for the Default Prim"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -208,13 +206,12 @@ struct eUSDOperatorOptions {
 };
 
 /* Forward declarations */
-void usd_export_panel_register(const char* idname,
-                               const char* label,
+void usd_export_panel_register(const char *idname,
+                               const char *label,
                                int flag,
                                bool (*poll)(const struct bContext *C, struct PanelType *pt),
                                void (*draw)(const struct bContext *C, struct Panel *panel),
-                               void (*draw_header)(const struct bContext *C, struct Panel *panel)
-                               );
+                               void (*draw_header)(const struct bContext *C, struct Panel *panel));
 void usd_export_panel_register_general(void);
 void usd_export_panel_register_geometry(void);
 void usd_export_panel_register_materials(void);
@@ -224,7 +221,6 @@ void usd_export_panel_register_animation(void);
 void usd_export_panel_register_types(void);
 void usd_export_panel_register_particles(void);
 void usd_export_panel_register_rigging(void);
-
 
 /* ====== USD Export ====== */
 /* Ensure that the prim_path is not set to
@@ -276,10 +272,10 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
   const bool export_vertices = RNA_boolean_get(op->ptr, "export_vertices");
-  const bool export_vertex_colors = RNA_boolean_get(op->ptr, "export_vertex_colors");
   const bool export_vertex_groups = RNA_boolean_get(op->ptr, "export_vertex_groups");
   const bool export_mesh_attributes = RNA_boolean_get(op->ptr, "export_mesh_attributes");
   const bool export_uvmaps = RNA_boolean_get(op->ptr, "export_uvmaps");
+  const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_transforms = RNA_boolean_get(op->ptr, "export_transforms");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
@@ -307,6 +303,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool override_shutter = RNA_boolean_get(op->ptr, "override_shutter");
   const double shutter_open = (double)RNA_float_get(op->ptr, "shutter_open");
   const double shutter_close = (double)RNA_float_get(op->ptr, "shutter_close");
+
+  const bool export_armatures = RNA_boolean_get(op->ptr, "export_armatures");
+  const bool export_shapekeys = RNA_boolean_get(op->ptr, "export_shapekeys");
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -342,8 +341,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const bool generate_cycles_shaders = RNA_boolean_get(op->ptr, "generate_cycles_shaders");
 
-  const bool export_armatures = RNA_boolean_get(op->ptr, "export_armatures");
-
   const eUSDXformOpMode xform_op_mode = eUSDXformOpMode(RNA_enum_get(op->ptr, "xform_op_mode"));
 
   const bool fix_skel_root = RNA_boolean_get(op->ptr, "fix_skel_root");
@@ -352,10 +349,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
 
-  const bool export_blendshapes = RNA_boolean_get(op->ptr, "export_blendshapes");
-
   const eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize(
-    RNA_enum_get(op->ptr, "usdz_downscale_size"));
+      RNA_enum_get(op->ptr, "usdz_downscale_size"));
 
   const int usdz_downscale_custom_size = RNA_int_get(op->ptr, "usdz_downscale_custom_size");
 
@@ -371,7 +366,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   /* USDKind support. */
   const bool export_usd_kind = RNA_boolean_get(op->ptr, "export_usd_kind");
   const int default_prim_kind = RNA_enum_get(op->ptr, "default_prim_kind");
-  char *default_prim_custom_kind = RNA_string_get_alloc(op->ptr, "default_prim_custom_kind", nullptr, 0, nullptr);
+  char *default_prim_custom_kind = RNA_string_get_alloc(
+      op->ptr, "default_prim_custom_kind", nullptr, 0, nullptr);
 
   const double start = static_cast<double>(RNA_int_get(op->ptr, "start"));
   const double end = static_cast<double>(RNA_int_get(op->ptr, "end"));
@@ -381,7 +377,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    export_animation,
                                    export_hair,
                                    export_vertices,
-                                   export_vertex_colors,
+                                   export_mesh_colors,
                                    export_vertex_groups,
                                    export_uvmaps,
                                    export_normals,
@@ -429,7 +425,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    xform_op_mode,
                                    fix_skel_root,
                                    overwrite_textures,
-                                   export_blendshapes,
+                                   export_shapekeys,
                                    usdz_downscale_size,
                                    usdz_downscale_custom_size,
                                    usdz_is_arkit,
@@ -439,8 +435,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    ngon_method,
                                    export_usd_kind,
                                    eUSDDefaultPrimKind(default_prim_kind),
-                                   default_prim_custom_kind
-                                   };
+                                   default_prim_custom_kind};
 
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
@@ -478,7 +473,7 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     RNA_boolean_set(ptr, "init_scene_frame_range", false);
   }
 
-  uiItemR(layout, ptr, "evaluation_mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   /* Note: all other pertinent settings are shown through the panels below! */
 }
@@ -510,9 +505,7 @@ static bool wm_usd_export_check(bContext * /*C*/, wmOperator *op)
   return false;
 }
 
-static void forward_axis_update(Main */*main*/,
-                                Scene */*scene*/,
-                                PointerRNA *ptr)
+static void forward_axis_update(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   int forward = RNA_enum_get(ptr, "forward_axis");
   int up = RNA_enum_get(ptr, "up_axis");
@@ -521,9 +514,7 @@ static void forward_axis_update(Main */*main*/,
   }
 }
 
-static void up_axis_update(Main */*main*/,
-                           Scene */*scene*/,
-                           PointerRNA *ptr)
+static void up_axis_update(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   int forward = RNA_enum_get(ptr, "forward_axis");
   int up = RNA_enum_get(ptr, "up_axis");
@@ -608,20 +599,18 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Vertices",
                   "When checked, vertex and point data are included in the export");
   RNA_def_boolean(ot->srna,
-                  "export_vertex_colors",
-                  true,
-                  "Vertex Colors",
-                  "When checked, all vertex colors are included in the export");
-  RNA_def_boolean(ot->srna,
                   "export_vertex_groups",
                   false,
                   "Vertex Groups",
                   "When checked, all vertex groups are included in the export");
-  RNA_def_boolean(ot->srna,
-                  "export_uvmaps",
-                  true,
-                  "UV Maps", "Include all mesh UV maps in the export");
+  RNA_def_boolean(
+      ot->srna, "export_uvmaps", true, "UV Maps", "Include all mesh UV maps in the export");
 
+  RNA_def_boolean(ot->srna,
+                  "export_mesh_colors",
+                  true,
+                  "Color Attributes",
+                  "Include mesh color attributes in the export");
   RNA_def_boolean(ot->srna,
                   "export_normals",
                   true,
@@ -660,15 +649,13 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "export_armatures",
-                  false,
+                  true,
                   "Armatures",
-                  "Export armatures and skinned meshes");
+                  "Export armatures and meshes with armature modifiers as USD skeletons and "
+                  "skinned meshes");
 
-  RNA_def_boolean(ot->srna,
-                  "export_blendshapes",
-                  false,
-                  "Blend Shapes",
-                  "Export shape keys as USD blend shapes");
+  RNA_def_boolean(
+      ot->srna, "export_shapekeys", true, "Shape Keys", "Export shape keys as USD blend shapes");
 
   RNA_def_boolean(ot->srna,
                   "use_instancing",
@@ -677,11 +664,11 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Export instanced objects as references in USD rather than real objects");
 
   RNA_def_boolean(ot->srna,
-    "fix_skel_root",
-    true,
-    "Fix Skel Root",
-    "If exporting armatures, attempt to automatically "
-    "correct invalid USD Skel Root hierarchies");
+                  "fix_skel_root",
+                  true,
+                  "Fix Skel Root",
+                  "If exporting armatures, attempt to automatically "
+                  "correct invalid USD Skel Root hierarchies");
 
   RNA_def_enum(ot->srna,
                "evaluation_mode",
@@ -728,12 +715,11 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   true,
                   "Convert to MDL",
                   "When checked, the USD exporter will generate an MDL material");
-  RNA_def_boolean(
-      ot->srna,
-      "convert_uv_to_st",
-      true,
-      "Convert uv to st",
-      "Export the active uv map as USD primvar named 'st'");
+  RNA_def_boolean(ot->srna,
+                  "convert_uv_to_st",
+                  true,
+                  "Convert uv to st",
+                  "Export the active uv map as USD primvar named 'st'");
 
   RNA_def_boolean(ot->srna,
                   "convert_orientation",
@@ -741,11 +727,20 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Convert Orientation",
                   "When checked, the USD exporter will convert orientation axis");
 
-  prop = RNA_def_enum(
-      ot->srna, "export_global_forward_selection", io_transform_axis, IO_AXIS_NEGATIVE_Z, "Forward Axis", "Global Forward axis for export");
-  RNA_def_property_update_runtime(prop, (void *)forward_axis_update);
-  prop = RNA_def_enum(ot->srna, "export_global_up_selection", io_transform_axis, IO_AXIS_Y, "Up Axis", "Global Up axis for export");
-  RNA_def_property_update_runtime(prop, (void *)up_axis_update);
+  prop = RNA_def_enum(ot->srna,
+                      "export_global_forward_selection",
+                      io_transform_axis,
+                      IO_AXIS_NEGATIVE_Z,
+                      "Forward Axis",
+                      "Global Forward axis for export");
+  RNA_def_property_update_runtime(prop, forward_axis_update);
+  prop = RNA_def_enum(ot->srna,
+                      "export_global_up_selection",
+                      io_transform_axis,
+                      IO_AXIS_Y,
+                      "Up Axis",
+                      "Global Up axis for export");
+  RNA_def_property_update_runtime(prop, up_axis_update);
 
   RNA_def_boolean(ot->srna,
                   "convert_to_cm",
@@ -936,18 +931,15 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "usdz_downscale_custom_size",
               128,
-              128, 16384,
+              128,
+              16384,
               "USDZ Custom Downscale Size",
               "Custom size for downscaling exported textures",
               128,
-              8192
-              );
+              8192);
 
-  RNA_def_boolean(ot->srna,
-                  "usdz_is_arkit",
-                  false,
-                  "Create ARKit Asset",
-                  "Export USDZ files as ARKit Assets");
+  RNA_def_boolean(
+      ot->srna, "usdz_is_arkit", false, "Create ARKit Asset", "Export USDZ files as ARKit Assets");
 
   RNA_def_boolean(ot->srna,
                   "export_blender_metadata",
@@ -1046,10 +1038,10 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool import_lights = RNA_boolean_get(op->ptr, "import_lights");
   const bool import_materials = RNA_boolean_get(op->ptr, "import_materials");
   const bool import_meshes = RNA_boolean_get(op->ptr, "import_meshes");
-  const bool import_blendshapes = RNA_boolean_get(op->ptr, "import_blendshapes");
   const bool import_volumes = RNA_boolean_get(op->ptr, "import_volumes");
-  const bool import_skeletons = RNA_boolean_get(op->ptr, "import_skeletons");
   const bool import_shapes = RNA_boolean_get(op->ptr, "import_shapes");
+  const bool import_skeletons = RNA_boolean_get(op->ptr, "import_skeletons");
+  const bool import_blendshapes = RNA_boolean_get(op->ptr, "import_blendshapes");
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
@@ -1074,7 +1066,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
                                                   "import_shaders_mode_no_umm";
 
   const eUSDImportShadersMode import_shaders_mode = eUSDImportShadersMode(
-    RNA_enum_get(op->ptr, import_shaders_mode_prop_name));
+      RNA_enum_get(op->ptr, import_shaders_mode_prop_name));
 
   const bool import_all_materials = RNA_boolean_get(op->ptr, "import_all_materials");
 
@@ -1129,11 +1121,11 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_lights = import_lights;
   params.import_materials = import_materials;
   params.import_meshes = import_meshes;
-  params.import_blendshapes = import_blendshapes;
   params.import_volumes = import_volumes;
-  params.import_skeletons = import_skeletons;
   params.prim_path_mask = prim_path_mask;
   params.import_shapes = import_shapes;
+  params.import_skeletons = import_skeletons;
+  params.import_blendshapes = import_blendshapes;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
   params.import_instance_proxies = import_instance_proxies;
@@ -1235,10 +1227,10 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "import_lights", true, "Lights", "");
   RNA_def_boolean(ot->srna, "import_materials", true, "Materials", "");
   RNA_def_boolean(ot->srna, "import_meshes", true, "Meshes", "");
-  RNA_def_boolean(ot->srna, "import_blendshapes", true, "Blend Shapes", "");
   RNA_def_boolean(ot->srna, "import_volumes", true, "Volumes", "");
+  RNA_def_boolean(ot->srna, "import_shapes", true, "Shapes", "");
   RNA_def_boolean(ot->srna, "import_skeletons", true, "Skeletons", "");
-  RNA_def_boolean(ot->srna, "import_shapes", true, "USD Shapes", "");
+  RNA_def_boolean(ot->srna, "import_blendshapes", true, "Blend Shapes", "");
 
   RNA_def_boolean(ot->srna,
                   "import_subdiv",
@@ -1261,7 +1253,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "Only applies to primitives with a non-animated visibility attribute. "
                   "Primitives with animated visibility will always be imported");
 
-   RNA_def_boolean(ot->srna,
+  RNA_def_boolean(ot->srna,
                   "import_defined_only",
                   true,
                   "Defined Primitives Only",
@@ -1283,14 +1275,14 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "read_mesh_attributes",
                   true,
                   "Mesh Attributes",
-                  "Read USD Primvars as Mesh Attributes");
+                  "Read USD Primvars as mesh attributes");
 
   RNA_def_string(ot->srna,
                  "prim_path_mask",
                  nullptr,
                  0,
                  "Path Mask",
-                 "Import only the primitive at the given path and its descendents.  "
+                 "Import only the primitive at the given path and its descendants. "
                  "Multiple paths may be specified in a list delimited by commas or semicolons");
 
   RNA_def_boolean(ot->srna, "import_guide", false, "Guide", "Import guide geometry");
@@ -1326,7 +1318,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "import_all_materials",
                   false,
                   "Import All Materials",
-                  "Also import materials that are not used by any geometry.  "
+                  "Also import materials that are not used by any geometry. "
                   "Note that when this option is false, materials referenced "
                   "by geometry will still be imported");
 
@@ -1411,9 +1403,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "Behavior when the name of an imported texture file conflicts with an existing file");
 }
 
-
 /* Panel Types */
-static wmOperator *get_named_operator(const bContext *C, const char *idname) {
+static wmOperator *get_named_operator(const bContext *C, const char *idname)
+{
   SpaceFile *space = CTX_wm_space_file(C);
   if (!space) {
     return nullptr;
@@ -1428,73 +1420,83 @@ static wmOperator *get_named_operator(const bContext *C, const char *idname) {
     return nullptr;
   }
 
-    return op;
+  return op;
 }
-
 
 /* Export Panels and related functions. */
 
-static bool usd_export_panel_poll(const bContext *C, PanelType */*pt*/)
+static bool usd_export_panel_poll(const bContext *C, PanelType * /*pt*/)
 {
   return (bool)get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
 }
 
-
 /* export panel - general */
 static void usd_export_panel_general_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemFullR(col, ptr, RNA_struct_find_property(ptr, "selected_objects_only"), 0, 0, 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "visible_objects_only", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_orientation", 0, nullptr, ICON_NONE);
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "selected_objects_only"),
+              0,
+              0,
+              UI_ITEM_NONE,
+              nullptr,
+              ICON_NONE);
+  uiItemR(col, ptr, "visible_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_orientation", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_boolean_get(ptr, "convert_orientation")) {
-    uiItemR(col, ptr, "export_global_forward_selection", 0, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "export_global_up_selection", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  uiItemR(col, ptr, "usdz_is_arkit", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_to_cm", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "usdz_is_arkit", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_to_cm", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumnWithHeading(panel->layout, true, "External Files");
   uiLayoutSetPropSep(col, true);
-  uiItemFullR(col, ptr, RNA_struct_find_property(ptr, "relative_paths"), 0, 0, 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_as_overs", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "merge_transform_and_shape", 0, nullptr, ICON_NONE);
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "relative_paths"),
+              0,
+              0,
+              UI_ITEM_NONE,
+              nullptr,
+              ICON_NONE);
+  uiItemR(col, ptr, "export_as_overs", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "merge_transform_and_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "xform_op_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "xform_op_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-
-static void usd_export_panel_geometry_draw(const bContext *C, Panel *panel) {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+static void usd_export_panel_geometry_draw(const bContext *C, Panel *panel)
+{
+  wmOperator *op = get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
 
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "apply_subdiv", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_vertex_colors", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_vertex_groups", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_normals", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_mesh_attributes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_uvmaps", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "apply_subdiv", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_boolean_get(ptr, "export_uvmaps")) {
-    uiItemR(col, ptr, "convert_uv_to_st", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "convert_uv_to_st", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  uiItemR(col, ptr, "triangulate_meshes", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "triangulate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *sub = uiLayoutColumn(col, false);
   uiLayoutSetActive(sub, RNA_boolean_get(ptr, "triangulate_meshes"));
-  uiItemR(sub, ptr, "quad_method", 0, IFACE_("Method Quads"), ICON_NONE);
-  uiItemR(sub, ptr, "ngon_method", 0, IFACE_("Polygons"), ICON_NONE);
+  uiItemR(sub, ptr, "quad_method", UI_ITEM_NONE, IFACE_("Method Quads"), ICON_NONE);
+  uiItemR(sub, ptr, "ngon_method", UI_ITEM_NONE, IFACE_("Polygons"), ICON_NONE);
 }
-
 
 static void usd_export_panel_materials_draw(const bContext *C, Panel *panel)
 {
@@ -1511,22 +1513,28 @@ static void usd_export_panel_materials_draw(const bContext *C, Panel *panel)
               RNA_struct_find_property(ptr, "generate_preview_surface"),
               0,
               0,
-              0,
+              UI_ITEM_NONE,
               nullptr,
               ICON_NONE);
-  uiItemR(col, ptr, "generate_cycles_shaders", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "generate_cycles_shaders", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (USD_umm_module_loaded()) {
-    uiItemR(col, ptr, "generate_mdl", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "generate_mdl", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   col = uiLayoutColumnWithHeading(panel->layout, true, IFACE_("Textures: "));
   uiLayoutSetEnabled(col, is_enabled);
   uiLayoutSetPropSep(col, true);
 
-  uiItemFullR(
-      col, ptr, RNA_struct_find_property(ptr, "export_textures"), 0, 0, 0, nullptr, ICON_NONE);
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "export_textures"),
+              0,
+              0,
+              UI_ITEM_NONE,
+              nullptr,
+              ICON_NONE);
   if (RNA_boolean_get(ptr, "export_textures")) {
-    uiItemR(col, ptr, "overwrite_textures", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   /* Without this column the spacing is off by a pixel or two */
@@ -1534,12 +1542,11 @@ static void usd_export_panel_materials_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(col, true);
   uiLayoutSetEnabled(col, is_enabled);
 
-  uiItemR(col, ptr, "usdz_downscale_size", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "usdz_downscale_size", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_enum_get(ptr, "usdz_downscale_size") == USD_TEXTURE_SIZE_CUSTOM) {
-    uiItemR(col, ptr, "usdz_downscale_custom_size", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "usdz_downscale_custom_size", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
-
 
 static void usd_export_panel_lights_draw(const bContext *C, Panel *panel)
 {
@@ -1550,12 +1557,11 @@ static void usd_export_panel_lights_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(col, true);
   uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "export_lights"));
 
-  uiItemR(col, ptr, "light_intensity_scale", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_light_to_nits", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "scale_light_radius", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_world_material", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_light_to_nits", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "scale_light_radius", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
-
 
 static void usd_export_panel_stage_draw(const bContext *C, Panel *panel)
 {
@@ -1565,24 +1571,22 @@ static void usd_export_panel_stage_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "default_prim_path", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "root_prim_path", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "material_prim_path", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "default_prim_kind", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "default_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "material_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "default_prim_kind", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_enum_get(ptr, "default_prim_kind") == USD_KIND_CUSTOM) {
-    uiItemR(col, ptr, "default_prim_custom_kind", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "default_prim_custom_kind", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
-
 
 static void usd_export_panel_animation_draw_header(const bContext *C, Panel *panel)
 {
   wmOperator *op = get_named_operator(C, WM_OT_USD_EXPORT_IDNAME);
   PointerRNA *ptr = op->ptr;
 
-  uiItemR(panel->layout, ptr, "export_animation", 0, nullptr, ICON_NONE);
+  uiItemR(panel->layout, ptr, "export_animation", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
-
 
 static void usd_export_panel_animation_draw(const bContext *C, Panel *panel)
 {
@@ -1596,15 +1600,14 @@ static void usd_export_panel_animation_draw(const bContext *C, Panel *panel)
   uiLayoutSetEnabled(col, is_enabled);
 
   col = uiLayoutColumn(col, true);
-  uiItemR(col, ptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
-  uiItemR(col, ptr, "end", 0, IFACE_("End"), ICON_NONE);
-  uiItemR(col, ptr, "frame_step", 0, IFACE_("Frame Step"), ICON_NONE);
+  uiItemR(col, ptr, "start", UI_ITEM_NONE, IFACE_("Frame Start"), ICON_NONE);
+  uiItemR(col, ptr, "end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "frame_step", UI_ITEM_NONE, IFACE_("Frame Step"), ICON_NONE);
 
   uiLayout *sub = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(sub, true);
   uiLayoutSetEnabled(sub, is_enabled);
 }
-
 
 static void usd_export_panel_export_types_draw(const bContext *C, Panel *panel)
 {
@@ -1614,14 +1617,13 @@ static void usd_export_panel_export_types_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "export_transforms", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_meshes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_materials", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_lights", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_cameras", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_curves", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_transforms", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
-
 
 static void usd_export_panel_particles_draw(const bContext *C, Panel *panel)
 {
@@ -1631,19 +1633,18 @@ static void usd_export_panel_particles_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumnWithHeading(panel->layout, true, IFACE_("Particles: "));
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "export_particles", 0, "Export Particles", ICON_NONE);
-  uiItemR(col, ptr, "export_hair", 0, "Export Hair as Curves", ICON_NONE);
+  uiItemR(col, ptr, "export_particles", UI_ITEM_NONE, "Export Particles", ICON_NONE);
+  uiItemR(col, ptr, "export_hair", UI_ITEM_NONE, "Export Hair as Curves", ICON_NONE);
   if (RNA_boolean_get(ptr, "export_hair") || RNA_boolean_get(ptr, "export_particles")) {
-    uiItemR(col, ptr, "export_child_particles", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_child_particles", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   uiItemSpacer(col);
 
   col = uiLayoutColumnWithHeading(panel->layout, true, IFACE_("Instances: "));
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "use_instancing", 0, "Export As Instances", ICON_NONE);
+  uiItemR(col, ptr, "use_instancing", UI_ITEM_NONE, "Export As Instances", ICON_NONE);
 }
-
 
 static void usd_export_panel_rigging_draw(const bContext *C, Panel *panel)
 {
@@ -1653,27 +1654,25 @@ static void usd_export_panel_rigging_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumnWithHeading(panel->layout, true, IFACE_("Armatures: "));
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "export_armatures", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "export_armatures"));
-  uiItemR(col, ptr, "fix_skel_root", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumnWithHeading(panel->layout, true, IFACE_("Shapes: "));
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "export_blendshapes", 0, "Export Shape Keys", ICON_NONE);
+  uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, "Export Shape Keys", ICON_NONE);
 }
 
-
-void usd_panel_register(const char* idname,
-                        const char* label,
+void usd_panel_register(const char *idname,
+                        const char *label,
                         int flag,
                         bool (*poll)(const struct bContext *C, struct PanelType *pt),
                         void (*draw)(const struct bContext *C, struct Panel *panel),
                         void (*draw_header)(const struct bContext *C, struct Panel *panel))
 {
-  PanelType *pt = static_cast<PanelType*>(MEM_callocN(sizeof(PanelType), idname));
+  PanelType *pt = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), idname));
   BLI_strncpy(pt->idname, idname, BKE_ST_MAXNAME);
   if (label) {
     BLI_strncpy(pt->label, N_(label), BKE_ST_MAXNAME);
@@ -1692,8 +1691,8 @@ void usd_panel_register(const char* idname,
   WM_paneltype_add(pt);
 }
 
-
-void usd_export_panel_register_general() {
+void usd_export_panel_register_general()
+{
   usd_panel_register("FILE_PT_usd_export_general",
                      "General",
                      0,
@@ -1702,8 +1701,8 @@ void usd_export_panel_register_general() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_geometry() {
+void usd_export_panel_register_geometry()
+{
   usd_panel_register("FILE_PT_usd_export_geometry",
                      "Geometry",
                      0,
@@ -1712,8 +1711,8 @@ void usd_export_panel_register_geometry() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_materials() {
+void usd_export_panel_register_materials()
+{
   usd_panel_register("FILE_PT_usd_export_materials",
                      "Materials",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1722,8 +1721,8 @@ void usd_export_panel_register_materials() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_lights() {
+void usd_export_panel_register_lights()
+{
   usd_panel_register("FILE_PT_usd_export_lights",
                      "Lights",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1732,8 +1731,8 @@ void usd_export_panel_register_lights() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_stage() {
+void usd_export_panel_register_stage()
+{
   usd_panel_register("FILE_PT_usd_export_stage",
                      "Stage",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1742,8 +1741,8 @@ void usd_export_panel_register_stage() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_animation() {
+void usd_export_panel_register_animation()
+{
   usd_panel_register("FILE_PT_usd_export_animation",
                      nullptr,
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1752,8 +1751,8 @@ void usd_export_panel_register_animation() {
                      usd_export_panel_animation_draw_header);
 }
 
-
-void usd_export_panel_register_types() {
+void usd_export_panel_register_types()
+{
   usd_panel_register("FILE_PT_usd_export_types",
                      "Export Types",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1762,8 +1761,8 @@ void usd_export_panel_register_types() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_particles() {
+void usd_export_panel_register_particles()
+{
   usd_panel_register("FILE_PT_usd_export_particles",
                      "Particles and Instancing",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1772,8 +1771,8 @@ void usd_export_panel_register_particles() {
                      nullptr);
 }
 
-
-void usd_export_panel_register_rigging() {
+void usd_export_panel_register_rigging()
+{
   usd_panel_register("FILE_PT_usd_export_rigging",
                      "Rigging",
                      PANEL_TYPE_DEFAULT_CLOSED,
@@ -1781,7 +1780,6 @@ void usd_export_panel_register_rigging() {
                      usd_export_panel_rigging_draw,
                      nullptr);
 }
-
 
 void WM_PT_USDExportPanelsRegister()
 {
@@ -1798,94 +1796,102 @@ void WM_PT_USDExportPanelsRegister()
 
 /* Import Panels and related functions. */
 
-static bool usd_import_panel_poll(const bContext *C, PanelType */*pt*/)
+static bool usd_import_panel_poll(const bContext *C, PanelType * /*pt*/)
 {
   return (bool)get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
 }
 
 static void usd_import_panel_general_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemFullR(col, ptr, RNA_struct_find_property(ptr, "prim_path_mask"), 0, 0, 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_visible_only", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_defined_only", 0, nullptr, ICON_NONE);
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "prim_path_mask"),
+              0,
+              0,
+              UI_ITEM_NONE,
+              nullptr,
+              ICON_NONE);
+  uiItemR(col, ptr, "import_visible_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_defined_only", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(col, ptr, "create_collection", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "relative_path", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(col, ptr, "apply_unit_conversion_scale", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "scale", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "apply_unit_conversion_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(col, ptr, "attr_import_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_types_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "import_meshes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_curves", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_volumes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_shapes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_cameras", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_lights", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_materials", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemSpacer(panel->layout);
 
   col = uiLayoutColumnWithHeading(panel->layout, true, "USD Purpose");
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "import_render", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_proxy", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_guide", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_render", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_proxy", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_guide", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_geometry_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "read_mesh_uvs", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "read_mesh_colors", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "read_mesh_attributes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "validate_meshes", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_subdiv", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "read_mesh_uvs", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "read_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_materials_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   const bool is_enabled = RNA_boolean_get(ptr, "import_materials");
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetEnabled(col, is_enabled);
 
-  uiItemR(col, ptr, "import_all_materials", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_all_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const char *import_shaders_mode_prop_name = USD_umm_module_loaded() ?
                                                   "import_shaders_mode" :
                                                   "import_shaders_mode_no_umm";
-  uiItemR(col, ptr, import_shaders_mode_prop_name, 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, import_shaders_mode_prop_name, UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *sub = uiLayoutColumn(col, false);
-  uiItemR(sub, ptr, "set_material_blend", 0, nullptr, ICON_NONE);
-  uiLayoutSetEnabled(sub, RNA_enum_get(ptr, import_shaders_mode_prop_name) == USD_IMPORT_USD_PREVIEW_SURFACE);
+  uiItemR(sub, ptr, "set_material_blend", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayoutSetEnabled(
+      sub, RNA_enum_get(ptr, import_shaders_mode_prop_name) == USD_IMPORT_USD_PREVIEW_SURFACE);
 
-  uiItemR(col, ptr, "mtl_name_collision_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "mtl_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_textures_draw(const bContext *C, Panel *panel)
@@ -1896,162 +1902,162 @@ static void usd_import_panel_textures_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, false);
 
-  uiItemR(col, ptr, "import_textures_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_textures_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const bool is_enabled = RNA_enum_get(ptr, "import_textures_mode") == USD_TEX_IMPORT_COPY;
 
   col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetEnabled(col, is_enabled);
 
-  uiItemR(col, ptr, "import_textures_dir", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "tex_name_collision_mode", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_textures_dir", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "tex_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_lights_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   const bool is_enabled = RNA_boolean_get(ptr, "import_lights");
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetEnabled(col, is_enabled);
 
-  uiItemR(col, ptr, "convert_light_from_nits", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "scale_light_radius", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "create_background_shader", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "light_intensity_scale", 0  , nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_light_from_nits", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "scale_light_radius", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "create_background_shader", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_rigging_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "import_skeletons", 0, "Import Armatures", ICON_NONE);
-  uiItemR(col, ptr, "import_blendshapes", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, "Import Armatures", ICON_NONE);
+  uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_animation_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "set_frame_range", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "set_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void usd_import_panel_particles_draw(const bContext *C, Panel *panel)
 {
-  wmOperator *op   = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
-  PointerRNA *ptr  = op->ptr;
+  wmOperator *op = get_named_operator(C, WM_OT_USD_IMPORT_IDNAME);
+  PointerRNA *ptr = op->ptr;
 
   uiLayout *col = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(col, true);
 
-  uiItemR(col, ptr, "use_instancing", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *sub = uiLayoutColumn(panel->layout, false);
   uiLayoutSetPropSep(sub, true);
 
-  uiItemR(sub, ptr, "import_instance_proxies", 0, nullptr, ICON_NONE);
+  uiItemR(sub, ptr, "import_instance_proxies", UI_ITEM_NONE, nullptr, ICON_NONE);
   const bool is_enabled = !RNA_boolean_get(ptr, "use_instancing");
   uiLayoutSetEnabled(sub, is_enabled);
 }
 
-void usd_import_panel_register_general() {
+void usd_import_panel_register_general()
+{
   usd_panel_register("FILE_PT_usd_import_general",
-                            "General",
-                            0,
-                            usd_import_panel_poll,
-                            usd_import_panel_general_draw,
-                            nullptr
-  );
+                     "General",
+                     0,
+                     usd_import_panel_poll,
+                     usd_import_panel_general_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_types() {
+void usd_import_panel_register_types()
+{
   usd_panel_register("FILE_PT_usd_import_types",
-                            "Import Types",
-                            0,
-                            usd_import_panel_poll,
-                            usd_import_panel_types_draw,
-                            nullptr
-  );
+                     "Import Types",
+                     0,
+                     usd_import_panel_poll,
+                     usd_import_panel_types_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_geometry() {
+void usd_import_panel_register_geometry()
+{
   usd_panel_register("FILE_PT_usd_import_geometry",
-                            "Geometry",
+                     "Geometry",
                      PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_geometry_draw,
-                            nullptr
-  );
+                     usd_import_panel_poll,
+                     usd_import_panel_geometry_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_materials() {
+void usd_import_panel_register_materials()
+{
   usd_panel_register("FILE_PT_usd_import_materials",
-                            "Materials",
+                     "Materials",
                      PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_materials_draw,
-                            nullptr
-  );
+                     usd_import_panel_poll,
+                     usd_import_panel_materials_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_textures() {
+void usd_import_panel_register_textures()
+{
   usd_panel_register("FILE_PT_usd_import_textures",
-                            "Textures",
+                     "Textures",
                      PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_textures_draw,
-                            nullptr
-  );
+                     usd_import_panel_poll,
+                     usd_import_panel_textures_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_lights() {
+void usd_import_panel_register_lights()
+{
   usd_panel_register("FILE_PT_usd_import_lights",
-                            "Lights",
+                     "Lights",
                      PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_lights_draw,
-                            nullptr
-  );
+                     usd_import_panel_poll,
+                     usd_import_panel_lights_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_rigging() {
+void usd_import_panel_register_rigging()
+{
   usd_panel_register("FILE_PT_usd_import_rigging",
-                            "Rigging",
+                     "Rigging",
                      PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_rigging_draw,
-                            nullptr
-  );
+                     usd_import_panel_poll,
+                     usd_import_panel_rigging_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_animation() {
+void usd_import_panel_register_animation()
+{
   usd_panel_register("FILE_PT_usd_import_animation",
-                            "Animation",
-                            PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_animation_draw,
-                            nullptr
-  );
+                     "Animation",
+                     PANEL_TYPE_DEFAULT_CLOSED,
+                     usd_import_panel_poll,
+                     usd_import_panel_animation_draw,
+                     nullptr);
 }
 
-void usd_import_panel_register_particles() {
+void usd_import_panel_register_particles()
+{
   usd_panel_register("FILE_PT_usd_import_particles",
-                            "Particles and Instancing",
-                            PANEL_TYPE_DEFAULT_CLOSED,
-                            usd_import_panel_poll,
-                            usd_import_panel_particles_draw,
-                            nullptr
-  );
+                     "Particles and Instancing",
+                     PANEL_TYPE_DEFAULT_CLOSED,
+                     usd_import_panel_poll,
+                     usd_import_panel_particles_draw,
+                     nullptr);
 }
 
 void WM_PT_USDImportPanelsRegister()

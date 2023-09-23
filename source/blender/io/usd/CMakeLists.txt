@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2019 Blender Foundation
+# SPDX-FileCopyrightText: 2019 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -13,6 +13,17 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()
 add_definitions(-DBOOST_ALL_NO_LIB)
+
+# Precompiled Linux libs are made with GCC, and USD uses some extensions
+# which lead to an incompatible ABI for Clang. Using those extensions with
+# Clang as well works around the issue.
+if(UNIX AND NOT APPLE)
+  if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    if(EXISTS ${LIBDIR})
+      add_definitions(-DARCH_HAS_GNU_STL_EXTENSIONS)
+    endif()
+  endif()
+endif()
 
 # USD headers use deprecated TBB headers, silence warning.
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
@@ -43,27 +54,27 @@ if(WIN32)
   # Some USD library headers trigger the "unreferenced formal parameter"
   # warning alert.
   # Silence them by restore warn C4100 back to w4
-  remove_cc_flag(/w34100)
+  remove_cc_flag("/w34100")
 endif()
 
 set(INC
   .
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../editors/include
   ../../imbuf
-  ../../makesdna
   ../../makesrna
-  ../../python
+  ../../nodes
+  ../../python/intern
   ../../windowmanager
-  ../../../../intern/guardedalloc
+  ../../../../intern/clog
   ../../../../intern/utfconv
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna/intern
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -75,12 +86,16 @@ set(INC_SYS
 
 set(SRC
   intern/usd_asset_utils.cc
+  intern/usd_armature_utils.cc
+  intern/usd_blend_shape_utils.cc
   intern/usd_capi_export.cc
   intern/usd_capi_import.cc
   intern/usd_hierarchy_iterator.cc
-  intern/usd_lux_api_wrapper.cc
   intern/usd_light_convert.cc
+  intern/usd_lux_api_wrapper.cc
+  intern/usd_modifier_disabler.cc
   intern/usd_skel_convert.cc
+  intern/usd_skel_root_utils.cc
 
   intern/usd_reader_camera.cc
   intern/usd_reader_curve.cc
@@ -91,18 +106,18 @@ set(SRC
   intern/usd_reader_mesh.cc
   intern/usd_reader_nurbs.cc
   intern/usd_reader_prim.cc
-  intern/usd_reader_skeleton.cc
   intern/usd_reader_shape.cc
+  intern/usd_reader_skeleton.cc
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
   intern/usd_reader_pointinstancer.cc
 
+  intern/usd_hook.cc
   intern/usd_umm.cc
 
   intern/usd_writer_abstract.cc
   intern/usd_writer_armature.cc
-  intern/usd_writer_blendshape_mesh.cc
   intern/usd_writer_camera.cc
   intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
@@ -111,19 +126,23 @@ set(SRC
   intern/usd_writer_mesh.cc
   intern/usd_writer_metaball.cc
   intern/usd_writer_particle.cc
-  intern/usd_writer_skel_root.cc
-  intern/usd_writer_skinned_mesh.cc
   intern/usd_writer_transform.cc
   intern/usd_writer_volume.cc
 
   usd.h
+  usd.hh
 
   intern/usd_asset_utils.h
+  intern/usd_armature_utils.h
+  intern/usd_blend_shape_utils.h
   intern/usd_exporter_context.h
+  intern/usd_hash_types.h
   intern/usd_hierarchy_iterator.h
-  intern/usd_lux_api_wrapper.h
   intern/usd_light_convert.h
+  intern/usd_lux_api_wrapper.h
+  intern/usd_modifier_disabler.h
   intern/usd_skel_convert.h
+  intern/usd_skel_root_utils.h
 
   intern/usd_reader_camera.h
   intern/usd_reader_curve.h
@@ -139,12 +158,12 @@ set(SRC
   intern/usd_reader_stage.h
   intern/usd_reader_volume.h 
   intern/usd_reader_xform.h
-  
+
+  intern/usd_hook.h
   intern/usd_umm.h
-  
+
   intern/usd_writer_abstract.h
   intern/usd_writer_armature.h
-  intern/usd_writer_blendshape_mesh.h
   intern/usd_writer_camera.h
   intern/usd_writer_curves.h
   intern/usd_writer_hair.h
@@ -153,16 +172,50 @@ set(SRC
   intern/usd_writer_mesh.h
   intern/usd_writer_metaball.h
   intern/usd_writer_particle.h
-  intern/usd_writer_skel_root.h
-  intern/usd_writer_skinned_mesh.h
   intern/usd_writer_transform.h
   intern/usd_writer_volume.h
 )
 
+if(WITH_HYDRA)
+  list(APPEND SRC
+    hydra/camera.cc
+    hydra/curves.cc
+    hydra/hydra_scene_delegate.cc
+    hydra/id.cc
+    hydra/image.cc
+    hydra/instancer.cc
+    hydra/light.cc
+    hydra/material.cc
+    hydra/mesh.cc
+    hydra/object.cc
+    hydra/usd_scene_delegate.cc
+    hydra/volume.cc
+    hydra/volume_modifier.cc
+    hydra/world.cc
+
+    hydra/camera.h
+    hydra/curves.h
+    hydra/hydra_scene_delegate.h
+    hydra/id.h
+    hydra/image.h
+    hydra/instancer.h
+    hydra/light.h
+    hydra/material.h
+    hydra/mesh.h
+    hydra/object.h
+    hydra/usd_scene_delegate.h
+    hydra/volume.h
+    hydra/volume_modifier.h
+    hydra/world.h
+  )
+endif()
+
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_imbuf
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
 )
 
@@ -186,6 +239,13 @@ if(WITH_OPENVDB)
 endif()
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# RNA_prototypes.h
+add_dependencies(bf_usd bf_rna)
+
+if(COMMAND target_precompile_headers)
+  target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
+endif()
 
 if(WITH_GTESTS)
   set(TEST_SRC

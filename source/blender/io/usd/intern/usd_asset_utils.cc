@@ -16,8 +16,8 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 static const char UDIM_PATTERN[] = "<UDIM>";
 static const char UDIM_PATTERN2[] = "%3CUDIM%3E";
@@ -113,7 +113,7 @@ static std::string copy_udim_asset_to_directory(const char *src_path,
    * of a directory using the USD resolver, we must take a brute force approach.  We iterate
    * over the allowed range of tile indices and copy any tiles that exist.  The USDPreviewSurface
    * specification stipulates "a maximum of ten tiles in the U direction" and that
-   * "the tiles must be within the range [1001, 1099]".  See
+   * "the tiles must be within the range [1001, 1099]". See
    * https://graphics.pixar.com/usd/release/spec_usdpreviewsurface.html#texture-reader
    */
   for (int i = UDIM_START_TILE; i < UDIM_END_TILE; ++i) {
@@ -270,17 +270,17 @@ std::string import_asset(const char *src,
     if (!basepath || basepath[0] == '\0') {
       WM_reportf(RPT_ERROR,
                  "%s: import directory is relative "
-                 "but the blend file path is empty.  "
+                 "but the blend file path is empty. "
                  "Please save the blend file before importing the USD "
-                 "or provide an absolute import directory path.  "
+                 "or provide an absolute import directory path. "
                  "Can't import %s",
                  __func__,
                  src);
       return src;
     }
+    BLI_path_abs(dest_dir_path, basepath);
   }
 
-  BLI_path_abs(dest_dir_path, basepath);
   BLI_path_normalize(dest_dir_path);
 
   if (!BLI_dir_create_recursive(dest_dir_path)) {
@@ -302,7 +302,7 @@ bool is_udim_path(const std::string &path)
          path.find(UDIM_PATTERN2) != std::string::npos;
 }
 
- std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
+std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
 {
   pxr::SdfLayerHandle layer = stage->GetRootLayer();
 
@@ -315,8 +315,7 @@ bool is_udim_path(const std::string &path)
   pxr::ArResolvedPath stage_path = layer->GetResolvedPath();
 
   if (stage_path.empty()) {
-    WM_reportf(
-        RPT_WARNING, "%s: Can't get resolved path for stage", __func__);
+    WM_reportf(RPT_WARNING, "%s: Can't get resolved path for stage", __func__);
     return "";
   }
 
@@ -358,35 +357,33 @@ bool should_import_asset(const std::string &path)
   return !BLI_is_file(path.c_str()) && asset_exists(path.c_str());
 }
 
- bool paths_equal(const char *p1, const char *p2)
- {
-   BLI_assert_msg(!BLI_path_is_rel(p1) && !BLI_path_is_rel(p2),
-                  "Paths arguments must be absolute");
+bool paths_equal(const char *p1, const char *p2)
+{
+  BLI_assert_msg(!BLI_path_is_rel(p1) && !BLI_path_is_rel(p2), "Paths arguments must be absolute");
 
-   pxr::ArResolver &ar = pxr::ArGetResolver();
+  pxr::ArResolver &ar = pxr::ArGetResolver();
 
-   std::string resolved_p1 = ar.ResolveForNewAsset(p1).GetPathString();
-   std::string resolved_p2 = ar.ResolveForNewAsset(p2).GetPathString();
+  std::string resolved_p1 = ar.ResolveForNewAsset(p1).GetPathString();
+  std::string resolved_p2 = ar.ResolveForNewAsset(p2).GetPathString();
 
-   return resolved_p1 == resolved_p2;
- }
+  return resolved_p1 == resolved_p2;
+}
 
- const char *temp_textures_dir()
- {
-   static bool inited = false;
+const char *temp_textures_dir()
+{
+  static bool inited = false;
 
-   static char temp_dir[FILE_MAXDIR] = {'\0'};
+  static char temp_dir[FILE_MAXDIR] = {'\0'};
 
-   if (!inited) {
-     BLI_path_join(temp_dir, sizeof(temp_dir), BKE_tempdir_session(), "usd_textures_tmp", SEP_STR);
-     inited = true;
-   }
+  if (!inited) {
+    BLI_path_join(temp_dir, sizeof(temp_dir), BKE_tempdir_session(), "usd_textures_tmp", SEP_STR);
+    inited = true;
+  }
 
-   return temp_dir;
- }
+  return temp_dir;
+}
 
 }  // namespace blender::io::usd
-
 
 void USD_path_abs(char *path, const char *basepath, bool for_import)
 {
@@ -402,7 +399,8 @@ void USD_path_abs(char *path, const char *basepath, bool for_import)
         return;
       }
       WM_reportf(RPT_ERROR,
-                 "In %s: resolved path %s exceeds path buffer length.", __func__,
+                 "In %s: resolved path %s exceeds path buffer length.",
+                 __func__,
                  path_str.c_str());
     }
   }

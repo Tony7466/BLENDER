@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation All rights reserved.
+/* SPDX-FileCopyrightText: 2023 Blender Authors All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,19 +16,19 @@
 
 #include "DNA_curve_types.h"
 
-#include "BKE_curves.hh"
 #include "BKE_curve_legacy_convert.hh"
+#include "BKE_curves.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 
 #include "BLI_math_geom.h"
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 namespace blender::io::usd {
 
@@ -71,7 +71,9 @@ pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_
   return curves;
 }
 
-static void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<float> &widths, const float multiplier)
+static void populate_curve_widths(const bke::CurvesGeometry &geometry,
+                                  pxr::VtArray<float> &widths,
+                                  const float multiplier)
 {
   const bke::AttributeAccessor curve_attributes = geometry.attributes();
   const bke::AttributeReader<float> radii = curve_attributes.lookup<float>("radius",
@@ -441,10 +443,11 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   else if (first_frame_curve_type != curve_type) {
     const char *first_frame_curve_type_name = nullptr;
     RNA_enum_name_from_value(
-        rna_enum_curves_types, int(first_frame_curve_type), &first_frame_curve_type_name);
+        rna_enum_curves_type_items, int(first_frame_curve_type), &first_frame_curve_type_name);
 
     const char *current_curve_type_name = nullptr;
-    RNA_enum_name_from_value(rna_enum_curves_types, int(curve_type), &current_curve_type_name);
+    RNA_enum_name_from_value(
+        rna_enum_curves_type_items, int(curve_type), &current_curve_type_name);
 
     WM_reportf(RPT_WARNING,
                "USD does not support animating curve types. The curve type changes from %s to "
@@ -459,15 +462,27 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
     case CURVE_TYPE_POLY:
       usd_curves = DefineUsdGeomBasisCurves(pxr::VtValue(), is_cyclic, false);
 
-      populate_curve_props(
-          geometry, verts, control_point_counts, widths, interpolation, is_cyclic, false, bevel_radius);
+      populate_curve_props(geometry,
+                           verts,
+                           control_point_counts,
+                           widths,
+                           interpolation,
+                           is_cyclic,
+                           false,
+                           bevel_radius);
       break;
     case CURVE_TYPE_CATMULL_ROM:
       usd_curves = DefineUsdGeomBasisCurves(
           pxr::VtValue(pxr::UsdGeomTokens->catmullRom), is_cyclic, true);
 
-      populate_curve_props(
-          geometry, verts, control_point_counts, widths, interpolation, is_cyclic, true, bevel_radius);
+      populate_curve_props(geometry,
+                           verts,
+                           control_point_counts,
+                           widths,
+                           interpolation,
+                           is_cyclic,
+                           true,
+                           bevel_radius);
       break;
     case CURVE_TYPE_BEZIER:
       usd_curves = DefineUsdGeomBasisCurves(
@@ -484,8 +499,15 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
       usd_curves = pxr::UsdGeomNurbsCurves::Define(usd_export_context_.stage,
                                                    usd_export_context_.usd_path);
 
-      populate_curve_props_for_nurbs(
-          geometry, verts, control_point_counts, widths, knots, orders, interpolation, is_cyclic, bevel_radius);
+      populate_curve_props_for_nurbs(geometry,
+                                     verts,
+                                     control_point_counts,
+                                     widths,
+                                     knots,
+                                     orders,
+                                     interpolation,
+                                     is_cyclic,
+                                     bevel_radius);
 
       set_writer_attributes_for_nurbs(usd_curves, knots, orders, timecode);
 

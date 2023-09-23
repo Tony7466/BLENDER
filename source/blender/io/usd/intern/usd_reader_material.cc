@@ -4,7 +4,6 @@
 
 #include "usd_reader_material.h"
 
-
 #include "usd_umm.h"
 
 #include "usd_asset_utils.h"
@@ -22,15 +21,16 @@
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_vector.hh"
 
 #include "DNA_material_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include <pxr/base/gf/vec3f.h>
-#include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/ar/packageUtils.h>
+#include <pxr/usd/ar/resolver.h>
 
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/shader.h>
@@ -185,7 +185,7 @@ static pxr::SdfLayerHandle get_layer_handle(const pxr::UsdAttribute &attribute)
 static blender::Vector<int> get_udim_tiles(const std::string &file_path)
 {
   char base_udim_path[FILE_MAX];
-  BLI_strncpy(base_udim_path, file_path.c_str(), sizeof(base_udim_path));
+  STRNCPY(base_udim_path, file_path.c_str());
 
   blender::Vector<int> udim_tiles;
 
@@ -382,7 +382,8 @@ static void set_viewport_material_props(Material *mtl, const pxr::UsdShadeShader
   }
 }
 
-static pxr::UsdShadeInput get_input(const pxr::UsdShadeShader &usd_shader, const pxr::TfToken &input_name)
+static pxr::UsdShadeInput get_input(const pxr::UsdShadeShader &usd_shader,
+                                    const pxr::TfToken &input_name)
 {
   pxr::UsdShadeInput input = usd_shader.GetInput(input_name);
 
@@ -487,7 +488,9 @@ Material *USDMaterialReader::add_material(const pxr::UsdShadeMaterial &usd_mater
     if (!mdl_imported && usd_preview) {
       /* The material has no MDL shader or we couldn't convert the MDL,
        * so fall back on importing UsdPreviewSuface. */
-      WM_reportf(RPT_INFO, "Couldn't import MDL shader for material %s, importing USD Preview Surface shaders instead",
+      WM_reportf(RPT_INFO,
+                 "Couldn't import MDL shader for material %s, importing USD Preview Surface "
+                 "shaders instead",
                  mtl_name.c_str());
       import_usd_preview(mtl, usd_preview);
     }
@@ -575,6 +578,9 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
 
   if (pxr::UsdShadeInput emissive_input = usd_shader.GetInput(usdtokens::emissiveColor)) {
     set_node_input(emissive_input, principled, "Emission", ntree, column, &context);
+    if (bNodeSocket *sock = nodeFindSocket(principled, SOCK_IN, "Emission Strength")) {
+      ((bNodeSocketValueFloat *)sock->default_value)->value = 1.0f;
+    }
   }
 
   if (pxr::UsdShadeInput specular_input = usd_shader.GetInput(usdtokens::specularColor)) {
@@ -590,15 +596,13 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
     set_node_input(roughness_input, principled, "Roughness", ntree, column, &context);
   }
 
-  if (pxr::UsdShadeInput clearcoat_input = usd_shader.GetInput(usdtokens::clearcoat)) {
-    set_node_input(clearcoat_input, principled, "Clearcoat", ntree, column, &context);
+  if (pxr::UsdShadeInput coat_input = usd_shader.GetInput(usdtokens::clearcoat)) {
+    set_node_input(coat_input, principled, "Coat", ntree, column, &context);
   }
 
-  if (pxr::UsdShadeInput clearcoat_roughness_input = usd_shader.GetInput(
-          usdtokens::clearcoatRoughness))
+  if (pxr::UsdShadeInput coat_roughness_input = usd_shader.GetInput(usdtokens::clearcoatRoughness))
   {
-    set_node_input(
-        clearcoat_roughness_input, principled, "Clearcoat Roughness", ntree, column, &context);
+    set_node_input(coat_roughness_input, principled, "Coat Roughness", ntree, column, &context);
   }
 
   if (pxr::UsdShadeInput opacity_input = usd_shader.GetInput(usdtokens::opacity)) {
@@ -867,7 +871,6 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
         }
       }
     }
-
   }
 
   /* Connect to destination node input. */
@@ -907,7 +910,7 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
     }
     else {
       std::cerr << "ERROR: couldn't get connected source for file input "
-        << file_input.GetPrim().GetPath() << " " << file_input.GetFullName() << std::endl;
+                << file_input.GetPrim().GetPath() << " " << file_input.GetFullName() << std::endl;
     }
   }
 
@@ -955,7 +958,7 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
         BLI_path_join(result, FILE_MAX, dir_abs_path.c_str(), file);
 
         /* Use forward slashes. */
-        BLI_str_replace_char(result, SEP, ALTSEP);
+        BLI_string_replace_char(result, SEP, ALTSEP);
         file_path = result;
       }
     }
@@ -1098,7 +1101,7 @@ void USDMaterialReader::convert_usd_primvar_reader_float2(
         std::string varname = varname_val.Cast<std::string>().Get<std::string>();
         if (!varname.empty()) {
           NodeShaderUVMap *storage = (NodeShaderUVMap *)uv_map->storage;
-          BLI_strncpy(storage->uv_map, varname.c_str(), sizeof(storage->uv_map));
+          STRNCPY(storage->uv_map, varname.c_str());
         }
       }
     }
@@ -1108,7 +1111,8 @@ void USDMaterialReader::convert_usd_primvar_reader_float2(
   link_nodes(ntree, uv_map, "UV", dest_node, dest_socket_name);
 }
 
-void USDMaterialReader::pack_imported_textures(Material *material, bool delete_temp_textures_dir) const
+void USDMaterialReader::pack_imported_textures(Material *material,
+                                               bool delete_temp_textures_dir) const
 {
   if (!(material && material->use_nodes)) {
     return;

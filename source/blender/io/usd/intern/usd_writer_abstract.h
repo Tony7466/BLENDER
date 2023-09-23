@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -34,6 +34,8 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   bool frame_has_been_written_;
   bool is_animated_;
 
+  const USDHierarchyIterator *hierarchy_iterator_;
+
  public:
   USDAbstractWriter(const USDExporterContext &usd_export_context);
 
@@ -51,6 +53,10 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   virtual bool is_supported(const HierarchyContext *context) const;
 
   const pxr::SdfPath &usd_path() const;
+
+  void set_iterator(const USDHierarchyIterator *iter);
+
+  bool is_prototype(const Object *obj) const;
 
  protected:
   virtual void do_write(HierarchyContext &context) = 0;
@@ -72,7 +78,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
                         const pxr::UsdTimeCode timecode,
                         pxr::UsdGeomImageable &usd_geometry);
 
-  void write_kind(pxr::UsdPrim& prim, pxr::TfToken kind);
+  void write_kind(pxr::UsdPrim &prim, pxr::TfToken kind);
 
   /**
    * Turn `prim` into an instance referencing `context.original_export_path`.

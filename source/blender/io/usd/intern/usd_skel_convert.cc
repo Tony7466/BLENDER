@@ -1,29 +1,20 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+/* SPDX-FileCopyrightText: 2023 NVIDIA Corporation. All rights reserved.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2022 NVIDIA Corporation.
- * All rights reserved.
- */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_skel_convert.h"
 
 #include "usd.h"
+#include "usd_armature_utils.h"
+#include "usd_blend_shape_utils.h"
 
+#include <pxr/usd/sdf/namespaceEdit.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdSkel/animation.h>
-#include <pxr/usd/usdSkel/blendShape.h>
 #include <pxr/usd/usdSkel/bindingAPI.h>
+#include <pxr/usd/usdSkel/blendShape.h>
+#include <pxr/usd/usdSkel/cache.h>
+#include <pxr/usd/usdSkel/skeletonQuery.h>
 #include <pxr/usd/usdSkel/utils.h>
 
 #include "DNA_anim_types.h"
@@ -36,45 +27,63 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_attribute.hh"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_span.hh"
+#include "BLI_string.h"
 
-#include "ED_keyframing.h"
-#include "ED_mesh.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
+#include "ED_mesh.hh"
 
+#include "WM_api.hh"
+
+#include <iostream>
 #include <string>
 #include <vector>
 
 namespace usdtokens {
-// Attribute names.
-//static const pxr::TfToken color("color", pxr::TfToken::Immortal);
+static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
+static const pxr::TfToken joint1("joint1", pxr::TfToken::Immortal);
+static const pxr::TfToken Skel("Skel", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
 namespace {
 
-FCurve *create_fcurve(int array_index, const char *rna_path)
+/* Utility: return the magnitude of the largest component
+ * of the given vector. */
+inline float max_mag_component(const pxr::GfVec3d &vec)
+{
+  return pxr::GfMax(pxr::GfAbs(vec[0]), pxr::GfAbs(vec[1]), pxr::GfAbs(vec[2]));
+}
+
+/* Utility: create curve at the given array index. */
+FCurve *create_fcurve(const int array_index, const std::string &rna_path)
 {
   FCurve *fcu = BKE_fcurve_create();
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcu->rna_path = BLI_strdupn(rna_path, strlen(rna_path));
+  fcu->rna_path = BLI_strdup(rna_path.c_str());
   fcu->array_index = array_index;
   return fcu;
 }
 
+/* Utility: create curve at the given array index and
+ * add it as a channel to a group. */
 FCurve *create_chan_fcurve(bAction *act,
                            bActionGroup *grp,
-                           int array_index,
-                           const char *rna_path,
-                           int totvert)
+                           const int array_index,
+                           const std::string &rna_path,
+                           const int totvert)
 {
   FCurve *fcu = create_fcurve(array_index, rna_path);
   fcu->totvert = totvert;
@@ -82,10 +91,11 @@ FCurve *create_chan_fcurve(bAction *act,
   return fcu;
 }
 
+/* Utility: add curve sample. */
 void add_bezt(FCurve *fcu,
-              float frame,
-              float value,
-              eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
+              const float frame,
+              const float value,
+              const eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
 {
   BezTriple bez;
   memset(&bez, 0, sizeof(BezTriple));
@@ -95,104 +105,315 @@ void add_bezt(FCurve *fcu,
   bez.f1 = bez.f2 = bez.f3 = SELECT;
   bez.h1 = bez.h2 = HD_AUTO;
   insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
-  BKE_fcurve_handles_recalc(fcu);
 }
 
-/* Generate dummy curve samples for testing. */
-//void add_dummy_samples(FCurve *fcu)
-//{
-//  int totvert = fcu->totvert;
-//  for (int i = 0; i < totvert; ++i) {
-//    add_bezt(fcu, static_cast<float>(i+1), static_cast<float>(i) * 0.1f);
-//  }
-//}
+/**
+ * Import a USD skeleton animation as an action on the given armature object.
+ * This assumes bones have already been created on the armature.
+ *
+ * \param bmain: Main pointer
+ * \param arm_obj: Armature object to which the action will be added
+ * \param skel_query: The USD skeleton query for reading the animation
+ * \param joint_to_bone_map: Map a USD skeleton joint name to a bone name
+ */
+void import_skeleton_curves(Main *bmain,
+                            Object *arm_obj,
+                            const pxr::UsdSkelSkeletonQuery &skel_query,
+                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map)
+
+{
+  if (!(bmain && arm_obj && skel_query)) {
+    return;
+  }
+
+  if (joint_to_bone_map.empty()) {
+    return;
+  }
+
+  const pxr::UsdSkelAnimQuery &anim_query = skel_query.GetAnimQuery();
+
+  if (!anim_query) {
+    /* No animation is defined. */
+    return;
+  }
+
+  std::vector<double> samples;
+  anim_query.GetJointTransformTimeSamples(&samples);
+
+  if (samples.empty()) {
+    return;
+  }
+
+  const size_t num_samples = samples.size();
+
+  /* Create the action on the armature. */
+  bAction *act = ED_id_action_ensure(bmain, (ID *)&arm_obj->id);
+
+  /* Create the curves. */
+
+  /* Get the joint paths. */
+  pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
+
+  std::vector<FCurve *> loc_curves;
+  std::vector<FCurve *> rot_curves;
+  std::vector<FCurve *> scale_curves;
+
+  /* Iterate over the joints and create the corresponding curves for the bones. */
+  for (const pxr::TfToken &joint : joint_order) {
+    std::map<pxr::TfToken, std::string>::const_iterator it = joint_to_bone_map.find(joint);
+
+    if (it == joint_to_bone_map.end()) {
+      /* This joint doesn't correspond to any bone we created.
+       * Add null placeholders for the channel curves. */
+      loc_curves.push_back(nullptr);
+      loc_curves.push_back(nullptr);
+      loc_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      continue;
+    }
+
+    bActionGroup *grp = action_groups_add_new(act, it->second.c_str());
+
+    /* Add translation curves. */
+    std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
+    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
+
+    /* Add rotation curves. */
+    rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
+    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path, num_samples));
+
+    /* Add scale curves. */
+    rna_path = "pose.bones[\"" + it->second + "\"].scale";
+    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
+  }
+
+  /* Sanity checks: make sure we have a curve entry for each joint. */
+  if (loc_curves.size() != joint_order.size() * 3) {
+    std::cout << "PROGRAMMER ERROR: location curve count mismatch\n";
+    return;
+  }
+
+  if (rot_curves.size() != joint_order.size() * 4) {
+    std::cout << "PROGRAMMER ERROR: rotation curve count mismatch\n";
+    return;
+  }
+
+  if (scale_curves.size() != joint_order.size() * 3) {
+    std::cout << "PROGRAMMER ERROR: scale curve count mismatch\n";
+    return;
+  }
+
+  /* The curve for each joint represents the transform relative
+   * to the bind transform in joint-local space. I.e.,
+   *
+   * `jointLocalTransform * inv(jointLocalBindTransform)`
+   *
+   * There doesn't appear to be a way to query the joint-local
+   * bind transform through the API, so we have to compute it
+   * ourselves from the world bind transforms and the skeleton
+   * topology.
+   */
+
+  /* Get the world space joint transforms at bind time. */
+  pxr::VtMatrix4dArray bind_xforms;
+  if (!skel_query.GetJointWorldBindTransforms(&bind_xforms)) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get world bind transforms for skeleton %s",
+               __func__,
+               skel_query.GetSkeleton().GetPrim().GetPath().GetAsString().c_str());
+    return;
+  }
+
+  if (bind_xforms.size() != joint_order.size()) {
+    WM_reportf(RPT_WARNING,
+               "%s: Number of bind transforms doesn't match the number of joints for skeleton %s",
+               __func__,
+               skel_query.GetSkeleton().GetPrim().GetPath().GetAsString().c_str());
+    return;
+  }
+
+  const pxr::UsdSkelTopology &skel_topology = skel_query.GetTopology();
+
+  pxr::VtMatrix4dArray joint_local_bind_xforms(bind_xforms.size());
+  for (int i = 0; i < bind_xforms.size(); ++i) {
+    const int parent_id = skel_topology.GetParent(i);
+
+    if (parent_id >= 0) {
+      /* This is a non-root joint.  Compute the bind transform of the joint
+       * relative to its parent. */
+      joint_local_bind_xforms[i] = bind_xforms[i] * bind_xforms[parent_id].GetInverse();
+    }
+    else {
+      /* This is the root joint. */
+      joint_local_bind_xforms[i] = bind_xforms[i];
+    }
+  }
+
+  /* Set the curve samples. */
+  for (const double frame : samples) {
+    pxr::VtMatrix4dArray joint_local_xforms;
+    if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
+      std::cout << "WARNING: couldn't compute joint local transforms on frame " << frame
+                << std::endl;
+      continue;
+    }
+
+    if (joint_local_xforms.size() != joint_order.size()) {
+      std::cout << "WARNING: number of joint local transform entries " << joint_local_xforms.size()
+                << " doesn't match the number of joints " << joint_order.size() << std::endl;
+      continue;
+    }
+
+    for (int i = 0; i < joint_local_xforms.size(); ++i) {
+      pxr::GfMatrix4d bone_xform = joint_local_xforms[i] * joint_local_bind_xforms[i].GetInverse();
+
+      pxr::GfVec3f t;
+      pxr::GfQuatf qrot;
+      pxr::GfVec3h s;
+
+      if (!pxr::UsdSkelDecomposeTransform(bone_xform, &t, &qrot, &s)) {
+        std::cout << "WARNING: error decomposing matrix on frame " << frame << std::endl;
+        continue;
+      }
+
+      const float re = qrot.GetReal();
+      const pxr::GfVec3f &im = qrot.GetImaginary();
+
+      for (int j = 0; j < 3; ++j) {
+        const int k = 3 * i + j;
+        if (k >= loc_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds translation curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = loc_curves[k]) {
+          add_bezt(fcu, frame, t[j]);
+        }
+      }
+
+      for (int j = 0; j < 4; ++j) {
+        const int k = 4 * i + j;
+        if (k >= rot_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds rotation curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = rot_curves[k]) {
+          if (j == 0) {
+            add_bezt(fcu, frame, re);
+          }
+          else {
+            add_bezt(fcu, frame, im[j - 1]);
+          }
+        }
+      }
+
+      for (int j = 0; j < 3; ++j) {
+        const int k = 3 * i + j;
+        if (k >= scale_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds scale curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = scale_curves[k]) {
+          add_bezt(fcu, frame, s[j]);
+        }
+      }
+    }
+  }
+
+  /* Recalculate curve handles. */
+  auto recalc_handles = [](FCurve *fcu) { BKE_fcurve_handles_recalc(fcu); };
+  std::for_each(loc_curves.begin(), loc_curves.end(), recalc_handles);
+  std::for_each(rot_curves.begin(), rot_curves.end(), recalc_handles);
+  std::for_each(scale_curves.begin(), scale_curves.end(), recalc_handles);
+}
+
+/* Set the skeleton path and bind transform on the given mesh. */
+void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
+                               pxr::UsdPrim &mesh_prim,
+                               pxr::UsdGeomXformCache &xf_cache)
+{
+  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
+
+  if (!skel_api) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't apply UsdSkelBindingAPI to skinned mesh prim %s\n",
+               __func__,
+               mesh_prim.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  /* Specify the path to the skeleton. */
+  pxr::SdfPath skel_path = skel.GetPath();
+  skel_api.CreateSkeletonRel().SetTargets(pxr::SdfPathVector({skel_path}));
+
+  /* Set the mesh's bind transform. */
+  if (pxr::UsdAttribute geom_bind_attr = skel_api.CreateGeomBindTransformAttr()) {
+    /* The bind matrix is the mesh transform relative to the skeleton transform. */
+    pxr::GfMatrix4d mesh_xf = xf_cache.GetLocalToWorldTransform(mesh_prim);
+    pxr::GfMatrix4d skel_xf = xf_cache.GetLocalToWorldTransform(skel.GetPrim());
+    pxr::GfMatrix4d bind_xf = mesh_xf * skel_xf.GetInverse();
+    geom_bind_attr.Set(bind_xf);
+  }
+  else {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't create geom bind transform attribute for skinned mesh %s\n",
+               __func__,
+               mesh_prim.GetPath().GetAsString().c_str());
+  }
+}
 
 }  // End anonymous namespace.
 
 namespace blender::io::usd {
 
-pxr::GfMatrix4d get_world_matrix(const pxr::UsdPrim &prim, pxr::UsdTimeCode time)
+void import_blendshapes(Main *bmain,
+                        Object *mesh_obj,
+                        const pxr::UsdPrim &prim,
+                        const bool import_anim)
 {
-  pxr::GfMatrix4d local_xf(1.0f);
-
-  if (!prim) {
-    return local_xf;
-  }
-
-  pxr::UsdGeomXformable xformable(prim);
-
-  if (xformable) {
-    bool reset_xform_stack = false;
-    if (!xformable.GetLocalTransformation(&local_xf, &reset_xform_stack, time)) {
-      std::cout << "WARNING: couldn't get local xform for prim " << prim.GetPath() << std::endl;
-      return local_xf;
-    }
-  }
-
-  return local_xf * get_world_matrix(prim.GetParent(), time);
-}
-
-void test_create_shapekeys(Main *bmain, Object *obj)
-{
-  if (!(obj && obj->data && obj->type == OB_MESH)) {
+  if (!(mesh_obj && mesh_obj->data && mesh_obj->type == OB_MESH && prim)) {
     return;
   }
 
-  Mesh *mesh = static_cast<Mesh *>(obj->data);
-
-  /* insert key to source mesh */
-  Key *key = BKE_key_add(bmain, (ID *)mesh);
-  key->type = KEY_RELATIVE;
-
-  mesh->key = key;
-
-  /* insert basis key */
-  KeyBlock *kb = BKE_keyblock_add(key, "Basis");
-  BKE_keyblock_convert_from_mesh(mesh, key, kb);
-
-  kb = BKE_keyblock_add(key, "Key1");
-  BKE_keyblock_convert_from_mesh(mesh, key, kb);
-
-  float offsets[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-  BKE_keyblock_update_from_offset(obj, kb, (float(*)[3])&offsets);
-
-  bAction *act = ED_id_action_ensure(bmain, (ID *)&key->id);
-
-  FCurve *fcu = create_fcurve(0, "key_blocks[\"Key1\"].value");
-  fcu->totvert = 3;
-
-  add_bezt(fcu, 0.f, 0.f);
-  add_bezt(fcu, 30.f, 1.f);
-  add_bezt(fcu, 60.f, 0.3f);
-
-  BLI_addtail(&act->curves, fcu);
-}
-
-void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
-{
-  if (!(obj && obj->data && obj->type == OB_MESH && prim)) {
-    return;
-  }
-
-  if (prim.IsInstanceProxy() || prim.IsInPrototype()) {
+  if (prim.IsInstanceProxy()) {
     /* Attempting to create a UsdSkelBindingAPI for
-     * instance proxies and prototypes generates USD errors. */
+     * instance proxies generates USD errors. */
     return;
   }
 
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
 
   if (!skel_api) {
+    /* No skel binding. */
     return;
   }
 
+  /* Get the blend shape targets, which are the USD paths to the
+   * blend shape primitives. */
+
   if (!skel_api.GetBlendShapeTargetsRel().HasAuthoredTargets()) {
+    /* No targets. */
     return;
   }
 
   pxr::SdfPathVector targets;
   if (!skel_api.GetBlendShapeTargetsRel().GetTargets(&targets)) {
-    std::cout << "Couldn't get blendshape targets for prim " << prim.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get blendshape targets for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -204,6 +425,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the blend shape name tokens. */
   pxr::VtTokenArray blendshapes;
   if (!skel_api.GetBlendShapesAttr().Get(&blendshapes)) {
     return;
@@ -213,63 +435,79 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Sanity check. */
   if (targets.size() != blendshapes.size()) {
-    std::cout << "Number of blendshapes doesn't match number of blendshape targets for prim " << prim.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Number of blendshapes doesn't match number of blendshape targets for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
-  Mesh *mesh = static_cast<Mesh *>(obj->data);
+  pxr::UsdStageRefPtr stage = prim.GetStage();
 
-  /* insert key to source mesh */
+  if (!stage) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get stage for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  Mesh *mesh = static_cast<Mesh *>(mesh_obj->data);
+
+  /* Insert key to source mesh. */
   Key *key = BKE_key_add(bmain, (ID *)mesh);
   key->type = KEY_RELATIVE;
 
   mesh->key = key;
 
-  /* insert basis key */
+  /* Insert basis key. */
   KeyBlock *kb = BKE_keyblock_add(key, "Basis");
   BKE_keyblock_convert_from_mesh(mesh, key, kb);
 
-  pxr::UsdStageRefPtr stage = prim.GetStage();
-
-  if (!stage) {
-    return;
-  }
-
-  /* Keep track of the shapkeys we're adding, for
-   * validation when creating curves later. */
+  /* Keep track of the shape-keys we're adding,
+   * for validation when creating curves later. */
   std::set<pxr::TfToken> shapekey_names;
 
   for (int i = 0; i < targets.size(); ++i) {
-
+    /* Get USD path to blend shape. */
     const pxr::SdfPath &path = targets[i];
-
     pxr::UsdSkelBlendShape blendshape(stage->GetPrimAtPath(path));
 
     if (!blendshape) {
       continue;
     }
 
+    /* Get the blend shape offsets. */
     if (!blendshape.GetOffsetsAttr().HasAuthoredValue()) {
+      /* Blend shape has no authored offsets. */
       continue;
     }
 
     pxr::VtVec3fArray offsets;
     if (!blendshape.GetOffsetsAttr().Get(&offsets)) {
-      std::cout << "Couldn't get offsets for blendshape " << path << std::endl;
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't get offsets for blend shape %s",
+                 __func__,
+                 path.GetAsString().c_str());
       continue;
     }
 
     if (offsets.empty()) {
-      std::cout << "No offsets for blendshape " << path << std::endl;
+      WM_reportf(
+          RPT_WARNING, "%s: No offsets for blend shape %s", __func__, path.GetAsString().c_str());
       continue;
     }
 
     shapekey_names.insert(blendshapes[i]);
 
+    /* Add the key block. */
     kb = BKE_keyblock_add(key, blendshapes[i].GetString().c_str());
     BKE_keyblock_convert_from_mesh(mesh, key, kb);
 
+    /* if authored, point indices are indices into the original mesh
+     * that correspond to the values in the offsets array. */
     pxr::VtArray<int> point_indices;
     if (blendshape.GetPointIndicesAttr().HasAuthoredValue()) {
       blendshape.GetPointIndicesAttr().Get(&point_indices);
@@ -278,25 +516,37 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     float *fp = static_cast<float *>(kb->data);
 
     if (point_indices.empty()) {
+      /* Iterate over all key block elements and add the corresponding
+       * offset to the key block point. */
       for (int a = 0; a < kb->totelem; ++a, fp += 3) {
         if (a >= offsets.size()) {
-          std::cout << "Number of offsets greater than number of mesh vertices for blendshape "
-                    << path << std::endl;
+          WM_reportf(
+              RPT_WARNING,
+              "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
+              __func__,
+              path.GetAsString().c_str());
           break;
         }
         add_v3_v3(fp, offsets[a].data());
       }
     }
     else {
+      /* Iterate over the point indices and add the offset to the corresponding
+       * key block point. */
       int a = 0;
       for (int i : point_indices) {
         if (i < 0 || i > kb->totelem) {
-          std::cout << "Out of bounds point index " << i << " for blendshape " << path << std::endl;
+          std::cerr << "Out of bounds point index " << i << " for blendshape " << path
+                    << std::endl;
           ++a;
           continue;
         }
         if (a >= offsets.size()) {
-          std::cout << "Number of offsets greater than number of mesh vertices for blendshape " << path << std::endl;
+          WM_reportf(
+              RPT_WARNING,
+              "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
+              __func__,
+              path.GetAsString().c_str());
           break;
         }
         add_v3_v3(&fp[3 * i], offsets[a].data());
@@ -304,6 +554,13 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
       }
     }
   }
+
+  if (!import_anim) {
+    /* We're not importing animation, so we are done. */
+    return;
+  }
+
+  /* Get the blend animation source from the skeleton. */
 
   pxr::UsdSkelSkeleton skel_prim = skel_api.GetInheritedSkeleton();
 
@@ -329,6 +586,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Check if a blend shape weight animation was authored. */
   if (!skel_anim.GetBlendShapesAttr().HasAuthoredValue()) {
     return;
   }
@@ -339,6 +597,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the animation time samples. */
   std::vector<double> times;
   if (!weights_attr.GetTimeSamples(&times)) {
     return;
@@ -348,6 +607,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the blend shape name tokens. */
   if (!skel_anim.GetBlendShapesAttr().Get(&blendshapes)) {
     return;
   }
@@ -356,37 +616,40 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
-  size_t num_samples = times.size();
+  const size_t num_samples = times.size();
 
   /* Create the animation and curves. */
   bAction *act = ED_id_action_ensure(bmain, (ID *)&key->id);
   std::vector<FCurve *> curves;
 
   for (auto blendshape_name : blendshapes) {
-
     if (shapekey_names.find(blendshape_name) == shapekey_names.end()) {
-      /* We didn't create a shapekey fo this blendshape, so we don't
+      /* We didn't create a shape-key for this blend-shape, so we don't
        * create a curve and insert a null placeholder in the curve array. */
       curves.push_back(nullptr);
       continue;
     }
 
+    /* Create the curve for this shape key. */
     std::string rna_path = "key_blocks[\"" + blendshape_name.GetString() + "\"].value";
-    FCurve *fcu = create_fcurve(0, rna_path.c_str());
+    FCurve *fcu = create_fcurve(0, rna_path);
     fcu->totvert = num_samples;
     curves.push_back(fcu);
     BLI_addtail(&act->curves, fcu);
   }
 
+  /* Add the weight time samples to the curves. */
   for (double frame : times) {
     pxr::VtFloatArray weights;
     if (!weights_attr.Get(&weights, frame)) {
-      std::cout << "Couldn't get blendshape weights for time " << frame << std::endl;
+      std::cerr << "Couldn't get blendshape weights for time " << frame << std::endl;
       continue;
     }
 
     if (weights.size() != curves.size()) {
-      std::cout << "Programmer error: number of weight samples doesn't match number of shapekey curve entries for frame " << frame << std::endl;
+      std::cerr << "Programmer error: number of weight samples doesn't match number of shapekey "
+                   "curve entries for frame "
+                << frame << std::endl;
       continue;
     }
 
@@ -397,216 +660,255 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     }
   }
 
+  /* Recalculate curve handles. */
+  auto recalc_handles = [](FCurve *fcu) { BKE_fcurve_handles_recalc(fcu); };
+  std::for_each(curves.begin(), curves.end(), recalc_handles);
 }
 
-void create_skeleton_curves(Main *bmain,
-                            Object *obj,
-                            const pxr::UsdSkelSkeletonQuery &skel_query,
-                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map)
-
+void import_skeleton(Main *bmain,
+                     Object *arm_obj,
+                     const pxr::UsdSkelSkeleton &skel,
+                     const bool import_anim)
 {
-  if (!(bmain && obj && skel_query)) {
+  if (!(arm_obj && arm_obj->data && arm_obj->type == OB_ARMATURE)) {
     return;
   }
 
-  if (joint_to_bone_map.empty()) {
-    return;
-  }
+  pxr::UsdSkelCache skel_cache;
+  pxr::UsdSkelSkeletonQuery skel_query = skel_cache.GetSkelQuery(skel);
 
-  const pxr::UsdSkelAnimQuery &anim_query = skel_query.GetAnimQuery();
-
-  if (!anim_query) {
-    return;
-  }
-
-  std::vector<double> samples;
-  anim_query.GetJointTransformTimeSamples(&samples);
-
-  if (samples.empty()) {
-    return;
-  }
-
-  size_t num_samples = samples.size();
-
-  bAction *act = ED_id_action_ensure(bmain, (ID *)&obj->id);
-
-  pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
-
-  std::vector<FCurve *> loc_curves;
-  std::vector<FCurve *> rot_curves;
-  std::vector<FCurve *> scale_curves;
-
-  for (const pxr::TfToken &joint : joint_order) {
-    std::map<pxr::TfToken, std::string>::const_iterator it = joint_to_bone_map.find(joint);
-
-    if (it == joint_to_bone_map.end()) {
-      /* This joint doesn't correspond to any bone we created.
-       * Add null placeholders for the channel curves. */
-      loc_curves.push_back(nullptr);
-      loc_curves.push_back(nullptr);
-      loc_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      continue;
-    }
-
-    bActionGroup *grp = action_groups_add_new(act, it->second.c_str());
-
-    /* Add translation curves. */
-    std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
-    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-
-    /* Add rotation curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
-    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path.c_str(), num_samples));
-
-    /* Add scale curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].scale";
-    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-  }
-
-  if (loc_curves.size() != joint_order.size() * 3) {
-    std::cout << "PROGRAMMER ERROR: location curve count mismatch\n";
-    return;
-  }
-
-  if (rot_curves.size() != joint_order.size() * 4) {
-    std::cout << "PROGRAMMER ERROR: rotation curve count mismatch\n";
-    return;
-  }
-
-  if (scale_curves.size() != joint_order.size() * 3) {
-    std::cout << "PROGRAMMER ERROR: scale curve count mismatch\n";
-    return;
-  }
-
-  /* Skeleton-space joint bind transforms. */
-  pxr::VtMatrix4dArray bind_xforms;
-  if (!compute_skel_space_bind_transforms(skel_query, bind_xforms, 0.0f)) {
-    std::cout << "WARNING: couldn't get skeleton space bind xforms for skeleton query "
-              << skel_query.GetPrim().GetPath() << std::endl;
-    return;
-  }
-
-  if (bind_xforms.size() != joint_order.size()) {
-    std::cout << "WARNING: number of bind transforms doesn't match the number of joints\n";
+  if (!skel_query.IsValid()) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't query skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
   const pxr::UsdSkelTopology &skel_topology = skel_query.GetTopology();
 
-  /* This will store the inverse of the parent-relative bind xforms. */
-  pxr::VtMatrix4dArray inv_bind_xforms(bind_xforms.size());
+  pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
 
-  for (int i = 0; i < bind_xforms.size(); ++i) {
-    int parent_id = skel_topology.GetParent(i);
+  if (joint_order.size() != skel_topology.size()) {
+    WM_reportf(RPT_WARNING,
+               "%s: Topology and joint order size mismatch for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
+    return;
+  }
 
-    if (parent_id >= 0) {
-      /* This is a non-root bone.  Compute the transform of the joint
-       * relative to its parent. */
-      pxr::GfMatrix4d parent_relative_xf = bind_xforms[i] * bind_xforms[parent_id].GetInverse();
-      inv_bind_xforms[i] = parent_relative_xf.GetInverse();
-    } else {
-      inv_bind_xforms[i] = bind_xforms[i].GetInverse();
+  bArmature *arm = static_cast<bArmature *>(arm_obj->data);
+
+  /* Set the armature to edit mode when creating the bones. */
+  ED_armature_to_edit(arm);
+
+  /* The bones we create, stored in the skeleton's joint order. */
+  std::vector<EditBone *> edit_bones;
+
+  /* Keep track of the bones we create for each joint.
+   * We'll need this when creating animation curves
+   * later. */
+  std::map<pxr::TfToken, std::string> joint_to_bone_map;
+
+  /* Create the bones. */
+  for (const pxr::TfToken &joint : joint_order) {
+    std::string name = pxr::SdfPath(joint).GetName();
+    EditBone *bone = ED_armature_ebone_add(arm, name.c_str());
+    if (!bone) {
+      WM_reportf(
+          RPT_WARNING, "%s: Couldn't add bone for joint %s", __func__, joint.GetString().c_str());
+      edit_bones.push_back(nullptr);
+      continue;
+    }
+    joint_to_bone_map.insert(std::make_pair(joint, bone->name));
+    edit_bones.push_back(bone);
+  }
+
+  /* Sanity check: we should have created a bone for each joint. */
+  const size_t num_joints = skel_topology.GetNumJoints();
+  if (edit_bones.size() != num_joints) {
+    WM_reportf(RPT_WARNING,
+               "%s: Mismatch in bone and joint counts for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  /* Get the world space joint transforms at bind time. */
+  pxr::VtMatrix4dArray bind_xforms;
+  if (!skel_query.GetJointWorldBindTransforms(&bind_xforms)) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get world bind transforms for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  if (bind_xforms.size() != num_joints) {
+    WM_reportf(RPT_WARNING,
+               "%s:  Mismatch in bind xforms and joint counts for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  /* Check if any bone matrices have negative determinants,
+   * indicating negative scales, possibly due to mirroring
+   * operations.  Such matrices can't be properly converted
+   * to Blender's axis/roll bone representation (see
+   * https://projects.blender.org/blender/blender/issues/82930).
+   * If we detect such matrices, we will flag an error and won't
+   * try to import the animation, since the rotations would
+   * be incorrect in such cases. Unfortunately, the Pixar
+   * `UsdSkel` examples of the "HumanFemale" suffer from
+   * this issue. */
+  bool negative_determinant = false;
+
+  /* Set bone rest transforms. */
+  for (size_t i = 0; i < num_joints; ++i) {
+    EditBone *ebone = edit_bones[i];
+
+    if (!ebone) {
+      continue;
+    }
+
+    pxr::GfMatrix4f mat(bind_xforms[i]);
+
+    float mat4[4][4];
+    mat.Get(mat4);
+
+    pxr::GfVec3f head(0.0f, 0.0f, 0.0f);
+    pxr::GfVec3f tail(0.0f, 1.0f, 0.0f);
+
+    copy_v3_v3(ebone->head, head.data());
+    copy_v3_v3(ebone->tail, tail.data());
+
+    ED_armature_ebone_from_mat4(ebone, mat4);
+
+    if (mat.GetDeterminant() < 0.0) {
+      negative_determinant = true;
     }
   }
 
-  for (double frame : samples) {
-    pxr::VtMatrix4dArray joint_local_xforms;
+  bool valid_skeleton = true;
+  if (negative_determinant) {
+    valid_skeleton = false;
+    WM_reportf(RPT_WARNING,
+               "USD Skeleton Import: bone matrices with negative determinants detected in prim %s."
+               "Such matrices may indicate negative scales, possibly due to mirroring operations, "
+               "and can't currently be converted to Blender's bone representation.  "
+               "The skeletal animation won't be imported",
+               skel.GetPath().GetAsString().c_str());
+  }
 
-    if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
-      std::cout << "WARNING: couldn't compute joint local transforms on frame " << frame << std::endl;
+  /* Set bone parenting.  In addition, scale bones to account
+   * for separation between parents and children, so that the
+   * bone size is in proportion with the overall skeleton hierarchy.
+   * USD skeletons are composed of joints which we imperfectly
+   * represent as bones. */
+
+  /* This will record the child bone indices per parent bone,
+   * to simplify accessing children when computing lengths. */
+  std::vector<std::vector<int>> child_bones(num_joints);
+
+  for (size_t i = 0; i < num_joints; ++i) {
+    const int parent_idx = skel_topology.GetParent(i);
+    if (parent_idx < 0) {
+      continue;
+    }
+    if (parent_idx >= edit_bones.size()) {
+      std::cout << "WARNING: out of bounds parent index for bone " << pxr::SdfPath(joint_order[i])
+                << " for skeleton " << skel.GetPath() << std::endl;
       continue;
     }
 
-    if (joint_local_xforms.size() != joint_order.size()) {
-      std::cout << "WARNING: number of joint local transform entries " << joint_local_xforms.size()
-                << " doesn't match the number of joints " << joint_order.size() << std::endl;
+    child_bones[parent_idx].push_back(i);
+    if (edit_bones[i] && edit_bones[parent_idx]) {
+      edit_bones[i]->parent = edit_bones[parent_idx];
+    }
+  }
+
+  float avg_len_scale = 0;
+  for (size_t i = 0; i < num_joints; ++i) {
+
+    /* If the bone has any children, scale its length
+     * by the distance between this bone's head
+     * and the average head location of its children. */
+
+    if (child_bones[i].empty()) {
       continue;
     }
 
-    for (int i = 0; i < joint_local_xforms.size(); ++i) {
+    EditBone *parent = edit_bones[i];
+    if (!parent) {
+      continue;
+    }
 
-      pxr::GfMatrix4d bind_relative_xf = joint_local_xforms[i] * inv_bind_xforms[i];
-
-      pxr::GfVec3f t;
-      pxr::GfQuatf qrot;
-      pxr::GfVec3h s;
-
-      if (!pxr::UsdSkelDecomposeTransform(bind_relative_xf, &t, &qrot, &s)) {
-        std::cout << "WARNING: error decomposing matrix on frame " << frame << std::endl;
+    pxr::GfVec3f avg_child_head(0);
+    for (int j : child_bones[i]) {
+      EditBone *child = edit_bones[j];
+      if (!child) {
         continue;
       }
-
-      float re = qrot.GetReal();
-      pxr::GfVec3f im = qrot.GetImaginary();
-
-      for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
-        if (k >= loc_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds translation curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = loc_curves[k]) {
-          add_bezt(fcu, frame, t[j]);
-        }
-      }
-
-      for (int j = 0; j < 4; ++j) {
-        int k = 4 * i + j;
-        if (k >= rot_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds rotation curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = rot_curves[k]) {
-          if (j == 0) {
-            add_bezt(fcu, frame, re);
-          }
-          else {
-            add_bezt(fcu, frame, im[j - 1]);
-          }
-        }
-      }
-
-      for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
-        if (k >= scale_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds scale curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = scale_curves[k]) {
-          add_bezt(fcu, frame, s[j]);
-        }
-      }
+      pxr::GfVec3f child_head(child->head);
+      avg_child_head += child_head;
     }
+
+    avg_child_head /= child_bones[i].size();
+
+    pxr::GfVec3f parent_head(parent->head);
+    pxr::GfVec3f parent_tail(parent->tail);
+
+    const float new_len = (avg_child_head - parent_head).GetLength();
+
+    /* Check for epsilon relative to the parent head before scaling. */
+    if (new_len > .00001 * max_mag_component(parent_head)) {
+      parent_tail = parent_head + (parent_tail - parent_head).GetNormalized() * new_len;
+      copy_v3_v3(parent->tail, parent_tail.data());
+      avg_len_scale += new_len;
+    }
+  }
+
+  /* Scale terminal bones by the average length scale. */
+  avg_len_scale /= num_joints;
+
+  for (size_t i = 0; i < num_joints; ++i) {
+    if (!child_bones[i].empty()) {
+      /* Not a terminal bone. */
+      continue;
+    }
+    EditBone *bone = edit_bones[i];
+    if (!bone) {
+      continue;
+    }
+    pxr::GfVec3f head(bone->head);
+
+    /* Check for epsilon relative to the head before scaling. */
+    if (avg_len_scale > .00001 * max_mag_component(head)) {
+      pxr::GfVec3f tail(bone->tail);
+      tail = head + (tail - head).GetNormalized() * avg_len_scale;
+      copy_v3_v3(bone->tail, tail.data());
+    }
+  }
+
+  /* Get out of edit mode. */
+  ED_armature_from_edit(bmain, arm);
+  ED_armature_edit_free(arm);
+
+  if (import_anim && valid_skeleton) {
+    import_skeleton_curves(bmain, arm_obj, skel_query, joint_to_bone_map);
   }
 }
 
-void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
+void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim)
 {
-  if (!(bmain && mesh_obj && prim)) {
+  if (!(bmain && mesh_obj && mesh_obj->type == OB_MESH && prim)) {
     return;
   }
 
-  if (prim.IsInstanceProxy() || prim.IsInPrototype()) {
+  if (prim.IsInstanceProxy()) {
     /* Attempting to create a UsdSkelBindingAPI for
-     * instance proxies and prototypes generates USD errors. */
-    return;
-  }
-
-  if (mesh_obj->type != OB_MESH) {
+     * instance proxies generates USD errors. */
     return;
   }
 
@@ -622,6 +924,8 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the joint identifiers from the skeleton. We will
+   * need these to construct deform groups. */
   pxr::VtArray<pxr::TfToken> joints;
 
   if (skel_api.GetJointsAttr().HasAuthoredValue()) {
@@ -635,28 +939,33 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the joint indices, which specify which joints influence a given point. */
   pxr::UsdGeomPrimvar joint_indices_primvar = skel_api.GetJointIndicesPrimvar();
-
   if (!(joint_indices_primvar && joint_indices_primvar.HasAuthoredValue())) {
     return;
   }
 
+  /* Get the weights, which specify the weight of a joint on a given point. */
   pxr::UsdGeomPrimvar joint_weights_primvar = skel_api.GetJointWeightsPrimvar();
-
   if (!(joint_weights_primvar && joint_weights_primvar.HasAuthoredValue())) {
     return;
   }
 
+  /* Element size specifies the number of joints that might influence a given point.
+   * This is the stride we take when accessing the indices and weights for a given point. */
   int joint_indices_elem_size = joint_indices_primvar.GetElementSize();
   int joint_weights_elem_size = joint_weights_primvar.GetElementSize();
 
+  /* We expect the element counts to match. */
   if (joint_indices_elem_size != joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights and joint indices element size mismatch." << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights and joint indices element size mismatch for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
-  /* The set of unique joint indices referenced in the joint indices
-  *  attribute. */
+  /* Get the joint indices and weights. */
   pxr::VtIntArray joint_indices;
   joint_indices_primvar.ComputeFlattened(&joint_indices);
 
@@ -668,37 +977,53 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
   }
 
   if (joint_indices.size() != joint_weights.size()) {
-    std::cout << "WARNING: joint weights and joint indices size mismatch." << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights and joint indices size mismatch size mismatch for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
   Mesh *mesh = static_cast<Mesh *>(mesh_obj->data);
 
-  pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
+  const pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
 
-  if (interp != pxr::UsdGeomTokens->vertex && interp != pxr::UsdGeomTokens->constant) {
-    std::cout << "WARNING: unexpected joint weights interpolation type " << interp
-              << std::endl;
+  /* Sanity check: we expect only vertex or constant interpolation. */
+  if (!ELEM(interp, pxr::UsdGeomTokens->vertex, pxr::UsdGeomTokens->constant)) {
+    WM_reportf(RPT_WARNING,
+               "%s: Unexpected joint weights interpolation type %s for prim %s",
+               __func__,
+               interp.GetString().c_str(),
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
-  if (interp == pxr::UsdGeomTokens->vertex && joint_weights.size() != mesh->totvert * joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights of unexpected size for vertex interpolation." << std::endl;
+  /* Sanity check: make sure we have the expected number of values for the interpolation type. */
+  if (interp == pxr::UsdGeomTokens->vertex &&
+      joint_weights.size() != mesh->totvert * joint_weights_elem_size)
+  {
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights of unexpected size for vertex interpolation for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
   if (interp == pxr::UsdGeomTokens->constant && joint_weights.size() != joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights of unexpected size for constant interpolation."
-              << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights of unexpected size for constant interpolation for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
+  /* Determine which joint indices are used for skinning this prim. */
   std::vector<int> used_indices;
   for (int index : joint_indices) {
     if (std::find(used_indices.begin(), used_indices.end(), index) == used_indices.end()) {
       /* We haven't accounted for this index yet. */
       if (index < 0 || index >= joints.size()) {
-        std::cout << "Out of bound joint index " << index << std::endl;
+        std::cerr << "Out of bound joint index " << index << std::endl;
         continue;
       }
       used_indices.push_back(index);
@@ -709,7 +1034,11 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
     return;
   }
 
-  if (BKE_object_defgroup_data_create(static_cast<ID *>(mesh_obj->data)) == NULL) {
+  if (BKE_object_defgroup_data_create(static_cast<ID *>(mesh_obj->data)) == nullptr) {
+    WM_reportf(RPT_WARNING,
+               "%s: Error creating deform group data for mesh %s",
+               __func__,
+               mesh_obj->id.name + 2);
     return;
   }
 
@@ -719,16 +1048,37 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
     BLI_addtail(&mesh_obj->modifiers, md);
   }
 
+  /* Create a deform group per joint. */
   std::vector<bDeformGroup *> joint_def_grps(joints.size(), nullptr);
+
+  /* We must be careful about name collisions with existing attributes when creating
+   * deform groups, because in the call to BKE_object_defgroup_add_name() below
+   * the deform group is given a unique name if there is already an attribute with
+   * the same name. To ensure that deform groups preserve the required bone names, we
+   * will remove attributes with colliding names before adding the groups. */
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
 
   for (int idx : used_indices) {
     std::string joint_name = pxr::SdfPath(joints[idx]).GetName();
     if (!BKE_object_defgroup_find_name(mesh_obj, joint_name.c_str())) {
+      /* If there is an attribute with the same name, remove it. */
+      bke::AttributeIDRef attr_id(joint_name);
+      if (attributes.contains(attr_id)) {
+        WM_reportf(
+            RPT_WARNING,
+            "%s: Removing attribute '%s' from mesh '%s', as it conflicts with a deform group "
+            "for a bone with the same name",
+            __func__,
+            joint_name.c_str(),
+            mesh->id.name + 2);
+        attributes.remove(attr_id);
+      }
       bDeformGroup *def_grp = BKE_object_defgroup_add_name(mesh_obj, joint_name.c_str());
       joint_def_grps[idx] = def_grp;
     }
   }
 
+  /* Set the deform group verts and weights. */
   for (int i = 0; i < mesh->totvert; ++i) {
     /* Offset into the weights array, which is
      * always 0 for constant interpolation. */
@@ -737,43 +1087,245 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
       offset = i * joint_weights_elem_size;
     }
     for (int j = 0; j < joint_weights_elem_size; ++j) {
-      int k = offset + j;
-      float w = joint_weights[k];
+      const int k = offset + j;
+      const float w = joint_weights[k];
       if (w < .00001) {
         /* No deform group if zero weight. */
         continue;
       }
-      int joint_idx = joint_indices[k];
-      bDeformGroup *def_grp = joint_def_grps[joint_idx];
-      if (def_grp) {
+      const int joint_idx = joint_indices[k];
+      if (bDeformGroup *def_grp = joint_def_grps[joint_idx]) {
         ED_vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
       }
     }
   }
 }
 
-
-bool compute_skel_space_bind_transforms(const pxr::UsdSkelSkeletonQuery &skel_query,
-                                        pxr::VtMatrix4dArray &out_xforms,
-                                        pxr::UsdTimeCode time)
+void skel_export_chaser(pxr::UsdStageRefPtr stage,
+                        const ObjExportMap &armature_export_map,
+                        const ObjExportMap &skinned_mesh_export_map,
+                        const ObjExportMap &shape_key_mesh_export_map,
+                        const Depsgraph *depsgraph)
 {
-  if (!skel_query) {
-    return false;
+  /* We may need to compute the world transforms of certain prims when
+   * setting skinning data.  Using a shared transform cache can make computing
+   * the transforms more efficient. */
+  pxr::UsdGeomXformCache xf_cache(1.0);
+  skinned_mesh_export_chaser(
+      stage, armature_export_map, skinned_mesh_export_map, xf_cache, depsgraph);
+  shape_key_export_chaser(stage, shape_key_mesh_export_map);
+}
+
+void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
+                                const ObjExportMap &armature_export_map,
+                                const ObjExportMap &skinned_mesh_export_map,
+                                pxr::UsdGeomXformCache &xf_cache,
+                                const Depsgraph *depsgraph)
+{
+  /* Finish creating skinned mesh bindings. */
+  for (const auto &item : skinned_mesh_export_map.items()) {
+    const Object *mesh_obj = item.key;
+    const pxr::SdfPath &mesh_path = item.value;
+
+    /* Get the mesh prim from the stage. */
+    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
+    if (!mesh_prim) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Invalid export map prim path %s for mesh object %s",
+                 __func__,
+                 mesh_path.GetAsString().c_str(),
+                 mesh_obj->id.name + 2);
+      continue;
+    }
+
+    /* Get the armature bound to the mesh's armature modifier. */
+    const Object *arm_obj = get_armature_modifier_obj(mesh_obj, depsgraph);
+    if (!arm_obj) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Invalid armature modifier for skinned mesh %s",
+                 __func__,
+                 mesh_obj->id.name + 2);
+      continue;
+    }
+    /* Look up the USD skeleton correpsoning to the armature object. */
+    const pxr::SdfPath *path = armature_export_map.lookup_ptr(arm_obj);
+    if (!path) {
+      WM_reportf(RPT_WARNING,
+                 "%s: No export map entry for armature object %s",
+                 __func__,
+                 mesh_obj->id.name + 2);
+      continue;
+    }
+    /* Get the skeleton prim. */
+    pxr::UsdPrim skel_prim = stage->GetPrimAtPath(*path);
+    pxr::UsdSkelSkeleton skel(skel_prim);
+    if (!skel) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Invalid USD skeleton for armature object %s",
+                 __func__,
+                 arm_obj->id.name + 2);
+      continue;
+    }
+
+    add_skinned_mesh_bindings(skel, mesh_prim, xf_cache);
+  }
+}
+
+void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
+                             const ObjExportMap &shape_key_mesh_export_map)
+{
+  std::map<pxr::SdfPath, pxr::SdfPathSet> skel_to_mesh;
+
+  /* We will keep track of the mesh prims to clean up the temporary
+   * weights attribute at the end. */
+  std::vector<pxr::UsdPrim> mesh_prims;
+
+  /* Finish creating blend shape bindings. */
+  for (const auto &item : shape_key_mesh_export_map.items()) {
+    const Object *mesh_obj = item.key;
+    const pxr::SdfPath &mesh_path = item.value;
+
+    /* Get the mesh prim from the stage. */
+    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
+    if (!mesh_prim) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Invalid export map prim path %s for mesh object %s",
+                 __func__,
+                 mesh_path.GetAsString().c_str(),
+                 mesh_obj->id.name + 2);
+      continue;
+    }
+
+    /* Keep track of all the mesh prims with blend shapes, for cleanup below. */
+    mesh_prims.push_back(mesh_prim);
+
+    pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
+
+    if (!skel_api) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't apply UsdSkelBindingAPI to prim %s",
+                 __func__,
+                 mesh_prim.GetPath().GetAsString().c_str());
+      return;
+    }
+
+    pxr::UsdSkelSkeleton skel;
+    if (skel_api.GetSkeleton(&skel)) {
+      /* We have a bound skeleton, so we add it to the map. */
+      auto it = skel_to_mesh.find(skel.GetPath());
+      if (it == skel_to_mesh.end()) {
+        it = skel_to_mesh.insert(std::make_pair(skel.GetPath(), pxr::SdfPathSet())).first;
+      }
+      if (it != skel_to_mesh.end()) {
+        it->second.insert(mesh_prim.GetPath());
+      }
+      continue;
+    }
+
+    /* The mesh is not bound to a skeleton, so we must create one for it. */
+    ensure_blend_shape_skeleton(stage, mesh_prim);
   }
 
-  pxr::GfMatrix4d skel_mat_inv = get_world_matrix(skel_query.GetSkeleton().GetPrim(), time).GetInverse();
-
-  if (!skel_query.GetJointWorldBindTransforms(&out_xforms)) {
-    std::cout << "WARNING: couldn't get local xform for prim "
-              << skel_query.GetSkeleton().GetPrim().GetPath() << std::endl;
-    return false;
+  if (skel_to_mesh.empty()) {
+    return;
   }
 
-  for (int i = 0; i < out_xforms.size(); ++i) {
-    out_xforms[i] = out_xforms[i] * skel_mat_inv;
+  for (const auto &kv : skel_to_mesh) {
+    remap_blend_shape_anim(stage, kv.first, kv.second);
   }
 
-  return true;
+  /* Finally, delete the temp blendshape weights attributes. */
+  for (pxr::UsdPrim &prim : mesh_prims) {
+    pxr::UsdGeomPrimvarsAPI(prim).RemovePrimvar(TempBlendShapeWeightsPrimvarName);
+  }
+}
+
+void export_deform_verts(const Mesh *mesh,
+                         const pxr::UsdSkelBindingAPI &skel_api,
+                         const Vector<std::string> &bone_names)
+{
+  BLI_assert(mesh);
+  BLI_assert(skel_api);
+
+  /* Map a deform vertex group index to the
+   * index of the corresponding joint.  I.e.,
+   * joint_index[n] is the joint index of the
+   * n-th vertex group. */
+  Vector<int> joint_index;
+
+  /* Build the index mapping. */
+  LISTBASE_FOREACH (const bDeformGroup *, def, &mesh->vertex_group_names) {
+    int bone_idx = -1;
+    /* For now, n-squared search is acceptable. */
+    for (int i = 0; i < bone_names.size(); ++i) {
+      if (bone_names[i] == def->name) {
+        bone_idx = i;
+        break;
+      }
+    }
+
+    joint_index.append(bone_idx);
+  }
+
+  if (joint_index.is_empty()) {
+    return;
+  }
+
+  const Span<MDeformVert> dverts = mesh->deform_verts();
+
+  int max_totweight = 1;
+  for (const int i : dverts.index_range()) {
+    const MDeformVert &vert = dverts[i];
+    if (vert.totweight > max_totweight) {
+      max_totweight = vert.totweight;
+    }
+  }
+
+  /* elem_size will specify the number of
+   * joints that can influence a given point. */
+  const int element_size = max_totweight;
+  int num_points = mesh->totvert;
+
+  pxr::VtArray<int> joint_indices(num_points * element_size, 0);
+  pxr::VtArray<float> joint_weights(num_points * element_size, 0.0f);
+
+  /* Current offset into the indices and weights arrays. */
+  int offset = 0;
+
+  for (const int i : dverts.index_range()) {
+    const MDeformVert &vert = dverts[i];
+
+    for (int j = 0; j < element_size; ++j, ++offset) {
+
+      if (offset >= joint_indices.size()) {
+        BLI_assert_unreachable();
+        return;
+      }
+
+      if (j >= vert.totweight) {
+        continue;
+      }
+
+      int def_nr = static_cast<int>(vert.dw[j].def_nr);
+
+      if (def_nr >= joint_index.size()) {
+        BLI_assert_unreachable();
+        continue;
+      }
+
+      if (joint_index[def_nr] == -1) {
+        continue;
+      }
+
+      joint_indices[offset] = joint_index[def_nr];
+      joint_weights[offset] = vert.dw[j].weight;
+    }
+  }
+
+  pxr::UsdSkelNormalizeWeights(joint_weights, element_size);
+
+  skel_api.CreateJointIndicesPrimvar(false, element_size).GetAttr().Set(joint_indices);
+  skel_api.CreateJointWeightsPrimvar(false, element_size).GetAttr().Set(joint_weights);
 }
 
 }  // namespace blender::io::usd

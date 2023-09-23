@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
- * SPDX-FileCopyrightText: 2023 Blender Foundation
+ * SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
@@ -102,9 +102,7 @@ class USDPrimReader {
   {
     return false;
   }
-  virtual void apply_cache_file(CacheFile * /* cache_file */)
-  {
-  }
+  virtual void apply_cache_file(CacheFile * /* cache_file */) {}
 
   Object *object() const;
   void object(Object *ob);

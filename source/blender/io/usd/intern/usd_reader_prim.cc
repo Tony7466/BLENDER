@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
- * SPDX-FileCopyrightText: 2023 Blender Foundation
+ * SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
@@ -145,7 +145,7 @@ void USDPrimReader::set_props(ID *id, const pxr::UsdPrim &prim, const double mot
     return;
   }
 
-  IDProperty *idgroup = IDP_GetProperties(id, 1);
+  IDProperty *idgroup = IDP_GetProperties(id);
 
   if (!idgroup) {
     return;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,7 @@
 #include "usd.h"
 #include "usd_asset_utils.h"
 #include "usd_exporter_context.h"
+#include "usd_hook.h"
 #include "usd_umm.h"
 
 #include "BKE_appdir.h"
@@ -18,24 +19,24 @@
 #include "BKE_image_format.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
-#include "BKE_node_tree_update.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_update.h"
 
 #include "IMB_colormanagement.h"
 
 #include "BLI_fileops.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 
 #include "DNA_material_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include <pxr/base/tf/stringUtils.h>
 #include <pxr/pxr.h>
@@ -137,20 +138,27 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             pxr::UsdShadeMaterial &usd_material,
                             pxr::UsdShadeInput &usd_input,
                             const pxr::TfToken &default_uv);
+static void create_uvmap_shader(const USDExporterContext &usd_export_context,
+                                bNode *tex_node,
+                                pxr::UsdShadeMaterial &usd_material,
+                                pxr::UsdShadeShader &usd_tex_shader,
+                                const pxr::TfToken &default_uv);
+static void export_texture(const USDExporterContext &usd_export_context, bNode *node);
 static bNode *find_bsdf_node(Material *material);
 static void get_absolute_path(Image *ima, char *r_path);
-
+static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_export_context,
+                                                bNode *node);
 static InputSpecMap &preview_surface_input_map();
 static bNodeLink *traverse_channel(bNodeSocket *input, short target_type);
 
 template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value);
+void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value, float scale);
 
 void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &input_spec);
-void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
-                                         Material *material,
-                                         pxr::UsdShadeMaterial &usd_material,
-                                         const std::string &default_uv)
+static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
+                                                Material *material,
+                                                pxr::UsdShadeMaterial &usd_material,
+                                                const std::string &default_uv)
 {
   if (!material) {
     return;
@@ -196,8 +204,8 @@ void create_usd_preview_surface_material(const USDExporterContext &usd_export_co
       pxr::TfToken source_name;
       if (input_spec.input_type == pxr::SdfValueTypeNames->Float) {
         /* If the input is a float, we connect it to either the texture alpha or red channels. */
-        source_name = strcmp(input_link->fromsock->identifier, "Alpha") == 0 ? usdtokens::a :
-                                                                               usdtokens::r;
+        source_name = STREQ(input_link->fromsock->identifier, "Alpha") ? usdtokens::a :
+                                                                         usdtokens::r;
       }
       else {
         source_name = usdtokens::rgb;
@@ -213,9 +221,7 @@ void create_usd_preview_surface_material(const USDExporterContext &usd_export_co
 
       /* Export the texture, if necessary. */
       if (usd_export_context.export_params.export_textures) {
-        export_texture(input_node,
-                       usd_export_context.stage,
-                       usd_export_context.export_params.overwrite_textures);
+        export_texture(usd_export_context, input_node);
       }
 
       /* Look for a connected uvmap node. */
@@ -240,18 +246,29 @@ void create_usd_preview_surface_material(const USDExporterContext &usd_export_co
     }
     else if (input_spec.set_default_value) {
       /* Set hardcoded value. */
+
+      float scale = 1.0;
+
+      /* We must scale emissive color by emission strength. */
+      if (input_spec.input_name == usdtokens::emissiveColor) {
+        if (bNodeSocket *emission_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength")) {
+          bNodeSocketValueFloat *sock_val = (bNodeSocketValueFloat *)emission_sock->default_value;
+          scale = sock_val->value;
+        }
+      }
+
       switch (sock->type) {
         case SOCK_FLOAT: {
           create_input<bNodeSocketValueFloat, float>(
-              preview_surface, input_spec, sock->default_value);
+              preview_surface, input_spec, sock->default_value, scale);
         } break;
         case SOCK_VECTOR: {
           create_input<bNodeSocketValueVector, pxr::GfVec3f>(
-              preview_surface, input_spec, sock->default_value);
+              preview_surface, input_spec, sock->default_value, scale);
         } break;
         case SOCK_RGBA: {
           create_input<bNodeSocketValueRGBA, pxr::GfVec3f>(
-              preview_surface, input_spec, sock->default_value);
+              preview_surface, input_spec, sock->default_value, scale);
         } break;
         default:
           break;
@@ -299,9 +316,10 @@ void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &
   bias_attr.Set(pxr::GfVec4f(-1.0f, -1.0f, -1.0f, -1.0f));
 }
 
-void create_usd_viewport_material(const USDExporterContext &usd_export_context,
-                                  Material *material,
-                                  pxr::UsdShadeMaterial &usd_material)
+/* Create USD Shade Material network from Blender viewport display settings. */
+static void create_usd_viewport_material(const USDExporterContext &usd_export_context,
+                                         Material *material,
+                                         pxr::UsdShadeMaterial &usd_material)
 {
   /* Construct the shader. */
   pxr::SdfPath shader_path = usd_material.GetPath().AppendChild(usdtokens::preview_shader);
@@ -331,9 +349,8 @@ static InputSpecMap &preview_surface_input_map()
       {"IOR", {usdtokens::ior, pxr::SdfValueTypeNames->Float, true}},
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, false}},
-      {"Clearcoat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
-      {"Clearcoat Roughness",
-       {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Roughness", {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
       {"Emission", {usdtokens::emissiveColor, pxr::SdfValueTypeNames->Color3f, true}},
   };
 
@@ -345,10 +362,10 @@ static InputSpecMap &preview_surface_input_map()
  * input.  Parameters T1 and T2 indicate the Blender and USD
  * value types, respectively. */
 template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value)
+void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value, float scale)
 {
   const T1 *cast_value = static_cast<const T1 *>(value);
-  shader.CreateInput(spec.input_name, spec.input_type).Set(T2(cast_value->value));
+  shader.CreateInput(spec.input_name, spec.input_type).Set(scale * T2(cast_value->value));
 }
 
 static void create_uvmap_shader(const USDExporterContext &usd_export_context,
@@ -365,7 +382,7 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
   const char *shader_name = uv_node ? uv_node->name : "uvmap";
 
   pxr::UsdShadeShader uv_shader = create_usd_preview_shader(
-    usd_export_context, usd_material, shader_name, SH_NODE_UVMAP);
+      usd_export_context, usd_material, shader_name, SH_NODE_UVMAP);
 
   if (!uv_shader) {
     WM_reportf(RPT_WARNING, "%s: Couldn't create USD shader for UV map", __func__);
@@ -394,7 +411,8 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
                                       const pxr::TfToken &default_uv)
 
 {
-  bNode *mapping_node = (mapping_link && mapping_link->fromnode ? mapping_link->fromnode : nullptr);
+  bNode *mapping_node = (mapping_link && mapping_link->fromnode ? mapping_link->fromnode :
+                                                                  nullptr);
 
   BLI_assert(mapping_node && mapping_node->type == SH_NODE_MAPPING);
 
@@ -404,7 +422,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
 
   if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
     if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
-       create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv);
+      create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv);
     }
     return;
   }
@@ -466,8 +484,8 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
     }
   }
 
-  if (pxr::UsdShadeInput rot_input = transform2d_shader.CreateInput(
-          usdtokens::rotation, pxr::SdfValueTypeNames->Float))
+  if (pxr::UsdShadeInput rot_input = transform2d_shader.CreateInput(usdtokens::rotation,
+                                                                    pxr::SdfValueTypeNames->Float))
   {
     /* Convert to degrees. */
     float rot_val = rot[2] * 180.0f / M_PI;
@@ -480,8 +498,8 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   }
 
   if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
-    if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(usdtokens::in,
-                                                                     pxr::SdfValueTypeNames->Float2))
+    if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
+            usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {
       create_uv_input(usd_export_context, socket, usd_material, in_input, default_uv);
     }
@@ -577,7 +595,7 @@ static void export_in_memory_texture(Image *ima,
 
   char export_path[FILE_MAX];
   BLI_path_join(export_path, FILE_MAX, export_dir.c_str(), file_name);
-  BLI_str_replace_char(export_path, '\\', '/');
+  BLI_string_replace_char(export_path, '\\', '/');
 
   if (!allow_overwrite && asset_exists(export_path)) {
     return;
@@ -594,8 +612,7 @@ static void export_in_memory_texture(Image *ima,
     /* We are copying to a file system directory, so we can write the image buffer
      * directly to the destination. */
     if (BKE_imbuf_write_as(imbuf, export_path, &imageFormat, true) == 0) {
-      WM_reportf(RPT_WARNING,
-                 "USD export: couldn't save in-memory texture to %s", export_path);
+      WM_reportf(RPT_WARNING, "USD export: couldn't save in-memory texture to %s", export_path);
     }
     return;
   }
@@ -612,17 +629,18 @@ static void export_in_memory_texture(Image *ima,
   std::cout << "Saving in-memory texture to temporary location " << temp_filepath << std::endl;
 
   if (BKE_imbuf_write_as(imbuf, temp_filepath, &imageFormat, true) == 0) {
-    WM_reportf(RPT_WARNING, "USD export: couldn't save in-memory texture to temporary location %s", temp_filepath);
+    WM_reportf(RPT_WARNING,
+               "USD export: couldn't save in-memory texture to temporary location %s",
+               temp_filepath);
   }
 
   /* Copy to destination. */
   if (!copy_asset(temp_filepath,
                   export_path,
                   allow_overwrite ? USD_TEX_NAME_COLLISION_OVERWRITE :
-                                    USD_TEX_NAME_COLLISION_USE_EXISTING)) {
-    WM_reportf(RPT_WARNING,
-               "USD export: couldn't export in-memory texture to %s",
-               temp_filepath);
+                                    USD_TEX_NAME_COLLISION_USE_EXISTING))
+  {
+    WM_reportf(RPT_WARNING, "USD export: couldn't export in-memory texture to %s", temp_filepath);
   }
 
   BLI_delete(temp_filepath, false, false);
@@ -856,8 +874,8 @@ static void flatten_group_do(bNodeTree *ntree, bNode *gnode)
     /* Also iterate over the new links to cover passthrough links. */
     glinks_last = (bNodeLink *)ntree->links.last;
     /* output links */
-    for (tlink = (bNodeLink *)ntree->links.first; tlink != glinks_first->next;
-         tlink = tlink->next) {
+    for (tlink = (bNodeLink *)ntree->links.first; tlink != glinks_first->next; tlink = tlink->next)
+    {
       if (tlink->fromnode == gnode) {
         const char *identifier = tlink->fromsock->identifier;
         /* find internal links to this output */
@@ -1356,7 +1374,6 @@ static void set_default(bNode *node,
       break;
   }
 }
-
 
 /* Creates a USDShadeShader based on given cycles shading node */
 static pxr::UsdShadeShader create_cycles_shader_node(pxr::UsdStageRefPtr a_stage,
@@ -2112,16 +2129,6 @@ static void link_cycles_nodes(pxr::UsdStageRefPtr a_stage,
   }
 }
 
-/* Entry point to create USD Shade Material network from Cycles Node Graph
- * This is needed for re-importing in to Blender and for HdCycles. */
-void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
-                                Material *material,
-                                pxr::UsdShadeMaterial &usd_material,
-                                const USDExportParams &export_params)
-{
-  create_usd_cycles_material(a_stage, material->nodetree, usd_material, export_params);
-}
-
 void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
                                 bNodeTree *ntree,
                                 pxr::UsdShadeMaterial &usd_material,
@@ -2138,21 +2145,26 @@ void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
 
   localize(localtree, localtree);
 
-  store_cycles_nodes(a_stage,
-                     localtree,
-                     usd_material.GetPath(),
-                     &output,
-                     export_params);
-  link_cycles_nodes(
-      a_stage, usd_material, localtree, usd_material.GetPath());
+  store_cycles_nodes(a_stage, localtree, usd_material.GetPath(), &output, export_params);
+  link_cycles_nodes(a_stage, usd_material, localtree, usd_material.GetPath());
 
   ntreeFreeLocalTree(localtree);
   MEM_freeN(localtree);
 }
 
-void create_mdl_material(const USDExporterContext &usd_export_context,
-                         Material *material,
-                         pxr::UsdShadeMaterial &usd_material)
+/* Entry point to create USD Shade Material network from Cycles Node Graph
+ * This is needed for re-importing in to Blender and for HdCycles. */
+static void create_usd_cycles_material(pxr::UsdStageRefPtr a_stage,
+                                       Material *material,
+                                       pxr::UsdShadeMaterial &usd_material,
+                                       const USDExportParams &export_params)
+{
+  create_usd_cycles_material(a_stage, material->nodetree, usd_material, export_params);
+}
+
+static void create_mdl_material(const USDExporterContext &usd_export_context,
+                                Material *material,
+                                pxr::UsdShadeMaterial &usd_material)
 {
 #ifdef WITH_PYTHON
   if (!(material && usd_material)) {
@@ -2199,6 +2211,10 @@ static bNodeLink *traverse_channel(bNodeSocket *input, const short target_type)
 
   /* Recursively traverse the linked node's sockets. */
   LISTBASE_FOREACH (bNodeSocket *, sock, &linked_node->inputs) {
+    /* Apply heuristics to skip certain inputs. */
+    if (strcmp(sock->name, "Factor") == 0) {
+      continue;
+    }
     if (bNodeLink *found_link = traverse_channel(sock, target_type)) {
       return found_link;
     }
@@ -2258,7 +2274,15 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
   return shader;
 }
 
-/* Creates a USD Preview Surface shader based on the given cycles shading node. */
+/* Creates a USD Preview Surface shader based on the given cycles shading node.
+ * Due to the limited nodes in the USD Preview Surface specification, only the following nodes
+ * are supported:
+ * - UVMap
+ * - Texture Coordinate
+ * - Image Texture
+ * - Principled BSDF
+ * More may be added in the future.
+ */
 static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &usd_export_context,
                                                      pxr::UsdShadeMaterial &material,
                                                      bNode *node)
@@ -2271,8 +2295,7 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
   }
 
   /* For texture image nodes we set the image path and color space. */
-  std::string imagePath = get_tex_image_asset_filepath(
-      node, usd_export_context.stage, usd_export_context.export_params);
+  std::string imagePath = get_tex_image_asset_filepath(usd_export_context, node);
   if (!imagePath.empty()) {
     shader.CreateInput(usdtokens::file, pxr::SdfValueTypeNames->Asset)
         .Set(pxr::SdfAssetPath(imagePath));
@@ -2298,6 +2321,13 @@ static std::string get_tex_image_asset_filepath(Image *ima)
   get_absolute_path(ima, filepath);
 
   return std::string(filepath);
+}
+
+static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_export_context,
+                                                bNode *node)
+{
+  return get_tex_image_asset_filepath(
+      node, usd_export_context.stage, usd_export_context.export_params);
 }
 
 /* Gets an asset path for the given texture image node. The resulting path
@@ -2326,7 +2356,7 @@ std::string get_tex_image_asset_filepath(bNode *node,
     path = get_tex_image_asset_filepath(ima);
   }
 
-  return get_tex_image_asset_filepath(path, stage, export_params); 
+  return get_tex_image_asset_filepath(path, stage, export_params);
 }
 
 /* Return a USD asset path referencing the given texture file. The resulting path
@@ -2363,8 +2393,7 @@ std::string get_tex_image_asset_filepath(const std::string &path,
       BLI_path_split_dir_part(stage_path.c_str(), dir_path, FILE_MAX);
       BLI_path_join(exp_path, FILE_MAX, dir_path, "textures", file_path);
     }
-
-    BLI_str_replace_char(exp_path, '\\', '/');
+    BLI_string_replace_char(exp_path, '\\', '/');
     return exp_path;
   }
 
@@ -2383,8 +2412,7 @@ std::string get_tex_image_asset_filepath(const std::string &path,
     if (!BLI_path_is_rel(rel_path)) {
       return path;
     }
-
-    BLI_str_replace_char(rel_path, '\\', '/');
+    BLI_string_replace_char(rel_path, '\\', '/');
     return rel_path + 2;
   }
 
@@ -2425,7 +2453,7 @@ static void copy_tiled_textures(Image *ima,
 
     char dest_tile_path[FILE_MAX];
     BLI_path_join(dest_tile_path, FILE_MAX, dest_dir.c_str(), dest_filename);
-    BLI_str_replace_char(dest_tile_path, '\\', '/');
+    BLI_string_replace_char(dest_tile_path, '\\', '/');
 
     if (!allow_overwrite && asset_exists(dest_tile_path)) {
       continue;
@@ -2437,9 +2465,7 @@ static void copy_tiled_textures(Image *ima,
     }
 
     /* Copy the file. */
-    if (!copy_asset(src_tile_path,
-                    dest_tile_path,
-                    tex_name_collision_mode)) {
+    if (!copy_asset(src_tile_path, dest_tile_path, tex_name_collision_mode)) {
       WM_reportf(RPT_WARNING,
                  "USD export:  couldn't copy texture tile from %s to %s",
                  src_tile_path,
@@ -2460,7 +2486,7 @@ static void copy_single_file(Image *ima, const std::string &dest_dir, const bool
 
   char dest_path[FILE_MAX];
   BLI_path_join(dest_path, FILE_MAX, dest_dir.c_str(), file_name);
-  BLI_str_replace_char(dest_path, '\\', '/');
+  BLI_string_replace_char(dest_path, '\\', '/');
 
   if (!allow_overwrite && asset_exists(dest_path)) {
     return;
@@ -2475,7 +2501,8 @@ static void copy_single_file(Image *ima, const std::string &dest_dir, const bool
   if (!copy_asset(source_path,
                   dest_path,
                   allow_overwrite ? USD_TEX_NAME_COLLISION_OVERWRITE :
-                                    USD_TEX_NAME_COLLISION_USE_EXISTING)) {
+                                    USD_TEX_NAME_COLLISION_USE_EXISTING))
+  {
     WM_reportf(
         RPT_WARNING, "USD export:  couldn't copy texture from %s to %s", source_path, dest_path);
   }
@@ -2509,12 +2536,15 @@ static void export_textures(const bNodeTree *ntree,
   }
 }
 
-/* Export the given texture node's image to a 'textures' directory
- * next to given stage's root layer USD.
+/* Export the given texture node's image to a 'textures' directory in the export path.
  * Based on ImagesExporter::export_UV_Image() */
-void export_texture(bNode *node,
-                    const pxr::UsdStageRefPtr stage,
-                    const bool allow_overwrite)
+static void export_texture(const USDExporterContext &usd_export_context, bNode *node)
+{
+  export_texture(
+      node, usd_export_context.stage, usd_export_context.export_params.overwrite_textures);
+}
+
+void export_texture(bNode *node, const pxr::UsdStageRefPtr stage, const bool allow_overwrite)
 {
   if (!ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
     return;
@@ -2544,7 +2574,9 @@ void export_texture(bNode *node,
 }
 
 /* Export the texture of every texture image node in the given material's node tree. */
-void export_textures(const Material *material, const pxr::UsdStageRefPtr stage, const bool allow_overwrite)
+static void export_textures(const Material *material,
+                            const pxr::UsdStageRefPtr stage,
+                            const bool allow_overwrite)
 {
   if (!(material && material->use_nodes)) {
     return;
@@ -2557,7 +2589,6 @@ void export_textures(const Material *material, const pxr::UsdStageRefPtr stage, 
   export_textures(material->nodetree, stage, allow_overwrite);
 }
 
-
 const pxr::TfToken token_for_input(const char *input_name)
 {
   const InputSpecMap &input_map = preview_surface_input_map();
@@ -2568,6 +2599,45 @@ const pxr::TfToken token_for_input(const char *input_name)
   }
 
   return it->second.input_name;
+}
+
+pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_context,
+                                          pxr::SdfPath usd_path,
+                                          Material *material,
+                                          const std::string &active_uv)
+{
+  pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Define(usd_export_context.stage,
+                                                                     usd_path);
+
+  bool textures_exported = false;
+
+  if (material->use_nodes && usd_export_context.export_params.generate_mdl) {
+    create_mdl_material(usd_export_context, material, usd_material);
+    if (usd_export_context.export_params.export_textures) {
+      export_textures(
+          material, usd_export_context.stage, usd_export_context.export_params.overwrite_textures);
+      textures_exported = true;
+    }
+  }
+  if (material->use_nodes && usd_export_context.export_params.generate_cycles_shaders) {
+    create_usd_cycles_material(
+        usd_export_context.stage, material, usd_material, usd_export_context.export_params);
+    if (!textures_exported && usd_export_context.export_params.export_textures) {
+      export_textures(
+          material, usd_export_context.stage, usd_export_context.export_params.overwrite_textures);
+      textures_exported = true;
+    }
+  }
+  if (material->use_nodes && usd_export_context.export_params.generate_preview_surface) {
+    create_usd_preview_surface_material(usd_export_context, material, usd_material, active_uv);
+  }
+  else {
+    create_usd_viewport_material(usd_export_context, material, usd_material);
+  }
+
+  call_material_export_hooks(usd_export_context.stage, material, usd_material);
+
+  return usd_material;
 }
 
 }  // namespace blender::io::usd

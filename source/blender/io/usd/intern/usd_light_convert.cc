@@ -43,14 +43,15 @@
 #include "BKE_scene.h"
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "DNA_light_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_world_types.h"
-#include "ED_node.h"
+#include "ED_node.hh"
 
 #include <iostream>
 #include <string>
@@ -572,7 +573,8 @@ void dome_light_to_world_material(const USDImportParams &params,
   tex->id = &image->id;
 
   if (import_textures && params.import_textures_mode == USD_TEX_IMPORT_PACK &&
-      !BKE_image_has_packedfile(image)) {
+      !BKE_image_has_packedfile(image))
+  {
     BKE_image_packfiles(nullptr, image, ID_BLEND_PATH(bmain, &image->id));
     if (BLI_is_dir(temp_textures_dir())) {
       BLI_delete(temp_textures_dir(), true, true);
