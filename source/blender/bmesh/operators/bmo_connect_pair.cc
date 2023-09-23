@@ -137,6 +137,26 @@ struct MinDistDir {
     } \
   }
 
+void print_edge(BMEdge *e, const char *description)
+{
+  printf("%s:", description);
+  printf(
+      " vertex1: %.2lf,%.2lf,%.2lf;\
+             vertex2: %.2lf,%.2lf,%.2lf\n",
+      e->v1->co[0],
+      e->v1->co[1],
+      e->v1->co[2],
+      e->v2->co[0],
+      e->v2->co[1],
+      e->v2->co[2]);
+}
+
+void print_vertex(BMVert *v, const char *description)
+{
+  printf("%s:", description);
+  printf(" %.2lf,%.2lf,%.2lf\n", v->co[0], v->co[1], v->co[2]);
+}
+
 static int min_dist_dir_test(MinDistDir *mddir, const float dist_dir[3], const float dist_sq)
 {
 
@@ -401,22 +421,11 @@ static PathLinkState *state_step__face_add(PathContext *pc,
       BMElem *ele_next = nullptr;
       if (eletype[i] == 1) {
         ele_next = (BMElem *)l_iter->e;
-        printf(
-            "added edge to state: vertex1: %.2lf,%.2lf,%.2lf;\
-             vertex2: %.2lf,%.2lf,%.2lf\n",
-            l_iter->e->v1->co[0],
-            l_iter->e->v1->co[1],
-            l_iter->e->v1->co[2],
-            l_iter->e->v2->co[0],
-            l_iter->e->v2->co[1],
-            l_iter->e->v2->co[2]);
+        print_edge(l_iter->e, "added edge to state");
       }
       else if (eletype[i] == 2) {
         ele_next = (BMElem *)l_iter->v;
-        printf("added vertex to state: %.2lf,%.2lf,%.2lf\n",
-               l_iter->v->co[0],
-               l_iter->v->co[1],
-               l_iter->v->co[2]);
+        print_vertex(l_iter->v, "added vertex to state");
       }
       BLI_assert(ele_next != nullptr);
 
@@ -779,7 +788,7 @@ static int ct = 1;
 
 void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 {
-  printf("The %d test of connection\n", ct++);
+  printf("--------The %d test of connection--------\n", ct++);
   BMOpSlot *op_verts_slot = BMO_slot_get(op->slots_in, "verts");
 
   PathContext pc;
@@ -852,7 +861,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
         continue_search = false;
       }
       /*different here, test the better state_step func*/
-      else if (state_step(&pc, state)) {
+      else if (state_step_better(&pc, state)) {
         continue_search = true;
       }
       else {
@@ -874,6 +883,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
     }
   }
 
+  printf("----We'll start doing BMO connect_vert now---\n");
   if (state_best.link_last) {
     PathLink *link;
 
@@ -886,10 +896,12 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
         float e_fac = state_calc_co_pair_fac(&pc, e->v1->co, e->v2->co);
         v_new = BM_edge_split(bm, e, e->v1, nullptr, e_fac);
         BMO_vert_flag_enable(bm, v_new, VERT_OUT);
+        print_edge(e, "added edge for connection");
       }
       else if (link->ele->head.htype == BM_VERT) {
         BMVert *v = (BMVert *)link->ele;
         BMO_vert_flag_enable(bm, v, VERT_OUT);
+        print_vertex(v, "added vertex for connection");
       }
       else {
         BLI_assert(0);
