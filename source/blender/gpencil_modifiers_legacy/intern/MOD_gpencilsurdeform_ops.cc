@@ -1,10 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
- * \ingroup editors
+ * \ingroup edobj
  */
 #define DNA_DEPRECATED_ALLOW
 #include <stdlib.h>
+
+#include "MOD_gpencil_surdeform_header.h"
+//#include "object_intern.h"
 
 #include "MEM_guardedalloc.h"
 
