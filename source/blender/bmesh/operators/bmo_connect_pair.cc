@@ -137,25 +137,21 @@ struct MinDistDir {
     } \
   }
 
+/*debug print functions for edges and verts*/
+#ifdef DEBUG_PRINT
 void print_edge(BMEdge *e, const char *description)
 {
   printf("%s:", description);
-  printf(
-      " vertex1: %.2lf,%.2lf,%.2lf;\
-             vertex2: %.2lf,%.2lf,%.2lf\n",
-      e->v1->co[0],
-      e->v1->co[1],
-      e->v1->co[2],
-      e->v2->co[0],
-      e->v2->co[1],
-      e->v2->co[2]);
+  printf(" vertex1: %d; vertex2: %d\n", BM_elem_index_get(e->v1), BM_elem_index_get(e->v2));
 }
 
 void print_vertex(BMVert *v, const char *description)
 {
   printf("%s:", description);
-  printf(" %.2lf,%.2lf,%.2lf\n", v->co[0], v->co[1], v->co[2]);
+  printf(" %d\n", BM_elem_index_get(v));
 }
+
+#endif
 
 static int min_dist_dir_test(MinDistDir *mddir, const float dist_dir[3], const float dist_sq)
 {
@@ -336,7 +332,8 @@ static PathLinkState *state_link_add_test(PathContext *pc,
   return state;
 }
 
-/*split face_edge function into two*/
+/*find the nearest edge intersection in a BMFace (in two directions),
+ *it mainly copies the do-while loop in state_step__face_edges()*/
 static void state_step__face_edges_find(PathContext *pc,
                                         BMLoop *l_iter_best[2],
                                         int eletype[2],
@@ -365,6 +362,7 @@ static void state_step__face_edges_find(PathContext *pc,
           min_dist_dir_update(mddir, dist_dir);
           mddir->dist_min[index] = dist_test;
           l_iter_best[index] = l_iter;
+          /*1 for edge, 2 for vertex, else is invalid*/
           eletype[index] = 1;
         }
       }
@@ -372,6 +370,8 @@ static void state_step__face_edges_find(PathContext *pc,
   } while ((l_iter = l_iter->next) != l_last);
 }
 
+/*find the nearest vertex intersection in a BMFace (in two directions),
+ *it mainly copies the do-while loop in state_step__face_verts()*/
 static void state_step__face_verts_find(PathContext *pc,
                                         BMLoop *l_iter_best[2],
                                         int eletype[2],
@@ -407,6 +407,8 @@ static void state_step__face_verts_find(PathContext *pc,
   } while ((l_iter = l_iter->next) != l_last);
 }
 
+/*add the nearest intersection in both directions into the state linkedlist,
+ *mainly copies the for(i=0:2) loop in state_step__face_edges()*/
 static PathLinkState *state_step__face_add(PathContext *pc,
                                            BMLoop *l_iter_best[2],
                                            int eletype[2],
@@ -421,11 +423,15 @@ static PathLinkState *state_step__face_add(PathContext *pc,
       BMElem *ele_next = nullptr;
       if (eletype[i] == 1) {
         ele_next = (BMElem *)l_iter->e;
+#ifdef DEBUG_PRINT
         print_edge(l_iter->e, "added edge to state");
+#endif
       }
       else if (eletype[i] == 2) {
         ele_next = (BMElem *)l_iter->v;
+#ifdef DEBUG_PRINT
         print_vertex(l_iter->v, "added vertex to state");
+#endif
       }
       BLI_assert(ele_next != nullptr);
 
@@ -437,101 +443,8 @@ static PathLinkState *state_step__face_add(PathContext *pc,
   return state;
 }
 
-/* walk around the face edges */
-static PathLinkState *state_step__face_edges(PathContext *pc,
-                                             PathLinkState *state,
-                                             const PathLinkState *state_orig,
-                                             BMLoop *l_iter,
-                                             BMLoop *l_last,
-                                             MinDistDir *mddir)
-{
-
-  BMLoop *l_iter_best[2] = {nullptr, nullptr};
-  int i;
-
-  do {
-    if (state_isect_co_pair(pc, l_iter->v->co, l_iter->next->v->co)) {
-      float dist_test;
-      float co_isect[3];
-      float dist_dir[3];
-      int index;
-
-      state_calc_co_pair(pc, l_iter->v->co, l_iter->next->v->co, co_isect);
-
-      sub_v3_v3v3(dist_dir, co_isect, state_orig->co_prev);
-      dist_test = len_squared_v3(dist_dir);
-      if ((index = min_dist_dir_test(mddir, dist_dir, dist_test)) != -1) {
-        BMElem *ele_next = (BMElem *)l_iter->e;
-        BMElem *ele_next_from = (BMElem *)l_iter->f;
-
-        if (FACE_WALK_TEST((BMFace *)ele_next_from) &&
-            (ELE_TOUCH_TEST_EDGE((BMEdge *)ele_next) == false)) {
-          min_dist_dir_update(mddir, dist_dir);
-          mddir->dist_min[index] = dist_test;
-          l_iter_best[index] = l_iter;
-        }
-      }
-    }
-  } while ((l_iter = l_iter->next) != l_last);
-
-  for (i = 0; i < 2; i++) {
-    if ((l_iter = l_iter_best[i])) {
-      BMElem *ele_next = (BMElem *)l_iter->e;
-      BMElem *ele_next_from = (BMElem *)l_iter->f;
-      state = state_link_add_test(pc, state, state_orig, ele_next, ele_next_from);
-    }
-  }
-
-  return state;
-}
-
-/* walk around the face verts */
-static PathLinkState *state_step__face_verts(PathContext *pc,
-                                             PathLinkState *state,
-                                             const PathLinkState *state_orig,
-                                             BMLoop *l_iter,
-                                             BMLoop *l_last,
-                                             MinDistDir *mddir)
-{
-  BMLoop *l_iter_best[2] = {nullptr, nullptr};
-  int i;
-
-  do {
-    if (state_isect_co_exact(pc, l_iter->v->co)) {
-      float dist_test;
-      const float *co_isect = l_iter->v->co;
-      float dist_dir[3];
-      int index;
-
-      sub_v3_v3v3(dist_dir, co_isect, state_orig->co_prev);
-      dist_test = len_squared_v3(dist_dir);
-      if ((index = min_dist_dir_test(mddir, dist_dir, dist_test)) != -1) {
-        BMElem *ele_next = (BMElem *)l_iter->v;
-        BMElem *ele_next_from = (BMElem *)l_iter->f;
-
-        if (FACE_WALK_TEST((BMFace *)ele_next_from) &&
-            (ELE_TOUCH_TEST_VERT((BMVert *)ele_next) == false)) {
-          min_dist_dir_update(mddir, dist_dir);
-          mddir->dist_min[index] = dist_test;
-          l_iter_best[index] = l_iter;
-        }
-      }
-    }
-  } while ((l_iter = l_iter->next) != l_last);
-
-  for (i = 0; i < 2; i++) {
-    if ((l_iter = l_iter_best[i])) {
-      BMElem *ele_next = (BMElem *)l_iter->v;
-      BMElem *ele_next_from = (BMElem *)l_iter->f;
-      state = state_link_add_test(pc, state, state_orig, ele_next, ele_next_from);
-    }
-  }
-
-  return state;
-}
-
-/*improved state_step*/
-static bool state_step_better(PathContext *pc, PathLinkState *state)
+/*improved state_step()*/
+static bool state_step(PathContext *pc, PathLinkState *state)
 {
   PathLinkState state_orig = *state;
   BMElem *ele = state->link_last->ele;
@@ -547,7 +460,7 @@ static bool state_step_better(PathContext *pc, PathLinkState *state)
       if ((l_start->f != ele_from) && FACE_WALK_TEST(l_start->f)) {
         MinDistDir mddir = MIN_DIST_DIR_INIT;
 
-        /*different here, compare all the geometry elements to find the best two*/
+        /*compare all the geometry elements to find the best two*/
         BMLoop *l_iter_best[2] = {nullptr, nullptr};
         int eletype[2] = {0, 0};
         state_step__face_edges_find(
@@ -567,11 +480,11 @@ static bool state_step_better(PathContext *pc, PathLinkState *state)
       BMLoop *l_start;
 
       BM_ITER_ELEM (l_start, &liter, v, BM_LOOPS_OF_VERT) {
-        /*different here, we allow to check ele_from*/
+        /*allow to check ele_from (v may be a concave vertex)*/
         if (FACE_WALK_TEST(l_start->f)) {
           MinDistDir mddir = MIN_DIST_DIR_INIT;
 
-          /*different here*/
+          /*compare all the geometry elements to find the best two*/
           BMLoop *l_iter_best[2] = {nullptr, nullptr};
           int eletype[2] = {0, 0};
           state_step__face_edges_find(
@@ -582,75 +495,6 @@ static bool state_step_better(PathContext *pc, PathLinkState *state)
                 pc, l_iter_best, eletype, &state_orig, l_start->next->next, l_start->prev, &mddir);
           }
           state = state_step__face_add(pc, l_iter_best, eletype, state, &state_orig);
-        }
-      }
-    }
-
-    /* Vert edges. */
-    {
-      BMIter eiter;
-      BMEdge *e;
-      BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
-        BMVert *v_other = BM_edge_other_vert(e, v);
-        if (((BMElem *)e != ele_from) && VERT_WALK_TEST(v_other)) {
-          if (state_isect_co_exact(pc, v_other->co)) {
-            BMElem *ele_next = (BMElem *)v_other;
-            BMElem *ele_next_from = (BMElem *)e;
-            if (ELE_TOUCH_TEST_VERT((BMVert *)ele_next) == false) {
-              state = state_link_add_test(pc, state, &state_orig, ele_next, ele_next_from);
-            }
-          }
-        }
-      }
-    }
-  }
-  else {
-    BLI_assert(0);
-  }
-  return (state_orig.link_last != state->link_last);
-}
-
-static bool state_step(PathContext *pc, PathLinkState *state)
-{
-  PathLinkState state_orig = *state;
-  BMElem *ele = state->link_last->ele;
-  const void *ele_from = state->link_last->ele_from;
-
-  if (ele->head.htype == BM_EDGE) {
-    BMEdge *e = (BMEdge *)ele;
-
-    BMIter liter;
-    BMLoop *l_start;
-
-    BM_ITER_ELEM (l_start, &liter, e, BM_LOOPS_OF_EDGE) {
-      if ((l_start->f != ele_from) && FACE_WALK_TEST(l_start->f)) {
-        MinDistDir mddir = MIN_DIST_DIR_INIT;
-        /* Very similar to block below. */
-        state = state_step__face_edges(pc, state, &state_orig, l_start->next, l_start, &mddir);
-        state = state_step__face_verts(
-            pc, state, &state_orig, l_start->next->next, l_start, &mddir);
-      }
-    }
-  }
-  else if (ele->head.htype == BM_VERT) {
-    BMVert *v = (BMVert *)ele;
-
-    /* Vert loops. */
-    {
-      BMIter liter;
-      BMLoop *l_start;
-
-      BM_ITER_ELEM (l_start, &liter, v, BM_LOOPS_OF_VERT) {
-        if ((l_start->f != ele_from) && FACE_WALK_TEST(l_start->f)) {
-          MinDistDir mddir = MIN_DIST_DIR_INIT;
-          /* Very similar to block above. */
-          state = state_step__face_edges(
-              pc, state, &state_orig, l_start->next, l_start->prev, &mddir);
-          if (l_start->f->len > 3) {
-            /* Adjacent verts are handled in #state_step__vert_edges. */
-            state = state_step__face_verts(
-                pc, state, &state_orig, l_start->next->next, l_start->prev, &mddir);
-          }
         }
       }
     }
@@ -788,7 +632,6 @@ static int ct = 1;
 
 void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 {
-  printf("--------The %d test of connection--------\n", ct++);
   BMOpSlot *op_verts_slot = BMO_slot_get(op->slots_in, "verts");
 
   PathContext pc;
@@ -861,7 +704,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
         continue_search = false;
       }
       /*different here, test the better state_step func*/
-      else if (state_step_better(&pc, state)) {
+      else if (state_step(&pc, state)) {
         continue_search = true;
       }
       else {
@@ -883,7 +726,6 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
     }
   }
 
-  printf("----We'll start doing BMO connect_vert now---\n");
   if (state_best.link_last) {
     PathLink *link;
 
@@ -896,12 +738,10 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
         float e_fac = state_calc_co_pair_fac(&pc, e->v1->co, e->v2->co);
         v_new = BM_edge_split(bm, e, e->v1, nullptr, e_fac);
         BMO_vert_flag_enable(bm, v_new, VERT_OUT);
-        print_edge(e, "added edge for connection");
       }
       else if (link->ele->head.htype == BM_VERT) {
         BMVert *v = (BMVert *)link->ele;
         BMO_vert_flag_enable(bm, v, VERT_OUT);
-        print_vertex(v, "added vertex for connection");
       }
       else {
         BLI_assert(0);
