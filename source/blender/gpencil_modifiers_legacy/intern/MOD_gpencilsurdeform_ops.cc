@@ -51,7 +51,8 @@
 static void freeData_a(SurDeformGpencilModifierData *smd)
 {
   GpencilModifierData *md = (GpencilModifierData *)smd;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      static_cast<GpencilModifierType>(md->type));
   mti->freeData(md);
   return;
 }
@@ -122,29 +123,37 @@ typedef struct SDefEdgePolys {
 } SDefEdgePolys;
 
 typedef struct SDefBindCalcData {
-  BVHTreeFromMesh *const treeData;
-  const SDefAdjacencyArray *const vert_edges;
-  const SDefEdgePolys *const edge_polys;
-  SDefGPStroke *const current_stroke;  // formerly bind_verts
-  const MLoopTri *const looptri;
-  const MPoly *const mpoly;
-  const MEdge *const medge;
-  const MLoop *const mloop;
+  BVHTreeFromMesh *treeData;
+  const SDefAdjacencyArray *vert_edges;
+  const SDefEdgePolys *edge_polys;
+  SDefGPStroke *current_stroke;  // formerly bind_verts
+  const MLoopTri *looptri;
+  const MPoly *mpoly;
+  const MEdge *medge;
+  const MLoop *mloop;
+
+  blender::Span<blender::int2> edges;
+  blender::OffsetIndices<int> polys;
+  blender::Span<int> corner_verts;
+  blender::Span<int> corner_edges;
+  blender::Span<MLoopTri> looptris;
+  blender::Span<int> looptri_polys;
+
   /** Coordinates to bind to, transformed into local space (compatible with `vertexCos`). */
-  float (*const targetCos)[3];
+  float (* targetCos)[3];
   /** Coordinates to bind (reference to the modifiers input argument).
    * Coordinates are stored in the grease pencil vert for grease pencil, which is accessed from the
    * stroke, also keeps the referenc from the deformstroke inut argument.
    */
   bGPDstroke *gps;
   float imat[4][4];
-  const float falloff;
+  float falloff;
   int success;
   /** Vertex group lookup data. */
   const MDeformVert *const dvert;
-  int const defgrp_index;
-  bool const invert_vgroup;
-  bool const sparse_bind;
+  int defgrp_index;
+  bool invert_vgroup;
+  bool sparse_bind;
 } SDefBindCalcData;
 
 /**
@@ -308,11 +317,9 @@ static void freeAdjacencyMap(SDefAdjacencyArray *const vert_edges,
   MEM_freeN(vert_edges);
 }
 
-static int buildAdjacencyMap(const MPoly *poly,
-                             const MEdge *edge,
-                             const MLoop *const mloop,
-                             const uint polys_num,
-                             const uint edges_num,
+static int buildAdjacencyMap(const blender::OffsetIndices<int> polys,
+                             const blender::Span<blender::int2> edges,
+                             const blender::Span<int> corner_edges,
                              SDefAdjacencyArray *const vert_edges,
                              SDefAdjacency *adj,
                              SDefEdgePolys *const edge_polys)
@@ -320,18 +327,16 @@ static int buildAdjacencyMap(const MPoly *poly,
   const MLoop *loop;
   /* Find polygons adjacent to edges. */
 
-  for (int i = 0; i < polys_num; i++, poly++) {
-    loop = &mloop[poly->loopstart];
-    for (int j = 0; j < poly->totloop; j++, loop++) {
-
-      if (edge_polys[loop->e].num == 0) {
-        edge_polys[loop->e].polys[0] = i;
-        edge_polys[loop->e].polys[1] = -1;
-        edge_polys[loop->e].num++;
+  for (const int i : polys.index_range()) {
+    for (const int edge_i : corner_edges.slice(polys[i])) {
+      if (edge_polys[edge_i].num == 0) {
+        edge_polys[edge_i].polys[0] = i;
+        edge_polys[edge_i].polys[1] = -1;
+        edge_polys[edge_i].num++;
       }
-      else if (edge_polys[loop->e].num == 1) {
-        edge_polys[loop->e].polys[1] = i;
-        edge_polys[loop->e].num++;
+      else if (edge_polys[edge_i].num == 1) {
+        edge_polys[edge_i].polys[1] = i;
+        edge_polys[edge_i].num++;
       }
       else {
         return MOD_SDEF_BIND_RESULT_NONMANY_ERR;
@@ -340,17 +345,18 @@ static int buildAdjacencyMap(const MPoly *poly,
   }
 
   /* Find edges adjacent to vertices */
-  for (int i = 0; i < edges_num; i++, edge++) {
-    adj->next = vert_edges[edge->v1].first;
+  for (const int i : edges.index_range()) {
+    const blender::int2 &edge = edges[i];
+    adj->next = vert_edges[edge[0]].first;
     adj->index = i;
-    vert_edges[edge->v1].first = adj;
-    vert_edges[edge->v1].num += edge_polys[i].num;
+    vert_edges[edge[0]].first = adj;
+    vert_edges[edge[0]].num += edge_polys[i].num;
     adj++;
 
-    adj->next = vert_edges[edge->v2].first;
+    adj->next = vert_edges[edge[1]].first;
     adj->index = i;
-    vert_edges[edge->v2].first = adj;
-    vert_edges[edge->v2].num += edge_polys[i].num;
+    vert_edges[edge[1]].first = adj;
+    vert_edges[edge[1]].num += edge_polys[i].num;
     adj++;
   }
 
@@ -358,55 +364,52 @@ static int buildAdjacencyMap(const MPoly *poly,
 }
 
 BLI_INLINE void sortPolyVertsEdge(uint *indices,
-                                  const MLoop *const mloop,
+                                  const int *const corner_verts,
+                                  const int *const corner_edges,
                                   const uint edge,
                                   const uint num)
 {
   bool found = false;
 
   for (int i = 0; i < num; i++) {
-    if (mloop[i].e == edge) {
+    if (corner_edges[i] == edge) {
       found = true;
     }
     if (found) {
-      *indices = mloop[i].v;
+      *indices = corner_verts[i];
       indices++;
     }
   }
 
   /* Fill in remaining vertex indices that occur before the edge */
-  for (int i = 0; mloop[i].e != edge; i++) {
-    *indices = mloop[i].v;
+  for (int i = 0; corner_edges[i] != edge; i++) {
+    *indices = corner_verts[i];
     indices++;
   }
 }
 
 BLI_INLINE void sortPolyVertsTri(uint *indices,
-                                 const MLoop *const mloop,
+                                 const int *const corner_verts,
                                  const uint loopstart,
                                  const uint num)
 {
   for (int i = loopstart; i < num; i++) {
-    *indices = mloop[i].v;
+    *indices = corner_verts[i];
     indices++;
   }
 
   for (int i = 0; i < loopstart; i++) {
-    *indices = mloop[i].v;
+    *indices = corner_verts[i];
     indices++;
   }
 }
 
 BLI_INLINE uint nearestVert(SDefBindCalcData *const data, const float point_co[3])
 {
+  BVHTreeNearest nearest{};
+  nearest.dist_sq = FLT_MAX;
+  nearest.index = -1;
 
-  BVHTreeNearest nearest = {
-      .dist_sq = FLT_MAX,
-      .index = -1,
-  };
-  const MPoly *poly;
-  const MEdge *edge;
-  const MLoop *loop;
   float t_point[3];
   float max_dist = FLT_MAX;
   float dist;
@@ -417,27 +420,28 @@ BLI_INLINE uint nearestVert(SDefBindCalcData *const data, const float point_co[3
   BLI_bvhtree_find_nearest(
       data->treeData->tree, t_point, &nearest, data->treeData->nearest_callback, data->treeData);
 
-  poly = &data->mpoly[data->looptri[nearest.index].poly];
-  loop = &data->mloop[poly->loopstart];
+  const blender::IndexRange poly = data->polys[data->looptri_polys[nearest.index]];
 
-  for (int i = 0; i < poly->totloop; i++, loop++) {
-    edge = &data->medge[loop->e];
+  for (int i = 0; i < poly.size(); i++) {
+    const int edge_i = data->corner_edges[poly.start() + i];
+    const blender::int2 &edge = data->edges[edge_i];
     dist = dist_squared_to_line_segment_v3(
-        point_co, data->targetCos[edge->v1], data->targetCos[edge->v2]);
+        point_co, data->targetCos[edge[0]], data->targetCos[edge[1]]);
 
     if (dist < max_dist) {
       max_dist = dist;
-      index = loop->e;
+      index = edge_i;
     }
   }
 
-  edge = &data->medge[index];
-  if (len_squared_v3v3(point_co, data->targetCos[edge->v1]) <
-      len_squared_v3v3(point_co, data->targetCos[edge->v2])) {
-    return edge->v1;
+  const blender::int2 &edge = data->edges[index];
+  if (len_squared_v3v3(point_co, data->targetCos[edge[0]]) <
+      len_squared_v3v3(point_co, data->targetCos[edge[1]]))
+  {
+    return edge[0];
   }
 
-  return edge->v2;
+  return edge[1];
 }
 
 BLI_INLINE int isPolyValid(const float coords[][2], const uint nr)
@@ -510,8 +514,6 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
   const SDefEdgePolys *const edge_polys = data->edge_polys;
 
   const SDefAdjacency *vedge;
-  const MPoly *poly;
-  const MLoop *loop;
 
   SDefBindWeightData *bwdata;
   SDefBindPoly *bpoly;
@@ -521,19 +523,20 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
   float tot_weight = 0.0f;
   int inf_weight_flags = 0;
 
-  bwdata = MEM_callocN(sizeof(*bwdata), "SDefBindWeightData");
-  if (bwdata == NULL) {
+  bwdata = static_cast<SDefBindWeightData *>(MEM_callocN(sizeof(*bwdata), "SDefBindWeightData"));
+  if (bwdata == nullptr) {
     data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
-    return NULL;
+    return nullptr;
   }
 
   bwdata->polys_num = data->vert_edges[nearest].num / 2;
 
-  bpoly = MEM_calloc_arrayN(bwdata->polys_num, sizeof(*bpoly), "SDefBindPoly");
-  if (bpoly == NULL) {
+  bpoly = static_cast<SDefBindPoly *>(
+      MEM_calloc_arrayN(bwdata->polys_num, sizeof(*bpoly), "SDefBindPoly"));
+  if (bpoly == nullptr) {
     freeBindData(bwdata);
     data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
-    return NULL;
+    return nullptr;
   }
 
   bwdata->bind_polys = bpoly;
@@ -563,49 +566,50 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
         int is_poly_valid;
 
         bpoly->index = edge_polys[edge_ind].polys[i];
-        bpoly->coords = NULL;
-        bpoly->coords_v2 = NULL;
+        bpoly->coords = nullptr;
+        bpoly->coords_v2 = nullptr;
 
         /* Copy poly data */
-        poly = &data->mpoly[bpoly->index];
-        loop = &data->mloop[poly->loopstart];
+        const blender::IndexRange poly = data->polys[bpoly->index];
 
-        bpoly->verts_num = poly->totloop;
-        bpoly->loopstart = poly->loopstart;
+        bpoly->verts_num = poly.size();
+        bpoly->loopstart = poly.start();
 
-        bpoly->coords = MEM_malloc_arrayN(
-            poly->totloop, sizeof(*bpoly->coords), "SDefBindPolyCoords");
-        if (bpoly->coords == NULL) {
+        bpoly->coords = static_cast<float(*)[3]>(
+            MEM_malloc_arrayN(poly.size(), sizeof(*bpoly->coords), "SDefBindPolyCoords"));
+        if (bpoly->coords == nullptr) {
           freeBindData(bwdata);
           data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
-          return NULL;
+          return nullptr;
         }
 
-        bpoly->coords_v2 = MEM_malloc_arrayN(
-            poly->totloop, sizeof(*bpoly->coords_v2), "SDefBindPolyCoords_v2");
-        if (bpoly->coords_v2 == NULL) {
+        bpoly->coords_v2 = static_cast<float(*)[2]>(
+            MEM_malloc_arrayN(poly.size(), sizeof(*bpoly->coords_v2), "SDefBindPolyCoords_v2"));
+        if (bpoly->coords_v2 == nullptr) {
           freeBindData(bwdata);
           data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
-          return NULL;
+          return nullptr;
         }
 
-        for (int j = 0; j < poly->totloop; j++, loop++) {
-          copy_v3_v3(bpoly->coords[j], data->targetCos[loop->v]);
+        for (int j = 0; j < poly.size(); j++) {
+          const int vert_i = data->corner_verts[poly.start() + j];
+          const int edge_i = data->corner_edges[poly.start() + j];
+          copy_v3_v3(bpoly->coords[j], data->targetCos[vert_i]);
 
           /* Find corner and edge indices within poly loop array */
-          if (loop->v == nearest) {
+          if (vert_i == nearest) {
             bpoly->corner_ind = j;
-            bpoly->edge_vert_inds[0] = (j == 0) ? (poly->totloop - 1) : (j - 1);
-            bpoly->edge_vert_inds[1] = (j == poly->totloop - 1) ? (0) : (j + 1);
+            bpoly->edge_vert_inds[0] = (j == 0) ? (poly.size() - 1) : (j - 1);
+            bpoly->edge_vert_inds[1] = (j == poly.size() - 1) ? (0) : (j + 1);
 
-            bpoly->edge_inds[0] = data->mloop[poly->loopstart + bpoly->edge_vert_inds[0]].e;
-            bpoly->edge_inds[1] = loop->e;
+            bpoly->edge_inds[0] = data->corner_edges[poly.start() + bpoly->edge_vert_inds[0]];
+            bpoly->edge_inds[1] = edge_i;
           }
         }
 
         /* Compute polygons parametric data. */
-        mid_v3_v3_array(bpoly->centroid, bpoly->coords, poly->totloop);
-        normal_poly_v3(bpoly->normal, bpoly->coords, poly->totloop);
+        mid_v3_v3_array(bpoly->centroid, bpoly->coords, poly.size());
+        normal_poly_v3(bpoly->normal, bpoly->coords, poly.size());
 
         /* Compute poly skew angle and axis */
         angle = angle_normalized_v3v3(bpoly->normal, world);
@@ -617,21 +621,20 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
         map_to_plane_axis_angle_v2_v3v3fl(bpoly->point_v2, point_co, axis, angle);
 
         zero_v2(bpoly->centroid_v2);
-        for (int j = 0; j < poly->totloop; j++) {
+        for (int j = 0; j < poly.size(); j++) {
           map_to_plane_axis_angle_v2_v3v3fl(bpoly->coords_v2[j], bpoly->coords[j], axis, angle);
-          madd_v2_v2fl(bpoly->centroid_v2, bpoly->coords_v2[j], 1.0f / poly->totloop);
+          madd_v2_v2fl(bpoly->centroid_v2, bpoly->coords_v2[j], 1.0f / poly.size());
         }
 
-        is_poly_valid = isPolyValid(bpoly->coords_v2, poly->totloop);
+        is_poly_valid = isPolyValid(bpoly->coords_v2, poly.size());
 
         if (is_poly_valid != MOD_SDEF_BIND_RESULT_SUCCESS) {
           freeBindData(bwdata);
           data->success = is_poly_valid;
-          return NULL;
+          return nullptr;
         }
 
-        bpoly->inside = isect_point_poly_v2(
-            bpoly->point_v2, bpoly->coords_v2, poly->totloop, false);
+        bpoly->inside = isect_point_poly_v2(bpoly->point_v2, bpoly->coords_v2, poly.size(), false);
 
         /* Initialize weight components */
         bpoly->weight_angular = 1.0f;
@@ -680,10 +683,11 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
          * degenerate despite having passed isPolyValid). */
         if (bpoly->scales[0] < FLT_EPSILON || bpoly->scales[1] < FLT_EPSILON ||
             bpoly->edgemid_angle < FLT_EPSILON || bpoly->corner_edgemid_angles[0] < FLT_EPSILON ||
-            bpoly->corner_edgemid_angles[1] < FLT_EPSILON) {
+            bpoly->corner_edgemid_angles[1] < FLT_EPSILON)
+        {
           freeBindData(bwdata);
           data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-          return NULL;
+          return nullptr;
         }
 
         /* Check for infinite weights, and compute angular data otherwise. */
@@ -738,10 +742,11 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
 
           /* Verify that the additional computed values are valid. */
           if (bpoly->scale_mid < FLT_EPSILON ||
-              bpoly->point_edgemid_angles[0] + bpoly->point_edgemid_angles[1] < FLT_EPSILON) {
+              bpoly->point_edgemid_angles[0] + bpoly->point_edgemid_angles[1] < FLT_EPSILON)
+          {
             freeBindData(bwdata);
             data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-            return NULL;
+            return nullptr;
           }
         }
       }
@@ -815,7 +820,7 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
       if (isnan(corner_angle_weights[0]) || isnan(corner_angle_weights[1])) {
         freeBindData(bwdata);
         data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-        return NULL;
+        return nullptr;
       }
 
       /* Find which edge the point is closer to */
@@ -832,7 +837,7 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
       if (bpoly->dominant_angle_weight < 0 || bpoly->dominant_angle_weight > 1) {
         freeBindData(bwdata);
         data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-        return NULL;
+        return nullptr;
       }
 
       bpoly->dominant_angle_weight = sinf(bpoly->dominant_angle_weight * M_PI_2);
@@ -842,7 +847,7 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
         const float edge_angle_a = bpoly->point_edgemid_angles[bpoly->dominant_edge];
         const float edge_angle_b = bpoly->point_edgemid_angles[!bpoly->dominant_edge];
         /* Clamp so skinny faces with near zero `edgemid_angle`
-         * won't cause numeric problems. see T81988. */
+         * won't cause numeric problems. see #81988. */
         scale_weight = edge_angle_a / max_ff(edge_angle_a, bpoly->edgemid_angle);
         scale_weight /= scale_weight + (edge_angle_b / max_ff(edge_angle_b, bpoly->edgemid_angle));
       }
@@ -919,7 +924,7 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
 
     /* Apply after other kinds of scaling so the faces corner angle is always
      * scaled in a uniform way, preventing heavily sub-divided triangle fans
-     * from having a lop-sided influence on the weighting, see T81988. */
+     * from having a lop-sided influence on the weighting, see #81988. */
     bpoly->weight *= bpoly->edgemid_angle / M_PI;
 
     tot_weight += bpoly->weight;
@@ -940,7 +945,8 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
       }
       else {
         if (bpoly->dominant_angle_weight < FLT_EPSILON ||
-            1.0f - bpoly->dominant_angle_weight < FLT_EPSILON) {
+            1.0f - bpoly->dominant_angle_weight < FLT_EPSILON)
+        {
           bwdata->binds_num += 1;
         }
         else {
@@ -972,7 +978,7 @@ BLI_INLINE float computeNormalDisplacement(const float point_co[3],
 
 static void bindVert(void *__restrict userdata,
                      const int index,
-                     const TaskParallelTLS *__restrict UNUSED(tls))
+                     const TaskParallelTLS *__restrict /*tls*/)
 {
   SDefBindCalcData *const data = (SDefBindCalcData *)userdata;
   float point_co[3];
@@ -987,28 +993,12 @@ static void bindVert(void *__restrict userdata,
   const float *vertex_cos = &(data->gps->points[index].x);
 
   if (data->success != MOD_SDEF_BIND_RESULT_SUCCESS) {
-    sdvert->binds = NULL;
+    sdvert->binds = nullptr;
     sdvert->binds_num = 0;
     return;
   }
 
-  /*if (data->sparse_bind) {
-    float weight = 0.0f;
-
-    if (data->dvert && data->defgrp_index != -1) {
-      weight = BKE_defvert_find_weight(&data->dvert[index], data->defgrp_index);
-    }
-
-    if (data->invert_vgroup) {
-      weight = 1.0f - weight;
-    }
-
-    if (weight <= 0) {
-      sdvert->binds = NULL;
-      sdvert->binds_num = 0;
-      return;
-    }
-  }*/
+  
   copy_v3_v3(point_co, vertex_cos);
   bwdata = computeBindWeights(data, point_co);
 
@@ -1017,7 +1007,8 @@ static void bindVert(void *__restrict userdata,
     sdvert->binds_num = 0;
     return;
   }
-  sdvert->binds = MEM_calloc_arrayN(bwdata->binds_num, sizeof(*sdvert->binds), "SDefVertBindData");
+  sdvert->binds = static_cast<SDefGPBind *>(
+      MEM_calloc_arrayN(bwdata->binds_num, sizeof(*sdvert->binds), "SDefVertBindData"));
   if (sdvert->binds == NULL) {
     data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
     sdvert->binds_num = 0;
@@ -1033,22 +1024,20 @@ static void bindVert(void *__restrict userdata,
   for (int i = 0; i < bwdata->binds_num; bpoly++) {
     if (bpoly->weight >= FLT_EPSILON) {
       if (bpoly->inside) {
-        const MLoop *loop = &data->mloop[bpoly->loopstart];
-
         sdbind->influence = bpoly->weight;
         sdbind->verts_num = bpoly->verts_num;
 
         sdbind->mode = GP_MOD_SDEF_MODE_NGON;
-        sdbind->vert_weights = MEM_malloc_arrayN(
-            bpoly->verts_num, sizeof(*sdbind->vert_weights), "SDefNgonVertWeights");
-        if (sdbind->vert_weights == NULL) {
+        sdbind->vert_weights = static_cast<float *>(MEM_malloc_arrayN(
+            bpoly->verts_num, sizeof(*sdbind->vert_weights), "SDefNgonVertWeights"));
+        if (sdbind->vert_weights == nullptr) {
           data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
           return;
         }
 
-        sdbind->vert_inds = MEM_malloc_arrayN(
-            bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefNgonVertInds");
-        if (sdbind->vert_inds == NULL) {
+        sdbind->vert_inds = static_cast<uint *>(
+            MEM_malloc_arrayN(bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefNgonVertInds"));
+        if (sdbind->vert_inds == nullptr) {
           data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
           return;
         }
@@ -1059,9 +1048,10 @@ static void bindVert(void *__restrict userdata,
         /* Re-project vert based on weights and original poly verts,
          * to reintroduce poly non-planarity */
         zero_v3(point_co_proj);
-        for (int j = 0; j < bpoly->verts_num; j++, loop++) {
+        for (int j = 0; j < bpoly->verts_num; j++) {
+          const int vert_i = data->corner_verts[bpoly->loopstart + j];
           madd_v3_v3fl(point_co_proj, bpoly->coords[j], sdbind->vert_weights[j]);
-          sdbind->vert_inds[j] = loop->v;
+          sdbind->vert_inds[j] = vert_i;
         }
 
         sdbind->normal_dist = computeNormalDisplacement(point_co, point_co_proj, bpoly->normal);
@@ -1079,22 +1069,23 @@ static void bindVert(void *__restrict userdata,
           sdbind->verts_num = bpoly->verts_num;
 
           sdbind->mode = GP_MOD_SDEF_MODE_CENTROID;
-          sdbind->vert_weights = MEM_malloc_arrayN(
-              3, sizeof(*sdbind->vert_weights), "SDefCentVertWeights");
-          if (sdbind->vert_weights == NULL) {
+          sdbind->vert_weights = static_cast<float *>(
+              MEM_malloc_arrayN(3, sizeof(*sdbind->vert_weights), "SDefCentVertWeights"));
+          if (sdbind->vert_weights == nullptr) {
             data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
             return;
           }
 
-          sdbind->vert_inds = MEM_malloc_arrayN(
-              bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefCentVertInds");
-          if (sdbind->vert_inds == NULL) {
+          sdbind->vert_inds = static_cast<uint *>(
+              MEM_malloc_arrayN(bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefCentVertInds"));
+          if (sdbind->vert_inds == nullptr) {
             data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
             return;
           }
 
           sortPolyVertsEdge(sdbind->vert_inds,
-                            &data->mloop[bpoly->loopstart],
+                            &data->corner_verts[bpoly->loopstart],
+                            &data->corner_edges[bpoly->loopstart],
                             bpoly->edge_inds[bpoly->dominant_edge],
                             bpoly->verts_num);
 
@@ -1126,22 +1117,22 @@ static void bindVert(void *__restrict userdata,
           sdbind->verts_num = bpoly->verts_num;
 
           sdbind->mode = GP_MOD_SDEF_MODE_LOOPTRI;
-          sdbind->vert_weights = MEM_malloc_arrayN(
-              3, sizeof(*sdbind->vert_weights), "SDefTriVertWeights");
-          if (sdbind->vert_weights == NULL) {
+          sdbind->vert_weights = static_cast<float *>(
+              MEM_malloc_arrayN(3, sizeof(*sdbind->vert_weights), "SDefTriVertWeights"));
+          if (sdbind->vert_weights == nullptr) {
             data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
             return;
           }
 
-          sdbind->vert_inds = MEM_malloc_arrayN(
-              bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefTriVertInds");
-          if (sdbind->vert_inds == NULL) {
+          sdbind->vert_inds = static_cast<uint *>(
+              MEM_malloc_arrayN(bpoly->verts_num, sizeof(*sdbind->vert_inds), "SDefTriVertInds"));
+          if (sdbind->vert_inds == nullptr) {
             data->success = MOD_SDEF_BIND_RESULT_MEM_ERR;
             return;
           }
 
           sortPolyVertsTri(sdbind->vert_inds,
-                           &data->mloop[bpoly->loopstart],
+                           &data->corner_verts[bpoly->loopstart],
                            bpoly->edge_vert_inds[0],
                            bpoly->verts_num);
 
@@ -1186,8 +1177,8 @@ static bool add_layer(SurDeformGpencilModifierData *smd_orig,
   /*We can't use MEM_recallocN because it doesn't support arrays.
    */
   smd_orig->num_of_layers++;
-  SDefGPLayer *temp_lay_pointer = MEM_calloc_arrayN(
-      smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
+  SDefGPLayer *temp_lay_pointer = static_cast<SDefGPLayer *>(
+      MEM_calloc_arrayN(smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers"));
 
   if (temp_lay_pointer == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1245,8 +1236,8 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
     We can't use MEM_recallocN because it doesn't support arrays.
     */
     sdef_layer->num_of_frames++;
-    void *temp_frames_pointer = MEM_calloc_arrayN(
-        sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
+    void *temp_frames_pointer = static_cast<void *>(
+        MEM_calloc_arrayN(sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames"));
 
     if (temp_frames_pointer == NULL) {
       BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1262,7 +1253,7 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
       MEM_SAFE_FREE(sdef_layer->frames);
     }
 
-    sdef_layer->frames = temp_frames_pointer;
+    sdef_layer->frames = static_cast<SDefGPFrame *>(temp_frames_pointer);
 
     /*First frame changed location with the rellocation of the array.*/
     first_frame = sdef_layer->frames;
@@ -1285,8 +1276,8 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
     sdef_layer->frames->first = first_frame;
 
     /*Allocate the strokes*/
-    sdef_layer->frames->strokes = MEM_calloc_arrayN(
-        sdef_layer->frames->strokes_num, sizeof(*sdef_layer->frames->strokes), "SDefGPStrokes");
+    sdef_layer->frames->strokes = static_cast<SDefGPStroke *>(MEM_calloc_arrayN(
+        sdef_layer->frames->strokes_num, sizeof(*sdef_layer->frames->strokes), "SDefGPStrokes"));
     if (sdef_layer->frames->strokes == NULL) {
       BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
       return false;
@@ -1319,8 +1310,8 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
   SDefGPLayer *first_layer = smd_orig->layers->first;
   /*Do the same thing as add, but in reverse*/
   smd_orig->num_of_layers--;
-  SDefGPLayer *temp_layers_pointer = MEM_calloc_arrayN(
-      smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
+  SDefGPLayer *temp_layers_pointer = static_cast<SDefGPLayer *>(
+      MEM_calloc_arrayN(smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers"));
 
   if (temp_layers_pointer == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1369,8 +1360,8 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
   }
   /*Do the same thing as add, but in reverse */
   sdef_layer->num_of_frames--;
-  SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
-      sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
+  SDefGPFrame *temp_frames_pointer = static_cast<SDefGPFrame *>(
+      MEM_calloc_arrayN(sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames"));
 
   if (temp_frames_pointer == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1415,20 +1406,20 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
                                              int verts_num,
                                              uint target_verts_num,
                                              Mesh *target,
-                                             float (*positions)[3],
-                                             MPoly *mpoly,
-                                             MEdge *medge,
-                                             MLoop *mloop,
+                                             const float (*positions)[3],
+                                      blender::OffsetIndices<int> polys,
+                                      blender::Span<blender::int2> edges,
                                              BVHTreeFromMesh treeData,
                                              SDefAdjacencyArray *vert_edges,
                                              SDefEdgePolys *edge_polys)
 {
+  GpencilModifierData *md = (GpencilModifierData *)smd_orig;
   SDefGPStroke *current_stroke = smd_orig->layers->frames->strokes;
   current_stroke->stroke_idx = stroke_idx; /*increase stroke idx value*/
   current_stroke->blender_stroke = gps;
   current_stroke->stroke_verts_num = verts_num;
-  current_stroke->verts = MEM_calloc_arrayN(
-      verts_num, sizeof(*current_stroke->verts), "SDefBindVerts");
+  current_stroke->verts = static_cast<SDefGPVert *>(
+      MEM_calloc_arrayN(verts_num, sizeof(*current_stroke->verts), "SDefBindVerts"));
   char error_label[128];
   uint framenum = smd_orig->layers->frames->frame_number;
 
@@ -1445,29 +1436,30 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   const bool invert_vgroup = (smd_orig->flags & MOD_SDEF_INVERT_VGROUP) != 0;
   const bool sparse_bind = (smd_orig->flags & MOD_SDEF_SPARSE_BIND) != 0;*/
 
-  SDefBindCalcData data = {
-      .treeData = &treeData,
-      .vert_edges = vert_edges,
-      .edge_polys = edge_polys,
-      .mpoly = mpoly,
-      .medge = medge,
-      .mloop = mloop,
-      .looptri = BKE_mesh_runtime_looptri_ensure(target),
-      .targetCos = MEM_malloc_arrayN(
-          target_verts_num, sizeof(float[3]), "SDefTargetBindVertArray"),
-      .current_stroke = current_stroke,
-      .gps = gps,
-      .falloff = smd_orig->falloff,
-      .success = MOD_SDEF_BIND_RESULT_SUCCESS,
+  SDefBindCalcData data{};
+  
+      data.treeData = &treeData;
+  data.vert_edges = vert_edges;
+      data.edge_polys = edge_polys;
+  data.polys = polys;
+      data.edges = edges;
+      data.looptri = BKE_mesh_runtime_looptri_ensure(target);
+  data.targetCos = static_cast<float(*)[3]>(
+      MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetBindVertArray"));
+      data.current_stroke = current_stroke;
+  data.gps = gps;
+      data.falloff = smd_orig->falloff;
+  data.success = MOD_SDEF_BIND_RESULT_SUCCESS;
       /*.dvert = dvert,
       .defgrp_index = defgrp_index,
       .invert_vgroup = invert_vgroup,
       .sparse_bind = sparse_bind,*/
-  };
+  
 
   if (data.targetCos == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    BKE_gpencil_modifier_get_info(27)->freeData((GpencilModifierData *)smd_orig);
+    BKE_gpencil_modifier_get_info(static_cast<GpencilModifierType>(md->type))
+        ->freeData((GpencilModifierData *)smd_orig);
     return false;
   }
 
@@ -1552,14 +1544,12 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 static bool makeTreeData(BVHTreeFromMesh *treeData,
                          Mesh *target,
                          SurDeformGpencilModifierData *smd_eval,
-                         SurDeformGpencilModifierData *smd_orig,
                          SDefAdjacencyArray *vert_edges,
                          SDefAdjacency * adj_array,
                          SDefEdgePolys * edge_polys,
-                         MPoly *mpoly,
-                         MEdge *medge,
-                         MLoop *mloop,
-                         uint target_polys_num,
+                         blender::OffsetIndices<int> polys,
+                         blender::Span<blender::int2> edges,
+                         blender::Span<int> corner_edges,
                          uint target_verts_num,
                          uint tedges_num)
 {
@@ -1587,8 +1577,7 @@ static bool makeTreeData(BVHTreeFromMesh *treeData,
 
   // printf("mPoly: %p, mpoly->totloop: %d", mpoly, mpoly->totloop);
 
-  adj_result = buildAdjacencyMap(
-      mpoly, medge, mloop, target_polys_num, tedges_num, vert_edges, adj_array, edge_polys);
+  adj_result = buildAdjacencyMap(polys, edges, corner_edges, vert_edges, adj_array, edge_polys);
 
   if (adj_result == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
@@ -1612,7 +1601,7 @@ static bool surfacedeformBind(bContext *C,
 {
   BVHTreeFromMesh treeData = {NULL};
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  bGPdata *gpd = ob_orig->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob_orig->data);
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   Object *ob_target_orig = smd_orig->target;
@@ -1677,10 +1666,11 @@ static bool surfacedeformBind(bContext *C,
   /*Bind mode*/
 
 
-   float(*positions);
-   MPoly *mpoly;
-   MEdge *medge;
-   MLoop *mloop;
+   const float(*positions)[3] = BKE_mesh_vert_positions(target);
+   blender::Span<blender::int2> edges = target->edges();
+   blender::OffsetIndices polys = target->polys();
+   blender::Span<int> corner_verts = target->corner_verts();
+   blender::Span<int> corner_edges = target->corner_edges();
   uint tedges_num = target->totedge;
   // uint current_stroke_idx = smd_orig->current_stroke_index;
   SDefAdjacencyArray *vert_edges;
@@ -1690,20 +1680,23 @@ static bool surfacedeformBind(bContext *C,
   // printf("target->mpoly: %p, target->mpoly->totloop: %d", target->mpoly,
   // target->mpoly->totloop); printf("mPoly: %p, mpoly->totloop: %d", mpoly, mpoly->totloop);
 
-  vert_edges = MEM_calloc_arrayN(target_verts_num, sizeof(*vert_edges), "SDefVertEdgeMap");
+  vert_edges = static_cast<SDefAdjacencyArray *>(
+      MEM_calloc_arrayN(target_verts_num, sizeof(*vert_edges), "SDefVertEdgeMap"));
   if (vert_edges == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     return false;
   }
 
-  adj_array = MEM_malloc_arrayN(tedges_num, 2 * sizeof(*adj_array), "SDefVertEdge");
+  adj_array = static_cast<SDefAdjacency *>(
+      MEM_malloc_arrayN(tedges_num, 2 * sizeof(*adj_array), "SDefVertEdge"));
   if (adj_array == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     MEM_freeN(vert_edges);
     return false;
   }
 
-  edge_polys = MEM_calloc_arrayN(tedges_num, sizeof(*edge_polys), "SDefEdgeFaceMap");
+  edge_polys = static_cast<SDefEdgePolys *>(
+      MEM_calloc_arrayN(tedges_num, sizeof(*edge_polys), "SDefEdgeFaceMap"));
   if (edge_polys == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     MEM_freeN(vert_edges);
@@ -1769,22 +1762,21 @@ static bool surfacedeformBind(bContext *C,
         BKE_scene_graph_update_for_newframe(dg);
         ob_target_eval = DEG_get_evaluated_object(dg, ob_target_orig);
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
-        positions = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
-        mpoly = BKE_mesh_polys(mesh_target);
-        medge = BKE_mesh_edges(mesh_target);
-        mloop = BKE_mesh_loops(mesh_target);
+        positions = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.6 +
+        edges = target->edges();
+        polys = target->polys();
+        corner_verts = target->corner_verts();
+        corner_edges = target->corner_edges();
         tedges_num = mesh_target->totedge;
         if (!makeTreeData(&treeData,
-                          mesh_target,
+                          target,
                           smd_eval,
-                          smd_orig,
                           vert_edges,
                           adj_array,
                           edge_polys,
-                          mpoly,
-                          medge,
-                          mloop,
-                          target_polys_num,
+                          polys,
+                          edges,
+                          corner_edges,
                           target_verts_num,
                           tedges_num))
           continue;
@@ -1808,9 +1800,8 @@ static bool surfacedeformBind(bContext *C,
                                         target_verts_num,
                                         mesh_target,
                                         positions,
-                                        mpoly,
-                                        medge,
-                                        mloop,
+                                        polys,
+                                        edges,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
@@ -1825,7 +1816,7 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes++;
         }
         if (stroke_error) {
-          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
+          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf->framenum);
           continue;
         }
         /*Stroke pointer is one place beyond end of array, idk if I should have prevented this somehow,
@@ -1842,20 +1833,19 @@ static bool surfacedeformBind(bContext *C,
     }
     else {
       positions = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
-      mpoly = BKE_mesh_polys(target);
-      medge = BKE_mesh_edges(target);
-      mloop = BKE_mesh_loops(target);
+      edges = target->edges();
+      polys = target->polys();
+      corner_verts = target->corner_verts();
+      corner_edges = target->corner_edges();
       if (!makeTreeData(&treeData,
                         target,
                         smd_eval,
-                        smd_orig,
                         vert_edges,
                         adj_array,
                         edge_polys,
-                        mpoly,
-                        medge,
-                        mloop,
-                        target_polys_num,
+                        polys,
+                        edges,
+                        corner_edges,
                         target_verts_num,
                         tedges_num))
         continue;
@@ -1892,9 +1882,8 @@ static bool surfacedeformBind(bContext *C,
                                         target_verts_num,
                                         target,
                                         positions,
-                                        mpoly,
-                                        medge,
-                                        mloop,
+                                        polys,
+                                        edges,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
@@ -1910,7 +1899,7 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes++;
         }
         if (stroke_error) {
-          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_frame);
+          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_frame->framenum);
           continue;
         }
         /*Stroke pointer is one place beyond end of array, idk if I should have prevented this
@@ -1981,7 +1970,7 @@ static bool gpencil_edit_modifier_invoke_properties(bContext *C,
 
   PointerRNA ctx_ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_GpencilModifier);
   if (ctx_ptr.data != NULL) {
-    GpencilModifierData *md = ctx_ptr.data;
+    GpencilModifierData *md = static_cast<GpencilModifierData *>(ctx_ptr.data);
     RNA_string_set(op->ptr, "modifier", md->name);
     return true;
   }
@@ -1992,7 +1981,7 @@ static bool gpencil_edit_modifier_invoke_properties(bContext *C,
 
     if (!(panel_ptr == NULL || RNA_pointer_is_null(panel_ptr))) {
       if (RNA_struct_is_a(panel_ptr->type, &RNA_GpencilModifier)) {
-        GpencilModifierData *md = panel_ptr->data;
+        GpencilModifierData *md = static_cast<GpencilModifierData *>(panel_ptr->data);
         RNA_string_set(op->ptr, "modifier", md->name);
         return true;
       }
@@ -2139,16 +2128,17 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
 static int bake_frames(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
       gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
   GpencilModifierData *md = &(smd_orig->modifier);
   GpencilModifierData *md_eval;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      static_cast<GpencilModifierType>(md->type));
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
-  bGPdata *gpd_eval = object_eval->data;
+  bGPdata *gpd_eval = static_cast<bGPdata *>(object_eval->data);
   bGPDlayer *gpl_eval;
   PointerRNA ob_ptr;
   bGPDframe *gpf;
@@ -2179,7 +2169,7 @@ static int bake_frames(bContext *C, wmOperator *op)
       /* get the current state in current frame (orig)*/
       gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
       /*eval*/
-      gpl_eval = BLI_rfindlink(&gpd_eval->layers, l);
+      gpl_eval = static_cast<bGPDlayer *>(BLI_rfindlink(&gpd_eval->layers, l));
       gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, frame, GP_GETFRAME_USE_PREV);
       /*All the properties of the second frame were copied; including the changed color!
       Let's set it back to normal, cuz the baked frame must not be or appear bound.
@@ -2260,7 +2250,7 @@ static int gpencil_surfacedeform_fillrange_exec(bContext *C, wmOperator *op)
 
 static int gpencil_surfacedeform_bind_invoke(bContext *C,
                                              wmOperator *op,
-                                             const wmEvent *UNUSED(event))
+                                             const wmEvent *event)
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_bind_exec(C, op);
@@ -2270,7 +2260,7 @@ static int gpencil_surfacedeform_bind_invoke(bContext *C,
 
 static int gpencil_surfacedeform_unbind_invoke(bContext *C,
                                              wmOperator *op,
-                                             const wmEvent *UNUSED(event))
+                                             const wmEvent *event)
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_unbind_exec(C, op);
@@ -2280,7 +2270,7 @@ static int gpencil_surfacedeform_unbind_invoke(bContext *C,
 
 static int gpencil_surfacedeform_bake_invoke(bContext *C,
                                                wmOperator *op,
-                                               const wmEvent *UNUSED(event))
+                                               const wmEvent *event)
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_bake_exec(C, op);
@@ -2290,7 +2280,7 @@ static int gpencil_surfacedeform_bake_invoke(bContext *C,
 
 static int gpencil_surfacedeform_fillrange_invoke(bContext *C,
                                              wmOperator *op,
-                                             const wmEvent *UNUSED(event))
+                                             const wmEvent *event)
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_fillrange_exec(C, op);
@@ -2298,7 +2288,7 @@ static int gpencil_surfacedeform_fillrange_invoke(bContext *C,
   return OPERATOR_CANCELLED;
 }
 
-static const EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
+static EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
   {GP_MOD_SDEF_BIND_CURRENT_FRAME, "CURR_FRAME", 0, "Current Frame", "Bind the current frame"},
   {GP_MOD_SDEF_BIND_ALL_FRAMES, "ALL_FRAMES", 0, "All Frames", "Bind all the frames in the layer(s)"},
   {0, NULL, 0, NULL, NULL},
@@ -2307,7 +2297,7 @@ static const EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
 static void bind_unbind_rna_props(wmOperatorType *ot)
 {
   RNA_def_enum(ot->srna, "curr_frame_or_all_frames", 
-              &gpsurdef_curr_frame_or_all_frames_items,
+              static_cast<EnumPropertyItem (*)>(gpsurdef_curr_frame_or_all_frames_items),
               0, "", "");
   RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
 }
