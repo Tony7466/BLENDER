@@ -28,13 +28,16 @@ enum class MeshMismatch : int8_t {
 };
 
 /**
- * Checks if the two meshes are the same, up to a change of indices. Two meshes are considered the
- * same, if, for each domain, there is a bijection between the two meshes such that the bijections
- * preserve connectivity.
+ * \brief Checks if the two meshes are the same, up to a change of indices.
  *
- * In general, determining if two graphs are isomorphic is a very difficult problem. Because we
- * have more information than just connectivity (attributes), we can compute it in a more
- * reasonable time in most cases.
+ * \details Two meshes are considered the same, if, for each domain, there is a bijection between
+ * the two meshes such that the bijections preserve connectivity.
+ *
+ * In general, determining if two graphs are isomorphic is a very difficult problem (no polynomial
+ * time algorithm is known). Because we have more information than just connectivity (attributes),
+ * we can compute it in a more reasonable time in most cases.
+ *
+ * \warning This assumes that the mesh is of decent quality: no zero-size edges or faces.
  */
 std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mesh2);
 
