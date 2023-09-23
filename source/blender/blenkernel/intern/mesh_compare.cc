@@ -28,10 +28,62 @@ static void create_inverse_map(const Span<int> map, MutableSpan<int> inverted_ma
  */
 template<typename T> static void sort_indices(MutableSpan<int> indices, const Span<T> values)
 {
-  /* TODO: custom sorting function based on type T. At the moment this doesn't sort `float3`'s as
-   * wanted, due to floating point precision problems. */
-  std::stable_sort(
-      indices.begin(), indices.end(), [&](int i1, int i2) { return values[i1] < values[i2]; });
+  /* We need to have an appropriate comparison function, depending on the type. */
+  std::stable_sort(indices.begin(), indices.end(), [&](int i1, int i2) {
+    const T value1 = values[i1];
+    const T value2 = values[i2];
+    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, float> || std::is_same_v<T, bool> ||
+                  std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge>)
+    {
+      /* These types are already comparable. */
+      return value1 < value2;
+    }
+    else if constexpr (std::is_same_v<T, float2>) {
+      for (int i = 0; i < 2; i++) {
+        if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
+          return value1[i] < value2[i];
+        }
+      }
+      return false;
+    }
+    else if constexpr (std::is_same_v<T, float3>) {
+      for (int i = 0; i < 3; i++) {
+        if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
+          return value1[i] < value2[i];
+        }
+      }
+      return false;
+    }
+    else if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>) {
+      const float4 value1 = static_cast<float4>(value1);
+      const float4 value2 = static_cast<float4>(value2);
+      for (int i = 0; i < 4; i++) {
+        if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
+          return value1[i] < value2[i];
+        }
+      }
+      return false;
+    }
+    else if constexpr (std::is_same_v<T, int2>) {
+      for (int i = 0; i < 2; i++) {
+        if (value1[i] != value2[i]) {
+          return value1[i] < value2[i];
+        }
+      }
+      return false;
+    }
+    else if constexpr (std::is_same_v<T, ColorGeometry4b>) {
+      for (int i = 0; i < 4; i++) {
+        if (value1[i] != value2[i]) {
+          return value1[i] < value2[i];
+        }
+      }
+      return false;
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  });
 }
 
 /**
@@ -101,6 +153,50 @@ static void sort_per_set_with_id_maps(const Span<int> set_sizes,
   }
 }
 
+template<typename T> static bool values_different(const T value1, const T value2)
+{
+  if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
+                std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge> ||
+                std::is_same_v<T, ColorGeometry4b>)
+  {
+    /* These types already have a good implementation. */
+    return value1 != value2;
+  }
+  /* The other types are based on floats. */
+  else if constexpr (std::is_same_v<T, float>) {
+    return compare_threshold_relative(value1, value2, FLT_EPSILON * 60);
+  }
+  else if constexpr (std::is_same_v<T, float2>) {
+    for (int i = 0; i < 2; i++) {
+      if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  else if constexpr (std::is_same_v<T, float3>) {
+    for (int i = 0; i < 3; i++) {
+      if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  else if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>) {
+    const float4 value1_f = static_cast<float4>(value1);
+    const float4 value2_f = static_cast<float4>(value2);
+    for (int i = 0; i < 4; i++) {
+      if (compare_threshold_relative(value1_f[i], value2_f[i], FLT_EPSILON * 60)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  else {
+    BLI_assert_unreachable();
+  }
+}
+
 /**
  * Split the sets into smaller sets based on the sorted attribute values.
  *
@@ -115,22 +211,14 @@ static bool update_set_ids(MutableSpan<int> set_ids,
 {
   T previous = values1[0];
   int set_id = 0;
-  /*
-  for (const int i : values1.index_range()) {
-    std::cout << values1[sorted_to_values1[i]] << " - " << values2[sorted_to_values2[i]]
-              << std::endl;
-  }
-  */
   for (const int i : values1.index_range()) {
     const T value1 = values1[sorted_to_values1[i]];
     const T value2 = values2[sorted_to_values2[i]];
-    if (value1 != value2) {
-      /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+    if (values_different(value1, value2)) {
       /* They should be the same after sorting. */
       return false;
     }
-    if (value1 != previous || set_ids[i] == i) {
-      /* TODO: use compare function based on type (like compare_v3v3_relative)*/
+    if (values_different(previous, value1) || set_ids[i] == i) {
       /* Different value, or this was already a different set. */
       set_id = i;
       previous = value1;
