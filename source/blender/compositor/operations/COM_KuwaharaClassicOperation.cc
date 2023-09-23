@@ -16,7 +16,6 @@ KuwaharaClassicOperation::KuwaharaClassicOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
-  this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   this->set_kernel_size(4);
   this->set_use_sat(true);
@@ -70,9 +69,9 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
       kernel_area.xmax = corrected_upper_bound[0];
       kernel_area.ymax = corrected_upper_bound[1];
 
-      mean_of_color[q] = summed_area_table_sum_tiled(sat_reader_, kernel_area).xyz();
+      mean_of_color[q] = summed_area_table_sum_tiled(sat_reader_, kernel_area);
       mean_of_squared_color[q] =
-          summed_area_table_sum_tiled(sat_squared_reader_, kernel_area).xyz();
+          summed_area_table_sum_tiled(sat_squared_reader_, kernel_area);
     }
   }
   else {
@@ -86,33 +85,32 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
 
           float4 color;
           image_reader_->read_sampled(color, xx, yy, sampler);
-          const float3 v = color.xyz();
 
           if (dx >= 0 && dy >= 0) {
             const int quadrant_index = 0;
-            mean_of_color[quadrant_index] += v;
-            mean_of_squared_color[quadrant_index] += v * v;
+            mean_of_color[quadrant_index] += color;
+            mean_of_squared_color[quadrant_index] += color * color;
             quadrant_pixel_count[quadrant_index]++;
           }
 
           if (dx <= 0 && dy >= 0) {
             const int quadrant_index = 1;
-            mean_of_color[quadrant_index] += v;
-            mean_of_squared_color[quadrant_index] += v * v;
+            mean_of_color[quadrant_index] += color;
+            mean_of_squared_color[quadrant_index] += color * color;
             quadrant_pixel_count[quadrant_index]++;
           }
 
           if (dx <= 0 && dy <= 0) {
             const int quadrant_index = 2;
-            mean_of_color[quadrant_index] += v;
-            mean_of_squared_color[quadrant_index] += v * v;
+            mean_of_color[quadrant_index] += color;
+            mean_of_squared_color[quadrant_index] += color * color;
             quadrant_pixel_count[quadrant_index]++;
           }
 
           if (dx >= 0 && dy <= 0) {
             const int quadrant_index = 3;
-            mean_of_color[quadrant_index] += v;
-            mean_of_squared_color[quadrant_index] += v * v;
+            mean_of_color[quadrant_index] += color;
+            mean_of_squared_color[quadrant_index] += color * color;
             quadrant_pixel_count[quadrant_index]++;
           }
         }
@@ -176,8 +174,8 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     const int x = it.x;
     const int y = it.y;
 
-    float3 mean_of_color[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
-    float3 mean_of_squared_color[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+    float4 mean_of_color[4] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
+    float4 mean_of_squared_color[4] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
     int quadrant_pixel_count[4] = {0, 0, 0, 0};
 
     if (use_sat_) {
@@ -203,8 +201,8 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
         kernel_area.xmax = corrected_upper_bound[0];
         kernel_area.ymax = corrected_upper_bound[1];
 
-        mean_of_color[q] = summed_area_table_sum(sat, kernel_area).xyz();
-        mean_of_squared_color[q] = summed_area_table_sum(sat_squared, kernel_area).xyz();
+        mean_of_color[q] = summed_area_table_sum(sat, kernel_area);
+        mean_of_squared_color[q] = summed_area_table_sum(sat_squared, kernel_area);
       }
     }
     else {
@@ -218,33 +216,32 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
 
             float4 color;
             image->read_elem(xx, yy, &color.x);
-            const float3 v = color.xyz();
 
             if (dx >= 0 && dy >= 0) {
               const int quadrant_index = 0;
-              mean_of_color[quadrant_index] += v;
-              mean_of_squared_color[quadrant_index] += v * v;
+              mean_of_color[quadrant_index] += color;
+              mean_of_squared_color[quadrant_index] += color * color;
               quadrant_pixel_count[quadrant_index]++;
             }
 
             if (dx <= 0 && dy >= 0) {
               const int quadrant_index = 1;
-              mean_of_color[quadrant_index] += v;
-              mean_of_squared_color[quadrant_index] += v * v;
+              mean_of_color[quadrant_index] += color;
+              mean_of_squared_color[quadrant_index] += color * color;
               quadrant_pixel_count[quadrant_index]++;
             }
 
             if (dx <= 0 && dy <= 0) {
               const int quadrant_index = 2;
-              mean_of_color[quadrant_index] += v;
-              mean_of_squared_color[quadrant_index] += v * v;
+              mean_of_color[quadrant_index] += color;
+              mean_of_squared_color[quadrant_index] += color * color;
               quadrant_pixel_count[quadrant_index]++;
             }
 
             if (dx >= 0 && dy <= 0) {
               const int quadrant_index = 3;
-              mean_of_color[quadrant_index] += v;
-              mean_of_squared_color[quadrant_index] += v * v;
+              mean_of_color[quadrant_index] += color;
+              mean_of_squared_color[quadrant_index] += color * color;
               quadrant_pixel_count[quadrant_index]++;
             }
           }

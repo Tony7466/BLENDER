@@ -27,12 +27,14 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
     case CMP_NODE_KUWAHARA_CLASSIC: {
       KuwaharaClassicOperation *kuwahara_classic = new KuwaharaClassicOperation();
       kuwahara_classic->set_kernel_size(data->size);
-      if(kuwahara_classic->get_kernel_size() >= 4) {
-        /* Naive computation is faster for small kernel sizes. */
-        kuwahara_classic->set_use_sat(true);
-        converter.add_operation(kuwahara_classic);
-        converter.map_input_socket(get_input_socket(0), kuwahara_classic->get_input_socket(0));
+      converter.add_operation(kuwahara_classic);
+      converter.map_input_socket(get_input_socket(0), kuwahara_classic->get_input_socket(0));
 
+      if(kuwahara_classic->get_kernel_size() < 4) {
+        /* Naive computation is faster for small kernel sizes. */
+        kuwahara_classic->set_use_sat(false);
+      }
+      else {
         SummedAreaTableOperation *sat = new SummedAreaTableOperation();
         sat->set_mode(SummedAreaTableOperation::eMode::Identity);
         converter.add_operation(sat);
