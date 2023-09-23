@@ -16,12 +16,45 @@
 
 namespace blender::bke::mesh {
 
-static void create_inverse_map(const Span<int> map, MutableSpan<int> inverted_map)
-{
-  for (const int i : map.index_range()) {
-    inverted_map[map[i]] = i;
+class IndexMapping {
+ private:
+  void calculate_inverse_map(const Span<int> map, MutableSpan<int> inverted_map)
+  {
+    for (const int i : map.index_range()) {
+      inverted_map[map[i]] = i;
+    }
   }
-}
+
+ public:
+  Array<int> from_sorted1;
+  Array<int> from_sorted2;
+  Array<int> to_sorted1;
+  Array<int> to_sorted2;
+  Array<int> set_ids;
+  Array<int> set_sizes;
+
+  IndexMapping(const int64_t domain_size)
+  {
+    to_sorted1 = Array<int>(domain_size);
+    to_sorted2 = Array<int>(domain_size);
+    from_sorted1 = Array<int>(domain_size);
+    from_sorted2 = Array<int>(domain_size);
+    set_ids = Array<int>(domain_size);
+    set_sizes = Array<int>(domain_size);
+    std::iota(from_sorted1.begin(), from_sorted1.end(), 0);
+    std::iota(from_sorted2.begin(), from_sorted2.end(), 0);
+    std::iota(to_sorted1.begin(), to_sorted1.end(), 0);
+    std::iota(to_sorted2.begin(), to_sorted2.end(), 0);
+    set_ids.fill(0);
+    set_sizes.fill(set_ids.size());
+  }
+
+  void recalculate_inverse_maps()
+  {
+    calculate_inverse_map(from_sorted1, to_sorted1);
+    calculate_inverse_map(from_sorted2, to_sorted2);
+  }
+};
 
 /**
  * Sort the indices using the values.
@@ -296,99 +329,56 @@ static void edges_from_vertex_sets(const Span<int2> edges,
 }
 static bool sort_edges(const Span<int2> edges1,
                        const Span<int2> edges2,
-                       const Span<int> verts1_to_sorted,
-                       const Span<int> verts2_to_sorted,
-                       const Span<int> vertex_set_ids,
-                       MutableSpan<int> sorted_to_edges1,
-                       MutableSpan<int> sorted_to_edges2,
-                       MutableSpan<int> edge_set_ids,
-                       MutableSpan<int> edge_set_sizes)
+                       const IndexMapping verts,
+                       IndexMapping edges)
 {
   /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
   Array<OrderedEdge> ordered_edges1(edges1.size(), NoInitialization());
   Array<OrderedEdge> ordered_edges2(edges2.size(), NoInitialization());
-  edges_from_vertex_sets(edges1, verts1_to_sorted, vertex_set_ids, ordered_edges1);
-  edges_from_vertex_sets(edges1, verts2_to_sorted, vertex_set_ids, ordered_edges2);
-  sort_per_set_based_on_attributes(edge_set_sizes,
-                                   sorted_to_edges1,
-                                   sorted_to_edges2,
+  edges_from_vertex_sets(edges1, verts.to_sorted1, verts.set_ids, ordered_edges1);
+  edges_from_vertex_sets(edges1, verts.to_sorted2, verts.set_ids, ordered_edges2);
+  sort_per_set_based_on_attributes(edges.set_sizes,
+                                   edges.from_sorted1,
+                                   edges.from_sorted2,
                                    ordered_edges1.as_span(),
                                    ordered_edges2.as_span());
-  const bool edges_match = update_set_ids(edge_set_ids,
+  const bool edges_match = update_set_ids(edges.set_ids,
                                           ordered_edges1.as_span(),
                                           ordered_edges2.as_span(),
-                                          sorted_to_edges1,
-                                          sorted_to_edges2);
+                                          edges.from_sorted1,
+                                          edges.from_sorted2);
   if (!edges_match) {
     return false;
   }
-  update_set_sizes(edge_set_ids, edge_set_sizes);
+  update_set_sizes(edges.set_ids, edges.set_sizes);
   return true;
 }
 
-static bool sort_corners_based_on_edges(const Span<int> corner_edges1,
-                                        const Span<int> corner_edges2,
-                                        const Span<int> edges1_to_sorted,
-                                        const Span<int> edges2_to_sorted,
-                                        const Span<int> edge_set_ids,
-                                        MutableSpan<int> sorted_to_corners1,
-                                        MutableSpan<int> sorted_to_corners2,
-                                        MutableSpan<int> corner_set_ids,
-                                        MutableSpan<int> corner_set_sizes)
+static bool sort_corners_based_on_domain(const Span<int> corner_domain1,
+                                         const Span<int> corner_domain2,
+                                         const IndexMapping domain,
+                                         IndexMapping corners)
 {
-  sort_per_set_with_id_maps(corner_set_sizes,
-                            corner_edges1,
-                            corner_edges2,
-                            edges1_to_sorted,
-                            edges2_to_sorted,
-                            edge_set_ids,
-                            sorted_to_corners1,
-                            sorted_to_corners2);
-  const bool corners_line_up = update_set_ids_with_id_maps(corner_set_ids,
-                                                           corner_edges1,
-                                                           corner_edges2,
-                                                           edges1_to_sorted,
-                                                           edges2_to_sorted,
-                                                           edge_set_ids,
-                                                           sorted_to_corners1,
-                                                           sorted_to_corners2);
+  sort_per_set_with_id_maps(corners.set_sizes,
+                            corner_domain1,
+                            corner_domain2,
+                            domain.to_sorted1,
+                            domain.to_sorted2,
+                            domain.set_ids,
+                            corners.from_sorted1,
+                            corners.from_sorted2);
+  const bool corners_line_up = update_set_ids_with_id_maps(corners.set_ids,
+                                                           corner_domain1,
+                                                           corner_domain2,
+                                                           domain.to_sorted1,
+                                                           domain.to_sorted2,
+                                                           domain.set_ids,
+                                                           corners.from_sorted1,
+                                                           corners.from_sorted2);
   if (!corners_line_up) {
     return false;
   }
-  update_set_sizes(corner_set_ids, corner_set_sizes);
-  return true;
-}
-
-static bool sort_corners_based_on_verts(const Span<int> corner_verts1,
-                                        const Span<int> corner_verts2,
-                                        const Span<int> verts1_to_sorted,
-                                        const Span<int> verts2_to_sorted,
-                                        const Span<int> vertex_set_ids,
-                                        MutableSpan<int> sorted_to_corners1,
-                                        MutableSpan<int> sorted_to_corners2,
-                                        MutableSpan<int> corner_set_ids,
-                                        MutableSpan<int> corner_set_sizes)
-{
-  sort_per_set_with_id_maps(corner_set_sizes,
-                            corner_verts1,
-                            corner_verts2,
-                            verts1_to_sorted,
-                            verts2_to_sorted,
-                            vertex_set_ids,
-                            sorted_to_corners1,
-                            sorted_to_corners2);
-  const bool corners_line_up = update_set_ids_with_id_maps(corner_set_ids,
-                                                           corner_verts1,
-                                                           corner_verts2,
-                                                           verts1_to_sorted,
-                                                           verts2_to_sorted,
-                                                           vertex_set_ids,
-                                                           sorted_to_corners1,
-                                                           sorted_to_corners2);
-  if (!corners_line_up) {
-    return false;
-  }
-  update_set_sizes(corner_set_ids, corner_set_sizes);
+  update_set_sizes(corners.set_ids, corners.set_sizes);
   return true;
 }
 
@@ -412,37 +402,32 @@ static void calc_smallest_corner_ids(const Span<int> face_offsets,
   }
 }
 
-static bool sort_faces_based_on_corners(const Span<int> corners_to_sorted1,
-                                        const Span<int> corners_to_sorted2,
-                                        const Span<int> corner_set_ids,
+static bool sort_faces_based_on_corners(const IndexMapping corners,
                                         const Span<int> face_offsets1,
                                         const Span<int> face_offsets2,
-                                        MutableSpan<int> sorted_to_faces1,
-                                        MutableSpan<int> sorted_to_faces2,
-                                        MutableSpan<int> face_set_ids,
-                                        MutableSpan<int> face_set_sizes)
+                                        IndexMapping faces)
 {
   /* The smallest corner set id, per face. */
-  Array<int> smallest_corner_ids1(sorted_to_faces1.size());
-  Array<int> smallest_corner_ids2(sorted_to_faces2.size());
+  Array<int> smallest_corner_ids1(faces.from_sorted1.size());
+  Array<int> smallest_corner_ids2(faces.from_sorted2.size());
   calc_smallest_corner_ids(
-      face_offsets1, corners_to_sorted1, corner_set_ids, smallest_corner_ids1);
+      face_offsets1, corners.to_sorted1, corners.set_ids, smallest_corner_ids1);
   calc_smallest_corner_ids(
-      face_offsets2, corners_to_sorted2, corner_set_ids, smallest_corner_ids2);
-  sort_per_set_based_on_attributes(face_set_sizes,
-                                   sorted_to_faces1,
-                                   sorted_to_faces2,
+      face_offsets2, corners.to_sorted2, corners.set_ids, smallest_corner_ids2);
+  sort_per_set_based_on_attributes(faces.set_sizes,
+                                   faces.from_sorted1,
+                                   faces.from_sorted2,
                                    smallest_corner_ids1.as_span(),
                                    smallest_corner_ids2.as_span());
-  const bool faces_line_up = update_set_ids(face_set_ids,
+  const bool faces_line_up = update_set_ids(faces.set_ids,
                                             smallest_corner_ids1.as_span(),
                                             smallest_corner_ids2.as_span(),
-                                            sorted_to_faces1,
-                                            sorted_to_faces2);
+                                            faces.from_sorted1,
+                                            faces.from_sorted2);
   if (!faces_line_up) {
     return false;
   }
-  update_set_sizes(face_set_ids, face_set_sizes);
+  update_set_sizes(faces.set_ids, faces.set_sizes);
   return true;
 }
 
@@ -469,10 +454,7 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
     const AttributeAccessor &mesh2_attributes,
     const eAttrDomain domain,
     const Span<StringRef> excluded_attributes,
-    MutableSpan<int> sorted_to_domain1,
-    MutableSpan<int> sorted_to_domain2,
-    MutableSpan<int> domain_set_ids,
-    MutableSpan<int> domain_set_sizes)
+    IndexMapping &maps)
 {
 
   /* We only need the ids from one mesh, since we know they have the same attributes. */
@@ -499,10 +481,10 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       const VArraySpan<T> values2 = reader2.varray.typed<T>();
 
       sort_per_set_based_on_attributes(
-          domain_set_sizes, sorted_to_domain1, sorted_to_domain2, values1, values2);
+          maps.set_sizes, maps.from_sorted1, maps.from_sorted2, values1, values2);
 
       const bool attributes_line_up = update_set_ids(
-          domain_set_ids, values1, values2, sorted_to_domain1, sorted_to_domain2);
+          maps.set_ids, values1, values2, maps.from_sorted1, maps.from_sorted2);
       if (!attributes_line_up) {
         switch (domain) {
           case ATTR_DOMAIN_POINT:
@@ -523,7 +505,7 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
         }
         return;
       }
-      update_set_sizes(domain_set_ids, domain_set_sizes);
+      update_set_sizes(maps.set_ids, maps.set_sizes);
     });
 
     if (mismatch) {
@@ -581,111 +563,44 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
 
   std::cout << "attributes are compatible" << std::endl;
 
-  Array<int> sorted_to_verts1(mesh1.totvert);
-  Array<int> sorted_to_verts2(mesh1.totvert);
-  Array<int> vertex_set_ids(mesh1.totvert);
-  Array<int> vertex_set_sizes(mesh1.totvert);
-  std::iota(sorted_to_verts1.begin(), sorted_to_verts1.end(), 0);
-  std::iota(sorted_to_verts2.begin(), sorted_to_verts2.end(), 0);
-  vertex_set_ids.fill(0);
-  vertex_set_sizes.fill(vertex_set_ids.size());
-  mismatch = sort_domain_using_attributes(mesh1_attributes,
-                                          mesh2_attributes,
-                                          ATTR_DOMAIN_POINT,
-                                          {},
-                                          sorted_to_verts1,
-                                          sorted_to_verts2,
-                                          vertex_set_ids,
-                                          vertex_set_sizes);
+  IndexMapping verts(mesh1.totvert);
+  mismatch = sort_domain_using_attributes(
+      mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_POINT, {}, verts);
   if (mismatch) {
     return mismatch;
   };
 
   /* We need the maps going the other way as well. */
-  Array<int> verts1_to_sorted(sorted_to_verts1.size());
-  Array<int> verts2_to_sorted(sorted_to_verts2.size());
-  create_inverse_map(sorted_to_verts1, verts1_to_sorted);
-  create_inverse_map(sorted_to_verts2, verts2_to_sorted);
+  verts.recalculate_inverse_maps();
 
   std::cout << "sorted vertices" << std::endl;
 
-  Array<int> sorted_to_edges1(mesh1.totedge);
-  Array<int> sorted_to_edges2(mesh1.totedge);
-  Array<int> edge_set_ids(mesh1.totedge);
-  Array<int> edge_set_sizes(mesh1.totedge);
-  std::iota(sorted_to_edges1.begin(), sorted_to_edges1.end(), 0);
-  std::iota(sorted_to_edges2.begin(), sorted_to_edges2.end(), 0);
-  edge_set_ids.fill(0);
-  edge_set_sizes.fill(edge_set_ids.size());
-  if (!sort_edges(mesh1.edges(),
-                  mesh2.edges(),
-                  verts1_to_sorted,
-                  verts2_to_sorted,
-                  vertex_set_ids,
-                  sorted_to_edges1,
-                  sorted_to_edges2,
-                  edge_set_ids,
-                  edge_set_sizes))
-  {
+  IndexMapping edges(mesh1.totedge);
+  if (!sort_edges(mesh1.edges(), mesh2.edges(), verts, edges)) {
     return MeshMismatch::EdgeTopology;
   }
 
   std::cout << "sorted edges" << std::endl;
 
-  mismatch = sort_domain_using_attributes(mesh1_attributes,
-                                          mesh2_attributes,
-                                          ATTR_DOMAIN_EDGE,
-                                          {".edge_verts"},
-                                          sorted_to_edges1,
-                                          sorted_to_edges2,
-                                          edge_set_ids,
-                                          edge_set_sizes);
+  mismatch = sort_domain_using_attributes(
+      mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_EDGE, {".edge_verts"}, edges);
   if (mismatch) {
     return mismatch;
   };
 
   /* We need the maps going the other way as well. */
-  Array<int> edges1_to_sorted(sorted_to_edges1.size());
-  Array<int> edges2_to_sorted(sorted_to_edges2.size());
-  create_inverse_map(sorted_to_edges1, edges1_to_sorted);
-  create_inverse_map(sorted_to_edges2, edges2_to_sorted);
+  edges.recalculate_inverse_maps();
 
   std::cout << "sorted edge domain" << std::endl;
 
-  Array<int> sorted_to_corners1(mesh1.totloop);
-  Array<int> sorted_to_corners2(mesh1.totloop);
-  Array<int> corner_set_ids(mesh1.totloop);
-  Array<int> corner_set_sizes(mesh1.totloop);
-  std::iota(sorted_to_corners1.begin(), sorted_to_corners1.end(), 0);
-  std::iota(sorted_to_corners2.begin(), sorted_to_corners2.end(), 0);
-  corner_set_ids.fill(0);
-  corner_set_sizes.fill(corner_set_ids.size());
-
-  if (!sort_corners_based_on_verts(mesh1.corner_verts(),
-                                   mesh2.corner_verts(),
-                                   verts1_to_sorted,
-                                   verts2_to_sorted,
-                                   vertex_set_ids,
-                                   sorted_to_corners1,
-                                   sorted_to_corners2,
-                                   corner_set_ids,
-                                   corner_set_sizes))
-  {
+  IndexMapping corners(mesh1.totloop);
+  if (!sort_corners_based_on_domain(mesh1.corner_verts(), mesh2.corner_verts(), verts, corners)) {
     return MeshMismatch::FaceTopology;
   }
 
   std::cout << "sorted corner verts" << std::endl;
 
-  if (!sort_corners_based_on_edges(mesh1.corner_edges(),
-                                   mesh2.corner_edges(),
-                                   edges1_to_sorted,
-                                   edges2_to_sorted,
-                                   edge_set_ids,
-                                   sorted_to_corners1,
-                                   sorted_to_corners2,
-                                   corner_set_ids,
-                                   corner_set_sizes))
-  {
+  if (!sort_corners_based_on_domain(mesh1.corner_edges(), mesh2.corner_edges(), edges, corners)) {
     return MeshMismatch::FaceTopology;
   }
 
@@ -695,52 +610,23 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
                                           mesh2_attributes,
                                           ATTR_DOMAIN_CORNER,
                                           {".corner_vert", ".corner_edge"},
-                                          sorted_to_corners1,
-                                          sorted_to_corners2,
-                                          corner_set_ids,
-                                          corner_set_sizes);
+                                          corners);
   if (mismatch) {
     return mismatch;
   };
 
   /* We need the maps going the other way as well. */
-  Array<int> corners1_to_sorted(sorted_to_corners1.size());
-  Array<int> corners2_to_sorted(sorted_to_corners2.size());
-  create_inverse_map(sorted_to_corners1, corners1_to_sorted);
-  create_inverse_map(sorted_to_corners2, corners2_to_sorted);
+  corners.recalculate_inverse_maps();
 
   std::cout << "sorted corner domain" << std::endl;
 
-  Array<int> sorted_to_faces1(mesh1.faces_num);
-  Array<int> sorted_to_faces2(mesh1.faces_num);
-  Array<int> face_set_ids(mesh1.faces_num);
-  Array<int> face_set_sizes(mesh1.faces_num);
-  std::iota(sorted_to_faces1.begin(), sorted_to_faces1.end(), 0);
-  std::iota(sorted_to_faces2.begin(), sorted_to_faces2.end(), 0);
-  face_set_ids.fill(0);
-  face_set_sizes.fill(face_set_ids.size());
-
-  if (!sort_faces_based_on_corners(corners1_to_sorted,
-                                   corners2_to_sorted,
-                                   corner_set_ids,
-                                   mesh1.face_offsets(),
-                                   mesh2.face_offsets(),
-                                   sorted_to_faces1,
-                                   sorted_to_faces2,
-                                   face_set_ids,
-                                   face_set_sizes))
-  {
+  IndexMapping faces(mesh1.faces_num);
+  if (!sort_faces_based_on_corners(corners, mesh1.face_offsets(), mesh2.face_offsets(), faces)) {
     return MeshMismatch::FaceTopology;
   }
 
-  mismatch = sort_domain_using_attributes(mesh1_attributes,
-                                          mesh2_attributes,
-                                          ATTR_DOMAIN_FACE,
-                                          {},
-                                          sorted_to_faces1,
-                                          sorted_to_faces2,
-                                          face_set_ids,
-                                          face_set_sizes);
+  mismatch = sort_domain_using_attributes(
+      mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_FACE, {}, faces);
   if (mismatch) {
     return mismatch;
   };
