@@ -392,6 +392,60 @@ static bool sort_corners_based_on_verts(const Span<int> corner_verts1,
   return true;
 }
 
+static void calc_smallest_corner_ids(const Span<int> face_offsets,
+                                     const Span<int> corners_to_sorted,
+                                     const Span<int> corner_set_ids,
+                                     MutableSpan<int> smallest_corner_ids)
+{
+  for (const int face_i : smallest_corner_ids.index_range()) {
+    const int face_start = face_offsets[face_i];
+    const int face_end = face_offsets[face_i + 1];
+    int smallest = corner_set_ids[corners_to_sorted[face_start]];
+    const IndexRange corners = IndexRange(face_start, face_end - face_start);
+    for (const int corner_i : corners.drop_front(1)) {
+      const int corner_id = corner_set_ids[corners_to_sorted[corner_i]];
+      if (corner_id < smallest) {
+        smallest = corner_id;
+      }
+    }
+    smallest_corner_ids[face_i] = smallest;
+  }
+}
+
+static bool sort_faces_based_on_corners(const Span<int> corners_to_sorted1,
+                                        const Span<int> corners_to_sorted2,
+                                        const Span<int> corner_set_ids,
+                                        const Span<int> face_offsets1,
+                                        const Span<int> face_offsets2,
+                                        MutableSpan<int> sorted_to_faces1,
+                                        MutableSpan<int> sorted_to_faces2,
+                                        MutableSpan<int> face_set_ids,
+                                        MutableSpan<int> face_set_sizes)
+{
+  /* The smallest corner set id, per face. */
+  Array<int> smallest_corner_ids1(sorted_to_faces1.size());
+  Array<int> smallest_corner_ids2(sorted_to_faces2.size());
+  calc_smallest_corner_ids(
+      face_offsets1, corners_to_sorted1, corner_set_ids, smallest_corner_ids1);
+  calc_smallest_corner_ids(
+      face_offsets2, corners_to_sorted2, corner_set_ids, smallest_corner_ids2);
+  sort_per_set_based_on_attributes(face_set_sizes,
+                                   sorted_to_faces1,
+                                   sorted_to_faces2,
+                                   smallest_corner_ids1.as_span(),
+                                   smallest_corner_ids2.as_span());
+  const bool faces_line_up = update_set_ids(face_set_ids,
+                                            smallest_corner_ids1.as_span(),
+                                            smallest_corner_ids2.as_span(),
+                                            sorted_to_faces1,
+                                            sorted_to_faces2);
+  if (!faces_line_up) {
+    return false;
+  }
+  update_set_sizes(face_set_ids, face_set_sizes);
+  return true;
+}
+
 static std::optional<MeshMismatch> verify_attributes_compatible(
     const AttributeAccessor &mesh1_attributes, const AttributeAccessor &mesh2_attributes)
 {
@@ -649,6 +703,12 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
     return mismatch;
   };
 
+  /* We need the maps going the other way as well. */
+  Array<int> corners1_to_sorted(sorted_to_corners1.size());
+  Array<int> corners2_to_sorted(sorted_to_corners2.size());
+  create_inverse_map(sorted_to_corners1, corners1_to_sorted);
+  create_inverse_map(sorted_to_corners2, corners2_to_sorted);
+
   std::cout << "sorted corner domain" << std::endl;
 
   Array<int> sorted_to_faces1(mesh1.faces_num);
@@ -659,7 +719,20 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
   std::iota(sorted_to_faces2.begin(), sorted_to_faces2.end(), 0);
   face_set_ids.fill(0);
   face_set_sizes.fill(face_set_ids.size());
-  /* TODO: sort the faces using the corner set ids. */
+
+  if (!sort_faces_based_on_corners(corners1_to_sorted,
+                                   corners2_to_sorted,
+                                   corner_set_ids,
+                                   mesh1.face_offsets(),
+                                   mesh2.face_offsets(),
+                                   sorted_to_faces1,
+                                   sorted_to_faces2,
+                                   face_set_ids,
+                                   face_set_sizes))
+  {
+    return MeshMismatch::FaceTopology;
+  }
+
   mismatch = sort_domain_using_attributes(mesh1_attributes,
                                           mesh2_attributes,
                                           ATTR_DOMAIN_FACE,
