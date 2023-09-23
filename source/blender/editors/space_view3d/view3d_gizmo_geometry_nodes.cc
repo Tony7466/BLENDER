@@ -29,6 +29,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_log.hh"
 
 #include "MOD_nodes.hh"
@@ -59,23 +60,54 @@ struct SocketItem {
 struct FloatValuePath {
   PointerRNA owner;
   PropertyRNA *property;
-  int index = -1;
+  std::optional<int> index;
 
   float get()
   {
-    if (this->index == -1) {
-      return RNA_property_float_get(&this->owner, this->property);
+    const PropertyType prop_type = RNA_property_type(this->property);
+    const bool prop_is_array = RNA_property_array_check(this->property);
+    if (prop_is_array) {
+      BLI_assert(this->index.has_value());
+      if (prop_type == PROP_FLOAT) {
+        return RNA_property_float_get_index(&this->owner, this->property, *this->index);
+      }
+      else if (prop_type == PROP_INT) {
+        return RNA_property_int_get_index(&this->owner, this->property, *this->index);
+      }
     }
-    return RNA_property_float_get_index(&this->owner, this->property, this->index);
+    else {
+      if (prop_type == PROP_FLOAT) {
+        return RNA_property_float_get(&this->owner, this->property);
+      }
+      else if (prop_type == PROP_INT) {
+        return RNA_property_int_get(&this->owner, this->property);
+      }
+    }
+    BLI_assert_unreachable();
+    return 0.0f;
   }
 
   void set_and_update(bContext *C, const float value)
   {
-    if (this->index == -1) {
-      RNA_property_float_set(&this->owner, this->property, value);
+    const PropertyType prop_type = RNA_property_type(this->property);
+    const bool prop_is_array = RNA_property_array_check(this->property);
+
+    if (prop_is_array) {
+      BLI_assert(this->index.has_value());
+      if (prop_type == PROP_FLOAT) {
+        RNA_property_float_set_index(&this->owner, this->property, *this->index, value);
+      }
+      else if (prop_type == PROP_INT) {
+        RNA_property_int_set_index(&this->owner, this->property, *this->index, value);
+      }
     }
     else {
-      RNA_property_float_set_index(&this->owner, this->property, this->index, value);
+      if (prop_type == PROP_FLOAT) {
+        RNA_property_float_set(&this->owner, this->property, value);
+      }
+      else if (prop_type == PROP_INT) {
+        RNA_property_int_set(&this->owner, this->property, value);
+      }
     }
     RNA_property_update(C, &this->owner, this->property);
   }
@@ -86,129 +118,13 @@ struct GizmoFloatVariable {
   float derivative;
 };
 
-static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
-    const SocketItem &input_socket,
-    const ComputeContext &compute_context,
-    const Object &object,
-    const NodesModifierData &nmd);
-
-static std::optional<FloatValuePath> find_float_value_path_for_output_socket(
-    const SocketItem &output_socket,
-    const ComputeContext &compute_context,
-    const Object &object,
-    const NodesModifierData &nmd)
-{
-  BLI_assert(output_socket.socket.is_output());
-  const bNodeTree &ntree = output_socket.socket.owner_tree();
-  const bNode &node = output_socket.socket.owner_node();
-  if (node.is_reroute()) {
-    return find_float_value_path_for_input_socket(
-        {node.input_socket(0), output_socket.elem_index}, compute_context, object, nmd);
-  }
-  if (node.type == SH_NODE_VALUE) {
-    PointerRNA owner = RNA_pointer_create(const_cast<ID *>(&ntree.id),
-                                          &RNA_NodeSocket,
-                                          const_cast<bNodeSocket *>(&output_socket.socket));
-    PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
-    return FloatValuePath{owner, prop};
-  }
-  if (node.type == FN_NODE_INPUT_VECTOR) {
-    if (output_socket.elem_index < 0 || output_socket.elem_index >= 3) {
-      return std::nullopt;
-    }
-    PointerRNA owner = RNA_pointer_create(
-        const_cast<ID *>(&ntree.id), &RNA_Node, const_cast<bNode *>(&node));
-    PropertyRNA *prop = RNA_struct_find_property(&owner, "vector");
-    return FloatValuePath{owner, prop, output_socket.elem_index};
-  }
-  if (node.type == SH_NODE_SEPXYZ) {
-    const int axis = output_socket.socket.index();
-    const bNodeSocket &input_socket = node.input_socket(0);
-    return find_float_value_path_for_input_socket(
-        {input_socket, axis}, compute_context, object, nmd);
-  }
-  if (node.type == SH_NODE_COMBXYZ) {
-    const int axis = output_socket.elem_index;
-    if (axis < 0 || axis >= 3) {
-      return std::nullopt;
-    }
-    const bNodeSocket &input_socket = node.input_socket(axis);
-    return find_float_value_path_for_input_socket({input_socket}, compute_context, object, nmd);
-  }
-  if (node.type == NODE_GROUP_INPUT) {
-    if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
-      const StringRefNull input_identifier =
-          ntree.interface_inputs()[output_socket.socket.index()]->identifier;
-      IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                         input_identifier.c_str());
-      if (id_property == nullptr) {
-        return std::nullopt;
-      }
-      PointerRNA owner = RNA_pointer_create(
-          const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-      PropertyRNA *prop = reinterpret_cast<PropertyRNA *>(id_property);
-      if (output_socket.elem_index == -1) {
-        if (id_property->type != IDP_FLOAT) {
-          return std::nullopt;
-        }
-        return FloatValuePath{owner, prop};
-      }
-      else {
-        if (id_property->type != IDP_ARRAY) {
-          return std::nullopt;
-        }
-        if (id_property->subtype != IDP_FLOAT) {
-          return std::nullopt;
-        }
-        if (id_property->len <= output_socket.elem_index) {
-          return std::nullopt;
-        }
-        return FloatValuePath{owner, prop, output_socket.elem_index};
-      }
-    }
-  }
-  return std::nullopt;
-}
-
-static std::optional<FloatValuePath> find_float_value_path_for_input_socket(
-    const SocketItem &input_socket,
-    const ComputeContext &compute_context,
-    const Object &object,
-    const NodesModifierData &nmd)
-{
-  BLI_assert(input_socket.socket.is_input());
-  const bNodeTree &ntree = input_socket.socket.owner_tree();
-  const Span<const bNodeLink *> links = input_socket.socket.directly_linked_links();
-  if ((input_socket.socket.flag & SOCK_HIDE_VALUE) == 0 &&
-      input_socket.socket.type == SOCK_FLOAT && links.is_empty())
-  {
-    PointerRNA owner = RNA_pointer_create(const_cast<ID *>(&ntree.id),
-                                          &RNA_NodeSocket,
-                                          const_cast<bNodeSocket *>(&input_socket.socket));
-    PropertyRNA *prop = RNA_struct_find_property(&owner, "default_value");
-    return FloatValuePath{owner, prop};
-  }
-  if (links.size() != 1) {
-    return std::nullopt;
-  }
-  const bNodeLink &link = *links[0];
-  if (link.is_muted()) {
-    return std::nullopt;
-  }
-  const bNodeSocket &origin_socket = *link.fromsock;
-  if (!origin_socket.is_available()) {
-    return std::nullopt;
-  }
-  return find_float_value_path_for_output_socket(
-      {origin_socket, input_socket.elem_index}, compute_context, object, nmd);
-}
-
 static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
                                                           const ComputeContext &compute_context,
                                                           const Object &object,
                                                           const NodesModifierData &nmd)
 {
   BLI_assert(gizmo_value_socket.is_input());
+  const bNodeTree &ntree = *nmd.node_group;
   Vector<GizmoFloatVariable> value_paths;
   const Span<const bNodeLink *> links = gizmo_value_socket.directly_linked_links();
   for (const bNodeLink *link : links) {
@@ -242,11 +158,71 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
       }
       origin_socket = origin_link->fromsock;
     }
-    if (std::optional<FloatValuePath> value_path = find_float_value_path_for_output_socket(
-            {*origin_socket}, compute_context, object, nmd))
-    {
-      value_paths.append({*value_path, derivative});
+
+    const std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt =
+        nodes::gizmos::find_scalar_gizmo_source(*origin_socket);
+    if (!gizmo_source_opt) {
+      continue;
     }
+
+    FloatValuePath value_path;
+
+    ID *ntree_id = const_cast<ID *>(&ntree.id);
+
+    if (const auto *gizmo_source = std::get_if<nodes::gizmos::InputSocketGizmoSource>(
+            &*gizmo_source_opt))
+    {
+      value_path.owner = RNA_pointer_create(
+          ntree_id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
+      value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
+    }
+    else if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
+                 &*gizmo_source_opt))
+    {
+      switch (gizmo_source->value_node->type) {
+        case SH_NODE_VALUE: {
+          value_path.owner = RNA_pointer_create(
+              ntree_id,
+              &RNA_NodeSocket,
+              const_cast<bNodeSocket *>(&gizmo_source->value_node->output_socket(0)));
+          value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
+          break;
+        }
+        case FN_NODE_INPUT_VECTOR: {
+          value_path.owner = RNA_pointer_create(
+              ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+          value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
+          value_path.index = *gizmo_source->elem_index;
+          break;
+        }
+        case FN_NODE_INPUT_INT: {
+          value_path.owner = RNA_pointer_create(
+              ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+          value_path.property = RNA_struct_find_property(&value_path.owner, "integer");
+          break;
+        }
+      }
+    }
+    else if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
+                 &*gizmo_source_opt))
+    {
+      const StringRefNull input_identifier =
+          ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
+      IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                         input_identifier.c_str());
+      if (id_property == nullptr) {
+        continue;
+      }
+      value_path.owner = RNA_pointer_create(
+          const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
+      value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
+      value_path.index = gizmo_source->elem_index;
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+
+    value_paths.append({value_path, derivative});
   }
   return value_paths;
 }
@@ -286,6 +262,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   }
 
   bNodeTree &ntree = *nmd.node_group;
+  ntree.ensure_topology_cache();
 
   bke::ModifierComputeContext compute_context{nullptr, nmd.modifier.name};
   geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
