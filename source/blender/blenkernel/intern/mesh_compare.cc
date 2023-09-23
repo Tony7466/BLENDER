@@ -327,16 +327,17 @@ static void edges_from_vertex_sets(const Span<int2> edges,
                              vertex_set_ids[verts_to_sorted[e.y]]);
   }
 }
+
 static bool sort_edges(const Span<int2> edges1,
                        const Span<int2> edges2,
-                       const IndexMapping verts,
-                       IndexMapping edges)
+                       const IndexMapping &verts,
+                       IndexMapping &edges)
 {
   /* Need `NoInitialization()` because OrderedEdge is not default constructible. */
   Array<OrderedEdge> ordered_edges1(edges1.size(), NoInitialization());
   Array<OrderedEdge> ordered_edges2(edges2.size(), NoInitialization());
   edges_from_vertex_sets(edges1, verts.to_sorted1, verts.set_ids, ordered_edges1);
-  edges_from_vertex_sets(edges1, verts.to_sorted2, verts.set_ids, ordered_edges2);
+  edges_from_vertex_sets(edges2, verts.to_sorted2, verts.set_ids, ordered_edges2);
   sort_per_set_based_on_attributes(edges.set_sizes,
                                    edges.from_sorted1,
                                    edges.from_sorted2,
@@ -356,8 +357,8 @@ static bool sort_edges(const Span<int2> edges1,
 
 static bool sort_corners_based_on_domain(const Span<int> corner_domain1,
                                          const Span<int> corner_domain2,
-                                         const IndexMapping domain,
-                                         IndexMapping corners)
+                                         const IndexMapping &domain,
+                                         IndexMapping &corners)
 {
   sort_per_set_with_id_maps(corners.set_sizes,
                             corner_domain1,
@@ -402,10 +403,10 @@ static void calc_smallest_corner_ids(const Span<int> face_offsets,
   }
 }
 
-static bool sort_faces_based_on_corners(const IndexMapping corners,
+static bool sort_faces_based_on_corners(const IndexMapping &corners,
                                         const Span<int> face_offsets1,
                                         const Span<int> face_offsets2,
-                                        IndexMapping faces)
+                                        IndexMapping &faces)
 {
   /* The smallest corner set id, per face. */
   Array<int> smallest_corner_ids1(faces.from_sorted1.size());
@@ -515,6 +516,16 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
   return {};
 }
 
+static bool all_set_sizes_one(const Span<int> set_sizes)
+{
+  for (const int size : set_sizes) {
+    if (size != 1) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Tries to construct a (bijective) mapping from the vertices of the first mesh to the
  * vertices of the second mesh, such that:
@@ -527,9 +538,86 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
  *
  * \returns the type of mismatch that occured if the mapping couldn't be constructed.
  */
-static std::optional<MeshMismatch> construct_vertex_mapping()
+static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
+                                                            const Mesh &mesh2,
+                                                            IndexMapping &verts,
+                                                            IndexMapping &edges)
 {
-  /* TODO. */
+  if (all_set_sizes_one(verts.set_sizes)) {
+    /* The vertices are already in one-to-one correspondence. */
+    return {};
+  }
+
+  /* Since we are not yet able to distiniguish all vertices based on their attributes alone, we
+  need to use the edge topology. */
+  Array<int> vert_to_edge_offsets1;
+  Array<int> vert_to_edge_indices1;
+  const GroupedSpan<int> vert_to_edge_map1 = mesh::build_vert_to_edge_map(
+      mesh1.edges(), mesh1.totvert, vert_to_edge_offsets1, vert_to_edge_indices1);
+  Array<int> vert_to_edge_offsets2;
+  Array<int> vert_to_edge_indices2;
+  const GroupedSpan<int> vert_to_edge_map2 = mesh::build_vert_to_edge_map(
+      mesh2.edges(), mesh2.totvert, vert_to_edge_offsets2, vert_to_edge_indices2);
+
+  for (const int sorted_i : verts.from_sorted1.index_range()) {
+    const int vert1 = verts.from_sorted1[sorted_i];
+    Vector<int> matching_verts;
+    const Span<int> edges1 = vert_to_edge_map1[vert1];
+    /* Try to find all matching vertices. We know that it will be in the same vertex set, if it
+     * exists. */
+    for (const int index_in_set : IndexRange(verts.set_sizes[sorted_i])) {
+      /* The set id is the index of its first element. */
+      const int vert2 = verts.from_sorted2[verts.set_ids[sorted_i] + index_in_set];
+      const Span<int> edges2 = vert_to_edge_map2[vert2];
+      if (edges1.size() != edges2.size()) {
+        continue;
+      }
+      bool vertex_matches = true;
+      for (const int edge1 : edges1) {
+        bool found_matching_edge = false;
+        for (const int edge2 : edges2) {
+          if (edges.set_ids[edges.to_sorted1[edge1]] == edges.set_ids[edges.to_sorted2[edge2]]) {
+            found_matching_edge = true;
+            break;
+          }
+        }
+        if (!found_matching_edge) {
+          vertex_matches = false;
+          break;
+        }
+      }
+      if (vertex_matches) {
+        matching_verts.append(index_in_set);
+      }
+    }
+
+    if (matching_verts.is_empty()) {
+      return MeshMismatch::EdgeTopology;
+    }
+
+    /* Technically this could happen if the mesh has a lot of overlapping edges. We assume that
+     * the mesh is of good enough quality that this doesn't happen. Otherwise, the logic becomes a
+     * lot more difficult. */
+    if (matching_verts.size() != 1) {
+      BLI_assert(false);
+    }
+
+    /* Update the maps. */
+    const int set_i = matching_verts.first();
+    std::swap(verts.from_sorted2[sorted_i], verts.from_sorted2[verts.set_ids[sorted_i] + set_i]);
+    for (const int other_set_i : IndexRange(verts.set_ids[sorted_i], verts.set_sizes[sorted_i])) {
+      /* New first element, since this one is now in a new set. */
+      verts.set_ids[other_set_i] = sorted_i + 1;
+      verts.set_sizes[other_set_i] -= 1;
+    }
+    verts.set_ids[sorted_i] = sorted_i;
+    verts.set_sizes[sorted_i] = 1;
+  }
+
+  BLI_assert(all_set_sizes_one(verts.set_sizes));
+
+  verts.recalculate_inverse_maps();
+
   return {};
 }
 
@@ -625,6 +713,8 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
     return MeshMismatch::FaceTopology;
   }
 
+  std::cout << "sorted faces" << std::endl;
+
   mismatch = sort_domain_using_attributes(
       mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_FACE, {}, faces);
   if (mismatch) {
@@ -633,8 +723,42 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mes
 
   std::cout << "sorted face domain" << std::endl;
 
-  /* TODO: try to construct the actual bijections. */
-  return construct_vertex_mapping();
+  mismatch = construct_vertex_mapping(mesh1, mesh2, verts, edges);
+  if (mismatch) {
+    return mismatch;
+  }
+
+  std::cout << "constructed vertex mapping" << std::endl;
+
+  /* Now we double check that the other topology maps agree with this vertex mapping. */
+
+  if (!sort_edges(mesh1.edges(), mesh2.edges(), verts, edges)) {
+    return MeshMismatch::EdgeTopology;
+  }
+
+  BLI_assert(all_set_sizes_one(edges.set_sizes));
+
+  edges.recalculate_inverse_maps();
+
+  if (!sort_corners_based_on_domain(mesh1.corner_verts(), mesh2.corner_verts(), verts, corners)) {
+    return MeshMismatch::FaceTopology;
+  }
+
+  if (!sort_corners_based_on_domain(mesh1.corner_edges(), mesh2.corner_edges(), edges, corners)) {
+    return MeshMismatch::FaceTopology;
+  }
+
+  BLI_assert(all_set_sizes_one(corners.set_sizes));
+
+  corners.recalculate_inverse_maps();
+
+  if (!sort_faces_based_on_corners(corners, mesh1.face_offsets(), mesh2.face_offsets(), faces)) {
+    return MeshMismatch::FaceTopology;
+  }
+
+  BLI_assert(all_set_sizes_one(faces.set_sizes));
+
+  return {};
 }
 
 }  // namespace blender::bke::mesh
