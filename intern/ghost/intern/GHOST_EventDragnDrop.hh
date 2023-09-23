@@ -74,7 +74,7 @@ class GHOST_EventDragnDrop : public GHOST_Event {
   ~GHOST_EventDragnDrop()
   {
     /* Free the dropped object data. */
-    if (m_dragnDropEventData.data == NULL)
+    if (m_dragnDropEventData.data == nullptr)
       return;
 
     switch (m_dragnDropEventData.dataType) {
@@ -90,7 +90,8 @@ class GHOST_EventDragnDrop : public GHOST_Event {
 
         free(strArray->strings);
         free(strArray);
-      } break;
+        break;
+      }
       case GHOST_kDragnDropTypeString:
         free(m_dragnDropEventData.data);
         break;

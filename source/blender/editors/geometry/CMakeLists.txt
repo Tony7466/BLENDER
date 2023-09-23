@@ -1,17 +1,18 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../../asset_system
+  ../../blenkernel
   ../../blentranslation
+  ../../bmesh
   ../../depsgraph
   ../../functions
   ../../makesrna
   ../../nodes
   ../../windowmanager
-  ../../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -29,7 +30,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   bf_depsgraph
   PRIVATE bf::dna

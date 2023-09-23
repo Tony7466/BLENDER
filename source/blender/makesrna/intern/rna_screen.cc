@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup RNA
  */
 
-#include <stddef.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -18,16 +18,18 @@
 #include "DNA_screen_types.h"
 #include "DNA_workspace_types.h"
 
-#include "ED_info.h"
+#include "ED_info.hh"
 
 const EnumPropertyItem rna_enum_region_type_items[] = {
     {RGN_TYPE_WINDOW, "WINDOW", 0, "Window", ""},
     {RGN_TYPE_HEADER, "HEADER", 0, "Header", ""},
     {RGN_TYPE_CHANNELS, "CHANNELS", 0, "Channels", ""},
     {RGN_TYPE_TEMPORARY, "TEMPORARY", 0, "Temporary", ""},
-    {RGN_TYPE_UI, "UI", 0, "UI", ""},
+    {RGN_TYPE_UI, "UI", 0, "Sidebar", ""},
     {RGN_TYPE_TOOLS, "TOOLS", 0, "Tools", ""},
     {RGN_TYPE_TOOL_PROPS, "TOOL_PROPS", 0, "Tool Properties", ""},
+    {RGN_TYPE_ASSET_SHELF, "ASSET_SHELF", 0, "Asset Shelf", ""},
+    {RGN_TYPE_ASSET_SHELF_HEADER, "ASSET_SHELF_HEADER", 0, "Asset Shelf Header", ""},
     {RGN_TYPE_PREVIEW, "PREVIEW", 0, "Preview", ""},
     {RGN_TYPE_HUD, "HUD", 0, "Floating Region", ""},
     {RGN_TYPE_NAV_BAR, "NAVIGATION_BAR", 0, "Navigation Bar", ""},
@@ -38,22 +40,22 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_global.h"
 #  include "BKE_screen.h"
 #  include "BKE_workspace.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "UI_view2d.h"
+#  include "UI_view2d.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -280,8 +282,7 @@ static PointerRNA rna_Region_data_get(PointerRNA *ptr)
       /* We could make this static, it won't change at run-time. */
       SpaceType *st = BKE_spacetype_from_id(SPACE_VIEW3D);
       if (region->type == BKE_regiontype_from_id(st, region->regiontype)) {
-        PointerRNA newptr;
-        RNA_pointer_create(&screen->id, &RNA_RegionView3D, region->regiondata, &newptr);
+        PointerRNA newptr = RNA_pointer_create(&screen->id, &RNA_RegionView3D, region->regiondata);
         return newptr;
       }
     }
@@ -388,7 +389,7 @@ static void rna_def_area(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Area_type_update");
 
   prop = RNA_def_property(srna, "ui_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, DummyRNA_NULL_items); /* in fact dummy */
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items); /* in fact dummy */
   RNA_def_property_enum_default(prop, SPACE_VIEW3D << 16);
   RNA_def_property_enum_funcs(
       prop, "rna_Area_ui_type_get", "rna_Area_ui_type_set", "rna_Area_ui_type_itemf");
@@ -457,7 +458,7 @@ static void rna_def_view2d_api(StructRNA *srna)
   parm = RNA_def_float(
       func, "y", 0.0f, -FLT_MAX, FLT_MAX, "y", "2D View y coordinate", -10000.0f, 10000.0f);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_boolean(func, "clip", 1, "Clip", "Clip coordinates to the visible region");
+  RNA_def_boolean(func, "clip", true, "Clip", "Clip coordinates to the visible region");
   parm = RNA_def_int_array(func,
                            "result",
                            2,

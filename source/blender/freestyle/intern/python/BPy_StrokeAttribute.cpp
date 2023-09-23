@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -516,12 +516,14 @@ static int StrokeAttribute_mathutils_set_index(BaseMathObject *bmo, int subtype,
       float g = (index == 1) ? bmo->data[1] : self->sa->getColorG();
       float b = (index == 2) ? bmo->data[2] : self->sa->getColorB();
       self->sa->setColor(r, g, b);
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_THICKNESS: {
       float tr = (index == 0) ? bmo->data[0] : self->sa->getThicknessR();
       float tl = (index == 1) ? bmo->data[1] : self->sa->getThicknessL();
       self->sa->setThickness(tr, tl);
-    } break;
+      break;
+    }
     default:
       return -1;
   }
@@ -666,7 +668,7 @@ static PyGetSetDef BPy_StrokeAttribute_getseters[] = {
 /*-----------------------BPy_StrokeAttribute type definition ------------------------------*/
 
 PyTypeObject StrokeAttribute_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "StrokeAttribute",
     /*tp_basicsize*/ sizeof(BPy_StrokeAttribute),
     /*tp_itemsize*/ 0,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,10 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -25,10 +25,10 @@
 #  include "BKE_customdata.h"
 #  include "BKE_pointcloud.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static PointCloud *rna_pointcloud(const PointerRNA *ptr)
 {
@@ -52,7 +52,7 @@ static int rna_Point_index_get_const(const PointerRNA *ptr)
   const PointCloud *pointcloud = rna_pointcloud(ptr);
   const float(*co)[3] = static_cast<const float(*)[3]>(ptr->data);
   const float(*positions)[3] = get_pointcloud_positions_const(pointcloud);
-  return (int)(co - positions);
+  return int(co - positions);
 }
 
 static int rna_Point_index_get(PointerRNA *ptr)
@@ -194,7 +194,7 @@ static void rna_def_pointcloud(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
-  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
+  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.cc */
   RNA_def_property_collection_funcs(prop,
                                     nullptr,
                                     nullptr,

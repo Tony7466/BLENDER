@@ -9,7 +9,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -26,17 +25,17 @@
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 using blender::MutableSpan;
 
@@ -74,7 +73,7 @@ static void retiming_handle_overlap(Scene *scene, Sequence *seq)
 /** \name Retiming Reset
  * \{ */
 
-static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /* op */)
+static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
