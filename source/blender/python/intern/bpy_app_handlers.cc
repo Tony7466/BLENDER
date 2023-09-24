@@ -97,9 +97,14 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"_extension_repos_update_post", "on changes to extension repos (after)"},
 
 /* sets the permanent tag */
-#define APP_CB_OTHER_FIELDS 1
+#define APP_CB_OTHER_FIELDS 5
     {"persistent",
      "Function decorator for callback functions not to be removed when loading new files"},
+/* module attributes */
+    {"__name__", nullptr},
+    {"__spec__", nullptr},
+    {"__package__", nullptr},
+    {"__loader__", nullptr},
 
     {nullptr},
 };
@@ -228,18 +233,29 @@ static PyObject *make_app_cb_info()
     return nullptr;
   }
 
+  /* for BKE_callbacks.h, validate fields and prepare sequence */
   for (pos = 0; pos < BKE_CB_EVT_TOT; pos++) {
     if (app_cb_info_fields[pos].name == nullptr) {
       Py_FatalError("invalid callback slots 1");
     }
     PyStructSequence_SET_ITEM(app_cb_info, pos, (py_cb_array[pos] = PyList_New(0)));
   }
+
+  /* custom sequence items */
   if (app_cb_info_fields[pos + APP_CB_OTHER_FIELDS].name != nullptr) {
     Py_FatalError("invalid callback slots 2");
   }
 
-  /* custom function */
+  /* persistent decorator func */
   PyStructSequence_SET_ITEM(app_cb_info, pos++, (PyObject *)&BPyPersistent_Type);
+  /* __name__ */
+  PyStructSequence_SET_ITEM(app_cb_info, pos++, PyUnicode_FromString("bpy.app.handlers"));
+  /* __spec__ */
+  PyStructSequence_SET_ITEM(app_cb_info, pos++, Py_INCREF_RET(Py_None));
+  /* __package__ */
+  PyStructSequence_SET_ITEM(app_cb_info, pos++, Py_INCREF_RET(Py_None));
+  /* __loader__ */
+  PyStructSequence_SET_ITEM(app_cb_info, pos++, Py_INCREF_RET(Py_None));
 
   return app_cb_info;
 }

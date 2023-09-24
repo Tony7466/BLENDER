@@ -78,6 +78,10 @@ extern "C" char build_system[];
 static PyTypeObject BlenderAppType;
 
 static PyStructSequence_Field app_info_fields[] = {
+    {"__name__", nullptr},
+    {"__spec__", nullptr},
+    {"__package__", nullptr},
+    {"__loader__", nullptr},
     {"version", "The Blender version as a tuple of 3 numbers. eg. (2, 83, 1)"},
     {"version_file",
      "The Blender version, as a tuple, last used to save a .blend file, compatible with "
@@ -147,6 +151,10 @@ static PyObject *make_app_info()
 #define SetBytesItem(str) PyStructSequence_SET_ITEM(app_info, pos++, PyBytes_FromString(str))
 #define SetObjItem(obj) PyStructSequence_SET_ITEM(app_info, pos++, obj)
 
+  SetStrItem("bpy.app");
+  SetObjItem(Py_INCREF_RET(Py_None));
+  SetObjItem(Py_INCREF_RET(Py_None));
+  SetObjItem(Py_INCREF_RET(Py_None));
   SetObjItem(
       PyC_Tuple_Pack_I32({BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_VERSION_PATCH}));
   SetObjItem(PyC_Tuple_Pack_I32(
@@ -198,6 +206,8 @@ static PyObject *make_app_info()
   SetObjItem(BPY_app_openvdb_struct());
   SetObjItem(BPY_app_sdl_struct());
   SetObjItem(BPY_app_build_options_struct());
+
+  /* pretend modules */
   SetObjItem(BPY_app_handlers_struct());
   SetObjItem(BPY_app_translations_struct());
 

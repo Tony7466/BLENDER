@@ -45,6 +45,9 @@ struct BlenderAppTranslations {
   PyObject *contexts;
   /** A readonly mapping {C context id: python id}  (actually, a MappingProxy). */
   PyObject *contexts_C_to_py;
+
+  PyObject *module_name_attr;
+
   /**
    * A Python dictionary containing all registered Python dictionaries
    * (order is more or less random, first match wins!).
@@ -482,6 +485,26 @@ static PyMemberDef app_translations_members[] = {
      offsetof(BlenderAppTranslations, contexts_C_to_py),
      READONLY,
      app_translations_contexts_C_to_py_doc},
+    {"__name__",
+    T_OBJECT,
+     offsetof(BlenderAppTranslations, module_name_attr),
+    READONLY,
+     nullptr},
+    {"__spec__",
+     T_NONE,
+     0,
+     READONLY,
+     nullptr},
+    {"__package__",
+     T_NONE,
+     0,
+     READONLY,
+     nullptr},
+    {"__loader__",
+     T_NONE,
+     0,
+     READONLY,
+     nullptr},
     {nullptr},
 };
 
@@ -764,6 +787,8 @@ static PyObject *app_translations_new(PyTypeObject *type, PyObject * /*args*/, P
     if (_translations) {
       PyObject *py_ctxts;
       BLT_i18n_contexts_descriptor *ctxt;
+
+      _translations->module_name_attr = PyUnicode_FromString("bpy.app.translations");
 
       _translations->contexts = app_translations_contexts_make();
 
