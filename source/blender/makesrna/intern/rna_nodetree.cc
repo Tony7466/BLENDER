@@ -9091,6 +9091,7 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
   prop = RNA_def_property(srna, "viewer_iteration", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_range(prop, 0, INT32_MAX, 1, -1);
   RNA_def_property_ui_text(
       prop,
       "Viewer Iteration",

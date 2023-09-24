@@ -356,14 +356,15 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
   return true;
 }
 
-bool is_active_geometry_nodes_viewer(const bContext &C, const ViewerPath &viewer_path)
+UpdateActiveGeometryNodesViewerResult update_active_geometry_nodes_viewer(const bContext &C,
+                                                                          ViewerPath &viewer_path)
 {
   if (BLI_listbase_is_empty(&viewer_path.path)) {
-    return false;
+    return UpdateActiveGeometryNodesViewerResult::NotActive;
   }
   const ViewerPathElem *last_elem = static_cast<ViewerPathElem *>(viewer_path.path.last);
   if (last_elem->type != VIEWER_PATH_ELEM_TYPE_VIEWER_NODE) {
-    return false;
+    return UpdateActiveGeometryNodesViewerResult::NotActive;
   }
   const int32_t viewer_node_id =
       reinterpret_cast<const ViewerNodeViewerPathElem *>(last_elem)->node_id;
@@ -371,7 +372,7 @@ bool is_active_geometry_nodes_viewer(const bContext &C, const ViewerPath &viewer
   const Main *bmain = CTX_data_main(&C);
   const wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   if (wm == nullptr) {
-    return false;
+    return UpdateActiveGeometryNodesViewerResult::NotActive;
   }
   LISTBASE_FOREACH (const wmWindow *, window, &wm->windows) {
     const bScreen *active_screen = BKE_workspace_active_screen_get(window->workspace_hook);
@@ -407,14 +408,21 @@ bool is_active_geometry_nodes_viewer(const bContext &C, const ViewerPath &viewer
         ViewerPath tmp_viewer_path{};
         BLI_SCOPED_DEFER([&]() { BKE_viewer_path_clear(&tmp_viewer_path); });
         viewer_path_for_geometry_node(snode, *viewer_node, tmp_viewer_path);
-        if (!BKE_viewer_path_equal(&viewer_path, &tmp_viewer_path)) {
+        if (!BKE_viewer_path_equal(
+                &viewer_path, &tmp_viewer_path, VIEWER_PATH_EQUAL_FLAG_IGNORE_REPEAT_ITERATION))
+        {
           continue;
         }
-        return true;
+        if (!BKE_viewer_path_equal(&viewer_path, &tmp_viewer_path)) {
+          std::swap(viewer_path, tmp_viewer_path);
+          DEG_id_tag_update(snode.id, ID_RECALC_GEOMETRY);
+          return UpdateActiveGeometryNodesViewerResult::Updated;
+        }
+        return UpdateActiveGeometryNodesViewerResult::StillActive;
       }
     }
   }
-  return false;
+  return UpdateActiveGeometryNodesViewerResult::NotActive;
 }
 
 bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snode)
