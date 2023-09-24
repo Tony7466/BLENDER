@@ -50,10 +50,15 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   if (Metallic < 1.0 && Transmission < 1.0) {
+    float eta = ior_from_F0(2.0 * Specular * F0_from_ior(IOR));
+    if (IOR < 1.0) {
+      eta = 1.0 / eta;
+    }
+
     BSDF = BaseColor * diffuse(Normal);
     if (Subsurface > 1e-5) {
       vector radius = SubsurfaceScale * SubsurfaceRadius;
-      float subsurface_ior = (subsurface_method == "random_walk") ? SubsurfaceIOR : IOR;
+      float subsurface_ior = (subsurface_method == "random_walk") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
                                          SubsurfaceScale * SubsurfaceRadius,
@@ -67,18 +72,17 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       BSDF = mix(BSDF, BaseColor * SubsurfBSDF, Subsurface);
     }
 
-    color f0 = color(F0_from_ior(IOR));
+    color f0 = color(F0_from_ior(eta));
     color f90 = color(1.0);
 
     /* Apply specular tint */
     float m_cdlum = luminance(BaseColor);
     color m_ctint = m_cdlum > 0.0 ? BaseColor / m_cdlum : color(1.0);
-    color specTint = mix(color(1.0), m_ctint, SpecularTint);
-    f0 *= (specTint * 2.0 * Specular);
+    f0 *= mix(color(1.0), m_ctint, SpecularTint);
 
     BSDF = layer(
         generalized_schlick_bsdf(
-            Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, -IOR, distribution),
+            Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, -eta, distribution),
         BSDF);
   }
 

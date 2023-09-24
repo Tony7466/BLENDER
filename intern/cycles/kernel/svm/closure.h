@@ -76,7 +76,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, sheen_roughness_offset, coat_offset,
-          coat_roughness_offset, coat_ior_offset, eta_offset, transmission_offset,
+          coat_roughness_offset, coat_ior_offset, ior_offset, transmission_offset,
           anisotropic_rotation_offset, coat_tint_offset, coat_normal_offset, dummy, alpha_offset,
           emission_strength_offset, emission_offset;
       uint4 data_node2 = read_node(kg, &offset);
@@ -90,7 +90,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       svm_unpack_node_uchar4(
           data_node.w, &sheen_offset, &sheen_tint_offset, &sheen_roughness_offset, &dummy);
       svm_unpack_node_uchar4(data_node2.x,
-                             &eta_offset,
+                             &ior_offset,
                              &transmission_offset,
                              &anisotropic_rotation_offset,
                              &coat_normal_offset);
@@ -113,7 +113,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
-      float eta = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
+      float ior = fmaxf(stack_load_float(stack, ior_offset), 1e-5f);
 
       ClosureType distribution = (ClosureType)data_node2.y;
       ClosureType subsurface_method = (ClosureType)data_node2.z;
@@ -297,7 +297,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->T = zero_float3();
 
           bsdf->alpha_x = bsdf->alpha_y = sqr(roughness);
-          bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
+          bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / ior : ior;
 
           fresnel->reflection_tint = mix(
               one_spectrum(), rgb_to_spectrum(base_color), specular_tint);
@@ -311,6 +311,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           /* Attenuate other components */
           weight *= (1.0f - transmission);
         }
+      }
+
+      /* Apply IOR adjustment for specular and subsurface components. */
+      float eta = ior_from_F0(2.0f * specular * F0_from_ior(ior));
+      if (ior < 1.0f) {
+        eta = 1.0f / eta;
       }
 
       /* Specular component */
@@ -333,7 +339,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           float3 m_ctint = m_cdlum > 0.0f ? base_color / m_cdlum : one_float3();
           float3 specTint = mix(one_spectrum(), rgb_to_spectrum(m_ctint), specular_tint);
 
-          fresnel->f0 = F0_from_ior(eta) * 2.0f * specular * specTint;
+          fresnel->f0 = F0_from_ior(eta) * specTint;
           fresnel->f90 = one_spectrum();
           fresnel->exponent = -eta;
           fresnel->reflection_tint = one_spectrum();
