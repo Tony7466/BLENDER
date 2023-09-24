@@ -21,6 +21,51 @@
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
+shared vec3 cached_radiance[SUBSURFACE_GROUP_SIZE][SUBSURFACE_GROUP_SIZE];
+shared uint cached_sss_id[SUBSURFACE_GROUP_SIZE][SUBSURFACE_GROUP_SIZE];
+shared float cached_depth[SUBSURFACE_GROUP_SIZE][SUBSURFACE_GROUP_SIZE];
+
+struct SubSurfaceSample {
+  vec3 radiance;
+  float depth;
+  uint sss_id;
+};
+
+void cache_populate(vec2 local_uv)
+{
+  uvec2 texel = gl_LocalInvocationID.xy;
+  cached_radiance[texel.y][texel.x] = texture(radiance_tx, local_uv).rgb;
+  cached_sss_id[texel.y][texel.x] = texture(object_id_tx, local_uv).r;
+  cached_depth[texel.y][texel.x] = texture(depth_tx, local_uv).r;
+}
+
+bool cache_sample(uvec2 texel, out SubSurfaceSample samp)
+{
+  uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
+  /* This can underflow and allow us to only do one upper bound check. */
+  texel -= tile_coord * SUBSURFACE_GROUP_SIZE;
+  if (any(greaterThanEqual(texel, uvec2(SUBSURFACE_GROUP_SIZE)))) {
+    return false;
+  }
+  samp.radiance = cached_radiance[texel.y][texel.x];
+  samp.sss_id = cached_sss_id[texel.y][texel.x];
+  samp.depth = cached_depth[texel.y][texel.x];
+  return true;
+}
+
+SubSurfaceSample sample_neighborhood(vec2 sample_uv)
+{
+  SubSurfaceSample samp;
+  uvec2 sample_texel = uvec2(sample_uv * vec2(textureSize(depth_tx, 0)));
+  if (cache_sample(sample_texel, samp)) {
+    return samp;
+  }
+  samp.depth = texture(depth_tx, sample_uv).r;
+  samp.sss_id = texture(object_id_tx, sample_uv).r;
+  samp.radiance = texture(radiance_tx, sample_uv).rgb;
+  return samp;
+}
+
 void main(void)
 {
   const uint tile_size = SUBSURFACE_GROUP_SIZE;
@@ -28,6 +73,8 @@ void main(void)
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
   vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
+
+  cache_populate(center_uv);
 
   float depth = texelFetch(depth_tx, texel, 0).r;
   vec3 vP = get_view_space_from_depth(center_uv, depth);
@@ -63,20 +110,17 @@ void main(void)
     vec2 sample_uv = center_uv + sample_space * uniform_buf.subsurface.samples[i].xy;
     float pdf_inv = uniform_buf.subsurface.samples[i].z;
 
-    /* TODO(fclem): L0 cache using LDS. */
-    float sample_depth = texture(depth_tx, sample_uv).r;
-    uint sample_sss_id = texture(object_id_tx, sample_uv).r;
-    vec3 sample_radiance = texture(radiance_tx, sample_uv).rgb;
+    SubSurfaceSample samp = sample_neighborhood(sample_uv);
     /* Reject radiance from other surfaces. Avoids light leak between objects. */
-    if (sample_sss_id != gbuf.diffuse.sss_id) {
+    if (samp.sss_id != gbuf.diffuse.sss_id) {
       continue;
     }
     /* Slide 34. */
-    vec3 sample_vP = get_view_space_from_depth(sample_uv, sample_depth);
+    vec3 sample_vP = get_view_space_from_depth(sample_uv, samp.depth);
     float r = distance(sample_vP, vP);
     vec3 weight = burley_eval(d, r) * pdf_inv;
 
-    accum_radiance += sample_radiance * weight;
+    accum_radiance += samp.radiance * weight;
     accum_weight += weight;
   }
   /* Normalize the sum (slide 34). */
