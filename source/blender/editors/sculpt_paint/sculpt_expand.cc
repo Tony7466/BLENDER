@@ -1607,6 +1607,13 @@ static void sculpt_expand_finish(bContext *C)
       break;
   }
 
+  /* Resetting the fully masked and unmasked flag after this operation so that
+     drawing faces with a stroke works again */
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_fully_masked_set(node, false);
+    BKE_pbvh_node_fully_unmasked_set(node, false);
+  }
+
   sculpt_expand_cache_free(ss);
   ED_workspace_status_text(C, nullptr);
 }
