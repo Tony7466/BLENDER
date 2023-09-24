@@ -98,6 +98,20 @@ enum RadialDirection {
   UI_RADIAL_NW = 7,
 };
 
+/** Next direction (clockwise). */
+#define UI_RADIAL_DIRECTION_NEXT(dir) RadialDirection((int(dir) + 1) % (int(UI_RADIAL_NW) + 1))
+/** Previous direction (counter-clockwise). */
+#define UI_RADIAL_DIRECTION_PREV(dir) \
+  RadialDirection(((int(dir) + int(UI_RADIAL_NW))) % (int(UI_RADIAL_NW) + 1))
+
+/** Store a mask for diagonal directions. */
+#define UI_RADIAL_MASK_ALL_DIAGONAL \
+  ((1 << int(UI_RADIAL_NE)) | (1 << int(UI_RADIAL_SE)) | (1 << int(UI_RADIAL_SW)) | \
+   (1 << int(UI_RADIAL_NW)))
+#define UI_RADIAL_MASK_ALL_AXIS_ALIGNED \
+  ((1 << int(UI_RADIAL_N)) | (1 << int(UI_RADIAL_S)) | (1 << int(UI_RADIAL_E)) | \
+   (1 << int(UI_RADIAL_W)))
+
 extern const char ui_radial_dir_order[8];
 extern const char ui_radial_dir_to_numpad[8];
 extern const short ui_radial_dir_to_angle[8];
@@ -124,8 +138,6 @@ extern const short ui_radial_dir_to_angle[8];
 
 /** #PieMenuData.flags */
 enum {
-  /** Pie menu item collision is detected at 90 degrees. */
-  UI_PIE_DEGREES_RANGE_LARGE = (1 << 0),
   /** Use initial center of pie menu to calculate direction. */
   UI_PIE_INITIAL_DIRECTION = (1 << 1),
   /** Pie menu is drag style. */
@@ -220,9 +232,10 @@ struct uiBut {
   uiButToolTipFunc tip_func = nullptr;
   void *tip_arg = nullptr;
   uiFreeArgFunc tip_arg_free = nullptr;
-  /** Function to get a custom tooltip label, see #UI_BUT_HAS_TOOLTIP_LABEL. Requires
-   * #UI_BUT_HAS_TOOLTIP_LABEL drawflag. */
+  /** Function to override the label to be displayed in the tooltip. */
   std::function<std::string(const uiBut *)> tip_label_func;
+
+  uiButToolTipCustomFunc tip_custom_func = nullptr;
 
   /** info on why button is disabled, displayed in tooltip */
   const char *disabled_info = nullptr;
@@ -356,6 +369,10 @@ struct uiButProgress : public uiBut {
 struct uiButViewItem : public uiBut {
   /* C-Handle to the view item this button was created for. */
   uiViewItemHandle *view_item = nullptr;
+  /* Some items want to have a fixed size for drawing, differing from the interaction rectangle
+   * (e.g. so highlights are drawn smaller). */
+  int draw_width = 0;
+  int draw_height = 0;
 };
 
 /** Derived struct for #UI_BTYPE_HSVCUBE. */
@@ -429,6 +446,8 @@ struct PieMenuData {
   const char *title;
   int icon;
 
+  /** A mask combining the directions of all buttons in the pie menu (excluding separators). */
+  int pie_dir_mask;
   float pie_dir[2];
   float pie_center_init[2];
   float pie_center_spawned[2];

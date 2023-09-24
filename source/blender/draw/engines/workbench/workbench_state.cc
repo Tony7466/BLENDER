@@ -12,7 +12,7 @@
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_fluid_types.h"
 #include "ED_paint.hh"
 #include "ED_view3d.hh"
@@ -20,7 +20,7 @@
 
 namespace blender::workbench {
 
-void SceneState::init(Object *camera_ob /*= nullptr*/)
+void SceneState::init(Object *camera_ob /*=nullptr*/)
 {
   bool reset_taa = reset_taa_next_sample;
   reset_taa_next_sample = false;
@@ -83,7 +83,7 @@ void SceneState::init(Object *camera_ob /*= nullptr*/)
   }
   xray_mode = shading.xray_alpha != 1.0f;
 
-  if (SHADING_XRAY_FLAG_ENABLED(shading)) {
+  if (xray_mode) {
     /* Disable shading options that aren't supported in transparency mode. */
     shading.flag &= ~(V3D_SHADING_SHADOW | V3D_SHADING_CAVITY | V3D_SHADING_DEPTH_OF_FIELD);
   }

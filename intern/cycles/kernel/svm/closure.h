@@ -301,7 +301,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           fresnel->reflection_tint = mix(
               one_spectrum(), rgb_to_spectrum(base_color), specular_tint);
-          fresnel->transmission_tint = rgb_to_spectrum(base_color);
+          fresnel->transmission_tint = sqrt(rgb_to_spectrum(base_color));
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
@@ -456,8 +456,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
         /* rotate tangent */
         float rotation = stack_load_float(stack, data_node.z);
-        if (rotation != 0.0f)
+        if (rotation != 0.0f) {
           bsdf->T = rotate_around_axis(bsdf->T, bsdf->N, rotation * M_2PI_F);
+        }
 
         if (anisotropy < 0.0f) {
           bsdf->alpha_x = roughness / (1.0f + anisotropy);
@@ -603,10 +604,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         bsdf->size = param1;
         bsdf->smooth = param2;
 
-        if (type == CLOSURE_BSDF_DIFFUSE_TOON_ID)
+        if (type == CLOSURE_BSDF_DIFFUSE_TOON_ID) {
           sd->flag |= bsdf_diffuse_toon_setup(bsdf);
-        else
+        }
+        else {
           sd->flag |= bsdf_glossy_toon_setup(bsdf);
+        }
       }
       break;
     }
@@ -706,13 +709,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         ccl_private ChiangHairBSDF *bsdf = (ccl_private ChiangHairBSDF *)bsdf_alloc(
             sd, sizeof(ChiangHairBSDF), weight);
         if (bsdf) {
-          ccl_private ChiangHairExtra *extra = (ccl_private ChiangHairExtra *)closure_alloc_extra(
-              sd, sizeof(ChiangHairExtra));
-
-          if (!extra) {
-            break;
-          }
-
           /* Remap Coat value to [0, 100]% of Roughness. */
           float coat = stack_load_float_default(stack, shared_ofs1, data_node3.w);
           float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
@@ -722,7 +718,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->m0_roughness = m0_roughness;
           bsdf->alpha = alpha;
           bsdf->eta = ior;
-          bsdf->extra = extra;
           bsdf->sigma = sigma;
 
           sd->flag |= bsdf_hair_chiang_setup(sd, bsdf);
@@ -1022,8 +1017,9 @@ ccl_device_noinline void svm_node_closure_emission(ccl_private ShaderData *sd,
   if (stack_valid(mix_weight_offset)) {
     float mix_weight = stack_load_float(stack, mix_weight_offset);
 
-    if (mix_weight == 0.0f)
+    if (mix_weight == 0.0f) {
       return;
+    }
 
     weight *= mix_weight;
   }
@@ -1042,8 +1038,9 @@ ccl_device_noinline void svm_node_closure_background(ccl_private ShaderData *sd,
   if (stack_valid(mix_weight_offset)) {
     float mix_weight = stack_load_float(stack, mix_weight_offset);
 
-    if (mix_weight == 0.0f)
+    if (mix_weight == 0.0f) {
       return;
+    }
 
     weight *= mix_weight;
   }
@@ -1061,13 +1058,15 @@ ccl_device_noinline void svm_node_closure_holdout(ccl_private ShaderData *sd,
   if (stack_valid(mix_weight_offset)) {
     float mix_weight = stack_load_float(stack, mix_weight_offset);
 
-    if (mix_weight == 0.0f)
+    if (mix_weight == 0.0f) {
       return;
+    }
 
     closure_alloc(sd, sizeof(ShaderClosure), CLOSURE_HOLDOUT_ID, closure_weight * mix_weight);
   }
-  else
+  else {
     closure_alloc(sd, sizeof(ShaderClosure), CLOSURE_HOLDOUT_ID, closure_weight);
+  }
 
   sd->flag |= SD_HOLDOUT;
 }

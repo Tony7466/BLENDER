@@ -14,7 +14,7 @@
 #include "BKE_duplilist.h"
 #include "BKE_object.h"
 #include "BLI_map.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_rigidbody_types.h"
@@ -121,8 +121,8 @@ bool VelocityModule::step_object_sync(Object *ob,
                                       ObjectKey &object_key,
                                       ResourceHandle resource_handle,
                                       int /*IDRecalcFlag*/ recalc,
-                                      ModifierData *modifier_data /*= nullptr*/,
-                                      ParticleSystem *particle_sys /*= nullptr*/)
+                                      ModifierData *modifier_data /*=nullptr*/,
+                                      ParticleSystem *particle_sys /*=nullptr*/)
 {
   bool has_motion = object_has_velocity(ob) || (recalc & ID_RECALC_TRANSFORM);
   /* NOTE: Fragile. This will only work with 1 frame of lag since we can't record every geometry

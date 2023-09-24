@@ -14,6 +14,15 @@
 #include "BKE_context.h"
 
 #ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
+#else
+typedef struct AssetRepresentationHandle AssetRepresentationHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -225,6 +234,11 @@ typedef struct ARegionType {
   /* return context data */
   bContextDataCallback context;
 
+  /**
+   * Called whenever the user changes the region's size. Not called when the size is changed
+   * through other means, like to adjust for a scaled down window.
+   */
+  void (*on_user_resize)(const struct ARegion *region);
   /* Is called whenever the current visible View2D's region changes.
    *
    * Used from user code such as view navigation/zoom operators to inform region about changes.
@@ -464,12 +478,13 @@ typedef struct AssetShelfType {
 
   /** Determine if an individual asset should be visible or not. May be a temporary design,
    * visibility should first and foremost be controlled by asset traits. */
-  bool (*asset_poll)(const struct AssetShelfType *shelf_type, const struct AssetHandle *asset);
+  bool (*asset_poll)(const struct AssetShelfType *shelf_type,
+                     const AssetRepresentationHandle *asset);
 
   /** Asset shelves can define their own context menu via this layout definition callback. */
   void (*draw_context_menu)(const struct bContext *C,
                             const struct AssetShelfType *shelf_type,
-                            const struct AssetHandle *asset,
+                            const AssetRepresentationHandle *asset,
                             struct uiLayout *layout);
 
   /* RNA integration */

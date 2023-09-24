@@ -26,7 +26,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.hh"
 #include "ED_node.hh"
@@ -94,7 +94,6 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
       NODE_INTERFACE_SOCKET_INPUT,
       nullptr);
   socket_iface->init_from_socket_instance(&params.socket);
-  BKE_ntree_update_tag_interface(&params.node_tree);
 
   bNode &group_input = params.add_node("NodeGroupInput");
 

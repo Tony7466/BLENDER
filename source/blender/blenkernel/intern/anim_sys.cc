@@ -50,8 +50,8 @@
 #include "BKE_report.h"
 #include "BKE_texture.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -1768,9 +1768,9 @@ static float nla_blend_value(const int blendmode,
 
     default: /* TODO: Do we really want to blend by default? it seems more uses might prefer add...
               */
-      /* Do linear interpolation. The influence of the accumulated data (elsewhere, that is called
-       * dstweight) is 1 - influence, since the strip's influence is srcweight.
-       */
+      /* Do linear interpolation. The influence of the accumulated data
+       * (elsewhere, that is called `dstwegiht`) is 1 - influence,
+       * since the strip's influence is `srcweight`. */
       return lower_value * (1.0f - influence) + (strip_value * influence);
   }
 }

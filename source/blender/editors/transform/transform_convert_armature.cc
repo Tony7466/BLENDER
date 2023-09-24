@@ -25,14 +25,15 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "BIK_api.h"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -98,7 +99,7 @@ static void autokeyframe_pose(
   ListBase nla_cache = {nullptr, nullptr};
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, float(scene->r.cfra));
+      depsgraph, BKE_scene_frame_get(scene));
   eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* flag is initialized from UserPref keyframing settings

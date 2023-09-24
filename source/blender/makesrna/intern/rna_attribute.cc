@@ -144,7 +144,7 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "BLT_translation.h"
 
@@ -277,6 +277,12 @@ static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
   return !BKE_attribute_allow_procedural_access(layer->name);
+}
+
+static bool rna_Attribute_is_required_get(PointerRNA *ptr)
+{
+  const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
+  return BKE_id_attribute_required(ptr->owner_id, layer->name);
 }
 
 static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -1154,6 +1160,11 @@ static void rna_def_attribute(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Attribute_is_internal_get", nullptr);
   RNA_def_property_ui_text(
       prop, "Is Internal", "The attribute is meant for internal use by Blender");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "is_required", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_Attribute_is_required_get", nullptr);
+  RNA_def_property_ui_text(prop, "Is Required", "Whether the attribute can be removed or renamed");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* types */
