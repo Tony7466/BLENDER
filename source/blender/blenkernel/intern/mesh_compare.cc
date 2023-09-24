@@ -97,6 +97,9 @@ class IndexMapping {
     set_sizes.fill(set_ids.size());
   }
 
+  /**
+   * Update the "to_sorted" maps by inverting the "from_sorted" maps.
+   */
   void recalculate_inverse_maps()
   {
     calculate_inverse_map(from_sorted1, to_sorted1);
@@ -168,7 +171,7 @@ template<typename T> static void sort_indices(MutableSpan<int> indices, const Sp
 }
 
 /**
- * Sort the indices using the values.
+ * Sort the indices using the set ids of the values.
  */
 static void sort_indices_with_id_maps(MutableSpan<int> indices,
                                       const Span<int> values,
@@ -234,6 +237,10 @@ static void sort_per_set_with_id_maps(const Span<int> set_sizes,
   }
 }
 
+/**
+ * Checks if the two values are different. For float types, the equality is checked based on a
+ * treshold.
+ */
 template<typename T> static bool values_different(const T value1, const T value2)
 {
   if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
@@ -311,7 +318,7 @@ static bool update_set_ids(MutableSpan<int> set_ids,
 }
 
 /**
- * Split the sets into smaller sets based on the sorted attribute values.
+ * Split the sets into smaller sets based on the set ids of the sorted values.
  *
  * \returns false if the attributes don't line up.
  */
@@ -376,6 +383,9 @@ static void edges_from_vertex_sets(const Span<int2> edges,
   }
 }
 
+/**
+ * Sort the edges based on the sorted vertex set ids.
+ */
 static bool sort_edges(const Span<int2> edges1,
                        const Span<int2> edges2,
                        const IndexMapping &verts,
@@ -403,6 +413,9 @@ static bool sort_edges(const Span<int2> edges1,
   return true;
 }
 
+/**
+ * Sort the corners based on the sorted vertex/edge set ids.
+ */
 static bool sort_corners_based_on_domain(const Span<int> corner_domain1,
                                          const Span<int> corner_domain2,
                                          const IndexMapping &domain,
@@ -451,6 +464,9 @@ static void calc_smallest_corner_ids(const Span<int> face_offsets,
   }
 }
 
+/**
+ * Sort the faces using the sorted corner set ids.
+ */
 static bool sort_faces_based_on_corners(const IndexMapping &corners,
                                         const Span<int> face_offsets1,
                                         const Span<int> face_offsets2,
@@ -480,6 +496,12 @@ static bool sort_faces_based_on_corners(const IndexMapping &corners,
   return true;
 }
 
+/**
+ * Verify that both meshes have the same attributes:
+ * - Same names
+ * - Same domains
+ * - Same types
+ */
 static std::optional<MeshMismatch> verify_attributes_compatible(
     const AttributeAccessor &mesh1_attributes, const AttributeAccessor &mesh2_attributes)
 {
@@ -498,6 +520,11 @@ static std::optional<MeshMismatch> verify_attributes_compatible(
   return {};
 }
 
+/**
+ * Sort the domain using all the attributes on that domain except the ones in excluded_attributes
+ *
+ * \returns A mismatch if one of the attributes has different values between the two meshes.
+ */
 static std::optional<MeshMismatch> sort_domain_using_attributes(
     const AttributeAccessor &mesh1_attributes,
     const AttributeAccessor &mesh2_attributes,
@@ -665,6 +692,10 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
   BLI_assert(all_set_sizes_one(verts.set_sizes));
 
   verts.recalculate_inverse_maps();
+
+  /* The bijective mapping is now given by composing `verts.to_sorted1` with `verts.from_sorted2`,
+   * or vice versa. Since we don't actually need the mapping (we just care that it exists), we
+   * don't construct it here. */
 
   return {};
 }
