@@ -18,7 +18,8 @@ CCL_NAMESPACE_BEGIN
 /* MetalDeviceQueue */
 
 MetalDeviceQueue::MetalDeviceQueue(MetalDevice *device)
-    : DeviceQueue(device), metal_device_(device), stats_(device->stats)
+    : DeviceQueue(device), metal_device_(device), stats_(device->stats),
+      integrator_shader_threadgroups_per_shader(device, "integrator_shader_threadgroups_per_shader", MEM_READ_WRITE)
 {
   if (@available(macos 11.0, *)) {
     command_buffer_desc_ = [[MTLCommandBufferDescriptor alloc] init];
@@ -231,7 +232,7 @@ MetalDeviceQueue::~MetalDeviceQueue()
     total_time += stat.total_time;
     num_dispatches += stat.num_dispatches;
   }
-
+    
   if (num_dispatches) {
     printf("\nMetal dispatch stats:\n\n");
     auto header = string_printf("%-40s %16s %12s %12s %7s %7s",
@@ -313,7 +314,7 @@ int MetalDeviceQueue::num_concurrent_busy_states(const size_t state_size) const
 
 int MetalDeviceQueue::num_sort_partition_elements() const
 {
-  return MetalInfo::optimal_sort_partition_elements(metal_device_->mtlDevice);
+  return MetalInfo::optimal_sort_partition_elements(metal_device_->mtlDevice, metal_device_->kernel_specialization_level);
 }
 
 bool MetalDeviceQueue::supports_local_atomic_sort() const
@@ -329,9 +330,60 @@ void MetalDeviceQueue::init_execution()
   synchronize();
 }
 
+bool MetalDeviceQueue::materialSpecializationEnqueue(
+                        DeviceKernel kernel,
+                        const int work_size,
+                        DeviceKernelArguments const &args)
+{
+    if (kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
+    {
+        int shader_count = metal_device_->launch_params.data.max_shaders;
+        bool result = true;
+        for(int i = 0; i < num_sort_partitions_; ++i)
+        {
+            result &=
+                enqueueInternal(kernel, work_size, args, shader_count,
+                            i * shader_count,
+                            integrator_shader_threadgroups_per_shader.device_pointer);
+        }
+        return result;
+    }
+    else if (kernel == DEVICE_KERNEL_INTEGRATOR_SORT_BUCKET_PASS ||
+             kernel == DEVICE_KERNEL_INTEGRATOR_SORT_WRITE_PASS  ||
+             kernel == DEVICE_KERNEL_PREFIX_SUM)
+    {
+        const MetalKernelPipeline *metal_kernel_pso = MetalDeviceKernels::get_best_pipeline(
+            metal_device_, DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
+        
+        DeviceKernelArguments _args = args;
+        _args.add(&(metal_kernel_pso->num_threads_per_block));
+        
+        return enqueueInternal(kernel, work_size, _args, 0, 0, 0ull);
+    }
+    else
+    {
+        return enqueueInternal(kernel, work_size, args, 0, 0, 0ull);
+    }
+}
+
 bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
                                const int work_size,
                                DeviceKernelArguments const &args)
+{
+    if(metal_device_->kernel_specialization_level == PSO_SPECIALIZED_PER_MATERIAL)
+    {
+        return materialSpecializationEnqueue(kernel, work_size, args);
+    }
+    
+    return enqueueInternal(kernel, work_size, args, 0, 0, 0ull);
+}
+
+bool MetalDeviceQueue::enqueueInternal(DeviceKernel kernel,
+                               const int work_size,
+                               DeviceKernelArguments const &args,
+                               uint numDispatches,
+                               uint dispatchOffset,
+                               device_ptr indirectBuffer)
 {
   update_capture(kernel);
 
@@ -589,8 +641,30 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
 
   MTLSize size_threads_per_dispatch = MTLSizeMake(work_size, 1, 1);
   MTLSize size_threads_per_threadgroup = MTLSizeMake(num_threads_per_block, 1, 1);
-  [mtlComputeCommandEncoder dispatchThreads:size_threads_per_dispatch
-                      threadsPerThreadgroup:size_threads_per_threadgroup];
+    
+  if(indirectBuffer != 0ull)
+  {
+      MetalDevice::MetalMem *mmem = *(MetalDevice::MetalMem **)&indirectBuffer;
+      
+      for(uint dispatchId = 0; dispatchId < numDispatches; ++dispatchId)
+      {
+          metal_kernel_pso = MetalDeviceKernels::get_best_pipeline(metal_device_, kernel, dispatchId);
+          [mtlComputeCommandEncoder setComputePipelineState:metal_kernel_pso->pipeline];
+          
+          uint dId = dispatchId + dispatchOffset;
+          [mtlComputeCommandEncoder setBytes:&dId length:sizeof(dId) atIndex:3];
+          [mtlComputeCommandEncoder dispatchThreadgroupsWithIndirectBuffer:mmem->mtlBuffer
+              indirectBufferOffset:(3 * dId * sizeof(uint))
+              threadsPerThreadgroup:size_threads_per_threadgroup];
+      }
+  }
+  else
+  {
+      uint dispatchId = 0;
+      [mtlComputeCommandEncoder setBytes:&dispatchId length:sizeof(dispatchId) atIndex:3];
+      [mtlComputeCommandEncoder dispatchThreads:size_threads_per_dispatch
+                          threadsPerThreadgroup:size_threads_per_threadgroup];
+  }
 
   [mtlCommandBuffer_ addCompletedHandler:^(id<MTLCommandBuffer> command_buffer) {
     NSString *kernel_name = metal_kernel_pso->function.label;
@@ -676,23 +750,25 @@ bool MetalDeviceQueue::synchronize()
     if (@available(macos 10.14, *)) {
       if (timing_shared_event_) {
         /* For per-kernel timing, add event handlers to measure & accumulate dispatch times. */
-        __block double completion_time = 0;
+          __block double time = 0;
+          __block double completion_time = 0;
         for (uint64_t i = command_buffer_start_timing_id_; i < timing_shared_event_id_; i++) {
-          [timing_shared_event_
-              notifyListener:shared_event_listener_
-                     atValue:i
-                       block:^(id<MTLSharedEvent> /*sharedEvent*/, uint64_t value) {
-                         completion_time = timer.get_time() - completion_time;
-                         last_completion_time_ = completion_time;
-                         for (auto label : command_encoder_labels_) {
-                           if (label.timing_id == value) {
-                             TimingStats &stat = timing_stats_[label.kernel];
-                             stat.num_dispatches++;
-                             stat.total_time += completion_time;
-                             stat.total_work_size += label.work_size;
-                           }
-                         }
-                       }];
+          [timing_shared_event_ notifyListener:shared_event_listener_
+                                       atValue:i
+                                         block:^(id<MTLSharedEvent> /*sharedEvent*/, uint64_t value) {
+                                           double t = timer.get_time();
+                                           completion_time = t - time;
+                                           time = t;
+                                           last_completion_time_ = completion_time;
+                                           for (auto label : command_encoder_labels_) {
+                                             if (label.timing_id == value) {
+                                               TimingStats &stat = timing_stats_[label.kernel];
+                                               stat.num_dispatches++;
+                                               stat.total_time += completion_time;
+                                               stat.total_work_size += label.work_size;
+                                             }
+                                           }
+                                         }];
         }
       }
     }
@@ -847,6 +923,21 @@ void MetalDeviceQueue::copy_from_device(device_memory &mem)
   else {
     metal_device_->mem_copy_from(mem);
   }
+}
+
+device_ptr MetalDeviceQueue::get_threadgroupsize_per_shader_buffer(int partition_count)
+{
+    int shader_count = metal_device_->launch_params.data.max_shaders;
+    num_sort_partitions_ = partition_count;
+    
+    int requiredBufferSize = 3 * shader_count * partition_count;
+    if(integrator_shader_threadgroups_per_shader.size() < requiredBufferSize)
+    {
+        integrator_shader_threadgroups_per_shader.alloc(requiredBufferSize);
+        integrator_shader_threadgroups_per_shader.zero_to_device();
+    }
+    
+    return integrator_shader_threadgroups_per_shader.device_pointer;
 }
 
 void MetalDeviceQueue::prepare_resources(DeviceKernel /*kernel*/)

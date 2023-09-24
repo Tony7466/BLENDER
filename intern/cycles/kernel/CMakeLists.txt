@@ -145,6 +145,8 @@ set(SRC_KERNEL_CLOSURE_HEADERS
 
 set(SRC_KERNEL_SVM_HEADERS
   svm/svm.h
+  svm/svm_eval_nodes_decl.h
+  svm/svm_node_handler.h
   svm/ao.h
   svm/aov.h
   svm/attribute.h

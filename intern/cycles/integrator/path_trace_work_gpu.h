@@ -135,6 +135,7 @@ class PathTraceWorkGPU : public PathTraceWork {
   device_vector<int> integrator_shader_mnee_sort_counter_;
   device_vector<int> integrator_shader_sort_prefix_sum_;
   device_vector<int> integrator_shader_sort_partition_key_offsets_;
+  device_vector<int> integrator_shader_partition_key_offset_;
   /* Path split. */
   device_vector<int> integrator_next_main_path_index_;
   device_vector<int> integrator_next_shadow_path_index_;

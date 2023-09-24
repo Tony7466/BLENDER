@@ -39,7 +39,7 @@ struct MetalInfo {
   static int get_apple_gpu_core_count(id<MTLDevice> device);
   static MetalGPUVendor get_device_vendor(id<MTLDevice> device);
   static AppleGPUArchitecture get_apple_gpu_architecture(id<MTLDevice> device);
-  static int optimal_sort_partition_elements(id<MTLDevice> device);
+  static int optimal_sort_partition_elements(id<MTLDevice> device, int maxKernelSpecializationLevel);
   static string get_device_name(id<MTLDevice> device);
 };
 

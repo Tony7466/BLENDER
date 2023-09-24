@@ -76,6 +76,8 @@ PathTraceWorkGPU::PathTraceWorkGPU(Device *device,
           device, "integrator_shader_sort_prefix_sum", MEM_READ_WRITE),
       integrator_shader_sort_partition_key_offsets_(
           device, "integrator_shader_sort_partition_key_offsets", MEM_READ_WRITE),
+      integrator_shader_partition_key_offset_(
+          device, "integrator_shader_sort_partition_key_offsets", MEM_READ_WRITE),
       integrator_next_main_path_index_(device, "integrator_next_main_path_index", MEM_READ_WRITE),
       integrator_next_shadow_path_index_(
           device, "integrator_next_shadow_path_index", MEM_READ_WRITE),
@@ -225,6 +227,11 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
     }
     integrator_state_gpu_.sort_partition_key_offsets =
         (int *)integrator_shader_sort_partition_key_offsets_.device_pointer;
+      
+      if (integrator_shader_partition_key_offset_.size() < num_offsets) {
+          integrator_shader_partition_key_offset_.alloc(num_offsets);
+          integrator_shader_partition_key_offset_.zero_to_device();
+      }
   }
   else {
     /* Allocate arrays for shader sorting. */
@@ -237,8 +244,14 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
 
       integrator_shader_sort_prefix_sum_.alloc(sort_buckets);
       integrator_shader_sort_prefix_sum_.zero_to_device();
-    }
 
+      integrator_shader_sort_partition_key_offsets_.alloc(sort_buckets + 1);
+      integrator_shader_sort_partition_key_offsets_.zero_to_device();
+        
+      integrator_shader_partition_key_offset_.alloc(sort_buckets + 1);
+      integrator_shader_partition_key_offset_.zero_to_device();
+    }
+      
     if (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) {
       if (integrator_shader_raytrace_sort_counter_.size() < sort_buckets) {
         integrator_shader_raytrace_sort_counter_.alloc(sort_buckets);
@@ -481,7 +494,7 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
     compute_sorted_queued_paths(kernel, num_paths_limit);
   }
   else if (num_queued < work_size) {
-    work_size = num_queued;
+      work_size = num_queued;
     d_path_index = queued_paths_.device_pointer;
 
     if (kernel_is_shadow_path(kernel)) {
@@ -520,7 +533,6 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
     case DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:
-    case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME:
@@ -528,6 +540,18 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
       /* Shading kernels with integrator state and render buffer. */
       DeviceKernelArguments args(&d_path_index, &buffers_->buffer.device_pointer, &work_size);
 
+      queue_->enqueue(kernel, work_size, args);
+      break;
+    }
+          
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
+    {
+        bool matSpecializationEnabled = device_->info.kernel_optimization_level == KERNEL_OPTIMIZATION_LEVEL_EXTENDED;
+        
+      device_ptr d_offset_per_shader = integrator_shader_partition_key_offset_.device_pointer;
+      const int max_shaders = device_scene_->data.max_shaders;
+      DeviceKernelArguments args(&d_path_index, &d_offset_per_shader,
+                                 &buffers_->buffer.device_pointer, &work_size, &matSpecializationEnabled, &max_shaders);
       queue_->enqueue(kernel, work_size, args);
       break;
     }
@@ -543,7 +567,21 @@ void PathTraceWorkGPU::compute_sorted_queued_paths(DeviceKernel queued_kernel,
                                                    const int num_paths_limit)
 {
   int d_queued_kernel = queued_kernel;
-
+    
+  device_ptr d_threadgroup_per_shader = queue_->get_threadgroupsize_per_shader_buffer(num_sort_partitions_);
+  device_ptr d_offset_per_threadgroup =
+    integrator_shader_partition_key_offset_.device_pointer;
+  device_ptr d_offset_per_shader = integrator_shader_sort_partition_key_offsets_.device_pointer;
+  
+  int merge_dispatch_threshold = 0;
+  bool matSpecializationEnabled = false;
+    
+#if __APPLE__
+  merge_dispatch_threshold = 350;
+  matSpecializationEnabled =
+        device_->info.kernel_optimization_level == KERNEL_OPTIMIZATION_LEVEL_EXTENDED;
+#endif
+    
   /* Launch kernel to fill the active paths arrays. */
   if (num_sort_partitions_ > 1 && queue_->supports_local_atomic_sort()) {
     const int work_size = kernel_max_active_main_path_index(queued_kernel);
@@ -552,7 +590,8 @@ void PathTraceWorkGPU::compute_sorted_queued_paths(DeviceKernel queued_kernel,
     int partition_size = (int)integrator_state_gpu_.sort_partition_divisor;
 
     DeviceKernelArguments args(
-        &work_size, &partition_size, &num_paths_limit, &d_queued_paths, &d_queued_kernel);
+        &work_size, &partition_size, &num_paths_limit, &d_queued_paths, &d_queued_kernel,
+        &d_offset_per_threadgroup, &d_threadgroup_per_shader, &matSpecializationEnabled);
 
     queue_->enqueue(DEVICE_KERNEL_INTEGRATOR_SORT_BUCKET_PASS, 1024 * num_sort_partitions_, args);
     queue_->enqueue(DEVICE_KERNEL_INTEGRATOR_SORT_WRITE_PASS, 1024 * num_sort_partitions_, args);
@@ -567,8 +606,12 @@ void PathTraceWorkGPU::compute_sorted_queued_paths(DeviceKernel queued_kernel,
   {
     const int work_size = 1;
     int sort_buckets = device_scene_->data.max_shaders * num_sort_partitions_;
-
-    DeviceKernelArguments args(&d_counter, &d_prefix_sum, &sort_buckets);
+      
+    DeviceKernelArguments args(&d_counter, &d_prefix_sum, &sort_buckets, &num_paths_limit, &merge_dispatch_threshold,
+                               &d_offset_per_threadgroup,
+                               &d_threadgroup_per_shader,
+                               &d_offset_per_shader,
+                               &matSpecializationEnabled);
 
     queue_->enqueue(DEVICE_KERNEL_PREFIX_SUM, work_size, args);
   }

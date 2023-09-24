@@ -323,6 +323,7 @@ void Scene::device_update(Device *device_, Progress &progress)
     device->const_copy_to("data", &dscene.data, sizeof(dscene.data));
   }
 
+  shader_manager->add_svm_eval_nodes_lights(this);
   device->optimize_for_scene(this);
 
   if (print_stats) {
@@ -335,6 +336,40 @@ void Scene::device_update(Device *device_, Progress &progress)
               << "  Peak: " << string_human_readable_number(mem_peak) << " ("
               << string_human_readable_size(mem_peak) << ")";
   }
+}
+
+unordered_map<int, bool> Scene::get_light_sampling_shaders()
+{
+    unordered_map<int, bool> shader_id_list;
+    
+    foreach (Light *light, lights) {
+        
+        if (!light->get_is_enabled()) {
+            continue;
+        }
+        
+        Shader *shader = (light->get_shader()) ? light->get_shader() : default_light;
+        shader_id_list[shader->id] = true;
+    }
+    
+    foreach (Object *object, objects) {
+      if (!object->usable_as_light()) {
+        continue;
+      }
+
+      Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
+      int mesh_num_triangles = static_cast<int>(mesh->num_triangles());
+
+      for (int i = 0; i < mesh_num_triangles; i++) {
+        int shader_index = mesh->get_shader()[i];
+        Shader *shader = (shader_index < mesh->get_used_shaders().size()) ?
+                             static_cast<Shader *>(mesh->get_used_shaders()[shader_index]) :
+                             default_surface;
+        shader_id_list[shader->id] = true;
+      }
+    }
+    
+    return shader_id_list;
 }
 
 Scene::MotionType Scene::need_motion() const

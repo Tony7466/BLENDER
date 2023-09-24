@@ -63,6 +63,7 @@ enum KernelOptimizationLevel {
   KERNEL_OPTIMIZATION_LEVEL_OFF = 0,
   KERNEL_OPTIMIZATION_LEVEL_INTERSECT = 1,
   KERNEL_OPTIMIZATION_LEVEL_FULL = 2,
+  KERNEL_OPTIMIZATION_LEVEL_EXTENDED = 3,
 
   KERNEL_OPTIMIZATION_NUM_LEVELS
 };
@@ -89,7 +90,7 @@ class DeviceInfo {
   int cpu_threads;
   vector<DeviceInfo> multi_devices;
   string error_msg;
-
+    
   DeviceInfo()
   {
     type = DEVICE_CPU;
@@ -179,6 +180,11 @@ class Device {
   virtual bool load_osl_kernels()
   {
     return true;
+  }
+
+  virtual bool generate_specialized_svm_eval_nodes()
+  {
+    return false;
   }
 
   /* Request cancellation of any long-running work. */

@@ -384,10 +384,12 @@ typedef enum NodeAO {
 } NodeAO;
 
 typedef enum ShaderType {
-  SHADER_TYPE_SURFACE,
+  SHADER_TYPE_SURFACE = 0,
   SHADER_TYPE_VOLUME,
   SHADER_TYPE_DISPLACEMENT,
   SHADER_TYPE_BUMP,
+  SHADER_TYPE_NUM,
+  SHADER_TYPE_INVALID
 } ShaderType;
 
 typedef enum NodePrincipledHairModel {

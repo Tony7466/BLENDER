@@ -146,14 +146,14 @@ void TextureMapping::compile(SVMCompiler &compiler, int offset_in, int offset_ou
   compiler.add_node(NODE_TEXTURE_MAPPING, offset_in, offset_out);
 
   Transform tfm = compute_transform();
-  compiler.add_node(tfm.x);
-  compiler.add_node(tfm.y);
-  compiler.add_node(tfm.z);
+  compiler.add_node_extra_data(tfm.x);
+  compiler.add_node_extra_data(tfm.y);
+  compiler.add_node_extra_data(tfm.z);
 
   if (use_minmax) {
     compiler.add_node(NODE_MIN_MAX, offset_out, offset_out);
-    compiler.add_node(float3_to_float4(min));
-    compiler.add_node(float3_to_float4(max));
+    compiler.add_node_extra_data(float3_to_float4(min));
+    compiler.add_node_extra_data(float3_to_float4(max));
   }
 
   if (type == NORMAL) {
@@ -414,7 +414,7 @@ void ImageTextureNode::compile(SVMCompiler &compiler)
           node.z = -1;
           node.w = -1;
         }
-        compiler.add_node(node.x, node.y, node.z, node.w);
+        compiler.add_node_extra_data(node.x, node.y, node.z, node.w);
       }
     }
   }
@@ -946,49 +946,49 @@ void SkyTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(NODE_TEX_SKY, vector_offset, compiler.stack_assign(color_out), sky_type);
   /* nishita doesn't need this data */
   if (sky_type != NODE_SKY_NISHITA) {
-    compiler.add_node(__float_as_uint(sunsky.phi),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.phi),
                       __float_as_uint(sunsky.theta),
                       __float_as_uint(sunsky.radiance_x),
                       __float_as_uint(sunsky.radiance_y));
-    compiler.add_node(__float_as_uint(sunsky.radiance_z),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.radiance_z),
                       __float_as_uint(sunsky.config_x[0]),
                       __float_as_uint(sunsky.config_x[1]),
                       __float_as_uint(sunsky.config_x[2]));
-    compiler.add_node(__float_as_uint(sunsky.config_x[3]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_x[3]),
                       __float_as_uint(sunsky.config_x[4]),
                       __float_as_uint(sunsky.config_x[5]),
                       __float_as_uint(sunsky.config_x[6]));
-    compiler.add_node(__float_as_uint(sunsky.config_x[7]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_x[7]),
                       __float_as_uint(sunsky.config_x[8]),
                       __float_as_uint(sunsky.config_y[0]),
                       __float_as_uint(sunsky.config_y[1]));
-    compiler.add_node(__float_as_uint(sunsky.config_y[2]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_y[2]),
                       __float_as_uint(sunsky.config_y[3]),
                       __float_as_uint(sunsky.config_y[4]),
                       __float_as_uint(sunsky.config_y[5]));
-    compiler.add_node(__float_as_uint(sunsky.config_y[6]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_y[6]),
                       __float_as_uint(sunsky.config_y[7]),
                       __float_as_uint(sunsky.config_y[8]),
                       __float_as_uint(sunsky.config_z[0]));
-    compiler.add_node(__float_as_uint(sunsky.config_z[1]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_z[1]),
                       __float_as_uint(sunsky.config_z[2]),
                       __float_as_uint(sunsky.config_z[3]),
                       __float_as_uint(sunsky.config_z[4]));
-    compiler.add_node(__float_as_uint(sunsky.config_z[5]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.config_z[5]),
                       __float_as_uint(sunsky.config_z[6]),
                       __float_as_uint(sunsky.config_z[7]),
                       __float_as_uint(sunsky.config_z[8]));
   }
   else {
-    compiler.add_node(__float_as_uint(sunsky.nishita_data[0]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.nishita_data[0]),
                       __float_as_uint(sunsky.nishita_data[1]),
                       __float_as_uint(sunsky.nishita_data[2]),
                       __float_as_uint(sunsky.nishita_data[3]));
-    compiler.add_node(__float_as_uint(sunsky.nishita_data[4]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.nishita_data[4]),
                       __float_as_uint(sunsky.nishita_data[5]),
                       __float_as_uint(sunsky.nishita_data[6]),
                       __float_as_uint(sunsky.nishita_data[7]));
-    compiler.add_node(__float_as_uint(sunsky.nishita_data[8]),
+    compiler.add_node_extra_data(__float_as_uint(sunsky.nishita_data[8]),
                       __float_as_uint(sunsky.nishita_data[9]),
                       handle.svm_slot(),
                       0);
@@ -1170,10 +1170,10 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
                              fac_stack_offset),
       compiler.encode_uchar4(color_stack_offset, dimensions, use_normalize));
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
 
-  compiler.add_node(__float_as_int(lacunarity),
+  compiler.add_node_extra_data(__float_as_int(lacunarity),
                     __float_as_int(distortion),
                     SVM_STACK_INVALID,
                     SVM_STACK_INVALID);
@@ -1276,7 +1276,7 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   int radius_stack_offset = compiler.stack_assign_if_linked(radius_out);
 
   compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
-  compiler.add_node(
+  compiler.add_node_extra_data(
       compiler.encode_uchar4(
           vector_stack_offset, w_in_stack_offset, scale_stack_offset, detail_stack_offset),
       compiler.encode_uchar4(roughness_stack_offset,
@@ -1287,9 +1287,9 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
           randomness_stack_offset, use_normalize, distance_stack_offset, color_stack_offset),
       compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset));
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
-  compiler.add_node(__float_as_int(lacunarity),
+  compiler.add_node_extra_data(__float_as_int(lacunarity),
                     __float_as_int(smoothness),
                     __float_as_int(exponent),
                     __float_as_int(randomness));
@@ -1513,9 +1513,9 @@ void MusgraveTextureNode::compile(SVMCompiler &compiler)
                              dimension_stack_offset,
                              lacunarity_stack_offset),
       compiler.encode_uchar4(offset_stack_offset, gain_stack_offset, fac_stack_offset));
-  compiler.add_node(
+  compiler.add_node_extra_data(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(dimension));
-  compiler.add_node(__float_as_int(lacunarity), __float_as_int(offset), __float_as_int(gain));
+  compiler.add_node_extra_data(__float_as_int(lacunarity), __float_as_int(offset), __float_as_int(gain));
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
@@ -1607,12 +1607,12 @@ void WaveTextureNode::compile(SVMCompiler &compiler)
                     compiler.encode_uchar4(vector_offset, scale_ofs, distortion_ofs),
                     compiler.encode_uchar4(detail_ofs, dscale_ofs, droughness_ofs, phase_ofs));
 
-  compiler.add_node(compiler.encode_uchar4(color_ofs, fac_ofs),
+  compiler.add_node_extra_data(compiler.encode_uchar4(color_ofs, fac_ofs),
                     __float_as_int(scale),
                     __float_as_int(distortion),
                     __float_as_int(detail));
 
-  compiler.add_node(__float_as_int(detail_scale),
+  compiler.add_node_extra_data(__float_as_int(detail_scale),
                     __float_as_int(detail_roughness),
                     __float_as_int(phase),
                     SVM_STACK_INVALID);
@@ -1671,7 +1671,7 @@ void MagicTextureNode::compile(SVMCompiler &compiler)
                     compiler.encode_uchar4(vector_offset,
                                            compiler.stack_assign_if_linked(scale_in),
                                            compiler.stack_assign_if_linked(distortion_in)));
-  compiler.add_node(__float_as_int(scale), __float_as_int(distortion));
+  compiler.add_node_extra_data(__float_as_int(scale), __float_as_int(distortion));
 
   tex_mapping.compile_end(compiler, vector_in, vector_offset);
 }
@@ -1801,17 +1801,17 @@ void BrickTextureNode::compile(SVMCompiler &compiler)
                                            compiler.stack_assign_if_linked(fac_out),
                                            compiler.stack_assign_if_linked(mortar_smooth_in)));
 
-  compiler.add_node(compiler.encode_uchar4(offset_frequency, squash_frequency),
+  compiler.add_node_extra_data(compiler.encode_uchar4(offset_frequency, squash_frequency),
                     __float_as_int(scale),
                     __float_as_int(mortar_size),
                     __float_as_int(bias));
 
-  compiler.add_node(__float_as_int(brick_width),
+  compiler.add_node_extra_data(__float_as_int(brick_width),
                     __float_as_int(row_height),
                     __float_as_int(offset),
                     __float_as_int(squash));
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       __float_as_int(mortar_smooth), SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID);
 
   tex_mapping.compile_end(compiler, vector_in, vector_offset);
@@ -1912,9 +1912,9 @@ void PointDensityTextureNode::compile(SVMCompiler &compiler)
                                                compiler.stack_assign_if_linked(color_out),
                                                space));
       if (space == NODE_TEX_VOXEL_SPACE_WORLD) {
-        compiler.add_node(tfm.x);
-        compiler.add_node(tfm.y);
-        compiler.add_node(tfm.z);
+        compiler.add_node_extra_data(tfm.x);
+        compiler.add_node_extra_data(tfm.y);
+        compiler.add_node_extra_data(tfm.z);
       }
     }
     else {
@@ -1923,9 +1923,8 @@ void PointDensityTextureNode::compile(SVMCompiler &compiler)
       }
       if (use_color) {
         compiler.add_node(NODE_VALUE_V, compiler.stack_assign(color_out));
-        compiler.add_node(
-            NODE_VALUE_V,
-            make_float3(TEX_IMAGE_MISSING_R, TEX_IMAGE_MISSING_G, TEX_IMAGE_MISSING_B));
+        compiler.add_node_extra_data(make_float4(NODE_VALUE_V,
+            TEX_IMAGE_MISSING_R, TEX_IMAGE_MISSING_G, TEX_IMAGE_MISSING_B));
       }
     }
   }
@@ -1983,7 +1982,7 @@ void NormalNode::compile(SVMCompiler &compiler)
                     compiler.stack_assign(normal_in),
                     compiler.stack_assign(normal_out),
                     compiler.stack_assign(dot_out));
-  compiler.add_node(
+  compiler.add_node_extra_data(
       __float_as_int(direction.x), __float_as_int(direction.y), __float_as_int(direction.z));
 }
 
@@ -2273,7 +2272,7 @@ void ConvertNode::compile(SVMCompiler &compiler)
     else {
       /* set 0,0,0 value */
       compiler.add_node(NODE_VALUE_V, compiler.stack_assign(out));
-      compiler.add_node(NODE_VALUE_V, value_color);
+      compiler.add_node_extra_data(make_float4(NODE_VALUE_V, value_color.x, value_color.y, value_color.z));
     }
   }
 }
@@ -2348,7 +2347,7 @@ void BsdfNode::compile(SVMCompiler &compiler,
       __float_as_int((param1) ? get_float(param1->socket_type) : 0.0f),
       __float_as_int((param2) ? get_float(param2->socket_type) : 0.0f));
 
-  compiler.add_node(normal_offset, tangent_offset, param3_offset, param4_offset);
+  compiler.add_node_extra_data(normal_offset, tangent_offset, param3_offset, param4_offset);
 }
 
 void BsdfNode::compile(SVMCompiler &compiler)
@@ -2794,7 +2793,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
                     __float_as_int((p_metallic) ? get_float(p_metallic->socket_type) : 0.0f),
                     __float_as_int((p_subsurface) ? get_float(p_subsurface->socket_type) : 0.0f));
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       normal_offset,
       tangent_offset,
       compiler.encode_uchar4(
@@ -2802,7 +2801,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
       compiler.encode_uchar4(
           sheen_offset, sheen_tint_offset, sheen_roughness_offset, SVM_STACK_INVALID));
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       compiler.encode_uchar4(
           ior_offset, transmission_offset, anisotropic_rotation_offset, coat_normal_offset),
       distribution,
@@ -2812,18 +2811,18 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
 
   float3 bc_default = get_float3(base_color_in->socket_type);
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       ((base_color_in->link) ? compiler.stack_assign(base_color_in) : SVM_STACK_INVALID),
       __float_as_int(bc_default.x),
       __float_as_int(bc_default.y),
       __float_as_int(bc_default.z));
 
-  compiler.add_node(subsurface_ior_offset,
+  compiler.add_node_extra_data(subsurface_ior_offset,
                     subsurface_radius_offset,
                     subsurface_scale_offset,
                     subsurface_anisotropy_offset);
 
-  compiler.add_node(
+  compiler.add_node_extra_data(
       compiler.encode_uchar4(
           alpha_offset, emission_strength_offset, emission_offset, SVM_STACK_INVALID),
       __float_as_int(get_float(alpha_in->socket_type)),
@@ -3317,12 +3316,12 @@ void PrincipledVolumeNode::compile(SVMCompiler &compiler)
   int attr_color = compiler.attribute_standard(color_attribute);
   int attr_temperature = compiler.attribute_standard(temperature_attribute);
 
-  compiler.add_node(__float_as_int(density),
+  compiler.add_node_extra_data(__float_as_int(density),
                     __float_as_int(anisotropy),
                     __float_as_int(emission_strength),
                     __float_as_int(blackbody_intensity));
 
-  compiler.add_node(attr_density, attr_color, attr_temperature);
+  compiler.add_node_extra_data(attr_density, attr_color, attr_temperature);
 }
 
 void PrincipledVolumeNode::compile(OSLCompiler &compiler)
@@ -3470,13 +3469,13 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
       __float_as_uint(random_roughness));
 
   /* data node */
-  compiler.add_node(SVM_STACK_INVALID,
+  compiler.add_node_extra_data(SVM_STACK_INVALID,
                     compiler.encode_uchar4(offset_ofs, ior_ofs, color_ofs, parametrization),
                     __float_as_uint(offset),
                     __float_as_uint(ior));
 
   /* data node 2 */
-  compiler.add_node(compiler.encode_uchar4(
+  compiler.add_node_extra_data(compiler.encode_uchar4(
                         tint_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs),
                     attr_random,
                     __float_as_uint(melanin),
@@ -3484,7 +3483,7 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
 
   /* data node 3 */
   if (model == NODE_PRINCIPLED_HAIR_HUANG) {
-    compiler.add_node(compiler.encode_uchar4(compiler.stack_assign_if_linked(aspect_ratio_in),
+    compiler.add_node_extra_data(compiler.encode_uchar4(compiler.stack_assign_if_linked(aspect_ratio_in),
                                              random_in_ofs,
                                              random_color_ofs,
                                              compiler.attribute(ATTR_STD_VERTEX_NORMAL)),
@@ -3493,7 +3492,7 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
                       __float_as_uint(aspect_ratio));
   }
   else {
-    compiler.add_node(
+    compiler.add_node_extra_data(
         compiler.encode_uchar4(coat_ofs, random_in_ofs, random_color_ofs, radial_roughness_ofs),
         __float_as_uint(random),
         __float_as_uint(random_color),
@@ -3501,7 +3500,7 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
   }
 
   /* data node 4 */
-  compiler.add_node(compiler.encode_uchar4(compiler.stack_assign_if_linked(R_in),
+  compiler.add_node_extra_data(compiler.encode_uchar4(compiler.stack_assign_if_linked(R_in),
                                            compiler.stack_assign_if_linked(TT_in),
                                            compiler.stack_assign_if_linked(TRT_in),
                                            SVM_STACK_INVALID),
@@ -3791,9 +3790,9 @@ void TextureCoordinateNode::compile(SVMCompiler &compiler)
     compiler.add_node(texco_node, NODE_TEXCO_OBJECT, compiler.stack_assign(out), use_transform);
     if (use_transform) {
       Transform ob_itfm = transform_inverse(ob_tfm);
-      compiler.add_node(ob_itfm.x);
-      compiler.add_node(ob_itfm.y);
-      compiler.add_node(ob_itfm.z);
+      compiler.add_node_extra_data(ob_itfm.x);
+      compiler.add_node_extra_data(ob_itfm.y);
+      compiler.add_node_extra_data(ob_itfm.z);
     }
   }
 
@@ -4586,7 +4585,7 @@ void ColorNode::compile(SVMCompiler &compiler)
 
   if (!color_out->links.empty()) {
     compiler.add_node(NODE_VALUE_V, compiler.stack_assign(color_out));
-    compiler.add_node(NODE_VALUE_V, value);
+    compiler.add_node_extra_data(make_float4(NODE_VALUE_V, value.x, value.y, value.z));
   }
 }
 
@@ -4831,11 +4830,11 @@ void MixNode::compile(SVMCompiler &compiler)
                     compiler.stack_assign(fac_in),
                     compiler.stack_assign(color1_in),
                     compiler.stack_assign(color2_in));
-  compiler.add_node(NODE_MIX, mix_type, compiler.stack_assign(color_out));
+  compiler.add_node_extra_data(NODE_MIX, mix_type, compiler.stack_assign(color_out));
 
   if (use_clamp) {
     compiler.add_node(NODE_MIX, 0, compiler.stack_assign(color_out));
-    compiler.add_node(NODE_MIX, NODE_MIX_CLAMP, compiler.stack_assign(color_out));
+    compiler.add_node_extra_data(NODE_MIX, NODE_MIX_CLAMP, compiler.stack_assign(color_out));
   }
 }
 
@@ -5277,7 +5276,7 @@ void CombineHSVNode::compile(SVMCompiler &compiler)
                     compiler.stack_assign(hue_in),
                     compiler.stack_assign(saturation_in),
                     compiler.stack_assign(value_in));
-  compiler.add_node(NODE_COMBINE_HSV, compiler.stack_assign(color_out));
+  compiler.add_node_extra_data(NODE_COMBINE_HSV, compiler.stack_assign(color_out));
 }
 
 void CombineHSVNode::compile(OSLCompiler &compiler)
@@ -5586,7 +5585,7 @@ void SeparateHSVNode::compile(SVMCompiler &compiler)
                     compiler.stack_assign(color_in),
                     compiler.stack_assign(hue_out),
                     compiler.stack_assign(saturation_out));
-  compiler.add_node(NODE_SEPARATE_HSV, compiler.stack_assign(value_out));
+  compiler.add_node_extra_data(NODE_SEPARATE_HSV, compiler.stack_assign(value_out));
 }
 
 void SeparateHSVNode::compile(OSLCompiler &compiler)
@@ -6073,11 +6072,11 @@ void MapRangeNode::compile(SVMCompiler &compiler)
           from_min_stack_offset, from_max_stack_offset, to_min_stack_offset, to_max_stack_offset),
       compiler.encode_uchar4(range_type, steps_stack_offset, result_stack_offset));
 
-  compiler.add_node(__float_as_int(from_min),
+  compiler.add_node_extra_data(__float_as_int(from_min),
                     __float_as_int(from_max),
                     __float_as_int(to_min),
                     __float_as_int(to_max));
-  compiler.add_node(__float_as_int(steps));
+  compiler.add_node_extra_data(__float_as_int(steps));
 }
 
 void MapRangeNode::compile(OSLCompiler &compiler)
@@ -6199,7 +6198,7 @@ void ClampNode::compile(SVMCompiler &compiler)
                     value_stack_offset,
                     compiler.encode_uchar4(min_stack_offset, max_stack_offset, clamp_type),
                     result_stack_offset);
-  compiler.add_node(__float_as_int(min), __float_as_int(max));
+  compiler.add_node_extra_data(__float_as_int(min), __float_as_int(max));
 }
 
 void ClampNode::compile(OSLCompiler &compiler)
@@ -6472,7 +6471,7 @@ void VectorMathNode::compile(SVMCompiler &compiler)
         math_type,
         compiler.encode_uchar4(vector1_stack_offset, vector2_stack_offset, param1_stack_offset),
         compiler.encode_uchar4(value_stack_offset, vector_stack_offset));
-    compiler.add_node(vector3_stack_offset);
+    compiler.add_node_extra_data(vector3_stack_offset);
   }
   else {
     compiler.add_node(
@@ -6717,9 +6716,9 @@ void CurvesNode::compile(SVMCompiler &compiler,
                     __float_as_int(min_x),
                     __float_as_int(max_x));
 
-  compiler.add_node(curves.size());
+  compiler.add_node_extra_data(curves.size());
   for (int i = 0; i < curves.size(); i++)
-    compiler.add_node(float3_to_float4(curves[i]));
+    compiler.add_node_extra_data(float3_to_float4(curves[i]));
 }
 
 void CurvesNode::compile(OSLCompiler &compiler, const char *name)
@@ -6877,9 +6876,9 @@ void FloatCurveNode::compile(SVMCompiler &compiler)
                     __float_as_int(min_x),
                     __float_as_int(max_x));
 
-  compiler.add_node(curve.size());
+  compiler.add_node_extra_data(curve.size());
   for (int i = 0; i < curve.size(); i++)
-    compiler.add_node(make_float4(curve[i]));
+    compiler.add_node_extra_data(make_float4(curve[i]));
 }
 
 void FloatCurveNode::compile(OSLCompiler &compiler)
@@ -6954,9 +6953,9 @@ void RGBRampNode::compile(SVMCompiler &compiler)
                                            compiler.stack_assign_if_linked(alpha_out)),
                     interpolate);
 
-  compiler.add_node(ramp.size());
+  compiler.add_node_extra_data(ramp.size());
   for (int i = 0; i < ramp.size(); i++)
-    compiler.add_node(make_float4(ramp[i].x, ramp[i].y, ramp[i].z, ramp_alpha[i]));
+    compiler.add_node_extra_data(make_float4(ramp[i].x, ramp[i].y, ramp[i].z, ramp_alpha[i]));
 }
 
 void RGBRampNode::compile(OSLCompiler &compiler)
@@ -7413,7 +7412,7 @@ void VectorDisplacementNode::compile(SVMCompiler &compiler)
                     attr,
                     attr_sign);
 
-  compiler.add_node(space);
+  compiler.add_node_extra_data(space);
 }
 
 void VectorDisplacementNode::compile(OSLCompiler &compiler)

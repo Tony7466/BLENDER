@@ -57,6 +57,8 @@ enum MetalPipelineType {
    * constants and short-circuit all unused SVM node case handlers.
    */
   PSO_SPECIALIZED_SHADE,
+    
+  PSO_SPECIALIZED_PER_MATERIAL,
 
   PSO_NUM
 };
@@ -82,6 +84,7 @@ struct MetalKernelPipeline {
   uint32_t kernel_features = 0;
 
   int threads_per_threadgroup;
+  int shader_id = -1;
 
   DeviceKernel device_kernel;
   bool loaded = false;
@@ -105,8 +108,9 @@ namespace MetalDeviceKernels {
 int num_incomplete_specialization_requests();
 int get_loaded_kernel_count(MetalDevice const *device, MetalPipelineType pso_type);
 bool should_load_kernels(MetalDevice const *device, MetalPipelineType pso_type);
-bool load(MetalDevice *device, MetalPipelineType pso_type);
-const MetalKernelPipeline *get_best_pipeline(const MetalDevice *device, DeviceKernel kernel);
+void clear_specialized_shaders(MetalDevice *device);
+bool load(MetalDevice *device, MetalPipelineType pso_type, int max_shaders = 1);
+const MetalKernelPipeline *get_best_pipeline(const MetalDevice *device, DeviceKernel kernel, int shader_id = -1);
 void wait_for_all();
 bool is_benchmark_warmup();
 

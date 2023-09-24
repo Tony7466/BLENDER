@@ -21,9 +21,360 @@
 
 CCL_NAMESPACE_BEGIN
 
+/* SVMShaderSpecializer */
+
+void SVMShaderSpecializer::add_svm_eval_nodes_lights(Scene *scene)
+{
+    std::string svm_eval_nodes_lights_name = getGeneralizedSvmEvalNodesFunctionName() + "_lights";
+    std::string svm_eval_nodes_lights =
+      #define FUNCTION_DECLERATION(...) #__VA_ARGS__
+      #include "../kernel/svm/svm_eval_nodes_decl.h"
+      ;
+      #undef FUNCTION_DECLERATION
+    {
+        svm_eval_nodes_lights += "\n\n";
+        
+        std::string funcName = getGeneralizedSvmEvalNodesFunctionName();
+        size_t loc = svm_eval_nodes_lights.find(funcName);
+        if(loc != std::string::npos)
+        {
+            svm_eval_nodes_lights.replace(loc, funcName.size(), svm_eval_nodes_lights_name);
+        }
+        
+        auto light_shaders = scene->get_light_sampling_shaders();
+        
+        const bool callGeneralizedShader = false;
+        for (auto light : light_shaders) {
+            int shader_id = light.first;
+            std::string shader_id_str = std::to_string(shader_id);
+            svm_eval_nodes_lights += "\tif(offset == " + shader_id_str + ")\n";
+            svm_eval_nodes_lights += "\t\treturn svm_eval_nodes_" + (callGeneralizedShader ? "general" : shader_id_str) +
+            "<node_feature_mask, type,  ConstIntegratorGenericState>";
+            svm_eval_nodes_lights += "(kg, state, sd, render_buffer, path_flag);\n\n";
+        }
+
+        svm_eval_nodes_lights += "}\n\n";
+    }
+    
+    std::string svm_eval_nodes_lights_str = "/*SVM_EVAL_NODES_LIGHT_SAMPLING_FUNC*/";
+    size_t loc = specialized_svm_eval_nodes.find(svm_eval_nodes_lights_str);
+    if(loc != std::string::npos)
+    {
+        specialized_svm_eval_nodes.replace(loc, svm_eval_nodes_lights_str.length(),
+                                           svm_eval_nodes_lights);
+    }
+}
+
+void SVMShaderManager::device_free(Device *device, DeviceScene *dscene, Scene *scene)
+{
+  device_free_common(device, dscene, scene);
+
+  dscene->svm_nodes.free();
+}
+
+std::string generateFuncHandlerName(ShaderNodeType shaderNodeType)
+{
+    switch (shaderNodeType) {
+#define SVM_CASE(node_type) case node_type:
+#define NODE_HANDLER_CALL(...)      return #__VA_ARGS__ ;
+#include "../kernel/svm/svm_node_handler.h"
+#undef SVM_CASE(node_type)
+#undef NODE_HANDLER_CALL(code)
+      case NODE_PAD1:
+        return "";
+      default:
+        assert(!"Unknown node type was passed to the SVM machine");
+        return "";
+    };
+    return "";
+}
+std::string SVMCompiler::shaderNodeInovcationFunc[] = {
+#define SHADER_NODE_TYPE(name) generateFuncHandlerName(name),
+#include "../kernel/svm/node_types_template.h"
+};
+
+bool isJumpNode(ShaderNodeType nodeType)
+{
+    switch(nodeType)
+    {
+#define SVM_CASE(node_type) case node_type:
+#define NODE_HANDLER_CALL(...)      return false;
+#define JUMP_NODE_HANDLER_CALL(...) return true;
+#include "../kernel/svm/svm_node_handler.h"
+#undef SVM_CASE(node_type)
+#undef NODE_HANDLER_CALL(...)
+#undef JUMP_NODE_HANDLER_CALL(...)
+        default: return false;
+    };
+}
+
+/* adds a shader node instruction invocation to current execution sequence*/
+void SVMCompiler::addShaderNodeInvocation(ShaderNodeType nodeType)
+{
+    if(nodeType == NODE_NUM)
+    {
+        current_svm_node_instructions[current_type].seq.push_back({"", false, uint(current_svm_nodes.size() - 1)});
+        return;
+    }
+    
+    current_svm_node_instructions[current_type].seq.push_back({
+                        shaderNodeInovcationFunc[nodeType], isJumpNode(nodeType), uint(current_svm_nodes.size() - 1)});
+}
+
+void SVMShaderSpecializer::generateSpecializedSVMEvalNodes(
+    int num_shaders,
+    const vector<array<int4>>& shader_svm_nodes,
+    const vector<ShaderCodePath>& shader_svm_node_instructions)
+{
+    specialized_svm_eval_nodes = "#define USE_CUSTOMIZED_SVM_EVAL_NODES 1\n\n";
+    for (int shader_id = 0; shader_id < num_shaders; shader_id++) {
+      for(int shader_type = SHADER_TYPE_SURFACE; shader_type < SHADER_TYPE_NUM; ++shader_type) {
+        specialized_svm_eval_nodes +=
+        getSpecializedSvmEvalNodesInstance(shader_id, shader_svm_node_instructions[shader_id],
+                                           shader_svm_nodes[shader_id], (ShaderType)shader_type);
+      }
+    specialized_svm_eval_nodes += getSpecializedSvmEvalNodesInstance(shader_id);
+  }
+      
+    specialized_svm_eval_nodes += "\n\n/*SVM_EVAL_NODES_LIGHT_SAMPLING_FUNC*/\n\n";
+
+    specialized_svm_eval_nodes +=
+      #define FUNCTION_DECLERATION(...) #__VA_ARGS__
+      #include "../kernel/svm/svm_eval_nodes_decl.h"
+      ;
+      #undef FUNCTION_DECLERATION(...)
+    specialized_svm_eval_nodes += "\n\n";
+      
+      specialized_svm_eval_nodes += "\tif(node_feature_mask == KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT) \n";
+      std::string svm_eval_nodes_lights_name = getGeneralizedSvmEvalNodesFunctionName() + "_lights";
+      specialized_svm_eval_nodes += "\t\treturn " + svm_eval_nodes_lights_name +
+          "<node_feature_mask, type, ConstIntegratorGenericState>"
+          "(kg, state, sd, render_buffer, path_flag);\n\n";
+      
+    specialized_svm_eval_nodes += "\tint current_shader_id = svm_custom_permutation < 0 ? offset : svm_custom_permutation;\n\n";
+    for (int shader_id = 0; shader_id < num_shaders; shader_id++) {
+      std::string shader_id_str = std::to_string(shader_id);
+      specialized_svm_eval_nodes += "\tif(current_shader_id == " + shader_id_str + ")\n";
+      specialized_svm_eval_nodes += "\t\treturn svm_eval_nodes_" + shader_id_str +
+      "<node_feature_mask, type,  ConstIntegratorGenericState>";
+      specialized_svm_eval_nodes += "(kg, state, sd, render_buffer, path_flag);\n\n";
+    }
+        
+    specialized_svm_eval_nodes += "}\n";
+}
+
+/* return generalized svm_eval_nodes function name */
+std::string SVMShaderSpecializer::getGeneralizedSvmEvalNodesFunctionName()
+{
+    return "svm_eval_nodes";
+}
+
+/* returns specialized svm_eval_nodes function name based on shader type and shader index */
+std::string SVMShaderSpecializer::getSpecializedSvmEvalNodesFunctionName(uint32_t shaderIdx,
+                                                           ShaderType shaderType)
+{
+    std::string svm_eval_nodes_func_name = getGeneralizedSvmEvalNodesFunctionName();
+    std::string shaderTypeStr = "";
+    
+    switch(shaderType)
+    {
+        case SHADER_TYPE_SURFACE:      shaderTypeStr = "SURFACESHADER";      break;
+        case SHADER_TYPE_VOLUME:       shaderTypeStr = "VOLUMESHADER";       break;
+        case SHADER_TYPE_DISPLACEMENT: shaderTypeStr = "DISPLACEMENTSHADER"; break;
+        case SHADER_TYPE_BUMP:         shaderTypeStr = "BUMPSHADER";         break;
+        case SHADER_TYPE_INVALID:                                            break;
+        default:                       assert(0);
+    };
+    
+    if(shaderType != SHADER_TYPE_INVALID)
+    {
+        svm_eval_nodes_func_name += "_";
+        svm_eval_nodes_func_name += shaderTypeStr;
+    }
+    svm_eval_nodes_func_name += "_";
+    svm_eval_nodes_func_name += std::to_string(shaderIdx);
+    
+    return svm_eval_nodes_func_name;
+};
+
+/* generates unrolled code using instructions from beg_offset to terminate_offset*/
+std::string SVMShaderSpecializer::generate_code_from_offset(const                              ShaderCodePath& instructions,
+                            const array<int4>& svm_nodes,
+                            ShaderType shaderType,
+                            uint32_t offset,
+                            uint32_t terminate_offset,
+                            uint32_t beg_offset) const
+{
+    std::string result = "";
+    
+    for(int i = offset; i < terminate_offset; )
+    {
+        const ShaderInstruction& inst = instructions[shaderType].seq[i];
+        int code_offset = inst.offset_in_svm_node+1;
+        int4 node = svm_nodes[code_offset];
+        code_offset += beg_offset;
+        assert(!inst.isJump || node.y >= 0);
+        if(i != 0 && inst.isJump && node.y > 0)
+        {
+            std::string jumpCode =
+                generate_code_from_offset(instructions, svm_nodes, shaderType,
+                                          i+1, i + node.y + 1, beg_offset);
+            std::string if_inst = inst.str;
+            size_t loc = if_inst.find('}');
+            if(loc != std::string::npos)
+                if_inst.replace(loc, 1, " ");
+            else
+                assert(0);
+            
+            loc = if_inst.find("<=");
+            if(loc != std::string::npos)
+            {
+                if_inst.replace(loc, 2, ">");
+            }
+            else
+            {
+                loc = if_inst.find(">=");
+                if(loc != std::string::npos)
+                    if_inst.replace(loc, 2, "<");
+                else
+                    assert(0);
+            }
+            
+            result += "node = uint4(" + std::to_string((uint)node.x) + "u, " +
+                std::to_string((uint)node.y) + "u, " +
+                std::to_string((uint)node.z) + "u, " +
+                std::to_string((uint)node.w) + "u);\n";
+            result += "offset = " + std::to_string(code_offset) + ";\n";
+            result += if_inst;
+            result += jumpCode;
+            result += "\n}\n";
+            
+            i += (node.y + 1);
+        }
+        else
+        {
+            if(inst.str.length() > 0)
+            {
+                result += "node = uint4(" + std::to_string((uint)node.x) + "u, " +
+                    std::to_string((uint)node.y) + "u, " +
+                    std::to_string((uint)node.z) + "u, " +
+                    std::to_string((uint)node.w) + "u);\n";
+                result += "offset = " + std::to_string(code_offset) + ";\n";
+            }
+
+            if(inst.str.length() > 0)
+            {
+                result += inst.str + "\n";
+            }
+            
+            ++i;
+        }
+    }
+    
+    return result;
+}
+
+std::string SVMShaderSpecializer::getSpecializedSvmEvalNodesInstance(
+                uint32_t shaderIdx,
+                const ShaderCodePath& shader_svm_instructions,
+                const array<int4>& shader_svm_nodes,
+                ShaderType shaderType) const
+{
+    int total_collected_instructions = 0;
+    for(const auto& insts : shader_svm_instructions)
+        total_collected_instructions += insts.seq.size();
+    assert(total_collected_instructions == shader_svm_nodes.size());
+    
+    std::string result =
+#define FUNCTION_DECLERATION(...) #__VA_ARGS__
+#include "../kernel/svm/svm_eval_nodes_decl.h"
+    ;
+#undef FUNCTION_DECLERATION
+    
+    std::string svm_eval_nodes_func_name = getGeneralizedSvmEvalNodesFunctionName();
+    size_t pos = result.find(svm_eval_nodes_func_name);
+    assert(pos != std::string::npos);
+    if(pos != std::string::npos)
+    {
+        std::string replace_with = getSpecializedSvmEvalNodesFunctionName(shaderIdx, shaderType);
+        result.replace(pos, svm_eval_nodes_func_name.length(), replace_with);
+    }
+    
+    if(shaderType == SHADER_TYPE_INVALID)
+    {
+        for(int shType = 0; shType < SHADER_TYPE_NUM; ++shType)
+        {
+            if(shType == SHADER_TYPE_BUMP) continue;
+            
+            result += shType == 0 ? "\n\t" : "\telse ";
+            result += "if(type == " + std::to_string(shType) + ") { return ";
+            result += getSpecializedSvmEvalNodesFunctionName(shaderIdx, (ShaderType)shType);
+            result += "<node_feature_mask, (ShaderType)" + std::to_string(shType) + ",  ConstIntegratorGenericState>(kg, state, sd, render_buffer, path_flag);\n}";
+        }
+    }
+    else
+    {
+        const std::string stack_size_str = "SVM_STACK_SIZE";
+        size_t pos = result.find(stack_size_str);
+        assert(pos != std::string::npos);
+        if(pos != std::string::npos)
+        {
+            std::string replace_with = std::to_string(std::max(shader_svm_instructions[shaderType].peak_stack_usage, 1));
+            result.replace(pos, stack_size_str.length(), replace_with);
+        }
+        result += "\tuint4 node;\n";
+        
+        int offset = 0;
+        int global_offset = shaderIdx;
+        bool hardcode_node_values = true;
+        
+        result += "offset = " + std::to_string(global_offset) + ";\n";
+        result += "node = uint4(" + std::to_string((uint)shader_svm_nodes[0].x) + "u, " +
+                                    std::to_string((uint)shader_svm_nodes[0].y) + "u, " +
+                                    std::to_string((uint)shader_svm_nodes[0].z) + "u, " +
+                                    std::to_string((uint)shader_svm_nodes[0].w) + "u);\n";
+        
+        switch(shaderType)
+        {
+            case SHADER_TYPE_SURFACE:
+            case SHADER_TYPE_BUMP:
+                result += "offset = " + std::to_string((uint)shader_svm_nodes[0].y)  + ";\n";
+                global_offset = shader_svm_nodes[0].y;
+                break;
+            case SHADER_TYPE_VOLUME:
+                result += "offset = " + std::to_string((uint)shader_svm_nodes[0].z) + ";\n";
+                global_offset = shader_svm_nodes[0].z;
+                break;
+            case SHADER_TYPE_DISPLACEMENT:
+                result += "offset = " + std::to_string((uint)shader_svm_nodes[0].w) + ";\n";
+                global_offset = shader_svm_nodes[0].w;
+                break;
+            default:
+                assert(0);
+        }
+        
+        if(shaderType == SHADER_TYPE_SURFACE)
+        {
+            result += generate_code_from_offset(shader_svm_instructions, shader_svm_nodes, SHADER_TYPE_BUMP, 0, shader_svm_instructions[SHADER_TYPE_BUMP].seq.size(),
+                global_offset);
+            offset = 1;
+        }
+        result += generate_code_from_offset(shader_svm_instructions, shader_svm_nodes, shaderType, offset, shader_svm_instructions[shaderType].seq.size(),
+            global_offset);
+    }
+    
+    result += "}\n";
+    return result;
+}
+
+
 /* Shader Manager */
 
-SVMShaderManager::SVMShaderManager() {}
+SVMShaderManager::SVMShaderManager() {
+#if __APPLE__
+    svmShaderSpecializer = std::make_unique<SVMShaderSpecializer>();
+#endif
+}
 
 SVMShaderManager::~SVMShaderManager() {}
 
@@ -32,7 +383,8 @@ void SVMShaderManager::reset(Scene * /*scene*/) {}
 void SVMShaderManager::device_update_shader(Scene *scene,
                                             Shader *shader,
                                             Progress *progress,
-                                            array<int4> *svm_nodes)
+                                            array<int4> *svm_nodes,
+                                            ShaderCodePath *svm_node_instrs)
 {
   if (progress->get_cancel()) {
     return;
@@ -42,7 +394,7 @@ void SVMShaderManager::device_update_shader(Scene *scene,
   SVMCompiler::Summary summary;
   SVMCompiler compiler(scene);
   compiler.background = (shader == scene->background->get_shader(scene));
-  compiler.compile(shader, *svm_nodes, 0, &summary);
+  compiler.compile(shader, *svm_nodes, *svm_node_instrs, 0, &summary);
 
   VLOG_WORK << "Compilation summary:\n"
             << "Shader name: " << shader->name << "\n"
@@ -75,13 +427,15 @@ void SVMShaderManager::device_update_specific(Device *device,
   /* Build all shaders. */
   TaskPool task_pool;
   vector<array<int4>> shader_svm_nodes(num_shaders);
+  vector<ShaderCodePath> shader_svm_node_instructions(num_shaders);
   for (int i = 0; i < num_shaders; i++) {
     task_pool.push(function_bind(&SVMShaderManager::device_update_shader,
                                  this,
                                  scene,
                                  scene->shaders[i],
                                  &progress,
-                                 &shader_svm_nodes[i]));
+                                 &shader_svm_nodes[i],
+                                 &shader_svm_node_instructions[i]));
   }
   task_pool.wait_work();
 
@@ -118,17 +472,25 @@ void SVMShaderManager::device_update_specific(Device *device,
     global_jump_node.y = local_jump_node.y - 1 + node_offset;
     global_jump_node.z = local_jump_node.z - 1 + node_offset;
     global_jump_node.w = local_jump_node.w - 1 + node_offset;
+      
+    local_jump_node.y = global_jump_node.y;
+    local_jump_node.z = global_jump_node.z;
+    local_jump_node.w = global_jump_node.w;
 
     node_offset += shader_svm_nodes[i].size() - 1;
   }
-
+    
   /* Copy the nodes of each shader into the correct location. */
   svm_nodes += num_shaders;
   for (int i = 0; i < num_shaders; i++) {
     int shader_size = shader_svm_nodes[i].size() - 1;
-
     memcpy(svm_nodes, &shader_svm_nodes[i][1], sizeof(int4) * shader_size);
     svm_nodes += shader_size;
+  }
+    
+  if (device->generate_specialized_svm_eval_nodes() && svmShaderSpecializer)
+  {
+    svmShaderSpecializer->generateSpecializedSVMEvalNodes(num_shaders, shader_svm_nodes, shader_svm_node_instructions);
   }
 
   if (progress.get_cancel()) {
@@ -145,12 +507,6 @@ void SVMShaderManager::device_update_specific(Device *device,
             << " seconds.";
 }
 
-void SVMShaderManager::device_free(Device *device, DeviceScene *dscene, Scene *scene)
-{
-  device_free_common(device, dscene, scene);
-
-  dscene->svm_nodes.free();
-}
 
 /* Graph Compiler */
 
@@ -267,7 +623,8 @@ int SVMCompiler::stack_assign(ShaderInput *input)
       {
 
         add_node(NODE_VALUE_V, input->stack_offset);
-        add_node(NODE_VALUE_V, node->get_float3(input->socket_type));
+        float3 v = node->get_float3(input->socket_type);
+        add_node_extra_data(make_float4(NODE_VALUE_V, v.x, v.y, v.z));
       }
       else /* should not get called for closure */
         assert(0);
@@ -368,15 +725,11 @@ uint SVMCompiler::encode_uchar4(uint x, uint y, uint z, uint w)
   return (x) | (y << 8) | (z << 16) | (w << 24);
 }
 
-void SVMCompiler::add_node(int a, int b, int c, int d)
-{
-  current_svm_nodes.push_back_slow(make_int4(a, b, c, d));
-}
-
 void SVMCompiler::add_node(ShaderNodeType type, int a, int b, int c)
 {
   svm_node_types_used[type] = true;
   current_svm_nodes.push_back_slow(make_int4(type, a, b, c));
+  addShaderNodeInvocation(type);
 }
 
 void SVMCompiler::add_node(ShaderNodeType type, const float3 &f)
@@ -384,12 +737,20 @@ void SVMCompiler::add_node(ShaderNodeType type, const float3 &f)
   svm_node_types_used[type] = true;
   current_svm_nodes.push_back_slow(
       make_int4(type, __float_as_int(f.x), __float_as_int(f.y), __float_as_int(f.z)));
+  addShaderNodeInvocation(type);
 }
 
-void SVMCompiler::add_node(const float4 &f)
+void SVMCompiler::add_node_extra_data(int a, int b, int c, int d)
+{
+  current_svm_nodes.push_back_slow(make_int4(a, b, c, d));
+  addShaderNodeInvocation(NODE_NUM);
+}
+
+void SVMCompiler::add_node_extra_data(const float4 &f)
 {
   current_svm_nodes.push_back_slow(make_int4(
       __float_as_int(f.x), __float_as_int(f.y), __float_as_int(f.z), __float_as_int(f.w)));
+  addShaderNodeInvocation(NODE_NUM);
 }
 
 uint SVMCompiler::attribute(ustring name)
@@ -660,12 +1021,12 @@ void SVMCompiler::generate_multi_closure(ShaderNode *root_node,
         svm_node_types_used[NODE_JUMP_IF_ONE] = true;
         current_svm_nodes.push_back_slow(make_int4(NODE_JUMP_IF_ONE, 0, stack_assign(facin), 0));
         int node_jump_skip_index = current_svm_nodes.size() - 1;
-
+        
+        addShaderNodeInvocation(NODE_JUMP_IF_ONE);
         generate_multi_closure(root_node, cl1in->link->parent, state);
-
         /* Fill in jump instruction location to be after closure. */
-        current_svm_nodes[node_jump_skip_index].y = current_svm_nodes.size() -
-                                                    node_jump_skip_index - 1;
+        int index = current_svm_nodes.size() - node_jump_skip_index - 1;
+        current_svm_nodes[node_jump_skip_index].y = index;
       }
 
       /* generate instructions for input closure 2 */
@@ -676,12 +1037,12 @@ void SVMCompiler::generate_multi_closure(ShaderNode *root_node,
         svm_node_types_used[NODE_JUMP_IF_ZERO] = true;
         current_svm_nodes.push_back_slow(make_int4(NODE_JUMP_IF_ZERO, 0, stack_assign(facin), 0));
         int node_jump_skip_index = current_svm_nodes.size() - 1;
-
+        addShaderNodeInvocation(NODE_JUMP_IF_ZERO);
         generate_multi_closure(root_node, cl2in->link->parent, state);
-
+        
         /* Fill in jump instruction location to be after closure. */
-        current_svm_nodes[node_jump_skip_index].y = current_svm_nodes.size() -
-                                                    node_jump_skip_index - 1;
+        int index = current_svm_nodes.size() - node_jump_skip_index - 1;
+        current_svm_nodes[node_jump_skip_index].y = index;
       }
 
       /* unassign */
@@ -837,10 +1198,13 @@ void SVMCompiler::compile_type(Shader *shader, ShaderGraph *graph, ShaderType ty
   }
 }
 
-void SVMCompiler::compile(Shader *shader, array<int4> &svm_nodes, int index, Summary *summary)
+void SVMCompiler::compile(Shader *shader, array<int4> &svm_nodes,
+                          ShaderCodePath& svm_node_instrs,
+                          int index, Summary *summary)
 {
   svm_node_types_used[NODE_SHADER_JUMP] = true;
   svm_nodes.push_back_slow(make_int4(NODE_SHADER_JUMP, 0, 0, 0));
+  addShaderNodeInvocation(NODE_SHADER_JUMP);
 
   /* copy graph for shader with bump mapping */
   ShaderNode *output = shader->graph->output();
@@ -913,7 +1277,33 @@ void SVMCompiler::compile(Shader *shader, array<int4> &svm_nodes, int index, Sum
     summary->peak_stack_usage = max_stack_use;
     summary->num_svm_nodes = svm_nodes.size() - start_num_svm_nodes;
   }
+    
+  for(int i = SHADER_TYPE_SURFACE; i < SHADER_TYPE_NUM; ++i)
+  {
+    current_svm_node_instructions[i].peak_stack_usage = summary->peak_stack_usage;
+  }
 
+  int offset = current_svm_node_instructions[SHADER_TYPE_BUMP].seq.size() ? (current_svm_node_instructions[SHADER_TYPE_BUMP].seq.size()) : 0.0f;
+  {
+    auto& instructions = current_svm_node_instructions[SHADER_TYPE_SURFACE].seq;
+    for(auto& inst : instructions)
+      inst.offset_in_svm_node += offset;
+  }
+  {
+      auto& instructions = current_svm_node_instructions[SHADER_TYPE_VOLUME].seq;
+      offset += current_svm_node_instructions[SHADER_TYPE_SURFACE].seq.size() - 1;
+      for(auto& inst : instructions)
+        inst.offset_in_svm_node += offset;
+  }
+  {
+    auto& instructions = current_svm_node_instructions[SHADER_TYPE_DISPLACEMENT].seq;
+    offset += current_svm_node_instructions[SHADER_TYPE_VOLUME].seq.size() - 1;
+    for(auto& inst : instructions)
+        inst.offset_in_svm_node += offset;
+  }
+
+  svm_node_instrs = current_svm_node_instructions;
+    
   /* Estimate emission for MIS. */
   shader->estimate_emission();
 }

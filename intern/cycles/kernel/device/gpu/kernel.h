@@ -267,12 +267,19 @@ ccl_gpu_kernel_postfix
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(integrator_shade_surface,
                              ccl_global const int *path_index_array,
+                             ccl_global const int *prefix_sum,
                              ccl_global float *render_buffer,
-                             const int work_size)
+                             const int work_size,
+                             const bool material_specialization_enabled,
+                             const int max_shaders)
 {
-  const int global_index = ccl_gpu_global_id_x();
+  const int shader_id = (indirect_dispatch_id % max_shaders);
+  const int idx = (indirect_dispatch_id / max_shaders) * (max_shaders + 1) + shader_id;
+  const int global_index = ccl_gpu_global_id_x() + prefix_sum[idx];
+        
+  const int max_index = min(work_size, prefix_sum[idx+1]);
 
-  if (ccl_gpu_kernel_within_bounds(global_index, work_size)) {
+  if (ccl_gpu_kernel_within_bounds(global_index, material_specialization_enabled ? max_index : work_size)) {
     const int state = (path_index_array) ? path_index_array[global_index] : global_index;
     ccl_gpu_kernel_call(integrator_shade_surface(NULL, state, render_buffer));
   }
@@ -481,7 +488,11 @@ ccl_gpu_kernel_threads(GPU_PARALLEL_SORT_BLOCK_SIZE)
                              int partition_size,
                              int num_states_limit,
                              ccl_global int *indices,
-                             int kernel_index)
+                             int kernel_index,
+                             ccl_global int *threadgroups_offset,
+                             ccl_global uint *dispatch_threadgroups,
+                             const bool material_specialization_enabled,
+                             int shadesurface_threadgroupsize)
 #endif
 {
 #if defined(__KERNEL_LOCAL_ATOMIC_SORT__)
@@ -538,7 +549,11 @@ ccl_gpu_kernel_threads(GPU_PARALLEL_SORT_BLOCK_SIZE)
                              int partition_size,
                              int num_states_limit,
                              ccl_global int *indices,
-                             int kernel_index)
+                             int kernel_index,
+                             ccl_global int *threadgroups_offset,
+                             ccl_global uint *dispatch_threadgroups,
+                             const bool material_specialization_enabled,
+                             int shadesurface_threadgroupsize)
 #endif
 
 {
@@ -573,10 +588,14 @@ ccl_gpu_kernel_threads(GPU_PARALLEL_SORT_BLOCK_SIZE)
                                d_queued_kernel,
                                d_shader_sort_key,
                                key_offsets,
+                               threadgroups_offset,
+                               dispatch_threadgroups,
                                (ccl_gpu_shared int *)threadgroup_array,
                                metal_local_id,
                                metal_local_size,
-                               metal_grid_id);
+                               metal_grid_id,
+                               material_specialization_enabled,
+                               shadesurface_threadgroupsize);
 #endif
 }
 ccl_gpu_kernel_postfix
@@ -650,9 +669,22 @@ ccl_gpu_kernel_threads(GPU_PARALLEL_SORTED_INDEX_DEFAULT_BLOCK_SIZE)
 ccl_gpu_kernel_postfix
 
 ccl_gpu_kernel_threads(GPU_PARALLEL_PREFIX_SUM_DEFAULT_BLOCK_SIZE) ccl_gpu_kernel_signature(
-    prefix_sum, ccl_global int *counter, ccl_global int *prefix_sum, int num_values)
+    prefix_sum, ccl_global int *counter, ccl_global int *prefix_sum, int num_values, int num_path_limit, int merge_dispatch_threshold,
+    ccl_global int *offset_per_threadgroup, ccl_global uint *threadgroups_per_shader,
+    ccl_global uint* offset_per_shader,
+    const bool material_specialization_enabled, int shadesurface_threadgroupsize)
 {
-  gpu_parallel_prefix_sum(ccl_gpu_global_id_x(), counter, prefix_sum, num_values);
+  gpu_parallel_prefix_sum(ccl_gpu_global_id_x(),
+                          counter,
+                          prefix_sum,
+                          num_values,
+                          num_path_limit,
+                          merge_dispatch_threshold,
+                          (ushort)shadesurface_threadgroupsize,
+                          offset_per_threadgroup,
+                          threadgroups_per_shader,
+                          offset_per_shader,
+                          material_specialization_enabled);
 }
 ccl_gpu_kernel_postfix
 

@@ -138,7 +138,9 @@ class MetalDevice : public Device {
 
   virtual void optimize_for_scene(Scene *scene) override;
 
-  static void compile_and_load(int device_id, MetalPipelineType pso_type);
+  virtual bool generate_specialized_svm_eval_nodes() override;
+
+  static void compile_and_load(int device_id, MetalPipelineType pso_type, const std::string& customSvmEvalNodes = "", int max_shaders = 1);
 
   /* ------------------------------------------------------------------ */
   /* low-level memory management */

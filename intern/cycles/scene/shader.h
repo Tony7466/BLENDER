@@ -86,7 +86,7 @@ class Shader : public Node {
   NODE_SOCKET_API(DisplacementMethod, displacement_method)
 
   float prev_volume_step_rate;
-
+    
   /* synchronization */
   bool need_update_uvs;
   bool need_update_attribute;
@@ -179,6 +179,11 @@ class ShaderManager {
 
   virtual void reset(Scene *scene) = 0;
 
+  virtual const std::string& getSpecializedSvmEvalNodesFunction() const = 0;
+  virtual void add_svm_eval_nodes_lights(Scene *scene) = 0;
+    
+  virtual int get_node_type_overhead_cost(int) { return 1; }
+    
   virtual bool use_osl()
   {
     return false;

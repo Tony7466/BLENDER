@@ -1501,7 +1501,8 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         items=(
             ('OFF', "Off", "Disable kernel optimization. Slowest rendering, no extra background CPU usage"),
             ('INTERSECT', "Intersection only", "Optimize only intersection kernels. Faster rendering, negligible extra background CPU usage"),
-            ('FULL', "Full", "Optimize all kernels. Fastest rendering, may result in extra background CPU usage"),
+            ('FULL', "Full", "Optimize all kernels. Even faster rendering, may result in extra background CPU usage"),
+            ('EXTENDED', "Per-material", "Optimize all kernels, generating specialized kernel for each material. Fastest rendering, may result in significant background CPU usage"),
         ),
     )
 

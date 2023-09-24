@@ -145,6 +145,8 @@ class DeviceQueue {
   virtual void zero_to_device(device_memory &mem) = 0;
   virtual void copy_to_device(device_memory &mem) = 0;
   virtual void copy_from_device(device_memory &mem) = 0;
+    
+  virtual device_ptr get_threadgroupsize_per_shader_buffer(int /* partition_count */) { return 0; }
 
   /* Graphics resources interoperability.
    *

@@ -39,6 +39,8 @@ class MetalDeviceQueue : public DeviceQueue {
   virtual void zero_to_device(device_memory &mem) override;
   virtual void copy_to_device(device_memory &mem) override;
   virtual void copy_from_device(device_memory &mem) override;
+    
+  virtual device_ptr get_threadgroupsize_per_shader_buffer(int partition_count) override;
 
  protected:
   void setup_capture();
@@ -46,6 +48,17 @@ class MetalDeviceQueue : public DeviceQueue {
   void begin_capture();
   void end_capture();
   void prepare_resources(DeviceKernel kernel);
+    
+  bool materialSpecializationEnqueue(DeviceKernel kernel,
+                         const int work_size,
+                         DeviceKernelArguments const &args);
+      
+  bool enqueueInternal(DeviceKernel kernel,
+                       const int work_size,
+                       DeviceKernelArguments const &args,
+                       uint numDispatches,
+                       uint dispatchOffset,
+                       device_ptr indirectBuffer);
 
   id<MTLComputeCommandEncoder> get_compute_encoder(DeviceKernel kernel);
   id<MTLBlitCommandEncoder> get_blit_encoder();
@@ -67,6 +80,9 @@ class MetalDeviceQueue : public DeviceQueue {
 
   dispatch_queue_t event_queue_;
   dispatch_semaphore_t wait_semaphore_;
+    
+  device_vector<int> integrator_shader_threadgroups_per_shader;
+  int num_sort_partitions_;
 
   struct CopyBack {
     void *host_pointer;

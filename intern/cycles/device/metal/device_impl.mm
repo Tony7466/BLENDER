@@ -132,6 +132,9 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       case KERNEL_OPTIMIZATION_LEVEL_FULL:
         kernel_specialization_level = PSO_SPECIALIZED_SHADE;
         break;
+      case KERNEL_OPTIMIZATION_LEVEL_EXTENDED:
+        kernel_specialization_level = PSO_SPECIALIZED_PER_MATERIAL;
+        break;
     }
   }
 
@@ -501,7 +504,7 @@ bool MetalDevice::make_source_and_check_if_compile_needed(MetalPipelineType pso_
   return MetalDeviceKernels::should_load_kernels(this, pso_type);
 }
 
-void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
+void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type, const std::string& customSvmEvalNodes, int max_shaders)
 {
   /* Thread-safe front-end compilation. Typically the MSL->AIR compilation can take a few seconds,
    * so we avoid blocking device tear-down if the user cancels a render immediately. */
@@ -533,6 +536,20 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
     mtlDevice = instance->mtlDevice;
     device_vendor = instance->device_vendor;
     source = instance->source[pso_type];
+      
+    if(customSvmEvalNodes != "")
+    {
+        source  = "constant int svm_custom_permutation [[function_constant(255)]];\n"
+                  "constant int svm_shader_type        [[function_constant(256)]];\n\n" +
+                  source;
+        
+        std::string replaceStr = "/*CUSTOMIZED_SVM_EVAL_NODES_HERE*/";
+        size_t pos = source.find(replaceStr);
+        if(pos != std::string::npos)
+        {
+            source.replace(pos, replaceStr.length(), customSvmEvalNodes);
+        }
+    }
   }
 
   /* Perform the actual compilation using our cached context. The MetalDevice can safely destruct
@@ -597,7 +614,7 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
         instance->mtlLibrary[pso_type] = mtlLibrary;
 
         starttime = time_dt();
-        MetalDeviceKernels::load(instance, pso_type);
+        MetalDeviceKernels::load(instance, pso_type, max_shaders);
       }
       else {
         NSString *err = [error localizedDescription];
@@ -963,15 +980,43 @@ bool MetalDevice::is_ready(string &status) const
   else if (kernel_specialization_level == PSO_SPECIALIZED_SHADE) {
     status = "Using optimized kernels";
   }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_PER_MATERIAL) {
+    status = "Using optimized kernels per material";
+  }
 
   metal_printf("MetalDevice::is_ready(...) --> true\n");
   return true;
 }
 
+bool MetalDevice::generate_specialized_svm_eval_nodes()
+{
+  return (kernel_specialization_level == PSO_SPECIALIZED_PER_MATERIAL);
+}
+
 void MetalDevice::optimize_for_scene(Scene *scene)
 {
+  int used_nodes_cost = 0;
+  std::string mat_node_type_header = "";
+  std::string mat_node_type_usage = "";
+    
+#define SHADER_NODE_TYPE(type) \
+  used_nodes_cost += scene->dscene.data.svm_usage. type ? scene->shader_manager->get_node_type_overhead_cost(type) : 0; \
+  mat_node_type_header += #type ","; \
+  mat_node_type_usage += (scene->dscene.data.svm_usage. type ? "1," : "0,");
+#include "kernel/svm/node_types_template.h"
+    
+  if(kernel_specialization_level == PSO_SPECIALIZED_PER_MATERIAL &&
+     used_nodes_cost < 35)
+  {
+      kernel_specialization_level = PSO_SPECIALIZED_SHADE;
+      info.kernel_optimization_level = KERNEL_OPTIMIZATION_LEVEL_FULL;
+  }
+    
   MetalPipelineType specialization_level = kernel_specialization_level;
+    info.kernel_optimization_level = (KernelOptimizationLevel)specialization_level;
 
+  MetalDeviceKernels::clear_specialized_shaders(this);
+    
   if (!scene->params.background) {
     /* In live viewport, don't specialize beyond intersection kernels for responsiveness. */
     specialization_level = (MetalPipelineType)min(specialization_level, PSO_SPECIALIZED_INTERSECT);
@@ -982,7 +1027,10 @@ void MetalDevice::optimize_for_scene(Scene *scene)
   int this_device_id = this->device_id;
   auto specialize_kernels_fn = ^() {
     for (int level = 1; level <= int(specialization_level); level++) {
-      compile_and_load(this_device_id, MetalPipelineType(level));
+      bool specializePerMaterial = level == PSO_SPECIALIZED_PER_MATERIAL;
+      std::string customSvmEvalNodes = specializePerMaterial ?
+        scene->shader_manager->getSpecializedSvmEvalNodesFunction() : "";
+      compile_and_load(this_device_id, MetalPipelineType(level), customSvmEvalNodes, scene->dscene.data.max_shaders);
     }
   };
 

@@ -78,7 +78,8 @@ ccl_device_inline void gpu_parallel_sort_bucket_pass(const uint num_states,
     int offset = 0;
     for (int i = 0; i < max_shaders; i++) {
       partition_key_offsets[i + uint(grid_id) * (max_shaders + 1)] = offset;
-      offset = offset + atomic_load_local(&buckets[i]);
+      int activeThreads = atomic_load_local(&buckets[i]);
+      offset = offset + activeThreads;
     }
 
     /* Store the number of active states in this partition. */
@@ -95,10 +96,14 @@ ccl_device_inline void gpu_parallel_sort_write_pass(const uint num_states,
                                                     ccl_global ushort *d_queued_kernel,
                                                     ccl_global uint *d_shader_sort_key,
                                                     ccl_global int *partition_key_offsets,
+                                                    ccl_global int *threadgroups_offsets,
+                                                    ccl_global uint *dispatch_threadgroups,
                                                     ccl_gpu_shared int *local_offset,
                                                     const ushort local_id,
                                                     const ushort local_size,
-                                                    const uint grid_id)
+                                                    const uint grid_id,
+                                                    const bool materialSpecializationEnabled,
+                                                    const uint threadGroupSize)
 {
   /* Calculate each partition's global offset from the prefix sum of the active state counts per
    * partition. */
@@ -111,7 +116,31 @@ ccl_device_inline void gpu_parallel_sort_write_pass(const uint num_states,
     }
 
     ccl_global int *key_offsets = partition_key_offsets + (uint(grid_id) * (max_shaders + 1));
-    atomic_store_local(&local_offset[local_id], key_offsets[local_id] + partition_offset);
+    ccl_global int *tg_offsets = threadgroups_offsets + (uint(grid_id) * (max_shaders + 1));
+    ccl_global uint * threadgroups = dispatch_threadgroups + (3 * uint(grid_id) * max_shaders);
+      
+    int global_offset = key_offsets[local_id] + partition_offset;
+    atomic_store_local(&local_offset[local_id], global_offset);
+      
+      int partitionThreads =
+        partition_key_offsets[max_shaders + uint(grid_id) * (max_shaders + 1)] -
+        partition_key_offsets[max(int(max_shaders) + (int(grid_id)-1) * int(max_shaders + 1), 0)];
+      partitionThreads = max(min(partitionThreads, num_states_limit), 0);
+      int activeThreads = min(key_offsets[local_id+1] - key_offsets[local_id], num_states_limit);
+      
+      if(materialSpecializationEnabled && queued_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
+      {
+          threadgroups[3 * local_id  + 0] =
+            (activeThreads + threadGroupSize - 1) / threadGroupSize;
+          threadgroups[3 * local_id + 1] = 1;
+          threadgroups[3 * local_id + 2] = 1;
+          
+          tg_offsets[local_id] = min(global_offset, num_states_limit);
+          if(local_id == 0)
+          {
+              tg_offsets[max_shaders] = min(partition_offset + key_offsets[max_shaders], num_states_limit);
+          }
+      }
   }
 
 #  ifdef __KERNEL_ONEAPI__

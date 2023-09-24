@@ -66,6 +66,7 @@ using namespace metal::raytracing;
 #define kernel_assert(cond)
 
 #define ccl_gpu_global_id_x() metal_global_id
+#define ccl_gpu_threadgroup_size() metal_local_size
 #define ccl_gpu_warp_size simdgroup_size
 #define ccl_gpu_thread_idx_x simd_group_index
 #define ccl_gpu_thread_mask(thread_warp) uint64_t((1ull << thread_warp) - 1)
@@ -116,42 +117,48 @@ struct kernel_gpu_##name \
            threadgroup atomic_int *threadgroup_array, \
            const uint metal_global_id, \
            const ushort metal_local_id, \
+           const uint metal_grid_size, \
            const ushort metal_local_size, \
            const uint metal_grid_id, \
            uint simdgroup_size, \
            uint simd_lane_index, \
            uint simd_group_index, \
-           uint num_simd_groups) ccl_global const; \
+           uint num_simd_groups, \
+           uint indirect_dispatch_id) ccl_global const; \
 }; \
 kernel void cycles_metal_##name(device const kernel_gpu_##name *params_struct, \
                                 constant KernelParamsMetal &ccl_restrict   _launch_params_metal, \
                                 constant MetalAncillaries *_metal_ancillaries, \
+                                constant uint* indirect_dispatch_id, \
                                 threadgroup atomic_int *threadgroup_array[[ threadgroup(0) ]], \
                                 const uint metal_global_id [[thread_position_in_grid]], \
                                 const ushort metal_local_id   [[thread_position_in_threadgroup]], \
                                 const ushort metal_local_size [[threads_per_threadgroup]], \
                                 const uint metal_grid_id    [[threadgroup_position_in_grid]], \
+                                const uint metal_grid_size [[threads_per_grid]],\
                                 uint simdgroup_size [[threads_per_simdgroup]], \
                                 uint simd_lane_index [[thread_index_in_simdgroup]], \
                                 uint simd_group_index [[simdgroup_index_in_threadgroup]], \
                                 uint num_simd_groups [[simdgroups_per_threadgroup]]) { \
   MetalKernelContext context(_launch_params_metal, _metal_ancillaries); \
-  params_struct->run(context, threadgroup_array, metal_global_id, metal_local_id, metal_local_size, metal_grid_id, simdgroup_size, simd_lane_index, simd_group_index, num_simd_groups); \
+  params_struct->run(context, threadgroup_array, metal_global_id, metal_local_id, metal_grid_size, metal_local_size, metal_grid_id, simdgroup_size, simd_lane_index, simd_group_index, num_simd_groups, *indirect_dispatch_id); \
 } \
 void kernel_gpu_##name::run(thread MetalKernelContext& context, \
                   threadgroup atomic_int *threadgroup_array, \
                   const uint metal_global_id, \
                   const ushort metal_local_id, \
+                  const uint metal_grid_size, \
                   const ushort metal_local_size, \
                   const uint metal_grid_id, \
                   uint simdgroup_size, \
                   uint simd_lane_index, \
                   uint simd_group_index, \
-                  uint num_simd_groups) ccl_global const
+                  uint num_simd_groups, \
+                  uint indirect_dispatch_id) ccl_global const
 
 #define ccl_gpu_kernel_postfix
 #define ccl_gpu_kernel_call(x) context.x
-#define ccl_gpu_kernel_within_bounds(i,n) true
+#define ccl_gpu_kernel_within_bounds(i,n) ((i) < (n))
 
 /* define a function object where "func" is the lambda body, and additional parameters are used to specify captured state  */
 #define ccl_gpu_kernel_lambda(func, ...) \

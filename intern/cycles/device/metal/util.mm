@@ -80,7 +80,7 @@ MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
   return METAL_GPU_UNKNOWN;
 }
 
-int MetalInfo::optimal_sort_partition_elements(id<MTLDevice> device)
+int MetalInfo::optimal_sort_partition_elements(id<MTLDevice> device, int maxKernelSpecializationLevel)
 {
   if (auto str = getenv("CYCLES_METAL_SORT_PARTITION_ELEMENTS")) {
     return atoi(str);
@@ -90,6 +90,14 @@ int MetalInfo::optimal_sort_partition_elements(id<MTLDevice> device)
    * sorting each partition by material. Partitioning into chunks of 65536 elements results in an
    * overall render time speedup of up to 15%. */
   if (get_device_vendor(device) == METAL_GPU_APPLE) {
+    if(maxKernelSpecializationLevel == PSO_SPECIALIZED_PER_MATERIAL)
+    {
+      /* On M1 GPUs, we see performance drop from sort partitioning
+       * when material specialization is enabled */
+      if(MetalInfo::get_apple_gpu_architecture(device) == APPLE_M1)
+        return 0;
+      return 1048576;
+    }
     return 65536;
   }
   return 0;

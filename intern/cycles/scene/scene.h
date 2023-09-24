@@ -135,7 +135,9 @@ class Scene : public NodeOwner {
   vector<ParticleSystem *> particle_systems;
   vector<Pass *> passes;
   vector<Procedural *> procedurals;
-
+    
+  unordered_map<int, bool> get_light_sampling_shaders();
+    
   /* data managers */
   ImageManager *image_manager;
   LightManager *light_manager;
