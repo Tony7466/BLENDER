@@ -7,6 +7,10 @@
 #include "NOD_geometry_nodes_gizmos.hh"
 
 #include "BKE_node_runtime.hh"
+#include "BKE_workspace.h"
+
+#include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 namespace blender::nodes::gizmos {
 
@@ -214,6 +218,24 @@ bool update_gizmo_inferencing(bNodeTree &tree)
 
   /* TODO: Check if interface changed. */
   return true;
+}
+
+void foreach_active_gizmo(
+    const wmWindowManager &wm,
+    const FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn)
+{
+  LISTBASE_FOREACH (const wmWindow *, window, &wm.windows) {
+    const bScreen *screen = BKE_workspace_active_screen_get(window->workspace_hook);
+    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+      const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
+      if (sl->spacetype == SPACE_NODE) {
+        const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
+        if (snode.nodetree == nullptr) {
+          continue;
+        }
+      }
+    }
+  }
 }
 
 }  // namespace blender::nodes::gizmos

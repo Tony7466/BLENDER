@@ -7,10 +7,14 @@
 #include <optional>
 #include <variant>
 
+#include "BLI_compute_context.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_node_types.h"
+
+struct wmWindowManager;
 
 namespace blender::nodes::gizmos {
 
@@ -81,5 +85,9 @@ std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
 Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input);
 
 bool update_gizmo_inferencing(bNodeTree &tree);
+
+void foreach_active_gizmo(
+    const wmWindowManager &wm,
+    FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 
 }  // namespace blender::nodes::gizmos
