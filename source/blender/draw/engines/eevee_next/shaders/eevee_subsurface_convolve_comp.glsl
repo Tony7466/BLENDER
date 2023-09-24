@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Postprocess diffuse radiance output from the diffuse evaluation pass to mimic subsurface
- * transmission.
+ * Process in screen space the diffuse radiance input to mimic subsurface transmission.
  *
  * This implementation follows the technique described in the siggraph presentation:
  * "Efficient screen space subsurface scattering Siggraph 2018"
@@ -14,6 +13,8 @@
  * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -22,18 +23,15 @@
 
 void main(void)
 {
-  vec2 center_uv = uvcoordsvar.xy;
-  ivec2 texel = ivec2(gl_FragCoord.xy);
+  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
 
-  float gbuffer_depth = texelFetch(hiz_tx, texel, 0).r;
-  vec3 vP = get_view_space_from_depth(center_uv, gbuffer_depth);
+  float depth = texelFetch(hiz_tx, texel, 0).r;
+  vec3 vP = get_view_space_from_depth(center_uv, depth);
 
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
   if (gbuf.diffuse.sss_id == 0u) {
-    /* Normal diffuse is already in combined pass. */
-    /* Refraction also go into this case. */
-    out_combined = vec4(0.0);
     return;
   }
 
@@ -43,10 +41,8 @@ void main(void)
   vec2 sample_scale = vec2(ProjectionMatrix[0][0], ProjectionMatrix[1][1]) *
                       (0.5 * max_radius / homcoord);
 
-  float pixel_footprint = sample_scale.x * textureSize(hiz_tx, 0).x;
+  float pixel_footprint = sample_scale.x * float(textureSize(gbuf_header_tx, 0).x);
   if (pixel_footprint <= 1.0) {
-    /* Early out. */
-    out_combined = vec4(0.0);
     return;
   }
 
@@ -58,27 +54,22 @@ void main(void)
 
   /* Do not rotate too much to avoid too much cache misses. */
   float golden_angle = M_PI * (3.0 - sqrt(5.0));
-  float theta = interlieved_gradient_noise(gl_FragCoord.xy, 0, 0.0) * golden_angle;
-  float cos_theta = cos(theta);
-  float sin_theta = sqrt(1.0 - sqr(cos_theta));
-  mat2 rot = mat2(cos_theta, sin_theta, -sin_theta, cos_theta);
+  float theta = interlieved_gradient_noise(vec2(texel), 0, 0.0) * golden_angle;
 
-  mat2 scale = mat2(sample_scale.x, 0.0, 0.0, sample_scale.y);
-  mat2 sample_space = scale * rot;
+  mat2 sample_space = from_scale(sample_scale) * from_rotation(Angle(theta));
 
   vec3 accum_weight = vec3(0.0);
-  vec3 accum = vec3(0.0);
-
-  /* TODO/OPTI(fclem) Make separate sample set for lower radius. */
+  vec3 accum_radiance = vec3(0.0);
 
   for (int i = 0; i < uniform_buf.subsurface.sample_len; i++) {
     vec2 sample_uv = center_uv + sample_space * uniform_buf.subsurface.samples[i].xy;
     float pdf_inv = uniform_buf.subsurface.samples[i].z;
 
+    /* TODO(fclem): L0 cache using LDS. */
     float sample_depth = textureLod(hiz_tx, sample_uv * uniform_buf.hiz.uv_scale, 0.0).r;
-    vec3 sample_vP = get_view_space_from_depth(sample_uv, sample_depth);
+    vec4 sample_data = texture(radiance_id_tx, sample_uv);
 
-    vec4 sample_data = texture(radiance_tx, sample_uv);
+    vec3 sample_vP = get_view_space_from_depth(sample_uv, sample_depth);
     vec3 sample_radiance = sample_data.rgb;
     uint sample_sss_id = uint(sample_data.a);
 
@@ -86,37 +77,17 @@ void main(void)
       continue;
     }
 
-    /* Discard out of bounds samples. */
-    if (any(lessThan(sample_uv, vec2(0.0))) || any(greaterThan(sample_uv, vec2(1.0)))) {
-      continue;
-    }
-
     /* Slide 34. */
     float r = distance(sample_vP, vP);
     vec3 weight = burley_eval(d, r) * pdf_inv;
 
-    accum += sample_radiance * weight;
+    accum_radiance += sample_radiance * weight;
     accum_weight += weight;
   }
   /* Normalize the sum (slide 34). */
-  accum /= accum_weight;
+  accum_radiance *= safe_rcp(accum_weight);
 
-  if (uniform_buf.render_pass.diffuse_light_id >= 0) {
-    imageStore(
-        rp_color_img, ivec3(texel, uniform_buf.render_pass.diffuse_light_id), vec4(accum, 1.0));
-  }
-
-  /* This pass uses additive blending.
-   * Subtract the surface diffuse radiance so it's not added twice. */
-  accum -= texelFetch(radiance_tx, texel, 0).rgb;
-
-  /* Apply surface color on final radiance. */
-  accum *= gbuf.diffuse.color;
-
-  /* Debug, detect NaNs. */
-  if (any(isnan(accum))) {
-    accum = vec3(1.0, 0.0, 1.0);
-  }
-
-  out_combined = vec4(accum, 0.0);
+  /* Put result in direct diffuse. */
+  imageStore(out_direct_light_img, texel, vec4(accum_radiance, 0.0));
+  imageStore(out_indirect_light_img, texel, vec4(0.0, 0.0, 0.0, 0.0));
 }

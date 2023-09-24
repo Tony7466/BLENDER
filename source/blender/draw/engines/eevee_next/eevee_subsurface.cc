@@ -29,30 +29,69 @@ void SubsurfaceModule::end_sync()
     data_.sample_len = 55;
   }
 
-  subsurface_ps_.init();
-  subsurface_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
-                           DRW_STATE_BLEND_ADD_FULL);
-  subsurface_ps_.state_stencil(0x00u, 0xFFu, CLOSURE_SSS);
-  subsurface_ps_.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_EVAL));
-  inst_.bind_uniform_data(&subsurface_ps_);
-  inst_.hiz_buffer.bind_resources(&subsurface_ps_);
-  inst_.gbuffer.bind_resources(&subsurface_ps_);
-  subsurface_ps_.bind_texture("radiance_tx", &diffuse_light_tx_);
-  subsurface_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
-  /** NOTE: Not used in the shader, but we bind it to avoid debug warnings. */
-  subsurface_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
+  {
+    PassSimple &pass = setup_ps_;
+    pass.init();
+    pass.state_set(DRW_STATE_NO_DRAW);
+    pass.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_SETUP));
+    inst_.gbuffer.bind_resources(&pass);
+    pass.bind_image("direct_light_img", &direct_light_tx_);
+    pass.bind_image("indirect_light_img", &indirect_light_tx_);
+    pass.bind_image("out_radiance_id_img", &radiance_id_tx_);
+    pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    /* TODO(fclem): Indirect dispatch with tile scheduler. Might still need to clear the buffer. */
+    pass.dispatch(&dispatch_size_);
+  }
+  {
+    /* Clamping to border color allows to always load ID 0 for out of view samples and discard
+     * their influence. Also disable filtering to avoid light bleeding between different objects
+     * and loading invalid interpolated IDs. */
+    GPUSamplerState sampler = {GPU_SAMPLER_FILTERING_DEFAULT,
+                               GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
+                               GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
+                               GPU_SAMPLER_CUSTOM_COMPARE,
+                               GPU_SAMPLER_STATE_TYPE_PARAMETERS};
 
-  subsurface_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
-  subsurface_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+    PassSimple &pass = convolve_ps_;
+    pass.init();
+    pass.state_set(DRW_STATE_NO_DRAW);
+    pass.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_CONVOLVE));
+    inst_.bind_uniform_data(&pass);
+    inst_.hiz_buffer.bind_resources(&pass);
+    inst_.gbuffer.bind_resources(&pass);
+    pass.bind_texture("radiance_id_tx", &radiance_id_tx_, sampler);
+    pass.bind_image("out_direct_light_img", &direct_light_tx_);
+    pass.bind_image("out_indirect_light_img", &indirect_light_tx_);
+    pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
+    /* TODO(fclem): Indirect dispatch with tile scheduler. */
+    pass.dispatch(&dispatch_size_);
+  }
 }
 
-void SubsurfaceModule::render(View &view, Framebuffer &fb, Texture &diffuse_light_tx)
+void SubsurfaceModule::render(GPUTexture *direct_diffuse_light_tx,
+                              GPUTexture *indirect_diffuse_light_tx,
+                              eClosureBits active_closures,
+                              View &view)
 {
+  if (!(active_closures & CLOSURE_SSS)) {
+    return;
+  }
+
   precompute_samples_location();
 
-  fb.bind();
-  diffuse_light_tx_ = *&diffuse_light_tx;
-  inst_.manager->submit(subsurface_ps_, view);
+  int2 render_extent = inst_.film.render_extent_get();
+  dispatch_size_ = int3(math::divide_ceil(render_extent, int2(SUBSURFACE_GROUP_SIZE)), 1);
+
+  direct_light_tx_ = direct_diffuse_light_tx;
+  indirect_light_tx_ = indirect_diffuse_light_tx;
+
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  radiance_id_tx_.acquire(render_extent, GPU_RGBA16F, usage);
+
+  inst_.manager->submit(setup_ps_, view);
+  inst_.manager->submit(convolve_ps_, view);
+
+  radiance_id_tx_.release();
 }
 
 void SubsurfaceModule::precompute_samples_location()

@@ -83,6 +83,9 @@
 #define RAYTRACE_VARIANCE_FORMAT GPU_R16F
 #define RAYTRACE_TILEMASK_FORMAT GPU_R8UI
 
+/* Sub-Surface Scattering. */
+#define SUBSURFACE_GROUP_SIZE RAYTRACE_GROUP_SIZE
+
 /* Minimum visibility size. */
 #define LIGHTPROBE_FILTER_VIS_GROUP_SIZE 16
 

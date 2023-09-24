@@ -36,9 +36,16 @@ struct SubsurfaceModule {
   /** Contains samples locations. */
   SubsurfaceData &data_;
   /** Scene diffuse irradiance. Pointer binded at sync time, set at render time. */
-  GPUTexture *diffuse_light_tx_;
-  /** Subsurface eval pass. Runs after the deferred pass. */
-  PassSimple subsurface_ps_ = {"Subsurface"};
+  GPUTexture *direct_light_tx_;
+  GPUTexture *indirect_light_tx_;
+  /** Input radiance packed with surface ID. */
+  TextureFromPool radiance_id_tx_;
+  /** Setup pass fill the radiance_id_tx_ for faster convolution. */
+  PassSimple setup_ps_ = {"Subsurface.Prepare"};
+  /** Screen space convolution pass. */
+  PassSimple convolve_ps_ = {"Subsurface.Convolve"};
+
+  int3 dispatch_size_ = {1, 1, 1};
 
  public:
   SubsurfaceModule(Instance &inst, SubsurfaceData &data) : inst_(inst), data_(data)
@@ -51,7 +58,12 @@ struct SubsurfaceModule {
 
   void end_sync();
 
-  void render(View &view, Framebuffer &fb, Texture &diffuse_light_tx);
+  /* Process the direct & indirect diffuse light buffers using screen space subsurface scattering.
+   * Result is stored in the direct light texture. */
+  void render(GPUTexture *direct_diffuse_light_tx,
+              GPUTexture *indirect_diffuse_light_tx,
+              eClosureBits active_closures,
+              View &view);
 
  private:
   void precompute_samples_location();
