@@ -415,6 +415,7 @@ UpdateActiveGeometryNodesViewerResult update_active_geometry_nodes_viewer(const 
         }
         if (!BKE_viewer_path_equal(&viewer_path, &tmp_viewer_path)) {
           std::swap(viewer_path, tmp_viewer_path);
+          /* Make sure the viewed data becomes available. */
           DEG_id_tag_update(snode.id, ID_RECALC_GEOMETRY);
           return UpdateActiveGeometryNodesViewerResult::Updated;
         }

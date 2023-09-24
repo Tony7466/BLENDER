@@ -70,7 +70,8 @@ enum class UpdateActiveGeometryNodesViewerResult {
 
 /**
  * Checks if the node referenced by the viewer and its entire context is still active, i.e. some
- * editor is showing it.
+ * editor is showing it. If not, the viewer path might be updated in minor ways (like changing the
+ * repeat zone iteration).
  */
 UpdateActiveGeometryNodesViewerResult update_active_geometry_nodes_viewer(const bContext &C,
                                                                           ViewerPath &viewer_path);
