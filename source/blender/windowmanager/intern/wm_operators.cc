@@ -1865,7 +1865,7 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     }
     {
       char *buffer = RNA_string_get_alloc(op->ptr, "initial_query", nullptr, 0, nullptr);
-      STRNCPY(g_search_text, buffer);
+      BLI_strncpy_rlen(g_search_text, buffer, 2);
       MEM_SAFE_FREE(buffer);
     }
   }
@@ -1915,7 +1915,7 @@ static void WM_OT_search_single_menu(wmOperatorType *ot)
   RNA_def_string(ot->srna,
                  "initial_query",
                  nullptr,
-                 2,
+                 0,
                  "Initial Query",
                  "Query to insert into the search box");
 }
