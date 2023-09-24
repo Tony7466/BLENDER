@@ -26,7 +26,7 @@ void SubsurfaceModule::end_sync()
     /* Convert sample count from old implementation which was using a separable filter. */
     /* TODO(fclem) better remapping. */
     // data_.sample_len = square_f(1 + 2 * inst_.scene->eevee.sss_samples);
-    data_.sample_len = 55;
+    data_.sample_len = 16;
   }
 
   {
