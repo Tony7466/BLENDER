@@ -16,6 +16,7 @@
 #include "BLI_vector.hh"
 
 #include "DNA_modifier_types.h"
+#include "DNA_node_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "DEG_depsgraph.hh"
@@ -36,9 +37,10 @@ static ViewerPathElem *viewer_path_elem_for_zone(const bNodeTreeZone &zone)
       return &node_elem->base;
     }
     case GEO_NODE_REPEAT_OUTPUT: {
+      const auto &storage = *static_cast<NodeGeometryRepeatOutput *>(zone.output_node->storage);
       RepeatZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_repeat_zone();
       node_elem->repeat_output_node_id = zone.output_node->identifier;
-      node_elem->iteration = 0;
+      node_elem->iteration = storage.viewer_iteration;
       return &node_elem->base;
     }
   }

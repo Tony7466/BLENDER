@@ -9089,6 +9089,13 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "viewer_iteration", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewer Iteration",
+      "Iteration that is used by inspection features like the viewer node or socket inspection");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
