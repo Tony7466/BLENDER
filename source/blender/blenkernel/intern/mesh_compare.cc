@@ -16,6 +16,54 @@
 
 namespace blender::bke::mesh {
 
+enum class MeshMismatch : int8_t {
+  NumVerts,         /* The number of vertices is different. */
+  NumEdges,         /* The number of edges is different. */
+  NumCorners,       /* The number of corners is different. */
+  NumFaces,         /* The number of faces is different. */
+  VertexAttributes, /* Some values of the vertex attributes are different. */
+  EdgeAttributes,   /* Some values of the edge attributes are different. */
+  CornerAttributes, /* Some values of the corner attributes are different. */
+  FaceAttributes,   /* Some values of the face attributes are different. */
+  EdgeTopology,     /* The edge topology is different. */
+  FaceTopology,     /* The face topology is different. */
+  Attributes,       /* The sets of attribute ids are different. */
+  AttributeTypes,   /* Some attributes with the same name have different types. */
+};
+
+const char *mismatch_to_string(const MeshMismatch &mismatch)
+{
+  switch (mismatch) {
+    case MeshMismatch::NumVerts:
+      return "The number of vertices is different";
+    case MeshMismatch::NumEdges:
+      return "The number of edges is different";
+    case MeshMismatch::NumCorners:
+      return "The number of corners is different";
+    case MeshMismatch::NumFaces:
+      return "The number of faces is different";
+    case MeshMismatch::VertexAttributes:
+      return "Some values of the vertex attributes are different";
+    case MeshMismatch::EdgeAttributes:
+      return "Some values of the edge attributes are different";
+    case MeshMismatch::CornerAttributes:
+      return "Some values of the corner attributes are different";
+    case MeshMismatch::FaceAttributes:
+      return "Some values of the face attributes are different";
+    case MeshMismatch::EdgeTopology:
+      return "The edge topology is different";
+    case MeshMismatch::FaceTopology:
+      return "The face topology is different";
+    case MeshMismatch::Attributes:
+      return "The sets of attribute ids are different";
+    case MeshMismatch::AttributeTypes:
+      return "Some attributes with the same name have different types";
+    default:
+      BLI_assert_unreachable();
+      return "";
+  }
+}
+
 class IndexMapping {
  private:
   void calculate_inverse_map(const Span<int> map, MutableSpan<int> inverted_map)
