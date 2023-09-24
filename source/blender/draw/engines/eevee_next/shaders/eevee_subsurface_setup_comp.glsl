@@ -3,14 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Process in screen space the diffuse radiance input to mimic subsurface transmission.
- *
- * This implementation follows the technique described in the siggraph presentation:
- * "Efficient screen space subsurface scattering Siggraph 2018"
- * by Evgenii Golubev
- *
- * But, instead of having all the precomputed weights for all three color primaries,
- * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
+ * Select tile that have visible SSS effect and prepare the intermediate buffers for faster
+ * processing.
  */
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
@@ -35,11 +29,10 @@ void main(void)
     vec3 radiance = imageLoad(direct_light_img, texel).rgb +
                     imageLoad(indirect_light_img, texel).rgb;
 
-    float sss_id_packed = gbuffer_object_id_f16_pack(gbuf.diffuse.sss_id);
-
     float max_radius = max_v3(gbuf.diffuse.sss_radius);
 
-    imageStore(out_radiance_id_img, texel, vec4(radiance, sss_id_packed));
+    imageStore(radiance_img, texel, vec4(radiance, 0.0));
+    imageStore(object_id_img, texel, uvec4(gbuf.diffuse.sss_id));
 
     vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
     float depth = texelFetch(depth_tx, texel, 0).r;
@@ -54,7 +47,8 @@ void main(void)
     }
   }
   else {
-    imageStore(out_radiance_id_img, texel, vec4(0.0));
+    /* No need to write radiance_img since the radiance won't be used at all. */
+    imageStore(object_id_img, texel, uvec4(0));
   }
 
   barrier();

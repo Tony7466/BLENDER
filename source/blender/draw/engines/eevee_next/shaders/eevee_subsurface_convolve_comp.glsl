@@ -29,7 +29,7 @@ void main(void)
 
   vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
 
-  float depth = texelFetch(hiz_tx, texel, 0).r;
+  float depth = texelFetch(depth_tx, texel, 0).r;
   vec3 vP = get_view_space_from_depth(center_uv, depth);
 
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
@@ -64,18 +64,15 @@ void main(void)
     float pdf_inv = uniform_buf.subsurface.samples[i].z;
 
     /* TODO(fclem): L0 cache using LDS. */
-    float sample_depth = textureLod(hiz_tx, sample_uv * uniform_buf.hiz.uv_scale, 0.0).r;
-    vec4 sample_data = texture(radiance_id_tx, sample_uv);
-
-    vec3 sample_vP = get_view_space_from_depth(sample_uv, sample_depth);
-    vec3 sample_radiance = sample_data.rgb;
-    uint sample_sss_id = uint(sample_data.a);
-
+    float sample_depth = texture(depth_tx, sample_uv).r;
+    uint sample_sss_id = texture(object_id_tx, sample_uv).r;
+    vec3 sample_radiance = texture(radiance_tx, sample_uv).rgb;
+    /* Reject radiance from other surfaces. Avoids light leak between objects. */
     if (sample_sss_id != gbuf.diffuse.sss_id) {
       continue;
     }
-
     /* Slide 34. */
+    vec3 sample_vP = get_view_space_from_depth(sample_uv, sample_depth);
     float r = distance(sample_vP, vP);
     vec3 weight = burley_eval(d, r) * pdf_inv;
 

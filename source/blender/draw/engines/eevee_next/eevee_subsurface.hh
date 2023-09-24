@@ -39,7 +39,8 @@ struct SubsurfaceModule {
   GPUTexture *direct_light_tx_;
   GPUTexture *indirect_light_tx_;
   /** Input radiance packed with surface ID. */
-  TextureFromPool radiance_id_tx_;
+  TextureFromPool radiance_tx_;
+  TextureFromPool object_id_tx_;
   /** Setup pass fill the radiance_id_tx_ for faster convolution. */
   PassSimple setup_ps_ = {"Subsurface.Prepare"};
   int3 setup_dispatch_size_ = {1, 1, 1};
