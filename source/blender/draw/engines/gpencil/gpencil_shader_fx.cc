@@ -57,11 +57,12 @@ struct gpIterVfxData {
   GPUTexture **source_reveal_tx;
 };
 
-static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
-                                                DRWState state,
-                                                gpIterVfxData *iter,
-                                                GPUShader *sh,
-                                                GPUSamplerState sampler = GPUSamplerState::internal_sampler())
+static DRWShadingGroup *gpencil_vfx_pass_create(
+    const char *name,
+    DRWState state,
+    gpIterVfxData *iter,
+    GPUShader *sh,
+    GPUSamplerState sampler = GPUSamplerState::internal_sampler())
 {
   DRWPass *pass = DRW_pass_create(name, state);
   DRWShadingGroup *grp = DRW_shgroup_create(sh, pass);
@@ -281,7 +282,7 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
   if (pixel_size[0] > vp_size_inv[0]) {
     copy_v2_fl2(pixsize_uniform, pixel_size[0], vp_size_inv[1]);
     GPUSamplerState sampler = (use_antialiasing) ? GPUSamplerState::internal_sampler() :
-                                            GPUSamplerState::default_sampler();
+                                                   GPUSamplerState::default_sampler();
 
     grp = gpencil_vfx_pass_create("Fx Pixelize X", state, iter, sh, sampler);
     DRW_shgroup_uniform_vec2_copy(grp, "targetPixelSize", pixsize_uniform);
