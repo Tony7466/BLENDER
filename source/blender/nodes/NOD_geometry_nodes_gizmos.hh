@@ -62,6 +62,11 @@ struct InterfaceGizmoInput {
   }
 };
 
+struct GizmoNodeSource {
+  GizmoSource source;
+  const bNode *variable_node = nullptr;
+};
+
 struct GizmoInferencingResult {
   MultiValueMap<const bNode *, GizmoInput> gizmo_inputs_for_value_node;
   MultiValueMap<InterfaceGizmoInput, GizmoInput> gizmo_inputs_for_interface_input;
@@ -69,6 +74,8 @@ struct GizmoInferencingResult {
 
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
                                              std::optional<int> elem_index);
+
+Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input);
 
 bool update_gizmo_inferencing(bNodeTree &tree);
 

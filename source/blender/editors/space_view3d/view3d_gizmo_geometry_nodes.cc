@@ -125,59 +125,37 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
 {
   BLI_assert(gizmo_value_socket.is_input());
   const bNodeTree &ntree = *nmd.node_group;
+  const Vector<nodes::gizmos::GizmoNodeSource> gizmo_node_sources =
+      nodes::gizmos::find_gizmo_node_sources(gizmo_value_socket);
   Vector<GizmoFloatVariable> value_paths;
-  const Span<const bNodeLink *> links = gizmo_value_socket.directly_linked_links();
-  for (const bNodeLink *link : links) {
-    if (link->is_muted()) {
-      continue;
-    }
-    const bNodeSocket *origin_socket = link->fromsock;
-    if (!origin_socket->is_available()) {
-      continue;
-    }
+
+  for (const nodes::gizmos::GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
     float derivative = 1.0f;
-    const bNode &origin_node = origin_socket->owner_node();
-    if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
+    if (gizmo_node_source.variable_node != nullptr) {
       geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
           compute_context.hash());
       tree_log.ensure_socket_values();
+      const bNodeSocket &derivative_socket = gizmo_node_source.variable_node->input_socket(1);
       auto *derivative_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
-          tree_log.find_socket_value_log(origin_node.input_socket(1)));
+          tree_log.find_socket_value_log(derivative_socket));
       if (derivative_value_log == nullptr) {
         continue;
       }
       derivative = *derivative_value_log->value.get<float>();
-
-      const bNodeSocket *input_socket = &origin_node.input_socket(0);
-      if (input_socket->directly_linked_links().size() != 1) {
-        continue;
-      }
-      const bNodeLink *origin_link = input_socket->directly_linked_links()[0];
-      if (link->is_muted() || !link->fromsock->is_available()) {
-        continue;
-      }
-      origin_socket = origin_link->fromsock;
-    }
-
-    const std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt =
-        nodes::gizmos::find_gizmo_source(*origin_socket, std::nullopt);
-    if (!gizmo_source_opt) {
-      continue;
     }
 
     FloatValuePath value_path;
-
     ID *ntree_id = const_cast<ID *>(&ntree.id);
 
     if (const auto *gizmo_source = std::get_if<nodes::gizmos::InputSocketGizmoSource>(
-            &*gizmo_source_opt))
+            &gizmo_node_source.source))
     {
       value_path.owner = RNA_pointer_create(
           ntree_id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
       value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
     }
     else if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
-                 &*gizmo_source_opt))
+                 &gizmo_node_source.source))
     {
       switch (gizmo_source->value_node->type) {
         case SH_NODE_VALUE: {
@@ -204,7 +182,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
       }
     }
     else if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
-                 &*gizmo_source_opt))
+                 &gizmo_node_source.source))
     {
       const StringRefNull input_identifier =
           ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
