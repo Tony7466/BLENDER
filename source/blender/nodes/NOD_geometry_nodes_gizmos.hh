@@ -70,6 +70,8 @@ struct GizmoNodeSource {
 struct GizmoInferencingResult {
   MultiValueMap<const bNode *, GizmoInput> gizmo_inputs_for_value_node;
   MultiValueMap<InterfaceGizmoInput, GizmoInput> gizmo_inputs_for_interface_input;
+
+  friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
 };
 
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,

@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "NOD_geometry_nodes_gizmos.hh"
 
 #include "BKE_node_runtime.hh"
@@ -173,6 +175,27 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
   return inferencing_result;
 }
 
+std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data)
+{
+  stream << "Interface inputs with gizmo:\n";
+  for (const auto item : data.gizmo_inputs_for_interface_input.items()) {
+    stream << "  Input Index: " << item.key.input_index;
+    if (item.key.elem_index.has_value()) {
+      stream << ", Elem Index: " << *item.key.elem_index;
+    }
+    stream << "\n";
+    for (const GizmoInput &gizmo_input : item.value) {
+      stream << "    " << gizmo_input.input_socket->owner_node().name << " -> "
+             << gizmo_input.input_socket->name;
+      if (gizmo_input.elem_index.has_value()) {
+        stream << ", Elem Index: " << *gizmo_input.elem_index;
+      }
+      stream << "\n";
+    }
+  }
+  return stream;
+}
+
 bool update_gizmo_inferencing(bNodeTree &tree)
 {
   tree.ensure_topology_cache();
@@ -183,6 +206,7 @@ bool update_gizmo_inferencing(bNodeTree &tree)
   }
 
   GizmoInferencingResult result = compute_gizmo_inferencing_result(tree);
+  std::cout << result << "\n";
   tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
 
   /* TODO: Check if interface changed. */
