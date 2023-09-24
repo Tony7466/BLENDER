@@ -18,7 +18,7 @@ extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
 class GroupNodeParser;
 
-using ExportImageFunction = std::function<std::string(Main *,Scene *, Image *, ImageUser *)>;
+using ExportImageFunction = std::function<std::string(Main *, Scene *, Image *, ImageUser *)>;
 
 /**
  * This is base abstraction class for parsing Blender nodes into MaterialX nodes.
@@ -71,7 +71,9 @@ class NodeParser {
 
  private:
   NodeItem get_default(const bNodeSocket &socket, NodeItem::Type to_type);
-  NodeItem get_input_link(const bNodeSocket &socket, NodeItem::Type to_type);
+  NodeItem get_input_link(const bNodeSocket &socket,
+                          NodeItem::Type to_type,
+                          bool use_group_default);
   NodeItem get_input_value(const bNodeSocket &socket, NodeItem::Type to_type);
 };
 
@@ -123,8 +125,7 @@ struct NodeParserData {
   void node_shader_materialx(void *data, struct bNode *node, struct bNodeSocket *out) \
   { \
     materialx::NodeParserData *d = reinterpret_cast<materialx::NodeParserData *>(data); \
-    d->result = MaterialXNodeParser( \
-                    d->graph, \
+    d->result = MaterialXNodeParser(d->graph, \
                                     d->depsgraph, \
                                     d->material, \
                                     node, \

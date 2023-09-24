@@ -115,12 +115,12 @@ NodeItem NodeParser::get_input_default(int index, NodeItem::Type to_type)
 
 NodeItem NodeParser::get_input_link(const std::string &name, NodeItem::Type to_type)
 {
-  return get_input_link(node_->input_by_identifier(name), to_type);
+  return get_input_link(node_->input_by_identifier(name), to_type, false);
 }
 
 NodeItem NodeParser::get_input_link(int index, NodeItem::Type to_type)
 {
-  return get_input_link(node_->input_socket(index), to_type);
+  return get_input_link(node_->input_socket(index), to_type, false);
 }
 
 NodeItem NodeParser::get_input_value(const std::string &name, NodeItem::Type to_type)
@@ -167,6 +167,10 @@ NodeItem NodeParser::texcoord_node(NodeItem::Type type)
 NodeItem NodeParser::get_default(const bNodeSocket &socket, NodeItem::Type to_type)
 {
   NodeItem res = empty();
+  if (!NodeItem::is_arithmetic(to_type) && to_type != NodeItem::Type::Any) {
+    return res;
+  }
+
   switch (socket.type) {
     case SOCK_CUSTOM:
       /* Return empty */
@@ -195,7 +199,9 @@ NodeItem NodeParser::get_default(const bNodeSocket &socket, NodeItem::Type to_ty
   return res.convert(to_type);
 }
 
-NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to_type)
+NodeItem NodeParser::get_input_link(const bNodeSocket &socket,
+                                    NodeItem::Type to_type,
+                                    bool use_group_default)
 {
   const bNodeLink *link = socket.link;
   if (!(link && link->is_used())) {
@@ -221,7 +227,8 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
                            link->fromsock,
                            to_type,
                            group_parser_,
-                           export_image_fn_)
+                           export_image_fn_,
+                           use_group_default)
         .compute_full();
   }
   if (from_node->is_group_input()) {
@@ -232,7 +239,8 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
                                 link->fromsock,
                                 to_type,
                                 group_parser_,
-                                export_image_fn_)
+                                export_image_fn_,
+                                use_group_default)
         .compute_full();
   }
 
@@ -252,7 +260,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
 
 NodeItem NodeParser::get_input_value(const bNodeSocket &socket, NodeItem::Type to_type)
 {
-  NodeItem res = get_input_link(socket, to_type);
+  NodeItem res = get_input_link(socket, to_type, true);
   if (!res) {
     res = get_default(socket, to_type);
   }

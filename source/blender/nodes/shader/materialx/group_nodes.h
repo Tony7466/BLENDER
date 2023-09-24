@@ -15,27 +15,43 @@ namespace blender::nodes::materialx {
 class GroupInputNodeParser;
 
 class GroupNodeParser : public NodeParser {
-  friend NodeParser;
   friend GroupInputNodeParser;
 
+ protected:
+  bool use_group_default_;
+
  public:
-  using NodeParser::NodeParser;
+  GroupNodeParser(MaterialX::GraphElement *graph,
+                  const Depsgraph *depsgraph,
+                  const Material *material,
+                  const bNode *node,
+                  const bNodeSocket *socket_out,
+                  NodeItem::Type to_type,
+                  GroupNodeParser *group_parser,
+                  ExportImageFunction export_image_fn,
+                  bool use_group_default);
   NodeItem compute() override;
   NodeItem compute_full() override;
 };
 
-class GroupOutputNodeParser : public NodeParser {
+class GroupOutputNodeParser : public GroupNodeParser {
  public:
-  using NodeParser::NodeParser;
+  using GroupNodeParser::GroupNodeParser;
   NodeItem compute() override;
   NodeItem compute_full() override;
+
+ private:
+  static std::string out_name(const bNodeSocket *out_socket);
 };
 
-class GroupInputNodeParser : public NodeParser {
+class GroupInputNodeParser : public GroupNodeParser {
  public:
-  using NodeParser::NodeParser;
+  using GroupNodeParser::GroupNodeParser;
   NodeItem compute() override;
   NodeItem compute_full() override;
+
+ private:
+  std::string in_name() const;
 };
 
 }  // namespace blender::nodes::materialx

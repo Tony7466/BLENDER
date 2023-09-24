@@ -174,12 +174,12 @@ NodeItem NodeItem::operator/(const NodeItem &other) const
 NodeItem NodeItem::operator%(const NodeItem &other) const
 {
   return arithmetic(
-      other, "modulo", [](float a, float b) { return b == 0.0f ? 0.0f : std::fmodf(a, b); });
+      other, "modulo", [](float a, float b) { return b == 0.0f ? 0.0f : std::fmod(a, b); });
 }
 
 NodeItem NodeItem::operator^(const NodeItem &other) const
 {
-  return arithmetic(other, "power", [](float a, float b) { return std::powf(a, b); });
+  return arithmetic(other, "power", [](float a, float b) { return std::pow(a, b); });
 }
 
 NodeItem NodeItem::operator[](int index) const
@@ -245,17 +245,17 @@ bool NodeItem::operator!=(const NodeItem &other) const
 
 NodeItem NodeItem::abs() const
 {
-  return arithmetic("absval", [](float a) { return std::fabsf(a); });
+  return arithmetic("absval", [](float a) { return std::abs(a); });
 }
 
 NodeItem NodeItem::floor() const
 {
-  return arithmetic("floor", [](float a) { return std::floorf(a); });
+  return arithmetic("floor", [](float a) { return std::floor(a); });
 }
 
 NodeItem NodeItem::ceil() const
 {
-  return arithmetic("ceil", [](float a) { return std::ceilf(a); });
+  return arithmetic("ceil", [](float a) { return std::ceil(a); });
 }
 
 NodeItem NodeItem::length() const
@@ -400,38 +400,37 @@ NodeItem NodeItem::rotate(const NodeItem &angle_xyz, bool invert)
 
 NodeItem NodeItem::sin() const
 {
-  return to_vector().arithmetic("sin", [](float a) { return std::sinf(a); });
+  return to_vector().arithmetic("sin", [](float a) { return std::sin(a); });
 }
 
 NodeItem NodeItem::cos() const
 {
-  return to_vector().arithmetic("cos", [](float a) { return std::cosf(a); });
+  return to_vector().arithmetic("cos", [](float a) { return std::cos(a); });
 }
 
 NodeItem NodeItem::tan() const
 {
-  return to_vector().arithmetic("tan", [](float a) { return std::tanf(a); });
+  return to_vector().arithmetic("tan", [](float a) { return std::tan(a); });
 }
 
 NodeItem NodeItem::asin() const
 {
-  return to_vector().arithmetic("asin", [](float a) { return std::asinf(a); });
+  return to_vector().arithmetic("asin", [](float a) { return std::asin(a); });
 }
 
 NodeItem NodeItem::acos() const
 {
-  return to_vector().arithmetic("acos", [](float a) { return std::acosf(a); });
+  return to_vector().arithmetic("acos", [](float a) { return std::acos(a); });
 }
 
 NodeItem NodeItem::atan() const
 {
-  return to_vector().arithmetic("atan", [](float a) { return std::atanf(a); });
+  return to_vector().arithmetic("atan", [](float a) { return std::atan(a); });
 }
 
 NodeItem NodeItem::atan2(const NodeItem &other) const
 {
-  return to_vector().arithmetic(
-      other, "atan2", [](float a, float b) { return std::atan2f(a, b); });
+  return to_vector().arithmetic(other, "atan2", [](float a, float b) { return std::atan2(a, b); });
 }
 
 NodeItem NodeItem::sinh() const
@@ -456,12 +455,12 @@ NodeItem NodeItem::tanh() const
 
 NodeItem NodeItem::ln() const
 {
-  return to_vector().arithmetic("ln", [](float a) { return std::logf(a); });
+  return to_vector().arithmetic("ln", [](float a) { return std::log(a); });
 }
 
 NodeItem NodeItem::sqrt() const
 {
-  return to_vector().arithmetic("sqrt", [](float a) { return std::sqrtf(a); });
+  return to_vector().arithmetic("sqrt", [](float a) { return std::sqrt(a); });
 }
 
 NodeItem NodeItem::sign() const
@@ -471,7 +470,7 @@ NodeItem NodeItem::sign() const
 
 NodeItem NodeItem::exp() const
 {
-  return to_vector().arithmetic("exp", [](float a) { return std::expf(a); });
+  return to_vector().arithmetic("exp", [](float a) { return std::exp(a); });
 }
 
 NodeItem NodeItem::convert(Type to_type) const
