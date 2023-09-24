@@ -161,31 +161,11 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
 
   for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
-      const bNodeSocket &multi_gizmo_socket = gizmo_node->input_socket(0);
-      const GizmoInput gizmo_input{&multi_gizmo_socket, std::nullopt};
-      for (const bNodeLink *link : multi_gizmo_socket.directly_linked_links()) {
-        if (link->is_muted()) {
-          continue;
-        }
-        const bNodeSocket &origin_socket = *link->fromsock;
-        if (!origin_socket.is_available()) {
-          continue;
-        }
-        const bNode &origin_node = origin_socket.owner_node();
-        std::optional<GizmoSource> gizmo_source;
-        if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
-          const bNodeSocket &gizmo_variable_input = origin_node.input_socket(0);
-          gizmo_source = find_gizmo_source(gizmo_variable_input, std::nullopt);
-        }
-        else {
-          if (is_scalar_socket_type(origin_socket.type)) {
-            gizmo_source = find_gizmo_source(origin_socket, std::nullopt);
-          }
-        }
-        if (!gizmo_source) {
-          continue;
-        }
-        add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source);
+      const bNodeSocket &gizmo_node_input = gizmo_node->input_socket(0);
+      const GizmoInput gizmo_input{&gizmo_node_input, std::nullopt};
+      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_node_input);
+      for (const GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
+        add_gizmo_input_source_pair(inferencing_result, gizmo_input, gizmo_node_source.source);
       }
     }
   }
