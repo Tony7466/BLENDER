@@ -193,14 +193,14 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
 }
 
 /* Calculate groups of corners that are contiguously connected to each input vertex. */
-static Array<Vector<CornerGroup>> calc_all_corner_groups(
-    const OffsetIndices<int> ARGUMENT_NON_INLINE faces,
-    const Span<int> ARGUMENT_NON_INLINE corner_verts,
-    const Span<int> ARGUMENT_NON_INLINE corner_edges,
-    const GroupedSpan<int> ARGUMENT_NON_INLINE vert_to_corner_map,
-    const GroupedSpan<int> ARGUMENT_NON_INLINE edge_to_corner_map,
-    const Span<int> ARGUMENT_NON_INLINE corner_to_face_map,
-    const BitSpan ARGUMENT_NON_INLINE split_edges,
+BLI_NOINLINE_MS static Array<Vector<CornerGroup>> calc_all_corner_groups(
+    const OffsetIndices<int> faces,
+    const Span<int> corner_verts,
+    const Span<int> corner_edges,
+    const GroupedSpan<int> vert_to_corner_map,
+    const GroupedSpan<int> edge_to_corner_map,
+    const Span<int> corner_to_face_map,
+    const BitSpan split_edges,
     const IndexMask &affected_verts)
 {
   Array<Vector<CornerGroup>> corner_groups(affected_verts.size(), NoInitialization());
