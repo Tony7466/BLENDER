@@ -35,12 +35,14 @@ void SubsurfaceModule::end_sync()
     pass.state_set(DRW_STATE_NO_DRAW);
     pass.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_SETUP));
     inst_.gbuffer.bind_resources(&pass);
+    pass.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
     pass.bind_image("direct_light_img", &direct_light_tx_);
     pass.bind_image("indirect_light_img", &indirect_light_tx_);
     pass.bind_image("out_radiance_id_img", &radiance_id_tx_);
+    pass.bind_ssbo("convolve_tile_buf", &convolve_tile_buf_);
+    pass.bind_ssbo("convolve_dispatch_buf", &convolve_dispatch_buf_);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
-    /* TODO(fclem): Indirect dispatch with tile scheduler. Might still need to clear the buffer. */
-    pass.dispatch(&dispatch_size_);
+    pass.dispatch(&setup_dispatch_size_);
   }
   {
     /* Clamping to border color allows to always load ID 0 for out of view samples and discard
@@ -62,9 +64,9 @@ void SubsurfaceModule::end_sync()
     pass.bind_texture("radiance_id_tx", &radiance_id_tx_, sampler);
     pass.bind_image("out_direct_light_img", &direct_light_tx_);
     pass.bind_image("out_indirect_light_img", &indirect_light_tx_);
-    pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
-    /* TODO(fclem): Indirect dispatch with tile scheduler. */
-    pass.dispatch(&dispatch_size_);
+    pass.bind_ssbo("tiles_coord_buf", &convolve_tile_buf_);
+    pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_STORAGE);
+    pass.dispatch(convolve_dispatch_buf_);
   }
 }
 
@@ -80,13 +82,18 @@ void SubsurfaceModule::render(GPUTexture *direct_diffuse_light_tx,
   precompute_samples_location();
 
   int2 render_extent = inst_.film.render_extent_get();
-  dispatch_size_ = int3(math::divide_ceil(render_extent, int2(SUBSURFACE_GROUP_SIZE)), 1);
+  setup_dispatch_size_ = int3(math::divide_ceil(render_extent, int2(SUBSURFACE_GROUP_SIZE)), 1);
+
+  const int convolve_tile_count = setup_dispatch_size_.x * setup_dispatch_size_.y;
+  convolve_tile_buf_.resize(ceil_to_multiple_u(convolve_tile_count, 512));
 
   direct_light_tx_ = direct_diffuse_light_tx;
   indirect_light_tx_ = indirect_diffuse_light_tx;
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   radiance_id_tx_.acquire(render_extent, GPU_RGBA16F, usage);
+
+  convolve_dispatch_buf_.clear_to_zero();
 
   inst_.manager->submit(setup_ps_, view);
   inst_.manager->submit(convolve_ps_, view);

@@ -23,7 +23,10 @@
 
 void main(void)
 {
-  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  const uint tile_size = SUBSURFACE_GROUP_SIZE;
+  uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
+  ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+
   vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
@@ -40,11 +43,6 @@ void main(void)
   float homcoord = ProjectionMatrix[2][3] * vP.z + ProjectionMatrix[3][3];
   vec2 sample_scale = vec2(ProjectionMatrix[0][0], ProjectionMatrix[1][1]) *
                       (0.5 * max_radius / homcoord);
-
-  float pixel_footprint = sample_scale.x * float(textureSize(gbuf_header_tx, 0).x);
-  if (pixel_footprint <= 1.0) {
-    return;
-  }
 
   /* Avoid too small radii that have float imprecision. */
   vec3 clamped_sss_radius = max(vec3(1e-4), gbuf.diffuse.sss_radius / max_radius) * max_radius;

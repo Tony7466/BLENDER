@@ -42,10 +42,12 @@ struct SubsurfaceModule {
   TextureFromPool radiance_id_tx_;
   /** Setup pass fill the radiance_id_tx_ for faster convolution. */
   PassSimple setup_ps_ = {"Subsurface.Prepare"};
+  int3 setup_dispatch_size_ = {1, 1, 1};
+
   /** Screen space convolution pass. */
   PassSimple convolve_ps_ = {"Subsurface.Convolve"};
-
-  int3 dispatch_size_ = {1, 1, 1};
+  SubsurfaceTileBuf convolve_tile_buf_;
+  DispatchIndirectBuf convolve_dispatch_buf_;
 
  public:
   SubsurfaceModule(Instance &inst, SubsurfaceData &data) : inst_(inst), data_(data)
