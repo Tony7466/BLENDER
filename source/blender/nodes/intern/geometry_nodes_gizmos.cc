@@ -128,6 +128,9 @@ static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_resu
   if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&gizmo_source_variant)) {
     inferencing_result.gizmo_inputs_for_value_node.add(gizmo_source->value_node, gizmo_input);
   }
+  else if (const auto *gizmo_source = std::get_if<InputSocketGizmoSource>(&gizmo_source_variant)) {
+    inferencing_result.gizmo_inputs_for_node_inputs.add(gizmo_source->input_socket, gizmo_input);
+  }
   else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
     inferencing_result.gizmo_inputs_for_interface_input.add(
         {gizmo_source->interface_input_index, gizmo_source->elem_index}, gizmo_input);
