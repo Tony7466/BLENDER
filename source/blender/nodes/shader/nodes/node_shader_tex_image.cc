@@ -11,7 +11,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::nodes::node_shader_tex_image_cc {
 

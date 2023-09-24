@@ -7,7 +7,7 @@
 
 #include <MaterialXFormat/XmlIo.h>
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_material_types.h"
 
