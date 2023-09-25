@@ -388,6 +388,13 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = layout.column(heading="Show In")
         col.prop(ob, "hide_viewport", text="Viewports", toggle=False, invert_checkbox=True)
         col.prop(ob, "hide_render", text="Renders", toggle=False, invert_checkbox=True)
+        
+        if context.engine == 'BLENDER_EEVEE_NEXT':
+            if ob.type in ('MESH','CURVE','SURFACE','META','FONT','CURVES','POINTCLOUD','VOLUME','LIGHT'):
+                layout.separator()
+                col = layout.column(heading="Probes")
+                col.prop(ob, "hide_irradiance_probes", text="Irradiance", toggle=False, invert_checkbox=True)
+                col.prop(ob, "hide_reflection_probes", text="Reflection", toggle=False, invert_checkbox=True)
 
         if ob.type == 'GPENCIL':
             col = layout.column(heading="Grease Pencil")
@@ -397,11 +404,6 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = layout.column(heading="Mask")
         col.prop(ob, "is_holdout")
 
-        if context.engine == 'BLENDER_EEVEE_NEXT':
-            if ob.type in ('MESH','CURVE','SURFACE','META','FONT','CURVES','POINTCLOUD','VOLUME','LIGHT'):
-                col = layout.column(heading="Probes")
-                col.prop(ob, "hide_irradiance_probes", text="Irradiance", toggle=False, invert_checkbox=True)
-                col.prop(ob, "hide_reflection_probes", text="Reflection", toggle=False, invert_checkbox=True)
 
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
