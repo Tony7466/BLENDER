@@ -31,7 +31,7 @@ void node_bsdf_principled(vec4 base_color,
                           float subsurface_scale,
                           float subsurface_ior,
                           float subsurface_anisotropy,
-                          float specular,
+                          float specular_ior_level,
                           vec4 specular_tint,
                           float anisotropic,
                           float anisotropic_rotation,
@@ -59,7 +59,7 @@ void node_bsdf_principled(vec4 base_color,
   ior = max(ior, 1e-5);
   transmission = clamp(transmission, 0.0, 1.0);
   subsurface = max(subsurface, 0.0);
-  specular = max(specular, 0.0);
+  specular_ior_level = max(specular_ior_level, 0.0);
   specular_tint = clamp(specular_tint, 0.0, 1.0);
   /* Not used by EEVEE */
   /* anisotropic = clamp(anisotropic, 0.0, 1.0) */
@@ -175,8 +175,8 @@ void node_bsdf_principled(vec4 base_color,
   if (true) {
     float eta = ior;
     float f0 = F0_from_ior(eta);
-    if (specular != 0.5) {
-      f0 *= 2.0 * specular;
+    if (specular_ior_level != 0.5) {
+      f0 *= 2.0 * specular_ior_level;
       eta = ior_from_f0(f0);
       if (ior < 1.0) {
         eta = 1.0 / eta;
