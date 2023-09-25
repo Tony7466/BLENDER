@@ -23,7 +23,7 @@ CCL_NAMESPACE_BEGIN
       metal_printf("%s\n", str.c_str()); \
     }
 
-#  define BVH_THROTTLE_DIAGNOSTICS
+//#  define BVH_THROTTLE_DIAGNOSTICS
 #  ifdef BVH_THROTTLE_DIAGNOSTICS
 #    define bvh_throttle_printf(...) printf("BVHMetalBuildThrottler::" __VA_ARGS__)
 #  else
@@ -54,31 +54,31 @@ struct BVHMetalBuildThrottler {
   {
     bool throttled = false;
     while (true) {
-      mutex.lock();
+      {
+        thread_scoped_lock lock(mutex);
 
-      /* Always allow a BVH build to proceed if no other is in flight, otherwise
-       * only proceed if we're within safe limits. */
-      if (wired_memory == 0 || wired_memory + bytes_to_be_wired <= safe_wired_limit) {
-        wired_memory += bytes_to_be_wired;
-        requests_in_flight += 1;
-        bvh_throttle_printf("acquire -- success (requests_in_flight = %d, wired_memory = %zu)\n",
-                            requests_in_flight,
-                            wired_memory);
-        mutex.unlock();
-        return;
+        /* Always allow a BVH build to proceed if no other is in flight, otherwise
+         * only proceed if we're within safe limits. */
+        if (wired_memory == 0 || wired_memory + bytes_to_be_wired <= safe_wired_limit) {
+          wired_memory += bytes_to_be_wired;
+          requests_in_flight += 1;
+          bvh_throttle_printf("acquire -- success (requests_in_flight = %d, wired_memory = %zu)\n",
+                              requests_in_flight,
+                              wired_memory);
+          return;
+        }
+
+        if (!throttled) {
+          bvh_throttle_printf(
+              "acquire -- throttling (requests_in_flight = %d, wired_memory = %zu, "
+              "bytes_to_be_wired = %zu)\n",
+              requests_in_flight,
+              wired_memory,
+              bytes_to_be_wired);
+        }
+        throttled = true;
       }
 
-      if (!throttled) {
-        bvh_throttle_printf(
-            "acquire -- throttling (requests_in_flight = %d, wired_memory = %zu, "
-            "bytes_to_be_wired = %zu)\n",
-            requests_in_flight,
-            wired_memory,
-            bytes_to_be_wired);
-      }
-      throttled = true;
-
-      mutex.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
@@ -98,12 +98,12 @@ struct BVHMetalBuildThrottler {
   void wait_for_all()
   {
     while (true) {
-      mutex.lock();
-      if (wired_memory == 0) {
-        mutex.unlock();
-        return;
+      {
+        thread_scoped_lock lock(mutex);
+        if (wired_memory == 0) {
+          return;
+        }
       }
-      mutex.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
