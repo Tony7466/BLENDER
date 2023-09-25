@@ -75,8 +75,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_image.hh"
 #include "ED_node.hh"
@@ -988,12 +988,12 @@ static int line_isect_y(const float p1[2], const float p2[2], const float y_leve
   }
 
   if (p1[1] > y_level && p2[1] < y_level) {
-    /* (p1[1] - p2[1]); */
+    /* `p1[1] - p2[1]`. */
     *x_isect = (p2[0] * (p1[1] - y_level) + p1[0] * (y_level - p2[1])) / y_diff;
     return ISECT_TRUE;
   }
   if (p1[1] < y_level && p2[1] > y_level) {
-    /* (p2[1] - p1[1]); */
+    /* `p2[1] - p1[1]`. */
     *x_isect = (p2[0] * (y_level - p1[1]) + p1[0] * (p2[1] - y_level)) / y_diff;
     return ISECT_TRUE;
   }
@@ -1023,12 +1023,12 @@ static int line_isect_x(const float p1[2], const float p2[2], const float x_leve
   }
 
   if (p1[0] > x_level && p2[0] < x_level) {
-    /* (p1[0] - p2[0]); */
+    /* `p1[0] - p2[0]`. */
     *y_isect = (p2[1] * (p1[0] - x_level) + p1[1] * (x_level - p2[0])) / x_diff;
     return ISECT_TRUE;
   }
   if (p1[0] < x_level && p2[0] > x_level) {
-    /* (p2[0] - p1[0]); */
+    /* `p2[0] - p1[0]`. */
     *y_isect = (p2[1] * (x_level - p1[0]) + p1[1] * (p2[0] - x_level)) / x_diff;
     return ISECT_TRUE;
   }
@@ -3088,9 +3088,9 @@ static void project_paint_face_init(const ProjPaintState *ps,
   lt_uv_pxoffset[2][1] = lt_tri_uv[2][1] - yhalfpx;
 
   {
-    uv1co = lt_uv_pxoffset[0]; /* was lt_tri_uv[i1]; */
-    uv2co = lt_uv_pxoffset[1]; /* was lt_tri_uv[i2]; */
-    uv3co = lt_uv_pxoffset[2]; /* was lt_tri_uv[i3]; */
+    uv1co = lt_uv_pxoffset[0]; /* Was `lt_tri_uv[i1];`. */
+    uv2co = lt_uv_pxoffset[1]; /* Was `lt_tri_uv[i2];`. */
+    uv3co = lt_uv_pxoffset[2]; /* Was `lt_tri_uv[i3];`. */
 
     v1coSS = ps->screenCoords[lt_vtri[0]];
     v2coSS = ps->screenCoords[lt_vtri[1]];
@@ -3762,7 +3762,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
 
     if (ps->source == PROJ_SRC_IMAGE_VIEW) {
       /* image stores camera data, tricky */
-      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id, false);
+      IDProperty *idgroup = IDP_GetProperties(&ps->reproject_image->id);
       IDProperty *view_data = IDP_GetPropertyFromGroup(idgroup, PROJ_VIEW_DATA_ID);
 
       const float *array = (float *)IDP_Array(view_data);
@@ -6148,7 +6148,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  idgroup = IDP_GetProperties(&image->id, false);
+  idgroup = IDP_GetProperties(&image->id);
 
   if (idgroup) {
     view_data = IDP_GetPropertyTypeFromGroup(idgroup, PROJ_VIEW_DATA_ID, IDP_ARRAY);
@@ -6341,7 +6341,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
     /* now for the trickiness. store the view projection here!
      * re-projection will reuse this */
     IDPropertyTemplate val;
-    IDProperty *idgroup = IDP_GetProperties(&image->id, true);
+    IDProperty *idgroup = IDP_EnsureProperties(&image->id);
     IDProperty *view_data;
     bool is_ortho;
     float *array;
