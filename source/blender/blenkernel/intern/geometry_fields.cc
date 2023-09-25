@@ -48,12 +48,12 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
     if (drawing_index == -1) {
       return {};
     }
-    GreasePencilDrawingBase *drawing_base = grease_pencil_.drawings(drawing_index);
+    const GreasePencilDrawingBase *drawing_base = grease_pencil_.drawing(drawing_index);
     if (drawing_base->type != GP_DRAWING) {
       return {};
     }
     const bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+        reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
     const CurvesGeometry &curves = drawing.strokes();
     if (GVArray varray = *curves.attributes().lookup(field->attribute_name(), domain_)) {
       return varray;
@@ -78,12 +78,12 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
   if (drawing_index == -1) {
     return {};
   }
-  GreasePencilDrawingBase *drawing_base = grease_pencil_.drawings(drawing_index);
+  const GreasePencilDrawingBase *drawing_base = grease_pencil_.drawing(drawing_index);
   if (drawing_base->type != GP_DRAWING) {
     return {};
   }
   const bke::greasepencil::Drawing &drawing =
-      reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
   const CurvesGeometry &curves = drawing.strokes();
   CurvesFieldContext field_context{curves, domain_};
   return field_context.get_varray_for_input(field_input, mask, scope);
