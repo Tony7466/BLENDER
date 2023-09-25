@@ -130,7 +130,6 @@ class CollectionViewItem : public BasicTreeViewItem {
  private:
   int get_state_icon() const
   {
-    /* TODO(sergey): Use proper icons. */
     switch (collection_light_linking_.link_state) {
       case COLLECTION_LIGHT_LINKING_STATE_INCLUDE:
         return ICON_CHECKBOX_HLT;
