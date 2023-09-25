@@ -386,7 +386,7 @@ static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, w
   wmJob *wm_job = WM_jobs_get(job->wm,
                               CTX_wm_window(C),
                               job->scene,
-                              "Bake Nodes",
+                              "Bake Simulation Nodes",
                               WM_JOB_PROGRESS,
                               WM_JOB_TYPE_BAKE_SIMULATION_NODES);
 
