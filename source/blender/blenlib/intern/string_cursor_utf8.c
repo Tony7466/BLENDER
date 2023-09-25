@@ -44,6 +44,8 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
   switch (uch) {
     case ',':
     case '.':
+    case 0xFF0C: /* Chinese full width `,` (，) */
+    case 0x3002: /* Chinese full width `.` (。) */
       return STRCUR_DELIM_PUNCT;
 
     case '{':
@@ -52,6 +54,10 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case ']':
     case '(':
     case ')':
+    case 0xFF08: /* Chinese full width brackets `（）【】` */
+    case 0xFF09:
+    case 0x3010:
+    case 0x3011:
       return STRCUR_DELIM_BRACE;
 
     case '+':
@@ -66,10 +72,17 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '*':
     case '&':
     case '|':
+    case 0xFF5E: /* Chinese `~` (～) */
+    case 0x300A: /* Chinese `<>` (《》) */
+    case 0x300B:
       return STRCUR_DELIM_OPERATOR;
 
     case '\'':
     case '\"':
+    case 0x2018: /* Chinese full width quotation marks ‘’“” */
+    case 0x2019:
+    case 0x201C:
+    case 0x201D:
       return STRCUR_DELIM_QUOTE;
 
     case ' ':
@@ -87,6 +100,12 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '!':
     case 0xA3:        /* pound */
     case 0x80:        /* euro */
+    case 0xA3:        /* pound */
+    case 0x80:        /* euro */
+    case 0xFF1A:      /* Chinese colon */
+    case 0xFF1B:      /* Chinese semicolon */
+    case 0xFF1F:      /* Chinese question mark */
+    case 0xFF01:      /* Chinese exclamation mark */
       /* case '_': */ /* special case, for python */
       return STRCUR_DELIM_OTHER;
 
