@@ -210,15 +210,18 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         case SOCK_FLOAT: {
           create_input<bNodeSocketValueFloat, float>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         case SOCK_VECTOR: {
           create_input<bNodeSocketValueVector, pxr::GfVec3f>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         case SOCK_RGBA: {
           create_input<bNodeSocketValueRGBA, pxr::GfVec3f>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         default:
           break;
       }
@@ -298,9 +301,8 @@ static InputSpecMap &preview_surface_input_map()
       {"IOR", {usdtokens::ior, pxr::SdfValueTypeNames->Float, true}},
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, false}},
-      {"Clearcoat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
-      {"Clearcoat Roughness",
-       {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Roughness", {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
   };
 
   return input_map;

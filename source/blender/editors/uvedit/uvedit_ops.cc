@@ -37,8 +37,8 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_node.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_image.hh"
 #include "ED_mesh.hh"
@@ -1970,7 +1970,7 @@ void ED_keymap_uvedit(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap;
 
-  keymap = WM_keymap_ensure(keyconf, "UV Editor", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "UV Editor", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = ED_operator_uvedit;
 }
 
