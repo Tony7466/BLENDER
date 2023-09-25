@@ -671,7 +671,7 @@ static void try_delete_bake(
   const char *meta_dir = bake_path->meta_dir.c_str();
   if (BLI_exists(meta_dir)) {
     if (BLI_delete(meta_dir, true, true)) {
-      BKE_reportf(reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
+      BKE_reportf(reports, RPT_ERROR, "Failed to remove metadata directory %s", meta_dir);
     }
   }
   const char *blobs_dir = bake_path->blobs_dir.c_str();
