@@ -17,6 +17,8 @@
 
 #include "eevee_shadow.hh"
 
+#include "BLI_assert.h"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -561,7 +563,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
                 info.additional_info("eevee_surf_shadow_atomic_update_u32");
               }
               else {
-                info.additional_info("eevee_surf_shadow_atomic_update_f32");
+                BLI_assert_msg(
+                    false, "Float32 Shadow atlas is incompatible with Atomic Texture updates.");
               }
             } break;
             case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {

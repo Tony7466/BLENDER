@@ -618,6 +618,12 @@ inline MTLTextureUsage mtl_usage_from_gpu(eGPUTextureUsage usage)
   if (usage & GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW) {
     mtl_usage = mtl_usage | MTLTextureUsagePixelFormatView;
   }
+  if (@available(macOS 14.0, *)) {
+    if (usage & GPU_TEXTURE_USAGE_ATOMIC) {
+
+      mtl_usage = mtl_usage | MTLTextureUsageShaderAtomic;
+    }
+  }
   return mtl_usage;
 }
 

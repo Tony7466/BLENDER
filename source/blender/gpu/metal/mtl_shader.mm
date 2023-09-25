@@ -300,6 +300,12 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
         options.languageVersion = MTLLanguageVersion2_3;
       }
     }
+    if (@available(macOS 14.00, *)) {
+      /* Texture atomics require Metal 3.1. */
+      if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC)) {
+        options.languageVersion = MTLLanguageVersion3_1;
+      }
+    }
 
     NSString *source_to_compile = shd_builder_->msl_source_vert_;
 
