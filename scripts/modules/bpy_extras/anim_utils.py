@@ -12,6 +12,7 @@ __all__ = (
 
 import bpy
 from bpy.types import Action
+from dataclasses import dataclass
 
 from typing import (
     List,
@@ -31,11 +32,40 @@ FCurveKey = Tuple[
 ListKeyframes = List[float]
 
 
+"""
+:arg only_selected: Only bake selected bones.
+:type only_selected: bool
+:arg do_pose: Bake pose channels.
+:type do_pose: bool
+:arg do_object: Bake objects.
+:type do_object: bool
+:arg do_visual_keying: Use the final transformations for baking ('visual keying')
+:type do_visual_keying: bool
+:arg do_constraint_clear: Remove constraints after baking.
+:type do_constraint_clear: bool
+:arg do_parents_clear: Unparent after baking objects.
+:type do_parents_clear: bool
+:arg do_clean: Remove redundant keyframes after baking.
+:type do_clean: bool
+"""
+
+
+@dataclass
+class BakeOptions:
+    only_selected: bool
+    do_pose: bool
+    do_object: bool
+    do_visual_keying: bool
+    do_constraint_clear: bool
+    do_parents_clear: bool
+    do_clean: bool
+
+
 def bake_action(
         obj,
         *,
         action, frames,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     :arg obj: Object to bake.
@@ -55,7 +85,7 @@ def bake_action(
     action, = bake_action_objects(
         [(obj, action)],
         frames=frames,
-        **kwargs,
+        bake_options=bake_options
     )
     return action
 
@@ -64,7 +94,7 @@ def bake_action_objects(
         object_action_pairs,
         *,
         frames,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     A version of :func:`bake_action_objects_iter` that takes frames and returns the output.
@@ -75,7 +105,7 @@ def bake_action_objects(
     :return: A sequence of Action or None types (aligned with `object_action_pairs`)
     :rtype: sequence of :class:`bpy.types.Action`
     """
-    iter = bake_action_objects_iter(object_action_pairs, **kwargs)
+    iter = bake_action_objects_iter(object_action_pairs, bake_options=bake_options)
     iter.send(None)
     for frame in frames:
         iter.send(frame)
@@ -84,7 +114,7 @@ def bake_action_objects(
 
 def bake_action_objects_iter(
         object_action_pairs,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     An coroutine that bakes actions for multiple objects.
@@ -96,7 +126,7 @@ def bake_action_objects_iter(
     scene = bpy.context.scene
     frame_back = scene.frame_current
     iter_all = tuple(
-        bake_action_iter(obj, action=action, **kwargs)
+        bake_action_iter(obj, action=action, bake_options=bake_options)
         for (obj, action) in object_action_pairs
     )
     for iter in iter_all:
@@ -118,13 +148,7 @@ def bake_action_iter(
         obj,
         *,
         action,
-        only_selected=False,
-        do_pose=True,
-        do_object=True,
-        do_visual_keying=True,
-        do_constraint_clear=False,
-        do_parents_clear=False,
-        do_clean=False
+        bake_options: BakeOptions
 ):
     """
     An coroutine that bakes action for a single object.
@@ -134,20 +158,8 @@ def bake_action_iter(
     :arg action: An action to bake the data into, or None for a new action
        to be created.
     :type action: :class:`bpy.types.Action` or None
-    :arg only_selected: Only bake selected bones.
-    :type only_selected: bool
-    :arg do_pose: Bake pose channels.
-    :type do_pose: bool
-    :arg do_object: Bake objects.
-    :type do_object: bool
-    :arg do_visual_keying: Use the final transformations for baking ('visual keying')
-    :type do_visual_keying: bool
-    :arg do_constraint_clear: Remove constraints after baking.
-    :type do_constraint_clear: bool
-    :arg do_parents_clear: Unparent after baking objects.
-    :type do_parents_clear: bool
-    :arg do_clean: Remove redundant keyframes after baking.
-    :type do_clean: bool
+    :arg bake_options: Boolean options of what to include into the action bake.
+    :type bake_options: :class: `anim_utils.BakeOptions`
 
     :return: an action or None
     :rtype: :class:`bpy.types.Action`
@@ -180,7 +192,7 @@ def bake_action_iter(
         matrix = {}
         bbones = {}
         for name, pbone in obj.pose.bones.items():
-            if do_visual_keying:
+            if bake_options.do_visual_keying:
                 # Get the final transform of the bone in its own local space...
                 matrix[name] = obj.convert_space(pose_bone=pbone, matrix=pbone.matrix,
                                                  from_space='POSE', to_space='LOCAL')
@@ -192,8 +204,8 @@ def bake_action_iter(
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
         return matrix, bbones
 
-    if do_parents_clear:
-        if do_visual_keying:
+    if bake_options.do_parents_clear:
+        if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 return obj.matrix_world.copy()
         else:
@@ -205,7 +217,7 @@ def bake_action_iter(
                 else:
                     return matrix.copy()
     else:
-        if do_visual_keying:
+        if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_world
@@ -223,7 +235,7 @@ def bake_action_iter(
     if obj.pose is None:
         do_pose = False
 
-    if not (do_pose or do_object):
+    if not (do_pose or bake_options.do_object):
         raise Exception("Pose and object baking is disabled, no action needed")
 
     pose_info = []
@@ -242,12 +254,12 @@ def bake_action_iter(
 
         if do_pose:
             pose_info.append((frame, *pose_frame_info(obj)))
-        if do_object:
+        if bake_options.do_object:
             obj_info.append((frame, obj_frame_info(obj)))
 
     # -------------------------------------------------------------------------
     # Clean (store initial data)
-    if do_clean and action is not None:
+    if bake_options.do_clean and action is not None:
         clean_orig_data = {fcu: {p.co[1] for p in fcu.keyframe_points} for fcu in action.fcurves}
     else:
         clean_orig_data = {}
@@ -280,10 +292,10 @@ def bake_action_iter(
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if do_pose:
         for name, pbone in obj.pose.bones.items():
-            if only_selected and not pbone.bone.select:
+            if bake_options.only_selected and not pbone.bone.select:
                 continue
 
-            if do_constraint_clear:
+            if bake_options.do_constraint_clear:
                 while pbone.constraints:
                     pbone.constraints.remove(pbone.constraints[0])
 
@@ -359,8 +371,8 @@ def bake_action_iter(
                 keyframes.insert_keyframes_into_existing_action(lookup_fcurves, total_new_keys, action, name)
 
     # object. TODO. multiple objects
-    if do_object:
-        if do_constraint_clear:
+    if bake_options.do_object:
+        if bake_options.do_constraint_clear:
             while obj.constraints:
                 obj.constraints.remove(obj.constraints[0])
 
@@ -415,13 +427,13 @@ def bake_action_iter(
         else:
             keyframes.insert_keyframes_into_existing_action(lookup_fcurves, total_new_keys, action, name)
 
-        if do_parents_clear:
+        if bake_options.do_parents_clear:
             obj.parent = None
 
     # -------------------------------------------------------------------------
     # Clean
 
-    if do_clean:
+    if bake_options.do_clean:
         for fcu in action.fcurves:
             fcu_orig_data = clean_orig_data.get(fcu, set())
 
