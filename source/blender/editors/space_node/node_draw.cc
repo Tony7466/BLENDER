@@ -639,11 +639,13 @@ static void node_update_basis_from_declaration(
   const Vector<NodeInterfaceItemData> item_data = node_build_item_data(node);
   Vector<NodeInterfaceItemData>::const_iterator item_iter = item_data.begin();
 
-  std::function<void(int, bool, const char *, bke::bNodePanelRuntime *)> add_panel_items;
-  add_panel_items = [&](int num_items,
-                        const bool is_parent_collapsed,
-                        const char *parent_label,
-                        bke::bNodePanelRuntime *parent_runtime) {
+  /* Recursive function that adds the expected number of items in a panel and advances the
+   * iterator. */
+  std::function<void(int, bool, const char *, bke::bNodePanelRuntime *)> add_panel_items_recursive;
+  add_panel_items_recursive = [&](int num_items,
+                                  const bool is_parent_collapsed,
+                                  const char *parent_label,
+                                  bke::bNodePanelRuntime *parent_runtime) {
     while (item_iter != item_data.end()) {
       /* Consume item. */
       const NodeInterfaceItemData &item = *item_iter++;
@@ -685,10 +687,10 @@ static void node_update_basis_from_declaration(
           node_update_basis_buttons(C, ntree, node, item.panel_decl->draw_buttons, block, locy);
         }
 
-        add_panel_items(item.panel_decl->num_child_decls,
-                        is_collapsed,
-                        item.panel_decl->name.c_str(),
-                        item.runtime);
+        add_panel_items_recursive(item.panel_decl->num_child_decls,
+                                  is_collapsed,
+                                  item.panel_decl->name.c_str(),
+                                  item.runtime);
       }
       else if (item.is_valid_socket()) {
         if (item.input) {
@@ -749,7 +751,7 @@ static void node_update_basis_from_declaration(
   };
 
   /* Start by adding root panel items. */
-  add_panel_items(-1, false, "", nullptr);
+  add_panel_items_recursive(-1, false, "", nullptr);
 
   /* Draw buttons at the bottom if no inputs exist. */
   if (!buttons_drawn) {
