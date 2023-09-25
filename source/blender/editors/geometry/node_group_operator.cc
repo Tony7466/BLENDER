@@ -547,8 +547,10 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
 void clear_operator_asset_trees()
 {
   for (const int mode : IndexRange(CTX_MODE_NUM)) {
-    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
+    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode))) {
       *tree = {};
+      tree->dirty = true;
+    }
   }
 }
 
@@ -763,7 +765,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (!tree) {
     return;
   }
-  if (tree->assets_per_path.size() == 0) {
+  if (tree->dirty) {
     *tree = build_catalog_tree(C);
   }
 

@@ -20,6 +20,7 @@
 struct AssetFilterSettings;
 struct AssetLibraryReference;
 struct bContext;
+struct AssetMetaData;
 
 namespace blender::asset_system {
 class AssetLibrary;
@@ -49,6 +50,12 @@ struct AssetItemTree {
       assets_per_path;
   /** Assets not added to a catalog, not part of #assets_per_path. */
   Vector<asset_system::AssetRepresentation *> unassigned_assets;
+  /**
+   * The tree was affected by some change to the asset structure and needs to be rebuilt before
+   * it's used again. This is needed instead of checking `is_empty()` because there may be no
+   * assets available that fit the filtering used to build the tree.
+   */
+  bool dirty;
 };
 
 asset_system::AssetCatalogTree build_filtered_catalog_tree(
