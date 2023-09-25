@@ -72,6 +72,8 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '*':
     case '&':
     case '|':
+    case 0xFF0F: /* Chinese full width solidus (／) */
+    case 0x2014: /* Chinese dash */
     case 0xFF5E: /* Chinese `~` (～) */
     case 0x300A: /* Chinese `<>` (《》) */
     case 0x300B:
@@ -102,6 +104,8 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case 0x80:        /* euro */
     case 0xA3:        /* pound */
     case 0x80:        /* euro */
+    case 0xFF64:      /* Chinese `、` */
+    case 0xFF65:      /* Chinese/Katakana middle dot (･) */
     case 0xFF1A:      /* Chinese colon */
     case 0xFF1B:      /* Chinese semicolon */
     case 0xFF1F:      /* Chinese question mark */
