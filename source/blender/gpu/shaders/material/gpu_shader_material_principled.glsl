@@ -64,9 +64,9 @@ void node_bsdf_principled(vec4 base_color,
   roughness = clamp(roughness, 0.0, 1.0);
   ior = max(ior, 1e-5);
   transmission_weight = clamp(transmission_weight, 0.0, 1.0);
-  subsurface_weight = max(subsurface_weight, 0.0);
+  subsurface_weight = clamp(subsurface_weight, 0.0, 1.0);
   specular_ior_level = max(specular_ior_level, 0.0);
-  specular_tint = clamp(specular_tint, 0.0, 1.0);
+  specular_tint = max(specular_tint, vec4(0.0));
   /* Not used by EEVEE */
   /* anisotropic = clamp(anisotropic, 0.0, 1.0) */
   coat_weight = clamp(coat_weight, 0.0, 1.0);

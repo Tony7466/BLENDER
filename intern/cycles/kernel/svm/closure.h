@@ -102,11 +102,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
-      float subsurface_weight = param2;
+      float subsurface_weight = saturatef(param2);
       float specular_ior_level = fmaxf(stack_load_float(stack, specular_ior_level_offset), 0.0f);
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
       Spectrum specular_tint = rgb_to_spectrum(
-          saturate(stack_load_float3(stack, specular_tint_offset)));
+          max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
       float anisotropic = saturatef(stack_load_float(stack, anisotropic_offset));
       float sheen_weight = saturatef(stack_load_float(stack, sheen_weight_offset));
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
