@@ -438,8 +438,8 @@ static void update_existing_bake_caches(NodesModifierData &nmd)
 
 static void update_bakes_from_node_group(NodesModifierData &nmd)
 {
-  Map<int, const NodesModifierBake *> old_bake_by_id;
-  for (const NodesModifierBake &bake : Span(nmd.bakes, nmd.bakes_num)) {
+  Map<int, NodesModifierBake *> old_bake_by_id;
+  for (NodesModifierBake &bake : MutableSpan(nmd.bakes, nmd.bakes_num)) {
     old_bake_by_id.add(bake.id, &bake);
   }
 
@@ -462,13 +462,12 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
                                                                        __func__);
   for (const int i : new_bake_ids.index_range()) {
     const int id = new_bake_ids[i];
-    const NodesModifierBake *old_bake = old_bake_by_id.lookup_default(id, nullptr);
+    NodesModifierBake *old_bake = old_bake_by_id.lookup_default(id, nullptr);
     NodesModifierBake &new_bake = new_bake_data[i];
     if (old_bake) {
       new_bake = *old_bake;
-      if (new_bake.directory) {
-        new_bake.directory = BLI_strdup(new_bake.directory);
-      }
+      /* The ownership of the string was moved to `new_bake`. */
+      old_bake->directory = nullptr;
     }
     else {
       new_bake.id = id;
