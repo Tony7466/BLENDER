@@ -687,7 +687,7 @@ void ShadowModule::init()
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                GPU_TEXTURE_USAGE_ATOMIC;
-  if (atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, atlas_extent, atlas_layers, tex_usage)) {
+  if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */
     do_full_update = true;
   }
