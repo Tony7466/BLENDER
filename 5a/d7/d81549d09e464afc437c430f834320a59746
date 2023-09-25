@@ -1,2 +1,3 @@
 Referenced by issue #111896, Regression: Crash for entering into Armature Edit Mode
 Referenced by issue blender/blender-addons#104865, Node wrangler preview error.
+Referenced by commit 8fbfc991a5decc1b28ac30b4f09c44fa9cd9f185, Fix: EEVEE-Next: Surfel debug draw
