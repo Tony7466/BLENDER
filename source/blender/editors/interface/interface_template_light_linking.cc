@@ -83,7 +83,7 @@ class InsertCollectionDropTarget : public BaseCollectionDropTarget {
 
   std::string drop_tooltip(const DragInfo & /*drag*/) const override
   {
-    return TIP_("Add to light linking collection");
+    return TIP_("Add to linking collection");
   }
 
   bool on_drop(bContext *C, const DragInfo &drag) const override
@@ -101,7 +101,7 @@ class InsertCollectionDropTarget : public BaseCollectionDropTarget {
      * content. */
     WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
 
-    ED_undo_push(C, "Add to light linking collection");
+    ED_undo_push(C, "Add to linking collection");
 
     return true;
   }
@@ -122,11 +122,11 @@ class ReorderCollectionDropTarget : public BaseCollectionDropTarget {
 
     switch (drag.drop_location) {
       case DropLocation::Into:
-        return "Add to light linking collection";
+        return "Add to linking collection";
       case DropLocation::Before:
-        return fmt::format(TIP_("Add to light linking collection before {}"), drop_name);
+        return fmt::format(TIP_("Add to linking collection before {}"), drop_name);
       case DropLocation::After:
-        return fmt::format(TIP_("Add to light linking collection after {}"), drop_name);
+        return fmt::format(TIP_("Add to linking collection after {}"), drop_name);
     }
 
     return "";
@@ -168,7 +168,7 @@ class ReorderCollectionDropTarget : public BaseCollectionDropTarget {
      * content. */
     WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
 
-    ED_undo_push(C, "Add to light linking collection");
+    ED_undo_push(C, "Add to linking collection");
 
     return true;
   }
