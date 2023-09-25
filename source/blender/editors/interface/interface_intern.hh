@@ -329,6 +329,7 @@ struct uiButSearch : public uiBut {
   uiButSearchListenFn listen_fn = nullptr;
 
   void *item_active = nullptr;
+  char *item_active_str;
 
   void *arg = nullptr;
   uiFreeArgFunc arg_free_fn = nullptr;
@@ -369,6 +370,10 @@ struct uiButProgress : public uiBut {
 struct uiButViewItem : public uiBut {
   /* C-Handle to the view item this button was created for. */
   uiViewItemHandle *view_item = nullptr;
+  /* Some items want to have a fixed size for drawing, differing from the interaction rectangle
+   * (e.g. so highlights are drawn smaller). */
+  int draw_width = 0;
+  int draw_height = 0;
 };
 
 /** Derived struct for #UI_BTYPE_HSVCUBE. */
