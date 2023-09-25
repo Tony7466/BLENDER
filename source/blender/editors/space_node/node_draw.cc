@@ -737,15 +737,15 @@ static void node_update_basis_from_declaration(
         /* Should not happen. */
         BLI_assert_unreachable();
       }
+    }
 
-      /* Finalize the vertical extent of the content. */
-      if (!is_parent_collapsed) {
-        locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
-        if (parent_runtime) {
-          parent_runtime->min_content_y = round(locy);
-        }
-        locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
+    /* Finalize the vertical extent of the content. */
+    if (!is_parent_collapsed) {
+      locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
+      if (parent_runtime) {
+        parent_runtime->min_content_y = round(locy);
       }
+      locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
     }
   };
 
