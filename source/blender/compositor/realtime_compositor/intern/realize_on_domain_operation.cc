@@ -100,6 +100,7 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
       case ResultType::Float:
         return shader_manager().get("compositor_realize_on_domain_bicubic_float");
       default:
+        /* Other types are internal and needn't be handled by operations. */
         BLI_assert_unreachable();
         return nullptr;
     }
@@ -113,6 +114,7 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
       case ResultType::Float:
         return shader_manager().get("compositor_realize_on_domain_float");
       default:
+        /* Other types are internal and needn't be handled by operations. */
         BLI_assert_unreachable();
         return nullptr;
     }

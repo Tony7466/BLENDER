@@ -229,9 +229,12 @@ static const char *get_set_function_name(ResultType type)
     case ResultType::Color:
       return "set_rgba";
     default:
-      BLI_assert_unreachable();
-      return nullptr;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 void ShaderOperation::declare_operation_input(DInputSocket input_socket,
@@ -314,9 +317,12 @@ static const char *get_store_function_name(ResultType type)
     case ResultType::Color:
       return "node_compositor_store_output_color";
     default:
-      BLI_assert_unreachable();
-      return nullptr;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 void ShaderOperation::populate_operation_result(DOutputSocket output_socket, GPUMaterial *material)
@@ -404,9 +410,12 @@ static eGPUTextureFormat texture_format_from_result_type(ResultType type)
     case ResultType::Color:
       return GPU_RGBA16F;
     default:
-      BLI_assert_unreachable();
-      return GPU_RGBA16F;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return GPU_RGBA16F;
 }
 
 /* Texture storers in the shader always take a vec4 as an argument, so encode each type in a vec4
@@ -421,9 +430,12 @@ static const char *glsl_store_expression_from_result_type(ResultType type)
     case ResultType::Color:
       return "color";
     default:
-      BLI_assert_unreachable();
-      return nullptr;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_info)
@@ -484,6 +496,7 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
         store_color_function << case_code.str();
         break;
       default:
+        /* Other types are internal and needn't be handled by operations. */
         BLI_assert_unreachable();
         break;
     }
@@ -510,9 +523,12 @@ static const char *glsl_type_from_result_type(ResultType type)
     case ResultType::Color:
       return "vec4";
     default:
-      BLI_assert_unreachable();
-      return nullptr;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 /* Texture loaders in the shader always return a vec4, so a swizzle is needed to retrieve the
@@ -527,9 +543,12 @@ static const char *glsl_swizzle_from_result_type(ResultType type)
     case ResultType::Color:
       return "rgba";
     default:
-      BLI_assert_unreachable();
-      return nullptr;
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 void ShaderOperation::generate_code_for_inputs(GPUMaterial *material,

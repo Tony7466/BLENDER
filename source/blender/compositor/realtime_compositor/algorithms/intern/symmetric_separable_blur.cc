@@ -28,10 +28,13 @@ static const char *get_blur_shader(ResultType type)
     case ResultType::Vector:
     case ResultType::Color:
       return "compositor_symmetric_separable_blur_color";
-    default:
-      BLI_assert_unreachable();
-      return nullptr;
+    case ResultType::Int2:
+      /* Blur does not support integer types. */
+      break;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 static Result horizontal_pass(Context &context,

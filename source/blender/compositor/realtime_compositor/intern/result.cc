@@ -98,6 +98,7 @@ void Result::allocate_invalid()
       set_color_value(float4(0.0f));
       break;
     default:
+      /* Other types are internal and do not support single values. */
       BLI_assert_unreachable();
       break;
   }
@@ -170,6 +171,8 @@ void Result::steal_data(Result &source)
       color_value_ = source.color_value_;
       break;
     default:
+      /* Other types are internal and do not support single values. */
+      BLI_assert_unreachable();
       break;
   }
 

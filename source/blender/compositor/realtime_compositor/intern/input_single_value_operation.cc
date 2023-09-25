@@ -47,6 +47,7 @@ void InputSingleValueOperation::execute()
       result.set_color_value(float4(bsocket->default_value_typed<bNodeSocketValueRGBA>()->value));
       break;
     default:
+      /* Other types are internal and needn't be handled by operations. */
       BLI_assert_unreachable();
       break;
   }

@@ -46,6 +46,7 @@ void ReduceToSingleValueOperation::execute()
       result.set_float_value(*pixel);
       break;
     default:
+      /* Other types are internal and needn't be handled by operations. */
       BLI_assert_unreachable();
       break;
   }
