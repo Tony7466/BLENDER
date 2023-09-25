@@ -113,8 +113,10 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   if (!USER_VERSION_ATLEAST(400, 24)) {
-<<<<<<< HEAD
-=======
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 25)) {
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
@@ -123,9 +125,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
->>>>>>> fe78d49c1164be17fc4585d0bbf48d41d99bfdc3
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
-    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
   }
 
   /**

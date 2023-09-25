@@ -1330,8 +1330,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0))
-              {
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -1347,8 +1346,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
-          {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
             sockets_to_split.append(&socket);
           }
         }

@@ -75,4 +75,4 @@ void SEQ_retiming_selection_remove(struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_contains(const struct Editing *ed, const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_has_whole_transition(const struct Editing *ed,
                                                  struct SeqRetimingKey *key);
-bool sequencer_retiming_data_is_editable(const struct Sequence *seq);
+bool SEQ_retiming_data_is_editable(const struct Sequence *seq);

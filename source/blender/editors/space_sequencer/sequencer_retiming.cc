@@ -21,12 +21,13 @@
 #include "BKE_scene.h"
 
 #include "ED_select_utils.hh"
+#include "ED_sequencer.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
 #include "SEQ_select.h"
+#include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
@@ -92,16 +93,16 @@ static int sequencer_retiming_data_show_exec(bContext *C, wmOperator * /* op */)
     return OPERATOR_CANCELLED;
   }
 
-  if (sequencer_retiming_mode_is_active(C)){
+  if (sequencer_retiming_mode_is_active(C)) {
     sequencer_retiming_data_hide_all(ed->seqbasep);
   }
-  else if (sequencer_retiming_data_is_editable(seq_act)) {
+  else if (SEQ_retiming_data_is_editable(seq_act)) {
     sequencer_retiming_data_hide_selection(ed->seqbasep);
   }
   else {
     sequencer_retiming_data_show_selection(ed->seqbasep);
   }
-  
+
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
@@ -745,7 +746,7 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
     if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
       continue;
     }
-    if (!sequencer_retiming_data_is_editable(seq)) {
+    if (!SEQ_retiming_data_is_editable(seq)) {
       continue;
     }
     realize_fake_keys_in_rect(C, seq, rectf);
@@ -812,7 +813,7 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
     SEQ_ITERATOR_FOREACH (seq, strips) {
-      if (!sequencer_retiming_data_is_editable(seq)) {
+      if (!SEQ_retiming_data_is_editable(seq)) {
         continue;
       }
       for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
@@ -829,7 +830,7 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   }
 
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    if (!sequencer_retiming_data_is_editable(seq)) {
+    if (!SEQ_retiming_data_is_editable(seq)) {
       continue;
     }
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
@@ -853,8 +854,8 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-
-static bool delete_flagged_key(Scene *scene, Sequence *seq) {
+static bool delete_flagged_key(Scene *scene, Sequence *seq)
+{
   for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
     if ((key.flag & SEQ_DELETE_KEY) != 0) {
       SEQ_retiming_remove_key(scene, seq, &key);
@@ -882,7 +883,7 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
   }
 
   for (Sequence *seq : strips_to_handle) {
-    while (delete_flagged_key(scene, seq)){
+    while (delete_flagged_key(scene, seq)) {
       /* Pass. */
     }
     SEQ_relations_invalidate_cache_raw(scene, seq);

@@ -129,7 +129,7 @@ bool SEQ_retiming_is_active(const Sequence *seq)
   return seq->retiming_keys_num > 1;
 }
 
-bool sequencer_retiming_data_is_editable(const Sequence *seq)
+bool SEQ_retiming_data_is_editable(const Sequence *seq)
 {
   return seq->flag & SEQ_SHOW_RETIMING;
 }
@@ -295,7 +295,9 @@ SeqRetimingKey *SEQ_retiming_add_key(const Scene *scene, Sequence *seq, const in
     return start_key; /* Retiming key already exists. */
   }
 
-  if ((start_key->flag & SEQ_SPEED_TRANSITION_IN) != 0 || (start_key->flag & SEQ_FREEZE_FRAME_IN) != 0) {
+  if ((start_key->flag & SEQ_SPEED_TRANSITION_IN) != 0 ||
+      (start_key->flag & SEQ_FREEZE_FRAME_IN) != 0)
+  {
     return nullptr;
   }
 
@@ -484,7 +486,8 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
                                             const int offset)
 {
   SeqRetimingKey *prev_key = key - 1;
-  if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0 || (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
+  if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0 ||
+      (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
     return nullptr;
   }
 

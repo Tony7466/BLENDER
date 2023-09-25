@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include "BLI_vector.hh"
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
-#include "BLI_vector.hh"
 
 /* Internal exports only. */
 
@@ -310,7 +310,6 @@ void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
-bool sequencer_retiming_data_is_editable(const struct Sequence *seq);
 int sequencer_retiming_key_select_exec(struct bContext *C, struct wmOperator *op);
 int sequencer_select_exec(struct bContext *C, struct wmOperator *op);
 int sequencer_retiming_key_remove_exec(struct bContext *C, struct wmOperator *op);
