@@ -334,17 +334,4 @@ vec3 hue_gradient(float t)
   return (clamp(p - 1.0, 0.0, 1.0));
 }
 
-float ior_from_f0(float f0)
-{
-  float f = sqrt(clamp(f0, 0.0, 0.99));
-  return (-f - 1.0) / (f - 1.0);
-}
-
-/* Simplified form of F_eta(eta, 1.0). */
-float F0_from_ior(float eta)
-{
-  float A = (eta - 1.0) / (eta + 1.0);
-  return A * A;
-}
-
 #endif /* COMMON_MATH_LIB_GLSL */
