@@ -8383,13 +8383,12 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, "rna_Scene_set_update");
 
   prop = RNA_def_property(srna, "simulation_frame_start", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Simulation Frame Start", "Frame at which simulations start running");
+  RNA_def_property_ui_text(prop, "Simulation Frame Start", "Frame at which simulations start");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_Scene_set_update");
 
   prop = RNA_def_property(srna, "simulation_frame_end", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Simulation Frame End", "Frame at which simulations end running");
+  RNA_def_property_ui_text(prop, "Simulation Frame End", "Frame at which simulations end");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_Scene_set_update");
 
