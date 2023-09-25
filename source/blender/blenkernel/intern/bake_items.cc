@@ -57,7 +57,7 @@ static void store_materials_as_id_properties(ID &id)
     /* IDP_AppendArray does a shallow copy. */
     MEM_freeN(material_prop);
   }
-  IDProperty *id_properties = IDP_GetProperties(&id, true);
+  IDProperty *id_properties = IDP_EnsureProperties(&id);
   IDP_ReplaceInGroup(id_properties, materials_prop);
 
   remove_materials(materials, materials_num);

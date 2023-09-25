@@ -449,7 +449,7 @@ template<typename T>
     /* IDP_AppendArray does a shallow copy. */
     MEM_freeN(material_prop);
   }
-  IDProperty *id_props = IDP_GetProperties(&id, true);
+  IDProperty *id_props = IDP_EnsureProperties(&id);
   IDP_ReplaceInGroup(id_props, materials_prop);
   return true;
 }
