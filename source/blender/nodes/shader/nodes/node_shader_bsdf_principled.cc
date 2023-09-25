@@ -330,26 +330,26 @@ NODE_SHADER_MATERIALX_BEGIN
   auto bsdf_inputs = [&]() -> InputsType {
     return {
         {"base_color", get_input_value("Base Color", NodeItem::Type::Color3)},
-        {"subsurface", get_input_value("Subsurface", NodeItem::Type::Float)},
+        {"subsurface", get_input_value("Subsurface Weight", NodeItem::Type::Float)},
         {"subsurface_scale", get_input_value("Subsurface Scale", NodeItem::Type::Float)},
         {"subsurface_radius", get_input_value("Subsurface Radius", NodeItem::Type::Vector3)},
         //{"subsurface_ior", get_input_value("Subsurface IOR", NodeItem::Type::Vector3)},
         {"subsurface_anisotropy", get_input_value("Subsurface Anisotropy", NodeItem::Type::Float)},
         {"metallic", get_input_value("Metallic", NodeItem::Type::Float)},
-        {"specular", get_input_value("Specular", NodeItem::Type::Float)},
+        {"specular", get_input_value("Specular IOR Level", NodeItem::Type::Float)},
         {"specular_tint", get_input_value("Specular Tint", NodeItem::Type::Color3)},
         {"roughness", get_input_value("Roughness", NodeItem::Type::Float)},
         {"anisotropic", get_input_value("Anisotropic", NodeItem::Type::Float)},
         {"anisotropic_rotation", get_input_value("Anisotropic Rotation", NodeItem::Type::Float)},
-        {"sheen", get_input_value("Sheen", NodeItem::Type::Float)},
+        {"sheen", get_input_value("Sheen Weight", NodeItem::Type::Float)},
         {"sheen_roughness", get_input_value("Sheen Roughness", NodeItem::Type::Float)},
         {"sheen_tint", get_input_value("Sheen Tint", NodeItem::Type::Color3)},
-        {"coat", get_input_value("Coat", NodeItem::Type::Float)},
+        {"coat", get_input_value("Coat Weight", NodeItem::Type::Float)},
         {"coat_roughness", get_input_value("Coat Roughness", NodeItem::Type::Float)},
         {"coat_ior", get_input_value("Coat IOR", NodeItem::Type::Float)},
         {"coat_tint", get_input_value("Coat Tint", NodeItem::Type::Color3)},
         {"ior", get_input_value("IOR", NodeItem::Type::Float)},
-        {"transmission", get_input_value("Transmission", NodeItem::Type::Float)},
+        {"transmission", get_input_value("Transmission Weight", NodeItem::Type::Float)},
         //{"alpha", get_input_value("Alpha", NodeItem::Type::Float)},
         {"normal", get_input_link("Normal", NodeItem::Type::Vector3)},
         {"coat_normal", get_input_link("Coat Normal", NodeItem::Type::Vector3)},
@@ -360,7 +360,7 @@ NODE_SHADER_MATERIALX_BEGIN
   auto edf_inputs = [&]() -> InputsType {
     return {
         {"emission", get_input_value("Emission Strength", NodeItem::Type::Float)},
-        {"emission_color", get_input_value("Emission", NodeItem::Type::Color3)},
+        {"emission_color", get_input_value("Emission Color", NodeItem::Type::Color3)},
     };
   };
 
