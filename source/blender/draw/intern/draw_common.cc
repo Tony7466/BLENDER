@@ -60,7 +60,8 @@ void DRW_globals_update()
   UI_GetThemeColor4fv(TH_VERTEX_UNREFERENCED, gb->color_vertex_unreferenced);
   UI_COLOR_RGBA_FROM_U8(0xB0, 0x00, 0xB0, 0xFF, gb->color_vertex_missing_data);
   UI_GetThemeColor4fv(TH_EDITMESH_ACTIVE, gb->color_edit_mesh_active);
-  UI_GetThemeColor4fv(TH_EDGE_SELECT, gb->color_edge_select);
+  UI_GetThemeColor4fv(TH_EDGE_SELECTION, gb->color_edge_selection);
+  UI_GetThemeColor4fv(TH_EDGE_MODE_SELECTION, gb->color_edge_mode_selection);
   UI_GetThemeColor4fv(TH_GP_VERTEX, gb->color_gpencil_vertex);
   UI_GetThemeColor4fv(TH_GP_VERTEX_SELECT, gb->color_gpencil_vertex_select);
 
@@ -70,7 +71,8 @@ void DRW_globals_update()
   UI_GetThemeColor4fv(TH_EDGE_BEVEL, gb->color_edge_bweight);
   UI_GetThemeColor4fv(TH_EDGE_FACESEL, gb->color_edge_face_select);
   UI_GetThemeColor4fv(TH_FACE, gb->color_face);
-  UI_GetThemeColor4fv(TH_FACE_SELECT, gb->color_face_select);
+  UI_GetThemeColor4fv(TH_FACE_SELECTION, gb->color_face_selection);
+  UI_GetThemeColor4fv(TH_FACE_MODE_SELECTION, gb->color_face_mode_selection);
   UI_GetThemeColor4fv(TH_FACE_RETOPOLOGY, gb->color_face_retopology);
   UI_GetThemeColor4fv(TH_FACE_BACK, gb->color_face_back);
   UI_GetThemeColor4fv(TH_FACE_FRONT, gb->color_face_front);
@@ -107,11 +109,11 @@ void DRW_globals_update()
   /* Bone colors */
   UI_GetThemeColor4fv(TH_BONE_POSE, gb->color_bone_pose);
   UI_GetThemeColor4fv(TH_BONE_POSE_ACTIVE, gb->color_bone_pose_active);
-  UI_GetThemeColorShade4fv(TH_EDGE_SELECT, 60, gb->color_bone_active);
-  UI_GetThemeColorShade4fv(TH_EDGE_SELECT, -20, gb->color_bone_select);
+  UI_GetThemeColorShade4fv(TH_EDGE_SELECTION, 60, gb->color_bone_active);
+  UI_GetThemeColorShade4fv(TH_EDGE_SELECTION, -20, gb->color_bone_select);
   UI_GetThemeColorBlendShade4fv(TH_WIRE, TH_BONE_POSE, 0.15f, 0, gb->color_bone_pose_active_unsel);
   UI_GetThemeColorBlendShade3fv(
-      TH_WIRE_EDIT, TH_EDGE_SELECT, 0.15f, 0, gb->color_bone_active_unsel);
+      TH_WIRE_EDIT, TH_EDGE_SELECTION, 0.15f, 0, gb->color_bone_active_unsel);
   UI_COLOR_RGBA_FROM_U8(255, 150, 0, 80, gb->color_bone_pose_target);
   UI_COLOR_RGBA_FROM_U8(255, 255, 0, 80, gb->color_bone_pose_ik);
   UI_COLOR_RGBA_FROM_U8(200, 255, 0, 80, gb->color_bone_pose_spline_ik);

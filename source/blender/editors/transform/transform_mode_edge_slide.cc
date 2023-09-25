@@ -1160,7 +1160,7 @@ static void drawEdgeSlide(TransInfo *t)
     add_v3_v3v3(co_b, curr_sv->v_co_orig, curr_sv->dir_side[1]);
 
     GPU_line_width(line_size);
-    immUniformThemeColorShadeAlpha(TH_EDGE_SELECT, 80, alpha_shade);
+    immUniformThemeColorShadeAlpha(TH_EDGE_SELECTION, 80, alpha_shade);
     immBeginAtMost(GPU_PRIM_LINES, 4);
     if (curr_sv->v_side[0]) {
       immVertex3fv(pos, curr_sv->v_side[0]->co);
@@ -1208,7 +1208,7 @@ static void drawEdgeSlide(TransInfo *t)
     const int alpha_shade = -160;
 
     GPU_line_width(line_size);
-    immUniformThemeColorShadeAlpha(TH_EDGE_SELECT, 80, alpha_shade);
+    immUniformThemeColorShadeAlpha(TH_EDGE_SELECTION, 80, alpha_shade);
     immBegin(GPU_PRIM_LINES, sld->totsv * 2);
 
     /* TODO(@ideasman42): Loop over all verts. */
@@ -1242,7 +1242,7 @@ static void drawEdgeSlide(TransInfo *t)
     add_v3_v3v3(co_dir, curr_sv->v_co_orig, curr_sv->dir_side[slp->curr_side_unclamp]);
 
     GPU_line_width(line_size);
-    immUniformThemeColorShadeAlpha(TH_EDGE_SELECT, 80, alpha_shade);
+    immUniformThemeColorShadeAlpha(TH_EDGE_SELECTION, 80, alpha_shade);
     immBeginAtMost(GPU_PRIM_LINES, 2);
     immVertex3fv(pos, curr_sv->v_co_orig);
     immVertex3fv(pos, co_dir);

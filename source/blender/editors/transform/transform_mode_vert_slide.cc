@@ -383,7 +383,7 @@ static void drawVertSlide(TransInfo *t)
           immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-      immUniformThemeColorShadeAlpha(TH_EDGE_SELECT, 80, alpha_shade);
+      immUniformThemeColorShadeAlpha(TH_EDGE_SELECTION, 80, alpha_shade);
 
       immBegin(GPU_PRIM_LINES, sld->totsv * 2);
       if (is_clamp) {

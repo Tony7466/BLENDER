@@ -302,7 +302,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
 
     float theme_color[4], selected_color[4];
     UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
-    UI_GetThemeColor4fv(TH_FACE_SELECT, selected_color);
+    UI_GetThemeColor4fv(TH_FACE_SELECTION, selected_color);
     srgb_to_linearrgb_v4(theme_color, theme_color);
     srgb_to_linearrgb_v4(selected_color, selected_color);
 

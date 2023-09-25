@@ -98,7 +98,7 @@ static void draw_render_info(
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-      immUniformThemeColor(TH_FACE_SELECT);
+      immUniformThemeColor(TH_FACE_SELECTION);
 
       GPU_line_width(1.0f);
 

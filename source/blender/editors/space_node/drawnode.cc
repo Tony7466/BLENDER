@@ -1934,7 +1934,7 @@ static char nodelink_get_color_id(int th_col)
       return 2;
     case TH_ACTIVE:
       return 3;
-    case TH_EDGE_SELECT:
+    case TH_EDGE_SELECTION:
       return 4;
     case TH_REDALERT:
       return 5;
@@ -1954,8 +1954,8 @@ static void nodelink_batch_draw(const SpaceNode &snode)
   UI_GetThemeColor4fv(TH_WIRE_INNER, node_link_data.colors[nodelink_get_color_id(TH_WIRE_INNER)]);
   UI_GetThemeColor4fv(TH_WIRE, node_link_data.colors[nodelink_get_color_id(TH_WIRE)]);
   UI_GetThemeColor4fv(TH_ACTIVE, node_link_data.colors[nodelink_get_color_id(TH_ACTIVE)]);
-  UI_GetThemeColor4fv(TH_EDGE_SELECT,
-                      node_link_data.colors[nodelink_get_color_id(TH_EDGE_SELECT)]);
+  UI_GetThemeColor4fv(TH_EDGE_SELECTION,
+                      node_link_data.colors[nodelink_get_color_id(TH_EDGE_SELECTION)]);
   UI_GetThemeColor4fv(TH_REDALERT, node_link_data.colors[nodelink_get_color_id(TH_REDALERT)]);
   node_link_data.aspect = snode.runtime->aspect;
   node_link_data.arrowSize = ARROW_SIZE;
@@ -2014,9 +2014,9 @@ static void nodelink_batch_add_link(const SpaceNode &snode,
 {
   /* Only allow these colors. If more is needed, you need to modify the shader accordingly. */
   BLI_assert(
-      ELEM(draw_config.th_col1, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECT, TH_REDALERT));
+      ELEM(draw_config.th_col1, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECTION, TH_REDALERT));
   BLI_assert(
-      ELEM(draw_config.th_col2, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECT, TH_REDALERT));
+      ELEM(draw_config.th_col2, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECTION, TH_REDALERT));
   BLI_assert(ELEM(draw_config.th_col3, TH_WIRE, TH_REDALERT, -1));
 
   g_batch_link.count++;
@@ -2144,7 +2144,7 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const View2D &v2d,
   /* Highlight links connected to selected nodes. */
   if (selected) {
     ColorTheme4f color_selected;
-    UI_GetThemeColor4fv(TH_EDGE_SELECT, color_selected);
+    UI_GetThemeColor4fv(TH_EDGE_SELECTION, color_selected);
     const float alpha = color_selected.a;
 
     /* Interpolate color if highlight color is not fully transparent. */
