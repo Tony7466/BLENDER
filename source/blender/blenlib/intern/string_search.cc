@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,12 +8,13 @@
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
-#include "BLI_string_search.h"
+#include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_timeit.hh"
 
-/* Right arrow, keep in sync with #UI_MENU_ARROW_SEP in `UI_interface.h`. */
-#define UI_MENU_ARROW_SEP "\xe2\x96\xb8"
+/* Right arrow, keep in sync with #UI_MENU_ARROW_SEP in `UI_interface.hh`. */
+#define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
 #define UI_MENU_ARROW_SEP_UNICODE 0x25b8
 
 namespace blender::string_search {
@@ -55,12 +56,12 @@ int damerau_levenshtein_distance(StringRef a, StringRef b)
   for (const int i : IndexRange(size_a)) {
     v2[0] = (i + 1) * deletion_cost;
 
-    const uint32_t unicode_a = BLI_str_utf8_as_unicode_step(a.data(), a.size(), &offset_a);
+    const uint32_t unicode_a = BLI_str_utf8_as_unicode_step_safe(a.data(), a.size(), &offset_a);
 
     uint32_t prev_unicode_b;
     size_t offset_b = 0;
     for (const int j : IndexRange(size_b)) {
-      const uint32_t unicode_b = BLI_str_utf8_as_unicode_step(b.data(), b.size(), &offset_b);
+      const uint32_t unicode_b = BLI_str_utf8_as_unicode_step_safe(b.data(), b.size(), &offset_b);
 
       /* Check how costly the different operations would be and pick the cheapest - the one with
        * minimal cost. */
@@ -110,9 +111,9 @@ int get_fuzzy_match_errors(StringRef query, StringRef full)
     return -1;
   }
 
-  const uint32_t query_first_unicode = BLI_str_utf8_as_unicode(query.data());
-  const uint32_t query_second_unicode = BLI_str_utf8_as_unicode(query.data() +
-                                                                BLI_str_utf8_size(query.data()));
+  const uint32_t query_first_unicode = BLI_str_utf8_as_unicode_safe(query.data());
+  const uint32_t query_second_unicode = BLI_str_utf8_as_unicode_safe(
+      query.data() + BLI_str_utf8_size_safe(query.data()));
 
   const char *full_begin = full.begin();
   const char *full_end = full.end();
@@ -124,12 +125,12 @@ int get_fuzzy_match_errors(StringRef query, StringRef full)
   const int max_acceptable_distance = max_errors + extra_chars;
 
   for (int i = 0; i < window_size; i++) {
-    window_end += BLI_str_utf8_size(window_end);
+    window_end += BLI_str_utf8_size_safe(window_end);
   }
 
   while (true) {
     StringRef window{window_begin, window_end};
-    const uint32_t window_begin_unicode = BLI_str_utf8_as_unicode(window_begin);
+    const uint32_t window_begin_unicode = BLI_str_utf8_as_unicode_safe(window_begin);
     int distance = 0;
     /* Expect that the first or second character of the query is correct. This helps to avoid
      * computing the more expensive distance function. */
@@ -147,8 +148,8 @@ int get_fuzzy_match_errors(StringRef query, StringRef full)
      * distance can't possibly become as short as required. */
     const int window_offset = std::max(1, distance / 2);
     for (int i = 0; i < window_offset && window_end < full_end; i++) {
-      window_begin += BLI_str_utf8_size(window_begin);
-      window_end += BLI_str_utf8_size(window_end);
+      window_begin += BLI_str_utf8_size_safe(window_begin);
+      window_end += BLI_str_utf8_size_safe(window_end);
     }
   }
 }
@@ -184,7 +185,7 @@ static bool match_word_initials(StringRef query,
   int first_found_word_index = -1;
 
   while (query_index < query.size()) {
-    const uint query_unicode = BLI_str_utf8_as_unicode_step(
+    const uint query_unicode = BLI_str_utf8_as_unicode_step_safe(
         query.data(), query.size(), &query_index);
     while (true) {
       /* We are at the end of words, no complete match has been found yet. */
@@ -208,7 +209,7 @@ static bool match_word_initials(StringRef query,
       StringRef word = words[word_index];
       /* Try to match the current character with the current word. */
       if (int(char_index) < word.size()) {
-        const uint32_t char_unicode = BLI_str_utf8_as_unicode_step(
+        const uint32_t char_unicode = BLI_str_utf8_as_unicode_step_safe(
             word.data(), word.size(), &char_index);
         if (query_unicode == char_unicode) {
           r_word_is_matched[word_index] = true;
@@ -351,9 +352,9 @@ void extract_normalized_words(StringRef str,
   const uint32_t unicode_slash = uint32_t('/');
   const uint32_t unicode_right_triangle = UI_MENU_ARROW_SEP_UNICODE;
 
-  BLI_assert(unicode_space == BLI_str_utf8_as_unicode(" "));
-  BLI_assert(unicode_slash == BLI_str_utf8_as_unicode("/"));
-  BLI_assert(unicode_right_triangle == BLI_str_utf8_as_unicode(UI_MENU_ARROW_SEP));
+  BLI_assert(unicode_space == BLI_str_utf8_as_unicode_safe(" "));
+  BLI_assert(unicode_slash == BLI_str_utf8_as_unicode_safe("/"));
+  BLI_assert(unicode_right_triangle == BLI_str_utf8_as_unicode_safe(UI_MENU_ARROW_SEP));
 
   auto is_separator = [&](uint32_t unicode) {
     return ELEM(unicode, unicode_space, unicode_slash, unicode_right_triangle);
@@ -371,7 +372,7 @@ void extract_normalized_words(StringRef str,
   size_t offset = 0;
   while (offset < str_size_in_bytes) {
     size_t size = offset;
-    uint32_t unicode = BLI_str_utf8_as_unicode_step(str.data(), str.size(), &size);
+    uint32_t unicode = BLI_str_utf8_as_unicode_step_safe(str.data(), str.size(), &size);
     size -= offset;
     if (is_separator(unicode)) {
       if (is_in_word) {
@@ -393,55 +394,31 @@ void extract_normalized_words(StringRef str,
   }
 }
 
-}  // namespace blender::string_search
-
-struct SearchItem {
-  blender::Span<blender::StringRef> normalized_words;
-  int length;
-  void *user_data;
-  int weight;
-};
-
-struct StringSearch {
-  blender::LinearAllocator<> allocator;
-  blender::Vector<SearchItem> items;
-};
-
-StringSearch *BLI_string_search_new()
+void StringSearchBase::add_impl(const StringRef str, void *user_data, const int weight)
 {
-  return new StringSearch();
-}
-
-void BLI_string_search_add(StringSearch *search,
-                           const char *str,
-                           void *user_data,
-                           const int weight)
-{
-  using namespace blender;
   Vector<StringRef, 64> words;
-  StringRef str_ref{str};
-  string_search::extract_normalized_words(str_ref, search->allocator, words);
-  search->items.append({search->allocator.construct_array_copy(words.as_span()),
-                        int(str_ref.size()),
-                        user_data,
-                        weight});
+  string_search::extract_normalized_words(str, allocator_, words);
+  const int recent_time = recent_cache_ ?
+                              recent_cache_->logical_time_by_str.lookup_default(str, -1) :
+                              -1;
+  items_.append({user_data,
+                 allocator_.construct_array_copy(words.as_span()),
+                 int(str.size()),
+                 weight,
+                 recent_time});
 }
 
-int BLI_string_search_query(StringSearch *search, const char *query, void ***r_data)
+Vector<void *> StringSearchBase::query_impl(const StringRef query) const
 {
-  using namespace blender;
-
-  const StringRef query_str = query;
-
   LinearAllocator<> allocator;
   Vector<StringRef, 64> query_words;
-  string_search::extract_normalized_words(query_str, allocator, query_words);
+  string_search::extract_normalized_words(query, allocator, query_words);
 
   /* Compute score of every result. */
   MultiValueMap<int, int> result_indices_by_score;
-  for (const int result_index : search->items.index_range()) {
+  for (const int result_index : items_.index_range()) {
     const int score = string_search::score_query_against_words(
-        query_words, search->items[result_index].normalized_words);
+        query_words, items_[result_index].normalized_words);
     if (score >= 0) {
       result_indices_by_score.add(score, result_index);
     }
@@ -458,36 +435,35 @@ int BLI_string_search_query(StringSearch *search, const char *query, void ***r_d
   Vector<int> sorted_result_indices;
   for (const int score : found_scores) {
     MutableSpan<int> indices = result_indices_by_score.lookup(score);
-    if (score == found_scores[0] && !query_str.is_empty()) {
-      /* Sort items with best score by length. Shorter items are more likely the ones you are
-       * looking for. This also ensures that exact matches will be at the top, even if the query is
-       * a sub-string of another item. */
-      std::sort(indices.begin(), indices.end(), [&](int a, int b) {
-        return search->items[a].length < search->items[b].length;
-      });
-      /* Prefer items with larger weights. Use `stable_sort` so that if the weights are the same,
-       * the order won't be changed. */
+    if (score == found_scores[0]) {
+      if (!query.is_empty()) {
+        /* Sort items with best score by length. Shorter items are more likely the ones you are
+         * looking for. This also ensures that exact matches will be at the top, even if the query
+         * is a sub-string of another item. */
+        std::sort(indices.begin(), indices.end(), [&](int a, int b) {
+          return items_[a].length < items_[b].length;
+        });
+        /* Prefer items with larger weights. Use `stable_sort` so that if the weights are the same,
+         * the order won't be changed. */
+        std::stable_sort(indices.begin(), indices.end(), [&](int a, int b) {
+          return items_[a].weight > items_[b].weight;
+        });
+      }
+      /* Prefer items that have been selected recently. */
       std::stable_sort(indices.begin(), indices.end(), [&](int a, int b) {
-        return search->items[a].weight > search->items[b].weight;
+        return items_[a].recent_time > items_[b].recent_time;
       });
     }
     sorted_result_indices.extend(indices);
   }
 
-  void **sorted_data = static_cast<void **>(
-      MEM_malloc_arrayN(size_t(sorted_result_indices.size()), sizeof(void *), AT));
+  Vector<void *> sorted_data(sorted_result_indices.size());
   for (const int i : sorted_result_indices.index_range()) {
     const int result_index = sorted_result_indices[i];
-    SearchItem &item = search->items[result_index];
+    const SearchItem &item = items_[result_index];
     sorted_data[i] = item.user_data;
   }
-
-  *r_data = sorted_data;
-
-  return sorted_result_indices.size();
+  return sorted_data;
 }
 
-void BLI_string_search_free(StringSearch *string_search)
-{
-  delete string_search;
-}
+}  // namespace blender::string_search

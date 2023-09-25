@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,17 +13,16 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
 
-#include "ED_node.h"
 #include "ED_node.hh"
-#include "ED_render.h"
-#include "ED_screen.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
 
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "node_intern.hh"
 
@@ -250,6 +249,8 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 
   for (bNode *new_node : node_map.values()) {
     nodeSetSelected(new_node, true);
+
+    new_node->flag &= ~NODE_ACTIVE;
 
     /* The parent pointer must be redirected to new node. */
     if (new_node->parent) {
