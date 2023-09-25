@@ -1049,11 +1049,6 @@ struct ShaderCreateInfo {
     return has_resource_type(Resource::BindType::IMAGE);
   }
 
-  bool has_resource_storage() const
-  {
-    return has_resource_type(Resource::BindType::STORAGE_BUFFER);
-  }
-
   /** \} */
 
 #undef TEST_EQUAL
