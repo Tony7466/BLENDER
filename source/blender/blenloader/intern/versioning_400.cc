@@ -50,6 +50,9 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "SEQ_retiming.hh"
+#include "SEQ_sequencer.h"
+
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
 
@@ -1327,7 +1330,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                  (shelf_data->active_shelf->preferred_row_count == 0))
+              {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -1343,7 +1347,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
+          {
             sockets_to_split.append(&socket);
           }
         }
@@ -1357,6 +1362,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
+
+    if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 25)) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_SEQ) {
+              SpaceSeq *sseq = (SpaceSeq *)sl;
+              sseq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_RETIMING;
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
