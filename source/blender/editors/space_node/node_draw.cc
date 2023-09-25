@@ -633,136 +633,123 @@ static void node_update_basis_from_declaration(
   /* Makes sure buttons are only drawn once. */
   bool buttons_drawn = false;
 
-  /* The panel stack keeps track of the hierarchy of panels. When a panel declaration is found a
-   * new #PanelUpdate is added to the stack. Items in the declaration are added to the top panel
-   * of the stack. Each panel expects a number of items to be added, after which the panel is
-   * removed from the stack again. */
-  struct PanelUpdate {
-    /* How many declarations still to add. */
-    int remaining_decls;
-    /* True if the panel or its parent is collapsed. */
-    bool is_collapsed;
-    /* Panel label for shortening socket labels. */
-    const char *label = nullptr;
-    /* Location data, needed to finalize the panel when all items have been added. */
-    bke::bNodePanelRuntime *runtime;
-  };
-  Stack<PanelUpdate> panel_updates;
   /* Only true for the first item in the layout. */
   bool is_first = true;
 
   const Vector<NodeInterfaceItemData> item_data = node_build_item_data(node);
-  for (const NodeInterfaceItemData &item : item_data) {
-    bool is_parent_collapsed = false;
-    const char *parent_label = nullptr;
-    if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
-      /* Adding an item to the parent panel, will be popped when reaching 0. */
-      BLI_assert(parent_update->remaining_decls > 0);
-      --parent_update->remaining_decls;
-      is_parent_collapsed = parent_update->is_collapsed;
-      parent_label = parent_update->label;
-    }
+  Vector<NodeInterfaceItemData>::const_iterator item_iter = item_data.begin();
 
-    if (item.is_valid_panel()) {
-      /* Draw buttons before the first panel. */
-      if (!buttons_drawn) {
-        buttons_drawn = true;
-        need_spacer_after_item = node_update_basis_buttons(
-            C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+  std::function<void(int, bool, const char *, bke::bNodePanelRuntime *)> add_panel_items;
+  add_panel_items = [&](int num_items,
+                        const bool is_parent_collapsed,
+                        const char *parent_label,
+                        bke::bNodePanelRuntime *parent_runtime) {
+    while (item_iter != item_data.end()) {
+      /* Consume item. */
+      const NodeInterfaceItemData &item = *item_iter++;
+
+      /* Stop after adding the expected number of items.
+       * Root panel consumes all remaining items (num_items == -1). */
+      if (num_items >= 0) {
+        if (num_items == 0) {
+          break;
+        }
+        --num_items;
       }
 
-      if (!is_parent_collapsed) {
-        locy -= NODE_DY;
-        is_first = false;
-      }
-
-      SET_FLAG_FROM_TEST(item.state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
-      /* New top panel is collapsed if self or parent is collapsed. */
-      const bool is_collapsed = is_parent_collapsed || item.state->is_collapsed();
-      panel_updates.push({item.panel_decl->num_child_decls,
-                          is_collapsed,
-                          item.panel_decl->name.c_str(),
-                          item.runtime});
-
-      /* Round the socket location to stop it from jiggling. */
-      item.runtime->location_y = round(locy + NODE_DYS);
-      if (!is_collapsed) {
-        locy -= NODE_ITEM_SPACING_Y / 2; /* Space at bottom of panel header. */
-      }
-      item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
-      if (!is_collapsed) {
-        locy -= NODE_ITEM_SPACING_Y; /* Space at top of panel contents. */
-        node_update_basis_buttons(C, ntree, node, item.panel_decl->draw_buttons, block, locy);
-      }
-    }
-    else if (item.is_valid_socket()) {
-      if (item.input) {
-        SET_FLAG_FROM_TEST(item.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-        /* Draw buttons before the first input. */
+      if (item.is_valid_panel()) {
+        /* Draw buttons before the first panel. */
         if (!buttons_drawn) {
           buttons_drawn = true;
           need_spacer_after_item = node_update_basis_buttons(
               C, ntree, node, node.typeinfo->draw_buttons, block, locy);
         }
 
-        if (is_parent_collapsed) {
-          item.input->runtime->location = float2(locx, round(locy + NODE_DYS));
+        if (!is_parent_collapsed) {
+          locy -= NODE_DY;
+          is_first = false;
         }
-        else {
-          /* Space between items. */
-          if (!is_first && item.input->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+
+        SET_FLAG_FROM_TEST(item.state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
+        /* New top panel is collapsed if self or parent is collapsed. */
+        const bool is_collapsed = is_parent_collapsed || item.state->is_collapsed();
+
+        /* Round the socket location to stop it from jiggling. */
+        item.runtime->location_y = round(locy + NODE_DYS);
+        if (!is_collapsed) {
+          locy -= NODE_ITEM_SPACING_Y / 2; /* Space at bottom of panel header. */
+        }
+        item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
+        if (!is_collapsed) {
+          locy -= NODE_ITEM_SPACING_Y; /* Space at top of panel contents. */
+          node_update_basis_buttons(C, ntree, node, item.panel_decl->draw_buttons, block, locy);
+        }
+
+        add_panel_items(item.panel_decl->num_child_decls,
+                        is_collapsed,
+                        item.panel_decl->name.c_str(),
+                        item.runtime);
+      }
+      else if (item.is_valid_socket()) {
+        if (item.input) {
+          SET_FLAG_FROM_TEST(item.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+          /* Draw buttons before the first input. */
+          if (!buttons_drawn) {
+            buttons_drawn = true;
+            need_spacer_after_item = node_update_basis_buttons(
+                C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+          }
+
+          if (is_parent_collapsed) {
+            item.input->runtime->location = float2(locx, round(locy + NODE_DYS));
+          }
+          else {
+            /* Space between items. */
+            if (!is_first && item.input->is_visible()) {
+              locy -= NODE_ITEM_SPACING_Y;
+            }
           }
         }
-      }
-      if (item.output) {
-        SET_FLAG_FROM_TEST(item.output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-        if (is_parent_collapsed) {
-          item.output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
-                                                  round(locy + NODE_DYS));
-        }
-        else {
-          /* Space between items. */
-          if (!is_first && item.output->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+        if (item.output) {
+          SET_FLAG_FROM_TEST(item.output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+          if (is_parent_collapsed) {
+            item.output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
+                                                    round(locy + NODE_DYS));
+          }
+          else {
+            /* Space between items. */
+            if (!is_first && item.output->is_visible()) {
+              locy -= NODE_ITEM_SPACING_Y;
+            }
           }
         }
+
+        if (!is_parent_collapsed &&
+            node_update_basis_socket(
+                C, ntree, node, parent_label, item.input, item.output, block, locx, locy))
+        {
+          is_first = false;
+          need_spacer_after_item = true;
+        }
+      }
+      else {
+        /* Should not happen. */
+        BLI_assert_unreachable();
       }
 
-      if (!is_parent_collapsed &&
-          node_update_basis_socket(
-              C, ntree, node, parent_label, item.input, item.output, block, locx, locy))
-      {
-        is_first = false;
-        need_spacer_after_item = true;
-      }
-    }
-    else {
-      /* Should not happen. */
-      BLI_assert_unreachable();
-    }
-
-    /* Close parent panels that have all items added. */
-    while (!panel_updates.is_empty()) {
-      PanelUpdate &top_panel = panel_updates.peek();
-      if (top_panel.remaining_decls > 0) {
-        /* Incomplete panel, continue adding items. */
-        break;
-      }
-
-      if (!top_panel.is_collapsed) {
-        /* Finalize the vertical extent of the content. */
+      /* Finalize the vertical extent of the content. */
+      if (!is_parent_collapsed) {
         locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
-        top_panel.runtime->min_content_y = round(locy);
+        if (parent_runtime) {
+          parent_runtime->min_content_y = round(locy);
+        }
         locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
       }
-
-      /* Close panel and continue checking parent. */
-      panel_updates.pop();
     }
-  }
-  /* Enough items should have been added to close all panels. */
-  BLI_assert(panel_updates.is_empty());
+  };
+
+  /* Start by adding root panel items. */
+  add_panel_items(-1, false, "", nullptr);
 
   /* Draw buttons at the bottom if no inputs exist. */
   if (!buttons_drawn) {
