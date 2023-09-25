@@ -290,6 +290,7 @@ std::optional<int32_t> find_nested_node_id_in_root(const SpaceNode &snode, const
   }
   return id_in_node;
 }
+
 std::optional<ObjectAndModifier> get_modifier_for_node_editor(const SpaceNode &snode)
 {
   if (snode.id == nullptr) {
