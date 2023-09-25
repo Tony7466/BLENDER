@@ -647,17 +647,16 @@ static void node_update_basis_from_declaration(
                                   const char *parent_label,
                                   bke::bNodePanelRuntime *parent_runtime) {
     while (item_iter != item_data.end()) {
-      /* Consume item. */
-      const NodeInterfaceItemData &item = *item_iter++;
-
       /* Stop after adding the expected number of items.
        * Root panel consumes all remaining items (num_items == -1). */
-      if (num_items >= 0) {
-        if (num_items == 0) {
-          break;
-        }
+      if (num_items == 0) {
+        break;
+      }
+      else if (num_items > 0) {
         --num_items;
       }
+      /* Consume item. */
+      const NodeInterfaceItemData &item = *item_iter++;
 
       if (item.is_valid_panel()) {
         /* Draw buttons before the first panel. */
