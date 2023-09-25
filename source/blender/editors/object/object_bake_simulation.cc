@@ -401,27 +401,13 @@ static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, w
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int bake_simulation_exec(bContext *C, wmOperator *op)
+static Vector<ObjectBakeData> collect_nodes_to_bake(Main &bmain,
+                                                    Scene &scene,
+                                                    const Span<Object *> objects)
 {
-  Scene *scene = CTX_data_scene(C);
-  Main *bmain = CTX_data_main(C);
-
-  Vector<Object *> objects;
-  if (RNA_boolean_get(op->ptr, "selected")) {
-    CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
-      objects.append(object);
-    }
-    CTX_DATA_END;
-  }
-  else {
-    if (Object *object = CTX_data_active_object(C)) {
-      objects.append(object);
-    }
-  }
-
   Vector<ObjectBakeData> objects_to_bake;
   for (Object *object : objects) {
-    if (!BKE_id_is_editable(bmain, &object->id)) {
+    if (!BKE_id_is_editable(&bmain, &object->id)) {
       continue;
     }
 
@@ -448,12 +434,12 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
           node_bake_data.id = nested_node_ref.id;
           node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
           std::optional<bake::BakePath> path = bake::get_node_bake_path(
-              *bmain, *object, *nmd, nested_node_ref.id);
+              bmain, *object, *nmd, nested_node_ref.id);
           if (!path) {
             continue;
           }
           std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
-              *scene, *object, *nmd, nested_node_ref.id);
+              scene, *object, *nmd, nested_node_ref.id);
           if (!frame_range) {
             continue;
           }
@@ -474,7 +460,28 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     }
     objects_to_bake.append(std::move(bake_data));
   }
+  return objects_to_bake;
+}
 
+static int bake_simulation_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Main *bmain = CTX_data_main(C);
+
+  Vector<Object *> objects;
+  if (RNA_boolean_get(op->ptr, "selected")) {
+    CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+      objects.append(object);
+    }
+    CTX_DATA_END;
+  }
+  else {
+    if (Object *object = CTX_data_active_object(C)) {
+      objects.append(object);
+    }
+  }
+
+  Vector<ObjectBakeData> objects_to_bake = collect_nodes_to_bake(*bmain, *scene, objects);
   return start_bake_job(C, std::move(objects_to_bake), op);
 }
 
