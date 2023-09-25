@@ -692,7 +692,7 @@ static void version_principled_bsdf_emission(bNodeTree *ntree)
   }
 }
 
-/* Rename Principled BSDF emission to emission color. */
+/* Rename various Principled BSDF sockets. */
 static void version_principled_bsdf_rename_sockets(bNodeTree *ntree)
 {
   version_node_input_socket_name(ntree, SH_NODE_BSDF_PRINCIPLED, "Emission", "Emission Color");

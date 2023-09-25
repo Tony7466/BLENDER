@@ -105,12 +105,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description(
           "Adjustment to the IOR to increase or decrease specular intensity "
-          "(0.5 means no adjustment, 0 removes all reflections, 1 doubles them)");
+          "(0.5 means no adjustment, 0 removes all reflections, 1 doubles them at normal "
+          "incidence)");
 #define SOCK_SPECULAR_ID 12
   spec.add_input<decl::Color>("Specular Tint")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .description(
-          "Tint of the specular reflection at normal incidence. Affects dielectric materials");
+          "Tint dielectric reflection at normal incidence for artistic control, and metallic "
+          "reflection at near-grazing incidence to simulate complex index of refraction");
 #define SOCK_SPECULAR_TINT_ID 13
   spec.add_input<decl::Float>("Anisotropic")
       .default_value(0.0f)
