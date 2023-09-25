@@ -458,8 +458,8 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
     }
   }
 
-  NodesModifierBake *new_bake_data = static_cast<NodesModifierBake *>(
-      MEM_callocN(sizeof(NodesModifierBake) * new_bake_ids.size(), __func__));
+  NodesModifierBake *new_bake_data = MEM_cnew_array<NodesModifierBake>(new_bake_ids.size(),
+                                                                       __func__);
   for (const int i : new_bake_ids.index_range()) {
     const int id = new_bake_ids[i];
     const NodesModifierBake *old_bake = old_bake_by_id.lookup_default(id, nullptr);
