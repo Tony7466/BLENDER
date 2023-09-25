@@ -17,6 +17,10 @@ struct SearchItem {
   Span<blender::StringRef> normalized_words;
   int length;
   int weight;
+  /**
+   * This is a logical time stamp, i.e. the greater it is, the more recent the item was used. The
+   * number is not based on an actual clock.
+   */
   int recent_time;
 };
 
