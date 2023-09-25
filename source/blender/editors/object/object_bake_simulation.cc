@@ -98,15 +98,16 @@ static void calculate_simulation_job_startjob(void *customdata,
       continue;
     }
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      if (md->type == eModifierType_Nodes) {
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (!nmd->runtime->cache) {
-          continue;
-        }
-        for (auto item : nmd->runtime->cache->cache_by_id.items()) {
-          if (item.value->cache_status != bake::CacheStatus::Baked) {
-            item.value->reset();
-          }
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      if (!nmd->runtime->cache) {
+        continue;
+      }
+      for (auto item : nmd->runtime->cache->cache_by_id.items()) {
+        if (item.value->cache_status != bake::CacheStatus::Baked) {
+          item.value->reset();
         }
       }
     }
@@ -414,46 +415,47 @@ static Vector<ObjectBakeData> collect_nodes_to_bake(Main &bmain,
     ObjectBakeData bake_data;
     bake_data.object = object;
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      if (md->type == eModifierType_Nodes) {
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (!nmd->node_group) {
-          continue;
-        }
-        if (!nmd->runtime->cache) {
-          continue;
-        }
-        ModifierBakeData modifier_bake_data;
-        modifier_bake_data.nmd = nmd;
-
-        for (auto item : nmd->runtime->cache->cache_by_id.items()) {
-          item.value->reset();
-        }
-
-        for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
-          NodeBakeData node_bake_data;
-          node_bake_data.id = nested_node_ref.id;
-          node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
-          std::optional<bake::BakePath> path = bake::get_node_bake_path(
-              bmain, *object, *nmd, nested_node_ref.id);
-          if (!path) {
-            continue;
-          }
-          std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
-              scene, *object, *nmd, nested_node_ref.id);
-          if (!frame_range) {
-            continue;
-          }
-          node_bake_data.path = std::move(*path);
-          node_bake_data.frame_start = frame_range->first();
-          node_bake_data.frame_end = frame_range->last();
-
-          modifier_bake_data.nodes.append(std::move(node_bake_data));
-        }
-        if (modifier_bake_data.nodes.is_empty()) {
-          continue;
-        }
-        bake_data.modifiers.append(std::move(modifier_bake_data));
+      if (md->type != eModifierType_Nodes) {
+        continue;
       }
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      if (!nmd->node_group) {
+        continue;
+      }
+      if (!nmd->runtime->cache) {
+        continue;
+      }
+      ModifierBakeData modifier_bake_data;
+      modifier_bake_data.nmd = nmd;
+
+      for (auto item : nmd->runtime->cache->cache_by_id.items()) {
+        item.value->reset();
+      }
+
+      for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
+        NodeBakeData node_bake_data;
+        node_bake_data.id = nested_node_ref.id;
+        node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
+        std::optional<bake::BakePath> path = bake::get_node_bake_path(
+            bmain, *object, *nmd, nested_node_ref.id);
+        if (!path) {
+          continue;
+        }
+        std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
+            scene, *object, *nmd, nested_node_ref.id);
+        if (!frame_range) {
+          continue;
+        }
+        node_bake_data.path = std::move(*path);
+        node_bake_data.frame_start = frame_range->first();
+        node_bake_data.frame_end = frame_range->last();
+
+        modifier_bake_data.nodes.append(std::move(node_bake_data));
+      }
+      if (modifier_bake_data.nodes.is_empty()) {
+        continue;
+      }
+      bake_data.modifiers.append(std::move(modifier_bake_data));
     }
     if (bake_data.modifiers.is_empty()) {
       continue;
