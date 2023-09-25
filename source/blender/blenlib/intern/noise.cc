@@ -529,7 +529,7 @@ float perlin(float4 position)
   return perlin_signed(position) / 2.0f + 0.5f;
 }
 
-/* Positive fractal perlin noise. */
+/* Fractal perlin noise. */
 
 template<typename T>
 float perlin_fbm(
@@ -558,6 +558,13 @@ float perlin_fbm(
     return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
   }
 }
+
+/* Explicilt instantiation for Wave Texture. */
+template float perlin_fbm<float3>(float3 p,
+                                  const float detail,
+                                  const float roughness,
+                                  const float lacunarity,
+                                  const bool normalize);
 
 template<typename T>
 float perlin_multi_fractal(T p, const float detail, const float roughness, const float lacunarity)
