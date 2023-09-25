@@ -245,31 +245,9 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
           immUniformColor3ubvAlpha(col2b, sel ? col1[3] : col2b[3]);
           break;
         }
-        case ANIMTYPE_GROUP: {
-          bActionGroup *agrp = static_cast<bActionGroup *>(ale->data);
-          if (show_group_colors && agrp->customCol) {
-            if (sel) {
-              immUniformColor3ubvAlpha((uchar *)agrp->cs.select, col1a[3]);
-            }
-            else {
-              immUniformColor3ubvAlpha((uchar *)agrp->cs.solid, col2a[3]);
-            }
-          }
-          else {
-            immUniformColor4ubv(sel ? col1a : col2a);
-          }
+        case ANIMTYPE_GROUP:
+          immUniformColor4ubv(sel ? col1a : col2a);
           break;
-        }
-        case ANIMTYPE_FCURVE: {
-          FCurve *fcu = static_cast<FCurve *>(ale->data);
-          if (show_group_colors && fcu->grp && fcu->grp->customCol) {
-            immUniformColor3ubvAlpha((uchar *)fcu->grp->cs.active, sel ? col1[3] : col2[3]);
-          }
-          else {
-            immUniformColor4ubv(sel ? col1 : col2);
-          }
-          break;
-        }
         case ANIMTYPE_GPLAYER: {
           if (show_group_colors) {
             uchar gpl_col[4];

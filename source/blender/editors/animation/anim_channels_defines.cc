@@ -174,41 +174,12 @@ static bool acf_show_channel_colors()
 static void acf_generic_channel_color(bAnimContext *ac, bAnimListElem *ale, float r_color[3])
 {
   const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
-  bActionGroup *grp = nullptr;
   short indent = (acf->get_indent_level) ? acf->get_indent_level(ac, ale) : 0;
-  bool showGroupColors = acf_show_channel_colors();
 
-  if (ale->type == ANIMTYPE_FCURVE) {
-    FCurve *fcu = (FCurve *)ale->data;
-    grp = fcu->grp;
-  }
-
-  /* set color for normal channels
-   * - use 3 shades of color group/standard color for 3 indentation level
-   * - only use group colors if allowed to, and if actually feasible
-   */
-  if (showGroupColors && (grp) && (grp->customCol)) {
-    uchar cp[3];
-
-    if (indent == 2) {
-      copy_v3_v3_uchar(cp, grp->cs.solid);
-    }
-    else if (indent == 1) {
-      copy_v3_v3_uchar(cp, grp->cs.select);
-    }
-    else {
-      copy_v3_v3_uchar(cp, grp->cs.active);
-    }
-
-    /* copy the colors over, transforming from bytes to floats */
-    rgb_uchar_to_float(r_color, cp);
-  }
-  else {
-    /* FIXME: what happens when the indentation is 1 greater than what it should be
-     * (due to grouping)? */
-    int colOfs = 10 - 10 * indent;
-    UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
-  }
+  /* FIXME: what happens when the indentation is 1 greater than what it should be
+   * (due to grouping)? */
+  int colOfs = 10 - 10 * indent;
+  UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
 }
 
 /* get backdrop color for grease pencil channels */
@@ -828,31 +799,11 @@ static bAnimChannelType ACF_OBJECT = {
 /* get backdrop color for group widget */
 static void acf_group_color(bAnimContext * /*ac*/, bAnimListElem *ale, float r_color[3])
 {
-  bActionGroup *agrp = (bActionGroup *)ale->data;
-  bool showGroupColors = acf_show_channel_colors();
-
-  if (showGroupColors && agrp->customCol) {
-    uchar cp[3];
-
-    /* highlight only for active */
-    if (ale->flag & AGRP_ACTIVE) {
-      copy_v3_v3_uchar(cp, agrp->cs.select);
-    }
-    else {
-      copy_v3_v3_uchar(cp, agrp->cs.solid);
-    }
-
-    /* copy the colors over, transforming from bytes to floats */
-    rgb_uchar_to_float(r_color, cp);
+  if (ale->flag & AGRP_ACTIVE) {
+    UI_GetThemeColor3fv(TH_GROUP_ACTIVE, r_color);
   }
   else {
-    /* highlight only for active */
-    if (ale->flag & AGRP_ACTIVE) {
-      UI_GetThemeColor3fv(TH_GROUP_ACTIVE, r_color);
-    }
-    else {
-      UI_GetThemeColor3fv(TH_GROUP, r_color);
-    }
+    UI_GetThemeColor3fv(TH_GROUP, r_color);
   }
 }
 
@@ -5455,6 +5406,50 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   MEM_freeN(opacity_rna_path);
 }
 
+/* TODO: move this function into the generic animation channel structure. */
+static bool anim_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  bActionGroup *agrp = nullptr;
+
+  switch (ale->type) {
+    case ANIMTYPE_GROUP: {
+      agrp = static_cast<bActionGroup *>(ale->data);
+      break;
+    }
+    case ANIMTYPE_FCURVE: {
+      FCurve *fcu = static_cast<FCurve *>(ale->data);
+      agrp = fcu->grp;
+      break;
+    }
+    default:
+      /* TODO: support grease pencil channels, they can (AFAIK) also be colored. */
+      return false;
+  }
+
+  if (!agrp) {
+    return false;
+  }
+
+  const int8_t color_index = agrp->customCol;
+  if (color_index == 0) {
+    return false;
+  }
+
+  const ThemeWireColor *wire_color;
+  if (color_index < 0) {
+    wire_color = &agrp->cs;
+  }
+  else {
+    const bTheme *btheme = UI_GetTheme();
+    wire_color = &btheme->tarm[(color_index - 1)];
+  }
+
+  r_color[0] = wire_color->solid[0];
+  r_color[1] = wire_color->solid[1];
+  r_color[2] = wire_color->solid[2];
+  return true;
+}
+
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
                                bAnimListElem *ale,
@@ -5607,6 +5602,29 @@ void ANIM_channel_draw_widgets(const bContext *C,
     /* check if there's enough space for the toggles if the sliders are drawn too */
     if (!(draw_sliders) || (BLI_rcti_size_x(&v2d->mask) > ANIM_UI_get_channel_button_width() / 2))
     {
+      /* Little channel color rectangle. */
+      const bool show_group_colors = acf_show_channel_colors();
+      if (show_group_colors) {
+        const float rect_width = 0.5f * ICON_WIDTH;
+        const float rect_margin = 2.0f * U.ui_scale;
+        uint8_t color[3];
+        if (anim_channel_color(ale, color)) {
+          immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+          immUniformColor3ubv(color);
+
+          GPUVertFormat format = {0};
+          uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+          immRectf(pos,
+                   rect->xmax - rect_width - rect_margin,
+                   rect->ymin + rect_margin,
+                   rect->xmax - rect_margin,
+                   rect->ymax - rect_margin);
+
+          immUnbindProgram();
+        }
+        offset -= rect_width + 2 * rect_margin;
+      }
+
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
         offset -= ICON_WIDTH;
