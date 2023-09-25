@@ -327,8 +327,8 @@ class FILEBROWSER_PT_bookmarks_favorites(FileBrowserPanel, Panel):
             layout.operator("file.bookmark_add", icon='ADD')
 
 
-class FILEBROWSER_MT_bookmarks_recents_context_menu(Menu):
-    bl_label = "Recent Directories Specials"
+class FILEBROWSER_MT_bookmarks_recents_specials_menu(Menu):
+    bl_label = "Recent Items Specials"
 
     def draw(self, _context):
         layout = self.layout
@@ -360,7 +360,7 @@ class FILEBROWSER_PT_bookmarks_recents(Panel):
                               space, "recent_folders_active", item_dyntip_propname="path", rows=1, maxrows=10)
 
             col = row.column(align=True)
-            col.menu("FILEBROWSER_MT_bookmarks_recents_context_menu", icon='DOWNARROW_HLT', text="")
+            col.menu("FILEBROWSER_MT_bookmarks_recents_specials_menu", icon='DOWNARROW_HLT', text="")
 
 
 class FILEBROWSER_PT_advanced_filter(Panel):
@@ -862,7 +862,7 @@ classes = (
     FILEBROWSER_PT_bookmarks_favorites,
     FILEBROWSER_PT_bookmarks_system,
     FILEBROWSER_PT_bookmarks_volumes,
-    FILEBROWSER_MT_bookmarks_recents_context_menu,
+    FILEBROWSER_MT_bookmarks_recents_specials_menu,
     FILEBROWSER_PT_bookmarks_recents,
     FILEBROWSER_PT_advanced_filter,
     FILEBROWSER_PT_directory_path,
