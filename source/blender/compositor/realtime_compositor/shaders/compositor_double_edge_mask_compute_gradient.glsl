@@ -12,7 +12,7 @@
  * distance between the outer and inner boundaries as can be seen in the following illustration
  * where the $ sign designates a pixel between both boundaries.
  *
- *                   |    a         b    |
+ *                   |    O         I    |
  *   Outer Boundary  |---------$---------|  Inner Boundary
  *                   |                   |
  */
