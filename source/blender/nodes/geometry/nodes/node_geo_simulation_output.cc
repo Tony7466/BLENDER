@@ -858,22 +858,13 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   if (snode == nullptr) {
     return;
   }
-  if (snode->id == nullptr) {
+  std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
+      ed::space_node::get_modifier_for_node_editor(*snode);
+  if (!object_and_modifier.has_value()) {
     return;
   }
-  if (GS(snode->id->name) != ID_OB) {
-    return;
-  }
-  Object *object = reinterpret_cast<Object *>(snode->id);
-  /* TODO: Better handle pinned node tree. */
-  ModifierData *md = BKE_object_active_modifier(object);
-  if (md == nullptr || md->type != eModifierType_Nodes) {
-    return;
-  }
-  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  if (nmd.node_group != snode->nodetree) {
-    return;
-  }
+  const Object &object = *object_and_modifier->object;
+  const NodesModifierData &nmd = *object_and_modifier->nmd;
   const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
                                                                                      *node);
   if (!bake_id.has_value()) {
@@ -890,10 +881,11 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     return;
   }
 
-  PointerRNA bake_rna = RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake);
+  PointerRNA bake_rna = RNA_pointer_create(
+      const_cast<ID *>(&object.id), &RNA_NodesModifierBake, (void *)bake);
 
   const std::optional<IndexRange> simulation_range = bke::bake::get_node_bake_frame_range(
-      *scene, *object, nmd, *bake_id);
+      *scene, object, nmd, *bake_id);
 
   std::optional<IndexRange> baked_range;
   if (nmd.runtime->cache) {
@@ -925,28 +917,28 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
       PointerRNA ptr;
       uiItemFullO(row,
-                  "OBJECT_OT_geometry_nodes_bake_node",
+                  "OBJECT_OT_simulation_nodes_cache_bake_single",
                   bake_label,
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
                   UI_ITEM_NONE,
                   &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object->id);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
       RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
       RNA_int_set(&ptr, "bake_id", bake->id);
     }
     {
       PointerRNA ptr;
       uiItemFullO(row,
-                  "OBJECT_OT_geometry_nodes_delete_bake",
+                  "OBJECT_OT_simulation_nodes_cache_delete_single",
                   "",
                   ICON_TRASH,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
                   UI_ITEM_NONE,
                   &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object->id);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
       RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
       RNA_int_set(&ptr, "bake_id", bake->id);
     }

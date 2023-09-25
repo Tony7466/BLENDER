@@ -347,8 +347,8 @@ void OBJECT_OT_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
-void OBJECT_OT_geometry_nodes_bake_node(wmOperatorType *ot);
-void OBJECT_OT_geometry_nodes_delete_bake(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot);
 
 /* `object_random.cc` */
 

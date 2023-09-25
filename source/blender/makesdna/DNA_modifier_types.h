@@ -2330,7 +2330,15 @@ typedef struct NodesModifierBake {
   int id;
   /** #NodesModifierBakeFlag. */
   uint32_t flag;
+  /**
+   * Directory where the baked data should be stored. This is only used when
+   * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
+   */
   char *directory;
+  /**
+   * Frame range for the simulation and baking that is used if
+   * `NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE` is set.
+   */
   int frame_start;
   int frame_end;
 } NodesModifierBake;

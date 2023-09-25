@@ -730,7 +730,7 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int geometry_nodes_bake_node_exec(bContext *C, wmOperator *op)
+static int bake_single_simulation_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -791,9 +791,9 @@ static int geometry_nodes_bake_node_exec(bContext *C, wmOperator *op)
   return start_bake_job(C, std::move(objects_to_bake), op);
 }
 
-static int geometry_nodes_bake_node_modal(bContext *C,
-                                          wmOperator * /*op*/,
-                                          const wmEvent * /*event*/)
+static int bake_single_simulation_modal(bContext *C,
+                                        wmOperator * /*op*/,
+                                        const wmEvent * /*event*/)
 {
   if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_SIMULATION_NODES)) {
     return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
@@ -801,7 +801,7 @@ static int geometry_nodes_bake_node_modal(bContext *C,
   return OPERATOR_PASS_THROUGH;
 }
 
-static int geometry_nodes_delete_bake_exec(bContext *C, wmOperator *op)
+static int delete_baked_simulation_single_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *object = reinterpret_cast<Object *>(
@@ -878,16 +878,16 @@ void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "selected", false, "Selected", "Delete cache on all selected objects");
 }
 
-void OBJECT_OT_geometry_nodes_bake_node(wmOperatorType *ot)
+void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot)
 {
   using namespace blender::ed::object::bake_simulation;
 
-  ot->name = "Bake Single Geometry Node";
-  ot->description = "Bake a single geometry node";
-  ot->idname = "OBJECT_OT_geometry_nodes_bake_node";
+  ot->name = "Bake Single Simulation Zone";
+  ot->description = "Bake a single simulation zone";
+  ot->idname = "OBJECT_OT_simulation_nodes_cache_bake_single";
 
-  ot->exec = geometry_nodes_bake_node_exec;
-  ot->modal = geometry_nodes_bake_node_modal;
+  ot->exec = bake_single_simulation_exec;
+  ot->modal = bake_single_simulation_modal;
 
   WM_operator_properties_id_lookup(ot, false);
 
@@ -901,15 +901,15 @@ void OBJECT_OT_geometry_nodes_bake_node(wmOperatorType *ot)
       ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "ID of the node to bake", 0, INT32_MAX);
 }
 
-void OBJECT_OT_geometry_nodes_delete_bake(wmOperatorType *ot)
+void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot)
 {
   using namespace blender::ed::object::bake_simulation;
 
-  ot->name = "Delete Baked Data";
-  ot->description = "Delete baked data of a single geometry node";
-  ot->idname = "OBJECT_OT_geometry_nodes_delete_bake";
+  ot->name = "Delete Single Cached Simulation";
+  ot->description = "Delete simulation data of a single simulation zone";
+  ot->idname = "OBJECT_OT_simulation_nodes_cache_delete_single";
 
-  ot->exec = geometry_nodes_delete_bake_exec;
+  ot->exec = delete_baked_simulation_single_exec;
 
   WM_operator_properties_id_lookup(ot, false);
 
