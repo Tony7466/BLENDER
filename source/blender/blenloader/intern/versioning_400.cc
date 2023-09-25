@@ -1373,7 +1373,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   {
     /* Keep this block, even when empty. */
 
-    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "shadow_normal_bias")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "shadow_normal_bias")) {
       SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.shadow_ray_count = default_scene_eevee.shadow_ray_count;
@@ -1382,7 +1382,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "Light", "float", "shadow_softness_factor")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "shadow_softness_factor")) {
       Light default_light = blender::dna::shallow_copy(*DNA_struct_default_get(Light));
       LISTBASE_FOREACH (Light *, light, &bmain->lights) {
         light->shadow_softness_factor = default_light.shadow_softness_factor;
