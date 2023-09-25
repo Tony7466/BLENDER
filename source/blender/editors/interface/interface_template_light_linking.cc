@@ -133,9 +133,9 @@ class CollectionViewItem : public BasicTreeViewItem {
     /* TODO(sergey): Use proper icons. */
     switch (collection_light_linking_.link_state) {
       case COLLECTION_LIGHT_LINKING_STATE_INCLUDE:
-        return ICON_OUTLINER_OB_LIGHT;
+        return ICON_CHECKBOX_HLT;
       case COLLECTION_LIGHT_LINKING_STATE_EXCLUDE:
-        return ICON_LIGHT;
+        return ICON_CHECKBOX_DEHLT;
     }
     BLI_assert_unreachable();
     return ICON_NONE;
