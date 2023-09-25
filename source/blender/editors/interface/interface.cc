@@ -25,7 +25,6 @@
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
@@ -52,6 +51,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "IMB_imbuf.h"
@@ -71,7 +71,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "interface_intern.hh"
 
@@ -3444,6 +3444,7 @@ static void ui_but_free_type_specific(uiBut *but)
   switch (but->type) {
     case UI_BTYPE_SEARCH_MENU: {
       uiButSearch *search_but = (uiButSearch *)but;
+      MEM_SAFE_FREE(search_but->item_active_str);
 
       if (search_but->arg_free_fn) {
         search_but->arg_free_fn(search_but->arg);
@@ -6400,7 +6401,7 @@ static void operator_enum_search_update_fn(
     const EnumPropertyItem *all_items;
     RNA_property_enum_items_gettexted((bContext *)C, ptr, prop, &all_items, nullptr, &do_free);
 
-    blender::string_search::StringSearch<const EnumPropertyItem> search;
+    blender::ui::string_search::StringSearch<const EnumPropertyItem> search;
 
     for (const EnumPropertyItem *item = all_items; item->identifier; item++) {
       search.add(item->name, item);
@@ -6555,10 +6556,6 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       if (but->tip_label_func) {
         const std::string tooltip_label = but->tip_label_func(but);
         tmp = BLI_strdupn(tooltip_label.c_str(), tooltip_label.size());
-      }
-      /* Fallback to the regular label. */
-      else {
-        type = BUT_GET_LABEL;
       }
     }
 
