@@ -222,7 +222,8 @@ void ShadowPunctual::sync(eLightType light_type,
                           const float4x4 &object_mat,
                           float cone_aperture,
                           float light_shape_radius,
-                          float max_distance)
+                          float max_distance,
+                          float softness_factor)
 {
   if (light_type == LIGHT_SPOT) {
     tilemaps_needed_ = (cone_aperture > DEG2RADF(90.0f)) ? 5 : 1;
@@ -244,6 +245,7 @@ void ShadowPunctual::sync(eLightType light_type,
   size_y_ = _area_size_y;
 
   position_ = float3(object_mat[3]);
+  softness_factor_ = softness_factor;
 }
 
 void ShadowPunctual::release_excess_tilemaps()
@@ -373,6 +375,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   light.clip_far = as_int.i;
   light.clip_side = side;
   light.shadow_projection_shift = shift;
+  light.shadow_shape_scale = softness_factor_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */

@@ -290,6 +290,12 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
       prop, "Contact Shadow Thickness", "Pixel thickness used to detect occlusion");
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
+  prop = RNA_def_property(srna, "shadow_softness_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(
+      prop, "Shadow Softness Factor", "Scale light shape for smaller penumbra");
+  RNA_def_property_update(prop, 0, "rna_Light_update");
+
   if (sun) {
     prop = RNA_def_property(srna, "shadow_cascade_max_distance", PROP_FLOAT, PROP_DISTANCE);
     RNA_def_property_float_sdna(prop, nullptr, "cascade_max_dist");

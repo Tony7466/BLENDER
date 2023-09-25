@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Evaluate shadowing using shadow map ray-tracing and screen space ray-tracing.
+ * Evaluate shadowing using shadow map ray-tracing.
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
@@ -268,9 +268,6 @@ struct ShadowRayPunctual {
   vec3 direction;
   /* Tilemap to sample. */
   int tilemap_index;
-  /* Debug. */
-  mat4 viewinv;
-  mat4 wininv;
 };
 
 /* Return ray in UV clip space [0..1]. */
@@ -294,6 +291,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(
     make_orthonormal_basis(normalize(lP), right, up);
     random_2d *= light._radius;
   }
+  random_2d *= light.shadow_shape_scale;
   vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
   vec3 direction = point_on_light_shape - lP;
 
@@ -305,9 +303,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(
 
   /* Clip the ray to not cross the near plane.
    * Scale it so that it encompass the whole cube (with a safety margin). */
-  /* TODO(fclem):  */
   float clip_distance = clip_near + 0.001;
-  float ray_length = length(direction);
+  float ray_length = max(abs(direction.x), max(abs(direction.y), abs(direction.z)));
   direction *= saturate((ray_length - clip_distance) / ray_length);
 
   /* Apply shadow origin shift. */
@@ -334,9 +331,6 @@ ShadowRayPunctual shadow_ray_generate_punctual(
   ray.origin = uv_ray_start;
   ray.direction = uv_ray_end - uv_ray_start;
   ray.tilemap_index = light.tilemap_index + face_id;
-  /* Debug. */
-  ray.viewinv = mat4x4(mat4x3(light.object_mat));
-  ray.wininv = invert(winmat);
   return ray;
 }
 

@@ -115,6 +115,7 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
             col.separator()
 
             col.prop(light, "use_shadow", text="Cast Shadow")
+            col.prop(light, "shadow_softness_factor", text="Shadow Softness")
 
 
 class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):

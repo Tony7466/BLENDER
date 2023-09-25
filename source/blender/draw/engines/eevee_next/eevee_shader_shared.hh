@@ -781,8 +781,10 @@ struct LightData {
   int shadow_ray_step_count;
   /** Punctual: Other parts of the perspective matrix. */
   float clip_side;
+  /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
   float shadow_projection_shift;
-  float _pad0;
+  /** Scaling factor to the light shape for shadow ray casting. */
+  float shadow_shape_scale;
   float _pad1;
   float _pad2;
 };
