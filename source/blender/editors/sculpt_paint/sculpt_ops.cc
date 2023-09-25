@@ -42,7 +42,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -1166,9 +1166,7 @@ static void cavity_bake_ui(bContext *C, wmOperator *op)
       uiItemR(layout, op->ptr, "use_curve", UI_ITEM_NONE, nullptr, ICON_NONE);
 
       if (sd && RNA_boolean_get(op->ptr, "use_curve")) {
-        PointerRNA sculpt_ptr;
-
-        RNA_pointer_create(&scene->id, &RNA_Sculpt, sd, &sculpt_ptr);
+        PointerRNA sculpt_ptr = RNA_pointer_create(&scene->id, &RNA_Sculpt, sd);
         uiTemplateCurveMapping(
             layout, &sculpt_ptr, "automasking_cavity_curve_op", 'v', false, false, false, false);
       }
@@ -1360,7 +1358,6 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(SCULPT_OT_set_detail_size);
   WM_operatortype_append(SCULPT_OT_mesh_filter);
   WM_operatortype_append(SCULPT_OT_mask_filter);
-  WM_operatortype_append(SCULPT_OT_mask_expand);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
   WM_operatortype_append(SCULPT_OT_face_sets_create);
   WM_operatortype_append(SCULPT_OT_face_set_change_visibility);

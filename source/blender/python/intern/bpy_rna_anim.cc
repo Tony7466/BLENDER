@@ -47,8 +47,8 @@
 #include "../generic/py_capi_rna.h"
 #include "../generic/python_utildefines.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 /* for keyframes and drivers */
 static int pyrna_struct_anim_args_parse_ex(PointerRNA *ptr,
@@ -583,13 +583,13 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
       int i = 0;
       ret = PyList_New(0);
       while ((fcu = BKE_fcurve_find(&adt->drivers, path_full, i++))) {
-        RNA_pointer_create(id, &RNA_FCurve, fcu, &tptr);
+        tptr = RNA_pointer_create(id, &RNA_FCurve, fcu);
         PyList_APPEND(ret, pyrna_struct_CreatePyObject(&tptr));
       }
     }
     else {
       fcu = BKE_fcurve_find(&adt->drivers, path_full, index);
-      RNA_pointer_create(id, &RNA_FCurve, fcu, &tptr);
+      tptr = RNA_pointer_create(id, &RNA_FCurve, fcu);
       ret = pyrna_struct_CreatePyObject(&tptr);
     }
 

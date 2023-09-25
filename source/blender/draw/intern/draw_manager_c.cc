@@ -100,8 +100,8 @@
 
 #include "GPU_context.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_select_buffer.h"
 
@@ -1173,7 +1173,7 @@ static void drw_engines_enable_from_engine(const RenderEngineType *engine_type, 
   switch (drawtype) {
     case OB_WIRE:
     case OB_SOLID:
-      use_drw_engine(DRW_engine_viewport_workbench_next_type.draw_engine);
+      use_drw_engine(DRW_engine_viewport_workbench_type.draw_engine);
       break;
     case OB_MATERIAL:
     case OB_RENDER:
@@ -2913,8 +2913,8 @@ void DRW_draw_depth_object(
 
       GPU_batch_draw(batch);
       GPU_uniformbuf_free(ubo);
-
-    } break;
+      break;
+    }
     case OB_CURVES_LEGACY:
     case OB_SURF:
       break;
@@ -3050,7 +3050,7 @@ void DRW_engines_register_experimental()
 void DRW_engines_register()
 {
   RE_engines_register(&DRW_engine_viewport_eevee_type);
-  RE_engines_register(&DRW_engine_viewport_workbench_next_type);
+  RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
   DRW_engine_register(&draw_engine_gpencil_next_type);

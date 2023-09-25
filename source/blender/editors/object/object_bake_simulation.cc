@@ -48,8 +48,8 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "MOD_nodes.hh"
 
@@ -86,8 +86,6 @@ static void calculate_simulation_job_startjob(void *customdata,
                                               bool *do_update,
                                               float *progress)
 {
-  using namespace bke::sim;
-
   CalculateSimulationJob &job = *static_cast<CalculateSimulationJob *>(customdata);
   G.is_rendering = true;
   G.is_break = false;
@@ -253,8 +251,6 @@ static void bake_simulation_job_startjob(void *customdata,
                                          bool *do_update,
                                          float *progress)
 {
-  using namespace bke::sim;
-
   BakeSimulationJob &job = *static_cast<BakeSimulationJob *>(customdata);
   G.is_rendering = true;
   G.is_break = false;

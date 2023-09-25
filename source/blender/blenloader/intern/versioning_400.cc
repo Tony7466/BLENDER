@@ -12,6 +12,9 @@
 
 #include "CLG_log.h"
 
+/* Define macros in `DNA_genfile.h`. */
+#define DNA_GENFILE_VERSIONING_MACROS
+
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_light_types.h"
@@ -25,6 +28,8 @@
 #include "DNA_genfile.h"
 #include "DNA_particle_types.h"
 
+#undef DNA_GENFILE_VERSIONING_MACROS
+
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
@@ -34,6 +39,7 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_armature.h"
+#include "BKE_attribute.h"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
@@ -72,7 +78,7 @@ static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
   }
 }
 
-/* Move bonegroup color to the individual bones. */
+/* Move bone-group color to the individual bones. */
 static void version_bonegroup_migrate_color(Main *bmain)
 {
   using PoseSet = blender::Set<bPose *>;
@@ -87,11 +93,17 @@ static void version_bonegroup_migrate_color(Main *bmain)
     bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
     BLI_assert_msg(GS(arm->id.name) == ID_AR,
                    "Expected ARMATURE object to have an Armature as data");
+
+    /* There is no guarantee that the current state of poses is in sync with the Armature data.
+     *
+     * NOTE: No need to handle user reference-counting in readfile code. */
+    BKE_pose_ensure(bmain, ob, arm, false);
+
     PoseSet &pose_set = armature_poses.lookup_or_add_default(arm);
     pose_set.add(ob->pose);
   }
 
-  /* Move colors from the pose's bonegroup to either the armature bones or the
+  /* Move colors from the pose's bone-group to either the armature bones or the
    * pose bones, depending on how many poses use the Armature. */
   for (const PoseSet &pose_set : armature_poses.values()) {
     /* If the Armature is shared, the bone group colors might be different, and thus they have to
@@ -120,13 +132,8 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
   char bcoll_name[MAX_NAME];
   char custom_prop_name[MAX_NAME];
 
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    if (ob->type != OB_ARMATURE || !ob->pose) {
-      continue;
-    }
-
-    bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
-    IDProperty *arm_idprops = IDP_GetProperties(&arm->id, false);
+  LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+    IDProperty *arm_idprops = IDP_GetProperties(&arm->id);
 
     BLI_assert_msg(arm->edbo == nullptr, "did not expect an Armature to be saved in edit mode");
     const uint layer_used = arm->layer_used;
@@ -191,6 +198,21 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
     /* Convert the bone groups on a bone-by-bone basis. */
     bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
     bPose *pose = ob->pose;
+
+    blender::Map<const bActionGroup *, BoneCollection *> collections_by_group;
+    /* Convert all bone groups, regardless of whether they contain any bones. */
+    LISTBASE_FOREACH (bActionGroup *, bgrp, &pose->agroups) {
+      BoneCollection *bcoll = ANIM_armature_bonecoll_new(arm, bgrp->name);
+      collections_by_group.add_new(bgrp, bcoll);
+
+      /* Before now, bone visibility was determined by armature layers, and bone
+       * groups did not have any impact on this. To retain the behavior, that
+       * hiding all layers a bone is on hides the bone, the
+       * bone-group-collections should be created hidden. */
+      ANIM_bonecoll_hide(bcoll);
+    }
+
+    /* Assign the bones to their bone group based collection. */
     LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
       /* Find the bone group of this pose channel. */
       const bActionGroup *bgrp = (const bActionGroup *)BLI_findlink(&pose->agroups,
@@ -199,15 +221,8 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
         continue;
       }
 
-      /* Get or create the bone collection. */
-      BoneCollection *bcoll = ANIM_armature_bonecoll_get_by_name(arm, bgrp->name);
-      if (!bcoll) {
-        bcoll = ANIM_armature_bonecoll_new(arm, bgrp->name);
-
-        ANIM_bonecoll_hide(bcoll);
-      }
-
       /* Assign the bone. */
+      BoneCollection *bcoll = collections_by_group.lookup(bgrp);
       ANIM_armature_bonecoll_assign(bcoll, pchan->bone);
     }
 
@@ -278,11 +293,11 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 21)) {
-    if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "BoneColor", "color")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "bPoseChannel", "BoneColor", "color")) {
       version_bonegroup_migrate_color(bmain);
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "bArmature", "ListBase", "collections")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "bArmature", "ListBase", "collections")) {
       version_bonelayers_to_bonecollections(bmain);
       version_bonegroups_to_bonecollections(bmain);
     }
@@ -570,6 +585,113 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
   }
 }
 
+/* Convert subsurface inputs on the Principled BSDF. */
+static void version_principled_bsdf_subsurface(bNodeTree *ntree)
+{
+  /* - Create Subsurface Scale input
+   * - If a node's Subsurface input was connected or nonzero:
+   *   - Make the Base Color a mix of old Base Color and Subsurface Color,
+   *     using Subsurface as the mix factor
+   *   - Move Subsurface link and default value to the new Subsurface Scale input
+   *   - Set the Subsurface input to 1.0
+   * - Remove Subsurface Color input
+   */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+    if (nodeFindSocket(node, SOCK_IN, "Subsurface Scale")) {
+      /* Node is already updated. */
+      continue;
+    }
+
+    /* Add Scale input */
+    bNodeSocket *scale_in = nodeAddStaticSocket(
+        ntree, node, SOCK_IN, SOCK_FLOAT, PROP_DISTANCE, "Subsurface Scale", "Subsurface Scale");
+
+    bNodeSocket *subsurf = nodeFindSocket(node, SOCK_IN, "Subsurface");
+    float *subsurf_val = version_cycles_node_socket_float_value(subsurf);
+    *version_cycles_node_socket_float_value(scale_in) = *subsurf_val;
+
+    if (subsurf->link == nullptr && *subsurf_val == 0.0f) {
+      /* Node doesn't use Subsurf, we're done here. */
+      continue;
+    }
+
+    /* Fix up Subsurface Color input */
+    bNodeSocket *base_col = nodeFindSocket(node, SOCK_IN, "Base Color");
+    bNodeSocket *subsurf_col = nodeFindSocket(node, SOCK_IN, "Subsurface Color");
+    float *base_col_val = version_cycles_node_socket_rgba_value(base_col);
+    float *subsurf_col_val = version_cycles_node_socket_rgba_value(subsurf_col);
+    /* If any of the three inputs is dynamic, we need a Mix node. */
+    if (subsurf->link || subsurf_col->link || base_col->link) {
+      bNode *mix = nodeAddStaticNode(nullptr, ntree, SH_NODE_MIX);
+      static_cast<NodeShaderMix *>(mix->storage)->data_type = SOCK_RGBA;
+      mix->locx = node->locx - 170;
+      mix->locy = node->locy - 120;
+
+      bNodeSocket *a_in = nodeFindSocket(mix, SOCK_IN, "A_Color");
+      bNodeSocket *b_in = nodeFindSocket(mix, SOCK_IN, "B_Color");
+      bNodeSocket *fac_in = nodeFindSocket(mix, SOCK_IN, "Factor_Float");
+      bNodeSocket *result_out = nodeFindSocket(mix, SOCK_OUT, "Result_Color");
+
+      copy_v4_v4(version_cycles_node_socket_rgba_value(a_in), base_col_val);
+      copy_v4_v4(version_cycles_node_socket_rgba_value(b_in), subsurf_col_val);
+      *version_cycles_node_socket_float_value(fac_in) = *subsurf_val;
+
+      if (base_col->link) {
+        nodeAddLink(ntree, base_col->link->fromnode, base_col->link->fromsock, mix, a_in);
+        nodeRemLink(ntree, base_col->link);
+      }
+      if (subsurf_col->link) {
+        nodeAddLink(ntree, subsurf_col->link->fromnode, subsurf_col->link->fromsock, mix, b_in);
+        nodeRemLink(ntree, subsurf_col->link);
+      }
+      if (subsurf->link) {
+        nodeAddLink(ntree, subsurf->link->fromnode, subsurf->link->fromsock, mix, fac_in);
+        nodeAddLink(ntree, subsurf->link->fromnode, subsurf->link->fromsock, node, scale_in);
+        nodeRemLink(ntree, subsurf->link);
+      }
+      nodeAddLink(ntree, mix, result_out, node, base_col);
+    }
+    /* Mix the fixed values. */
+    interp_v4_v4v4(base_col_val, base_col_val, subsurf_col_val, *subsurf_val);
+
+    /* Set node to 100% subsurface, 0% diffuse. */
+    *subsurf_val = 1.0f;
+
+    /* Delete Subsurface Color input */
+    nodeRemoveSocket(ntree, node, subsurf_col);
+  }
+}
+
+/* Convert emission inputs on the Principled BSDF. */
+static void version_principled_bsdf_emission(bNodeTree *ntree)
+{
+  /* Blender 3.x and before would default to Emission = 0.0, Emission Strength = 1.0.
+   * Now we default the other way around (1.0 and 0.0), but because the Strength input was added
+   * a bit later, a file that only has the Emission socket would now end up as (1.0, 0.0) instead
+   * of (1.0, 1.0).
+   * Therefore, set strength to 1.0 for those files.
+   */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+    if (!nodeFindSocket(node, SOCK_IN, "Emission")) {
+      /* Old enough to have neither, new defaults are fine. */
+      continue;
+    }
+    if (nodeFindSocket(node, SOCK_IN, "Emission Strength")) {
+      /* New enough to have both, no need to do anything. */
+      continue;
+    }
+    bNodeSocket *sock = nodeAddStaticSocket(
+        ntree, node, SOCK_IN, SOCK_FLOAT, PROP_NONE, "Emission Strength", "Emission Strength");
+    *version_cycles_node_socket_float_value(sock) = 1.0f;
+  }
+}
+
 /* Replace old Principled Hair BSDF as a variant in the new Principled Hair BSDF. */
 static void version_replace_principled_hair_model(bNodeTree *ntree)
 {
@@ -643,6 +765,144 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     tree_interface.root_panel.items_array[num_outputs + index] = legacy_socket_move_to_interface(
         *socket, SOCK_IN);
   }
+}
+
+/* Convert coat inputs on the Principled BSDF. */
+static void version_principled_bsdf_coat(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+    if (nodeFindSocket(node, SOCK_IN, "Coat IOR") != nullptr) {
+      continue;
+    }
+    bNodeSocket *coat_ior_input = nodeAddStaticSocket(
+        ntree, node, SOCK_IN, SOCK_FLOAT, PROP_NONE, "Coat IOR", "Coat IOR");
+
+    /* Adjust for 4x change in intensity. */
+    bNodeSocket *coat_input = nodeFindSocket(node, SOCK_IN, "Clearcoat");
+    *version_cycles_node_socket_float_value(coat_input) *= 0.25f;
+    /* When the coat input is dynamic, instead of inserting a *0.25 math node, set the Coat IOR
+     * to 1.2 instead - this also roughly quarters reflectivity compared to the 1.5 default. */
+    *version_cycles_node_socket_float_value(coat_ior_input) = (coat_input->link) ? 1.2f : 1.5f;
+  }
+
+  /* Rename sockets. */
+  version_node_input_socket_name(ntree, SH_NODE_BSDF_PRINCIPLED, "Clearcoat", "Coat");
+  version_node_input_socket_name(
+      ntree, SH_NODE_BSDF_PRINCIPLED, "Clearcoat Roughness", "Coat Roughness");
+  version_node_input_socket_name(
+      ntree, SH_NODE_BSDF_PRINCIPLED, "Clearcoat Normal", "Coat Normal");
+}
+
+static void version_copy_socket(bNodeTreeInterfaceSocket &dst,
+                                const bNodeTreeInterfaceSocket &src,
+                                char *identifier)
+{
+  /* Node socket copy function based on bNodeTreeInterface::item_copy to avoid using blenkernel. */
+  dst.name = BLI_strdup(src.name);
+  dst.description = BLI_strdup_null(src.description);
+  dst.socket_type = BLI_strdup(src.socket_type);
+  dst.default_attribute_name = BLI_strdup_null(src.default_attribute_name);
+  dst.identifier = identifier;
+  if (src.properties) {
+    dst.properties = IDP_CopyProperty_ex(src.properties, 0);
+  }
+  if (src.socket_data != nullptr) {
+    dst.socket_data = MEM_dupallocN(src.socket_data);
+    /* No user count increment needed, gets reset after versioning. */
+  }
+}
+
+static int version_nodes_find_valid_insert_position_for_item(const bNodeTreeInterfacePanel &panel,
+                                                             const bNodeTreeInterfaceItem &item,
+                                                             const int initial_pos)
+{
+  const bool sockets_above_panels = !(panel.flag &
+                                      NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
+  const blender::Span<const bNodeTreeInterfaceItem *> items = {panel.items_array, panel.items_num};
+
+  int pos = initial_pos;
+
+  if (sockets_above_panels) {
+    if (item.item_type == NODE_INTERFACE_PANEL) {
+      /* Find the closest valid position from the end, only panels at or after #position. */
+      for (int test_pos = items.size() - 1; test_pos >= initial_pos; test_pos--) {
+        if (test_pos < 0) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type != NODE_INTERFACE_PANEL) {
+          /* Found valid position, insert after the last socket item. */
+          pos = test_pos + 1;
+          break;
+        }
+      }
+    }
+    else {
+      /* Find the closest valid position from the start, no panels at or after #position. */
+      for (int test_pos = 0; test_pos <= initial_pos; test_pos++) {
+        if (test_pos >= items.size()) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
+          /* Found valid position, inserting moves the first panel. */
+          pos = test_pos;
+          break;
+        }
+      }
+    }
+  }
+
+  return pos;
+}
+
+static void version_nodes_insert_item(bNodeTreeInterfacePanel &parent,
+                                      bNodeTreeInterfaceSocket &socket,
+                                      int position)
+{
+  /* Apply any constraints on the item positions. */
+  position = version_nodes_find_valid_insert_position_for_item(parent, socket.item, position);
+  position = std::min(std::max(position, 0), parent.items_num);
+
+  blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = {parent.items_array,
+                                                              parent.items_num};
+  parent.items_num++;
+  parent.items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(parent.items_num, __func__);
+  parent.items().take_front(position).copy_from(old_items.take_front(position));
+  parent.items().drop_front(position + 1).copy_from(old_items.drop_front(position));
+  parent.items()[position] = &socket.item;
+
+  if (old_items.data()) {
+    MEM_freeN(old_items.data());
+  }
+}
+
+/* Node group interface copy function based on bNodeTreeInterface::insert_item_copy. */
+static void version_node_group_split_socket(bNodeTreeInterface &tree_interface,
+                                            bNodeTreeInterfaceSocket &socket,
+                                            bNodeTreeInterfacePanel *parent,
+                                            int position)
+{
+  if (parent == nullptr) {
+    parent = &tree_interface.root_panel;
+  }
+
+  bNodeTreeInterfaceSocket *csocket = static_cast<bNodeTreeInterfaceSocket *>(
+      MEM_dupallocN(&socket));
+  /* Generate a new unique identifier.
+   * This might break existing links, but the identifiers were duplicate anyway. */
+  char *dst_identifier = BLI_sprintfN("Socket_%d", tree_interface.next_uid++);
+  version_copy_socket(*csocket, socket, dst_identifier);
+
+  version_nodes_insert_item(*parent, *csocket, position);
+
+  /* Original socket becomes output. */
+  socket.flag &= ~NODE_INTERFACE_SOCKET_INPUT;
+  /* Copied socket becomes input. */
+  csocket->flag &= ~NODE_INTERFACE_SOCKET_OUTPUT;
 }
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
@@ -743,7 +1003,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 12)) {
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_samples")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "int", "grid_bake_samples")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_bake_samples = 2048;
         lightprobe->surfel_density = 1.0f;
@@ -756,19 +1016,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     /* Set default bake resolution. */
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "resolution")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "int", "resolution")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
         world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_surface_bias")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "float", "grid_surface_bias")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_surface_bias = 0.05f;
         lightprobe->grid_escape_bias = 0.1f;
@@ -836,7 +1096,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 14)) {
-    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
+    if (!DNA_struct_member_exists(
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.reflection_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
         scene->eevee.reflection_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
@@ -854,7 +1115,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_find(fd->filesdna, "RegionAssetShelf")) {
+    if (!DNA_struct_exists(fd->filesdna, "RegionAssetShelf")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -902,7 +1163,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 17)) {
-    if (!DNA_struct_find(fd->filesdna, "NodeShaderHairPrincipled")) {
+    if (!DNA_struct_exists(fd->filesdna, "NodeShaderHairPrincipled")) {
       FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
         if (ntree->type == NTREE_SHADER) {
           version_replace_principled_hair_model(ntree);
@@ -912,7 +1173,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     /* Panorama properties shared with Eevee. */
-    if (!DNA_struct_elem_find(fd->filesdna, "Camera", "float", "fisheye_fov")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Camera", "float", "fisheye_fov")) {
       Camera default_cam = *DNA_struct_default_get(Camera);
       LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
         IDProperty *ccam = version_cycles_properties_from_ID(&camera->id);
@@ -961,7 +1222,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_flag")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "float", "grid_flag")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         /* Keep old behavior of baking the whole lighting. */
         lightprobe->grid_flag = LIGHTPROBE_GRID_CAPTURE_WORLD | LIGHTPROBE_GRID_CAPTURE_INDIRECT |
@@ -969,10 +1230,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_pool_size")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_pool_size")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.gi_irradiance_pool_size = 16;
       }
+    }
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->snap_flag_anim |= SCE_SNAP;
+      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
     }
   }
 
@@ -991,13 +1257,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Legacy node tree sockets are created for forward compatibility,
      * but have to be freed after loading and versioning. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      /* Clear legacy sockets after conversion.
-       * Internal data pointers have been moved or freed already. */
       LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->inputs_legacy) {
+        MEM_SAFE_FREE(legacy_socket->default_attribute_name);
+        MEM_SAFE_FREE(legacy_socket->default_value);
+        if (legacy_socket->prop) {
+          IDP_FreeProperty(legacy_socket->prop);
+        }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
       }
       LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->outputs_legacy) {
+        MEM_SAFE_FREE(legacy_socket->default_attribute_name);
+        MEM_SAFE_FREE(legacy_socket->default_value);
+        if (legacy_socket->prop) {
+          IDP_FreeProperty(legacy_socket->prop);
+        }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
       }
@@ -1011,6 +1285,76 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Initialize root panel flags in files created before these flags were added. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 23)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
+            node->custom1 = ATTR_DOMAIN_FACE;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Convert coat inputs on the Principled BSDF. */
+        version_principled_bsdf_coat(ntree);
+        /* Convert subsurface inputs on the Principled BSDF. */
+        version_principled_bsdf_subsurface(ntree);
+        /* Convert emission on the Principled BSDF. */
+        version_principled_bsdf_emission(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            LISTBASE_FOREACH (ARegion *, region, regionbase) {
+              if (region->regiontype != RGN_TYPE_ASSET_SHELF) {
+                continue;
+              }
+
+              RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
+              if (shelf_data && shelf_data->active_shelf &&
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                shelf_data->active_shelf->preferred_row_count = 1;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /* Convert sockets with both input and output flag into two separate sockets. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      blender::Vector<bNodeTreeInterfaceSocket *> sockets_to_split;
+      ntree->tree_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+        if (item.item_type == NODE_INTERFACE_SOCKET) {
+          bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+          if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+            sockets_to_split.append(&socket);
+          }
+        }
+        return true;
+      });
+
+      for (bNodeTreeInterfaceSocket *socket : sockets_to_split) {
+        const int position = ntree->tree_interface.find_item_position(socket->item);
+        bNodeTreeInterfacePanel *parent = ntree->tree_interface.find_item_parent(socket->item);
+        version_node_group_split_socket(ntree->tree_interface, *socket, parent, position + 1);
+      }
     }
     FOREACH_NODETREE_END;
   }

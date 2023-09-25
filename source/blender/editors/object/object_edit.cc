@@ -68,8 +68,8 @@
 #include "BKE_softbody.h"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
@@ -841,6 +841,15 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
     /* To ensure all goes in rest-position and without striding. */
 
     arm->needs_flush_to_id = 0;
+
+    /* WORKAROUND / FIXME: this is a temporary workaround to ensure that
+     * full bone collection data gets restored when exiting edit mode
+     * via an undo step. The correct fix is to have a full edit-mode
+     * copy of bone collections so that edit-mode changes don't modify
+     * object-mode armature data until exiting edit mode. But that
+     * change is a bit of a project, and will be done later. This line
+     * should be removed when that is done. */
+    bmain->is_memfile_undo_written = false;
 
     /* XXX: should this be ID_RECALC_GEOMETRY? */
     DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);

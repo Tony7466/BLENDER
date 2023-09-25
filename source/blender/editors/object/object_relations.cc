@@ -80,9 +80,9 @@
 #include "BKE_texture.h"
 #include "BKE_volume.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -177,11 +177,11 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
   }
   else if (ELEM(obedit->type, OB_SURF, OB_CURVES_LEGACY)) {
     ListBase *editnurb = object_editcurve_get(obedit);
-
+    int curr_index = 0;
     for (Nurb *nu = static_cast<Nurb *>(editnurb->first); nu != nullptr; nu = nu->next) {
       if (nu->type == CU_BEZIER) {
         BezTriple *bezt = nu->bezt;
-        for (int curr_index = 0; curr_index < nu->pntsu; curr_index++, bezt++) {
+        for (int nurb_index = 0; nurb_index < nu->pntsu; nurb_index++, bezt++, curr_index++) {
           if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt)) {
             if (par1 == INDEX_UNSET) {
               par1 = curr_index;
@@ -204,7 +204,7 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
       else {
         BPoint *bp = nu->bp;
         const int num_points = nu->pntsu * nu->pntsv;
-        for (int curr_index = 0; curr_index < num_points; curr_index++, bp++) {
+        for (int nurb_index = 0; nurb_index < num_points; nurb_index++, bp++, curr_index++) {
           if (bp->f1 & SELECT) {
             if (par1 == INDEX_UNSET) {
               par1 = curr_index;
@@ -391,7 +391,7 @@ void ED_object_parent_clear(Object *ob, const int type)
   if (ob->parent == nullptr) {
     return;
   }
-
+  uint flags = ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION;
   switch (type) {
     case CLEAR_PARENT_ALL: {
       /* for deformers, remove corresponding modifiers to prevent
@@ -409,6 +409,9 @@ void ED_object_parent_clear(Object *ob, const int type)
        * result as object's local transforms */
       ob->parent = nullptr;
       BKE_object_apply_mat4(ob, ob->object_to_world, true, false);
+      /* Don't recalculate the animation because it would change the transform
+       * instead of keeping it. */
+      flags &= ~ID_RECALC_ANIMATION;
       break;
     }
     case CLEAR_PARENT_INVERSE: {
@@ -422,7 +425,7 @@ void ED_object_parent_clear(Object *ob, const int type)
   /* Always clear parentinv matrix for sake of consistency, see #41950. */
   unit_m4(ob->parentinv);
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+  DEG_id_tag_update(&ob->id, flags);
 }
 
 /* NOTE: poll should check for editable scene. */
@@ -2966,7 +2969,7 @@ char *ED_object_ot_drop_geometry_nodes_tooltip(bContext *C,
 
 static bool check_geometry_node_group_sockets(wmOperator *op, const bNodeTree *tree)
 {
-  tree->ensure_topology_cache();
+  tree->ensure_interface_cache();
   if (!tree->interface_inputs().is_empty()) {
     const bNodeTreeInterfaceSocket *first_input = tree->interface_inputs()[0];
     if (!first_input) {
@@ -3027,6 +3030,10 @@ static int drop_geometry_nodes_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
+  if (!RNA_boolean_get(op->ptr, "show_datablock_in_modifier")) {
+    nmd->flag |= NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
+  }
+
   nmd->node_group = node_tree;
   id_us_plus(&node_tree->id);
   MOD_nodes_update_interface(ob, nmd);
@@ -3057,6 +3064,11 @@ void OBJECT_OT_drop_geometry_nodes(wmOperatorType *ot)
                                   INT32_MIN,
                                   INT32_MAX);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
+  RNA_def_boolean(ot->srna,
+                  "show_datablock_in_modifier",
+                  true,
+                  "Show the datablock selector in the modifier",
+                  "");
 }
 
 /** \} */

@@ -56,7 +56,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "gpencil_intern.h"
 
@@ -856,7 +856,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;

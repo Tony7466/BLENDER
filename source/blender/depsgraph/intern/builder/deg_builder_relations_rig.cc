@@ -33,19 +33,19 @@
 
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_cache.h"
 #include "intern/builder/deg_builder_pchanmap.h"
 #include "intern/debug/deg_debug.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "intern/depsgraph_relation.h"
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph_relation.hh"
+#include "intern/depsgraph_type.hh"
 
 namespace blender::deg {
 
@@ -77,8 +77,7 @@ void DepsgraphRelationBuilder::build_ik_pose(Object *object,
    * one Init IK node per armature, this link has quite high risk of spurious dependency cycles.
    */
   const bool is_itasc = (object->pose->iksolver == IKSOLVER_ITASC);
-  PointerRNA con_ptr;
-  RNA_pointer_create(&object->id, &RNA_Constraint, con, &con_ptr);
+  PointerRNA con_ptr = RNA_pointer_create(&object->id, &RNA_Constraint, con);
   if (is_itasc || cache_->isAnyPropertyAnimated(&con_ptr)) {
     add_relation(pchan_local_key, init_ik_key, "IK Constraint -> Init IK Tree");
   }

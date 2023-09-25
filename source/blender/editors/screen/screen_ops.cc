@@ -51,8 +51,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
@@ -2755,6 +2755,10 @@ static int region_scale_invoke(bContext *C, wmOperator *op, const wmEvent *event
     {
       rmd->region = az->region->prev;
     }
+    /* Flag to always forward scaling to the previous region. */
+    else if (az->region->prev && (az->region->alignment & RGN_SPLIT_SCALE_PREV)) {
+      rmd->region = az->region->prev;
+    }
     else {
       rmd->region = az->region;
     }
@@ -2847,6 +2851,8 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
       const float aspect = BLI_rctf_size_x(&rmd->region->v2d.cur) /
                            (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1);
       const int snap_size_threshold = (U.widget_unit * 2) / aspect;
+      bool size_changed = false;
+
       if (ELEM(rmd->edge, AE_LEFT_TO_TOPRIGHT, AE_RIGHT_TO_TOPLEFT)) {
         delta = event->xy[0] - rmd->orig_xy[0];
         if (rmd->edge == AE_LEFT_TO_TOPRIGHT) {
@@ -2886,6 +2892,10 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
         /* Hiding/unhiding is handled above, but still fix the size as requested. */
         if (rmd->region->flag & RGN_FLAG_NO_USER_RESIZE) {
           rmd->region->sizex = rmd->origval;
+        }
+
+        if (rmd->region->sizex != rmd->origval) {
+          size_changed = true;
         }
       }
       else {
@@ -2931,6 +2941,13 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
         if (rmd->region->flag & RGN_FLAG_NO_USER_RESIZE) {
           rmd->region->sizey = rmd->origval;
         }
+
+        if (rmd->region->sizey != rmd->origval) {
+          size_changed = true;
+        }
+      }
+      if (size_changed && rmd->region->type->on_user_resize) {
+        rmd->region->type->on_user_resize(rmd->region);
       }
       ED_area_tag_redraw(rmd->area);
       WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
@@ -3178,6 +3195,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
     if (ob->type == OB_GPENCIL_LEGACY) {
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
       gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, active);
+    }
+
+    if (ob->type == OB_GREASE_PENCIL) {
+      const bool active_layer_only = !(scene->flag & SCE_KEYS_NO_SELONLY);
+      grease_pencil_data_block_to_keylist(
+          nullptr, static_cast<const GreasePencil *>(ob->data), keylist, 0, active_layer_only);
     }
   }
 
@@ -4370,8 +4393,7 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
 {
   ScrArea *area = CTX_wm_area(C);
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     if (!ELEM(area->spacetype, SPACE_TOPBAR)) {
       uiItemR(layout, &ptr, "show_region_header", UI_ITEM_NONE, IFACE_("Show Header"), ICON_NONE);
     }
@@ -4408,8 +4430,7 @@ void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void * /
   ScrArea *area = CTX_wm_area(C);
 
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     uiItemR(layout, &ptr, "show_region_footer", UI_ITEM_NONE, IFACE_("Show Footer"), ICON_NONE);
   }
 
@@ -4435,9 +4456,7 @@ void ED_screens_region_flip_menu_create(bContext *C, uiLayout *layout, void * /*
 
 static void ed_screens_statusbar_menu_create(uiLayout *layout, void * /*arg*/)
 {
-  PointerRNA ptr;
-
-  RNA_pointer_create(nullptr, &RNA_PreferencesView, &U, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PreferencesView, &U);
   uiItemR(
       layout, &ptr, "show_statusbar_stats", UI_ITEM_NONE, IFACE_("Scene Statistics"), ICON_NONE);
   uiItemR(layout,
@@ -5183,8 +5202,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   if (prop && RNA_property_is_set(op->ptr, prop)) {
     /* Set active section via RNA, so it can fail properly. */
 
-    PointerRNA pref_ptr;
-    RNA_pointer_create(nullptr, &RNA_Preferences, &U, &pref_ptr);
+    PointerRNA pref_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
     PropertyRNA *active_section_prop = RNA_struct_find_property(&pref_ptr, "active_section");
 
     RNA_property_enum_set(&pref_ptr, active_section_prop, RNA_property_enum_get(op->ptr, prop));
@@ -5617,9 +5635,8 @@ static int space_type_set_or_cycle_exec(bContext *C, wmOperator *op)
 {
   const int space_type = RNA_enum_get(op->ptr, "space_type");
 
-  PointerRNA ptr;
   ScrArea *area = CTX_wm_area(C);
-  RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area);
   PropertyRNA *prop_type = RNA_struct_find_property(&ptr, "type");
   PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
 
@@ -5700,11 +5717,11 @@ static void context_cycle_prop_get(bScreen *screen,
 
   switch (area->spacetype) {
     case SPACE_PROPERTIES:
-      RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first, r_ptr);
+      *r_ptr = RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first);
       propname = "context";
       break;
     case SPACE_USERPREF:
-      RNA_pointer_create(nullptr, &RNA_Preferences, &U, r_ptr);
+      *r_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
       propname = "active_section";
       break;
     default:
@@ -5923,16 +5940,16 @@ static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop
 void ED_keymap_screen(wmKeyConfig *keyconf)
 {
   /* Screen Editing ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen Editing", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Screen General ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Anim Playback ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Frames", 0, 0);
+  WM_keymap_ensure(keyconf, "Frames", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* dropbox for entire window */
-  ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+  ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_dropbox_add(
       lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy, nullptr, nullptr);
   WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy, nullptr, nullptr);

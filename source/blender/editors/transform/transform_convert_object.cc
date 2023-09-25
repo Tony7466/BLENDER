@@ -27,7 +27,7 @@
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -754,7 +754,7 @@ static void autokeyframe_object(
     ListBase dsources = {nullptr, nullptr};
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-        depsgraph, float(scene->r.cfra));
+        depsgraph, BKE_scene_frame_get(scene));
     eInsertKeyFlags flag = eInsertKeyFlags(0);
 
     /* Get flags used for inserting keyframes. */

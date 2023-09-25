@@ -75,6 +75,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_packedFile.h"
+#include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -92,8 +93,8 @@
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 

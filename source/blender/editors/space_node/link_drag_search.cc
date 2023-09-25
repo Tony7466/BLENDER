@@ -26,7 +26,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.hh"
 #include "ED_node.hh"
@@ -93,7 +93,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
       params.socket.typeinfo->idname,
       NODE_INTERFACE_SOCKET_INPUT,
       nullptr);
-  BKE_ntree_update_tag_interface(&params.node_tree);
+  socket_iface->init_from_socket_instance(&params.socket);
 
   bNode &group_input = params.add_node("NodeGroupInput");
 
@@ -141,7 +141,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, interface_socket.identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);

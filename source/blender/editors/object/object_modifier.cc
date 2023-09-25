@@ -72,9 +72,9 @@
 #include "BKE_softbody.h"
 #include "BKE_volume.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.h"
 
@@ -3687,6 +3687,8 @@ static int geometry_node_tree_copy_assign_exec(bContext *C, wmOperator * /*op*/)
 
   bNodeTree *new_tree = (bNodeTree *)BKE_id_copy_ex(
       bmain, &tree->id, nullptr, LIB_ID_COPY_ACTIONS | LIB_ID_COPY_DEFAULT);
+
+  nmd->flag &= ~NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
 
   if (new_tree == nullptr) {
     return OPERATOR_CANCELLED;

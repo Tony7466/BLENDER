@@ -679,9 +679,9 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 
 #  include "BLI_sort_utils.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  ifdef WITH_ALEMBIC
 #    include "ABC_alembic.h"
@@ -1628,14 +1628,13 @@ static PointerRNA rna_ParticleInstanceModifier_particle_system_get(PointerRNA *p
 {
   ParticleInstanceModifierData *psmd = static_cast<ParticleInstanceModifierData *>(ptr->data);
   ParticleSystem *psys;
-  PointerRNA rptr;
 
   if (!psmd->ob) {
     return PointerRNA_NULL;
   }
 
   psys = static_cast<ParticleSystem *>(BLI_findlink(&psmd->ob->particlesystem, psmd->psys - 1));
-  RNA_pointer_create((ID *)psmd->ob, &RNA_ParticleSystem, psys, &rptr);
+  PointerRNA rptr = RNA_pointer_create((ID *)psmd->ob, &RNA_ParticleSystem, psys);
   return rptr;
 }
 
@@ -1677,7 +1676,24 @@ static bool rna_Modifier_show_expanded_get(PointerRNA *ptr)
 static bool rna_NodesModifier_node_group_poll(PointerRNA * /*ptr*/, PointerRNA value)
 {
   bNodeTree *ntree = static_cast<bNodeTree *>(value.data);
-  return ntree->type == NTREE_GEOMETRY;
+  if (ntree->type != NTREE_GEOMETRY) {
+    return false;
+  }
+  if (ntree->id.asset_data) {
+    if (!ntree->geometry_node_asset_traits ||
+        (ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER) == 0)
+    {
+      /* Only node group assets specially marked as modifiers can be modifiers. */
+      return false;
+    }
+  }
+  if (ntree->geometry_node_asset_traits &&
+      ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL)
+  {
+    /* Tool node groups cannot be modifiers. */
+    return false;
+  }
+  return true;
 }
 
 static void rna_NodesModifier_node_group_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -4812,6 +4828,7 @@ static void rna_def_modifier_solidify(BlenderRNA *brna)
   prop = RNA_def_property(srna, "nonmanifold_boundary_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, nonmanifold_boundary_mode_items);
   RNA_def_property_ui_text(prop, "Boundary Shape", "Selects the boundary adjustment algorithm");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "nonmanifold_merge_threshold", PROP_FLOAT, PROP_DISTANCE);
@@ -7074,6 +7091,13 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Simulation Bake Directory", "Location on disk where the bake data is stored");
   RNA_def_property_update(prop, 0, nullptr);
+
+  prop = RNA_def_property(srna, "show_group_selector", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(
+      prop, nullptr, "flag", NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR);
+  RNA_def_property_ui_text(prop, "Show Node Group", "");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   RNA_define_lib_overridable(false);
 }

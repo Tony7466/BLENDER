@@ -19,8 +19,8 @@
 #include "BKE_anim_data.h"
 
 #include "intern/builder/deg_builder_relations.h"
-#include "intern/depsgraph_relation.h"
-#include "intern/node/deg_node.h"
+#include "intern/depsgraph_relation.hh"
+#include "intern/node/deg_node.hh"
 
 namespace blender::deg {
 
@@ -166,8 +166,7 @@ void DepsgraphRelationBuilder::build_driver_relations(IDNode *id_node)
   /* Mapping from RNA prefix -> set of driver descriptors: */
   Map<string, Vector<DriverDescriptor>> driver_groups;
 
-  PointerRNA id_ptr;
-  RNA_id_pointer_create(id_orig, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id_orig);
 
   LISTBASE_FOREACH (FCurve *, fcu, &adt->drivers) {
     if (fcu->rna_path == nullptr) {

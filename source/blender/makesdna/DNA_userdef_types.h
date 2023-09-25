@@ -12,10 +12,6 @@
 #include "DNA_texture_types.h" /* ColorBand */
 #include "DNA_userdef_enums.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Scaling factor for all UI elements, based on the "Resolution Scale" user preference and the
  * DPI/OS Scale of each monitor. This is a read-only, run-time value calculated by
@@ -1074,6 +1070,7 @@ typedef enum eUserPref_Section {
   USER_SECTION_NAVIGATION = 14,
   USER_SECTION_FILE_PATHS = 15,
   USER_SECTION_EXPERIMENTAL = 16,
+  USER_SECTION_EXTENSIONS = 17,
 } eUserPref_Section;
 
 /** #UserDef_SpaceData.flag (State of the user preferences UI). */
@@ -1498,7 +1495,3 @@ enum {
   ULANGUAGE_AUTO = 0,
   ULANGUAGE_ENGLISH = 1,
 };
-
-#ifdef __cplusplus
-}
-#endif
