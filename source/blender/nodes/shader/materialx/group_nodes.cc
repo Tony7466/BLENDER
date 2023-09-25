@@ -7,6 +7,9 @@
 
 #include "BLI_vector.hh"
 
+#include "BKE_node.h"
+#include "BKE_node_runtime.hh"
+
 namespace blender::nodes::materialx {
 
 GroupNodeParser::GroupNodeParser(MaterialX::GraphElement *graph,

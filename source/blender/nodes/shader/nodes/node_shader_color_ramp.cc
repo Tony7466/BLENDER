@@ -140,7 +140,8 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   /* TODO: Implement */
-  return empty();
+  NodeItem res = empty();
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END

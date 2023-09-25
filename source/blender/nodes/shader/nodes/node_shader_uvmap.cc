@@ -73,7 +73,8 @@ NODE_SHADER_MATERIALX_BEGIN
   /* NODE: "From Instances" not implemented
    * UV selection not implemented
    */
-  return texcoord_node();
+  NodeItem res = texcoord_node();
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END

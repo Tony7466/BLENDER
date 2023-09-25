@@ -42,7 +42,8 @@ NODE_SHADER_MATERIALX_BEGIN
    * NodeItem res = create_node("blackbody", NodeItem::Type::Color3);
    * res.set_input("temperature", temperature);
    * return res; */
-  return empty();
+  NodeItem res = empty();
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END

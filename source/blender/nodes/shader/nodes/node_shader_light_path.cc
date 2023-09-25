@@ -42,7 +42,8 @@ NODE_SHADER_MATERIALX_BEGIN
   if (STREQ(socket_out_->name, "Ray Length")) {
     return val(1.0f);
   }
-  return val(0.0f);
+  NodeItem res = val(0.0f);
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END
