@@ -37,9 +37,9 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -1780,6 +1780,8 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
 
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  /* Hack to force update of the button state after drawing, see #112462. */
+  WM_event_add_mousemove(CTX_wm_window(C));
 
   return OPERATOR_FINISHED;
 }
