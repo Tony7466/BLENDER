@@ -188,8 +188,6 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
   uchar col1b[4], col2b[4];
   uchar col_summary[4];
 
-  const bool show_group_colors = U.animation_flag & USER_ANIM_SHOW_CHANNEL_GROUP_COLORS;
-
   /* get theme colors */
   UI_GetThemeColor4ubv(TH_SHADE2, col2);
   UI_GetThemeColor4ubv(TH_HILITE, col1);
@@ -248,20 +246,6 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
         case ANIMTYPE_GROUP:
           immUniformColor4ubv(sel ? col1a : col2a);
           break;
-        case ANIMTYPE_GPLAYER: {
-          if (show_group_colors) {
-            uchar gpl_col[4];
-            bGPDlayer *gpl = (bGPDlayer *)ale->data;
-            rgb_float_to_uchar(gpl_col, gpl->color);
-            gpl_col[3] = col1[3];
-
-            immUniformColor4ubv(sel ? col1 : gpl_col);
-          }
-          else {
-            immUniformColor4ubv(sel ? col1 : col2);
-          }
-          break;
-        }
         default: {
           immUniformColor4ubv(sel ? col1 : col2);
         }
@@ -272,25 +256,10 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
     }
     else if (ac->datatype == ANIMCONT_GPENCIL) {
       uchar *color;
-      uchar gpl_col[4];
       switch (ale->type) {
         case ANIMTYPE_SUMMARY:
           color = col_summary;
           break;
-
-        case ANIMTYPE_GPLAYER: {
-          if (show_group_colors) {
-            bGPDlayer *gpl = (bGPDlayer *)ale->data;
-            rgb_float_to_uchar(gpl_col, gpl->color);
-            gpl_col[3] = col1[3];
-
-            color = sel ? col1 : gpl_col;
-          }
-          else {
-            color = sel ? col1 : col2;
-          }
-          break;
-        }
 
         case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
           color = sel ? col1a : col2a;

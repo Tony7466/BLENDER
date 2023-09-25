@@ -182,23 +182,6 @@ static void acf_generic_channel_color(bAnimContext *ac, bAnimListElem *ale, floa
   UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
 }
 
-/* get backdrop color for grease pencil channels */
-static void acf_gpencil_channel_color(bAnimContext *ac, bAnimListElem *ale, float r_color[3])
-{
-  const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
-  short indent = (acf->get_indent_level) ? acf->get_indent_level(ac, ale) : 0;
-  bool showGroupColors = acf_show_channel_colors();
-
-  if ((showGroupColors) && (ale->type == ANIMTYPE_GPLAYER)) {
-    bGPDlayer *gpl = (bGPDlayer *)ale->data;
-    copy_v3_v3(r_color, gpl->color);
-  }
-  else {
-    int colOfs = 10 - 10 * indent;
-    UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
-  }
-}
-
 /* backdrop for generic channels */
 static void acf_generic_channel_backdrop(bAnimContext *ac,
                                          bAnimListElem *ale,
@@ -3430,7 +3413,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*channel_type_name*/ "GPencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
-    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*get_backdrop_color*/ acf_generic_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
@@ -3644,7 +3627,7 @@ static bAnimChannelType ACF_GPL = {
     /*channel_type_name*/ "Grease Pencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
-    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*get_backdrop_color*/ acf_generic_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ greasepencil::layer_offset,
@@ -5411,7 +5394,13 @@ static bool anim_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
 {
   bActionGroup *agrp = nullptr;
 
+  /* Each case either sets agrp, or assigns to r_color and returns. */
   switch (ale->type) {
+    case ANIMTYPE_GPLAYER: {
+      bGPDlayer *gpl = (bGPDlayer *)ale->data;
+      rgb_float_to_uchar(r_color, gpl->color);
+      return true;
+    }
     case ANIMTYPE_GROUP: {
       agrp = static_cast<bActionGroup *>(ale->data);
       break;
