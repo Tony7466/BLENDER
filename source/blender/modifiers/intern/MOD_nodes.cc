@@ -815,26 +815,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           }
         }
       }
-      for (auto item : modifier_cache_->cache_by_id.items()) {
-        const int id = item.key;
-        bake::NodeCache &node_cache = *item.value;
-        if (node_cache.cache_status != bake::CacheStatus::Invalid) {
-          continue;
-        }
-        const std::optional<IndexRange> sim_frame_range = bake::get_node_bake_frame_range(
-            *scene_, *ctx_.object, nmd_, id);
-        if (!sim_frame_range.has_value()) {
-          continue;
-        }
-        const SubFrame start_frame{int(sim_frame_range->start())};
-        if (current_frame_ <= start_frame) {
-          node_cache.reset();
-        }
-        if (!node_cache.frame_caches.is_empty() &&
-            current_frame_ < node_cache.frame_caches.first()->frame) {
-          node_cache.reset();
-        }
-      }
+      this->reset_invalid_node_bakes();
     }
     for (const std::unique_ptr<bake::NodeCache> &node_cache_ptr :
          modifier_cache_->cache_by_id.values())
@@ -843,6 +824,30 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       if (node_cache.cache_status == bake::CacheStatus::Invalid) {
         has_invalid_simulation_ = true;
         break;
+      }
+    }
+  }
+
+  void reset_invalid_node_bakes()
+  {
+    for (auto item : modifier_cache_->cache_by_id.items()) {
+      const int id = item.key;
+      bake::NodeCache &node_cache = *item.value;
+      if (node_cache.cache_status != bake::CacheStatus::Invalid) {
+        continue;
+      }
+      const std::optional<IndexRange> sim_frame_range = bake::get_node_bake_frame_range(
+          *scene_, *ctx_.object, nmd_, id);
+      if (!sim_frame_range.has_value()) {
+        continue;
+      }
+      const SubFrame start_frame{int(sim_frame_range->start())};
+      if (current_frame_ <= start_frame) {
+        node_cache.reset();
+      }
+      if (!node_cache.frame_caches.is_empty() &&
+          current_frame_ < node_cache.frame_caches.first()->frame) {
+        node_cache.reset();
       }
     }
   }
