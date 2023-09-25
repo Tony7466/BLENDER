@@ -10,11 +10,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph_type.hh"
 
 #include "BLI_utildefines.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 struct ID;
 struct Scene;
@@ -25,7 +25,7 @@ struct Depsgraph;
 struct OperationNode;
 struct Relation;
 
-/* Metatype of Nodes - The general "level" in the graph structure
+/* Meta-type of Nodes - The general "level" in the graph structure
  * the node serves. */
 enum class NodeClass {
   /* Types generally unassociated with user-visible entities,
