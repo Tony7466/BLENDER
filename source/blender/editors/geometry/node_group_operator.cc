@@ -823,9 +823,6 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   if (!tree) {
     return;
   }
-  if (catalog_path == "Mesh/Clean Up") {
-    std::cout << " ";
-  }
   const asset_system::AssetCatalogTreeItem *item = tree->catalogs.find_item(catalog_path);
   if (!item) {
     return;
