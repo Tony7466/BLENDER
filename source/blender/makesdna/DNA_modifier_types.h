@@ -2391,11 +2391,10 @@ typedef struct NodesModifierData {
   int id_mappings_num;
   int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
-  void *_pad;
 
   /** NodesModifierFlag. */
   int8_t flag;
-  char _pad2[3];
+  char _pad[3];
 
   int bakes_num;
   NodesModifierBake *bakes;
