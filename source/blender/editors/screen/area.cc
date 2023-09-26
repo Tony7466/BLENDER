@@ -3582,11 +3582,8 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-void ED_region_header_draw(const bContext *C, ARegion *region)
+void region_draw_blocks_in_view2d(const bContext *C, const ARegion *region)
 {
-  /* clear */
-  ED_region_clear(C, region, region_background_color_id(C, region));
-
   UI_view2d_view_ortho(&region->v2d);
 
   /* View2D matrix might have changed due to dynamic sized regions. */
@@ -3597,6 +3594,13 @@ void ED_region_header_draw(const bContext *C, ARegion *region)
 
   /* restore view matrix */
   UI_view2d_view_restore(C);
+}
+
+void ED_region_header_draw(const bContext *C, ARegion *region)
+{
+  /* clear */
+  ED_region_clear(C, region, region_background_color_id(C, region));
+  region_draw_blocks_in_view2d(C, region);
 }
 
 void ED_region_header_draw_with_button_sections(const bContext *C,
@@ -3606,7 +3610,7 @@ void ED_region_header_draw_with_button_sections(const bContext *C,
   const ThemeColorID bgcolorid = region_background_color_id(C, region);
 
   /* Clear and draw button sections background when using region overlap. Otherwise clear using the
-   * background color like normally. */
+   * background color like normal. */
   if (region->overlap) {
     region_clear_fully_transparent(C);
     UI_region_button_sections_draw(region, bgcolorid, align);
@@ -3614,17 +3618,7 @@ void ED_region_header_draw_with_button_sections(const bContext *C,
   else {
     ED_region_clear(C, region, bgcolorid);
   }
-
-  UI_view2d_view_ortho(&region->v2d);
-
-  /* View2D matrix might have changed due to dynamic sized regions. */
-  UI_blocklist_update_window_matrix(C, &region->uiblocks);
-
-  /* draw blocks */
-  UI_blocklist_draw(C, &region->uiblocks);
-
-  /* restore view matrix */
-  UI_view2d_view_restore(C);
+  region_draw_blocks_in_view2d(C, region);
 }
 
 void ED_region_header(const bContext *C, ARegion *region)
@@ -3632,6 +3626,14 @@ void ED_region_header(const bContext *C, ARegion *region)
   /* TODO: remove? */
   ED_region_header_layout(C, region);
   ED_region_header_draw(C, region);
+}
+
+void ED_region_header_with_button_sections(const bContext *C,
+                                           ARegion *region,
+                                           const uiButtonSectionsAlign align)
+{
+  ED_region_header_layout(C, region);
+  ED_region_header_draw_with_button_sections(C, region, align);
 }
 
 void ED_region_header_init(ARegion *region)

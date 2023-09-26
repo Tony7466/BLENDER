@@ -506,8 +506,7 @@ void ED_asset_shelf_header_region(const bContext *C, ARegion *region)
       *main_shelf_region);
   update_active_shelf(*C, *space_type, *shelf_regiondata);
 
-  ED_region_header_layout(C, region);
-  ED_region_header_draw_with_button_sections(C, region, uiButtonSectionsAlign::Bottom);
+  ED_region_header_with_button_sections(C, region, uiButtonSectionsAlign::Bottom);
 }
 
 int ED_asset_shelf_header_region_size()

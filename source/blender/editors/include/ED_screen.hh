@@ -119,7 +119,12 @@ void ED_region_header(const bContext *C, ARegion *region);
 void ED_region_header_layout(const bContext *C, ARegion *region);
 void ED_region_header_draw(const bContext *C, ARegion *region);
 /* Forward declare enum. */
-enum class uiButtonSectionsAlign : int16_t;
+enum class uiButtonSectionsAlign : int8_t;
+/** Version of #ED_region_header() that draws with button sections. */
+void ED_region_header_with_button_sections(const bContext *C,
+                                           ARegion *region,
+                                           uiButtonSectionsAlign align);
+/** Version of #ED_region_header_draw() that draws with button sections. */
 void ED_region_header_draw_with_button_sections(const bContext *C,
                                                 const ARegion *region,
                                                 uiButtonSectionsAlign align);

@@ -843,7 +843,7 @@ void UI_block_lock_clear(uiBlock *block);
 /* Separator line between regions if the #uiButtonSectionsAlign is not #None. */
 #define UI_BUTTON_SECTION_SEPERATOR_LINE_WITH (U.pixelsize * 2)
 
-enum class uiButtonSectionsAlign : int16_t { None, Top, Bottom };
+enum class uiButtonSectionsAlign : int8_t { None = 1, Top, Bottom };
 /**
  * Draw a background with rounded corners behind each visual group of buttons. The visual groups
  * are separated by spacer buttons (#uiItemSpacer()). Button groups that are closer than
