@@ -451,9 +451,7 @@ float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip)
   if (strip->actend <= strip->actstart) {
     return 1.0f;
   }
-  else {
-    return strip->actend - strip->actstart;
-  }
+  return strip->actend - strip->actstart;
 }
 
 void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
