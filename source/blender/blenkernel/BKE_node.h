@@ -1344,17 +1344,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Versioning Nodes
- * \{ */
-
-/* Versioning nodes types are used to temporarily mark nodes during versioning. */
-
-#define VERSIONING_NODE_1 -101
-#define VERSIONING_NODE_2 -102
-
-/** \} */
-
 void BKE_node_system_init(void);
 void BKE_node_system_exit(void);
 

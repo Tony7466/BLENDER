@@ -591,26 +591,69 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == SH_NODE_TEX_MUSGRAVE_DEPRECATED) {
       STRNCPY(node->idname, "ShaderNodeTexNoise");
-      node->type = VERSIONING_NODE_1;
+      node->type = SH_NODE_TEX_NOISE;
       NodeTexNoise *data = MEM_cnew<NodeTexNoise>(__func__);
       data->base = (static_cast<NodeTexMusgrave *>(node->storage))->base;
       data->dimensions = (static_cast<NodeTexMusgrave *>(node->storage))->dimensions;
       data->normalize = false;
       data->type = (static_cast<NodeTexMusgrave *>(node->storage))->musgrave_type;
+      MEM_freeN(node->storage);
       node->storage = data;
 
-      bNodeSocket *sockDetail = nodeFindSocket(node, SOCK_IN, "Detail");
-      float *detail = version_cycles_node_socket_float_value(sockDetail);
-
       bNodeSocket *sockFac = nodeFindSocket(node, SOCK_OUT, "Fac");
-      if (sockFac->label[0] != '\0') {
-        sockFac->label[0] = '\0';
+      /* Clear label because Musgrave output socket label is set to "Height" instead of "Fac". */
+      sockFac->label[0] = '\0';
+
+      bNodeLink *detailLink = nullptr;
+      bNode *detailFromNode = nullptr;
+      bNodeSocket *detailFromSock = nullptr;
+
+      bNodeLink *roughnessLink = nullptr;
+      bNode *roughnessFromNode = nullptr;
+      bNodeSocket *roughnessFromSock = nullptr;
+
+      bNodeLink *lacunarityLink = nullptr;
+      bNode *lacunarityFromNode = nullptr;
+      bNodeSocket *lacunarityFromSock = nullptr;
+
+      bNodeLink *facLink = nullptr;
+      bNode *facToNode = nullptr;
+      bNodeSocket *facToSock = nullptr;
+
+      LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+        /* Detect node and socket. */
+
+        if (link->tonode == node) {
+          if (STREQ(link->tosock->identifier, "Detail")) {
+            detailLink = link;
+            detailFromNode = link->fromnode;
+            detailFromSock = link->fromsock;
+          }
+          if (STREQ(link->tosock->identifier, "Roughness")) {
+            roughnessLink = link;
+            roughnessFromNode = link->fromnode;
+            roughnessFromSock = link->fromsock;
+          }
+          if (STREQ(link->tosock->identifier, "Lacunarity")) {
+            lacunarityLink = link;
+            lacunarityFromNode = link->fromnode;
+            lacunarityFromSock = link->fromsock;
+          }
+        }
+        else if (link->fromsock == sockFac) {
+          facLink = link;
+          facToNode = link->tonode;
+          facToSock = link->tosock;
+        }
       }
 
       uint8_t noise_type = (static_cast<NodeTexNoise *>(node->storage))->type;
       float locyoffset = 0.0f;
 
-      if (version_node_socket_is_used(sockDetail) && sockDetail->link != nullptr) {
+      bNodeSocket *sockDetail = nodeFindSocket(node, SOCK_IN, "Detail");
+      float *detail = version_cycles_node_socket_float_value(sockDetail);
+
+      if (detailLink != nullptr) {
         locyoffset -= 40.0f;
 
         /* Add Subtract Math node before Detail input. */
@@ -627,20 +670,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
         *version_cycles_node_socket_float_value(subSock1B) = 1.0f;
 
-        bNode *detailFromNode = nullptr;
-        bNodeSocket *detailFromSock = nullptr;
-
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-          /* Detect node and socket. */
-
-          if ((link->tonode->type == VERSIONING_NODE_1) &&
-              (STREQ(link->tosock->identifier, "Detail"))) {
-            detailFromNode = link->fromnode;
-            detailFromSock = link->fromsock;
-          }
-        }
-
-        nodeRemLink(ntree, sockDetail->link);
+        nodeRemLink(ntree, detailLink);
         nodeAddLink(ntree, detailFromNode, detailFromSock, subNode1, subSock1A);
         nodeAddLink(ntree, subNode1, subSock1Out, node, sockDetail);
 
@@ -722,24 +752,16 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
             *version_cycles_node_socket_float_value(subSock2A) = 1.0f;
 
-            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-              if (link->fromsock == sockFac) {
-                nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
-                nodeRemLink(ntree, link);
-              }
-            }
+            nodeAddLink(ntree, addNode, addSockOut, facToNode, facToSock);
+            nodeRemLink(ntree, facLink);
 
             nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
             nodeAddLink(ntree, detailFromNode, detailFromSock, subNode2, subSock2B);
             nodeAddLink(ntree, subNode2, subSock2Out, addNode, addSockB);
           }
           else {
-            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-              if (link->fromsock == sockFac) {
-                nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
-                nodeRemLink(ntree, link);
-              }
-            }
+            nodeAddLink(ntree, mulNode, mulSockOut, facToNode, facToSock);
+            nodeRemLink(ntree, facLink);
           }
 
           nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
@@ -782,22 +804,14 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
               *version_cycles_node_socket_float_value(addSockB) = 1.0f - *detail;
 
-              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-                if (link->fromsock == sockFac) {
-                  nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
-                  nodeRemLink(ntree, link);
-                }
-              }
+              nodeAddLink(ntree, addNode, addSockOut, facToNode, facToSock);
+              nodeRemLink(ntree, facLink);
 
               nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
             }
             else {
-              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-                if (link->fromsock == sockFac) {
-                  nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
-                  nodeRemLink(ntree, link);
-                }
-              }
+              nodeAddLink(ntree, mulNode, mulSockOut, facToNode, facToSock);
+              nodeRemLink(ntree, facLink);
             }
 
             nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
@@ -841,43 +855,16 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       *version_cycles_node_socket_float_value(mulSockB) = -1.0f;
       *version_cycles_node_socket_float_value(powSockA) = *lacunarity;
 
-      if (version_node_socket_is_used(sockRoughness) && sockRoughness->link != nullptr) {
-        bNode *roughnessFromNode = nullptr;
-        bNodeSocket *roughnessFromSock = nullptr;
-
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-          /* Detect node and socket. */
-
-          if ((link->tonode->type == VERSIONING_NODE_1) &&
-              (STREQ(link->tosock->identifier, "Roughness"))) {
-            roughnessFromNode = link->fromnode;
-            roughnessFromSock = link->fromsock;
-          }
-        }
-
-        nodeRemLink(ntree, sockRoughness->link);
+      if (roughnessLink != nullptr) {
+        nodeRemLink(ntree, roughnessLink);
         nodeAddLink(ntree, roughnessFromNode, roughnessFromSock, mulNode, mulSockA);
       }
-      if (version_node_socket_is_used(sockLacunarity) && sockLacunarity->link != nullptr) {
-        bNode *lacunarityFromNode = nullptr;
-        bNodeSocket *lacunarityFromSock = nullptr;
-
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-          /* Detect node and socket. */
-
-          if ((link->tonode->type == VERSIONING_NODE_1) &&
-              (STREQ(link->tosock->identifier, "Lacunarity"))) {
-            lacunarityFromNode = link->fromnode;
-            lacunarityFromSock = link->fromsock;
-          }
-        }
-
+      if (lacunarityLink != nullptr) {
+        nodeRemLink(ntree, lacunarityLink);
         nodeAddLink(ntree, lacunarityFromNode, lacunarityFromSock, powNode, powSockA);
       }
       nodeAddLink(ntree, mulNode, mulSockOut, powNode, powSockB);
       nodeAddLink(ntree, powNode, powSockOut, node, sockRoughness);
-
-      node->type = SH_NODE_TEX_NOISE;
     }
   }
 
