@@ -88,8 +88,8 @@
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "BLO_read_write.hh"
 
@@ -1094,9 +1094,12 @@ static void ntree_blend_read_after_liblink(BlendLibReader *reader, ID *id)
   }
 }
 
-static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
+void node_update_asset_metadata(bNodeTree &node_tree)
 {
-  bNodeTree &node_tree = *static_cast<bNodeTree *>(asset_ptr);
+  AssetMetaData *asset_data = node_tree.id.asset_data;
+  if (!asset_data) {
+    return;
+  }
 
   BKE_asset_metadata_idprop_ensure(asset_data, idprop::create("type", node_tree.type).release());
   auto inputs = idprop::create_group("inputs");
@@ -1117,6 +1120,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
                                    node_tree.geometry_node_asset_traits->flag);
     BKE_asset_metadata_idprop_ensure(asset_data, property.release());
   }
+}
+
+static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_data*/)
+{
+  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
 }
 
 }  // namespace blender::bke
@@ -2542,6 +2550,11 @@ static void *node_static_value_storage_for(bNode &node, const bNodeSocket &socke
   switch (node.type) {
     case FN_NODE_INPUT_BOOL:
       return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
+    case SH_NODE_VALUE:
+      /* The value is stored in the default value of the first output socket. */
+      return &static_cast<bNodeSocket *>(node.outputs.first)
+                  ->default_value_typed<bNodeSocketValueFloat>()
+                  ->value;
     case FN_NODE_INPUT_INT:
       return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
     case FN_NODE_INPUT_VECTOR:
@@ -2580,8 +2593,9 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueObject>()->value;
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
-    case SOCK_STRING:
     case SOCK_ROTATION:
+      return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
+    case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
     case SOCK_CUSTOM:

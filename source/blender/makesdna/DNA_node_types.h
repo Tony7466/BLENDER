@@ -427,6 +427,11 @@ typedef struct bNode {
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
 
+  /* True if the socket is visible and has a valid location. The icon may not be visible. */
+  bool is_socket_drawn(const bNodeSocket &socket) const;
+  /* True if the socket is drawn and the icon is visible. */
+  bool is_socket_icon_drawn(const bNodeSocket &socket) const;
+
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
 
@@ -2289,8 +2294,8 @@ enum {
   SHD_SUBSURFACE_GAUSSIAN = 2,
 #endif
   SHD_SUBSURFACE_BURLEY = 3,
-  SHD_SUBSURFACE_RANDOM_WALK_FIXED_RADIUS = 4,
-  SHD_SUBSURFACE_RANDOM_WALK = 5,
+  SHD_SUBSURFACE_RANDOM_WALK = 4,
+  SHD_SUBSURFACE_RANDOM_WALK_SKIN = 5,
 };
 
 /* blur node */
