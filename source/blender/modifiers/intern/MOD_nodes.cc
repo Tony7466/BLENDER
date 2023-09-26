@@ -1495,7 +1495,7 @@ static const bNodeTreeInterfacePanel *find_panel_interface(const NodesModifierDa
   if (!nmd || !nmd->node_group) {
     return nullptr;
   }
-  const int identifier = panel->runtime.custom_data_int[0];
+  const int identifier = panel->runtime.custom_data_int;
 
   const bNodeTreeInterfacePanel *result = nullptr;
   nmd->node_group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
@@ -1768,7 +1768,7 @@ static void add_child_panel_instances(bContext *C,
           reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
       Panel *panel = UI_panel_add_instanced(
           C, region, child_panels, node_panel_idname, custom_data);
-      panel->runtime.custom_data_int[0] = panel_iface->identifier;
+      panel->runtime.custom_data_int = panel_iface->identifier;
     }
   }
 
@@ -1812,7 +1812,7 @@ static bool child_panel_instances_match_data(const Panel *parent, PointerRNA *cu
         /* Fewer panels than expected. */
         return false;
       }
-      if (current_subpanel->runtime.custom_data_int[0] != panel_iface->identifier) {
+      if (current_subpanel->runtime.custom_data_int != panel_iface->identifier) {
         /* Panel has wrong identifier. */
         return false;
       }
