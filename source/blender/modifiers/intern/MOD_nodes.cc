@@ -1580,6 +1580,11 @@ static void panel_draw(const bContext *C, Panel *panel)
                  nullptr);
   }
 
+  uiLayoutSetPropSep(layout, true);
+  /* Decorators are added manually for supported properties because the
+   * attribute/value toggle requires a manually built layout anyway. */
+  uiLayoutSetPropDecorate(layout, false);
+
   /* Draw sockets that have no panel. */
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
     draw_panel_content(C, nmd, &nmd->node_group->tree_interface.root_panel, layout, ptr);
