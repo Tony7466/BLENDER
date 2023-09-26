@@ -1070,6 +1070,7 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
     ID &id_non_const = const_cast<ID &>(id);
 
     ID *id_orig = DEG_get_original_id(&id_non_const);
+    const ID_Type id_type = GS(id.name);
     const int old_mappings_num = nmd_orig_->id_mappings_num;
     const int new_mappings_num = old_mappings_num + 1;
 
@@ -1091,6 +1092,7 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
       new_mapping.id = id_orig;
       /* TODO: Figure out how we can make this thread-safe. */
       id_us_plus(id_orig);
+      new_mapping.id_type = id_type;
       new_mapping.id_name = BLI_strdup(id_orig->name + 2);
       if (id_orig->lib) {
         new_mapping.lib_name = BLI_strdup(id_orig->lib->id.name + 2);
@@ -1104,6 +1106,7 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
       NodesModifierIDMapping &new_mapping = nmd_.id_mappings[old_mappings_num];
       memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
 
+      new_mapping.id_type = id_type;
       new_mapping.id = &id_non_const;
       new_mapping.id_name = BLI_strdup(id_orig->name + 2);
       if (id_orig->lib) {
