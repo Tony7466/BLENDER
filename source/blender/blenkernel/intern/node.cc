@@ -1127,7 +1127,7 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_da
   node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
 }
 
-static void node_tree_asset_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
+static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
 {
   node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
 }
@@ -1136,7 +1136,7 @@ static void node_tree_asset_mark_asset(void *asset_ptr, AssetMetaData * /*asset_
 
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
-    /*on_mark_asset_fn*/ blender::bke::node_tree_asset_mark_asset,
+    /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {

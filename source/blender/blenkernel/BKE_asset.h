@@ -26,7 +26,7 @@ struct IDProperty;
 struct PreviewImage;
 
 typedef void (*PreSaveFn)(void *asset_ptr, struct AssetMetaData *asset_data);
-typedef void (*MarkAssetFn)(void *asset_ptr, struct AssetMetaData *asset_data);
+typedef void (*OnMarkAssetFn)(void *asset_ptr, struct AssetMetaData *asset_data);
 
 typedef struct AssetTypeInfo {
   /**
@@ -34,7 +34,7 @@ typedef struct AssetTypeInfo {
    * saved.
    */
   PreSaveFn pre_save_fn;
-  MarkAssetFn on_mark_asset_fn;
+  OnMarkAssetFn on_mark_asset_fn;
 } AssetTypeInfo;
 
 struct AssetMetaData *BKE_asset_metadata_create(void);
