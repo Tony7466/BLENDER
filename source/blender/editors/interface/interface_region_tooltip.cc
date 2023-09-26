@@ -35,7 +35,7 @@
 
 #include "BKE_context.h"
 #include "BKE_paint.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BIF_glutil.hh"
 
@@ -130,9 +130,7 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
   field->text_suffix = suffix;
 }
 
-void UI_tooltip_image_field_add(uiTooltipData *data,
-                                const struct ImBuf *image,
-                                const short image_size[2])
+void UI_tooltip_image_field_add(uiTooltipData *data, const ImBuf *image, const short image_size[2])
 {
   uiTooltipField *field = text_field_add_only(data);
   field->format = {};
