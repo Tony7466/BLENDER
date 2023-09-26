@@ -228,7 +228,6 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
 
     rctf box = keys_box_get(C, seq);
-    box.xmax += RETIME_KEY_MOUSEOVER_THRESHOLD; /* Fix selecting last key. */
     if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
       continue;
     }
