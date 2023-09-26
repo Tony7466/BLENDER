@@ -123,8 +123,7 @@ typedef enum eSeqRetimingKeyFlag {
   SEQ_SPEED_TRANSITION_OUT = (1 << 1),
   SEQ_FREEZE_FRAME_IN = (1 << 2),
   SEQ_FREEZE_FRAME_OUT = (1 << 3),
-  SEQ_DELETE_KEY = (1 << 4),
-  SEQ_KEY_SELECTED = (1 << 5),
+  SEQ_KEY_SELECTED = (1 << 4),
 } eSeqRetimingKeyFlag;
 
 typedef struct SeqRetimingKey {

@@ -854,17 +854,6 @@ int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool delete_flagged_key(Scene *scene, Sequence *seq)
-{
-  for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-    if ((key.flag & SEQ_DELETE_KEY) != 0) {
-      SEQ_retiming_remove_key(scene, seq, &key);
-      return true;
-    }
-  }
-  return false;
-}
-
 int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
 {
   Scene *scene = CTX_data_scene(C);
