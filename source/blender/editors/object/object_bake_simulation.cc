@@ -897,8 +897,15 @@ void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot)
                  0,
                  "Modifier Name",
                  "Name of the modifier that contains the node to bake");
-  RNA_def_int(
-      ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "ID of the node to bake", 0, INT32_MAX);
+  RNA_def_int(ot->srna,
+              "bake_id",
+              0,
+              0,
+              INT32_MAX,
+              "Bake ID",
+              "Nested node id of the node to bake",
+              0,
+              INT32_MAX);
 }
 
 void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot)
