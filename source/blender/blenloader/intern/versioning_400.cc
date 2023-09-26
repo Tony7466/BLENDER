@@ -235,30 +235,29 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
 
 static void enable_geometry_nodes_is_modifier(Main &bmain)
 {
-  /* Any node group used by a modifier is marked for that purpose. */
-  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
-    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      if (md->type != eModifierType_Nodes) {
-        continue;
-      }
-      if (bNodeTree *group = reinterpret_cast<NodesModifierData *>(md)->node_group) {
-        if (!group->geometry_node_asset_traits) {
-          group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
-        }
-        group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
-      }
-    }
-  }
-  /* Any node group shared as an asset is also assumed to be used as a modifier. */
+  /* Any node group with a first socket geometry output can potentially be a modifier. Previously
+   * this wasn't an explicit option, so better to enable too many groups rather than too few. */
   LISTBASE_FOREACH (bNodeTree *, group, &bmain.nodetrees) {
-    if (group->type == NTREE_GEOMETRY) {
-      if (group->id.asset_data) {
-        if (!group->geometry_node_asset_traits) {
-          group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
-        }
-        group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
-      }
+    if (group->type != NTREE_GEOMETRY) {
+      continue;
     }
+    group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+      if (item.item_type != NODE_INTERFACE_SOCKET) {
+        return true;
+      }
+      const auto &socket = reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
+      if ((socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) == 0) {
+        return true;
+      }
+      if (!STREQ(socket.socket_type, "NodeSocketGeometry")) {
+        return true;
+      }
+      if (!group->geometry_node_asset_traits) {
+        group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+      }
+      group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
+      return false;
+    });
   }
 }
 
