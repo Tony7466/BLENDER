@@ -392,9 +392,9 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         if context.engine == 'BLENDER_EEVEE_NEXT':
             if ob.type in ('MESH','CURVE','SURFACE','META','FONT','CURVES','POINTCLOUD','VOLUME','LIGHT'):
                 layout.separator()
-                col = layout.column(heading="Probes")
-                col.prop(ob, "hide_irradiance_probes", text="Irradiance", toggle=False, invert_checkbox=True)
-                col.prop(ob, "hide_reflection_probes", text="Reflection", toggle=False, invert_checkbox=True)
+                col = layout.column(heading="Light Probes")
+                col.prop(ob, "hide_probe_volume", text="Volume", toggle=False, invert_checkbox=True)
+                col.prop(ob, "hide_probe_cubemap", text="Cubemap", toggle=False, invert_checkbox=True)
 
         if ob.type == 'GPENCIL':
             col = layout.column(heading="Grease Pencil")
