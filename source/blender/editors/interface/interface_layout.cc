@@ -6032,19 +6032,6 @@ void UI_paneltype_draw(bContext *C, PanelType *pt, uiLayout *layout)
   }
 }
 
-void UI_paneltype_draw_with_header(bContext *C, PanelType *pt, uiLayout *layout)
-{
-  if (layout->context) {
-    CTX_store_set(C, layout->context);
-  }
-
-  ui_paneltype_draw_impl(C, pt, layout, true);
-
-  if (layout->context) {
-    CTX_store_set(C, nullptr);
-  }
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */

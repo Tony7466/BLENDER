@@ -2220,7 +2220,6 @@ void UI_menutype_draw(bContext *C, MenuType *mt, uiLayout *layout);
  * Used for popup panels only.
  */
 void UI_paneltype_draw(bContext *C, PanelType *pt, uiLayout *layout);
-void UI_paneltype_draw_with_header(bContext *C, PanelType *pt, uiLayout *layout);
 
 /* Only for convenience. */
 void uiLayoutSetContextFromBut(uiLayout *layout, uiBut *but);
