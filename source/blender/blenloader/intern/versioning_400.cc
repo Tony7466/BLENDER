@@ -600,10 +600,6 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       MEM_freeN(node->storage);
       node->storage = data;
 
-      bNodeSocket *sockFac = nodeFindSocket(node, SOCK_OUT, "Fac");
-      /* Clear label because Musgrave output socket label is set to "Height" instead of "Fac". */
-      sockFac->label[0] = '\0';
-
       bNodeLink *detailLink = nullptr;
       bNode *detailFromNode = nullptr;
       bNodeSocket *detailFromSock = nullptr;
@@ -615,10 +611,6 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       bNodeLink *lacunarityLink = nullptr;
       bNode *lacunarityFromNode = nullptr;
       bNodeSocket *lacunarityFromSock = nullptr;
-
-      bNodeLink *facLink = nullptr;
-      bNode *facToNode = nullptr;
-      bNodeSocket *facToSock = nullptr;
 
       LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
         /* Find links, nodes and sockets. */
@@ -640,15 +632,14 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
             lacunarityFromSock = link->fromsock;
           }
         }
-        else if (link->fromsock == sockFac) {
-          facLink = link;
-          facToNode = link->tonode;
-          facToSock = link->tosock;
-        }
       }
 
       uint8_t noise_type = (static_cast<NodeTexNoise *>(node->storage))->type;
       float locyoffset = 0.0f;
+
+      bNodeSocket *sockFac = nodeFindSocket(node, SOCK_OUT, "Fac");
+      /* Clear label because Musgrave output socket label is set to "Height" instead of "Fac". */
+      sockFac->label[0] = '\0';
 
       bNodeSocket *sockDetail = nodeFindSocket(node, SOCK_IN, "Detail");
       float *detail = version_cycles_node_socket_float_value(sockDetail);
@@ -752,16 +743,24 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
             *version_cycles_node_socket_float_value(subSock2A) = 1.0f;
 
-            nodeAddLink(ntree, addNode, addSockOut, facToNode, facToSock);
-            nodeRemLink(ntree, facLink);
+            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+              if (link->fromsock == sockFac) {
+                nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
+                nodeRemLink(ntree, link);
+              }
+            }
 
             nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
             nodeAddLink(ntree, detailFromNode, detailFromSock, subNode2, subSock2B);
             nodeAddLink(ntree, subNode2, subSock2Out, addNode, addSockB);
           }
           else {
-            nodeAddLink(ntree, mulNode, mulSockOut, facToNode, facToSock);
-            nodeRemLink(ntree, facLink);
+            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+              if (link->fromsock == sockFac) {
+                nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
+                nodeRemLink(ntree, link);
+              }
+            }
           }
 
           nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
@@ -804,14 +803,22 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
               *version_cycles_node_socket_float_value(addSockB) = 1.0f - *detail;
 
-              nodeAddLink(ntree, addNode, addSockOut, facToNode, facToSock);
-              nodeRemLink(ntree, facLink);
+              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+                if (link->fromsock == sockFac) {
+                  nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
+                  nodeRemLink(ntree, link);
+                }
+              }
 
               nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
             }
             else {
-              nodeAddLink(ntree, mulNode, mulSockOut, facToNode, facToSock);
-              nodeRemLink(ntree, facLink);
+              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+                if (link->fromsock == sockFac) {
+                  nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
+                  nodeRemLink(ntree, link);
+                }
+              }
             }
 
             nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
