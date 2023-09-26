@@ -1707,13 +1707,6 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
-static bool child_panel_poll(const bContext *C, PanelType * /*panel_type*/)
-{
-  Object *ob = ED_object_active_context(C);
-
-  return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
-}
-
 static void node_panel_draw_header(const bContext * /*C*/, Panel *panel)
 {
   NodesModifierData *nmd = get_modifier_from_panel(panel);
@@ -1852,34 +1845,31 @@ static bool child_panel_instances_match_data(const Panel *parent, PointerRNA *cu
 static void panel_register(ARegionType *region_type)
 {
   using namespace blender;
+
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
   panel_type->add_child_panel_instances = add_child_panel_instances;
   panel_type->child_panel_instances_match_data = child_panel_instances_match_data;
 
-  modifier_subpanel_register_ex(region_type,
-                                "node_panel",
-                                "",
-                                child_panel_poll,
-                                node_panel_draw_header,
-                                node_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED);
-  modifier_subpanel_register_ex(region_type,
-                                "output_attributes",
-                                N_("Output Attributes"),
-                                child_panel_poll,
-                                nullptr,
-                                output_attribute_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_INSTANCED);
-  modifier_subpanel_register_ex(region_type,
-                                "internal_dependencies",
-                                N_("Internal Dependencies"),
-                                child_panel_poll,
-                                nullptr,
-                                internal_dependencies_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_INSTANCED);
+  PanelType *node_panel_type = modifier_subpanel_register(
+      region_type, "node_panel", "", node_panel_draw_header, node_panel_draw, panel_type);
+  node_panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
+
+  PanelType *output_attr_panel_type = modifier_subpanel_register(region_type,
+                                                                 "output_attributes",
+                                                                 N_("Output Attributes"),
+                                                                 nullptr,
+                                                                 output_attribute_panel_draw,
+                                                                 panel_type);
+  output_attr_panel_type->flag = PANEL_TYPE_INSTANCED;
+
+  PanelType *internal_deps_panel_type = modifier_subpanel_register(
+      region_type,
+      "internal_dependencies",
+      N_("Internal Dependencies"),
+      nullptr,
+      internal_dependencies_panel_draw,
+      panel_type);
+  internal_deps_panel_type->flag = PANEL_TYPE_INSTANCED;
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
