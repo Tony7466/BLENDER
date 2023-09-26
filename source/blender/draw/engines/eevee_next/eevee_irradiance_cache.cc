@@ -638,7 +638,7 @@ void IrradianceBake::init(const Object &probe_object)
   capture_indirect_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_INDIRECT);
   capture_emission_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_EMISSION);
 
-  /* Initialice views data, since they're used by other modules.*/
+  /* Initialize views data, since they're used by other modules.*/
   surfel_raster_views_sync(float3(0.0f), float3(1.0f));
 }
 
