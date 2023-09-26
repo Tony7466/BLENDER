@@ -66,7 +66,7 @@ vec4 EDIT_MESH_face_color(uint face_flag)
   }
   if (wireShading) {
   /* Lower face selection opacity for better wireframe visibility. */
-    color.a = (face_selected) ? color.a * 0.5 : color.a;
+    color.a = (face_selected) ? color.a * 0.6 : color.a;
   }
   else {
   /* Don't always fill 'colorFace'. */
