@@ -203,9 +203,21 @@ void IrradianceCache::set_view(View & /*view*/)
                 /* Volumes are identical. Any arbitrary criteria can be used to sort them.
                  * Use position to avoid unstable result caused by depsgraph non deterministic eval
                  * order. This could also become a priority parameter. */
-                return a->object_to_world.location()[0] < b->object_to_world.location()[0] ||
-                       a->object_to_world.location()[1] < b->object_to_world.location()[1] ||
-                       a->object_to_world.location()[2] < b->object_to_world.location()[2];
+                float3 _a = a->object_to_world.location();
+                float3 _b = b->object_to_world.location();
+                if (_a.x != _b.x) {
+                  return _a.x < _b.x;
+                }
+                else if (_a.y != _b.y) {
+                  return _a.y < _b.y;
+                }
+                else if (_a.z != _b.z) {
+                  return _a.z < _b.z;
+                }
+                else {
+                  /* Fallback to memory address, since there's no good alternative.*/
+                  return a < b;
+                }
               });
 
     /* Insert grids in UBO in sorted order. */
@@ -421,6 +433,10 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 
     LightProbeGridCacheFrame *cache = grid.cache->grid_static_cache;
 
+    if (cache == nullptr) {
+      continue;
+    }
+
     switch (inst_.debug_mode) {
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER:
@@ -434,7 +450,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
                             DRW_STATE_DEPTH_LESS_EQUAL);
         debug_ps_.framebuffer_set(&view_fb);
         debug_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_SURFELS));
-        debug_ps_.push_constant("surfel_radius", 0.5f / grid.surfel_density);
+        debug_ps_.push_constant("debug_surfel_radius", 0.5f / grid.surfel_density);
         debug_ps_.push_constant("debug_mode", int(inst_.debug_mode));
 
         debug_surfels_buf_.resize(cache->surfels_len);
@@ -621,6 +637,9 @@ void IrradianceBake::init(const Object &probe_object)
   capture_world_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_WORLD);
   capture_indirect_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_INDIRECT);
   capture_emission_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_EMISSION);
+
+  /* Initialize views data, since they're used by other modules.*/
+  surfel_raster_views_sync(float3(0.0f), float3(1.0f));
 }
 
 void IrradianceBake::sync()
@@ -942,7 +961,8 @@ void IrradianceBake::clusters_build()
   if (max_virtual_offset_ == 0.0f) {
     return;
   }
-  eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                   GPU_TEXTURE_USAGE_ATOMIC;
 
   cluster_list_tx_.ensure_3d(GPU_R32I, capture_info_buf_.irradiance_grid_size, texture_usage);
   cluster_list_tx_.clear(int4(-1));
