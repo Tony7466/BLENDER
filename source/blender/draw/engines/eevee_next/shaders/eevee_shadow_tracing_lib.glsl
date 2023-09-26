@@ -274,42 +274,57 @@ struct ShadowRayPunctual {
 ShadowRayPunctual shadow_ray_generate_punctual(
     LightData light, vec2 random_2d, float rand, vec3 lP, vec3 lNg, out bool r_is_above_surface)
 {
-
   if (light.type == LIGHT_RECT) {
     random_2d = random_2d * 2.0 - 1.0;
   }
   else {
     random_2d = sample_disk(random_2d);
   }
-  vec3 right = vec3(1.0, 0.0, 0.0), up = vec3(0.0, 1.0, 0.0);
-  if (is_area_light(light.type)) {
-    random_2d *= vec2(light._area_size_x, light._area_size_y);
-  }
-  else {
-    /* Disk rotated towards light vector. */
-    /* TODO: Can we avoid this normalize? */
-    make_orthonormal_basis(normalize(lP), right, up);
-    random_2d *= light._radius;
-  }
-  random_2d *= light.shadow_shape_scale;
-  vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
-  vec3 direction = point_on_light_shape - lP;
-
-  r_is_above_surface = dot(direction, lNg) > 0.0;
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light.clip_side;
 
-  /* Clip the ray to not cross the near plane.
-   * Scale it so that it encompass the whole cube (with a safety margin). */
-  float clip_distance = clip_near + 0.001;
-  float ray_length = max(abs(direction.x), max(abs(direction.y), abs(direction.z)));
-  direction *= saturate((ray_length - clip_distance) / ray_length);
+  /* TODO(fclem): 3D shift for jittered soft shadows. */
+  vec3 projection_origin = vec3(0.0, 0.0, -light.shadow_projection_shift);
+  vec3 direction;
+  if (is_area_light(light.type)) {
+    random_2d *= vec2(light._area_size_x, light._area_size_y);
+
+    vec3 point_on_light_shape = vec3(random_2d, 0.0);
+    /* Progressively blend the shape back to the projection origin. */
+    point_on_light_shape = mix(-projection_origin, point_on_light_shape, light.shadow_shape_scale);
+
+    direction = point_on_light_shape - lP;
+
+    /* Clip the ray to not cross the near plane.
+     * Scale it so that it encompass the whole cube (with a safety margin). */
+    float clip_distance = clip_near + 0.001;
+    float ray_length = max(abs(direction.x), max(abs(direction.y), abs(direction.z)));
+    direction *= saturate((ray_length - clip_distance) / ray_length);
+  }
+  else {
+    float dist;
+    vec3 L = normalize_and_get_length(lP, dist);
+    /* Disk rotated towards light vector. */
+    vec3 right, up;
+    make_orthonormal_basis(L, right, up);
+    random_2d *= light_sphere_disk_radius(light._radius, dist);
+
+    random_2d *= light.shadow_shape_scale;
+    vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
+
+    direction = point_on_light_shape - lP;
+
+    /* Clip the ray to not cross the light shape. */
+    float clip_distance = light._radius;
+    direction *= saturate((dist - clip_distance) / dist);
+  }
+
+  r_is_above_surface = dot(direction, lNg) > 0.0;
 
   /* Apply shadow origin shift. */
-  /* TODO(fclem): 3D shift for jittered soft shadows. */
-  vec3 local_ray_start = lP + vec3(0.0, 0.0, -light.shadow_projection_shift);
+  vec3 local_ray_start = lP + projection_origin;
   vec3 local_ray_end = local_ray_start + direction;
 
   int face_id = shadow_punctual_face_index_get(local_ray_start);

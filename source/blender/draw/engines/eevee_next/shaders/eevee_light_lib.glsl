@@ -132,6 +132,18 @@ float light_point_light(LightData ld, const bool is_directional, vec3 L, float d
   return power;
 }
 
+/**
+ * Return the radius of the disk at the sphere origin spanning the same solid angle as the sphere
+ * from a given distance.
+ * Assumes `distance_to_sphere > sphere_radius`.
+ */
+float light_sphere_disk_radius(float sphere_radius, float distance_to_sphere)
+{
+  /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
+   * half-angle spanned by a disk light with the same radius. */
+  return sphere_radius * inversesqrt(1.0 - sqr(sphere_radius / distance_to_sphere));
+}
+
 float light_diffuse(sampler2DArray utility_tx,
                     const bool is_directional,
                     LightData ld,
@@ -210,7 +222,7 @@ float light_ltc(sampler2DArray utility_tx,
     if (ld.type == LIGHT_POINT) {
       /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
        * half-angle spanned by a disk light with the same radius. */
-      float radius = ld._radius * inversesqrt(1.0 - sqr(ld._radius / dist));
+      float radius = light_sphere_disk_radius(ld._radius, dist);
 
       points[0] = Px * -radius + Py * -radius;
       points[1] = Px * radius + Py * -radius;
