@@ -173,7 +173,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 #  include "BKE_object.h"
 #  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
-#  include "BKE_screen.h"
+#  include "BKE_screen.hh"
 
 #  include "DEG_depsgraph.hh"
 
@@ -7142,6 +7142,10 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "PathCompare");
   RNA_def_property_ui_text(prop, "Auto-Execution Paths", "");
   rna_def_userdef_autoexec_path_collection(brna, prop);
+
+  prop = RNA_def_property(srna, "use_recent_searches", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_FLAG_RECENT_SEARCHES_DISABLE);
+  RNA_def_property_ui_text(prop, "Recent Searches", "Sort the recently searched items at the top");
 
   /* nested structs */
   prop = RNA_def_property(srna, "view", PROP_POINTER, PROP_NONE);

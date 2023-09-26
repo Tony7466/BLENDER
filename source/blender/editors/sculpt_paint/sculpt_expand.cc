@@ -676,7 +676,7 @@ static float *sculpt_expand_boundary_topology_falloff_create(Object *ob, const P
         continue;
       }
       dists[ni.index] = dists[v_next_i] + 1.0f;
-      visited_verts[ni.index];
+      visited_verts[ni.index].set();
       BLI_gsqueue_push(queue, &ni.vertex);
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
@@ -1801,7 +1801,8 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
           expand_cache->snap_enabled_face_sets = std::make_unique<blender::Set<int>>();
           sculpt_expand_snap_initialize_from_enabled(ss, expand_cache);
         }
-      } break;
+        break;
+      }
       case SCULPT_EXPAND_MODAL_MOVE_TOGGLE: {
         if (expand_cache->move) {
           expand_cache->move = false;
