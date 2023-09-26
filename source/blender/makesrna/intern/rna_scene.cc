@@ -738,7 +738,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_node.h"
 #  include "BKE_pointcache.h"
 #  include "BKE_scene.h"
-#  include "BKE_screen.h"
+#  include "BKE_screen.hh"
 #  include "BKE_unit.h"
 
 #  include "NOD_composite.h"
@@ -4466,7 +4466,7 @@ static void rna_def_view_layer_aov(BlenderRNA *brna)
 static void rna_def_view_layer_lightgroups(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /*  PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
