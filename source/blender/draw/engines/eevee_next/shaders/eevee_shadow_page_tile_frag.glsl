@@ -47,7 +47,7 @@ void main()
   /* Write result to altas. As tiles outside of valid update regions are discarded, we can use the
    * NOTE: As this shader is only used in Metal, we can use the fastest possible write function
    * without any parameter wrapping or conversion.*/
-  
+
   /* For Metal accumulation pass, we store the result from depth in tile memory. */
   uint u_depth = floatBitsToUint(in_tile_depth);
 
