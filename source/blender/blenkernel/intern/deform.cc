@@ -466,10 +466,6 @@ const ListBase *BKE_id_defgroup_list_get(const ID *id)
       const bGPdata *gpd = (const bGPdata *)id;
       return &gpd->vertex_group_names;
     }
-    case ID_CV: {
-      const Curves *curves_id = reinterpret_cast<const Curves *>(id);
-      return &curves_id->geometry.vertex_group_names;
-    }
     default: {
       BLI_assert_unreachable();
     }
@@ -492,10 +488,6 @@ static const int *object_defgroup_active_index_get_p(const Object *ob)
     case OB_GPENCIL_LEGACY: {
       const bGPdata *gpd = (const bGPdata *)ob->data;
       return &gpd->vertex_group_active_index;
-    }
-    case OB_CURVES: {
-      const Curves *curves_id = static_cast<const Curves *>(ob->data);
-      return &curves_id->geometry.vertex_group_active_index;
     }
     default: {
       BLI_assert_unreachable();
