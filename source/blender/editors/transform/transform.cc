@@ -2055,7 +2055,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
         if (kmi->flag & KMI_INACTIVE) {
           continue;
         }
-        if (kmi->propvalue == TFM_MODAL_NODE_LINK_ATTACH_ON && kmi->val == KM_PRESS) {
+        if (kmi->propvalue == TFM_MODAL_NODE_FRAME_DETACH_ON && kmi->val == KM_PRESS) {
           if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
                (event->modifier & KM_CTRL)) ||
               (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
