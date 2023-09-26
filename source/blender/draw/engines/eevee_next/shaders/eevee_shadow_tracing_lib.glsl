@@ -11,6 +11,7 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
@@ -202,17 +203,15 @@ ShadowRayDirectional shadow_ray_generate_directional(
   /* `lP` is supposed to be in light rotated space. But not translated. */
   vec4 origin = vec4(lP, dist_to_near_plane / z_range);
 
-  vec2 disk_point = sample_disk(random_2d) * light.shadow_shape_scale;
+  vec3 disk_direction = sample_uniform_cone(sample_cylinder(random_2d),
+                                            light.shadow_shape_scale_or_angle);
   /* Light shape is 1 unit away from the shading point. */
-  vec4 direction = vec4(disk_point, 1.0, -1.0 / z_range);
+  vec4 direction = vec4(disk_direction, -1.0 / z_range);
 
   r_is_above_surface = dot(lNg, direction.xyz) > 0.0;
 
-  /* TODO(fclem) Option. */
-  float max_trace_distance = dist_to_near_plane;
-  float ray_length = max_trace_distance / length(direction.xyz);
   /* It only make sense to trace where there can be occluder. Clamp by distance to near plane. */
-  direction *= min(ray_length, dist_to_near_plane);
+  direction *= min(light.shadow_trace_distance, dist_to_near_plane / disk_direction.z);
 
   ShadowRayDirectional ray;
   ray.origin = origin;
@@ -293,7 +292,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(
 
     vec3 point_on_light_shape = vec3(random_2d, 0.0);
     /* Progressively blend the shape back to the projection origin. */
-    point_on_light_shape = mix(-projection_origin, point_on_light_shape, light.shadow_shape_scale);
+    point_on_light_shape = mix(
+        -projection_origin, point_on_light_shape, light.shadow_shape_scale_or_angle);
 
     direction = point_on_light_shape - lP;
 
@@ -311,7 +311,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(
     make_orthonormal_basis(L, right, up);
     random_2d *= light_sphere_disk_radius(light._radius, dist);
 
-    random_2d *= light.shadow_shape_scale;
+    random_2d *= light.shadow_shape_scale_or_angle;
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
 
     direction = point_on_light_shape - lP;

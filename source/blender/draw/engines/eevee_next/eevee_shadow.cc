@@ -384,7 +384,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   light.clip_far = as_int.i;
   light.clip_side = side;
   light.shadow_projection_shift = shift;
-  light.shadow_shape_scale = softness_factor_;
+  light.shadow_shape_scale_or_angle = softness_factor_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
@@ -623,7 +623,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
 
 void ShadowDirectional::sync(const float4x4 &object_mat,
                              float min_resolution,
-                             float shadow_disk_angle)
+                             float shadow_disk_angle,
+                             float trace_distance)
 {
   object_mat_ = object_mat;
   /* Clear embedded custom data. */
@@ -633,7 +634,8 @@ void ShadowDirectional::sync(const float4x4 &object_mat,
   object_mat_.location() = float3(0.0f);
 
   min_resolution_ = min_resolution;
-  disk_shape_radius_ = tanf(min_ff(shadow_disk_angle, DEG2RADF(179.9f)) / 2.0f);
+  disk_shape_angle_ = min_ff(shadow_disk_angle, DEG2RADF(179.9f)) / 2.0f;
+  trace_distance_ = trace_distance;
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_bias)
@@ -687,8 +689,9 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, float lod_b
   light.tilemap_index = tilemap_pool.tilemaps_data.size();
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
+  light.shadow_trace_distance = trace_distance_;
   /* This stores the disk radius directly. */
-  light.shadow_shape_scale = disk_shape_radius_;
+  light.shadow_shape_scale_or_angle = disk_shape_angle_;
 
   if (directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE) {
     cascade_tilemaps_distribution(light, camera);

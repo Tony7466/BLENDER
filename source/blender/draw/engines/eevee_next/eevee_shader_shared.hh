@@ -784,8 +784,9 @@ struct LightData {
   /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
   float shadow_projection_shift;
   /** Scaling factor to the light shape for shadow ray casting. */
-  float shadow_shape_scale;
-  float _pad1;
+  float shadow_shape_scale_or_angle;
+  /** Trace distance for directional lights. */
+  float shadow_trace_distance;
   float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)

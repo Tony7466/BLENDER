@@ -1386,6 +1386,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       Light default_light = blender::dna::shallow_copy(*DNA_struct_default_get(Light));
       LISTBASE_FOREACH (Light *, light, &bmain->lights) {
         light->shadow_softness_factor = default_light.shadow_softness_factor;
+        light->shadow_trace_distance = default_light.shadow_trace_distance;
       }
     }
   }

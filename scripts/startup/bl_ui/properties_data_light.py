@@ -117,6 +117,9 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
             col.prop(light, "use_shadow", text="Cast Shadow")
             col.prop(light, "shadow_softness_factor", text="Shadow Softness")
 
+            if light.type == 'SUN':
+                col.prop(light, "shadow_trace_distance", text="Trace Distance")
+
 
 class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
     bl_label = "Custom Distance"

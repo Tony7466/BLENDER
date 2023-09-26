@@ -409,7 +409,9 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /** Current range of clip-map / cascades levels covered by this shadow. */
   IndexRange levels_range;
   /** Radius of the shadowed light shape. Might be scaled compared to the shading disk. */
-  float disk_shape_radius_;
+  float disk_shape_angle_;
+  /** Maximum distance a shadow map ray can be travel. */
+  float trace_distance_;
 
  public:
   ShadowDirectional(ShadowModule &module) : shadows_(module){};
@@ -424,7 +426,10 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(const float4x4 &object_mat, float min_resolution, float shadow_disk_angle);
+  void sync(const float4x4 &object_mat,
+            float min_resolution,
+            float shadow_disk_angle,
+            float trace_distance);
 
   /**
    * Release the tile-maps that will not be used in the current frame.

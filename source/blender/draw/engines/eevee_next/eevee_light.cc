@@ -84,7 +84,10 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
     if (is_sun_light(this->type)) {
-      this->directional->sync(this->object_mat, 1.0f, la->sun_angle * la->shadow_softness_factor);
+      this->directional->sync(this->object_mat,
+                              1.0f,
+                              la->sun_angle * la->shadow_softness_factor,
+                              la->shadow_trace_distance);
     }
     else {
       /* Reuse shape radius as near clip plane. */
