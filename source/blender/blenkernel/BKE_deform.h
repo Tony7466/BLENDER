@@ -301,6 +301,7 @@ namespace blender::bke {
 VArray<float> varray_for_deform_verts(Span<MDeformVert> dverts, int defgroup_index);
 VMutableArray<float> varray_for_mutable_deform_verts(MutableSpan<MDeformVert> dverts,
                                                      int defgroup_index);
+void remove_defgroup_index(MutableSpan<MDeformVert> dverts, int defgroup_index);
 }  // namespace blender::bke
 #endif
 

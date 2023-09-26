@@ -931,17 +931,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     }
 
     MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
-    threading::parallel_for(dverts.index_range(), 1024, [&](IndexRange range) {
-      for (MDeformVert &dvert : dverts.slice(range)) {
-        MDeformWeight *weight = BKE_defvert_find_index(&dvert, index);
-        BKE_defvert_remove_group(&dvert, weight);
-        for (MDeformWeight &weight : MutableSpan(dvert.dw, dvert.totweight)) {
-          if (weight.def_nr > index) {
-            weight.def_nr--;
-          }
-        }
-      }
-    });
+    bke::remove_defgroup_index(dverts, index);
     return true;
   }
 

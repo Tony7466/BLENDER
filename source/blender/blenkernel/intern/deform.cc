@@ -1767,6 +1767,20 @@ VMutableArray<float> varray_for_mutable_deform_verts(MutableSpan<MDeformVert> dv
 {
   return VMutableArray<float>::For<VArrayImpl_For_VertexWeights>(dverts, defgroup_index);
 }
+
+void remove_defgroup_index(MutableSpan<MDeformVert> dverts, const int defgroup_index)
+{
+  threading::parallel_for(dverts.index_range(), 1024, [&](IndexRange range) {
+    for (MDeformVert &dvert : dverts.slice(range)) {
+      MDeformWeight *weight = BKE_defvert_find_index(&dvert, defgroup_index);
+      BKE_defvert_remove_group(&dvert, weight);
+      for (MDeformWeight &weight : MutableSpan(dvert.dw, dvert.totweight)) {
+        if (weight.def_nr > defgroup_index) {
+          weight.def_nr--;
+        }
+      }
+    }
+  });
 }
 
 }  // namespace blender::bke
