@@ -2013,7 +2013,7 @@ bool UI_panel_list_matches_data(ARegion *region,
                                 ListBase *data,
                                 uiListPanelIDFromDataFunc panel_idname_func);
 
-typedef bool (*uiListPanelMatchesDataFunc)(void *data_link, const struct Panel *panel);
+using uiListPanelMatchesDataFunc = bool (*)(void *data_link, const struct Panel *panel);
 /**
  * Check if the instanced panels in the region's panels correspond to the list of data the panels
  * represent. Returns false if the panels have been reordered or if the types from the list data
