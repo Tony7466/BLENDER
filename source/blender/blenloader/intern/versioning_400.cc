@@ -621,7 +621,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       bNodeSocket *facToSock = nullptr;
 
       LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-        /* Detect node and socket. */
+        /* Find links, nodes and sockets. */
 
         if (link->tonode == node) {
           if (STREQ(link->tosock->identifier, "Detail")) {
