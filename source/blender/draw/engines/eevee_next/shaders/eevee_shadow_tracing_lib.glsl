@@ -202,7 +202,7 @@ ShadowRayDirectional shadow_ray_generate_directional(
   /* `lP` is supposed to be in light rotated space. But not translated. */
   vec4 origin = vec4(lP, dist_to_near_plane / z_range);
 
-  vec2 disk_point = sample_disk(random_2d) * light._radius;
+  vec2 disk_point = sample_disk(random_2d) * light.shadow_shape_scale;
   /* Light shape is 1 unit away from the shading point. */
   vec4 direction = vec4(disk_point, 1.0, -1.0 / z_range);
 
