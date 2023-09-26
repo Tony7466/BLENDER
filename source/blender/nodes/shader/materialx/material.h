@@ -13,8 +13,11 @@ class ExportImageFunction;
 
 namespace blender::nodes::materialx {
 
+using ExportImageFunction = std::function<std::string(Main *, Scene *, Image *, ImageUser *)>;
+
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
                                            Material *material,
+                                           const char *material_name,
                                            ExportImageFunction export_image_fn);
 
 }  // namespace blender::nodes::materialx

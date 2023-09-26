@@ -51,16 +51,21 @@ class DefaultMaterialNodeParser : public NodeParser {
 
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
                                            Material *material,
+                                           const char *material_name,
                                            ExportImageFunction export_image_fn)
 {
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
 
   MaterialX::DocumentPtr doc = MaterialX::createDocument();
+  NodeItem output_item;
+
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
+    // Add a nodegraph for the material
     if (output_node && output_node->typeinfo->materialx_fn) {
-      NodeParserData data = {doc.get(),
+      MaterialX::NodeGraphPtr node_graph = doc->addNodeGraph("NG_" + std::string(material_name));
+      NodeParserData data = {node_graph.get(),
                              depsgraph,
                              material,
                              NodeItem::Type::Material,
@@ -68,29 +73,34 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
                              NodeItem(doc.get()),
                              export_image_fn};
       output_node->typeinfo->materialx_fn(&data, output_node, nullptr);
+      output_item = data.result;
     }
     else {
-      DefaultMaterialNodeParser(doc.get(),
-                                depsgraph,
-                                material,
-                                nullptr,
-                                nullptr,
-                                NodeItem::Type::Material,
-                                nullptr,
-                                export_image_fn)
-          .compute_error();
+      output_item = DefaultMaterialNodeParser(doc.get(),
+                                              depsgraph,
+                                              material,
+                                              nullptr,
+                                              nullptr,
+                                              NodeItem::Type::Material,
+                                              nullptr,
+                                              export_image_fn)
+                        .compute_error();
     }
   }
   else {
-    DefaultMaterialNodeParser(doc.get(),
-                              depsgraph,
-                              material,
-                              nullptr,
-                              nullptr,
-                              NodeItem::Type::Material,
-                              nullptr,
-                              export_image_fn)
-        .compute();
+    output_item = DefaultMaterialNodeParser(doc.get(),
+                                            depsgraph,
+                                            material,
+                                            nullptr,
+                                            nullptr,
+                                            NodeItem::Type::Material,
+                                            nullptr,
+                                            export_image_fn)
+                      .compute();
+  }
+
+  if (output_item.node) {
+    output_item.node->setName(material_name);
   }
 
   CLOG_INFO(LOG_MATERIALX_SHADER,
