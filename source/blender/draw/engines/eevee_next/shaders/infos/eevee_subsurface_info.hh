@@ -16,7 +16,7 @@ GPU_SHADER_CREATE_INFO(eevee_subsurface_setup)
     .image(2, SUBSURFACE_OBJECT_ID_FORMAT, Qualifier::WRITE, ImageType::UINT_2D, "object_id_img")
     .image(3, SUBSURFACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "radiance_img")
     .storage_buf(0, Qualifier::WRITE, "uint", "convolve_tile_buf[]")
-    .storage_buf(1, Qualifier::WRITE, "DispatchCommand", "convolve_dispatch_buf")
+    .storage_buf(1, Qualifier::READ_WRITE, "DispatchCommand", "convolve_dispatch_buf")
     .compute_source("eevee_subsurface_setup_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_subsurface_convolve)
