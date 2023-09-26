@@ -486,8 +486,8 @@ MutableSpan<MDeformVert> CurvesGeometry::deform_verts_for_write()
   if (dvert != nullptr) {
     return {dvert, this->point_num};
   }
-  return {(MDeformVert *)CustomData_add_layer(
-              &this->point_data, CD_MDEFORMVERT, CD_SET_DEFAULT, this->point_num),
+  return {static_cast<MDeformVert *>(CustomData_add_layer(
+              &this->point_data, CD_MDEFORMVERT, CD_SET_DEFAULT, this->point_num)),
           this->point_num};
 }
 
