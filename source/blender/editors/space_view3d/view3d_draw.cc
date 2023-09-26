@@ -1564,6 +1564,11 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
       ED_info_draw_stats(
           bmain, scene, view_layer, v3d_local, xoffset, &yoffset, VIEW3D_OVERLAY_LINEHEIGHT);
     }
+
+    /* Set the size back to the default hard-coded size. Otherwise anyone drawing after this,
+     * without setting explicit size, will draw with widgetlabel size. That is probably ideal,
+     * but size should be set at the calling site not just carried over from here. */
+    BLF_default_size(UI_DEFAULT_TEXT_POINTS);
   }
 
   BLF_batch_draw_end();
