@@ -4708,6 +4708,16 @@ void ANIM_channel_draw(
     /* check if there's enough space for the toggles if the sliders are drawn too */
     if (!(draw_sliders) || (BLI_rcti_size_x(&v2d->mask) > ANIM_UI_get_channel_button_width() / 2))
     {
+      /* NOTE: The comments here match the comments in ANIM_channel_draw_widgets(), as that
+       * function and this one are strongly coupled. */
+
+      /* Little channel color rectangle. */
+      if (acf_show_channel_colors()) {
+        const float rect_width = 0.5f * ICON_WIDTH;
+        const float rect_margin = 2.0f * U.ui_scale;
+        offset += rect_width + 2 * rect_margin;
+      }
+
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
         /* A touch of padding because the star icon is so wide. */
