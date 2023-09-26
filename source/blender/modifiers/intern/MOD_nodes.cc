@@ -20,7 +20,6 @@
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
@@ -66,7 +65,6 @@
 
 #include "BLT_translation.h"
 
-#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -1891,9 +1889,8 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
     if (!BLO_write_is_undo(writer)) {
       /* Boolean properties are added automatically for boolean node group inputs. Integer
        * properties are automatically converted to boolean sockets where applicable as well.
-       * However, boolean properties will crash old versions of Blender, so convert them to
-       * integer properties for writing. The actual value is stored in the same variable for both
-       * types */
+       * However, boolean properties will crash old versions of Blender, so convert them to integer
+       * properties for writing. The actual value is stored in the same variable for both types */
       LISTBASE_FOREACH (IDProperty *, prop, &nmd->settings.properties->data.group) {
         if (prop->type == IDP_BOOLEAN) {
           boolean_props.add_new(prop, reinterpret_cast<IDPropertyUIDataBool *>(prop->ui_data));
@@ -1979,8 +1976,8 @@ static void free_data(ModifierData *md)
 
 static void required_data_mask(ModifierData * /*md*/, CustomData_MeshMasks *r_cddata_masks)
 {
-  /* We don't know what the node tree will need. If there are vertex groups, it is likely that
-   * the node tree wants to access them. */
+  /* We don't know what the node tree will need. If there are vertex groups, it is likely that the
+   * node tree wants to access them. */
   r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   r_cddata_masks->vmask |= CD_MASK_PROP_ALL;
 }
