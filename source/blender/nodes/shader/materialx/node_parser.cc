@@ -64,7 +64,7 @@ std::string NodeParser::node_name() const
   if (node_->output_sockets().size() > 1) {
     name += std::string("_") + socket_out_->name;
   }
-  if (ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
+  if (ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF, NodeItem::Type::SurfaceOpacity)) {
     name += "_" + NodeItem::type(to_type_);
   }
 #ifdef USE_MATERIALX_NODEGRAPH

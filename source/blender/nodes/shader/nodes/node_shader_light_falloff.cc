@@ -32,7 +32,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   /* This node isn't supported by MaterialX. This formula was given from OSL shader code in Cycles
    * node_light_falloff.osl. Considered ray_length=1.0f. */
-  return strength * val(1.0f) / (smooth + val(1.0f));
+  return strength / (smooth + val(1.0f));
 }
 #endif
 NODE_SHADER_MATERIALX_END

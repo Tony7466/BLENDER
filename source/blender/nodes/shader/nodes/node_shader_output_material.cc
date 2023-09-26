@@ -51,13 +51,10 @@ NODE_SHADER_MATERIALX_BEGIN
     NodeItem bsdf = get_input_link("Surface", NodeItem::Type::BSDF);
     NodeItem edf = get_input_link("Surface", NodeItem::Type::EDF);
     if (bsdf || edf) {
-      surface = create_node("surface", NodeItem::Type::SurfaceShader);
-      if (bsdf) {
-        surface.set_input("bsdf", bsdf);
-      }
-      if (edf) {
-        surface.set_input("edf", edf);
-      }
+      NodeItem opacity = get_input_link("Surface", NodeItem::Type::SurfaceOpacity);
+      surface = create_node("surface",
+                            NodeItem::Type::SurfaceShader,
+                            {{"bsdf", bsdf}, {"edf", edf}, {"opacity", opacity}});
     }
   }
   return create_node("surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});

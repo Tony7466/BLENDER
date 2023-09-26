@@ -44,6 +44,9 @@ class NodeItem {
     DisplacementShader,
     SurfaceShader,
     Material,
+
+    /* Special type to retrieve opacity for <surface> */
+    SurfaceOpacity,
   };
   enum class CompareOp { Less = 0, LessEq, Eq, GreaterEq, Greater, NotEq };
 

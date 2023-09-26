@@ -26,7 +26,7 @@ static int node_shader_gpu_mix_shader(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
+  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF, NodeItem::Type::SurfaceOpacity)) {
     return empty();
   }
 

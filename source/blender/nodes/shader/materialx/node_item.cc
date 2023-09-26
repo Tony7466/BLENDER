@@ -14,6 +14,7 @@ NodeItem::NodeItem(MaterialX::GraphElement *graph) : graph_(graph) {}
 
 NodeItem::Type NodeItem::type(const std::string &type_str)
 {
+  /* Converting only MaterialX supported types */
   if (type_str == "multioutput") {
     return Type::Multioutput;
   }
@@ -103,6 +104,8 @@ std::string NodeItem::type(Type type)
       return "surfaceshader";
     case Type::Material:
       return "material";
+    case Type::SurfaceOpacity:
+      return "opacity";
     default:
       BLI_assert_unreachable();
   }

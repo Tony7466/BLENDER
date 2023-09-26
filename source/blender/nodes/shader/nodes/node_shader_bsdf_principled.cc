@@ -350,7 +350,7 @@ NODE_SHADER_MATERIALX_BEGIN
         {"coat_tint", get_input_value("Coat Tint", NodeItem::Type::Color3)},
         {"ior", get_input_value("IOR", NodeItem::Type::Float)},
         {"transmission", get_input_value("Transmission Weight", NodeItem::Type::Float)},
-        //{"alpha", get_input_value("Alpha", NodeItem::Type::Float)},
+        {"alpha", get_input_value("Alpha", NodeItem::Type::Float)},
         {"normal", get_input_link("Normal", NodeItem::Type::Vector3)},
         {"coat_normal", get_input_link("Coat Normal", NodeItem::Type::Vector3)},
         {"tangent", get_input_link("Tangent", NodeItem::Type::Vector3)},
@@ -509,9 +509,6 @@ NODE_SHADER_MATERIALX_BEGIN
       NodeItem n_thin_film_layer = create_node(
           "layer", NodeItem::Type::BSDF, {{"top", n_thin_film_bsdf}, {"base", n_metalness_mix}});
 
-      NodeItem n_opacity_luminance = create_node(
-          "luminance", NodeItem::Type::Color3, {{"in", val(MaterialX::Color3(1.0f, 1.0f, 1.0f))}});
-
       NodeItem n_coat_attenuation = coat.mix(val(MaterialX::Color3(1.0f, 1.0f, 1.0f)),
                                              in["coat_tint"]);
 
@@ -572,9 +569,16 @@ NODE_SHADER_MATERIALX_BEGIN
            {"emission", in["emission"]},
            {"emission_color", in["emission_color"]},
            {"normal", in["normal"]},
-           {"tangent", in["tangent"]}});
+           {"tangent", in["tangent"]},
+           {"opacity", in["alpha"].convert(NodeItem::Type::Color3)}});
       break;
     }
+
+    case NodeItem::Type::SurfaceOpacity: {
+      res = get_input_value("Alpha", NodeItem::Type::Float);
+      break;
+    }
+
     default:
       BLI_assert_unreachable();
   }

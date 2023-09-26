@@ -25,7 +25,7 @@ static int node_shader_gpu_add_shader(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF)) {
+  if (!ELEM(to_type_, NodeItem::Type::BSDF, NodeItem::Type::EDF, NodeItem::Type::SurfaceOpacity)) {
     return empty();
   }
 
@@ -40,6 +40,9 @@ NODE_SHADER_MATERIALX_BEGIN
   }
   if (!shader1 && shader2) {
     return shader2;
+  }
+  if (to_type_ == NodeItem::Type::SurfaceOpacity) {
+    return (shader1 + shader2) * val(0.5f);
   }
   return shader1 + shader2;
 }
