@@ -39,7 +39,6 @@ class NLA_HT_header(Header):
         sub = row.row(align=True)
         sub.popover(
             panel="NLA_PT_snapping",
-            icon='SNAP_INCREMENT',
             text="",
         )
 
