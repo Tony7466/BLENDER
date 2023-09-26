@@ -389,13 +389,6 @@ float shadow_linear_occluder_distance(LightData light,
   return receiver_z - occluder_z;
 }
 
-struct ShadowEvalResult {
-  /* Visibility of the light above the horizon. */
-  float surface_light_visibilty;
-  /* Average occluder distance for rays below the horizon. In world space linear distance. */
-  float subsurface_occluder_distance;
-};
-
 /**
  * Evaluate shadowing by casting rays toward the light direction.
  */
