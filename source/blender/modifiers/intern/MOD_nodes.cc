@@ -1753,13 +1753,14 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  UI_TEMPLATE_LIST_FLAG_NONE);
   uiLayout *ops_col = uiLayoutColumn(list_row, false);
   {
-    uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
-    uiItemO(add_remove_col, "", ICON_ADD, "OBJECT_OT_geometry_nodes_id_mapping_add");
-    uiItemO(add_remove_col, "", ICON_REMOVE, "OBJECT_OT_geometry_nodes_id_mapping_remove");
+    uiLayout *refresh_remove_col = uiLayoutColumn(ops_col, true);
+    {
+      uiLayout *refresh_col = uiLayoutColumn(refresh_remove_col, true);
+      uiLayoutSetActive(refresh_col, has_missing_mappings);
+      uiItemO(refresh_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
+    }
+    uiItemO(refresh_remove_col, "", ICON_REMOVE, "OBJECT_OT_geometry_nodes_id_mapping_remove");
   }
-  uiLayout *update_col = uiLayoutColumn(ops_col, false);
-  uiLayoutSetActive(update_col, has_missing_mappings);
-  uiItemO(update_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
 
   if (has_missing_mappings) {
     uiItemL(col, N_("Missing data-block mappings"), ICON_INFO);

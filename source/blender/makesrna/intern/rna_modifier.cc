@@ -1711,33 +1711,10 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
   return &settings->properties;
 }
 
-static NodesModifierIDMapping *rna_NodesModifier_id_mappings_new(NodesModifierData *nmd)
-{
-  const int old_num = nmd->id_mappings_num;
-  NodesModifierIDMapping *new_mappings = MEM_cnew_array<NodesModifierIDMapping>(old_num + 1,
-                                                                                __func__);
-  memcpy(new_mappings, nmd->id_mappings, sizeof(NodesModifierIDMapping) * old_num);
-  NodesModifierIDMapping &new_mapping = new_mappings[old_num];
-  new_mapping.id_type = ID_MA;
-  MEM_SAFE_FREE(nmd->id_mappings);
-  nmd->id_mappings = new_mappings;
-  nmd->id_mappings_num = old_num + 1;
-  return &new_mapping;
-}
-
 static StructRNA *rna_NodesModifier_id_mapping_id_typef(PointerRNA *ptr)
 {
   NodesModifierIDMapping *mapping = static_cast<NodesModifierIDMapping *>(ptr->data);
   return ID_code_to_RNA_type(mapping->id_type);
-}
-
-static void rna_NodesModifier_id_mapping_id_type_set(PointerRNA *ptr, int value)
-{
-  NodesModifierIDMapping *mapping = static_cast<NodesModifierIDMapping *>(ptr->data);
-  mapping->id_type = value;
-  if (mapping->id && GS(mapping->id->name) != value) {
-    mapping->id = nullptr;
-  }
 }
 
 #else
@@ -7108,13 +7085,13 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Data-Block Name", "Name of the data-block that is to be mapped");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Library Name", "Name of the library that contains the mapped data-block");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ID");
@@ -7127,10 +7104,8 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_id_type_items);
   RNA_def_property_enum_default(prop, ID_MA);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_enum_funcs(prop, nullptr, "rna_NodesModifier_id_mapping_id_type_set", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Data-Block Type", "Type of data-block that is mapped");
-  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   RNA_define_lib_overridable(false);
 }
@@ -7138,20 +7113,11 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
 static void rna_def_modifier_nodes_id_mappings(BlenderRNA *brna)
 {
   StructRNA *srna;
-  PropertyRNA *parm;
   PropertyRNA *prop;
-  FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "NodesModifierIDMappings", nullptr);
   RNA_def_struct_sdna(srna, "NodesModifierData");
   RNA_def_struct_ui_text(srna, "ID Mappings", "Collection of id mappings");
-
-  func = RNA_def_function(srna, "new", "rna_NodesModifier_id_mappings_new");
-  RNA_def_function_ui_description(func, "Add an id mapping to this modifier");
-  /* Return value. */
-  parm = RNA_def_pointer(
-      func, "id_mapping", "NodesModifierIDMapping", "ID Mapping", "Newly created mapping");
-  RNA_def_function_return(func, parm);
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "active_id_mapping");

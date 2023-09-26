@@ -226,7 +226,6 @@ void OBJECT_OT_geometry_nodes_input_attribute_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_geometry_node_tree_copy_assign(struct wmOperatorType *ot);
 void OBJECT_OT_geometry_nodes_id_mapping_update(struct wmOperatorType *ot);
 void OBJECT_OT_geometry_nodes_id_mapping_remove(struct wmOperatorType *ot);
-void OBJECT_OT_geometry_nodes_id_mapping_add(struct wmOperatorType *ot);
 
 /* object_gpencil_modifiers.c */
 
