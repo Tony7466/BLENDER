@@ -304,13 +304,6 @@ static void panel_delete(const bContext *C, ARegion *region, ListBase *panels, P
       panel_activate_state(C, child, PANEL_STATE_EXIT);
     }
 
-    // XXX child panel's customdata is expected(!) to be shared with parent and free'd by the
-    // parent
-    /* Free panel's custom data. */
-    //    if (child->runtime.custom_data_ptr != nullptr) {
-    //      MEM_freeN(child->runtime.custom_data_ptr);
-    //    }
-
     panel_delete(C, region, &panel->children, child);
   }
   BLI_freelistN(&panel->children);
