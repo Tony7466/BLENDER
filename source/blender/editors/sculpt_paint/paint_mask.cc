@@ -73,7 +73,9 @@ static const EnumPropertyItem mode_items[] = {
     {PAINT_MASK_INVERT, "INVERT", 0, "Invert", "Invert the mask"},
     {0}};
 
-static float mask_flood_fill_set_elem(const float elem, PaintMaskFloodMode mode, float value)
+static float mask_flood_fill_get_new_value_for_elem(const float elem,
+                                                    PaintMaskFloodMode mode,
+                                                    float value)
 {
   switch (mode) {
     case PAINT_MASK_FLOOD_VALUE:
@@ -118,7 +120,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
       PBVHVertexIter vi;
       BKE_pbvh_vertex_iter_begin (pbvh, node, vi, PBVH_ITER_UNIQUE) {
         float prevmask = *vi.mask;
-        const float new_mask = mask_flood_fill_set_elem(prevmask, mode, value);
+        const float new_mask = mask_flood_fill_get_new_value_for_elem(prevmask, mode, value);
         if (prevmask != new_mask) {
           SCULPT_mask_vert_set(BKE_pbvh_type(ob->sculpt->pbvh), mask_write, new_mask, vi);
           redraw = true;
@@ -802,7 +804,7 @@ static void mask_gesture_apply_task(SculptGestureContext *sgcontext,
           BKE_pbvh_node_mark_normals_update(node);
         }
       }
-      const float new_mask = mask_flood_fill_set_elem(
+      const float new_mask = mask_flood_fill_get_new_value_for_elem(
           prevmask, mask_operation->mode, mask_operation->value);
       if (prevmask != new_mask) {
         SCULPT_mask_vert_set(BKE_pbvh_type(ob->sculpt->pbvh), mask_write, new_mask, vd);
