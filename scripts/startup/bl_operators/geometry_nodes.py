@@ -36,7 +36,7 @@ def geometry_node_group_empty_new(name):
 
 
 def geometry_node_group_empty_modifier_new(name):
-    group = geometry_node_group_empty_new(data_("Tool"))
+    group = geometry_node_group_empty_new(data_("Geometry Nodes"))
     group.is_modifier = True
     return group
 
@@ -294,7 +294,7 @@ class NewGeometryNodeTreeAssign(Operator):
 
 
 class NewGeometryNodeGroupTool(Operator):
-    """Create a new geometry node group for an tool"""
+    """Create a new geometry node group for a tool"""
     bl_idname = "node.new_geometry_node_group_tool"
     bl_label = "New Geometry Node Tool Group"
     bl_options = {'REGISTER', 'UNDO'}
