@@ -32,7 +32,6 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_gpencil_legacy.h"
@@ -112,18 +111,14 @@ bDeformGroup *BKE_object_defgroup_add(Object *ob)
 
 MDeformVert *BKE_object_defgroup_data_create(ID *id)
 {
-  switch (GS(id->name)) {
-    case ID_ME: {
-      return BKE_mesh_deform_verts_for_write((Mesh *)id);
-    }
-    case ID_LT: {
-      Lattice *lt = (Lattice *)id;
-      lt->dvert = static_cast<MDeformVert *>(MEM_callocN(
-          sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw, "lattice deformVert"));
-      return lt->dvert;
-    }
-    default:
-      BLI_assert_unreachable();
+  if (GS(id->name) == ID_ME) {
+    return BKE_mesh_deform_verts_for_write((Mesh *)id);
+  }
+  if (GS(id->name) == ID_LT) {
+    Lattice *lt = (Lattice *)id;
+    lt->dvert = static_cast<MDeformVert *>(MEM_callocN(
+        sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw, "lattice deformVert"));
+    return lt->dvert;
   }
 
   return nullptr;
