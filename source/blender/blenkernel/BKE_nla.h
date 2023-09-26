@@ -152,7 +152,8 @@ void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt);
 void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
 
 /**
- * Ensure that the passed range is not zero length.
+ * Compute the length of the passed strip's clip, unless the clip length
+ * is zero in which case a non-zero value is returned.
  *
  * WARNING: this function is *very narrow* and special-cased in its
  * application.  It was introduced as part of the fix for issue #107030,
@@ -166,20 +167,21 @@ void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool d
  * avoid the strip's scale having to be infinity.  In other words, it's a
  * hack.  But at least now it's a hack collected in one place.
  *
+ */
+float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip);
+
+/**
+ * Ensure the passed range has non-zero length, using the same logic as
+ * `BKE_nla_clip_length_get_nonzero` to determine the new non-zero length.
+ *
+ * See the documentation for `BKE_nla_clip_length_get_nonzero` for the
+ * reason this function exists and the issues around its use.
+ *
  * Usage: both `actstart` and `r_actend` should already be set to the
- * start/end values of a strip's clip.  `r_actend` will then be modified only
+ * start/end values of a strip's clip.  `r_actend` will be modified
  * if necessary to ensure the range is non-zero in length.
  */
 void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend);
-
-/**
- * Compute the length of the passed range, using the same logic
- * as `BKE_nlatrack_remove_and_free`.
- *
- * See the documentation of `BKE_nlatrack_remove_and_free` for the reason
- * this function exists and the issues around its use.
- */
-float BKE_nla_clip_length_get_nonzero(float actstart, float actend);
 
 /**
  * Create a NLA Strip referencing the given Action.

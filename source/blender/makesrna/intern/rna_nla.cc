@@ -310,7 +310,7 @@ static void rna_NlaStrip_frame_end_ui_set(PointerRNA *ptr, float value)
   /* calculate the lengths the strip and its action : *
    * (Meta and transitions shouldn't be updated, but clip and sound should) */
   if (data->type == NLASTRIP_TYPE_CLIP || data->type == NLASTRIP_TYPE_SOUND) {
-    const float actlen = BKE_nla_clip_length_get_nonzero(data->actstart, data->actend);
+    const float actlen = BKE_nla_clip_length_get_nonzero(data);
 
     /* Modify the strip's action end frame, or repeat based on :
      * - if data->repeat == 1.0f, modify the action end frame :

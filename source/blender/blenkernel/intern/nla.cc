@@ -446,20 +446,20 @@ NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
   return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
+float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip)
+{
+  if (strip->actend <= strip->actstart) {
+    return 1.0f;
+  }
+  else {
+    return strip->actend - strip->actstart;
+  }
+}
+
 void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
 {
   if (*r_actend <= *actstart) {
     *r_actend = *actstart + 1.0f;
-  }
-}
-
-float BKE_nla_clip_length_get_nonzero(float actstart, float actend)
-{
-  if (actend <= actstart) {
-    return 1.0f;
-  }
-  else {
-    return actend - actstart;
   }
 }
 
@@ -639,7 +639,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
   scale = fabsf(strip->scale);
 
   /* length of referenced action */
-  const float actlength = BKE_nla_clip_length_get_nonzero(strip->actstart, strip->actend);
+  const float actlength = BKE_nla_clip_length_get_nonzero(strip);
 
   /* reversed = play strip backwards */
   if (strip->flag & NLASTRIP_FLAG_REVERSE) {
@@ -1619,7 +1619,7 @@ void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
   }
 
   /* calculate new length factors */
-  const float actlen = BKE_nla_clip_length_get_nonzero(strip->actstart, strip->actend);
+  const float actlen = BKE_nla_clip_length_get_nonzero(strip);
 
   mapping = strip->scale * strip->repeat;
 
