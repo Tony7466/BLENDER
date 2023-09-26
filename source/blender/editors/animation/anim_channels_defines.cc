@@ -473,6 +473,7 @@ static bAnimChannelType ACF_SUMMARY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_summary_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_summary_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -584,6 +585,7 @@ static bAnimChannelType ACF_SCENE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_root_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_root_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -764,6 +766,7 @@ static bAnimChannelType ACF_OBJECT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_root_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_root_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -911,12 +914,45 @@ static void *acf_group_setting_ptr(bAnimListElem *ale,
   return GET_ACF_FLAG_PTR(agrp->flag, r_type);
 }
 
+static bool get_actiongroup_color(const bActionGroup *agrp, uint8_t r_color[3])
+{
+  if (!agrp) {
+    return false;
+  }
+
+  const int8_t color_index = agrp->customCol;
+  if (color_index == 0) {
+    return false;
+  }
+
+  const ThemeWireColor *wire_color;
+  if (color_index < 0) {
+    wire_color = &agrp->cs;
+  }
+  else {
+    const bTheme *btheme = UI_GetTheme();
+    wire_color = &btheme->tarm[(color_index - 1)];
+  }
+
+  r_color[0] = wire_color->solid[0];
+  r_color[1] = wire_color->solid[1];
+  r_color[2] = wire_color->solid[2];
+  return true;
+}
+
+static bool acf_group_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const bActionGroup *agrp = static_cast<const bActionGroup *>(ale->data);
+  return get_actiongroup_color(agrp, r_color);
+}
+
 /** Group type define. */
 static bAnimChannelType ACF_GROUP = {
     /*channel_type_name*/ "Group",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_group_color,
+    /*get_channel_color*/ acf_group_channel_color,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -1024,12 +1060,19 @@ static void *acf_fcurve_setting_ptr(bAnimListElem *ale,
   return GET_ACF_FLAG_PTR(fcu->flag, r_type);
 }
 
+static bool acf_fcurve_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const FCurve *fcu = static_cast<const FCurve *>(ale->data);
+  return get_actiongroup_color(fcu->grp, r_color);
+}
+
 /** F-Curve type define. */
 static bAnimChannelType ACF_FCURVE = {
     /*channel_type_name*/ "F-Curve",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_fcurve_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /* XXX rename this to f-curves only? */
@@ -1146,6 +1189,7 @@ static bAnimChannelType ACF_NLACONTROLS = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_nla_controls_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_nla_controls_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -1186,6 +1230,7 @@ static bAnimChannelType ACF_NLACURVE = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_group_offset,
@@ -1276,6 +1321,7 @@ static bAnimChannelType ACF_FILLACTD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1361,6 +1407,7 @@ static bAnimChannelType ACF_FILLDRIVERS = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1442,6 +1489,7 @@ static bAnimChannelType ACF_DSMAT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1523,6 +1571,7 @@ static bAnimChannelType ACF_DSLIGHT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1611,6 +1660,7 @@ static bAnimChannelType ACF_DSTEX = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_dstex_offset,
@@ -1696,6 +1746,7 @@ static bAnimChannelType ACF_DSCACHEFILE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1781,6 +1832,7 @@ static bAnimChannelType ACF_DSCAM = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1872,6 +1924,7 @@ static bAnimChannelType ACF_DSCUR = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1972,6 +2025,7 @@ static bAnimChannelType ACF_DSSKEY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2053,6 +2107,7 @@ static bAnimChannelType ACF_DSWOR = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2134,6 +2189,7 @@ static bAnimChannelType ACF_DSPART = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2215,6 +2271,7 @@ static bAnimChannelType ACF_DSMBALL = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2296,6 +2353,7 @@ static bAnimChannelType ACF_DSARM = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2388,6 +2446,7 @@ static bAnimChannelType ACF_DSNTREE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_dsntree_offset,
@@ -2469,6 +2528,7 @@ static bAnimChannelType ACF_DSLINESTYLE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2550,6 +2610,7 @@ static bAnimChannelType ACF_DSMESH = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /* XXX: this only works for compositing. */
@@ -2632,6 +2693,7 @@ static bAnimChannelType ACF_DSLAT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /* XXX: this only works for compositing. */
@@ -2714,6 +2776,7 @@ static bAnimChannelType ACF_DSSPK = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2795,6 +2858,7 @@ static bAnimChannelType ACF_DSCURVES = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2875,6 +2939,7 @@ static bAnimChannelType ACF_DSPOINTCLOUD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2955,6 +3020,7 @@ static bAnimChannelType ACF_DSVOLUME = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3035,6 +3101,7 @@ static bAnimChannelType ACF_DSGPENCIL = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3116,6 +3183,7 @@ static bAnimChannelType ACF_DSMCLIP = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3231,6 +3299,7 @@ static bAnimChannelType ACF_SHAPEKEY = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3313,6 +3382,7 @@ static bAnimChannelType ACF_GPD_LEGACY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_gpd_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3397,6 +3467,13 @@ static int acf_gpl_setting_flag_legacy(bAnimContext * /*ac*/,
   }
 }
 
+static bool acf_gpl_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const bGPDlayer *gpl = static_cast<const bGPDlayer *>(ale->data);
+  rgb_float_to_uchar(r_color, gpl->color);
+  return true;
+}
+
 /* get pointer to the setting */
 static void *acf_gpl_setting_ptr_legacy(bAnimListElem *ale,
                                         eAnimChannel_Settings /*setting*/,
@@ -3414,6 +3491,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_gpl_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
@@ -3609,6 +3687,7 @@ static bAnimChannelType ACF_GPD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_gpd_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3628,6 +3707,7 @@ static bAnimChannelType ACF_GPL = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_gpl_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ greasepencil::layer_offset,
@@ -3647,6 +3727,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ greasepencil::layer_group_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ greasepencil::layer_offset,
@@ -3727,6 +3808,7 @@ static bAnimChannelType ACF_MASKDATA = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_mask_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3823,6 +3905,7 @@ static bAnimChannelType ACF_MASKLAYER = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
@@ -3963,6 +4046,7 @@ static bAnimChannelType ACF_NLATRACK = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_nlatrack_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset, /* XXX? */
@@ -4144,6 +4228,7 @@ static bAnimChannelType ACF_NLAACTION = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
     /* NOTE: the backdrop handles this too, since it needs special hacks. */
     /*get_backdrop_color*/ acf_nlaaction_color,
+    /*get_channel_color*/ nullptr,
 
     /*draw_backdrop*/ acf_nlaaction_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
@@ -5399,56 +5484,6 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   MEM_freeN(opacity_rna_path);
 }
 
-/* TODO: move this function into the generic animation channel structure. */
-static bool anim_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
-{
-  bActionGroup *agrp = nullptr;
-
-  /* Each case either sets agrp, or assigns to r_color and returns. */
-  switch (ale->type) {
-    case ANIMTYPE_GPLAYER: {
-      bGPDlayer *gpl = (bGPDlayer *)ale->data;
-      rgb_float_to_uchar(r_color, gpl->color);
-      return true;
-    }
-    case ANIMTYPE_GROUP: {
-      agrp = static_cast<bActionGroup *>(ale->data);
-      break;
-    }
-    case ANIMTYPE_FCURVE: {
-      FCurve *fcu = static_cast<FCurve *>(ale->data);
-      agrp = fcu->grp;
-      break;
-    }
-    default:
-      /* TODO: support grease pencil channels, they can (AFAIK) also be colored. */
-      return false;
-  }
-
-  if (!agrp) {
-    return false;
-  }
-
-  const int8_t color_index = agrp->customCol;
-  if (color_index == 0) {
-    return false;
-  }
-
-  const ThemeWireColor *wire_color;
-  if (color_index < 0) {
-    wire_color = &agrp->cs;
-  }
-  else {
-    const bTheme *btheme = UI_GetTheme();
-    wire_color = &btheme->tarm[(color_index - 1)];
-  }
-
-  r_color[0] = wire_color->solid[0];
-  r_color[1] = wire_color->solid[1];
-  r_color[2] = wire_color->solid[2];
-  return true;
-}
-
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
                                bAnimListElem *ale,
@@ -5607,7 +5642,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         const float rect_width = 0.5f * ICON_WIDTH;
         const float rect_margin = 2.0f * U.ui_scale;
         uint8_t color[3];
-        if (anim_channel_color(ale, color)) {
+        if (acf->get_channel_color && acf->get_channel_color(ale, color)) {
           immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
           immUniformColor3ubv(color);
 
