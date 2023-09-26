@@ -430,18 +430,28 @@ void IMB_processor_apply_threaded_scanlines(int total_scanlines,
 /** \name Alpha-under
  * \{ */
 
-void IMB_alpha_under_color_float(float *rect_float, int x, int y, float backcol[3])
+void IMB_alpha_under_color_float(float *rect_float, int x, int y, const float backcol[3])
 {
-  size_t a = size_t(x) * y;
-  float *fp = rect_float;
+    // Calculate the total number of pixels in the rectangular region
+    size_t num_pixels = static_cast<size_t>(x) * y;
+    float *fp = rect_float;
 
-  while (a--) {
-    const float mul = 1.0f - fp[3];
-    madd_v3_v3fl(fp, backcol, mul);
-    fp[3] = 1.0f;
+    // Loop through each pixel
+    for (size_t i = 0; i < num_pixels; ++i) {
+        // Calculate the alpha multiplication factor
+        const float mul = 1.0f - fp[3];
+        
+        // Perform alpha compositing: C = A * B + (1 - A) * BackColor
+        fp[0] = fp[0] * fp[3] + backcol[0] * mul;
+        fp[1] = fp[1] * fp[3] + backcol[1] * mul;
+        fp[2] = fp[2] * fp[3] + backcol[2] * mul;
+        
+        // Set the alpha channel to 1.0
+        fp[3] = 1.0f;
 
-    fp += 4;
-  }
+        // Move to the next pixel
+        fp += 4;
+    }
 }
 
 void IMB_alpha_under_color_byte(uchar *rect, int x, int y, const float backcol[3])
