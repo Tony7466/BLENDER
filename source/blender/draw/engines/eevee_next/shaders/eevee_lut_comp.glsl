@@ -14,7 +14,9 @@
 /* Generate BRDF LUT following "Real shading in unreal engine 4" by Brian Karis
  * https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
  * Parametrizing with `x = roughness` and `y = sqrt(1.0 - cos(theta))`.
- * The result is interpreted as: `integral = F0 * scale + F90 * bias - b * f82`. */
+ * The result is interpreted as: `integral = F0 * scale + F90 * bias - F82_tint * metal_bias`.
+ * with `F82_tint = mix(F0, vec3(1.0), pow5f(6.0 / 7.0)) * (7.0 / pow6f(6.0 / 7.0)) * (1.0 - F82)`
+ */
 vec4 ggx_brdf_split_sum(vec3 lut_coord)
 {
   /* Squaring for perceptually linear roughness, see [Physically Based Shading at Disney]
@@ -29,7 +31,7 @@ vec4 ggx_brdf_split_sum(vec3 lut_coord)
   /* Integrating BRDF. */
   float scale = 0.0;
   float bias = 0.0;
-  float f82 = 0.0;
+  float metal_bias = 0.0;
   const uint sample_count = 512u * 512u;
   for (uint i = 0u; i < sample_count; i++) {
     vec2 rand = hammersley_2d(i, sample_count);
@@ -50,14 +52,14 @@ vec4 ggx_brdf_split_sum(vec3 lut_coord)
       bias += s * weight;
       /* F82 tint effect. */
       float b = VH * saturate(pow6f(1.0 - VH));
-      f82 += b * weight;
+      metal_bias += b * weight;
     }
   }
   scale /= float(sample_count);
   bias /= float(sample_count);
-  f82 /= float(sample_count);
+  metal_bias /= float(sample_count);
 
-  return vec4(scale, bias, f82, 0.0);
+  return vec4(scale, bias, metal_bias, 0.0);
 }
 
 /* Generate BSDF LUT for `IOR < 1` using Schlick's approximation. Returns the transmittance and the

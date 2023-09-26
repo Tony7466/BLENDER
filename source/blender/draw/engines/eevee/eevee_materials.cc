@@ -154,7 +154,7 @@ static void eevee_init_util_texture()
   memcpy(texels_layer, blender::eevee::lut::ltc_mat_ggx, sizeof(float[4]) * 64 * 64);
   texels_layer += 64 * 64;
 
-  /* Copy brdf_ggx into 2nd layer red and green channels. */
+  /* Copy brdf_ggx into 2nd layer red, green and blue channels. */
   for (int x = 0; x < 64; x++) {
     for (int y = 0; y < 64; y++) {
       texels_layer[y * 64 + x][0] = blender::eevee::lut::brdf_ggx[y][x][0];
