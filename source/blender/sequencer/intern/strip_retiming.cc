@@ -372,49 +372,43 @@ void SEQ_retiming_offset_transition_key(const Scene *scene,
 
 void SEQ_retiming_remove_multiple_keys(Sequence *seq, blender::Vector<SeqRetimingKey *> &keys)
 {
-  /* Add last key to make algorithm simpler. */
-  keys.append_non_duplicates(SEQ_retiming_last_key_get(seq));
+  if ((*keys.begin())->strip_frame_index == 0) {
+    keys.remove(0);
+  }
+  if (SEQ_retiming_is_last_key(seq, *keys.end())) {
+    keys.remove(keys.size() - 1);
+  }
 
   const size_t keys_count = SEQ_retiming_keys_count(seq);
-  size_t new_keys_count = keys_count;
-  for (SeqRetimingKey *key : keys) {
-    if (key->strip_frame_index != 0 && !SEQ_retiming_is_last_key(seq, key)) {
-      new_keys_count--;
-    }
-  }
+  size_t new_keys_count = keys_count - keys.size();
 
   SeqRetimingKey *new_keys = (SeqRetimingKey *)MEM_callocN(new_keys_count * sizeof(SeqRetimingKey),
                                                            __func__);
-  int next_index_to_copy = 0;
+  int next_index_to_copy_from = 0;
   int keys_copied = 0;
 
   for (SeqRetimingKey *key : keys) {
-    /* First and last key can not be removed. */
-    if (key->strip_frame_index == 0) {
-      continue;
-    }
-
     const int key_index = key - seq->retiming_keys;
-    SeqRetimingKey *copy_from = seq->retiming_keys + (next_index_to_copy);
-    SeqRetimingKey *copy_to = new_keys + (keys_copied);
-    int copy_num = key_index - next_index_to_copy;
+    const int copy_num = key_index - next_index_to_copy_from;
 
-    if (SEQ_retiming_is_last_key(seq, key)) {
-      copy_num += 1;
-    }
-
-    next_index_to_copy = key_index + 1;
-
-    if (copy_num > 0) {
-      memcpy(copy_to, copy_from, copy_num * sizeof(SeqRetimingKey));
-    }
+    memcpy(new_keys + keys_copied,
+           seq->retiming_keys + next_index_to_copy_from,
+           copy_num * sizeof(SeqRetimingKey));
 
     keys_copied += copy_num;
+    next_index_to_copy_from = key_index + 1;
   }
+
+  /* Copy remaining keys. */
+  const int copy_num = seq->retiming_keys_num - next_index_to_copy_from;
+
+  memcpy(new_keys + keys_copied,
+         seq->retiming_keys + next_index_to_copy_from,
+         copy_num * sizeof(SeqRetimingKey));
 
   MEM_freeN(seq->retiming_keys);
   seq->retiming_keys = new_keys;
-  seq->retiming_keys_num = keys_copied;
+  seq->retiming_keys_num = keys_copied + copy_num;
 }
 
 static void seq_retiming_remove_key_ex(Sequence *seq, SeqRetimingKey *key)
