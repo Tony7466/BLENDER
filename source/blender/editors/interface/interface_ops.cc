@@ -1346,12 +1346,26 @@ bool UI_context_copy_to_selected_list(bContext *C,
     return false;
   }
 
+  /* Account for properties only being available for some sequence types. */
   if (ensure_list_items_contain_prop) {
     const char *prop_id = RNA_property_identifier(prop);
     LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
       if ((ptr->type != link->ptr.type) &&
           (RNA_struct_type_find_property(link->ptr.type, prop_id) != prop))
       {
+        BLI_remlink(r_lb, link);
+        MEM_freeN(link);
+      }
+    }
+  }
+
+  /* Similarly account for custom properties only being available for some members in selection. */
+  if (RNA_property_is_idprop(prop)) {
+    PointerRNA dummy_ptr;
+    PropertyRNA *dummy_prop;
+    const char *prop_py = RNA_path_property_py(ptr, prop, -1);
+    LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
+      if (!RNA_path_resolve_property(&link->ptr, prop_py, &dummy_ptr, &dummy_prop)) {
         BLI_remlink(r_lb, link);
         MEM_freeN(link);
       }
@@ -1388,6 +1402,9 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
     RNA_path_resolve_property(ptr_link, path, &lptr, &lprop);
   }
   else {
+    /* This assumes the property is valid on link (not necessarily the case for custom properties
+     * on e.g. bones though). But non-existing custom properties get filtered out in
+     * UI_context_copy_to_selected_list(). */
     lptr = *ptr_link;
     lprop = prop;
   }
