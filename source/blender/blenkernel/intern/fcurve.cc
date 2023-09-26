@@ -1724,6 +1724,53 @@ void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range)
   }
 }
 
+BezTriple *BKE_bezier_array_merge(
+    BezTriple *a, const int size_a, BezTriple *b, const int size_b, int *merged_size)
+{
+  BezTriple *large_array = static_cast<BezTriple *>(
+      MEM_callocN(size_a + size_b * sizeof(BezTriple), "beztriple"));
+
+  int iterator_a = 0;
+  int iterator_b = 0;
+  *merged_size = 0;
+
+  while (iterator_a < size_a && iterator_b < size_b) {
+    if (iterator_a >= size_a) {
+      memcpy(&large_array[*merged_size], &b[iterator_b], sizeof(BezTriple));
+      iterator_b++;
+    }
+    else if (iterator_b >= size_b) {
+      memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
+      iterator_a++;
+    }
+    else if (b->vec[1][0] == a->vec[1][0]) {
+      memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
+      iterator_a++;
+      iterator_b++;
+    }
+    else if (a->vec[1][0] < b->vec[1][0]) {
+      memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
+      iterator_a++;
+    }
+    else {
+      memcpy(&large_array[*merged_size], &b[iterator_b], sizeof(BezTriple));
+      iterator_b++;
+    }
+    (*merged_size)++;
+  }
+
+  BezTriple *minimal_array;
+  if (*merged_size < size_a + size_b) {
+    minimal_array = static_cast<BezTriple *>(
+        MEM_reallocN(large_array, sizeof(BezTriple) * (*merged_size)));
+  }
+  else {
+    minimal_array = large_array;
+  }
+
+  return minimal_array;
+}
+
 bool BKE_fcurve_delete_keys_selected(FCurve *fcu)
 {
   if (fcu->bezt == nullptr) { /* ignore baked curves */

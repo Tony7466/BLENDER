@@ -1287,10 +1287,28 @@ void bake_fcurve(FCurve *fcu,
     remove_fcurve_key_range(fcu, range, remove_existing);
   }
 
+  BezTriple *baked_keys = static_cast<BezTriple *>(
+      MEM_callocN(sample_count * sizeof(BezTriple), "beztriple"));
+
   for (int i = 0; i < sample_count; i++) {
-    insert_vert_fcurve(
-        fcu, range[0] + i * step, samples[i], BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+    BezTriple *key = &baked_keys[i];
+    BEZKEYTYPE(key) = BEZT_KEYTYPE_KEYFRAME;
+    key->vec[1][0] = range[0] + i * step;
+    key->vec[1][1] = samples[i];
   }
+
+  int merged_size;
+  BezTriple *merged_bezt = BKE_bezier_array_merge(
+      baked_keys, sample_count, fcu->bezt, fcu->totvert, &merged_size);
+
+  if (fcu->bezt != nullptr) {
+    /* Can happen if we removed all keys beforehand. */
+    MEM_freeN(fcu->bezt);
+  }
+  MEM_freeN(baked_keys);
+  fcu->bezt = merged_bezt;
+  fcu->totvert = merged_size;
+
   MEM_freeN(samples);
   BKE_fcurve_handles_recalc(fcu);
 }
