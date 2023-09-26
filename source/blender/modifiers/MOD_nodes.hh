@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "BKE_bake_id_mapping.hh"
-
 struct NodesModifierData;
 struct Object;
 

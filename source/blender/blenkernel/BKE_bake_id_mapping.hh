@@ -51,6 +51,9 @@ struct BakeIDMappingKey {
 
 class BakeIDMapping {
  public:
+  /**
+   * Get the ID for the given key, or null if it is not mapped.
+   */
   virtual ID *get(const BakeIDMappingKey &key, const ID_Type type) const = 0;
 
   /**

@@ -49,7 +49,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_idprop.hh"
+#include "BKE_idprop.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -96,8 +96,6 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-
-#include "MOD_nodes.hh"
 
 #include "object_intern.h"
 

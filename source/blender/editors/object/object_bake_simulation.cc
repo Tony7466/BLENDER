@@ -421,10 +421,6 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* Necessary, because otherwise the main depsgraph relations are rebuild in the worker thread
-   * which seems to cause all kinds of issues. */
-  BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
-
   wmJob *wm_job = WM_jobs_get(wm,
                               CTX_wm_window(C),
                               CTX_data_scene(C),
