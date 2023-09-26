@@ -463,7 +463,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(278, 6)) {
     /* Clear preference flags for re-use. */
-    userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | USER_FLAG_UNUSED_2 | USER_FLAG_UNUSED_3 |
+    userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | (1 << 2) | USER_FLAG_UNUSED_3 |
                        USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
                        USER_DEVELOPER_UI);
     userdef->uiflag &= ~(USER_HEADER_BOTTOM);
@@ -865,6 +865,10 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(400, 24)) {
     /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
     userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 26)) {
+    userdef->animation_flag |= USER_ANIM_SHOW_CHANNEL_GROUP_COLORS;
   }
 
   /**

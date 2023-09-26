@@ -161,7 +161,7 @@ struct ThemeColorData {
   float4 color_bone_pose_constraint;
   float4 color_bone_pose_ik;
   float4 color_bone_pose_spline_ik;
-  float4 color_bone_pose_target;
+  float4 color_bone_pose_no_target;
   float4 color_bone_solid;
   float4 color_bone_locked;
   float4 color_bone_active;
