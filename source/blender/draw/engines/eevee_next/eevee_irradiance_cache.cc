@@ -785,20 +785,20 @@ void IrradianceBake::surfel_raster_views_sync(float3 scene_min,
   /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
   auto sync_view = [&](View &view, CartesianBasis basis) {
-    float4x4 _viewinv = viewinv * from_rotation<float4x4>(basis);
+    float4x4 capture_viewinv = viewinv * from_rotation<float4x4>(basis);
 
-    float3 _extent_min = transform_point(invert(basis), extent_min);
-    float3 _extent_max = transform_point(invert(basis), extent_max);
+    float3 capture_extent_min = transform_point(invert(basis), extent_min);
+    float3 capture_extent_max = transform_point(invert(basis), extent_max);
 
-    float4x4 winmat = projection::orthographic(_extent_min.x,
-                                               _extent_max.x,
-                                               _extent_min.y,
-                                               _extent_max.y,
-                                               -_extent_min.z,
-                                               -_extent_max.z);
+    float4x4 capture_winmat = projection::orthographic(capture_extent_min.x,
+                                                       capture_extent_max.x,
+                                                       capture_extent_min.y,
+                                                       capture_extent_max.y,
+                                                       -capture_extent_min.z,
+                                                       -capture_extent_max.z);
 
     view.visibility_test(false);
-    view.sync(invert(_viewinv), winmat);
+    view.sync(invert(capture_viewinv), capture_winmat);
   };
 
   sync_view(view_x_, basis_x_);
