@@ -1,1 +1,2 @@
 Referenced by issue #112900, Regression: Assert displaying geometry
+Referenced by commit c095962d06243a0276df81d383ee4cf93f1a8d13, Fix #112900: Asset displaying mesh with hiding and no material indices
