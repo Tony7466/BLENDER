@@ -38,7 +38,6 @@ struct Main;
 struct Mesh;
 struct ModifierData;
 struct Object;
-struct Panel;
 struct PointerRNA;
 struct Scene;
 struct bArmature;
