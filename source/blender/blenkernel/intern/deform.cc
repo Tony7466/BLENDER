@@ -14,7 +14,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_curves_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
@@ -525,8 +524,8 @@ bool BKE_id_defgroup_name_find(const ID *id,
   if (name == nullptr || name[0] == '\0') {
     return false;
   }
-  int index;
   const ListBase *defbase = BKE_id_defgroup_list_get(id);
+  int index;
   LISTBASE_FOREACH_INDEX (bDeformGroup *, group, defbase, index) {
     if (STREQ(name, group->name)) {
       if (r_index != nullptr) {
