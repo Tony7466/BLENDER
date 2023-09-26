@@ -83,8 +83,7 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
   grid_offset = int2(0);
   lod_bias = lod_bias_;
 
-  /* Side and shift depends on near and far, so it's enough to test only those. */
-  if ((clip_near != near_) || (clip_far != far_)) {
+  if ((clip_near != near_) || (clip_far != far_) || (half_size != side_)) {
     set_dirty();
   }
 
@@ -258,8 +257,12 @@ void ShadowPunctual::release_excess_tilemaps()
   tilemaps_ = span.take_front(tilemaps_needed_);
 }
 
-void ShadowPunctual::compute_projection_boundaries(
-    float radius, float max_lit_distance, float &near, float &far, float &side)
+void ShadowPunctual::compute_projection_boundaries(float light_radius,
+                                                   float shadow_radius,
+                                                   float max_lit_distance,
+                                                   float &near,
+                                                   float &far,
+                                                   float &side)
 {
   /**
    * In order to make sure we can trace any ray in its entirety using a single tile-map, we have
@@ -301,7 +304,7 @@ void ShadowPunctual::compute_projection_boundaries(
    *                   /-------------/------------x .... Desired near plane (inscribed cube)
    *                  /         --/ ..            |
    *                 /       --/      ...         |
-                    /     --/            ....     |
+   *                /     --/            ....     |
    *               /    -/                    ....|
    *              /  --/                          |
    *             /--/                             |
@@ -315,15 +318,20 @@ void ShadowPunctual::compute_projection_boundaries(
    *
    * TODO(fclem): Explain derivation.
    */
-  float cos_alpha = radius / max_lit_distance;
+  float cos_alpha = shadow_radius / max_lit_distance;
   float sin_alpha = sqrt((1.0f - math::square(cos_alpha)));
-  float near_shift = M_SQRT2 * radius * 0.5f * (sin_alpha - cos_alpha);
-  float side_shift = M_SQRT2 * radius * 0.5f * (sin_alpha + cos_alpha);
-  float origin_shift = M_SQRT2 * radius / (sin_alpha - cos_alpha);
+  float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
+  float side_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha + cos_alpha);
+  float origin_shift = M_SQRT2 * shadow_radius / (sin_alpha - cos_alpha);
   /* Make near plane to be inside the inscribed cube of the sphere. */
-  near = radius / M_SQRT3;
+  near = max_ff(light_radius, max_lit_distance / 4000.0f) / M_SQRT3;
   far = max_lit_distance;
-  side = (side_shift / (origin_shift - near_shift)) * (origin_shift + near);
+  if (shadow_radius > 1e-5f) {
+    side = ((side_shift / (origin_shift - near_shift)) * (origin_shift + near));
+  }
+  else {
+    side = near;
+  }
 }
 
 void ShadowPunctual::end_sync(Light &light, float lod_bias)
@@ -331,7 +339,8 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
 
   float side, near, far;
-  compute_projection_boundaries(light_radius_, max_distance_, near, far, side);
+  compute_projection_boundaries(
+      light_radius_, light_radius_ * softness_factor_, max_distance_, near, far, side);
 
   /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
   float shift = (is_area_light(light.type)) ? near : 0.0f;
