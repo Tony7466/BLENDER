@@ -866,8 +866,8 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
     return nullptr;
   }
 
-  { /* allocate the idname */
-    const char *strings[] = {
+  {
+    /*allocate the idname * / const char *strings[] = {
         temp_buffers.idname,
         temp_buffers.name,
     };

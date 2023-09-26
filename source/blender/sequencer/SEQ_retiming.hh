@@ -72,6 +72,8 @@ bool SEQ_retiming_key_is_freeze_frame(const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_clear(const struct Editing *ed);
 void SEQ_retiming_selection_append(struct SeqRetimingKey *key);
 void SEQ_retiming_selection_remove(struct SeqRetimingKey *key);
+void SEQ_retiming_remove_multiple_keys(struct Sequence *seq,
+                                       blender::Vector<SeqRetimingKey *> &keys);
 bool SEQ_retiming_selection_contains(const struct Editing *ed, const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_has_whole_transition(const struct Editing *ed,
                                                  struct SeqRetimingKey *key);

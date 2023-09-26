@@ -870,6 +870,7 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
   Scene *scene = CTX_data_scene(C);
 
   blender::Vector<Sequence *> strips_to_handle;
+  blender::Vector<SeqRetimingKey *> keys_to_delete;
   blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(scene));
 
   for (auto item : selection.items()) {
@@ -879,13 +880,11 @@ int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */)
     }
 
     strips_to_handle.append_non_duplicates(item.value);
-    item.key->flag |= SEQ_DELETE_KEY;
+    keys_to_delete.append(item.key);
   }
 
   for (Sequence *seq : strips_to_handle) {
-    while (delete_flagged_key(scene, seq)) {
-      /* Pass. */
-    }
+    SEQ_retiming_remove_multiple_keys(seq, keys_to_delete);
     SEQ_relations_invalidate_cache_raw(scene, seq);
   }
 

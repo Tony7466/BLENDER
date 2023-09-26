@@ -370,6 +370,49 @@ void SEQ_retiming_offset_transition_key(const Scene *scene,
   key_end->retiming_factor -= corrected_offset * next_segment_step;
 }
 
+void SEQ_retiming_remove_multiple_keys(Sequence *seq, blender::Vector<SeqRetimingKey *> &keys)
+{
+  /* Add last key to make algorithm simpler. */
+  keys.append_non_duplicates(SEQ_retiming_last_key_get(seq));
+
+  const size_t keys_count = SEQ_retiming_keys_count(seq);
+  size_t new_keys_count = keys_count;
+  for (SeqRetimingKey *key : keys) {
+    if (key->strip_frame_index != 0 && !SEQ_retiming_is_last_key(seq, key)) {
+      new_keys_count--;
+    }
+  }
+
+  SeqRetimingKey *new_keys = (SeqRetimingKey *)MEM_callocN(new_keys_count * sizeof(SeqRetimingKey),
+                                                           __func__);
+  int last_removed_key_index = 0;
+  int keys_copied = 0;
+
+  for (SeqRetimingKey *key : keys) {
+    /* First and last key can not be removed. */
+    if (key->strip_frame_index == 0) {
+      continue;
+    }
+
+    const int key_index = key - seq->retiming_keys;
+    void *copy_from = seq->retiming_keys + (last_removed_key_index * sizeof(SeqRetimingKey));
+    void *copy_to = new_keys + (keys_copied * sizeof(SeqRetimingKey));
+    int copy_num = key_index - last_removed_key_index;
+
+    last_removed_key_index = key_index;
+
+    if (copy_num > 0) {
+      memcpy(copy_to, copy_from, copy_num * sizeof(SeqRetimingKey));
+    }
+
+    keys_copied += copy_num;
+  }
+
+  MEM_freeN(seq->retiming_keys);
+  seq->retiming_keys = new_keys;
+  seq->retiming_keys_num = keys_copied;
+}
+
 static void seq_retiming_remove_key_ex(Sequence *seq, SeqRetimingKey *key)
 {
   if (key->strip_frame_index == 0 || SEQ_retiming_is_last_key(seq, key)) {
