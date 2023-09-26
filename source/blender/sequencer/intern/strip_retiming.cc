@@ -385,7 +385,7 @@ void SEQ_retiming_remove_multiple_keys(Sequence *seq, blender::Vector<SeqRetimin
 
   SeqRetimingKey *new_keys = (SeqRetimingKey *)MEM_callocN(new_keys_count * sizeof(SeqRetimingKey),
                                                            __func__);
-  int last_removed_key_index = 0;
+  int next_index_to_copy = 0;
   int keys_copied = 0;
 
   for (SeqRetimingKey *key : keys) {
@@ -395,11 +395,15 @@ void SEQ_retiming_remove_multiple_keys(Sequence *seq, blender::Vector<SeqRetimin
     }
 
     const int key_index = key - seq->retiming_keys;
-    void *copy_from = seq->retiming_keys + (last_removed_key_index * sizeof(SeqRetimingKey));
-    void *copy_to = new_keys + (keys_copied * sizeof(SeqRetimingKey));
-    int copy_num = key_index - last_removed_key_index;
+    SeqRetimingKey *copy_from = seq->retiming_keys + (next_index_to_copy);
+    SeqRetimingKey *copy_to = new_keys + (keys_copied);
+    int copy_num = key_index - next_index_to_copy;
 
-    last_removed_key_index = key_index;
+    if (SEQ_retiming_is_last_key(seq, key)) {
+      copy_num += 1;
+    }
+
+    next_index_to_copy = key_index + 1;
 
     if (copy_num > 0) {
       memcpy(copy_to, copy_from, copy_num * sizeof(SeqRetimingKey));
