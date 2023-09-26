@@ -1025,6 +1025,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
 class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
  private:
+  Main &bmain_;
   NodesModifierData &nmd_;
   NodesModifierData *nmd_orig_;
 
@@ -1032,85 +1033,91 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
   Map<bake::BakeIDMappingKey, ID *> mappings_;
 
  public:
-  NodesModifierBakeIDMapping(NodesModifierData &nmd, NodesModifierData *nmd_orig)
-      : nmd_(nmd), nmd_orig_(nmd_orig)
+  NodesModifierBakeIDMapping(Main &bmain, NodesModifierData &nmd, NodesModifierData *nmd_orig)
+      : bmain_(bmain), nmd_(nmd), nmd_orig_(nmd_orig)
   {
     for (const NodesModifierIDMapping &mapping : Span(nmd_.id_mappings, nmd_.id_mappings_num)) {
       mappings_.add({mapping.id_name, mapping.lib_name}, mapping.id);
     }
   }
 
-  ID *get(const bake::BakeIDMappingKey &key, const ID_Type type) const override
+  ID *get(const bake::BakeIDMappingKey &key, const ID_Type type) override
   {
     std::lock_guard lock{mappings_mutex_};
-    ID *id = mappings_.lookup_default(key, nullptr);
-    if (id == nullptr) {
-      return nullptr;
+
+    if (ID *id = mappings_.lookup_default(key, nullptr)) {
+      if (GS(id->name) == type) {
+        return id;
+      }
     }
-    if (GS(id->name) != type) {
-      return nullptr;
-    }
-    return id;
+    return nullptr;
   }
 
-  void add(const ID &id) override
+  void add(const ID &id_eval) override
   {
     if (nmd_orig_ == nullptr) {
       return;
     }
     std::lock_guard lock{mappings_mutex_};
-    const bake::BakeIDMappingKey mappings_key{id};
+    const bake::BakeIDMappingKey mappings_key{id_eval};
     if (mappings_.contains(mappings_key)) {
       return;
     }
 
-    ID &id_non_const = const_cast<ID &>(id);
+    ID &id_eval_non_const = const_cast<ID &>(id_eval);
 
-    ID *id_orig = DEG_get_original_id(&id_non_const);
-    const ID_Type id_type = GS(id.name);
+    ID *id_orig = DEG_get_original_id(&id_eval_non_const);
+    const ID_Type id_type = GS(id_eval.name);
+
+    /* Add mapping to the current evaluation. */
+    mappings_.add(mappings_key, &id_eval_non_const);
+
+    this->add_to_original(mappings_key, id_type, id_orig);
+    this->add_to_evaluated(mappings_key, id_type, &id_eval_non_const);
+  }
+
+  void add_to_original(const bake::BakeIDMappingKey &key, const ID_Type id_type, ID *id_orig)
+  {
+    BLI_assert(!id_orig || DEG_is_original_id(id_orig));
+
     const int old_mappings_num = nmd_orig_->id_mappings_num;
     const int new_mappings_num = old_mappings_num + 1;
 
-    {
-      /* Add mapping to the current evaluation. */
-      mappings_.add(mappings_key, &id_non_const);
-    }
-    {
-      /* Add mapping to the original modifier. */
-      nmd_orig_->id_mappings = static_cast<NodesModifierIDMapping *>(
-          MEM_reallocN(nmd_orig_->id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
-      NodesModifierIDMapping &new_mapping = nmd_orig_->id_mappings[old_mappings_num];
-      memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
+    nmd_orig_->id_mappings = static_cast<NodesModifierIDMapping *>(
+        MEM_reallocN(nmd_orig_->id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
+    NodesModifierIDMapping &new_mapping = nmd_orig_->id_mappings[old_mappings_num];
+    memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
 
-      /* Note that creating this reference would normally trigger a depsgraph relations rebuild.
-       * It's safe to ignore this here, because we can be sure that there is an indirect relation
-       * already.
-       */
-      new_mapping.id = id_orig;
-      /* TODO: Figure out how we can make this thread-safe. */
-      id_us_plus(id_orig);
-      new_mapping.id_type = id_type;
-      new_mapping.id_name = BLI_strdup(id_orig->name + 2);
-      if (id_orig->lib) {
-        new_mapping.lib_name = BLI_strdup(id_orig->lib->id.name + 2);
-      }
-      nmd_orig_->id_mappings_num = new_mappings_num;
-    }
-    {
-      /* Add mapping to the evaluated modifier. */
-      nmd_.id_mappings = static_cast<NodesModifierIDMapping *>(
-          MEM_reallocN(nmd_.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
-      NodesModifierIDMapping &new_mapping = nmd_.id_mappings[old_mappings_num];
-      memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
+    /* Note that creating this reference would normally trigger a depsgraph relations rebuild.
+     * It's safe to ignore this here, because we can be sure that there is an indirect relation
+     * already.
+     */
+    new_mapping.id = id_orig;
+    /* TODO: Figure out how we can make this thread-safe. */
+    id_us_plus(id_orig);
+    new_mapping.id_type = id_type;
+    new_mapping.id_name = BLI_strdupn(key.id_name.data(), key.id_name.size());
+    new_mapping.lib_name = BLI_strdupn(key.lib_name.data(), key.lib_name.size());
+    nmd_orig_->id_mappings_num = new_mappings_num;
+  }
 
-      new_mapping.id_type = id_type;
-      new_mapping.id = &id_non_const;
-      new_mapping.id_name = BLI_strdup(id_orig->name + 2);
-      if (id_orig->lib) {
-        new_mapping.lib_name = BLI_strdup(id_orig->lib->id.name + 2);
-      }
-      nmd_.id_mappings_num = new_mappings_num;
-    }
+  void add_to_evaluated(const bake::BakeIDMappingKey &key, const ID_Type id_type, ID *id_eval)
+  {
+    BLI_assert(!id_eval || DEG_is_evaluated_id(id_eval));
+
+    const int old_mappings_num = nmd_.id_mappings_num;
+    const int new_mappings_num = old_mappings_num + 1;
+
+    nmd_.id_mappings = static_cast<NodesModifierIDMapping *>(
+        MEM_reallocN(nmd_.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
+    NodesModifierIDMapping &new_mapping = nmd_.id_mappings[old_mappings_num];
+    memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
+
+    new_mapping.id_type = id_type;
+    new_mapping.id = id_eval;
+    new_mapping.id_name = BLI_strdupn(key.id_name.data(), key.id_name.size());
+    new_mapping.lib_name = BLI_strdupn(key.lib_name.data(), key.lib_name.size());
+    nmd_.id_mappings_num = new_mappings_num;
   }
 };
 
@@ -1188,7 +1195,8 @@ static void modifyGeometry(ModifierData *md,
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
-  NodesModifierBakeIDMapping id_mapping{*nmd, DEG_is_active(ctx->depsgraph) ? nmd_orig : nullptr};
+  NodesModifierBakeIDMapping id_mapping{
+      *DEG_get_bmain(ctx->depsgraph), *nmd, DEG_is_active(ctx->depsgraph) ? nmd_orig : nullptr};
   modifier_eval_data.id_mapping = &id_mapping;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};

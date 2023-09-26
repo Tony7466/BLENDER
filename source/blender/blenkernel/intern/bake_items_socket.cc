@@ -185,7 +185,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
   return false;
 }
 
-static void restore_materials(ID &id, const BakeIDMapping &id_mapping)
+static void restore_materials(ID &id, BakeIDMapping &id_mapping)
 {
   if (id.properties == nullptr) {
     return;
@@ -232,7 +232,7 @@ static void restore_materials(ID &id, const BakeIDMapping &id_mapping)
 }
 
 static void restore_geometry_set_materials(const Span<GeometrySet *> geometries,
-                                           const BakeIDMapping &id_mapping)
+                                           BakeIDMapping &id_mapping)
 {
   for (GeometrySet *geometry_set : geometries) {
     geometry_set->modify_geometry_sets([&](GeometrySet &geometry) {
@@ -285,7 +285,7 @@ void move_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
-    const BakeIDMapping *id_mapping,
+    BakeIDMapping *id_mapping,
     const Span<void *> r_socket_values)
 {
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
@@ -329,7 +329,7 @@ void copy_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
-    const BakeIDMapping *id_mapping,
+    BakeIDMapping *id_mapping,
     const Span<void *> r_socket_values)
 {
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;

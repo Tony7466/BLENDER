@@ -52,9 +52,10 @@ struct BakeIDMappingKey {
 class BakeIDMapping {
  public:
   /**
-   * Get the ID for the given key, or null if it is not mapped.
+   * Get the ID for the given key, or null if it is not mapped. If it is missing, it might also get
+   * added to mapping if possible.
    */
-  virtual ID *get(const BakeIDMappingKey &key, const ID_Type type) const = 0;
+  virtual ID *get(const BakeIDMappingKey &key, ID_Type type) = 0;
 
   /**
    * Try to add an ID to the mapping. This may not succeed in all cases. The method is thread-safe.

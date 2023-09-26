@@ -115,14 +115,14 @@ void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
-                                     const bke::bake::BakeIDMapping *id_mapping,
+                                      bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values);
 void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
                                      const bke::bake::BakeStateRef &zone_state,
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
-                                     const bke::bake::BakeIDMapping *id_mapping,
+                                      bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values);
 
 void copy_with_checked_indices(const GVArray &src,

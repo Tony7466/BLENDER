@@ -56,7 +56,7 @@ void move_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int socket_index, const CPPType &)>
         make_attribute_field,
-    const BakeIDMapping *id_mapping,
+    BakeIDMapping *id_mapping,
     Span<void *> r_socket_values);
 
 /**
@@ -68,7 +68,7 @@ void copy_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
-    const BakeIDMapping *id_mapping,
+    BakeIDMapping *id_mapping,
     Span<void *> r_socket_values);
 
 }  // namespace blender::bke::bake

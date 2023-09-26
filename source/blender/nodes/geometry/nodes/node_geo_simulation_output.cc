@@ -203,7 +203,7 @@ void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &node,
-                                     const bke::bake::BakeIDMapping *id_mapping,
+                                     bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values)
 {
   const bke::bake::BakeSocketConfig config = make_bake_socket_config(node_simulation_items);
@@ -230,7 +230,7 @@ void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &node,
-                                     const bke::bake::BakeIDMapping *id_mapping,
+                                     bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values)
 {
   const bke::bake::BakeSocketConfig config = make_bake_socket_config(node_simulation_items);
