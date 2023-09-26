@@ -1154,6 +1154,7 @@ class VIEW3D_PT_sculpt_symmetry_for_topbar(Panel):
     bl_space_type = 'TOPBAR'
     bl_region_type = 'HEADER'
     bl_label = "Symmetry"
+    bl_ui_units_x = 13
 
     draw = VIEW3D_PT_sculpt_symmetry.draw
 
