@@ -1749,7 +1749,6 @@ class _defs_paint_grease_pencil:
             label="Erase",
             icon="brush.gpencil_draw.erase",
             data_block='ERASE',
-            draw_settings=draw_settings,
         )
 
 

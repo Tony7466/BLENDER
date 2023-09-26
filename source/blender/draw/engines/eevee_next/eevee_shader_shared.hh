@@ -88,7 +88,10 @@ enum eDebugMode : uint32_t {
 
 enum PrecomputeType : uint32_t {
   LUT_GGX_BRDF_SPLIT_SUM = 0u,
-  LUT_GGX_BTDF_SPLIT_SUM = 1u,
+  LUT_GGX_BTDF_IOR_GT_ONE = 1u,
+  LUT_GGX_BSDF_SPLIT_SUM = 2u,
+  LUT_BURLEY_SSS_PROFILE = 3u,
+  LUT_RANDOM_WALK_SSS_PROFILE = 4u,
 };
 
 /** \} */
@@ -1148,6 +1151,8 @@ enum eClosureBits : uint32_t {
 struct RayTraceData {
   /** ViewProjection matrix used to render the previous frame. */
   float4x4 history_persmat;
+  /** ViewProjection matrix used to render the radiance texture. */
+  float4x4 radiance_persmat;
   /** Input resolution. */
   int2 full_resolution;
   /** Inverse of input resolution to get screen UVs. */
@@ -1196,7 +1201,7 @@ BLI_STATIC_ASSERT_ALIGN(AOData, 16)
 #define SSS_BURLEY_TRUNCATE 16.0
 #define SSS_BURLEY_TRUNCATE_CDF 0.9963790093708328
 #define SSS_TRANSMIT_LUT_SIZE 64.0
-#define SSS_TRANSMIT_LUT_RADIUS 1.218
+#define SSS_TRANSMIT_LUT_RADIUS 2.0
 #define SSS_TRANSMIT_LUT_SCALE ((SSS_TRANSMIT_LUT_SIZE - 1.0) / float(SSS_TRANSMIT_LUT_SIZE))
 #define SSS_TRANSMIT_LUT_BIAS (0.5 / float(SSS_TRANSMIT_LUT_SIZE))
 #define SSS_TRANSMIT_LUT_STEP_RES 64.0
@@ -1213,6 +1218,37 @@ struct SubsurfaceData {
   int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
+
+static inline float3 burley_setup(float3 radius, float3 albedo)
+{
+  /* TODO(fclem): Avoid constant duplication. */
+  const float m_1_pi = 0.318309886183790671538;
+
+  float3 A = albedo;
+  /* Diffuse surface transmission, equation (6). */
+  float3 s = 1.9 - A + 3.5 * ((A - 0.8) * (A - 0.8));
+  /* Mean free path length adapted to fit ancient Cubic and Gaussian models. */
+  float3 l = 0.25 * m_1_pi * radius;
+
+  return l / s;
+}
+
+static inline float3 burley_eval(float3 d, float r)
+{
+  /* Slide 33. */
+  float3 exp_r_3_d;
+  /* TODO(fclem): Vectorize. */
+  exp_r_3_d.x = expf(-r / (3.0 * d.x));
+  exp_r_3_d.y = expf(-r / (3.0 * d.y));
+  exp_r_3_d.z = expf(-r / (3.0 * d.z));
+  float3 exp_r_d = exp_r_3_d * exp_r_3_d * exp_r_3_d;
+  /* NOTE:
+   * - Surface albedo is applied at the end.
+   * - This is normalized diffuse model, so the equation is multiplied
+   *   by 2*pi, which also matches `cdf()`.
+   */
+  return (exp_r_d + exp_r_3_d) / (4.0 * d);
+}
 
 /** \} */
 
@@ -1288,10 +1324,9 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 #define UTIL_BLUE_NOISE_LAYER 0
 #define UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER 1
 #define UTIL_LTC_MAT_LAYER 2
-#define UTIL_LTC_MAG_LAYER 3
 #define UTIL_BSDF_LAYER 3
-#define UTIL_BTDF_LAYER 4
-#define UTIL_DISK_INTEGRAL_LAYER 4
+#define UTIL_BTDF_LAYER 5
+#define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
 
 /* __cplusplus is true when compiling with MSL, so include if inside a shader. */
@@ -1314,6 +1349,23 @@ float4 utility_tx_sample_lut(sampler2DArray util_tx, float2 uv, float layer)
   /* Scale and bias coordinates, for correct filtered lookup. */
   uv = uv * UTIL_TEX_UV_SCALE + UTIL_TEX_UV_BIAS;
   return textureLod(util_tx, float3(uv, layer), 0.0);
+}
+
+/* Sample GGX BSDF LUT. */
+float4 utility_tx_sample_bsdf_lut(sampler2DArray util_tx, float2 uv, float layer)
+{
+  /* Scale and bias coordinates, for correct filtered lookup. */
+  uv = uv * UTIL_TEX_UV_SCALE + UTIL_TEX_UV_BIAS;
+  layer = layer * UTIL_BTDF_LAYER_COUNT + UTIL_BTDF_LAYER;
+
+  float layer_floored;
+  float interp = modf(layer, layer_floored);
+
+  float4 tex_low = textureLod(util_tx, float3(uv, layer_floored), 0.0);
+  float4 tex_high = textureLod(util_tx, float3(uv, layer_floored + 1.0), 0.0);
+
+  /* Manual trilinear interpolation. */
+  return mix(tex_low, tex_high, interp);
 }
 
 /* Sample LTC or BSDF LUTs with `cos_theta` and `roughness` as inputs. */
@@ -1350,6 +1402,7 @@ using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
+using SubsurfaceTileBuf = RayTraceTileBuf;
 using ReflectionProbeDataBuf =
     draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;

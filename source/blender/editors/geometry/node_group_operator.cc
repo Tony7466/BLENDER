@@ -32,13 +32,13 @@
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -381,7 +381,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);
 
   uiLayout *row = uiLayoutRow(layout, true);
-  uiLayoutSetPropDecorate(row, true);
+  uiLayoutSetPropDecorate(row, false);
 
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
@@ -429,7 +429,7 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
     return;
   }
 
-  node_tree->ensure_topology_cache();
+  node_tree->ensure_interface_cache();
   int input_index = 0;
   for (bNodeTreeInterfaceSocket *io_socket : node_tree->interface_inputs()) {
     draw_property_for_socket(
@@ -440,14 +440,16 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
 
 static bool run_node_ui_poll(wmOperatorType * /*ot*/, PointerRNA *ptr)
 {
+  bool result = false;
   RNA_STRUCT_BEGIN (ptr, prop) {
     int flag = RNA_property_flag(prop);
     if ((flag & PROP_HIDDEN) == 0) {
-      return true;
+      result = true;
+      break;
     }
   }
   RNA_STRUCT_END;
-  return false;
+  return result;
 }
 
 static std::string run_node_group_get_name(wmOperatorType * /*ot*/, PointerRNA *ptr)
@@ -509,9 +511,9 @@ static GeometryNodeAssetTraitFlag asset_flag_for_context(const eContextObjectMod
   }
 }
 
-static asset::AssetItemTree *get_static_item_tree(const bContext &C)
+static asset::AssetItemTree *get_static_item_tree(const eContextObjectMode mode)
 {
-  switch (eContextObjectMode(CTX_data_mode_enum(&C))) {
+  switch (mode) {
     case CTX_MODE_EDIT_MESH: {
       static asset::AssetItemTree tree;
       return &tree;
@@ -534,6 +536,19 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
     }
     default:
       return nullptr;
+  }
+}
+
+static asset::AssetItemTree *get_static_item_tree(const bContext &C)
+{
+  return get_static_item_tree(eContextObjectMode(CTX_data_mode_enum(&C)));
+}
+
+void clear_operator_asset_trees()
+{
+  for (const int mode : IndexRange(CTX_MODE_NUM)) {
+    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
+      *tree = {};
   }
 }
 
@@ -569,10 +584,14 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
   Set<std::string> menus;
   switch (object_type) {
     case OB_CURVES:
-    case OB_POINTCLOUD:
       menus.add_new("View");
       menus.add_new("Select");
       menus.add_new("Curves");
+      break;
+    case OB_POINTCLOUD:
+      menus.add_new("View");
+      menus.add_new("Select");
+      menus.add_new("Point Cloud");
       break;
     case OB_MESH:
       switch (mode) {
@@ -609,7 +628,7 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
   return menus;
 }
 
-static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
+static void catalog_assets_draw(const bContext *C, Menu *menu)
 {
   bScreen &screen = *CTX_wm_screen(C);
   asset::AssetItemTree *tree = get_static_item_tree(*C);
@@ -632,16 +651,15 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   uiLayout *layout = menu->layout;
   uiItemS(layout);
 
+  wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
   for (const asset_system::AssetRepresentation *asset : assets) {
-    uiLayout *col = uiLayoutColumn(layout, false);
-    wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
     PointerRNA props_ptr;
-    uiItemFullO_ptr(col,
+    uiItemFullO_ptr(layout,
                     ot,
                     IFACE_(asset->get_name().c_str()),
                     ICON_NONE,
                     nullptr,
-                    WM_OP_INVOKE_DEFAULT,
+                    WM_OP_INVOKE_REGION_WIN,
                     UI_ITEM_NONE,
                     &props_ptr);
     asset::operator_asset_reference_props_set(*asset, props_ptr);
@@ -664,14 +682,50 @@ MenuType node_group_operator_assets_menu()
   MenuType type{};
   STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets");
   type.poll = asset_menu_poll;
-  type.draw = node_add_catalog_assets_draw;
+  type.draw = catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   return type;
 }
 
+static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
+{
+  asset::AssetItemTree *tree = get_static_item_tree(*C);
+  if (!tree) {
+    return;
+  }
+  uiLayout *layout = menu->layout;
+  wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
+  for (const asset_system::AssetRepresentation *asset : tree->unassigned_assets) {
+    PointerRNA props_ptr;
+    uiItemFullO_ptr(layout,
+                    ot,
+                    IFACE_(asset->get_name().c_str()),
+                    ICON_NONE,
+                    nullptr,
+                    WM_OP_INVOKE_REGION_WIN,
+                    UI_ITEM_NONE,
+                    &props_ptr);
+    asset::operator_asset_reference_props_set(*asset, props_ptr);
+  }
+}
+
+MenuType node_group_operator_assets_menu_unassigned()
+{
+  MenuType type{};
+  STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets_unassigned");
+  type.poll = asset_menu_poll;
+  type.draw = catalog_assets_draw_unassigned;
+  type.listener = asset::asset_reading_region_listen_fn;
+  type.flag = MenuTypeFlag::ContextDependent;
+  type.description = N_(
+      "Tool node group assets not assigned to a catalog.\n"
+      "Catalogs can be assigned in the Asset Browser");
+  return type;
+}
+
 void ui_template_node_operator_asset_menu_items(uiLayout &layout,
-                                                bContext &C,
+                                                const bContext &C,
                                                 const StringRef catalog_path)
 {
   bScreen &screen = *CTX_wm_screen(&C);
@@ -698,7 +752,7 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   uiItemMContents(col, "GEO_MT_node_operator_catalog_assets");
 }
 
-void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
+void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext &C)
 {
   bScreen &screen = *CTX_wm_screen(&C);
   const Object *active_object = CTX_data_active_object(&C);
@@ -709,9 +763,8 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (!tree) {
     return;
   }
-  *tree = build_catalog_tree(C);
-  if (tree->catalogs.is_empty()) {
-    return;
+  if (tree->assets_per_path.size() == 0) {
+    *tree = build_catalog_tree(C);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
@@ -729,6 +782,13 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
     }
   });
+
+  if (!tree->unassigned_assets.is_empty()) {
+    uiItemM(&layout,
+            "GEO_MT_node_operator_catalog_assets_unassigned",
+            IFACE_("Unassigned"),
+            ICON_NONE);
+  }
 }
 
 /** \} */

@@ -60,7 +60,7 @@
 #include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h" /* BKE_ST_MAXNAME */
+#include "BKE_screen.hh" /* BKE_ST_MAXNAME */
 #include "BKE_unit.h"
 
 #include "BKE_idtype.h"
@@ -4112,7 +4112,7 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 
 void wm_window_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Window", 0, 0);
+  WM_keymap_ensure(keyconf, "Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   wm_gizmos_keymap(keyconf);
   gesture_circle_modal_keymap(keyconf);

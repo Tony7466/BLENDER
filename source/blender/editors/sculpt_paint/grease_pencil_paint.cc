@@ -13,7 +13,7 @@
 
 #include "BLI_math_geom.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
