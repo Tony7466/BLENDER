@@ -73,10 +73,6 @@
 #define SHADOW_PAGE_PER_ROW 4
 #define SHADOW_PAGE_PER_COL 4
 #define SHADOW_PAGE_PER_LAYER (SHADOW_PAGE_PER_ROW * SHADOW_PAGE_PER_COL)
-/* NOTE: Use floating point shadow atlas only for Apple Silicon. */
-#if defined(WITH_METAL_BACKEND) && defined(__aarch64__)
-#  define SHADOW_USE_FLOAT_ATLAS
-#endif
 
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8

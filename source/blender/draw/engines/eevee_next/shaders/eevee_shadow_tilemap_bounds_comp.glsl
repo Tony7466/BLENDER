@@ -22,6 +22,7 @@ shared int global_max;
 void main()
 {
   uint index = gl_GlobalInvocationID.x;
+
   /* Keep uniform control flow. Do not return. */
   index = min(index, uint(resource_len) - 1);
   uint resource_id = casters_id_buf[index];
@@ -30,7 +31,6 @@ void main()
   IsectBox box;
 
   if (resource_len > 0) {
-    uint index = gl_GlobalInvocationID.x;
     /* Keep uniform control flow. Do not return. */
     index = min(index, uint(resource_len) - 1);
     uint resource_id = casters_id_buf[index];

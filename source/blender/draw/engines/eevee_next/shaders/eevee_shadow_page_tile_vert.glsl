@@ -3,7 +3,7 @@
  * Virtual Shadow map accumulation storage.
  *
  * On Apple silicon, we can use a three-pass method to perform virtual shadow map updates,
- * leveraging efficient use of tile-based GPUs.Shadow updates rasterize geometry for each view in
+ * leveraging efficient use of tile-based GPUs. Shadow updates rasterize geometry for each view in
  * much the same way as a conventional shadow map render, but for the standard path, there is an
  * additional cost of an atomic-min abd store to allow for indirection into the atlas. This setup
  * can lead to excessive overdraw, rasterization and increased complexity in the material depth

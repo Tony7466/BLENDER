@@ -18,18 +18,8 @@ void main()
 
 /* Clear to FLT_MAX instead of 1 so the far plane doesn't cast shadows onto farther objects. */
 #ifdef GPU_METAL
-#  ifdef SHADOW_ATLAS_U32
   imageStoreFast(shadow_atlas_img, ivec3(page_co), uvec4(floatBitsToUint(FLT_MAX)));
-#  endif
-#  ifdef SHADOW_ATLAS_F32
-  imageStoreFast(shadow_atlas_img, ivec3(page_co), vec4(FLT_MAX));
-#  endif
 #else
-#  ifdef SHADOW_ATLAS_U32
   imageStore(shadow_atlas_img, ivec3(page_co), uvec4(floatBitsToUint(FLT_MAX)));
-#  endif
-#  ifdef SHADOW_ATLAS_F32
-  imageStore(shadow_atlas_img, ivec3(page_co), vec4(FLT_MAX));
-#  endif
 #endif
 }

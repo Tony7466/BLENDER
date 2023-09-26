@@ -20,6 +20,8 @@
 
 namespace blender::eevee {
 
+#define SQUARE(a) ((a) * (a))
+
 /* -------------------------------------------------------------------- */
 /** \name World Pipeline
  *
@@ -160,7 +162,7 @@ void ShadowPipeline::sync()
    * atlas during a final storage pass. This takes advantage of Apple Silicon's tile-based
    * architecture, reducing overdraw and additional per-fragment calculations. */
   bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
-                             eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
+                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
 
   surface_ps_.init();
   DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
@@ -196,12 +198,10 @@ void ShadowPipeline::sync()
     inst_.sampling.bind_resources(&tbdr_page_clear_ps_);
     inst_.bind_uniform_data(&tbdr_page_clear_ps_);
     tbdr_page_clear_ps_.draw_procedural(
-        GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
+        GPU_PRIM_TRIS, SQUARE(SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX, 6);
 
     tbdr_page_store_ps_.init();
-    tbdr_page_store_ps_.shader_set(inst_.shaders.static_shader_get(
-        (ShadowModule::atlas_type == GPU_R32UI) ? SHADOW_DEPTH_TBDR_PAGE_STORE_U32 :
-                                                  SHADOW_DEPTH_TBDR_PAGE_STORE_F32));
+    tbdr_page_store_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_STORE));
     /* NOTE: Setting to DRW_STATE_DEPTH_ALWAYS allows removal of the SHADOW_PAGE_CLEAR pass as
      * all tile texels are cleared within tile memory and stored.
      * DRW_STATE_DEPTH_GREATER/GREATER_EQUAL is the most optimal for the update pass itself, as it
@@ -220,7 +220,7 @@ void ShadowPipeline::sync()
     inst_.sampling.bind_resources(&tbdr_page_store_ps_);
     inst_.bind_uniform_data(&tbdr_page_store_ps_);
     tbdr_page_store_ps_.draw_procedural(
-        GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
+        GPU_PRIM_TRIS, SQUARE(SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX, 6);
   }
 }
 

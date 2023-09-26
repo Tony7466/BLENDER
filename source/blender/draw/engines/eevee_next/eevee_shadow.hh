@@ -55,7 +55,7 @@ constexpr static const float shadow_clipmap_scale_mat[4][4] = {{SHADOW_TILEMAP_R
                                                                {0, 0, 0.5, 1}};
 
 /* Technique used for updating the virtual shadow map contents. */
-enum eShadowUpdateTechnique {
+enum ShadowUpdateTechnique {
   /* Default virtual shadow map update using large virtual framebuffer to rasterize geometry with
    * per-fragment textureAtomicMin to perform depth-test and indirectly store nearest depth value
    * in the shadow atlas. */
@@ -194,8 +194,7 @@ class ShadowModule {
 
  public:
   /* Shadowing technique. */
-  static eShadowUpdateTechnique shadow_technique;
-  static eGPUTextureFormat atlas_type;
+  static ShadowUpdateTechnique shadow_technique;
 
   /** Need to be first because of destructor order. */
   ShadowTileMapPool tilemap_pool;
@@ -253,6 +252,7 @@ class ShadowModule {
   /** \name Page Management
    * \{ */
 
+  static constexpr eGPUTextureFormat atlas_type = GPU_R32UI;
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
 

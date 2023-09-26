@@ -215,9 +215,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_common)
                  "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf");
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_u32)
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update)
     .additional_info("eevee_surf_shadow_atomic_update_common")
-    .define("SHADOW_ATLAS_U32")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
@@ -351,7 +350,7 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS( \
-        name##_shadow_atomic, "eevee_surf_shadow_atomic_update_u32", __VA_ARGS__) \
+        name##_shadow_atomic, "eevee_surf_shadow_atomic_update", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr_rog_update", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")

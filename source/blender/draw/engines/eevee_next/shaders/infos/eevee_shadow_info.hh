@@ -203,24 +203,13 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_common)
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_clear_comp.glsl");
 
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_u32)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
     .do_static_compilation(true)
-    .define("SHADOW_ATLAS_U32")
     .additional_info("eevee_shadow_page_clear_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
-           "shadow_atlas_img");
-
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_f32)
-    .do_static_compilation(true)
-    .define("SHADOW_ATLAS_F32")
-    .additional_info("eevee_shadow_page_clear_common")
-    .image(SHADOW_ATLAS_IMG_SLOT,
-           GPU_R32F,
-           Qualifier::READ_WRITE,
-           ImageType::FLOAT_2D_ARRAY,
            "shadow_atlas_img");
 
 /* Interface for passing precalculated values in accumulation vertex to frag. */
@@ -229,7 +218,7 @@ GPU_SHADER_INTERFACE_INFO(eevee_shadow_tbdr_store_iface, "")
     .flat(Type::USHORT, "out_page_z");
 
 /* 2nd tile pass to store shadow depths in atlas. */
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_metal_tbdr_common)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_tile_common)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .define("DRW_VIEW_LEN", "64")
@@ -244,49 +233,36 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_metal_tbdr_common)
                  Qualifier::READ,
                  "uint",
                  "viewport_index_buf[SHADOW_VIEW_MAX]")
-    .vertex_source("eevee_shadow_page_metal_tbdr_vert.glsl")
-    .fragment_source("eevee_shadow_page_metal_tbdr_frag.glsl")
+    .vertex_source("eevee_shadow_page_tile_vert.glsl")
+    .fragment_source("eevee_shadow_page_tile_frag.glsl")
     .additional_info("eevee_shared");
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_metal_tbdr)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .additional_info("eevee_shadow_page_metal_tbdr_common")
+    .additional_info("eevee_shadow_page_tile_common")
     .define("PASS_CLEAR")
     .fragment_out(0, Type::FLOAT, "out_tile_depth", DualBlend::NONE, 0);
 
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_common)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_tile_common)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .additional_info("eevee_shadow_page_metal_tbdr_common")
+    .additional_info("eevee_shadow_page_tile_common")
     .define("PASS_DEPTH_STORE")
     .vertex_out(eevee_shadow_tbdr_store_iface)
     .subpass_in(0, Type::FLOAT, "in_tile_depth", 0);
 
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_u32)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_tile)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .additional_info("eevee_shadow_page_store_metal_tbdr_common")
-    .define("SHADOW_ATLAS_U32")
+    .additional_info("eevee_shadow_page_store_tile_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
-           "shadow_atlas_img");
-
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_f32)
-    .do_static_compilation(true)
-    .early_fragment_test(true)
-    .metal_backend_only(true)
-    .additional_info("eevee_shadow_page_store_metal_tbdr_common")
-    .define("SHADOW_ATLAS_F32")
-    .image(SHADOW_ATLAS_IMG_SLOT,
-           GPU_R32F,
-           Qualifier::READ_WRITE,
-           ImageType::FLOAT_2D_ARRAY,
            "shadow_atlas_img");
 
 /** \} */
@@ -296,11 +272,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_f32)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_data)
-#ifdef SHADOW_USE_FLOAT_ATLAS
-    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "shadow_atlas_tx")
-#else
     .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D_ARRAY, "shadow_atlas_tx")
-#endif
     .sampler(SHADOW_TILEMAPS_TEX_SLOT, ImageType::UINT_2D, "shadow_tilemaps_tx");
 
 /** \} */

@@ -18,9 +18,8 @@
 
 namespace blender::eevee {
 
-eShadowUpdateTechnique ShadowModule::shadow_technique =
-    eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
-eGPUTextureFormat ShadowModule::atlas_type = GPU_R32UI;
+ShadowUpdateTechnique ShadowModule::shadow_technique =
+    ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
 
 /* -------------------------------------------------------------------- */
 /** \name Tile map
@@ -645,19 +644,11 @@ void ShadowModule::init()
   bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
   bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
   if (is_metal_backend && is_tile_based_arch) {
-    ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
+    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
   }
   else {
-    ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
   }
-
-#ifdef SHADOW_USE_FLOAT_ATLAS
-  ShadowModule::atlas_type = GPU_R32F;
-  BLI_assert_msg(is_metal_backend,
-                 "Floating point shadow atlas is currently only supported by the Metal backend.");
-#else
-  ShadowModule::atlas_type = GPU_R32UI;
-#endif
 
   ::Scene &scene = *inst_.scene;
   bool enabled = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
@@ -1061,7 +1052,7 @@ void ShadowModule::end_sync()
         /** Assign pages to tiles that have been marked as used but possess no page. */
         PassSimple::Sub &sub = pass.sub("AllocatePages");
         sub.shader_set(inst_.shaders.static_shader_get(
-            (shadow_technique == eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) ?
+            (shadow_technique == ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) ?
                 SHADOW_PAGE_ALLOCATE_RBUF_CLEAR :
                 SHADOW_PAGE_ALLOCATE));
         sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
@@ -1072,7 +1063,7 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
 
         /* For the tile optimized update, we need to clear tiles being updated early. */
-        if (shadow_technique == eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
+        if (shadow_technique == ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
           sub.bind_ssbo("render_map_buf", render_map_buf_);
         }
 
@@ -1101,14 +1092,12 @@ void ShadowModule::end_sync()
 
       /* NOTE: We do not need to run the clear pass when using the TBDR update variant, as tiles
        * will be fully cleared as part of the shadow raster step. */
-      if (ShadowModule::shadow_technique != eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
+      if (ShadowModule::shadow_technique != ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
         sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
-        sub.shader_set(inst_.shaders.static_shader_get((ShadowModule::atlas_type == GPU_R32UI) ?
-                                                           SHADOW_PAGE_CLEAR_U32 :
-                                                           SHADOW_PAGE_CLEAR_F32));
+        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_CLEAR));
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("clear_list_buf", clear_list_buf_);
         sub.bind_image("shadow_atlas_img", atlas_tx_);
@@ -1214,7 +1203,7 @@ void ShadowModule::set_view(View &view)
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
   switch (shadow_technique) {
-    case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+    case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
       if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
         /* Metal requires a memoryless attachment to create an empty framebuffer. */
         shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
@@ -1231,7 +1220,7 @@ void ShadowModule::set_view(View &view)
       GPU_framebuffer_bind(render_fb_);
     } break;
 
-    case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+    case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
       /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
       shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
                                           int2(SHADOW_TILEMAP_RES * shadow_page_size_),
@@ -1268,14 +1257,14 @@ void ShadowModule::set_view(View &view)
       shadow_multi_view_.compute_procedural_bounds();
 
       switch (shadow_technique) {
-        case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+        case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
 
           /* Main shadow geometry pass. */
           inst_.pipelines.shadow.render(shadow_multi_view_);
 
         } break;
 
-        case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+        case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
 
           /* Specify explicit load-store config for memoryless attachments, and defining
            * explicit clear values for this pass. */

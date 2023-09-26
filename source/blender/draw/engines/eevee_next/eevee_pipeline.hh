@@ -110,7 +110,7 @@ class ShadowPipeline {
   /* Shadow surface update pass. */
   PassMain surface_ps_ = {"Shadow.Surface"};
 
-  /* Shadow passes for eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
+  /* Shadow passes for ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
   PassSimple tbdr_page_clear_ps_ = {"Shadow.MetalTBDRPageClear"};
   PassSimple tbdr_page_store_ps_ = {"Shadow.MetalTBDRPageStore"};
 
@@ -121,10 +121,10 @@ class ShadowPipeline {
 
   void sync();
 
-  /* Execute passes for eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER. */
+  /* Execute passes for ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER. */
   void render(View &view);
 
-  /* Execute passes for eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
+  /* Execute passes for ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
   void render_prepare_visibility(View &view, command::RecordingState *state);
   void render_main_pass(View &view, command::RecordingState *state);
   void render_tile_clear(View &view);

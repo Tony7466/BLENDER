@@ -212,10 +212,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_page_allocate";
     case SHADOW_PAGE_ALLOCATE_RBUF_CLEAR:
       return "eevee_shadow_page_allocate_renderbuf_clear";
-    case SHADOW_PAGE_CLEAR_U32:
-      return "eevee_shadow_page_clear_u32";
-    case SHADOW_PAGE_CLEAR_F32:
-      return "eevee_shadow_page_clear_f32";
+    case SHADOW_PAGE_CLEAR:
+      return "eevee_shadow_page_clear";
     case SHADOW_PAGE_DEFRAG:
       return "eevee_shadow_page_defrag";
     case SHADOW_PAGE_FREE:
@@ -238,10 +236,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_transparent";
     case SHADOW_DEPTH_TBDR_PAGE_CLEAR:
       return "eevee_shadow_page_clear_metal_tbdr";
-    case SHADOW_DEPTH_TBDR_PAGE_STORE_U32:
-      return "eevee_shadow_page_store_metal_tbdr_u32";
-    case SHADOW_DEPTH_TBDR_PAGE_STORE_F32:
-      return "eevee_shadow_page_store_metal_tbdr_f32";
+    case SHADOW_DEPTH_TBDR_PAGE_STORE:
+      return "eevee_shadow_page_store_tile";
     case SHADOW_TILEMAP_TAG_USAGE_VOLUME:
       return "eevee_shadow_tag_usage_volume";
     case SUBSURFACE_CONVOLVE:
@@ -568,16 +564,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         case MAT_PIPE_SHADOW:
           /* Determine surface shadow shader depending on used update technique. */
           switch (ShadowModule::shadow_technique) {
-            case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-              if (ShadowModule::atlas_type == GPU_R32UI) {
-                info.additional_info("eevee_surf_shadow_atomic_update_u32");
-              }
-              else {
-                BLI_assert_msg(
-                    false, "Float32 Shadow atlas is incompatible with Atomic Texture updates.");
-              }
+            case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+              info.additional_info("eevee_surf_shadow_atomic_update");
             } break;
-            case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+            case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
               info.additional_info("eevee_surf_shadow_tbdr_rog_update");
             } break;
             default: {

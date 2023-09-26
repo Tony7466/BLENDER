@@ -98,7 +98,7 @@ void main()
 
     /* Issue one view if there is an update in the LOD. */
     if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
-      bool lod_has_update = rect_min_x < rect_max_x;
+      bool lod_has_update = rect_min.x < rect_max.x;
       if (lod_has_update) {
         view_index = atomicAdd(statistics_buf.view_needed_count, 1);
         if (view_index < SHADOW_VIEW_MAX) {
