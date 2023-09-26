@@ -1194,10 +1194,51 @@ static void sculpt_expand_restore_color_data(SculptSession *ss, ExpandCache *exp
   }
 }
 
-static void sculpt_expand_restore_mask_data(SculptSession *ss, ExpandCache *expand_cache)
+static void write_mask_data(SculptSession *ss, const Span<float> mask)
 {
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
-  SCULPT_mask_write_array(ss, nodes, {expand_cache->original_mask, SCULPT_vertex_count_get(ss)});
+
+  switch (BKE_pbvh_type(ss->pbvh)) {
+    case PBVH_FACES: {
+      Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
+      float *layer = static_cast<float *>(
+          CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          layer[vd.index] = mask[vd.index];
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+    case PBVH_BMESH: {
+      const int offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(ss->pbvh)->vdata,
+                                               CD_PAINT_MASK);
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          BM_ELEM_CD_SET_FLOAT(vd.bm_vert, offset, mask[vd.index]);
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+    case PBVH_GRIDS: {
+      for (PBVHNode *node : nodes) {
+        PBVHVertexIter vd;
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+          *CCG_elem_mask(&vd.key, vd.grid) = mask[vd.index];
+          break;
+        }
+        BKE_pbvh_vertex_iter_end;
+        BKE_pbvh_node_mark_redraw(node);
+      }
+      break;
+    }
+  }
 }
 
 /* Main function to restore the original state of the data to how it was before starting the expand
@@ -1210,7 +1251,7 @@ static void sculpt_expand_restore_original_state(bContext *C,
   SculptSession *ss = ob->sculpt;
   switch (expand_cache->target) {
     case SCULPT_EXPAND_TARGET_MASK:
-      sculpt_expand_restore_mask_data(ss, expand_cache);
+      write_mask_data(ss, {expand_cache->original_mask, SCULPT_vertex_count_get(ss)});
       SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
       SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);
       SCULPT_tag_update_overlays(C);
@@ -2132,9 +2173,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
       }
 
       if (ok) {
-        Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
-        blender::Array<float> new_mask(SCULPT_vertex_count_get(ss), 1.0f);
-        SCULPT_mask_write_array(ss, nodes, new_mask);
+        write_mask_data(ss, blender::Array<float>(SCULPT_vertex_count_get(ss), 1.0f));
       }
     }
   }
