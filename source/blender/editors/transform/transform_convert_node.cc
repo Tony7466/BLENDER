@@ -130,19 +130,25 @@ static void draw_hitzone(const bContext * /*C*/, ARegion *region, void *arg)
   const View2D *v2d = &region->v2d;
 
   float2 sc_view = td->selection_center * UI_SCALE_FAC;
-  float radius = 0.15f * U.widget_unit;
+  float radius = 0.2f * U.widget_unit;
   float2 center;
   UI_view2d_view_to_region_fl(v2d, sc_view.x, sc_view.y, &center.x, &center.y);
 
   rctf rect;
   BLI_rctf_init_pt_radius(&rect, center, radius);
 
-  float text_col[4];
+  float dot_color[4];
 
-  UI_GetThemeColor4fv(TH_TEXT, text_col);
-  text_col[3] = 0.4f;
+  UI_GetThemeColor4fv(TH_SELECT, dot_color);
+  dot_color[3] = 0.6f;
 
-  UI_draw_roundbox_aa(&rect, td->indicate_frame_joining, radius, text_col);
+  UI_draw_roundbox_4fv_ex(&rect,
+                          td->indicate_frame_joining ? dot_color : nullptr,
+                          nullptr,
+                          1.0f,
+                          dot_color,
+                          1.5f * U.pixelsize,
+                          radius);
 }
 
 static void draw_hitzone_activate(ARegion &region, TransInfoCustomDataNode *customdata)
@@ -246,7 +252,7 @@ static void createTransNodeData(bContext *C, TransInfo *t)
         tc->data[i], tc->data_2d[i], data_node[i], *nodes[i], UI_SCALE_FAC);
   }
 
-  if (nodes.size() > 1) {
+  if (nodes.size() > 1 || nodes[0]->is_frame()) {
     draw_hitzone_activate(*CTX_wm_region(C), customdata);
   }
 }
