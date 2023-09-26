@@ -2395,11 +2395,10 @@ typedef struct NodesModifierData {
 
   /** NodesModifierFlag. */
   int8_t flag;
-  char _pad[3];
+  char _pad2[3];
 
   int bakes_num;
   NodesModifierBake *bakes;
-  void *_pad2;
 
   NodesModifierRuntimeHandle *runtime;
 
