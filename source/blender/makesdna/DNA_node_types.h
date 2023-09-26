@@ -1829,7 +1829,7 @@ typedef struct NodeGeometryRepeatOutput {
   int active_index;
   /** Identifier to give to the next repeat item. */
   int next_identifier;
-  int viewer_iteration;
+  int inspection_index;
 
 #ifdef __cplusplus
   blender::Span<NodeRepeatItem> items_span() const;

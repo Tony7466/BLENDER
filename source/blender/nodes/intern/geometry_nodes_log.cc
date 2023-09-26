@@ -495,7 +495,7 @@ static void find_tree_zone_hash_recursive(
       const auto &storage = *static_cast<const NodeGeometryRepeatOutput *>(
           zone.output_node->storage);
       compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone.output_node,
-                                                                  storage.viewer_iteration);
+                                                                  storage.inspection_index);
       break;
     }
   }

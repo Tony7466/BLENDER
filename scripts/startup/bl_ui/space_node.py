@@ -1128,7 +1128,7 @@ class NODE_PT_repeat_zone_items(Panel):
             layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
 
-        layout.prop(output_node, "viewer_iteration")
+        layout.prop(output_node, "inspection_index")
 
 
 # Grease Pencil properties

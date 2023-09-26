@@ -320,7 +320,7 @@ bool push_compute_context_for_tree_path(const SpaceNode &snode,
           const auto &storage = *static_cast<const NodeGeometryRepeatOutput *>(
               zone->output_node->storage);
           compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone->output_node,
-                                                                      storage.viewer_iteration);
+                                                                      storage.inspection_index);
           break;
         }
       }

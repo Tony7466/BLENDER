@@ -40,7 +40,7 @@ static ViewerPathElem *viewer_path_elem_for_zone(const bNodeTreeZone &zone)
       const auto &storage = *static_cast<NodeGeometryRepeatOutput *>(zone.output_node->storage);
       RepeatZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_repeat_zone();
       node_elem->repeat_output_node_id = zone.output_node->identifier;
-      node_elem->iteration = storage.viewer_iteration;
+      node_elem->iteration = storage.inspection_index;
       return &node_elem->base;
     }
   }
