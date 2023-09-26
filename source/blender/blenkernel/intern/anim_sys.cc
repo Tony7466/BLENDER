@@ -3223,7 +3223,7 @@ static void animsys_create_action_track_strip(const AnimData *adt,
    * (which making new strips doesn't do due to the troublesome nature of that). */
   BKE_action_frame_range_calc(
       r_action_strip->act, true, &r_action_strip->actstart, &r_action_strip->actend);
-  BKE_nla_ensure_nonzero_clip_length(&r_action_strip->actstart, &r_action_strip->actend);
+  BKE_nla_clip_length_ensure_nonzero(&r_action_strip->actstart, &r_action_strip->actend);
   r_action_strip->start = r_action_strip->actstart;
   r_action_strip->end = r_action_strip->actend;
 

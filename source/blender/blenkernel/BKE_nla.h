@@ -165,8 +165,21 @@ void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool d
  * clip length for an NLA strip is (in certain places) never zero, in order to
  * avoid the strip's scale having to be infinity.  In other words, it's a
  * hack.  But at least now it's a hack collected in one place.
+ *
+ * Usage: both `actstart` and `r_actend` should already be set to the
+ * start/end values of a strip's clip.  `r_actend` will then be modified only
+ * if necessary to ensure the range is non-zero in length.
  */
-void BKE_nla_ensure_nonzero_clip_length(const float *r_actstart, float *r_actend);
+void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend);
+
+/**
+ * Compute the length of the passed range, using the same logic
+ * as `BKE_nlatrack_remove_and_free`.
+ *
+ * See the documentation of `BKE_nlatrack_remove_and_free` for the reason
+ * this function exists and the issues around its use.
+ */
+float BKE_nla_clip_length_get_nonzero(float actstart, float actend);
 
 /**
  * Create a NLA Strip referencing the given Action.

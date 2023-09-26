@@ -446,10 +446,20 @@ NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
   return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
-void BKE_nla_ensure_nonzero_clip_length(const float *r_actstart, float *r_actend)
+void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
 {
-  if (*r_actend <= *r_actstart) {
-    *r_actend = *r_actstart + 1.0f;
+  if (*r_actend <= *actstart) {
+    *r_actend = *actstart + 1.0f;
+  }
+}
+
+float BKE_nla_clip_length_get_nonzero(float actstart, float actend)
+{
+  if (actend <= actstart) {
+    return 1.0f;
+  }
+  else {
+    return actend - actstart;
   }
 }
 
@@ -487,7 +497,7 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
 
   /* determine initial range */
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
-  BKE_nla_ensure_nonzero_clip_length(&strip->actstart, &strip->actend);
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
   strip->start = strip->actstart;
   strip->end = strip->actend;
 
@@ -611,7 +621,7 @@ void BKE_nlatrack_remove_and_free(ListBase *tracks, NlaTrack *nlt, bool do_id_us
  */
 static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short mode)
 {
-  float actlength, scale;
+  float scale;
   // float repeat; // UNUSED
 
   /* get number of repeats */
@@ -629,10 +639,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
   scale = fabsf(strip->scale);
 
   /* length of referenced action */
-  actlength = strip->actend - strip->actstart;
-  if (IS_EQF(actlength, 0.0f)) {
-    actlength = 1.0f;
-  }
+  const float actlength = BKE_nla_clip_length_get_nonzero(strip->actstart, strip->actend);
 
   /* reversed = play strip backwards */
   if (strip->flag & NLASTRIP_FLAG_REVERSE) {
@@ -1592,7 +1599,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
   prev_actstart = strip->actstart;
 
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
-  BKE_nla_ensure_nonzero_clip_length(&strip->actstart, &strip->actend);
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
   strip->start += (strip->actstart - prev_actstart) * strip->scale;
@@ -1601,7 +1608,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
 }
 void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
 {
-  float actlen, mapping;
+  float mapping;
 
   /* sanity checks
    * - must have a strip
@@ -1612,10 +1619,7 @@ void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
   }
 
   /* calculate new length factors */
-  actlen = strip->actend - strip->actstart;
-  if (IS_EQF(actlen, 0.0f)) {
-    actlen = 1.0f;
-  }
+  const float actlen = BKE_nla_clip_length_get_nonzero(strip->actstart, strip->actend);
 
   mapping = strip->scale * strip->repeat;
 
