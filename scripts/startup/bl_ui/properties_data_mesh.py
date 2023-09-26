@@ -394,6 +394,8 @@ class DATA_PT_uv_texture(MeshButtonsPanel, Panel):
         col.operator("mesh.uv_texture_add", icon='ADD', text="")
         col.operator("mesh.uv_texture_remove", icon='REMOVE', text="")
 
+        draw_attribute_warnings(context, layout)
+
 
 class DATA_PT_remesh(MeshButtonsPanel, Panel):
     bl_label = "Remesh"
@@ -650,7 +652,7 @@ class DATA_PT_vertex_colors(DATA_PT_mesh_attributes, Panel):
 
         col.menu("MESH_MT_color_attribute_context_menu", icon='DOWNARROW_HLT', text="")
 
-        self.draw_attribute_warnings(context, layout)
+        draw_attribute_warnings(context, layout)
 
 
 classes = (
