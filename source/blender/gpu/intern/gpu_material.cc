@@ -838,13 +838,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   mat->graph.used_libraries = BLI_gset_new(
       BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "GPUNodeGraph.used_libraries");
   mat->refcount = 1;
-#ifndef NDEBUG
-  /* Include shader_uuid to be able to more easily differentiate between depth/shadow material
-   * shaders. */
-  BLI_snprintf(mat->name, 64, "%s_%u\n", name, mat->uuid);
-#else
   STRNCPY(mat->name, name);
-#endif
   if (is_lookdev) {
     mat->flag |= GPU_MATFLAG_LOOKDEV_HACK;
   }
