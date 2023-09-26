@@ -1367,7 +1367,7 @@ void UI_view2d_dot_grid_draw(const View2D *v2d,
       continue;
     }
 
-    immUniform1f("point_size", point_size_draw);
+    immUniform1f("size", point_size_draw);
     immUniform4fv("color", color);
     immBegin(GPU_PRIM_POINTS, count_x * count_y);
 
