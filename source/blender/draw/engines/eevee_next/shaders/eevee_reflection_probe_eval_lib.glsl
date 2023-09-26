@@ -10,7 +10,7 @@
 
 int reflection_probes_find_closest(vec3 P)
 {
-  int closest_index = -1;
+  int closest_index = 0;
   float closest_distance = FLT_MAX;
 
   /* ReflectionProbeData doesn't contain any gab, exit at first item that is invalid. */
