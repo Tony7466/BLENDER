@@ -35,7 +35,7 @@ static int node_shader_gpu_light_path(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* This node isn't supported by MaterialX. Only default values returned. */
+  /* NOTE: This node isn't supported by MaterialX. Only default values returned. */
   if (STREQ(socket_out_->name, "Is Camera Ray")) {
     return val(1.0f);
   }

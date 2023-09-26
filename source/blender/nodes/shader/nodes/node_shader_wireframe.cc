@@ -43,7 +43,7 @@ static int node_shader_gpu_wireframe(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* NOTE: This node doesn't have an implementation in MaterialX.*/
+  /* NOTE: This node isn't supported by MaterialX.*/
   return get_output_default(socket_out_->name, NodeItem::Type::Float);
 }
 #endif
