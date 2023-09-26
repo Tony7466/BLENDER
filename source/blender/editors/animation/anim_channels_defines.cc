@@ -4528,6 +4528,9 @@ void ANIM_channel_setting_set(bAnimContext *ac,
 /** Extra offset for the visibility icons in the graph editor. */
 #define GRAPH_ICON_VISIBILITY_OFFSET (GRAPH_COLOR_BAND_WIDTH * 1.5f)
 
+#define CHANNEL_COLOR_RECT_WIDTH (0.5f * ICON_WIDTH)
+#define CHANNEL_COLOR_RECT_MARGIN (2.0f * UI_SCALE_FAC)
+
 /* Helper - Check if a channel needs renaming */
 static bool achannel_is_being_renamed(const bAnimContext *ac,
                                       const bAnimChannelType *acf,
@@ -4798,9 +4801,7 @@ void ANIM_channel_draw(
 
       /* Little channel color rectangle. */
       if (acf_show_channel_colors()) {
-        const float rect_width = 0.5f * ICON_WIDTH;
-        const float rect_margin = 2.0f * U.ui_scale;
-        offset += rect_width + 2 * rect_margin;
+        offset += CHANNEL_COLOR_RECT_WIDTH + 2 * CHANNEL_COLOR_RECT_MARGIN;
       }
 
       /* solo... */
@@ -5636,11 +5637,14 @@ void ANIM_channel_draw_widgets(const bContext *C,
     /* check if there's enough space for the toggles if the sliders are drawn too */
     if (!(draw_sliders) || (BLI_rcti_size_x(&v2d->mask) > ANIM_UI_get_channel_button_width() / 2))
     {
+      /* NOTE: The comments here match the comments in ANIM_channel_draw(), as that
+       * function and this one are strongly coupled. */
+
       /* Little channel color rectangle. */
       const bool show_group_colors = acf_show_channel_colors();
       if (show_group_colors) {
-        const float rect_width = 0.5f * ICON_WIDTH;
-        const float rect_margin = 2.0f * U.ui_scale;
+        const float rect_width = CHANNEL_COLOR_RECT_WIDTH;
+        const float rect_margin = CHANNEL_COLOR_RECT_MARGIN;
         uint8_t color[3];
         if (acf->get_channel_color && acf->get_channel_color(ale, color)) {
           immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
