@@ -125,7 +125,7 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
 static bool unassigned_local_poll(const Main &bmain)
 {
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    // TODO: IS LOCAL CHECK
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }
@@ -161,7 +161,7 @@ static void unassigned_assets_draw(const bContext *C, Menu *menu)
   bool add_separator = !tree.unassigned_assets.is_empty();
 
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    // TODO: IS LOCAL CHECK
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }
@@ -173,6 +173,7 @@ static void unassigned_assets_draw(const bContext *C, Menu *menu)
 
     if (add_separator) {
       uiItemS(layout);
+      uiItemL(layout, IFACE_("Non-Assets"), ICON_NONE);
       add_separator = false;
     }
 
@@ -272,17 +273,17 @@ static bNodeTree *get_asset_or_local_node_group(const bContext &C,
 
 static bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
 {
-  bNodeTree *group = get_asset_or_local_node_group(C, ptr, reports);
-  if (!group) {
+  bNodeTree *node_group = get_asset_or_local_node_group(C, ptr, reports);
+  if (!node_group) {
     return nullptr;
   }
-  if (group->type != NTREE_GEOMETRY) {
+  if (node_group->type != NTREE_GEOMETRY) {
     if (reports) {
       BKE_report(reports, RPT_ERROR, "Asset is not a geometry node group");
     }
     return nullptr;
   }
-  return group;
+  return node_group;
 }
 
 static int modifier_add_asset_exec(bContext *C, wmOperator *op)
