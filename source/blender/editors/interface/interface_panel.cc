@@ -536,7 +536,6 @@ static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != nullptr);
   BLI_assert(panel->type->flag & PANEL_TYPE_INSTANCED);
-
   if (panel->type->get_list_data_expand_flag == nullptr) {
     /* Instanced panel doesn't support loading expansion. */
     return;
