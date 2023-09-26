@@ -165,8 +165,7 @@ struct GeoNodesModifierData {
    */
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
 
-  bke::BakeIDMapping id_mapping;
-  bke::BakeIDMappingIssuesLog *id_mapping_issues = nullptr;
+  bke::bake::BakeIDMapping *id_mapping = nullptr;
 };
 
 struct GeoNodesOperatorData {

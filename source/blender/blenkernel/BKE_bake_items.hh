@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BKE_bake_id_mapping.hh"
 #include "BKE_geometry_set.hh"
 
 namespace blender::bke::bake {
@@ -48,7 +49,7 @@ class GeometryBakeItem : public BakeItem {
    * - Materials can't be stored directly, because they are linked ID data blocks that can't be
    *   restored from baked data currently.
    */
-  static void cleanup_geometry(GeometrySet &geometry);
+  static void cleanup_geometry(GeometrySet &geometry, BakeIDMapping *id_mapping);
 };
 
 /**

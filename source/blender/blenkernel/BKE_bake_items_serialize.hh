@@ -7,6 +7,7 @@
 #include "BLI_fileops.hh"
 #include "BLI_serialize.hh"
 
+#include "BKE_bake_id_mapping.hh"
 #include "BKE_bake_items.hh"
 
 namespace blender::bke::bake {

@@ -23,8 +23,6 @@ class GeoModifierLog;
  */
 void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd);
 
-void MOD_nodes_id_mapping_refresh(Main &bmain, Object &object, NodesModifierData &nmd);
-
 namespace blender {
 
 struct NodesModifierRuntime {
@@ -39,7 +37,6 @@ struct NodesModifierRuntime {
    * used by the evaluated modifier.
    */
   std::shared_ptr<bke::bake::ModifierCache> cache;
-  bke::BakeIDMappingIssuesLog id_mapping_issues;
 };
 
 }  // namespace blender

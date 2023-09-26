@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_bake_id_mapping.hh"
 #include "BKE_bake_items.hh"
 #include "BKE_bake_items_serialize.hh"
 #include "BKE_curves.hh"
@@ -35,7 +36,7 @@ static void remove_materials(Material ***materials, short *materials_num)
   *materials_num = 0;
 }
 
-static void store_materials_as_id_properties(ID &id)
+static void store_materials_as_id_properties(ID &id, BakeIDMapping *id_mapping)
 {
   Material ***materials = BKE_id_material_array_p(&id);
   short *materials_num = BKE_id_material_len_p(&id);
@@ -48,6 +49,9 @@ static void store_materials_as_id_properties(ID &id)
     const Material *material = (*materials)[i];
     IDProperty *material_prop = bke::idprop::create_group(std::to_string(i)).release();
     if (material != nullptr) {
+      if (id_mapping) {
+        id_mapping->add(material->id);
+      }
       IDP_AddToGroup(material_prop, IDP_NewString(material->id.name + 2, "id_name"));
       if (material->id.lib != nullptr) {
         IDP_AddToGroup(material_prop, IDP_NewString(material->id.lib->id.name + 2, "lib_name"));
@@ -70,21 +74,21 @@ static void store_materials_as_id_properties(ID &id)
  * - Materials can't be stored directly, because they are linked ID data blocks that can't be
  *   restored from baked data currently.
  */
-void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
+void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry, BakeIDMapping *id_mapping)
 {
   main_geometry.ensure_owns_all_data();
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
-      store_materials_as_id_properties(mesh->id);
+      store_materials_as_id_properties(mesh->id, id_mapping);
     }
     if (Curves *curves = geometry.get_curves_for_write()) {
       curves->geometry.wrap().attributes_for_write().remove_anonymous();
-      store_materials_as_id_properties(curves->id);
+      store_materials_as_id_properties(curves->id, id_mapping);
     }
     if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
       pointcloud->attributes_for_write().remove_anonymous();
-      store_materials_as_id_properties(pointcloud->id);
+      store_materials_as_id_properties(pointcloud->id, id_mapping);
     }
     if (bke::Instances *instances = geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove_anonymous();

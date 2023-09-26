@@ -421,15 +421,6 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* Update data block mappings before starting to bake. */
-  for (Object *ob : job->objects) {
-    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-      if (md->type == eModifierType_Nodes) {
-        NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-        MOD_nodes_id_mapping_refresh(*bmain, *ob, nmd);
-      }
-    }
-  }
   /* Necessary, because otherwise the main depsgraph relations are rebuild in the worker thread
    * which seems to cause all kinds of issues. */
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);

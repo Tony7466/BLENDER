@@ -419,56 +419,6 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
 
-void MOD_nodes_id_mapping_refresh(Main &bmain, Object &object, NodesModifierData &nmd)
-{
-  if (nmd.runtime->id_mapping_issues.missing_mappings.is_empty()) {
-    return;
-  }
-  const int new_mappings_num = nmd.id_mappings_num +
-                               nmd.runtime->id_mapping_issues.missing_mappings.size();
-  nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
-      MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
-
-  int new_mapping_i = nmd.id_mappings_num;
-  for (const auto &item : nmd.runtime->id_mapping_issues.missing_mappings) {
-    char id_name[MAX_NAME];
-    char lib_name[MAX_NAME];
-    item.first.id_name.copy(id_name);
-    item.first.lib_name.copy(lib_name);
-    ID *id = BKE_libblock_find_name_with_lib(
-        &bmain, id_name, lib_name[0] == '\0' ? nullptr : lib_name);
-
-    NodesModifierIDMapping &mapping = nmd.id_mappings[new_mapping_i++];
-    memset(&mapping, 0, sizeof(NodesModifierIDMapping));
-    if (!item.first.id_name.is_empty()) {
-      mapping.id_name = BLI_strdupn(item.first.id_name.data(), item.first.id_name.size());
-    }
-    if (!item.first.lib_name.is_empty()) {
-      mapping.lib_name = BLI_strdupn(item.first.lib_name.data(), item.first.lib_name.size());
-    }
-    mapping.id_type = item.second;
-    mapping.id = id;
-    id_us_plus(id);
-  }
-
-  nmd.runtime->id_mapping_issues.missing_mappings.clear();
-  nmd.id_mappings_num = new_mappings_num;
-
-  CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
-
-  if (nmd.runtime->cache) {
-    std::lock_guard lock{nmd.runtime->cache->mutex};
-    for (std::unique_ptr<bake::NodeCache> &node_cache : nmd.runtime->cache->cache_by_id.values()) {
-      if (node_cache->cache_status != bake::CacheStatus::Baked) {
-        node_cache->reset();
-      }
-    }
-  }
-
-  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
-  DEG_relations_tag_update(&bmain);
-}
-
 namespace blender {
 
 static void find_side_effect_nodes_for_viewer_path(
@@ -1073,6 +1023,19 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   }
 };
 
+class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
+ public:
+  ID *get(const bake::BakeIDMappingKey & /*key*/, const ID_Type /*type*/) const override
+  {
+    return nullptr;
+  }
+
+  void add(const ID &id) override
+  {
+    int a = 0;
+  }
+};
+
 static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
@@ -1147,34 +1110,8 @@ static void modifyGeometry(ModifierData *md,
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
-  /* First insert all the user defined name mappings. */
-  for (const NodesModifierIDMapping &mapping : Span(nmd->id_mappings, nmd->id_mappings_num)) {
-    if (mapping.id == nullptr) {
-      continue;
-    }
-    if (StringRef(mapping.id_name).is_empty()) {
-      continue;
-    }
-    const bke::BakeIDMappingKey key = {mapping.id_name, mapping.lib_name};
-    modifier_eval_data.id_mapping.mappings.add(key, mapping.id);
-  }
-  /* Then insert all IDs with their actual name (unless the same name is used by another mapping
-   * already). */
-  for (const NodesModifierIDMapping &mapping : Span(nmd->id_mappings, nmd->id_mappings_num)) {
-    if (mapping.id == nullptr) {
-      continue;
-    }
-    bke::BakeIDMappingKey key;
-    key.id_name = mapping.id->name + 2;
-    if (mapping.id->lib) {
-      key.lib_name = mapping.id->lib->id.name + 2;
-    }
-    /* Only added when the key does not exist already. */
-    modifier_eval_data.id_mapping.mappings.add(key, mapping.id);
-  }
-  if (logging_enabled(ctx)) {
-    modifier_eval_data.id_mapping_issues = &nmd_orig->runtime->id_mapping_issues;
-  }
+  NodesModifierBakeIDMapping id_mapping;
+  modifier_eval_data.id_mapping = &id_mapping;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
@@ -1728,7 +1665,6 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-  const bool has_missing_mappings = !nmd->runtime->id_mapping_issues.missing_mappings.is_empty();
 
   PointerRNA mappings_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd);
 
@@ -1752,19 +1688,7 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
   uiLayout *ops_col = uiLayoutColumn(list_row, false);
-  {
-    uiLayout *refresh_remove_col = uiLayoutColumn(ops_col, true);
-    {
-      uiLayout *refresh_col = uiLayoutColumn(refresh_remove_col, true);
-      uiLayoutSetActive(refresh_col, has_missing_mappings);
-      uiItemO(refresh_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
-    }
-    uiItemO(refresh_remove_col, "", ICON_REMOVE, "OBJECT_OT_geometry_nodes_id_mapping_remove");
-  }
-
-  if (has_missing_mappings) {
-    uiItemL(col, N_("Missing data-block mappings"), ICON_INFO);
-  }
+  uiItemO(ops_col, "", ICON_REMOVE, "OBJECT_OT_geometry_nodes_id_mapping_remove");
 
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
     return;

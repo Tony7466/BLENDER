@@ -3721,55 +3721,6 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
-/** \name Update ID Mapping in Geometry Nodes Modifier
- * \{ */
-
-static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator *op)
-{
-  using namespace blender;
-  using namespace blender::bke;
-
-  Main *bmain = CTX_data_main(C);
-  Object *ob = ED_object_active_context(C);
-  ModifierData *md = edit_modifier_property_get(op, ob, 0);
-  if (!(md && md->type == eModifierType_Nodes)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  MOD_nodes_id_mapping_refresh(*bmain, *ob, nmd);
-  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
-  return OPERATOR_FINISHED;
-}
-
-static int geometry_nodes_id_mapping_update_invoke(bContext *C,
-                                                   wmOperator *op,
-                                                   const wmEvent * /*event*/)
-{
-  if (edit_modifier_invoke_properties(C, op)) {
-    return geometry_nodes_id_mapping_update_exec(C, op);
-  }
-  return OPERATOR_CANCELLED;
-}
-
-void OBJECT_OT_geometry_nodes_id_mapping_update(wmOperatorType *ot)
-{
-  ot->name = "Update Geometry Nodes Data Block Mapping";
-  ot->description = "Create mappings for data blocks that failed to be mapped in the past";
-  ot->idname = __func__;
-
-  ot->invoke = geometry_nodes_id_mapping_update_invoke;
-  ot->exec = geometry_nodes_id_mapping_update_exec;
-  ot->poll = ED_operator_object_active;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
-
-  edit_modifier_properties(ot);
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
 /** \name Remove ID Mapping in Geometry Nodes Modifier
  * \{ */
 

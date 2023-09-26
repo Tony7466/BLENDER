@@ -118,7 +118,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
                                     *user_data.compute_context,
                                     node_,
                                     user_data.modifier_data->id_mapping,
-                                    user_data.modifier_data->id_mapping_issues,
                                     outputs);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);
@@ -139,7 +138,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
                                     *user_data.compute_context,
                                     node_,
                                     user_data.modifier_data->id_mapping,
-                                    user_data.modifier_data->id_mapping_issues,
                                     outputs);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);
@@ -159,8 +157,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     /* Instead of outputting the initial values directly, convert them to a simulation state and
      * then back. This ensures that some geometry processing happens on the data consistently (e.g.
      * removing anonymous attributes). */
-    bke::bake::BakeState bake_state = move_values_to_simulation_state(simulation_items_,
-                                                                      input_values);
+    bke::bake::BakeState bake_state = move_values_to_simulation_state(
+        simulation_items_, input_values, user_data.modifier_data->id_mapping);
     this->output_simulation_state_move(params, user_data, std::move(bake_state));
   }
 };

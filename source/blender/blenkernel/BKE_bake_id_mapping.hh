@@ -15,7 +15,7 @@
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
 
-namespace blender::bke {
+namespace blender::bke::bake {
 
 struct BakeIDMappingKey {
   StringRef id_name;
@@ -32,34 +32,14 @@ struct BakeIDMappingKey {
   }
 };
 
-struct BakeIDMapping {
-  Map<BakeIDMappingKey, ID *> mappings;
+class BakeIDMapping {
+ public:
+  virtual ID *get(const BakeIDMappingKey &key, const ID_Type type) const = 0;
 
-  ID *get(const BakeIDMappingKey &key, const ID_Type type) const
-  {
-    ID *id = this->mappings.lookup_default(key, nullptr);
-    if (id == nullptr) {
-      return nullptr;
-    }
-    if (GS(id->name) != type) {
-      return nullptr;
-    }
-    return id;
-  }
+  /**
+   * Try to add an ID to the mapping. This may not succeed in all cases. The method is thread-safe.
+   */
+  virtual void add(const ID &id) = 0;
 };
 
-struct BakeIDMappingIssuesLog {
-  std::mutex mutex;
-  LinearAllocator<> allocator;
-  Set<std::pair<BakeIDMappingKey, ID_Type>> missing_mappings;
-
-  void add(const BakeIDMappingKey &key, ID_Type type)
-  {
-    std::lock_guard lock{this->mutex};
-    missing_mappings.add(
-        {{this->allocator.copy_string(key.id_name), this->allocator.copy_string(key.lib_name)},
-         type});
-  }
-};
-
-}  // namespace blender::bke
+}  // namespace blender::bke::bake

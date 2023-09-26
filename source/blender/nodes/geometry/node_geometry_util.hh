@@ -107,22 +107,22 @@ const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
 
 bke::bake::BakeState move_values_to_simulation_state(
-    const Span<NodeSimulationItem> node_simulation_items, const Span<void *> input_values);
+    const Span<NodeSimulationItem> node_simulation_items,
+    const Span<void *> input_values,
+    bke::bake::BakeIDMapping *id_mapping);
 void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
                                      bke::bake::BakeState zone_state,
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
-                                     const bke::BakeIDMapping &id_mapping,
-                                     bke::BakeIDMappingIssuesLog *id_mapping_issues,
+                                     const bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values);
 void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
                                      const bke::bake::BakeStateRef &zone_state,
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
-                                     const bke::BakeIDMapping &id_mapping,
-                                     bke::BakeIDMappingIssuesLog *id_mapping_issues,
+                                     const bke::bake::BakeIDMapping *id_mapping,
                                      Span<void *> r_output_values);
 
 void copy_with_checked_indices(const GVArray &src,
