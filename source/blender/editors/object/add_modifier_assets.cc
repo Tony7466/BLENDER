@@ -18,6 +18,7 @@
 #include "BKE_context.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
+#include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -95,7 +96,7 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   uiLayout *layout = menu->layout;
   uiItemS(layout);
 
-  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_node_group", true);
   for (const asset_system::AssetRepresentation *asset : assets) {
     PointerRNA props_ptr;
     uiItemFullO_ptr(layout,
@@ -121,11 +122,29 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   });
 }
 
-static void unassigned_assets_draw(const bContext * /*C*/, Menu *menu)
+static bool unassigned_local_poll(const Main &bmain)
 {
+  LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
+    // TODO: IS LOCAL CHECK
+    if (group->id.library_weak_reference || group->id.asset_data) {
+      continue;
+    }
+    if (!group->geometry_node_asset_traits ||
+        !(group->geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER))
+    {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+static void unassigned_assets_draw(const bContext *C, Menu *menu)
+{
+  Main &bmain = *CTX_data_main(C);
   asset::AssetItemTree &tree = *get_static_item_tree();
   uiLayout *layout = menu->layout;
-  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_node_group", true);
   for (const asset_system::AssetRepresentation *asset : tree.unassigned_assets) {
     PointerRNA props_ptr;
     uiItemFullO_ptr(layout,
@@ -137,6 +156,36 @@ static void unassigned_assets_draw(const bContext * /*C*/, Menu *menu)
                     UI_ITEM_NONE,
                     &props_ptr);
     asset::operator_asset_reference_props_set(*asset, props_ptr);
+  }
+
+  bool add_separator = !tree.unassigned_assets.is_empty();
+
+  LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
+    // TODO: IS LOCAL CHECK
+    if (group->id.library_weak_reference || group->id.asset_data) {
+      continue;
+    }
+    if (!group->geometry_node_asset_traits ||
+        !(group->geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER))
+    {
+      continue;
+    }
+
+    if (add_separator) {
+      uiItemS(layout);
+      add_separator = false;
+    }
+
+    PointerRNA props_ptr;
+    uiItemFullO_ptr(layout,
+                    ot,
+                    group->id.name + 2,
+                    ICON_NONE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    UI_ITEM_NONE,
+                    &props_ptr);
+    WM_operator_properties_id_lookup_set_from_id(&props_ptr, &group->id);
   }
 }
 
@@ -193,7 +242,7 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
     }
   });
 
-  if (!tree.unassigned_assets.is_empty()) {
+  if (!tree.unassigned_assets.is_empty() || unassigned_local_poll(*CTX_data_main(C))) {
     uiItemS(layout);
     uiItemM(layout,
             "OBJECT_MT_add_modifier_unassigned_assets",
@@ -202,26 +251,38 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
   }
 }
 
-static bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
+static bNodeTree *get_asset_or_local_node_group(const bContext &C,
+                                                PointerRNA &ptr,
+                                                ReportList *reports)
 {
+  Main &bmain = *CTX_data_main(&C);
+  if (bNodeTree *group = reinterpret_cast<bNodeTree *>(
+          WM_operator_properties_id_lookup_from_name_or_session_uuid(&bmain, &ptr, ID_NT)))
+  {
+    return group;
+  }
+
   const asset_system::AssetRepresentation *asset =
       asset::operator_asset_reference_props_get_asset_from_all_library(C, ptr, reports);
   if (!asset) {
     return nullptr;
   }
-  Main &bmain = *CTX_data_main(&C);
-  bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      asset::asset_local_id_ensure_imported(bmain, *asset));
-  if (!node_group) {
+  return reinterpret_cast<bNodeTree *>(asset::asset_local_id_ensure_imported(bmain, *asset));
+}
+
+static bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
+{
+  bNodeTree *group = get_asset_or_local_node_group(C, ptr, reports);
+  if (!group) {
     return nullptr;
   }
-  if (node_group->type != NTREE_GEOMETRY) {
+  if (group->type != NTREE_GEOMETRY) {
     if (reports) {
       BKE_report(reports, RPT_ERROR, "Asset is not a geometry node group");
     }
     return nullptr;
   }
-  return node_group;
+  return group;
 }
 
 static int modifier_add_asset_exec(bContext *C, wmOperator *op)
@@ -270,11 +331,11 @@ static std::string modifier_add_asset_get_description(bContext *C,
   return TIP_(asset->get_metadata().description);
 }
 
-static void OBJECT_OT_modifier_add_asset(wmOperatorType *ot)
+static void OBJECT_OT_modifier_add_node_group(wmOperatorType *ot)
 {
   ot->name = "Add Modifier";
   ot->description = "Add a procedural operation/effect to the active object";
-  ot->idname = "OBJECT_OT_modifier_add_asset";
+  ot->idname = "OBJECT_OT_modifier_add_node_group";
 
   ot->exec = modifier_add_asset_exec;
   ot->poll = ED_operator_object_active_editable;
@@ -283,6 +344,7 @@ static void OBJECT_OT_modifier_add_asset(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   asset::operator_asset_reference_props_register(*ot->srna);
+  WM_operator_properties_id_lookup(ot, false);
 }
 
 static MenuType modifier_add_unassigned_assets_menu_type()
@@ -291,7 +353,6 @@ static MenuType modifier_add_unassigned_assets_menu_type()
   STRNCPY(type.idname, "OBJECT_MT_add_modifier_unassigned_assets");
   type.draw = unassigned_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
-  type.flag = MenuTypeFlag::ContextDependent;
   type.description = N_(
       "Modifier node group assets not assigned to a catalog.\n"
       "Catalogs can be assigned in the Asset Browser");
@@ -323,7 +384,7 @@ void object_modifier_add_asset_register()
   WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_catalog_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, modifier_add_root_catalogs_menu_type()));
-  WM_operatortype_append(OBJECT_OT_modifier_add_asset);
+  WM_operatortype_append(OBJECT_OT_modifier_add_node_group);
 }
 
 void ui_template_modifier_asset_menu_items(uiLayout &layout,

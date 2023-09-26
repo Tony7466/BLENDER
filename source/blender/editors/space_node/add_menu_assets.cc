@@ -209,7 +209,7 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
   }
 
   tree.catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
-    if (!all_builtin_menus.contains(item.get_name())) {
+    if (!all_builtin_menus.contains(item.catalog_path().str())) {
       asset::draw_menu_for_catalog(
           screen, *all_library, item, "NODE_MT_node_add_catalog_assets", *layout);
     }

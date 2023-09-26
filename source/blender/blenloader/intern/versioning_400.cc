@@ -233,6 +233,35 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
   }
 }
 
+static void enable_geometry_nodes_is_modifier(Main &bmain)
+{
+  /* Any node group used by a modifier is marked for that purpose. */
+  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      if (bNodeTree *group = reinterpret_cast<NodesModifierData *>(md)->node_group) {
+        if (!group->geometry_node_asset_traits) {
+          group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+        }
+        group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
+      }
+    }
+  }
+  /* Any node group shared as an asset is also assumed to be used as a modifier. */
+  LISTBASE_FOREACH (bNodeTree *, group, &bmain.nodetrees) {
+    if (group->type == NTREE_GEOMETRY) {
+      if (group->id.asset_data) {
+        if (!group->geometry_node_asset_traits) {
+          group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+        }
+        group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
+      }
+    }
+  }
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -315,6 +344,9 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+    if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 26)) {
+      enable_geometry_nodes_is_modifier(*bmain);
+    }
   }
 }
 
