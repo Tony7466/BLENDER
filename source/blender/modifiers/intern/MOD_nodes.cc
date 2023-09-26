@@ -1036,9 +1036,6 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
       : nmd_(nmd), nmd_orig_(nmd_orig)
   {
     for (const NodesModifierIDMapping &mapping : Span(nmd_.id_mappings, nmd_.id_mappings_num)) {
-      if (mapping.id == nullptr) {
-        continue;
-      }
       mappings_.add({mapping.id_name, mapping.lib_name}, mapping.id);
     }
   }
