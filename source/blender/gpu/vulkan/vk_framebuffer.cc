@@ -255,14 +255,14 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
 /** \name Blit operations
  * \{ */
 
-static void blit_to_aspect(VKCommandBuffer &command_buffer,
-                           VKTexture &dst_texture,
-                           VKTexture &src_texture,
-                           int dst_offset_x,
-                           int dst_offset_y,
-                           VkImageAspectFlagBits image_aspect)
+static void blit_aspect(VKCommandBuffer &command_buffer,
+                        VKTexture &dst_texture,
+                        VKTexture &src_texture,
+                        int dst_offset_x,
+                        int dst_offset_y,
+                        VkImageAspectFlagBits image_aspect)
 {
-  /* Prefer texture copy, as some platforms doesn't support using D32_SFLOAT_S8_UINT to be used as
+  /* Prefer texture copy, as some platforms don't support using D32_SFLOAT_S8_UINT to be used as
    * a blit destination. */
   if (dst_offset_x == 0 && dst_offset_y == 0 &&
       dst_texture.format_get() == src_texture.format_get() &&
@@ -330,12 +330,12 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
       dst_framebuffer.color_attachment_layout_ensure(
           context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      blit_to_aspect(command_buffer,
-                     dst_texture,
-                     src_texture,
-                     dst_offset_x,
-                     dst_offset_y,
-                     VK_IMAGE_ASPECT_COLOR_BIT);
+      blit_aspect(command_buffer,
+                  dst_texture,
+                  src_texture,
+                  dst_offset_x,
+                  dst_offset_y,
+                  VK_IMAGE_ASPECT_COLOR_BIT);
     }
   }
 
@@ -355,12 +355,12 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
       dst_framebuffer.depth_attachment_layout_ensure(context,
                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      blit_to_aspect(command_buffer,
-                     dst_texture,
-                     src_texture,
-                     dst_offset_x,
-                     dst_offset_y,
-                     VK_IMAGE_ASPECT_DEPTH_BIT);
+      blit_aspect(command_buffer,
+                  dst_texture,
+                  src_texture,
+                  dst_offset_x,
+                  dst_offset_y,
+                  VK_IMAGE_ASPECT_DEPTH_BIT);
     }
   }
   command_buffer.submit();
