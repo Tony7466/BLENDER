@@ -152,6 +152,23 @@ void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt);
 void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
 
 /**
+ * Ensure that the passed range is not zero length.
+ *
+ * WARNING: this function is *very narrow* and special-cased in its
+ * application.  It was introduced as part of the fix for issue #107030,
+ * as a way to collect a bunch of whac-a-mole inline applications of this
+ * logic in one place.  The logic itself isn't principled in any way,
+ * and should almost certainly not be used anywhere that it isn't already,
+ * short of one of those whac-a-mole inline places being overlooked.
+ *
+ * The underlying purpose of this function is to ensure that the computed
+ * clip length for an NLA strip is (in certain places) never zero, in order to
+ * avoid the strip's scale having to be infinity.  In other words, it's a
+ * hack.  But at least now it's a hack collected in one place.
+ */
+void BKE_nla_ensure_nonzero_clip_length(const float *r_actstart, float *r_actend);
+
+/**
  * Create a NLA Strip referencing the given Action.
  */
 struct NlaStrip *BKE_nlastrip_new(struct bAction *act);

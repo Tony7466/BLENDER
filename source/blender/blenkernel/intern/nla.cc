@@ -446,6 +446,13 @@ NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
   return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
+void BKE_nla_ensure_nonzero_clip_length(const float *r_actstart, float *r_actend)
+{
+  if (*r_actend <= *r_actstart) {
+    *r_actend = *r_actstart + 1.0f;
+  }
+}
+
 NlaStrip *BKE_nlastrip_new(bAction *act)
 {
   NlaStrip *strip;
@@ -478,13 +485,11 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
   strip->act = act;
   id_us_plus(&act->id);
 
-  /* determine initial range
-   * - strip length cannot be 0... ever...
-   */
+  /* determine initial range */
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
-
+  BKE_nla_ensure_nonzero_clip_length(&strip->actstart, &strip->actend);
   strip->start = strip->actstart;
-  strip->end = IS_EQF(strip->actstart, strip->actend) ? (strip->actstart + 1.0f) : strip->actend;
+  strip->end = strip->actend;
 
   /* strip should be referenced as-is */
   strip->scale = 1.0f;
@@ -1587,6 +1592,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
   prev_actstart = strip->actstart;
 
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
+  BKE_nla_ensure_nonzero_clip_length(&strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
   strip->start += (strip->actstart - prev_actstart) * strip->scale;
