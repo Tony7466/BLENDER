@@ -313,6 +313,13 @@ struct PanelType {
    */
   void (*set_list_data_expand_flag)(const bContext *C, Panel *pa, short expand_flag);
 
+  void (*add_child_panel_instances)(bContext *C,
+                                    ARegion *region,
+                                    const char *parent_idname,
+                                    ListBase *child_panels,
+                                    PointerRNA *custom_data);
+  bool (*child_panel_instances_match_data)(const Panel *parent, PointerRNA *custom_data);
+
   /* sub panels */
   PanelType *parent;
   ListBase children;

@@ -68,8 +68,6 @@
 #include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
-#include "MOD_nodes.hh"
-
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
@@ -2291,9 +2289,9 @@ static bool modifier_panel_matches_data(void *md_link, const Panel *panel)
     return false;
   }
 
-  if (ModifierType(md->type) == eModifierType_Nodes) {
-    NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-    if (!blender::MOD_nodes_child_panel_instances_match_data(nmd, panel)) {
+  if (panel && panel->type->child_panel_instances_match_data) {
+    PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
+    if (!panel->type->child_panel_instances_match_data(panel, md_ptr)) {
       return false;
     }
   }
@@ -2328,10 +2326,8 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 
       Panel *panel = UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
 
-      if (ModifierType(md->type) == eModifierType_Nodes) {
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        blender::MOD_nodes_add_child_panel_instances(
-            nmd, C, region, panel_idname, &panel->children, md_ptr);
+      if (panel && panel->type->add_child_panel_instances) {
+        panel->type->add_child_panel_instances(C, region, panel_idname, &panel->children, md_ptr);
       }
     }
   }

@@ -1738,43 +1738,16 @@ static void node_panel_draw(const bContext *C, Panel *panel)
   draw_panel_content(C, nmd, panel_iface, layout, ptr);
 }
 
-static void panel_register(ARegionType *region_type)
+static void add_child_panel_instances(bContext *C,
+                                      ARegion *region,
+                                      const char *parent_idname,
+                                      ListBase *child_panels,
+                                      PointerRNA *custom_data)
 {
-  using namespace blender;
-  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
-  modifier_subpanel_register_ex(region_type,
-                                "node_panel",
-                                "",
-                                child_panel_poll,
-                                node_panel_draw_header,
-                                node_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED);
-  modifier_subpanel_register_ex(region_type,
-                                "output_attributes",
-                                N_("Output Attributes"),
-                                child_panel_poll,
-                                nullptr,
-                                output_attribute_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_INSTANCED);
-  modifier_subpanel_register_ex(region_type,
-                                "internal_dependencies",
-                                N_("Internal Dependencies"),
-                                child_panel_poll,
-                                nullptr,
-                                internal_dependencies_panel_draw,
-                                panel_type,
-                                PANEL_TYPE_INSTANCED);
-}
+  BLI_assert(!RNA_pointer_is_null(custom_data));
+  BLI_assert(RNA_struct_is_a(custom_data->type, &RNA_NodesModifier));
 
-void MOD_nodes_add_child_panel_instances(NodesModifierData *nmd,
-                                         bContext *C,
-                                         ARegion *region,
-                                         const char *parent_idname,
-                                         ListBase *child_panels,
-                                         PointerRNA *custom_data)
-{
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(custom_data->data);
   if (nmd->node_group == nullptr) {
     return;
   }
@@ -1807,8 +1780,12 @@ void MOD_nodes_add_child_panel_instances(NodesModifierData *nmd,
   UI_panel_add_instanced(C, region, child_panels, internal_dependencies_panel_idname, custom_data);
 }
 
-bool MOD_nodes_child_panel_instances_match_data(NodesModifierData *nmd, const Panel *parent)
+static bool child_panel_instances_match_data(const Panel *parent, PointerRNA *custom_data)
 {
+  BLI_assert(!RNA_pointer_is_null(custom_data));
+  BLI_assert(RNA_struct_is_a(custom_data->type, &RNA_NodesModifier));
+
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(custom_data->data);
   if (nmd->node_group == nullptr) {
     return BLI_listbase_is_empty(&parent->children);
   }
@@ -1869,6 +1846,39 @@ bool MOD_nodes_child_panel_instances_match_data(NodesModifierData *nmd, const Pa
   }
 
   return true;
+}
+
+static void panel_register(ARegionType *region_type)
+{
+  using namespace blender;
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
+  panel_type->add_child_panel_instances = add_child_panel_instances;
+  panel_type->child_panel_instances_match_data = child_panel_instances_match_data;
+
+  modifier_subpanel_register_ex(region_type,
+                                "node_panel",
+                                "",
+                                child_panel_poll,
+                                node_panel_draw_header,
+                                node_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED);
+  modifier_subpanel_register_ex(region_type,
+                                "output_attributes",
+                                N_("Output Attributes"),
+                                child_panel_poll,
+                                nullptr,
+                                output_attribute_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_INSTANCED);
+  modifier_subpanel_register_ex(region_type,
+                                "internal_dependencies",
+                                N_("Internal Dependencies"),
+                                child_panel_poll,
+                                nullptr,
+                                internal_dependencies_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_INSTANCED);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)

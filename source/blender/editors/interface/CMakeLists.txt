@@ -16,7 +16,6 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../makesrna
-  ../../modifiers
   ../../nodes
   ../../python
   ../../render
@@ -103,7 +102,6 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_datafiles
   PRIVATE bf::intern::guardedalloc
-  bf_modifiers
 )
 
 if(WITH_INTERNATIONAL)
