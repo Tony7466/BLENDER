@@ -19,7 +19,24 @@ namespace blender::bke::bake {
 
 struct BakeIDMappingKey {
   StringRef id_name;
+  /**
+   * This is a name of the Library ID data block, not the file path. It is necessary to unique
+   * identify an ID in the .blend file.
+   */
   StringRef lib_name;
+
+  BakeIDMappingKey() = default;
+  BakeIDMappingKey(const StringRef id_name, const StringRef lib_name)
+      : id_name(id_name), lib_name(lib_name)
+  {
+  }
+  BakeIDMappingKey(const ID &id)
+  {
+    this->id_name = id.name + 2;
+    if (id.lib) {
+      this->lib_name = id.lib->id.name + 2;
+    }
+  }
 
   uint64_t hash() const
   {
