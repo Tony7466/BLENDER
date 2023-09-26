@@ -303,6 +303,16 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
       immRectf(pos, v2d->cur.xmin, ymin, ac->scene->r.sfra, ymax);
       immRectf(pos, ac->scene->r.efra, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
     }
+
+    /* Alpha-over the channel color, if it's there. */
+    {
+      const bool show_group_colors = U.animation_flag & USER_ANIM_SHOW_CHANNEL_GROUP_COLORS;
+      uint8_t color[3];
+      if (show_group_colors && acf->get_channel_color && acf->get_channel_color(ale, color)) {
+        immUniformColor3ubvAlpha(color, 32);
+        immRectf(pos, v2d->cur.xmin, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
+      }
+    }
   }
 }
 
