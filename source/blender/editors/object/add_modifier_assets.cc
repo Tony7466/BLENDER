@@ -19,7 +19,7 @@
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BLT_translation.h"
 
@@ -95,11 +95,10 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   uiLayout *layout = menu->layout;
   uiItemS(layout);
 
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
   for (const asset_system::AssetRepresentation *asset : assets) {
-    uiLayout *col = uiLayoutColumn(layout, false);
-    wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
     PointerRNA props_ptr;
-    uiItemFullO_ptr(col,
+    uiItemFullO_ptr(layout,
                     ot,
                     IFACE_(asset->get_name().c_str()),
                     ICON_NONE,
@@ -125,10 +124,11 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
 static void unassigned_assets_draw(const bContext * /*C*/, Menu *menu)
 {
   asset::AssetItemTree &tree = *get_static_item_tree();
+  uiLayout *layout = menu->layout;
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
   for (const asset_system::AssetRepresentation *asset : tree.unassigned_assets) {
-    wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_add_asset", true);
     PointerRNA props_ptr;
-    uiItemFullO_ptr(menu->layout,
+    uiItemFullO_ptr(layout,
                     ot,
                     IFACE_(asset->get_name().c_str()),
                     ICON_NONE,
@@ -327,7 +327,7 @@ void object_modifier_add_asset_register()
 }
 
 void ui_template_modifier_asset_menu_items(uiLayout &layout,
-                                           bContext &C,
+                                           const bContext &C,
                                            const StringRef catalog_path)
 {
   using namespace blender;
