@@ -54,29 +54,13 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem ior = get_input_value("IOR", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  NodeItem dielectric = create_node("dielectric_bsdf",
-                                    NodeItem::Type::BSDF,
-                                    {{"normal", normal},
-                                     {"tint", color},
-                                     {"roughness", roughness},
-                                     {"ior", ior},
-                                     {"scatter_mode", val(std::string("RT"))}});
-
-  NodeItem artistic_ior = create_node("artistic_ior",
-                                      NodeItem::Type::Multioutput,
-                                      {{"reflectivity", color}, {"edge_color", color}});
-  NodeItem ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
-  NodeItem extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
-
-  NodeItem conductor = create_node("conductor_bsdf",
-                                   NodeItem::Type::BSDF,
-                                   {{"normal", normal},
-                                    {"ior", ior_out},
-                                    {"extinction", extinction_out},
-                                    {"roughness", roughness}});
-
-  return create_node(
-      "mix", NodeItem::Type::BSDF, {{"fg", dielectric}, {"bg", conductor}, {"mix", val(0.5f)}});
+  return create_node("dielectric_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"normal", normal},
+                      {"tint", color},
+                      {"roughness", roughness},
+                      {"ior", ior},
+                      {"scatter_mode", val(std::string("RT"))}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

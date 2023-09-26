@@ -54,7 +54,7 @@ NodeItem::Type NodeItem::type(const std::string &type_str)
     return Type::EDF;
   }
   if (type_str == "displacementshader") {
-    return Type::Displacementshader;
+    return Type::DisplacementShader;
   }
   if (type_str == "surfaceshader") {
     return Type::SurfaceShader;
@@ -97,7 +97,7 @@ std::string NodeItem::type(Type type)
       return "BSDF";
     case Type::EDF:
       return "EDF";
-    case Type::Displacementshader:
+    case Type::DisplacementShader:
       return "displacementshader";
     case Type::SurfaceShader:
       return "surfaceshader";
@@ -388,14 +388,15 @@ NodeItem NodeItem::rotate(const NodeItem &angle_xyz, bool invert)
   NodeItem x = angle_xyz[0];
   NodeItem y = angle_xyz[1];
   NodeItem z = angle_xyz[2];
+
+  NodeItem x_axis = val(MaterialX::Vector3(1.0f, 0.0f, 0.0f));
+  NodeItem y_axis = val(MaterialX::Vector3(0.0f, 1.0f, 0.0f));
+  NodeItem z_axis = val(MaterialX::Vector3(0.0f, 0.0f, 1.0f));
+
   if (invert) {
-    return rotate(z, val(MaterialX::Vector3(0.0f, 0.0f, 1.0f)))
-        .rotate(y, val(MaterialX::Vector3(0.0f, 1.0f, 0.0f)))
-        .rotate(x, val(MaterialX::Vector3(1.0f, 0.0f, 0.0f)));
+    return rotate(z, z_axis).rotate(y, y_axis).rotate(x, x_axis);
   }
-  return rotate(x, val(MaterialX::Vector3(1.0f, 0.0f, 0.0f)))
-      .rotate(y, val(MaterialX::Vector3(0.0f, 1.0f, 0.0f)))
-      .rotate(z, val(MaterialX::Vector3(0.0f, 0.0f, 1.0f)));
+  return rotate(x, x_axis).rotate(y, y_axis).rotate(z, z_axis);
 }
 
 NodeItem NodeItem::sin() const

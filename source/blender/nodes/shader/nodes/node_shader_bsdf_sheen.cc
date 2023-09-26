@@ -58,10 +58,9 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Float);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
 
-  return create_node(
-      "sheen_bsdf",
-      NodeItem::Type::BSDF,
-      {{"color", color}, {"weight", roughness}, {"roughness", roughness}, {"normal", normal}});
+  return create_node("sheen_bsdf",
+                     NodeItem::Type::BSDF,
+                     {{"color", color}, {"roughness", roughness}, {"normal", normal}});
 }
 #endif
 NODE_SHADER_MATERIALX_END

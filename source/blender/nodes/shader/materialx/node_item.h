@@ -41,7 +41,7 @@ class NodeItem {
     /* Shader types. NOTE: There are only supported types */
     BSDF,
     EDF,
-    Displacementshader,
+    DisplacementShader,
     SurfaceShader,
     Material,
   };

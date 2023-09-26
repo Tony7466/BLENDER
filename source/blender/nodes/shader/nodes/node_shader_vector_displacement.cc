@@ -50,7 +50,7 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
 
   return create_node("displacement",
-                     NodeItem::Type::Displacementshader,
+                     NodeItem::Type::DisplacementShader,
                      {{"displacement", vector}, {"scale", scale}});
 }
 #endif

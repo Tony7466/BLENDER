@@ -89,8 +89,8 @@ static int node_shader_gpu_tangent(GPUMaterial *mat,
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* TODO: This node doesn't have an implementation in MaterialX.*/
-  return get_output_default(socket_out_->name, NodeItem::Type::Vector3);
+  /* TODO: implement other features */
+  return create_node("tangent", NodeItem::Type::Vector3, {{"space", val(std::string("world"))}});
 }
 #endif
 NODE_SHADER_MATERIALX_END
