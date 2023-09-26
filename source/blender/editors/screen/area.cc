@@ -3582,7 +3582,7 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-void region_draw_blocks_in_view2d(const bContext *C, const ARegion *region)
+static void region_draw_blocks_in_view2d(const bContext *C, const ARegion *region)
 {
   UI_view2d_view_ortho(&region->v2d);
 
