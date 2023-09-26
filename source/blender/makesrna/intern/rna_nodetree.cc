@@ -9096,7 +9096,7 @@ static void def_geo_repeat_output(StructRNA *srna)
                            "Inspection Index",
                            "Iteration index that is used by inspection features like the viewer "
                            "node or socket inspection");
-  RNA_def_property_update(prop, NC_NODE, nullptr);
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
