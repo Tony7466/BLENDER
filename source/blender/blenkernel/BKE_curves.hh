@@ -25,7 +25,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.h"
 
-#include "DNA_meshdata_types.h"
+struct MDeformVert;
 
 namespace blender::bke {
 
