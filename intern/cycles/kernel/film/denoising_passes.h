@@ -45,8 +45,7 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
 
   float3 normal = zero_float3();
   Spectrum diffuse_albedo = zero_spectrum();
-  Spectrum specular_albedo = zero_spectrum();
-  float sum_weight = 0.0f, sum_nonspecular_weight = 0.0f;
+  float sum_weight = 0.0f;
 
   for (int i = 0; i < sd->num_closure; i++) {
     ccl_private const ShaderClosure *sc = &sd->closure[i];
@@ -62,46 +61,30 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
     sum_weight += sc->sample_weight;
 
     Spectrum closure_albedo = bsdf_albedo(kg, sd, sc, true, true);
-    if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f) ||
-        sc->type == CLOSURE_BSDF_HAIR_HUANG_ID)
-    {
-      /* Far-field hair models "count" as diffuse. */
-      diffuse_albedo += closure_albedo;
-      sum_nonspecular_weight += sc->sample_weight;
-    }
-    else {
-      specular_albedo += closure_albedo;
-    }
+    diffuse_albedo += closure_albedo;
   }
 
-  /* Wait for next bounce if 75% or more sample weight belongs to specular-like closures. */
-  if ((sum_weight == 0.0f) || (sum_nonspecular_weight * 4.0f > sum_weight)) {
-    if (sum_weight != 0.0f) {
-      normal /= sum_weight;
-    }
-
-    if (kernel_data.film.pass_denoising_normal != PASS_UNUSED) {
-      /* Transform normal into camera space. */
-      const Transform worldtocamera = kernel_data.cam.worldtocamera;
-      normal = transform_direction(&worldtocamera, normal);
-
-      const float3 denoising_normal = ensure_finite(normal);
-      film_write_pass_float3(buffer + kernel_data.film.pass_denoising_normal, denoising_normal);
-    }
-
-    if (kernel_data.film.pass_denoising_albedo != PASS_UNUSED) {
-      const Spectrum denoising_feature_throughput = INTEGRATOR_STATE(
-          state, path, denoising_feature_throughput);
-      const Spectrum denoising_albedo = ensure_finite(denoising_feature_throughput *
-                                                      diffuse_albedo);
-      film_write_pass_spectrum(buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
-    }
-
-    INTEGRATOR_STATE_WRITE(state, path, flag) &= ~PATH_RAY_DENOISING_FEATURES;
+  if (sum_weight != 0.0f) {
+    normal /= sum_weight;
   }
-  else {
-    INTEGRATOR_STATE_WRITE(state, path, denoising_feature_throughput) *= specular_albedo;
+
+  if (kernel_data.film.pass_denoising_normal != PASS_UNUSED) {
+    /* Transform normal into camera space. */
+    const Transform worldtocamera = kernel_data.cam.worldtocamera;
+    normal = transform_direction(&worldtocamera, normal);
+
+    const float3 denoising_normal = ensure_finite(normal);
+    film_write_pass_float3(buffer + kernel_data.film.pass_denoising_normal, denoising_normal);
   }
+
+  if (kernel_data.film.pass_denoising_albedo != PASS_UNUSED) {
+    const Spectrum denoising_feature_throughput = INTEGRATOR_STATE(
+        state, path, denoising_feature_throughput);
+    const Spectrum denoising_albedo = ensure_finite(denoising_feature_throughput * diffuse_albedo);
+    film_write_pass_spectrum(buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
+  }
+
+  INTEGRATOR_STATE_WRITE(state, path, flag) &= ~PATH_RAY_DENOISING_FEATURES;
 }
 
 ccl_device_forceinline void film_write_denoising_features_volume(KernelGlobals kg,
