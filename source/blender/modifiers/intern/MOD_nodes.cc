@@ -1705,9 +1705,6 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
 
 static bool child_panel_poll(const bContext *C, PanelType * /*panel_type*/)
 {
-  /* Always hidden, panel is drawn explicitly. */
-  //  return false;
-
   Object *ob = ED_object_active_context(C);
 
   return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
