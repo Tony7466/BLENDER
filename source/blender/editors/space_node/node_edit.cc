@@ -37,9 +37,9 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -1102,6 +1102,11 @@ bool node_has_hidden_sockets(bNode *node)
 
 void node_set_hidden_sockets(bNode *node, int set)
 {
+  /* The Reroute node is the socket itself, do not hide this. */
+  if (node->is_reroute()) {
+    return;
+  }
+
   if (set == 0) {
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       sock->flag &= ~SOCK_HIDDEN;
