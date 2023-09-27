@@ -4312,6 +4312,10 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
     animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
     animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
+#else
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
 #endif
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
