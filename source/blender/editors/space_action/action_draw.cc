@@ -695,6 +695,12 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   float color[4];
   timeline_cache_color_get(pid, color);
 
+  /* Mix in the background color to tone it down a bit. */
+  float background[4];
+  UI_GetThemeColor4fv(TH_BACK, background);
+
+  interp_v3_v3v3(color, color, background, 0.6f);
+
   /* Highlight the frame range of the simulation. */
   immUniform4fv("color1", color);
   immUniform4fv("color2", color);
