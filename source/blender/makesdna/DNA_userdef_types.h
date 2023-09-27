@@ -712,7 +712,7 @@ typedef struct UserDef_Experimental {
   char use_shader_node_previews;
   char use_extension_repos;
 
-  char _pad[1];
+  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
