@@ -465,8 +465,12 @@ static void unlink_object_fn(bContext *C,
       }
       else if (GS(tsep->id->name) == ID_SCE) {
         Scene *scene = (Scene *)tsep->id;
-        Collection *parent = scene->master_collection;
-        BKE_collection_object_remove(bmain, parent, ob, true);
+        FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+          if (BKE_collection_has_object(collection, ob)){
+            BKE_collection_object_remove(bmain, collection, ob, true);
+          }
+        }
+        FOREACH_SCENE_COLLECTION_END;
         DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
         DEG_relations_tag_update(bmain);
       }
