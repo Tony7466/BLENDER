@@ -27,7 +27,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_deform.hh"
@@ -43,13 +43,13 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "intern/CCGSubSurf.h"
 
@@ -364,9 +364,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA cycles_ptr = {nullptr};
   PointerRNA ob_cycles_ptr = {nullptr};
 #ifdef WITH_CYCLES
-  PointerRNA scene_ptr;
   Scene *scene = CTX_data_scene(C);
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   if (BKE_scene_uses_cycles(scene)) {
     cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
     ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");

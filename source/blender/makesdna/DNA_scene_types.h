@@ -28,10 +28,6 @@
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct AnimData;
 struct Brush;
 struct Collection;
@@ -1643,11 +1639,14 @@ typedef struct ToolSettings {
   short snap_mode;
   char snap_node_mode;
   char snap_uv_mode;
+  short snap_anim_mode;
   /** Generic flags (per space-type), #eSnapFlag. */
   short snap_flag;
   short snap_flag_node;
   short snap_flag_seq;
+  short snap_flag_anim;
   short snap_uv_flag;
+  char _pad[4];
   /** Default snap source, #eSnapSourceOP. */
   /**
    * TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
@@ -1886,12 +1885,17 @@ typedef struct SceneEEVEE {
   int shadow_cube_size;
   int shadow_cascade_size;
   int shadow_pool_size;
+  int shadow_ray_count;
+  int shadow_step_count;
+  float shadow_normal_bias;
+  char _pad[4];
 
   int ray_split_settings;
   int ray_tracing_method;
 
   struct RaytraceEEVEE reflection_options;
   struct RaytraceEEVEE refraction_options;
+  struct RaytraceEEVEE diffuse_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -2052,6 +2056,13 @@ typedef struct Scene {
 
   /** Settings to be override by work-spaces. */
   IDProperty *layer_properties;
+
+  /**
+   * Frame range used for simulations in geometry nodes by default, if SCE_CUSTOM_SIMULATION_RANGE
+   * is set. Individual simulations can overwrite this though.
+   */
+  int simulation_frame_start;
+  int simulation_frame_end;
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
@@ -2234,7 +2245,6 @@ enum {
 /** #RenderData::engine (scene.cc) */
 extern const char *RE_engine_id_BLENDER_EEVEE;
 extern const char *RE_engine_id_BLENDER_WORKBENCH;
-extern const char *RE_engine_id_BLENDER_WORKBENCH_NEXT;
 extern const char *RE_engine_id_CYCLES;
 
 /** \} */
@@ -2328,6 +2338,8 @@ typedef enum eSnapFlag {
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
   SCE_SNAP_ABS_GRID = (1 << 5),
+  /* Same value with different name to make it easier to understand in time based code. */
+  SCE_SNAP_ABS_TIME_STEP = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),
   SCE_SNAP_KEEP_ON_SAME_OBJECT = (1 << 7),
   /** see #eSnapTargetOP */
@@ -2387,11 +2399,17 @@ typedef enum eSnapMode {
   /** For snap individual elements. */
   SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
   SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 9),
+
+  /** #ToolSettings::snap_anim_mode */
+  SCE_SNAP_TO_FRAME = (1 << 10),
+  SCE_SNAP_TO_SECOND = (1 << 11),
+  SCE_SNAP_TO_MARKERS = (1 << 12),
 } eSnapMode;
+
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
 #ifdef ENUM_OPERATORS
-ENUM_OPERATORS(eSnapMode, SCE_SNAP_INDIVIDUAL_PROJECT)
+ENUM_OPERATORS(eSnapMode, SCE_SNAP_TO_MARKERS)
 #endif
 
 #define SCE_SNAP_TO_VERTEX (SCE_SNAP_TO_POINT | SCE_SNAP_TO_EDGE_ENDPOINT)
@@ -2485,6 +2503,7 @@ enum {
   SCE_FRAME_DROP = 1 << 3,
   SCE_KEYS_NO_SELONLY = 1 << 4,
   SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK = 1 << 5,
+  SCE_CUSTOM_SIMULATION_RANGE = 1 << 6,
 };
 
 /* Return flag BKE_scene_base_iter_next functions. */
@@ -2881,7 +2900,3 @@ enum {
 };
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

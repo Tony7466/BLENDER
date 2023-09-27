@@ -15,7 +15,7 @@
 #include "BLI_path_util.h"
 #include "BLO_readfile.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 
@@ -30,7 +30,7 @@ char output_filepath[FILE_MAX];
 
 class UsdUsdzExportTest : public BlendfileLoadingBaseTest {
  protected:
-  struct bContext *context = nullptr;
+  bContext *context = nullptr;
 
  public:
   bool load_file_and_depsgraph(const StringRefNull &filepath,

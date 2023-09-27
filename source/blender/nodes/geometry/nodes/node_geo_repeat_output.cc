@@ -2,15 +2,16 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_string.h"
+
 #include "BKE_compute_contexts.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "NOD_add_node_search.hh"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
@@ -96,12 +97,22 @@ void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
 {
   for (const int i : items.index_range()) {
     const NodeRepeatItem &item = items[i];
-    r_declaration.inputs.append(socket_declaration_for_repeat_item(item, SOCK_IN));
-    r_declaration.outputs.append(
-        socket_declaration_for_repeat_item(item, SOCK_OUT, r_declaration.inputs.size() - 1));
+    SocketDeclarationPtr input_decl = socket_declaration_for_repeat_item(item, SOCK_IN);
+    r_declaration.inputs.append(input_decl.get());
+    r_declaration.items.append(std::move(input_decl));
+
+    SocketDeclarationPtr output_decl = socket_declaration_for_repeat_item(
+        item, SOCK_OUT, r_declaration.inputs.size() - 1);
+    r_declaration.outputs.append(output_decl.get());
+    r_declaration.items.append(std::move(output_decl));
   }
-  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
-  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
+  r_declaration.inputs.append(input_extend_decl.get());
+  r_declaration.items.append(std::move(input_extend_decl));
+
+  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
+  r_declaration.outputs.append(output_extend_decl.get());
+  r_declaration.items.append(std::move(output_extend_decl));
 }
 }  // namespace blender::nodes
 namespace blender::nodes::node_geo_repeat_output_cc {
@@ -114,38 +125,6 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
 {
   const NodeGeometryRepeatOutput &storage = node_storage(node);
   socket_declarations_for_repeat_items(storage.items_span(), r_declaration);
-}
-
-static void search_node_add_ops(GatherAddNodeSearchParams &params)
-{
-  AddNodeItem item;
-  item.ui_name = IFACE_("Repeat Zone");
-  item.description = TIP_("Add new repeat input and output nodes to the node tree");
-  item.add_fn = [](const bContext &C, bNodeTree &node_tree, float2 cursor) {
-    bNode *input = nodeAddNode(&C, &node_tree, "GeometryNodeRepeatInput");
-    bNode *output = nodeAddNode(&C, &node_tree, "GeometryNodeRepeatOutput");
-    static_cast<NodeGeometryRepeatInput *>(input->storage)->output_node_id = output->identifier;
-
-    NodeRepeatItem &item = node_storage(*output).items[0];
-
-    update_node_declaration_and_sockets(node_tree, *input);
-    update_node_declaration_and_sockets(node_tree, *output);
-
-    const std::string identifier = item.identifier_str();
-    nodeAddLink(&node_tree,
-                input,
-                nodeFindSocket(input, SOCK_OUT, identifier.c_str()),
-                output,
-                nodeFindSocket(output, SOCK_IN, identifier.c_str()));
-
-    input->locx = cursor.x / UI_SCALE_FAC - 150;
-    input->locy = cursor.y / UI_SCALE_FAC + 20;
-    output->locx = cursor.x / UI_SCALE_FAC + 150;
-    output->locy = cursor.y / UI_SCALE_FAC + 20;
-
-    return Vector<bNode *>({input, output});
-  };
-  params.add_item(std::move(item));
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -233,7 +212,6 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_REPEAT_OUTPUT, "Repeat Output", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
   ntype.declare_dynamic = node_declare_dynamic;
-  ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.insert_link = node_insert_link;
   node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);

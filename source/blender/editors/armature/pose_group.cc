@@ -20,7 +20,7 @@
 #include "BKE_armature.h"
 #include "BKE_context.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -34,6 +34,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "armature_intern.h"
 

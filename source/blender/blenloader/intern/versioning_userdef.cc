@@ -42,7 +42,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "readfile.h" /* Own include. */
+#include "readfile.hh" /* Own include. */
 
 #include "WM_types.hh"
 #include "wm_event_types.hh"
@@ -94,10 +94,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.list_text_hi);
   }
 
-  if (!USER_VERSION_ATLEAST(303, 6)) {
-    btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
-  }
-
   if (!USER_VERSION_ATLEAST(306, 3)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
   }
@@ -116,6 +112,23 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.header_back);
   }
 
+  if (!USER_VERSION_ATLEAST(400, 24)) {
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 27)) {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -127,7 +140,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -461,7 +473,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(278, 6)) {
     /* Clear preference flags for re-use. */
-    userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | USER_FLAG_UNUSED_2 | USER_FLAG_UNUSED_3 |
+    userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | (1 << 2) | USER_FLAG_UNUSED_3 |
                        USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
                        USER_DEVELOPER_UI);
     userdef->uiflag &= ~(USER_HEADER_BOTTOM);
@@ -554,7 +566,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_REGISTER_ALL_USERS);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -850,6 +862,23 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(400, 15)) {
     userdef->node_preview_res = 120;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 19)) {
+    userdef->uiflag |= USER_NODE_AUTO_OFFSET;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 24)) {
+    /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
+    userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 26)) {
+    userdef->animation_flag |= USER_ANIM_SHOW_CHANNEL_GROUP_COLORS;
   }
 
   /**

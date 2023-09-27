@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
 
@@ -9,7 +13,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec3 tex_size = volumes_info_buf.tex_size;
+  ivec3 tex_size = uniform_buf.volumes.tex_size;
 
   if (any(greaterThanEqual(texel, tex_size.xy))) {
     return;
