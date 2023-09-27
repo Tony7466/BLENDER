@@ -56,6 +56,8 @@ void main()
   float eigenvalue_difference = first_eigenvalue - second_eigenvalue;
   float anisotropy = eigenvalue_sum > 0.0 ? eigenvalue_difference / eigenvalue_sum : 0.0;
 
+  float radius = max(0.0, texture_load(size_tx, texel).x);
+
   /* Compute the width and height of an ellipse that is more width-elongated for high anisotropy
    * and more circular for low anisotropy, controlled using the eccentricity factor. Since the
    * anisotropy is in the [0, 1] range, the width factor tends to 1 as the eccentricity tends to

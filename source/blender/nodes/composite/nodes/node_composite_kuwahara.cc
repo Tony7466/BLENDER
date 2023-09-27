@@ -32,6 +32,7 @@ static void cmp_node_kuwahara_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
+  b.add_input<decl::Float>("Size").default_value(6.0f).compositor_domain_priority(1);
   b.add_output<decl::Color>("Image");
 }
 
@@ -41,7 +42,6 @@ static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
   node->storage = data;
 
   /* Set defaults. */
-  data->size = 6;
   data->uniformity = 4;
   data->eccentricity = 1.0;
   data->sharpness = 0.5;
@@ -54,7 +54,6 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
   col = uiLayoutColumn(layout, false);
 
   uiItemR(col, ptr, "variation", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "size", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const int variation = RNA_enum_get(ptr, "variation");
 
@@ -88,35 +87,6 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic()
   {
-    /* For high radii, we accelerate the filter using a summed area table, making the filter
-     * execute in constant time as opposed to the trivial quadratic complexity. */
-    if (node_storage(bnode()).size > 5) {
-      execute_classic_summed_area_table();
-      return;
-    }
-
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_classic");
-    GPU_shader_bind(shader);
-
-    GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
-
-    const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
-
-    const Domain domain = compute_domain();
-    Result &output_image = get_result("Image");
-    output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
-
-    compute_dispatch_threads_at_least(shader, domain.size);
-
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
-    GPU_shader_unbind();
-  }
-
-  void execute_classic_summed_area_table()
-  {
     Result table = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
     summed_area_table(context(), get_input("Image"), table);
 
@@ -128,7 +98,8 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPUShader *shader = shader_manager().get("compositor_kuwahara_classic_summed_area_table");
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
+    Result &size_input = get_input("Size");
+    size_input.bind_as_texture(shader, "size_tx");
 
     table.bind_as_texture(shader, "table_tx");
     squared_table.bind_as_texture(shader, "squared_table_tx");
@@ -167,12 +138,14 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPUShader *shader = shader_manager().get("compositor_kuwahara_anisotropic");
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
     GPU_shader_uniform_1f(shader, "eccentricity", get_eccentricity());
     GPU_shader_uniform_1f(shader, "sharpness", get_sharpness());
 
     Result &input = get_input("Image");
     input.bind_as_texture(shader, "input_tx");
+
+    Result &size_input = get_input("Size");
+    size_input.bind_as_texture(shader, "size_tx");
 
     smoothed_structure_tensor.bind_as_texture(shader, "structure_tensor_tx");
 
