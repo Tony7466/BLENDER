@@ -15,6 +15,7 @@
 #include "DNA_node_types.h"
 
 struct wmWindowManager;
+struct NodesModifierData;
 
 namespace blender::nodes::gizmos {
 
@@ -98,6 +99,7 @@ bool update_gizmo_inferencing(bNodeTree &tree);
 
 void foreach_active_gizmo(
     const Object &object,
+    const NodesModifierData &nmd,
     const wmWindowManager &wm,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 

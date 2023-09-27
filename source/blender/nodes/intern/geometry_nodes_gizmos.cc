@@ -294,9 +294,13 @@ static void foreach_gizmo_for_source(
 
 void foreach_active_gizmo(
     const Object &object,
+    const NodesModifierData &nmd,
     const wmWindowManager &wm,
     const FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn)
 {
+  if (nmd.node_group == nullptr) {
+    return;
+  }
   LISTBASE_FOREACH (const wmWindow *, window, &wm.windows) {
     const bScreen *screen = BKE_workspace_active_screen_get(window->workspace_hook);
     LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
@@ -317,7 +321,9 @@ void foreach_active_gizmo(
         if (object_and_modifier->object != &object) {
           continue;
         }
-        const NodesModifierData &nmd = *object_and_modifier->nmd;
+        if (object_and_modifier->nmd != &nmd) {
+          continue;
+        }
 
         ComputeContextBuilder compute_context_builder;
         compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
@@ -344,6 +350,25 @@ void foreach_active_gizmo(
         for (const GizmoInput &gizmo_input : used_gizmo_inputs) {
           foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
         }
+      }
+    }
+  }
+
+  {
+    const bNodeTree &tree = *nmd.node_group;
+    if (!tree.runtime->gizmo_inferencing) {
+      return;
+    }
+    const GizmoInferencingResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
+
+    ComputeContextBuilder compute_context_builder;
+    compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+
+    for (const Span<GizmoInput> gizmo_inputs :
+         gizmo_inferencing.gizmo_inputs_for_interface_input.values())
+    {
+      for (const GizmoInput &gizmo_input : gizmo_inputs) {
+        foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
       }
     }
   }

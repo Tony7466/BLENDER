@@ -719,8 +719,13 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
 
   std::cout << "active gizmos\n";
   Object *object_orig = DEG_get_original_object(ctx.object);
+  const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
+      BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
   nodes::gizmos::foreach_active_gizmo(
-      *object_orig, *wm, [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+      *object_orig,
+      nmd_orig,
+      *wm,
+      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
         compute_context.print_stack(std::cout, gizmo_node.name);
       });
 }
