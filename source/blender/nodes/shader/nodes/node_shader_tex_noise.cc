@@ -400,12 +400,32 @@ class NoiseFunction : public mf::MultiFunction {
   }
 };
 
-static void sh_node_noise_tex_build_multi_function(NodeMultiFunctionBuilder &builder)
+static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexNoise &storage = node_storage(builder.node());
   builder.construct_and_set_matching_fn<NoiseFunction>(
       storage.dimensions, storage.type, storage.normalize);
 }
+
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  /* NOTE: Some inputs aren't supported by MaterialX.*/
+  NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
+  NodeItem detail = get_input_default("Detail", NodeItem::Type::Float);
+  NodeItem lacunarity = get_input_value("Lacunarity", NodeItem::Type::Float);
+
+  NodeItem position = create_node("position", NodeItem::Type::Vector3);
+  position = position * scale;
+
+  return create_node("fractal3d",
+                     NodeItem::Type::Color3,
+                     {{"position", position},
+                      {"octaves", val(int(detail.value->asA<float>()))},
+                      {"lacunarity", lacunarity}});
+}
+#endif
+NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_tex_noise_cc
 
@@ -423,7 +443,8 @@ void register_node_type_sh_tex_noise()
       &ntype, "NodeTexNoise", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_noise;
   ntype.updatefunc = file_ns::node_shader_update_tex_noise;
-  ntype.build_multi_function = file_ns::sh_node_noise_tex_build_multi_function;
+  ntype.build_multi_function = file_ns::sh_node_noise_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
