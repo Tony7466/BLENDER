@@ -2122,7 +2122,7 @@ static void rna_def_userdef_theme_spaces_edge(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  prop = RNA_def_property(srna, "edge_select", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "edge_selection", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Edge Selection", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -2173,7 +2173,7 @@ static void rna_def_userdef_theme_spaces_face(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Face", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "face_select", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "face_selection", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Face Selection", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -3061,7 +3061,7 @@ static void rna_def_userdef_theme_space_node(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "wire_select", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "edge_select");
+  RNA_def_property_float_sdna(prop, nullptr, "edge_selection");
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Wire Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -3283,7 +3283,7 @@ static void rna_def_userdef_theme_space_image(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Edge Width", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "edge_select", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "edge_selection", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Edge Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
