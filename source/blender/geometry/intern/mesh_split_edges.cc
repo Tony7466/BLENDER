@@ -194,7 +194,7 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
 
 /* Fix of bug with a function arguments inlining and passing to lambda in the MSVC 17.0+. */
 #if defined(_MSC_VER) && _MSC_VER > 1930
-#  define FIX_NOINLINE __declspec(noinline)
+#  define FIX_NOINLINE BLI_NOINLINE
 #else
 #  define FIX_NOINLINE
 #endif
