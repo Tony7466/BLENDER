@@ -1228,11 +1228,15 @@ class NodesModifierBakeIDMapping : public bake::BakeIDMapping {
 
     /* Note that creating this reference would normally trigger a depsgraph relations rebuild.
      * It's safe to ignore this here, because we can be sure that there is an indirect relation
-     * already.
-     */
+     * already. */
     new_mapping.id = id_orig;
-    /* TODO: Figure out how we can make this thread-safe. */
-    id_us_plus(id_orig);
+    {
+      static std::mutex global_mutex;
+      std::lock_guard lock{global_mutex};
+      /* TODO: Figure out how we can make this thread-safe in the case if any other code also wants
+       * to increase user counts during depsgraph evaluation. */
+      id_us_plus(id_orig);
+    }
     new_mapping.id_type = id_type;
     new_mapping.id_name = BLI_strdupn(key.id_name.data(), key.id_name.size());
     new_mapping.lib_name = BLI_strdupn(key.lib_name.data(), key.lib_name.size());
