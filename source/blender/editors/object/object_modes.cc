@@ -30,7 +30,7 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BLI_math_vector.h"
 
@@ -40,11 +40,12 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_armature.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_outliner.hh"
 #include "ED_screen.hh"
 #include "ED_transform_snap_object_context.hh"
 #include "ED_undo.hh"
@@ -492,6 +493,8 @@ static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base
     }
 
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
+
     WM_toolsystem_update_from_context_view3d(C);
     mode_transferred = true;
   }
