@@ -933,6 +933,11 @@ void UI_but_disable(uiBut *but, const char *disabled_hint);
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
 /**
+ * Set at hint that describes the expected value when empty.
+ */
+void UI_but_placeholder_set(uiBut *but, const char *placeholder_text);
+
+/**
  * Special button case, only draw it when used actively, for outliner etc.
  *
  * Needed for temporarily rename buttons, such as in outliner or file-select,

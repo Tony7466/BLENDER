@@ -5916,7 +5916,7 @@ void UI_but_placeholder_set(uiBut *but, const char *placeholder_text)
   }
 }
 
-const char *UI_but_placeholder_get(uiBut *but)
+const char *ui_but_placeholder_get(uiBut *but)
 {
   const char *placeholder = (but->placeholder) ? but->placeholder : nullptr;
 

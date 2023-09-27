@@ -741,10 +741,9 @@ void ui_but_set_string_interactive(bContext *C, uiBut *but, const char *value);
 uiBut *ui_but_drag_multi_edit_get(uiBut *but);
 
 /**
- * Hint that describes the expected value when empty.
+ * Get the hint that describes the expected value when empty.
  */
-void UI_but_placeholder_set(uiBut *but, const char *placeholder_text);
-const char *UI_but_placeholder_get(uiBut *but);
+const char *ui_but_placeholder_get(uiBut *but);
 
 void ui_def_but_icon(uiBut *but, int icon, int flag);
 /**
