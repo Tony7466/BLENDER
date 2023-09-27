@@ -25,7 +25,7 @@ class FILEBROWSER_HT_header(Header):
         layout.separator_spacer()
 
         if params.asset_library_reference not in {'LOCAL', 'ESSENTIALS'}:
-            layout.prop(params, "import_type", text="")
+            layout.prop(params, "import_method", text="")
 
         layout.separator_spacer()
 
@@ -538,7 +538,7 @@ class FILEBROWSER_MT_select(FileBrowserMenu, Menu):
 
 
 class FILEBROWSER_MT_context_menu(FileBrowserMenu, Menu):
-    bl_label = "Files Context Menu"
+    bl_label = "Files"
 
     def draw(self, context):
         layout = self.layout
@@ -827,7 +827,7 @@ class ASSETBROWSER_UL_metadata_tags(UIList):
 
 
 class ASSETBROWSER_MT_context_menu(AssetBrowserMenu, Menu):
-    bl_label = "Assets Context Menu"
+    bl_label = "Assets"
 
     def draw(self, context):
         layout = self.layout
