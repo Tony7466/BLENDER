@@ -1885,12 +1885,17 @@ typedef struct SceneEEVEE {
   int shadow_cube_size;
   int shadow_cascade_size;
   int shadow_pool_size;
+  int shadow_ray_count;
+  int shadow_step_count;
+  float shadow_normal_bias;
+  char _pad[4];
 
   int ray_split_settings;
   int ray_tracing_method;
 
   struct RaytraceEEVEE reflection_options;
   struct RaytraceEEVEE refraction_options;
+  struct RaytraceEEVEE diffuse_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;

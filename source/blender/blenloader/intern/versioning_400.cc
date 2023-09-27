@@ -25,6 +25,7 @@
 #include "DNA_world_types.h"
 
 #include "DNA_defaults.h"
+#include "DNA_defs.h"
 #include "DNA_genfile.h"
 #include "DNA_particle_types.h"
 
@@ -49,6 +50,9 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
+
+#include "SEQ_retiming.hh"
+#include "SEQ_sequencer.h"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -977,6 +981,34 @@ static void version_node_group_split_socket(bNodeTreeInterface &tree_interface,
   csocket->flag &= ~NODE_INTERFACE_SOCKET_OUTPUT;
 }
 
+static void enable_geometry_nodes_is_modifier(Main &bmain)
+{
+  /* Any node group with a first socket geometry output can potentially be a modifier. Previously
+   * this wasn't an explicit option, so better to enable too many groups rather than too few. */
+  LISTBASE_FOREACH (bNodeTree *, group, &bmain.nodetrees) {
+    if (group->type != NTREE_GEOMETRY) {
+      continue;
+    }
+    group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+      if (item.item_type != NODE_INTERFACE_SOCKET) {
+        return true;
+      }
+      const auto &socket = reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
+      if ((socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) == 0) {
+        return true;
+      }
+      if (!STREQ(socket.socket_type, "NodeSocketGeometry")) {
+        return true;
+      }
+      if (!group->geometry_node_asset_traits) {
+        group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+      }
+      group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
+      return false;
+    });
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1443,6 +1475,52 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 26)) {
+    enable_geometry_nodes_is_modifier(*bmain);
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->simulation_frame_start = scene->r.sfra;
+      scene->simulation_frame_end = scene->r.efra;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 27)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            SpaceSeq *sseq = (SpaceSeq *)sl;
+            sseq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_RETIMING;
+          }
+        }
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "shadow_normal_bias")) {
+      SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.shadow_ray_count = default_scene_eevee.shadow_ray_count;
+        scene->eevee.shadow_step_count = default_scene_eevee.shadow_step_count;
+        scene->eevee.shadow_normal_bias = default_scene_eevee.shadow_normal_bias;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "shadow_softness_factor")) {
+      Light default_light = blender::dna::shallow_copy(*DNA_struct_default_get(Light));
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        light->shadow_softness_factor = default_light.shadow_softness_factor;
+        light->shadow_trace_distance = default_light.shadow_trace_distance;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "diffuse_options"))
+    {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.diffuse_options = scene->eevee.reflection_options;
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1455,10 +1533,5 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->simulation_frame_start = scene->r.sfra;
-      scene->simulation_frame_end = scene->r.efra;
-    }
   }
 }
