@@ -872,15 +872,6 @@ extern bool BLI_memory_is_zero(const void *arr, size_t arr_size);
 
 /** \} */
 
-/**
- * Fix of bug with a function arguments inlining and passing to lambda in the MSVC 17.0+.
- */
-#if defined(_MSC_VER) && _MSC_VER > 1930
-#  define BLI_NOINLINE_MS __declspec(noinline)
-#else
-#  define BLI_NOINLINE_MS
-#endif
-
 #ifdef __cplusplus
 }
 

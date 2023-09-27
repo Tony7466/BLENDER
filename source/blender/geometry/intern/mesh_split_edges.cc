@@ -192,8 +192,15 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
   return groups;
 }
 
+/* Fix of bug with a function arguments inlining and passing to lambda in the MSVC 17.0+. */
+#if defined(_MSC_VER) && _MSC_VER > 1930
+#  define FIX_NOINLINE __declspec(noinline)
+#else
+#  define FIX_NOINLINE
+#endif
+
 /* Calculate groups of corners that are contiguously connected to each input vertex. */
-BLI_NOINLINE_MS static Array<Vector<CornerGroup>> calc_all_corner_groups(
+FIX_NOINLINE static Array<Vector<CornerGroup>> calc_all_corner_groups(
     const OffsetIndices<int> faces,
     const Span<int> corner_verts,
     const Span<int> corner_edges,
@@ -217,6 +224,8 @@ BLI_NOINLINE_MS static Array<Vector<CornerGroup>> calc_all_corner_groups(
   });
   return corner_groups;
 }
+
+#undef FIX_NOINLINE
 
 /** Selected and unselected loose edges attached to a vertex. */
 struct VertLooseEdges {
