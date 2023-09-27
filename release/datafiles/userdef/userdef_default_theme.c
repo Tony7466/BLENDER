@@ -28,11 +28,7 @@ const bTheme U_theme_default = {
     .wcol_regular = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x1d1d1d80),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -41,11 +37,7 @@ const bTheme U_theme_default = {
     .wcol_tool = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -54,11 +46,7 @@ const bTheme U_theme_default = {
     .wcol_toolbar_item = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x282828ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffb3),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -76,11 +64,7 @@ const bTheme U_theme_default = {
     .wcol_radio = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x252525ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -89,11 +73,7 @@ const bTheme U_theme_default = {
     .wcol_option = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffffff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -102,11 +82,7 @@ const bTheme U_theme_default = {
     .wcol_toggle = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0x252525ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -125,11 +101,7 @@ const bTheme U_theme_default = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x545454ff),
       .inner_sel = RGBA(0x222222ff),
-<<<<<<< HEAD
-      .item = RGBA(0x45679bcc),
-=======
       .item = RGBA(0x466da7e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
       .roundness = 0.2f,
@@ -146,11 +118,7 @@ const bTheme U_theme_default = {
     .wcol_menu = {
       .outline = RGBA(0x3d3d3dff),
       .inner = RGBA(0x282828ff),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xd9d9d9ff),
       .text = RGBA(0xe6e6e6ff),
       .text_sel = RGBA(0xffffffff),
@@ -177,11 +145,7 @@ const bTheme U_theme_default = {
     .wcol_menu_item = {
       .outline = RGBA(0x3d3d3d00),
       .inner = RGBA(0x18181800),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffff8f),
       .text = RGBA(0xddddddff),
       .text_sel = RGBA(0xffffffff),
@@ -226,11 +190,7 @@ const bTheme U_theme_default = {
     .wcol_list_item = {
       .outline = RGBA(0x2d2d2dff),
       .inner = RGBA(0xffffff00),
-<<<<<<< HEAD
-      .inner_sel = RGBA(0x4772b3cc),
-=======
       .inner_sel = RGBA(0x4772b3e6),
->>>>>>> 96033b30722 (WIP: Theme: Style update for Blender 4.0)
       .item = RGBA(0xffffff33),
       .text = RGBA(0xccccccff),
       .text_sel = RGBA(0xffffffff),
