@@ -86,6 +86,7 @@
 
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_execute.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 
@@ -715,6 +716,13 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
     }
   }
   find_side_effect_nodes_for_gizmos(nmd, ctx, r_side_effect_nodes);
+
+  std::cout << "active gizmos\n";
+  Object *object_orig = DEG_get_original_object(ctx.object);
+  nodes::gizmos::foreach_active_gizmo(
+      *object_orig, *wm, [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+        compute_context.print_stack(std::cout, gizmo_node.name);
+      });
 }
 
 static void find_socket_log_contexts(const NodesModifierData &nmd,

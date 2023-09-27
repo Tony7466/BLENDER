@@ -49,6 +49,16 @@ using GizmoSource =
 struct GizmoInput {
   const bNodeSocket *input_socket;
   std::optional<int> elem_index;
+
+  friend bool operator==(const GizmoInput &a, const GizmoInput &b)
+  {
+    return a.input_socket == b.input_socket && a.elem_index == b.elem_index;
+  }
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(this->input_socket, this->elem_index.value_or(0));
+  }
 };
 
 struct InterfaceGizmoInput {
@@ -87,6 +97,7 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_in
 bool update_gizmo_inferencing(bNodeTree &tree);
 
 void foreach_active_gizmo(
+    const Object &object,
     const wmWindowManager &wm,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 
