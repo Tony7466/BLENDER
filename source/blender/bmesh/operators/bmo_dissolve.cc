@@ -277,42 +277,30 @@ void bmo_dissolve_edges_exec(BMesh *bm, BMOperator *op)
   if (use_face_split) {
     BMO_slot_buffer_flag_enable(bm, op->slots_in, "edges", BM_EDGE, EDGE_TAG);
 
-    // BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-    //  BMIter itersub;
-    //  int untag_count = 0;
-    //  BM_ITER_ELEM (e, &itersub, v, BM_EDGES_OF_VERT) {
-    //    if (!BMO_edge_flag_test(bm, e, EDGE_TAG)) {
-    //      untag_count++;
-    //    }
-    //  }
-
-    //  /* check that we have 2 edges remaining after dissolve */
-    //  if (untag_count <= 2) {
-    //    BMO_vert_flag_enable(bm, v, VERT_TAG);
-    //    printf("vertex: %.2lf, %.2lf, %.2lf\n", v->co[0], v->co[1], v->co[2]);
-    //  }
-    //}
-
-    /*new here*/
+    /* Iterate through input edges rather than all vertices of the mesh */
     BMO_ITER (e, &eiter, op->slots_in, "edges", BM_EDGE) {
       BMIter itersub;
       BMVert *edge_verts[2] = {e->v1, e->v2};
 
       for (int i = 0; i < 2; i++) {
-        bool full_connect = true;
         v = edge_verts[i];
+
+        /* NOTE: possible repeat in calculation of vertices here */
         if (!BMO_vert_flag_test(bm, v, VERT_TAG)) {
+          int untag_count = 0;
+
           BM_ITER_ELEM (e, &itersub, v, BM_EDGES_OF_VERT) {
-            if (!BMO_edge_flag_test(bm, e, EDGE_TAG)) {
-              full_connect = false;
-              break;
+            /* non-manifold edges are not intended to be dissolved,
+             * so they should be treated as untagged */
+            if (!BMO_edge_flag_test(bm, e, EDGE_TAG) || !BM_edge_is_manifold(e)) {
+              untag_count++;
             }
           }
-        }
 
-        if (full_connect) {
-          BMO_vert_flag_enable(bm, v, VERT_TAG);
-          printf("vertex: %.2lf, %.2lf, %.2lf\n", v->co[0], v->co[1], v->co[2]);
+          /* check that we have 2 edges remaining after dissolve */
+          if (untag_count <= 2) {
+            BMO_vert_flag_enable(bm, v, VERT_TAG);
+          }
         }
       }
     }
