@@ -190,3 +190,38 @@ void lightprobe_eval(ClosureDiffuse diffuse,
 
   out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
 }
+
+/**
+ * Return cached lightprobe data at P.
+ * Ng and V are use for biases.
+ */
+LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
+{
+  LightProbeSample result;
+  result.volume = lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
+  result.cubemap = lightprobe_cubemap_select(P);
+}
+
+vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
+{
+  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
+      irradiance_atlas_tx, P, V, Ng, true);
+
+  float lod = pdf_to_lod(pdf);
+  vec3 radiance_sh = lightprobe_cubemap_sample_normalized(P, L, pdf, irradiance);
+}
+
+vec3 lightprobe_eval_diffuse(LightProbeSample samp, ClosureDiffuse diffuse)
+{
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
+  return radiance_sh;
+}
+
+vec3 lightprobe_eval_reflection(LightProbeSample samp, ClosureReflection reflection)
+{
+  float lod = roughness_to_lod(reflection.roughness);
+  vec3 radiance_cube = lightprobe_cubemap_sample_normalized(P, L, lod, samp.irradiance);
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(reflection.N, samp.irradiance);
+  float fac = roughness_to_cube_sh_mix_fac(reflection.roughness);
+  return mix(radiance_cube, radiance_sh, fac)
+}

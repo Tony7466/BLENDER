@@ -41,12 +41,14 @@ void main()
   ray.origin = P;
   ray.direction = ray_data.xyz;
 
-  int closest_probe_id = reflection_probes_find_closest(P);
-  ReflectionProbeData probe = reflection_probe_buf[closest_probe_id];
-  vec3 radiance = reflection_probes_sample(ray.direction, 0.0, probe).rgb;
+  /* Using ray direction as geometric normal to bias the sampling position.
+   * This is faster than loading the gbuffer again and averages between reflected and normal
+   * direction over many rays. */
+  vec3 Ng = ray.direction;
+  LightProbeSample samp = lightprobe_sample(P, Ng, V, ray.direction, safe_rcp(ray_pdf_inv));
+  vec3 radiance = samp.radiance;
   /* Set point really far for correct reprojection of background. */
-  /* TODO(fclem): Could use probe depth / parallax. */
-  float hit_time = 10000.0;
+  float hit_time = samp.estimated_distance;
 
   float luma = max(1e-8, max_v3(radiance));
   radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
