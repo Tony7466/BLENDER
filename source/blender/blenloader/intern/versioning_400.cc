@@ -1546,7 +1546,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 29)) {
     /* Unhide all Reroute nodes. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
