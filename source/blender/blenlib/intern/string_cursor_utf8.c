@@ -44,8 +44,10 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
   switch (uch) {
     case ',':
     case '.':
-    case 0xFF0C: /* Chinese full width `,` (，) */
-    case 0x3002: /* Chinese full width `.` (。) */
+    case 0xFF0C: /* Chinese full width comma (，) */
+    case 0x3002: /* Chinese full width full stop (。) */
+    case 0xFF61: /* Chinese half width full stop (｡) */
+    case 0x2026: /* Elipsis (…) */
       return STRCUR_DELIM_PUNCT;
 
     case '{':
@@ -54,9 +56,9 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case ']':
     case '(':
     case ')':
-    case 0xFF08: /* Chinese full width brackets `（）【】` */
+    case 0xFF08: /* Chinese full width brackets and square brackets (（）) */
     case 0xFF09:
-    case 0x3010:
+    case 0x3010: /* Chinese full width square brackets (【】) */
     case 0x3011:
       return STRCUR_DELIM_BRACE;
 
@@ -73,15 +75,15 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '&':
     case '|':
     case 0xFF0F: /* Chinese full width solidus (／) */
-    case 0x2014: /* Chinese dash */
-    case 0xFF5E: /* Chinese `~` (～) */
-    case 0x300A: /* Chinese `<>` (《》) */
+    case 0x2014: /* Chinese dash (—) */
+    case 0xFF5E: /* Chinese tilde (～) */
+    case 0x300A: /* Chinese double angle brackets (《》) */
     case 0x300B:
       return STRCUR_DELIM_OPERATOR;
 
     case '\'':
     case '\"':
-    case 0x2018: /* Chinese full width quotation marks ‘’“” */
+    case 0x2018: /* Chinese quotation marks (‘’“”) */
     case 0x2019:
     case 0x201C:
     case 0x201D:
@@ -102,14 +104,13 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '!':
     case 0xA3:        /* pound */
     case 0x80:        /* euro */
-    case 0xA3:        /* pound */
-    case 0x80:        /* euro */
-    case 0xFF64:      /* Chinese `、` */
+    case 0x3001:      /* Chinese ideographic comma `、` */
+    case 0xFF64:      /* Chinese half width ideographic comma`､` */
     case 0xFF65:      /* Chinese/Katakana middle dot (･) */
-    case 0xFF1A:      /* Chinese colon */
-    case 0xFF1B:      /* Chinese semicolon */
-    case 0xFF1F:      /* Chinese question mark */
-    case 0xFF01:      /* Chinese exclamation mark */
+    case 0xFF1A:      /* Chinese colon (：) */
+    case 0xFF1B:      /* Chinese semicolon (；) */
+    case 0xFF1F:      /* Chinese question mark (？) */
+    case 0xFF01:      /* Chinese exclamation mark (！) */
       /* case '_': */ /* special case, for python */
       return STRCUR_DELIM_OTHER;
 
