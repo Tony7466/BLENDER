@@ -281,11 +281,17 @@ Panel *UI_panel_add_instanced(const bContext *C,
   return new_panel;
 }
 
-void UI_list_panel_unique_str(Panel *panel, char *r_name)
+void UI_list_panel_unique_str(Panel *panel, const Panel *parent, char *r_name)
 {
   /* The panel sort-order will be unique for a specific panel type because the instanced
    * panel list is regenerated for every change in the data order / length. */
-  BLI_snprintf(r_name, INSTANCED_PANEL_UNIQUE_STR_SIZE, "%d", panel->sortorder);
+  if (parent) {
+    BLI_snprintf(
+        r_name, INSTANCED_PANEL_UNIQUE_STR_SIZE, "%d_%d", parent->sortorder, panel->sortorder);
+  }
+  else {
+    BLI_snprintf(r_name, INSTANCED_PANEL_UNIQUE_STR_SIZE, "%d", panel->sortorder);
+  }
 }
 
 /**

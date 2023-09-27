@@ -1997,7 +1997,7 @@ void UI_panels_free_instanced(const bContext *C, ARegion *region);
  * Find a unique key to append to the #PanelType.idname for the lookup to the panel's #uiBlock.
  * Needed for instanced panels, where there can be multiple with the same type and identifier.
  */
-void UI_list_panel_unique_str(Panel *panel, char *r_name);
+void UI_list_panel_unique_str(Panel *panel, const Panel *parent, char *r_name);
 
 using uiListPanelIDFromDataFunc = void (*)(void *data_link, char *r_idname);
 /**
