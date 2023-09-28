@@ -15,6 +15,8 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
 
+#include "GEO_randomize.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -1430,6 +1432,10 @@ static void node_geo_exec(GeoNodeExecParams params)
           }
           break;
         }
+      }
+
+      if (geometry::debug_randomize_indices()) {
+        geometry::randomize_mesh_order(*mesh);
       }
     }
   });

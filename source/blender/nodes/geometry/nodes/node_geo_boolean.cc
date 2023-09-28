@@ -13,6 +13,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_randomize.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_boolean_cc {
@@ -143,6 +145,10 @@ static void node_geo_exec(GeoNodeExecParams params)
       selection.span[i] = true;
     }
     selection.finish();
+  }
+
+  if (geometry::debug_randomize_indices()) {
+    geometry::randomize_mesh_order(*result);
   }
 
   params.set_output("Mesh", GeometrySet::from_mesh(result));

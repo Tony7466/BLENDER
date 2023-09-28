@@ -1682,9 +1682,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
   BLI_assert(loop_cur == result_nloops);
 
   if (debug_randomize_indices()) {
-    randomize_vertex_order(*result);
-    randomize_edge_order(*result);
-    randomize_face_order(*result);
+    randomize_mesh_order(*result);
   }
 
   return result;

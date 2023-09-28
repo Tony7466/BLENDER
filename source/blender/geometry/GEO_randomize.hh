@@ -17,6 +17,7 @@ bool debug_randomize_indices();
 void randomize_vertex_order(Mesh &mesh);
 void randomize_edge_order(Mesh &mesh);
 void randomize_face_order(Mesh &mesh);
+void randomize_mesh_order(Mesh &mesh);
 void randomize_point_order(PointCloud &pointcloud);
 void randomize_curve_order(bke::CurvesGeometry &curves);
 

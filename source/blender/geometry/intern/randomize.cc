@@ -184,6 +184,13 @@ void randomize_curve_order(bke::CurvesGeometry &curves)
   curves.tag_topology_changed();
 }
 
+void randomize_mesh_order(Mesh &mesh)
+{
+  randomize_vertex_order(mesh);
+  randomize_edge_order(mesh);
+  randomize_face_order(mesh);
+}
+
 bool debug_randomize_indices()
 {
   return G.randomize_geometry_element_order;

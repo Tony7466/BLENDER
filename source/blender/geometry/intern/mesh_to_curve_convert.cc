@@ -75,6 +75,10 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
         return true;
       });
 
+  if (debug_randomize_indices()) {
+    randomize_curve_order(curves);
+  }
+
   return curves;
 }
 
@@ -216,19 +220,11 @@ bke::CurvesGeometry mesh_to_curve_convert(
 {
   const Span<int2> edges = mesh.edges();
   if (selection.size() == edges.size()) {
-    bke::CurvesGeometry curves = edges_to_curves_convert(mesh, edges, propagation_info);
-    if (debug_randomize_indices()) {
-      randomize_curve_order(curves);
-    }
-    return curves;
+    return edges_to_curves_convert(mesh, edges, propagation_info);
   }
   Array<int2> selected_edges(selection.size());
   array_utils::gather(edges, selection, selected_edges.as_mutable_span());
-  bke::CurvesGeometry curves = edges_to_curves_convert(mesh, selected_edges, propagation_info);
-  if (debug_randomize_indices()) {
-    randomize_curve_order(curves);
-  }
-  return curves;
+  return edges_to_curves_convert(mesh, selected_edges, propagation_info);
 }
 
 }  // namespace blender::geometry

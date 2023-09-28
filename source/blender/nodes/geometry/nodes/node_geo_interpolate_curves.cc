@@ -14,6 +14,8 @@
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 
+#include "GEO_randomize.hh"
+
 #include "DNA_pointcloud_types.h"
 
 namespace blender::nodes::node_geo_interpolate_curves_cc {
@@ -757,6 +759,10 @@ static GeometrySet generate_interpolated_curves(
   if (guide_curves_id.mat != nullptr) {
     child_curves_id->mat = static_cast<Material **>(MEM_dupallocN(guide_curves_id.mat));
     child_curves_id->totcol = guide_curves_id.totcol;
+  }
+
+  if (geometry::debug_randomize_indices()) {
+    geometry::randomize_curve_order(child_curves);
   }
 
   return GeometrySet::from_curves(child_curves_id);

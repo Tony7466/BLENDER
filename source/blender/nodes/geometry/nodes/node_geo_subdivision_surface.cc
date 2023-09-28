@@ -20,6 +20,8 @@
 
 #include "NOD_rna_define.hh"
 
+#include "GEO_randomize.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_subdivision_surface_cc {
@@ -157,6 +159,10 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
 
   if (mesh_copy) {
     BKE_id_free(nullptr, mesh_copy);
+  }
+
+  if (result && geometry::debug_randomize_indices()) {
+    geometry::randomize_mesh_order(*result);
   }
 
   return result;
