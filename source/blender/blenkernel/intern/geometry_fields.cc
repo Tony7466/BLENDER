@@ -35,6 +35,24 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const eAttr
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
+static std::optional<const bke::greasepencil::Drawing *> get_eval_drawing_from_grease_pencil_layer(
+    const GreasePencil &grease_pencil, const int layer_index)
+{
+  BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
+  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
+  const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
+  if (drawing_index == -1) {
+    return {};
+  }
+  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
+  if (drawing_base->type != GP_DRAWING) {
+    return {};
+  }
+  const bke::greasepencil::Drawing &drawing =
+      reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+  return &drawing;
+}
+
 GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
                                                             const IndexMask &mask,
                                                             ResourceScope &scope) const
@@ -43,50 +61,26 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
     if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
       return *grease_pencil_.attributes().lookup(field->attribute_name());
     }
-    const bke::greasepencil::Layer &layer = *grease_pencil_.layers()[layer_index_];
-    const int drawing_index = layer.drawing_index_at(grease_pencil_.runtime->eval_frame);
-    if (drawing_index == -1) {
-      return {};
-    }
-    const GreasePencilDrawingBase *drawing_base = grease_pencil_.drawing(drawing_index);
-    if (drawing_base->type != GP_DRAWING) {
-      return {};
-    }
-    const bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-    const CurvesGeometry &curves = drawing.strokes();
-    if (GVArray varray = *curves.attributes().lookup(field->attribute_name(), domain_)) {
-      return varray;
-    }
-    if (GVArray varray = *grease_pencil_.attributes().lookup(field->attribute_name())) {
-      BUFFER_FOR_CPP_TYPE_VALUE(varray.type(), value);
-      BLI_SCOPED_DEFER([&]() { varray.type().destruct(value); });
-      varray.get_internal_single(value);
-      const int domain_size = drawing.strokes().attributes().domain_size(domain_);
-      return GVArray::ForSingle(varray.type(), domain_size, value);
+    if (std::optional<const bke::greasepencil::Drawing *> drawing =
+            get_eval_drawing_from_grease_pencil_layer(grease_pencil_, layer_index_))
+    {
+      const CurvesGeometry &curves = drawing.value()->strokes();
+      /* Check if attribute is on the curves and return it if it was found. */
+      if (GVArray varray = *curves.attributes().lookup(field->attribute_name(), domain_)) {
+        return varray;
+      }
+      /* Check if the attribute is on the layers and return it as a single across the point or
+       * curves domain. */
+      if (GVArray varray = *grease_pencil_.attributes().lookup(field->attribute_name())) {
+        BUFFER_FOR_CPP_TYPE_VALUE(varray.type(), value);
+        BLI_SCOPED_DEFER([&]() { varray.type().destruct(value); });
+        varray.get_internal_single(value);
+        const int domain_size = drawing.value()->strokes().attributes().domain_size(domain_);
+        return GVArray::ForSingle(varray.type(), domain_size, value);
+      }
     }
   }
-
-  /* In the default case, for now, we construct a `CurvesFieldContext` for this layer and pass on
-   * the field input to it. This has the consequence that the layer attributes are no longer
-   * accessible afterwards. We would need a `GeometryFieldContext` that can represent a layer. */
-  if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
-    return {};
-  }
-  const bke::greasepencil::Layer &layer = *grease_pencil_.layers()[layer_index_];
-  const int drawing_index = layer.drawing_index_at(grease_pencil_.runtime->eval_frame);
-  if (drawing_index == -1) {
-    return {};
-  }
-  const GreasePencilDrawingBase *drawing_base = grease_pencil_.drawing(drawing_index);
-  if (drawing_base->type != GP_DRAWING) {
-    return {};
-  }
-  const bke::greasepencil::Drawing &drawing =
-      reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-  const CurvesGeometry &curves = drawing.strokes();
-  CurvesFieldContext field_context{curves, domain_};
-  return field_context.get_varray_for_input(field_input, mask, scope);
+  return field_input.get_varray_for_context(*this, mask, scope);
 }
 
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
