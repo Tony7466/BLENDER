@@ -251,8 +251,8 @@ class NoiseFunction : public mf::MultiFunction {
           mask.foreach_index([&](const int64_t i) {
             const float position = w[i] * scale[i];
             r_factor[i] = noise::perlin_fractal_distorted(position,
-                                                          CLAMPIS(detail[i], 0.0f, 15.0f),
-                                                          CLAMPIS(roughness[i], 0.0f, 1.0f),
+                                                          math::clamp(detail[i], 0.0f, 15.0f),
+                                                          math::max(roughness[i], 0.0f),
                                                           lacunarity[i],
                                                           offset[i],
                                                           gain[i],
@@ -266,8 +266,8 @@ class NoiseFunction : public mf::MultiFunction {
             const float position = w[i] * scale[i];
             const float3 c = noise::perlin_float3_fractal_distorted(
                 position,
-                CLAMPIS(detail[i], 0.0f, 15.0f),
-                CLAMPIS(roughness[i], 0.0f, 1.0f),
+                math::clamp(detail[i], 0.0f, 15.0f),
+                math::max(roughness[i], 0.0f),
                 lacunarity[i],
                 offset[i],
                 gain[i],
@@ -285,8 +285,8 @@ class NoiseFunction : public mf::MultiFunction {
           mask.foreach_index([&](const int64_t i) {
             const float2 position = float2(vector[i] * scale[i]);
             r_factor[i] = noise::perlin_fractal_distorted(position,
-                                                          CLAMPIS(detail[i], 0.0f, 15.0f),
-                                                          CLAMPIS(roughness[i], 0.0f, 1.0f),
+                                                          math::clamp(detail[i], 0.0f, 15.0f),
+                                                          math::max(roughness[i], 0.0f),
                                                           lacunarity[i],
                                                           offset[i],
                                                           gain[i],
@@ -300,8 +300,8 @@ class NoiseFunction : public mf::MultiFunction {
             const float2 position = float2(vector[i] * scale[i]);
             const float3 c = noise::perlin_float3_fractal_distorted(
                 position,
-                CLAMPIS(detail[i], 0.0f, 15.0f),
-                CLAMPIS(roughness[i], 0.0f, 1.0f),
+                math::clamp(detail[i], 0.0f, 15.0f),
+                math::max(roughness[i], 0.0f),
                 lacunarity[i],
                 offset[i],
                 gain[i],
@@ -319,8 +319,8 @@ class NoiseFunction : public mf::MultiFunction {
           mask.foreach_index([&](const int64_t i) {
             const float3 position = vector[i] * scale[i];
             r_factor[i] = noise::perlin_fractal_distorted(position,
-                                                          CLAMPIS(detail[i], 0.0f, 15.0f),
-                                                          CLAMPIS(roughness[i], 0.0f, 1.0f),
+                                                          math::clamp(detail[i], 0.0f, 15.0f),
+                                                          math::max(roughness[i], 0.0f),
                                                           lacunarity[i],
                                                           offset[i],
                                                           gain[i],
@@ -334,8 +334,8 @@ class NoiseFunction : public mf::MultiFunction {
             const float3 position = vector[i] * scale[i];
             const float3 c = noise::perlin_float3_fractal_distorted(
                 position,
-                CLAMPIS(detail[i], 0.0f, 15.0f),
-                CLAMPIS(roughness[i], 0.0f, 1.0f),
+                math::clamp(detail[i], 0.0f, 15.0f),
+                math::max(roughness[i], 0.0f),
                 lacunarity[i],
                 offset[i],
                 gain[i],
@@ -357,8 +357,8 @@ class NoiseFunction : public mf::MultiFunction {
             const float4 position{
                 position_vector[0], position_vector[1], position_vector[2], position_w};
             r_factor[i] = noise::perlin_fractal_distorted(position,
-                                                          CLAMPIS(detail[i], 0.0f, 15.0f),
-                                                          CLAMPIS(roughness[i], 0.0f, 1.0f),
+                                                          math::clamp(detail[i], 0.0f, 15.0f),
+                                                          math::max(roughness[i], 0.0f),
                                                           lacunarity[i],
                                                           offset[i],
                                                           gain[i],
@@ -375,8 +375,8 @@ class NoiseFunction : public mf::MultiFunction {
                 position_vector[0], position_vector[1], position_vector[2], position_w};
             const float3 c = noise::perlin_float3_fractal_distorted(
                 position,
-                CLAMPIS(detail[i], 0.0f, 15.0f),
-                CLAMPIS(roughness[i], 0.0f, 1.0f),
+                math::clamp(detail[i], 0.0f, 15.0f),
+                math::max(roughness[i], 0.0f),
                 lacunarity[i],
                 offset[i],
                 gain[i],

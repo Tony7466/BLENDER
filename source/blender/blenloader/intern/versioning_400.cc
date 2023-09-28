@@ -592,6 +592,58 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
   }
 }
 
+static void versioning_update_noise_texture_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_TEX_NOISE) {
+      (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
+
+      bNodeLink *roughnessLink = nullptr;
+      bNode *roughnessFromNode = nullptr;
+      bNodeSocket *roughnessFromSock = nullptr;
+
+      LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+        /* Find links, nodes and sockets. */
+        if ((link->tonode == node) && (STREQ(link->tosock->identifier, "Roughness"))) {
+          roughnessLink = link;
+          roughnessFromNode = link->fromnode;
+          roughnessFromSock = link->fromsock;
+        }
+      }
+
+      bNodeSocket *sockRoughness = nodeFindSocket(node, SOCK_IN, "Roughness");
+      float *roughness = version_cycles_node_socket_float_value(sockRoughness);
+
+      if (roughnessLink != nullptr) {
+        /* Add Clamp node before Roughness input. */
+
+        bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
+        clampNode->parent = node->parent;
+        clampNode->custom1 = NODE_CLAMP_MINMAX;
+        clampNode->locx = node->locx;
+        clampNode->locy = node->locy - 300.0f;
+        clampNode->flag |= NODE_HIDDEN;
+        bNodeSocket *clampSockValue = nodeFindSocket(clampNode, SOCK_IN, "Value");
+        bNodeSocket *clampSockMin = nodeFindSocket(clampNode, SOCK_IN, "Min");
+        bNodeSocket *clampSockMax = nodeFindSocket(clampNode, SOCK_IN, "Max");
+        bNodeSocket *clampSockOut = nodeFindSocket(clampNode, SOCK_OUT, "Result");
+
+        *version_cycles_node_socket_float_value(clampSockMin) = 0.0f;
+        *version_cycles_node_socket_float_value(clampSockMax) = 1.0f;
+
+        nodeRemLink(ntree, roughnessLink);
+        nodeAddLink(ntree, roughnessFromNode, roughnessFromSock, clampNode, clampSockValue);
+        nodeAddLink(ntree, clampNode, clampSockOut, node, sockRoughness);
+      }
+      else {
+        *roughness = std::clamp(*roughness, 0.0f, 1.0f);
+      }
+    }
+  }
+
+  version_socket_update_is_used(ntree);
+}
+
 static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 {
   version_node_input_socket_name(ntree, SH_NODE_TEX_MUSGRAVE_DEPRECATED, "Dimension", "Roughness");
@@ -621,7 +673,6 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
       LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
         /* Find links, nodes and sockets. */
-
         if (link->tonode == node) {
           if (STREQ(link->tosock->identifier, "Detail")) {
             detailLink = link;
@@ -1550,8 +1601,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      /* Set Normalize property of Noise Texture node to true. */
       if (ntree->type != NTREE_CUSTOM) {
-        /* Set Normalize property of Noise Texture node to true. */
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == SH_NODE_TEX_NOISE) {
             ((NodeTexNoise *)node->storage)->normalize = true;
@@ -1925,6 +1976,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
+        /* versioning_update_noise_texture_node must be done before
+         * versioning_replace_musgrave_texture_node. */
+        versioning_update_noise_texture_node(ntree);
+
         /* Convert Musgrave Texture nodes to Noise Texture nodes. */
         versioning_replace_musgrave_texture_node(ntree);
       }

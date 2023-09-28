@@ -282,7 +282,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   float distortion = stack_load_float_default(stack, distortion_stack_offset, defaults2.w);
 
   detail = clamp(detail, 0.0f, 15.0f);
-  roughness = clamp(roughness, 0.0f, 1.0f);
+  roughness = fmaxf(roughness, 0.0f);
 
   vector *= scale;
   w *= scale;

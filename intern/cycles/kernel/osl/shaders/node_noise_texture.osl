@@ -257,7 +257,7 @@ shader node_noise_texture(int use_mapping = 0,
     p = transform(mapping, p);
 
   float detail = clamp(Detail, 0.0, 15.0);
-  float roughness = clamp(Roughness, 0.0, 1.0);
+  float roughness = max(Roughness, 0.0);
 
   p *= Scale;
   float w = W * Scale;
