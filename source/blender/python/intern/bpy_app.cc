@@ -48,8 +48,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DEG_depsgraph.hh"
-
 #include "RNA_enum_types.hh" /* For `rna_enum_wm_job_type_items`. */
 
 /* for notifiers */
