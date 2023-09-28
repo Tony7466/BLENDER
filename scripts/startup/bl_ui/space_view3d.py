@@ -4554,6 +4554,7 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
 
         layout.operator("mesh.extrude_repeat")
         layout.operator("mesh.spin").angle = pi * 2
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Extrude")
 
 
 class VIEW3D_MT_edit_mesh_vertices(Menu):
@@ -4698,6 +4699,7 @@ class VIEW3D_MT_edit_mesh_faces_data(Menu):
             layout.separator()
             layout.operator("mesh.mark_freestyle_face").clear = False
             layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True
+        layout.template_node_operator_asset_menu_items(catalog_path="Face/Face Data")
 
 
 class VIEW3D_MT_edit_mesh_faces(Menu):
@@ -4843,6 +4845,7 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
 
         layout.menu("VIEW3D_MT_edit_mesh_normals_select_strength")
         layout.menu("VIEW3D_MT_edit_mesh_normals_set_strength")
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Normals")
 
 
 class VIEW3D_MT_edit_mesh_shading(Menu):
@@ -4866,13 +4869,16 @@ class VIEW3D_MT_edit_mesh_shading(Menu):
         props.clear = True
 
         layout.operator("mesh.mark_sharp", text="Sharp Vertices").use_verts = True
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Shading")
 
 
 class VIEW3D_MT_edit_mesh_weights(Menu):
     bl_label = "Weights"
 
     def draw(self, _context):
-        VIEW3D_MT_paint_weight.draw_generic(self.layout, is_editmode=True)
+        layout = self.layout
+        VIEW3D_MT_paint_weight.draw_generic(layout, is_editmode=True)
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Weights")
 
 
 class VIEW3D_MT_edit_mesh_clean(Menu):
@@ -4896,6 +4902,8 @@ class VIEW3D_MT_edit_mesh_clean(Menu):
         layout.operator("mesh.vert_connect_concave")
         layout.operator("mesh.remove_doubles")
         layout.operator("mesh.fill_holes")
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Clean Up")
 
 
 class VIEW3D_MT_edit_mesh_delete(Menu):
@@ -4921,6 +4929,8 @@ class VIEW3D_MT_edit_mesh_delete(Menu):
         layout.operator("mesh.edge_collapse")
         layout.operator("mesh.delete_edgeloop", text="Edge Loops")
 
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Delete")
+
 
 class VIEW3D_MT_edit_mesh_merge(Menu):
     bl_label = "Merge"
@@ -4934,6 +4944,8 @@ class VIEW3D_MT_edit_mesh_merge(Menu):
 
         layout.operator("mesh.remove_doubles", text="By Distance")
 
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Merge")
+
 
 class VIEW3D_MT_edit_mesh_split(Menu):
     bl_label = "Split"
@@ -4946,6 +4958,8 @@ class VIEW3D_MT_edit_mesh_split(Menu):
         layout.separator()
 
         layout.operator_enum("mesh.edge_split", "type")
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Split")
 
 
 class VIEW3D_MT_edit_mesh_showhide(ShowHideMenu, Menu):
@@ -6825,6 +6839,8 @@ class VIEW3D_PT_overlay_object(Panel):
     bl_label = "Objects"
 
     def draw(self, context):
+        shading = VIEW3D_PT_shading.get_shading(context)
+
         layout = self.layout
         view = context.space_data
         overlay = view.overlay
@@ -6850,6 +6866,10 @@ class VIEW3D_PT_overlay_object(Panel):
         subsub = sub.column()
         subsub.active = overlay.show_object_origins
         subsub.prop(overlay, "show_object_origins_all", text="Origins (All)")
+
+        if shading.type == 'WIREFRAME' or shading.show_xray:
+            layout.separator()
+            layout.prop(overlay, "bone_wire_alpha")
 
 
 class VIEW3D_PT_overlay_geometry(Panel):
@@ -7257,11 +7277,6 @@ class VIEW3D_PT_overlay_bones(Panel):
 
     @staticmethod
     def is_using_wireframe(context):
-        shading = VIEW3D_PT_shading.get_shading(context)
-
-        if shading.type == 'WIREFRAME' or shading.show_xray:
-            return True
-
         mode = context.mode
 
         if mode in {'POSE', 'PAINT_WEIGHT'}:
@@ -7279,7 +7294,7 @@ class VIEW3D_PT_overlay_bones(Panel):
         return (
             (mode == 'POSE') or
             (mode == 'PAINT_WEIGHT' and context.pose_object) or
-            (mode in {'EDIT_ARMATURE', 'OBJECT'} and
+            (mode == 'EDIT_ARMATURE' and
              VIEW3D_PT_overlay_bones.is_using_wireframe(context))
         )
 
@@ -7304,9 +7319,6 @@ class VIEW3D_PT_overlay_bones(Panel):
         elif mode == 'PAINT_WEIGHT':
             row = col.row()
             row.prop(overlay, "show_xray_bone")
-
-        if VIEW3D_PT_overlay_bones.is_using_wireframe(context):
-            col.prop(overlay, "bone_wire_alpha")
 
 
 class VIEW3D_PT_overlay_texture_paint(Panel):
