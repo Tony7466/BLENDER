@@ -43,6 +43,14 @@ static Array<int> invert_permutation(const Span<int> permutation)
   return data;
 }
 
+/**
+ * We can't use a fully random seed, because then the randomization wouldn't be deterministic,
+ * which is important to avoid causing issues when determinism is expected. Using a single constant
+ * seed is not ideal either, because then two geometries might be randomized equally or very
+ * similar. Ideally, the seed would be a hash of everything that feeds into the geometry processing
+ * algorithm before the randomization, but that's too expensive. Just use something simple but
+ * correct for now.
+ */
 static int seed_from_mesh(const Mesh &mesh)
 {
   return mesh.totvert;
