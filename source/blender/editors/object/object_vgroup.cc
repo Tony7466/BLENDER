@@ -2899,13 +2899,11 @@ static eVGroupSelect normalize_vertex_group_target(Object *ob)
   /* If armature is present, and armature is actively deforming the object
   (i.e armature modifier isn't disabled) use BONE DEFORM. */
   if (BKE_modifiers_is_deformed_by_armature(ob)) {
-    bool *defgroup_validmap = nullptr;
 
-    int r_defgroup_tot = BKE_object_defgroup_count(ob);
+    int defgroup_tot = BKE_object_defgroup_count(ob);
+    bool *defgroup_validmap = BKE_object_defgroup_validmap_get(ob, defgroup_tot);
 
-    defgroup_validmap = BKE_object_defgroup_validmap_get(ob, r_defgroup_tot);
-
-    for (int i = 0; i < r_defgroup_tot; i++) {
+    for (int i = 0; i < defgroup_tot; i++) {
       if (defgroup_validmap[i] == true) {
         target_group = WT_VGROUP_BONE_DEFORM;
         break;
