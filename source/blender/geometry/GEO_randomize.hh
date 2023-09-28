@@ -12,6 +12,8 @@ class CurvesGeometry;
 
 namespace blender::geometry {
 
+bool debug_randomize_indices();
+
 void randomize_vertex_order(Mesh &mesh);
 void randomize_edge_order(Mesh &mesh);
 void randomize_face_order(Mesh &mesh);

@@ -17,6 +17,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.h"
+#include "BKE_global.h"
 #include "BKE_mesh.hh"
 
 #include "BLI_array.hh"
@@ -169,6 +170,11 @@ void randomize_curve_order(bke::CurvesGeometry &curves)
       curves.point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
 
   curves.offsets_for_write().copy_from(new_curve_offsets);
+}
+
+bool debug_randomize_indices()
+{
+  return G.randomize_geometry_element_order;
 }
 
 }  // namespace blender::geometry
