@@ -466,4 +466,5 @@ void USDStageReader::sort_readers()
       });
 }
 
+
 }  // Namespace blender::io::usd
