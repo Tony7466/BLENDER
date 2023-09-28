@@ -39,9 +39,9 @@
 #include "BKE_report.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -1449,7 +1449,7 @@ static int constraint_delete_exec(bContext *C, wmOperator *op)
 
   /* free the constraint */
   if (BKE_constraint_remove_ex(lb, ob, con, true)) {
-    /* needed to set the flags on posebones correctly */
+    /* Needed to set the flags on pose-bones correctly. */
     ED_object_constraint_update(bmain, ob);
 
     /* relations */
@@ -1539,7 +1539,7 @@ static int constraint_apply_exec(bContext *C, wmOperator *op)
   /* Update for any children that may get moved. */
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
-  /* Needed to set the flags on posebones correctly. */
+  /* Needed to set the flags on pose-bones correctly. */
   ED_object_constraint_update(bmain, ob);
 
   DEG_relations_tag_update(bmain);
@@ -1639,7 +1639,7 @@ static int constraint_copy_exec(bContext *C, wmOperator *op)
   BLI_assert(current_index >= 0);
   BLI_listbase_link_move(constraints, copy_con, new_index - current_index);
 
-  /* Needed to set the flags on posebones correctly. */
+  /* Needed to set the flags on pose-bones correctly. */
   ED_object_constraint_update(bmain, ob);
 
   DEG_relations_tag_update(bmain);
@@ -2019,7 +2019,7 @@ static int pose_constraints_clear_exec(bContext *C, wmOperator * /*op*/)
   /* free constraints for all selected bones */
   CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     BKE_constraints_free(&pchan->constraints);
-    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_SPLINEIK | PCHAN_HAS_CONST);
+    pchan->constflag = 0;
 
     if (prev_ob != ob) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -2751,7 +2751,7 @@ static int pose_ik_clear_exec(bContext *C, wmOperator * /*op*/)
         BKE_constraint_remove(&pchan->constraints, con);
       }
     }
-    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
     if (prev_ob != ob) {
       prev_ob = ob;

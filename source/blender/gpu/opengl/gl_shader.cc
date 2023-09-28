@@ -880,7 +880,7 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
     ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
   }
-  ss << "\n/* Subpass Inputs. */\n";
+  ss << "\n/* Sub-pass Inputs. */\n";
   /* Used to detect which attachments needs imageStore emulation. One bit per attachment. */
   uint32_t fetched_attachment_bits = 0u;
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {

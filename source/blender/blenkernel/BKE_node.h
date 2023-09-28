@@ -225,6 +225,7 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
                                    struct bNodeExecData *execdata,
                                    struct GPUNodeStack *in,
                                    struct GPUNodeStack *out);
+typedef void (*NodeMaterialXFunction)(void *data, struct bNode *node, struct bNodeSocket *out);
 
 /**
  * \brief Defines a node type.
@@ -339,6 +340,8 @@ typedef struct bNodeType {
   NodeExecFunction exec_fn;
   /* gpu */
   NodeGPUExecFunction gpu_fn;
+  /* MaterialX */
+  NodeMaterialXFunction materialx_fn;
 
   /* Get an instance of this node's compositor operation. Freeing the instance is the
    * responsibility of the caller. */
@@ -377,13 +380,6 @@ typedef struct bNodeType {
    * custom behavior here like adding custom search items.
    */
   NodeGatherSocketLinkOperationsFunction gather_link_search_ops;
-
-  /**
-   * Add to the list of search items gathered by the add-node search. The default behavior of
-   * adding a single item with the node name is usually enough, but node types can have any number
-   * of custom search items.
-   */
-  NodeGatherAddOperationsFunction gather_add_node_search_ops;
 
   /** True when the node cannot be muted. */
   bool no_muting;
@@ -441,7 +437,7 @@ typedef struct bNodeTreeType {
   void (*localize)(struct bNodeTree *localtree, struct bNodeTree *ntree);
   void (*local_merge)(struct Main *bmain, struct bNodeTree *localtree, struct bNodeTree *ntree);
 
-  /* Tree update. Overrides `nodetype->updatetreefunc` ! */
+  /* Tree update. Overrides `nodetype->updatetreefunc`. */
   void (*update)(struct bNodeTree *ntree);
 
   bool (*validate_link)(eNodeSocketDatatype from, eNodeSocketDatatype to);

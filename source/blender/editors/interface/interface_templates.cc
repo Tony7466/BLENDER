@@ -34,7 +34,6 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -66,12 +65,12 @@
 #include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_info.hh"
@@ -90,6 +89,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
 
@@ -423,7 +423,7 @@ static void id_search_cb(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  blender::string_search::StringSearch<ID> search;
+  blender::ui::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
@@ -2876,6 +2876,7 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
 
     PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
+    bool all_booleans = true;
     RNA_STRUCT_BEGIN (&ptr, prop) {
       if (RNA_property_flag(prop) & PROP_HIDDEN) {
         continue;
@@ -2885,10 +2886,14 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
-        return false;
+        all_booleans = false;
+        break;
       }
     }
     RNA_STRUCT_END;
+    if (all_booleans == false) {
+      return false;
+    }
   }
 
   return true;
@@ -3474,7 +3479,7 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_ARROW_LEFTRIGHT,
                      IFACE_("Flip Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3517,12 +3522,16 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
                      CB_FUNC_DISTRIBUTE_EVENLY,
                      "");
 
+    uiItemS(layout);
+
     uiItemO(layout, IFACE_("Eyedropper"), ICON_EYEDROPPER, "UI_OT_eyedropper_colorramp");
+
+    uiItemS(layout);
 
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_LOOP_BACK,
                      IFACE_("Reset Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -4575,7 +4584,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   CurveMap *cm = &cumap->cm[cumap->cur];
   uiBut *bt;
   const float dx = UI_UNIT_X;
-  int bg = -1;
+  eButGradientType bg = UI_GRAD_NONE;
 
   uiBlock *block = uiLayoutGetBlock(layout);
 
@@ -4762,7 +4771,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   row = uiLayoutRow(layout, false);
   uiButCurveMapping *curve_but = (uiButCurveMapping *)uiDefBut(
       block, UI_BTYPE_CURVE, 0, "", 0, 0, size, 8.0f * UI_UNIT_X, cumap, 0.0f, 1.0f, -1, 0, "");
-  curve_but->gradient_type = eButGradientType(bg);
+  curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
   int i;
@@ -6397,6 +6406,21 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   uiBlock *block = uiLayoutGetBlock(ui_abs);
   eUIEmbossType previous_emboss = UI_block_emboss_get(block);
 
+  uchar report_icon_color[4];
+  uchar report_text_color[4];
+
+  UI_GetThemeColorType4ubv(
+      UI_icon_colorid_from_report_type(report->type), SPACE_INFO, report_icon_color);
+  UI_GetThemeColorType4ubv(
+      UI_text_colorid_from_report_type(report->type), SPACE_INFO, report_text_color);
+  report_text_color[3] = 255; /* This theme color is RGB only, so have to set alpha here. */
+
+  if (rti->flash_progress <= 1.0) {
+    /* Flash report briefly according to progress through fade-out duration. */
+    const int brighten_amount = int(32 * (1.0f - rti->flash_progress));
+    add_v3_uchar_clamped(report_icon_color, brighten_amount);
+  }
+
   UI_fontstyle_set(&style->widgetlabel);
   int width = BLF_width(style->widgetlabel.uifont_id, report->message, report->len);
   width = min_ii(int(rti->widthfac * width), width);
@@ -6420,7 +6444,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  "");
   /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v4_v4_uchar(but->col, report_icon_color);
 
   /* Background for the rest of the message. */
   but = uiDefBut(block,
@@ -6437,9 +6461,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  0,
                  0,
                  "");
-
   /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
-  UI_GetThemeColorType4ubv(UI_icon_colorid_from_report_type(report->type), SPACE_INFO, but->col);
+  copy_v3_v3_uchar(but->col, report_icon_color);
   but->col[3] = 64;
 
   UI_block_align_end(block);
@@ -6456,8 +6479,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                       UI_UNIT_X,
                       UI_UNIT_Y,
                       TIP_("Click to open the info editor"));
-  UI_GetThemeColorType4ubv(UI_text_colorid_from_report_type(report->type), SPACE_INFO, but->col);
-  but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
+  copy_v4_v4_uchar(but->col, report_text_color);
 
   /* The report message. */
   but = uiDefButO(block,

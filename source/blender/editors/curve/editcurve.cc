@@ -37,9 +37,9 @@
 #include "BKE_modifier.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -3720,7 +3720,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           }
         }
 
-        if (sel) { /* V ! */
+        if (sel) { /* V direction. */
           bpn = bpnew = static_cast<BPoint *>(
               MEM_mallocN((sel + nu->pntsv) * nu->pntsu * sizeof(BPoint), "subdivideNurb4"));
           bp = nu->bp;
@@ -3768,7 +3768,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
             }
           }
 
-          if (sel) { /* U ! */
+          if (sel) { /* U direction. */
             /* Inserting U points is sort of 'default' Flat curves only get
              * U points inserted in them. */
             bpn = bpnew = static_cast<BPoint *>(
@@ -4667,7 +4667,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
           MEM_freeN(nu1->bp);
           nu1->bp = bp;
 
-          /* a = nu1->pntsu + nu1->orderu; */ /* UNUSED */
+          // a = nu1->pntsu + nu1->orderu; /* UNUSED */
 
           nu1->pntsu += nu2->pntsu;
           BLI_remlink(nubase, nu2);
@@ -4789,7 +4789,6 @@ void CURVE_OT_make_segment(wmOperatorType *ot)
 bool ED_curve_editnurb_select_pick(bContext *C,
                                    const int mval[2],
                                    const int dist_px,
-                                   const bool vert_without_handles,
                                    const SelectPick_Params *params)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -4805,8 +4804,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
   copy_v2_v2_int(vc.mval, mval);
 
-  const bool use_handle_select = vert_without_handles &&
-                                 (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
+  const bool use_handle_select = (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
 
   bool found = ED_curve_pick_vert_ex(&vc, true, dist_px, &nu, &bezt, &bp, &hand, &basact);
 

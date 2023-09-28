@@ -42,9 +42,10 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 #  include "DNA_material_types.h"
 
 #  include "BKE_node.h"
+#  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_update.h"
 
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_node.hh"
 
@@ -293,6 +294,15 @@ static void rna_NodeSocket_hide_set(PointerRNA *ptr, bool value)
     return;
   }
 
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node;
+  nodeFindNode(ntree, sock, &node, nullptr);
+
+  /* The Reroute node is the socket itself, do not hide this. */
+  if (node->is_reroute()) {
+    return;
+  }
+
   if (value) {
     sock->flag |= SOCK_HIDDEN;
   }
@@ -321,7 +331,7 @@ static void rna_NodeSocketStandard_draw_color(
   sock->typeinfo->draw_color(C, &ptr, nodeptr, r_color);
 }
 
-static void rna_NodeSocketStandard_draw_color_simple(struct StructRNA *type, float r_color[4])
+static void rna_NodeSocketStandard_draw_color_simple(StructRNA *type, float r_color[4])
 {
   const bNodeSocketType *typeinfo = static_cast<const bNodeSocketType *>(
       RNA_struct_blender_type_get(type));

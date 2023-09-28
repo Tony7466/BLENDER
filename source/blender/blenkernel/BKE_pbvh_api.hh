@@ -105,6 +105,8 @@ BLI_INLINE BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh)
   return ((struct PBVHPublic *)pbvh)->bm;
 }
 
+Mesh *BKE_pbvh_get_mesh(PBVH *pbvh);
+
 BLI_INLINE PBVHVertRef BKE_pbvh_make_vref(intptr_t i)
 {
   PBVHVertRef ret = {i};
@@ -275,7 +277,6 @@ bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
  * projecting the far clipping plane into the local object space.  This works out to
  * dividing view3d->clip_end by the object scale, which for small object and large
  * clip_end's can easily lead to floating-point overflows.
- *
  */
 void BKE_pbvh_clip_ray_ortho(
     PBVH *pbvh, bool original, float ray_start[3], float ray_end[3], float ray_normal[3]);
@@ -438,6 +439,7 @@ void BKE_pbvh_bmesh_after_stroke(PBVH *pbvh);
 /* Update Bounding Box/Redraw and clear flags. */
 
 void BKE_pbvh_update_bounds(PBVH *pbvh, int flags);
+void BKE_pbvh_update_mask(PBVH *pbvh);
 void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flags);
 void BKE_pbvh_update_visibility(PBVH *pbvh);
 void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg);
@@ -502,7 +504,7 @@ struct PBVHVertexIter {
   const bool *hide_vert;
   int totvert;
   const int *vert_indices;
-  float *vmask;
+  const float *vmask;
   bool is_mesh;
 
   /* bmesh */
@@ -517,7 +519,7 @@ struct PBVHVertexIter {
   float *co;
   const float *no;
   const float *fno;
-  float *mask;
+  float mask;
   bool visible;
 };
 
@@ -531,7 +533,7 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
       vi.width = vi.gridsize; \
       vi.height = vi.gridsize; \
       vi.index = vi.vertex.i = vi.grid_indices[vi.g] * vi.key.grid_area - 1; \
-      vi.grid = vi.grids[vi.grid_indices[vi.g]]; \
+      vi.grid = CCG_elem_offset(&vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
       if (mode == PBVH_ITER_UNIQUE) { \
         vi.gh = vi.grid_hidden[vi.grid_indices[vi.g]]; \
       } \
@@ -544,10 +546,10 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     for (vi.gy = 0; vi.gy < vi.height; vi.gy++) { \
       for (vi.gx = 0; vi.gx < vi.width; vi.gx++, vi.i++) { \
         if (vi.grid) { \
+          vi.grid = CCG_elem_next(&vi.key, vi.grid); \
           vi.co = CCG_elem_co(&vi.key, vi.grid); \
           vi.fno = CCG_elem_no(&vi.key, vi.grid); \
-          vi.mask = vi.key.has_mask ? CCG_elem_mask(&vi.key, vi.grid) : NULL; \
-          vi.grid = CCG_elem_next(&vi.key, vi.grid); \
+          vi.mask = vi.key.has_mask ? *CCG_elem_mask(&vi.key, vi.grid) : 0.0f; \
           vi.index++; \
           vi.vertex.i++; \
           vi.visible = true; \
@@ -565,9 +567,7 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           vi.co = vi.vert_positions[vi.vert_indices[vi.gx]]; \
           vi.no = vi.vert_normals[vi.vert_indices[vi.gx]]; \
           vi.index = vi.vertex.i = vi.vert_indices[vi.i]; \
-          if (vi.vmask) { \
-            vi.mask = &vi.vmask[vi.index]; \
-          } \
+          vi.mask = vi.vmask ? vi.vmask[vi.index] : 0.0f; \
         } \
         else { \
           if (!BLI_gsetIterator_done(&vi.bm_unique_verts)) { \
@@ -586,7 +586,7 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           vi.fno = vi.bm_vert->no; \
           vi.vertex = BKE_pbvh_make_vref((intptr_t)vi.bm_vert); \
           vi.index = BM_elem_index_get(vi.bm_vert); \
-          vi.mask = (float *)BM_ELEM_CD_GET_VOID_P(vi.bm_vert, vi.cd_vert_mask_offset); \
+          vi.mask = BM_ELEM_CD_GET_FLOAT(vi.bm_vert, vi.cd_vert_mask_offset); \
         }
 
 #define BKE_pbvh_vertex_iter_end \

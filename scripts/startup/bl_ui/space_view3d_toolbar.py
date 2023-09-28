@@ -712,7 +712,6 @@ class VIEW3D_PT_slots_vertex_groups(Panel):
 
 class VIEW3D_PT_mask(View3DPanel, Panel):
     bl_category = "Tool"
-    bl_context = ".imagepaint"  # dot on purpose (access from topbar)
     bl_label = "Masking"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -867,7 +866,7 @@ class VIEW3D_PT_tools_weight_gradient(Panel, View3DPaintPanel):
 
     @classmethod
     def poll(cls, context):
-        # since we dont give context above, check mode here (to not show in other modes like sculpt)
+        # since we don't give context above, check mode here (to not show in other modes like sculpt).
         if context.mode != 'PAINT_WEIGHT':
             return False
         settings = context.tool_settings.weight_paint

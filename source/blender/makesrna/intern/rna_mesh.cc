@@ -60,7 +60,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_report.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_mesh.hh" /* XXX Bad level call */
 
@@ -674,7 +674,7 @@ static void rna_MeshPolygon_flip(ID *id, MIntProperty *poly_offset_p)
 {
   using namespace blender;
   Mesh *me = (Mesh *)id;
-  const int index = reinterpret_cast<int *>(poly_offset_p) - me->faces().data();
+  const int index = reinterpret_cast<int *>(poly_offset_p) - me->faces().data().data();
   bke::mesh_flip_faces(*me, IndexMask(IndexRange(index, 1)));
   BKE_mesh_tessface_clear(me);
   BKE_mesh_runtime_clear_geometry(me);
@@ -2627,7 +2627,7 @@ void rna_def_texmat_common(StructRNA *srna, const char *texspace_editable)
 static void rna_def_mesh_vertices(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /*  PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
@@ -2653,7 +2653,7 @@ static void rna_def_mesh_vertices(BlenderRNA *brna, PropertyRNA *cprop)
 static void rna_def_mesh_edges(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /*  PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;

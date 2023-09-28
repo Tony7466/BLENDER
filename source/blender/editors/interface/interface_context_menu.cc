@@ -24,7 +24,7 @@
 #include "BKE_addon.h"
 #include "BKE_context.h"
 #include "BKE_idprop.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_asset.hh"
 #include "ED_keyframing.hh"
@@ -966,7 +966,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
      * which isn't cheap to check. */
     uiLayout *sub = uiLayoutColumn(layout, true);
     uiLayoutSetEnabled(sub, !id->asset_data);
-    uiItemO(sub, nullptr, ICON_NONE, "ASSET_OT_mark");
+    uiItemO(sub, nullptr, ICON_ASSET_MANAGER, "ASSET_OT_mark");
     sub = uiLayoutColumn(layout, true);
     uiLayoutSetEnabled(sub, id->asset_data);
     uiItemO(sub, nullptr, ICON_NONE, "ASSET_OT_clear");

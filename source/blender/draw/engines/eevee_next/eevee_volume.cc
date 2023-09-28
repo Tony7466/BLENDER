@@ -8,7 +8,6 @@
  * Volumetric effects rendering using Frostbite's Physically-based & Unified Volumetric Rendering
  * approach.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite
- *
  */
 
 #include "DNA_volume_types.h"
@@ -23,7 +22,7 @@
 
 namespace blender::eevee {
 
-bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesInfoDataBuf &data)
+bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesInfoData &data)
 {
   /* Returns the unified volume grid cell index of a world space coordinate. */
   auto to_global_grid_coords = [&](float3 wP) -> int3 {
@@ -150,15 +149,13 @@ void VolumeModule::begin_sync()
     data_.depth_distribution = 1.0f / (integration_end - integration_start);
   }
 
-  data_.push_update();
-
   enabled_ = inst_.world.has_volume();
 }
 
 void VolumeModule::sync_object(Object *ob,
                                ObjectHandle & /*ob_handle*/,
                                ResourceHandle res_handle,
-                               MaterialPass *material_pass /*= nullptr*/)
+                               MaterialPass *material_pass /*=nullptr*/)
 {
   float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
@@ -244,6 +241,13 @@ void VolumeModule::end_sync()
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
 
+  if (!inst_.pipelines.world_volume.is_valid()) {
+    prop_scattering_tx_.clear(float4(0.0f));
+    prop_extinction_tx_.clear(float4(0.0f));
+    prop_emission_tx_.clear(float4(0.0f));
+    prop_phase_tx_.clear(float4(0.0f));
+  }
+
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
@@ -273,7 +277,7 @@ void VolumeModule::end_sync()
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  integration_ps_.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
+  inst_.bind_uniform_data(&integration_ps_);
   integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
   integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
@@ -286,9 +290,9 @@ void VolumeModule::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
+  inst_.bind_uniform_data(&resolve_ps_);
   bind_resources(resolve_ps_);
   resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
-  resolve_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   resolve_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
   /* Sync with the integration pass. */
   resolve_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);

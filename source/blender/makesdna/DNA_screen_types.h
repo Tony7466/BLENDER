@@ -10,6 +10,7 @@
 
 #include "BLI_utildefines.h"
 
+#include "DNA_asset_types.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
@@ -154,7 +155,7 @@ typedef struct Panel {
   /** Defined as UI_MAX_NAME_STR. */
   char panelname[64];
   /** Panel name is identifier for restoring location. */
-  char drawname[64];
+  char *drawname;
   /** Offset within the region. */
   int ofsx, ofsy;
   /** Panel size including children. */
@@ -702,7 +703,10 @@ enum {
   /* Maximum 15. */
 
   /* Flags start here. */
-  RGN_SPLIT_PREV = 32,
+  RGN_SPLIT_PREV = 1 << 5,
+  /** Always let scaling this region scale the previous region instead. Useful to let regions
+   * appear like they are one (while having independent layout, scrolling, etc.). */
+  RGN_SPLIT_SCALE_PREV = 1 << 6,
 };
 
 /** Mask out flags so we can check the alignment. */
@@ -737,6 +741,7 @@ enum {
   /** #ARegionType.poll() failed for the current context, and the region should be treated as if it
    * wouldn't exist. Runtime only flag. */
   RGN_FLAG_POLL_FAILED = (1 << 10),
+  RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS = (1 << 11),
 };
 
 /** #ARegion.do_draw */
@@ -766,6 +771,8 @@ enum {
 
 typedef struct AssetShelfSettings {
   struct AssetShelfSettings *next, *prev;
+
+  AssetLibraryReference asset_library_reference;
 
   ListBase enabled_catalog_paths; /* #LinkData */
   /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
@@ -800,6 +807,9 @@ typedef struct AssetShelf {
   struct AssetShelfType *type;
 
   AssetShelfSettings settings;
+
+  short preferred_row_count;
+  char _pad[6];
 } AssetShelf;
 
 /**
