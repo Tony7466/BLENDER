@@ -255,16 +255,24 @@ class NLA_OT_bake(Operator):
 
     def execute(self, context):
         from bpy_extras import anim_utils
-        do_pose = 'POSE' in self.bake_types
-        do_object = 'OBJECT' in self.bake_types
 
-        if do_pose and self.only_selected:
+        bake_options = anim_utils.BakeOptions(
+            only_selected=self.only_selected,
+            do_pose='POSE' in self.bake_types,
+            do_object='OBJECT' in self.bake_types,
+            do_visual_keying=self.visual_keying,
+            do_constraint_clear=self.clear_constraints,
+            do_parents_clear=self.clear_parents,
+            do_clean=self.clean_curves
+        )
+
+        if bake_options.do_pose and self.only_selected:
             pose_bones = context.selected_pose_bones or []
             armatures = {pose_bone.id_data for pose_bone in pose_bones}
             objects = list(armatures)
         else:
             objects = context.selected_editable_objects
-            if do_pose and not do_object:
+            if bake_options.do_pose and not bake_options.do_object:
                 objects = [obj for obj in objects if obj.pose is not None]
 
         object_action_pairs = (
@@ -276,13 +284,7 @@ class NLA_OT_bake(Operator):
         actions = anim_utils.bake_action_objects(
             object_action_pairs,
             frames=range(self.frame_start, self.frame_end + 1, self.step),
-            only_selected=self.only_selected,
-            do_pose=do_pose,
-            do_object=do_object,
-            do_visual_keying=self.visual_keying,
-            do_constraint_clear=self.clear_constraints,
-            do_parents_clear=self.clear_parents,
-            do_clean=self.clean_curves,
+            bake_options=bake_options
         )
 
         if not any(actions):
@@ -506,10 +508,48 @@ class ARMATURE_OT_sync_bone_color_to_selected(Operator):
         return {'FINISHED'}
 
 
+class ARMATURE_OT_collection_solo_visibility(Operator):
+    """Hide all other bone collections and show the active one"""
+    bl_idname = "armature.collection_solo_visibility"
+    bl_label = "Solo Visibility"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    name: StringProperty(name='Bone Collection')
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'ARMATURE' and context.object.data
+
+    def execute(self, context):
+        arm = context.object.data
+        for bcoll in arm.collections:
+            bcoll.is_visible = bcoll.name == self.name
+        return {'FINISHED'}
+
+
+class ARMATURE_OT_collection_show_all(Operator):
+    """Show all bone collections"""
+    bl_idname = "armature.collection_show_all"
+    bl_label = "Show All"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'ARMATURE' and context.object.data
+
+    def execute(self, context):
+        arm = context.object.data
+        for bcoll in arm.collections:
+            bcoll.is_visible = True
+        return {'FINISHED'}
+
+
 classes = (
     ANIM_OT_keying_set_export,
     NLA_OT_bake,
     ClearUselessActions,
     UpdateAnimatedTransformConstraint,
     ARMATURE_OT_sync_bone_color_to_selected,
+    ARMATURE_OT_collection_solo_visibility,
+    ARMATURE_OT_collection_show_all,
 )
