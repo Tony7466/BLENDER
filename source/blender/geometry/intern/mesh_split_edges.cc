@@ -597,6 +597,7 @@ void split_edges(Mesh &mesh,
   if (G.randomize_geometry_element_order) {
     randomize_vertex_order(mesh);
     randomize_edge_order(mesh);
+    randomize_face_order(mesh);
   }
 }
 

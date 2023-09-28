@@ -10,5 +10,6 @@ namespace blender::geometry {
 
 void randomize_vertex_order(Mesh &mesh);
 void randomize_edge_order(Mesh &mesh);
+void randomize_face_order(Mesh &mesh);
 
 };  // namespace blender::geometry
