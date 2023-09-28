@@ -2419,6 +2419,23 @@ void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem
   ensure_layer_data_is_mutable(*layer, totelem);
 }
 
+static void CustomData_replace_layer_data(CustomDataLayer *layer,
+                                          const int new_size,
+                                          void *new_layer_data)
+{
+  /* Remove ownership of old array */
+  if (layer->sharing_info) {
+    layer->sharing_info->remove_user_and_delete_if_last();
+    layer->sharing_info = nullptr;
+  }
+  /* Take ownership of new array. */
+  layer->data = new_layer_data;
+  if (layer->data) {
+    layer->sharing_info = make_implicit_sharing_info_for_layer(
+        eCustomDataType(layer->type), layer->data, new_size);
+  }
+}
+
 void CustomData_realloc(CustomData *data, const int old_size, const int new_size)
 {
   BLI_assert(new_size >= 0);
@@ -2439,17 +2456,8 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
         memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
       }
     }
-    /* Remove ownership of old array */
-    if (layer->sharing_info) {
-      layer->sharing_info->remove_user_and_delete_if_last();
-      layer->sharing_info = nullptr;
-    }
-    /* Take ownership of new array. */
-    layer->data = new_layer_data;
-    if (layer->data) {
-      layer->sharing_info = make_implicit_sharing_info_for_layer(
-          eCustomDataType(layer->type), layer->data, new_size);
-    }
+
+    CustomData_replace_layer_data(layer, new_size, new_layer_data);
 
     if (new_size > old_size) {
       /* Initialize new values for non-trivial types. */
@@ -2457,6 +2465,46 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
         const int new_elements_num = new_size - old_size;
         typeInfo->construct(POINTER_OFFSET(layer->data, old_size_in_bytes), new_elements_num);
       }
+    }
+  }
+}
+
+void CustomData_grow_and_shift(CustomData *data,
+                               const int old_size,
+                               const int grow_size,
+                               const int index)
+{
+  BLI_assert(grow_size > 0);
+  BLI_assert(index < old_size);
+  const int new_size = old_size + grow_size;
+  for (int i = 0; i < data->totlayer; i++) {
+    CustomDataLayer *layer = &data->layers[i];
+    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer->type));
+    const int64_t new_size_in_bytes = int64_t(new_size) * typeInfo->size;
+
+    void *new_layer_data = MEM_mallocN(new_size_in_bytes, __func__);
+    if (typeInfo->copy) {
+      if (index > 0) {
+        typeInfo->copy(layer->data, new_layer_data, index);
+      }
+      typeInfo->copy(POINTER_OFFSET(layer->data, index * typeInfo->size),
+                     POINTER_OFFSET(new_layer_data, (index + grow_size) * typeInfo->size),
+                     old_size - index);
+    }
+    else {
+      BLI_assert(layer->data != nullptr);
+      if (index > 0) {
+        memcpy(new_layer_data, layer->data, index * typeInfo->size);
+      }
+      memcpy(POINTER_OFFSET(new_layer_data, (index + grow_size) * typeInfo->size),
+             POINTER_OFFSET(layer->data, index * typeInfo->size),
+             (old_size - index) * typeInfo->size);
+    }
+
+    CustomData_replace_layer_data(layer, new_size, new_layer_data);
+
+    if (typeInfo->construct) {
+      typeInfo->construct(POINTER_OFFSET(layer->data, index * typeInfo->size), grow_size);
     }
   }
 }

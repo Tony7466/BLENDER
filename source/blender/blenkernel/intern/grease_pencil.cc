@@ -1876,7 +1876,15 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
-  CustomData_realloc(&this->layers_data, this->layers().size(), this->layers().size() + 1);
+
+  const Span<const bke::greasepencil::Layer *> layers = this->layers();
+  if (layers.size() == 0) {
+    CustomData_realloc(&this->layers_data, layers.size(), layers.size() + 1);
+    return parent_group.add_layer(unique_name);
+  }
+  int insertion_index = layers.first_index(parent_group.layers().last());
+  CustomData_grow_and_shift(&this->layers_data, layers.size(), 1, insertion_index);
+
   return parent_group.add_layer(unique_name);
 }
 

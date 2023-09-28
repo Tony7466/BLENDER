@@ -200,6 +200,12 @@ bool CustomData_merge_layout(const struct CustomData *source,
 void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
 
 /**
+ * Grow the custom data by \a grow_size and shift the elements after \a index to the end.
+ * After being resized, the #CustomData does not contain any referenced layers.
+ */
+void CustomData_grow_and_shift(CustomData *data, int old_size, int grow_size, int index);
+
+/**
  * BMesh version of CustomData_merge_layout; merges the layouts of source and `dest`,
  * then goes through the mesh and makes sure all the custom-data blocks are
  * consistent with the new layout.
