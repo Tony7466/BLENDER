@@ -1,1 +1,2 @@
 Referenced by issue #107353, Regression: Array Caps broken on empty mesh in 3.5.
+Referenced by commit 9ad6957574ecc7fa411bbeda69e67a251e4610b4, Fix #107353: array cap broken on empty mesh
