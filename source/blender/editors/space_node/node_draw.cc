@@ -402,24 +402,11 @@ static bool node_update_basis_buttons(const bContext &C,
   return true;
 }
 
-const char *node_socket_get_label(const bNodeSocket *socket, const char *panel_label)
+const char *node_socket_get_label(const bNodeSocket *socket)
 {
   const char *socket_label = bke::nodeSocketLabel(socket);
   const char *socket_translation_context = node_socket_get_translation_context(*socket);
-  const char *translated_socket_label = CTX_IFACE_(socket_translation_context, socket_label);
-
-  /* Shorten socket label if it begins with the panel label. */
-  if (panel_label) {
-    const int len_prefix = strlen(panel_label);
-    if (STREQLEN(translated_socket_label, panel_label, len_prefix) &&
-        translated_socket_label[len_prefix] == ' ')
-    {
-      return translated_socket_label + len_prefix + 1;
-    }
-  }
-
-  /* Full label. */
-  return translated_socket_label;
+  return CTX_IFACE_(socket_translation_context, socket_label);
 }
 
 static bool node_update_basis_socket(const bContext &C,
@@ -476,7 +463,7 @@ static bool node_update_basis_socket(const bContext &C,
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_EXPAND);
 
     input_socket->typeinfo->draw(
-        (bContext *)&C, row, &sockptr, &nodeptr, node_socket_get_label(input_socket, panel_label));
+        (bContext *)&C, row, &sockptr, &nodeptr, node_socket_get_label(input_socket));
   }
   else {
     /* Context pointers for current node and socket. */
@@ -486,11 +473,8 @@ static bool node_update_basis_socket(const bContext &C,
     /* Align output buttons to the right. */
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
 
-    output_socket->typeinfo->draw((bContext *)&C,
-                                  row,
-                                  &sockptr,
-                                  &nodeptr,
-                                  node_socket_get_label(output_socket, panel_label));
+    output_socket->typeinfo->draw(
+        (bContext *)&C, row, &sockptr, &nodeptr, node_socket_get_label(output_socket));
   }
 
   if (input_socket) {

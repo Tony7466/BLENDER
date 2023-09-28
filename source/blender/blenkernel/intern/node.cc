@@ -4023,7 +4023,18 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
 
 const char *nodeSocketLabel(const bNodeSocket *sock)
 {
-  return (sock->label[0] != '\0') ? sock->label : sock->name;
+  /* Get the declaration label if possible. This is used when grouping sockets under panels, to
+   * avoid redundancy in the label. */
+  if (sock->runtime->declaration != nullptr) {
+    blender::StringRefNull label = sock->runtime->declaration->label;
+    if (!label.is_empty()) {
+      return sock->runtime->declaration->label.data();
+    }
+  }
+  if (sock->label[0] != '\0') {
+    return sock->label;
+  }
+  return sock->name;
 }
 
 static void node_type_base_defaults(bNodeType *ntype)
