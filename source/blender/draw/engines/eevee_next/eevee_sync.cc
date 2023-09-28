@@ -42,7 +42,7 @@ ObjectHandle &SyncModule::sync_object(Object *ob)
 {
   ObjectKey key(ob);
 
-  ObjectHandle &handle = ob_handles.lookup_or_add_cb(key.hash_value, [&]() {
+  ObjectHandle &handle = ob_handles.lookup_or_add_cb(key, [&]() {
     ObjectHandle new_handle;
     new_handle.object_key = key;
     new_handle.recalc = ID_RECALC_ALL;

@@ -32,37 +32,60 @@ class Instance;
  * Note that we get a unique key for each object component.
  * \{ */
 
-struct ObjectKey {
+class ObjectKey {
   /** Hash value of the key. */
-  uint64_t hash_value = 0;
+  uint64_t hash_value_;
+  /** Original Object or source object for duplis. */
+  Object *ob_;
+  /** Original Parent object for duplis. */
+  Object *parent_;
+  /** Dupli objects recursive unique identifier */
+  int id_[MAX_DUPLI_RECUR];
+  /** Used for particle system hair. */
+  int sub_key_;
 
+ public:
   ObjectKey() = default;
 
-  ObjectKey(Object *ob, int sub_key_ = 0)
+  ObjectKey(Object *ob, int sub_key = 0) : sub_key_(sub_key)
   {
-    hash_value = BLI_ghashutil_ptrhash(DEG_get_original_object(ob));
+    ob_ = DEG_get_original_object(ob);
+    hash_value_ = BLI_ghashutil_ptrhash(ob_);
 
     if (DupliObject *dupli = DRW_object_get_dupli(ob)) {
-      hash_value = BLI_ghashutil_combine_hash(hash_value, dupli->random_id);
+      parent_ = DRW_object_get_dupli_parent(ob);
+      hash_value_ = BLI_ghashutil_combine_hash(hash_value_, BLI_ghashutil_ptrhash(parent_));
+      memcpy(id_, dupli->persistent_id, sizeof(id_));
+      for (int id : id_) {
+        if (id == INT_MAX) {
+          break;
+        }
+        hash_value_ = BLI_ghashutil_combine_hash(hash_value_, BLI_ghashutil_inthash(id));
+      }
     }
+    else {
+      parent_ = nullptr;
+      memset(id_, 0, sizeof(id_));
+    }
+
     if (sub_key_ != 0) {
-      hash_value = BLI_ghashutil_combine_hash(hash_value, sub_key_);
+      hash_value_ = BLI_ghashutil_combine_hash(hash_value_, BLI_ghashutil_inthash(sub_key_));
     }
-  };
+  }
 
   uint64_t hash() const
   {
-    return hash_value;
+    return hash_value_;
   }
 
   bool operator<(const ObjectKey &k) const
   {
-    return hash_value < k.hash_value;
+    return memcmp(this, &k, sizeof(this)) < 0;
   }
 
   bool operator==(const ObjectKey &k) const
   {
-    return hash_value == k.hash_value;
+    return memcmp(this, &k, sizeof(this)) == 0;
   }
 };
 
@@ -110,7 +133,7 @@ class SyncModule {
  private:
   Instance &inst_;
 
-  Map<uint64_t, ObjectHandle> ob_handles = {};
+  Map<ObjectKey, ObjectHandle> ob_handles = {};
 
  public:
   SyncModule(Instance &inst) : inst_(inst){};
