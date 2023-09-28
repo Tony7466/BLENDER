@@ -59,4 +59,24 @@ void randomize_vertex_order(Mesh &mesh)
   }
 }
 
+void randomize_edge_order(Mesh &mesh)
+{
+  const int seed = seed_from_mesh(mesh);
+  const Array<int> new_by_old_map = get_permutation(mesh.totedge, seed);
+
+  CustomData new_edge_data;
+  CustomData_copy_layout(&mesh.edge_data, &new_edge_data, CD_MASK_ALL, CD_CONSTRUCT, mesh.totedge);
+
+  for (const int old_i : IndexRange(mesh.totedge)) {
+    const int new_i = new_by_old_map[old_i];
+    CustomData_copy_data(&mesh.edge_data, &new_edge_data, old_i, new_i, 1);
+  }
+  CustomData_free(&mesh.edge_data, mesh.totedge);
+  mesh.edge_data = new_edge_data;
+
+  for (int &e : mesh.corner_edges_for_write()) {
+    e = new_by_old_map[e];
+  }
+}
+
 }  // namespace blender::geometry
