@@ -6,7 +6,9 @@
 
 struct Mesh;
 struct PointCloud;
-struct Curves;
+namespace blender::bke {
+class CurvesGeometry;
+}
 
 namespace blender::geometry {
 
@@ -14,5 +16,6 @@ void randomize_vertex_order(Mesh &mesh);
 void randomize_edge_order(Mesh &mesh);
 void randomize_face_order(Mesh &mesh);
 void randomize_point_order(PointCloud &pointcloud);
+void randomize_curve_order(bke::CurvesGeometry &curves);
 
 };  // namespace blender::geometry

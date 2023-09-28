@@ -14,9 +14,11 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_global.h"
 #include "BKE_mesh.hh"
 
 #include "GEO_mesh_to_curve.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
 
@@ -215,11 +217,19 @@ bke::CurvesGeometry mesh_to_curve_convert(
 {
   const Span<int2> edges = mesh.edges();
   if (selection.size() == edges.size()) {
-    return edges_to_curves_convert(mesh, edges, propagation_info);
+    bke::CurvesGeometry curves = edges_to_curves_convert(mesh, edges, propagation_info);
+    if (G.randomize_geometry_element_order) {
+      randomize_curve_order(curves);
+    }
+    return curves;
   }
   Array<int2> selected_edges(selection.size());
   array_utils::gather(edges, selection, selected_edges.as_mutable_span());
-  return edges_to_curves_convert(mesh, selected_edges, propagation_info);
+  bke::CurvesGeometry curves = edges_to_curves_convert(mesh, selected_edges, propagation_info);
+  if (G.randomize_geometry_element_order) {
+    randomize_curve_order(curves);
+  }
+  return curves;
 }
 
 }  // namespace blender::geometry

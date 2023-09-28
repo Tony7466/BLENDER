@@ -15,6 +15,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
 
@@ -32,6 +33,15 @@ static Array<int> get_permutation(const int length, const int seed)
   return data;
 }
 
+static Array<int> invert_permutation(const Span<int> permutation)
+{
+  Array<int> data(permutation.size());
+  for (const int i : permutation.index_range()) {
+    data[i] = permutation[i];
+  }
+  return data;
+}
+
 static int seed_from_mesh(const Mesh &mesh)
 {
   return mesh.totvert;
@@ -40,6 +50,11 @@ static int seed_from_mesh(const Mesh &mesh)
 static int seed_from_pointcloud(const PointCloud &pointcloud)
 {
   return pointcloud.totpoint;
+}
+
+static int seed_from_curves(const bke::CurvesGeometry &curves)
+{
+  return curves.point_num;
 }
 
 static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
@@ -82,42 +97,50 @@ void randomize_edge_order(Mesh &mesh)
   }
 }
 
+static Array<int> make_new_offset_indices(const OffsetIndices<int> old_offsets,
+                                          const Span<int> old_by_new_map)
+{
+  Array<int> new_offsets(old_offsets.data().size());
+  new_offsets[0] = 0;
+  for (const int new_i : old_offsets.index_range()) {
+    const int old_i = old_by_new_map[new_i];
+    new_offsets[new_i + 1] = new_offsets[new_i] + old_offsets[old_i].size();
+  }
+  return new_offsets;
+}
+
+static void reorder_customdata_groups(CustomData &data,
+                                      const OffsetIndices<int> old_offsets,
+                                      const OffsetIndices<int> new_offsets,
+                                      const Span<int> new_by_old_map)
+{
+  const int groups_num = new_by_old_map.size();
+  CustomData new_loop;
+  CustomData_copy_layout(&data, &new_loop, CD_MASK_ALL, CD_CONSTRUCT, groups_num);
+  for (const int old_i : IndexRange(groups_num)) {
+    const int new_i = new_by_old_map[old_i];
+    const IndexRange old_range = old_offsets[old_i];
+    const IndexRange new_range = new_offsets[new_i];
+    BLI_assert(old_range.size() == new_range.size());
+    CustomData_copy_data(&data, &new_loop, old_range.start(), new_range.start(), old_range.size());
+  }
+  CustomData_free(&data, groups_num);
+  data = new_loop;
+}
+
 void randomize_face_order(Mesh &mesh)
 {
   const int seed = seed_from_mesh(mesh);
   const Array<int> new_by_old_map = get_permutation(mesh.faces_num, seed);
-  Array<int> old_by_new_map(mesh.faces_num);
-  for (const int old_i : IndexRange(mesh.faces_num)) {
-    const int new_i = new_by_old_map[old_i];
-    old_by_new_map[new_i] = old_i;
-  }
+  const Array<int> old_by_new_map = invert_permutation(new_by_old_map);
 
   reorder_customdata(mesh.face_data, new_by_old_map);
 
   const OffsetIndices old_faces = mesh.faces();
-  Array<int> new_face_offsets(mesh.faces_num + 1);
-  new_face_offsets[0] = 0;
-  for (const int new_i : IndexRange(mesh.faces_num)) {
-    const int old_i = old_by_new_map[new_i];
-    new_face_offsets[new_i + 1] = new_face_offsets[new_i] + old_faces[old_i].size();
-  }
+  Array<int> new_face_offsets = make_new_offset_indices(old_faces, old_by_new_map);
   const OffsetIndices<int> new_faces = new_face_offsets.as_span();
 
-  {
-    CustomData new_loop_data;
-    CustomData_copy_layout(
-        &mesh.loop_data, &new_loop_data, CD_MASK_ALL, CD_CONSTRUCT, mesh.totloop);
-    for (const int old_face_i : IndexRange(mesh.faces_num)) {
-      const int new_face_i = new_by_old_map[old_face_i];
-      const IndexRange old_range = old_faces[old_face_i];
-      const IndexRange new_range = new_faces[new_face_i];
-      BLI_assert(old_range.size() == new_range.size());
-      CustomData_copy_data(
-          &mesh.loop_data, &new_loop_data, old_range.start(), new_range.start(), old_range.size());
-    }
-    CustomData_free(&mesh.loop_data, mesh.totloop);
-    mesh.loop_data = new_loop_data;
-  }
+  reorder_customdata_groups(mesh.loop_data, old_faces, new_faces, new_by_old_map);
 
   mesh.face_offsets_for_write().copy_from(new_face_offsets);
 }
@@ -128,6 +151,24 @@ void randomize_point_order(PointCloud &pointcloud)
   const Array<int> new_by_old_map = get_permutation(pointcloud.totpoint, seed);
 
   reorder_customdata(pointcloud.pdata, new_by_old_map);
+}
+
+void randomize_curve_order(bke::CurvesGeometry &curves)
+{
+  const int seed = seed_from_curves(curves);
+  const Array<int> new_by_old_map = get_permutation(curves.curve_num, seed);
+  const Array<int> old_by_new_map = invert_permutation(new_by_old_map);
+
+  reorder_customdata(curves.curve_data, new_by_old_map);
+
+  const OffsetIndices old_points_by_curve = curves.points_by_curve();
+  Array<int> new_curve_offsets = make_new_offset_indices(old_points_by_curve, old_by_new_map);
+  const OffsetIndices<int> new_points_by_curve = new_curve_offsets.as_span();
+
+  reorder_customdata_groups(
+      curves.point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
+
+  curves.offsets_for_write().copy_from(new_curve_offsets);
 }
 
 }  // namespace blender::geometry
