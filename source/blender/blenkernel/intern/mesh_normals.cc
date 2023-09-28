@@ -828,7 +828,7 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> faces,
 
           /* We want to avoid tagging edges as sharp when it is already defined as such by
            * other causes than angle threshold. */
-          if (!r_sharp_edges.is_empty() && is_angle_sharp) {
+          if (is_angle_sharp) {
             r_sharp_edges[edge_i] = true;
           }
         }
