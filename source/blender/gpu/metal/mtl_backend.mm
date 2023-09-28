@@ -194,8 +194,8 @@ void MTLBackend::platform_init(MTLContext *ctx)
   if (G.debug & G_DEBUG_GPU) {
     printf("METAL API - DETECTED GPU: %s\n", vendor);
   }
-  eGPUArchitectureType architecture_type = (mtl_device.hasUnifiedMemory) ? GPU_ARCHITECTURE_TBDR :
-                                                                           GPU_ARCHITECTURE_IMR;
+  GPUArchitectureType architecture_type = (mtl_device.hasUnifiedMemory) ? GPU_ARCHITECTURE_TBDR :
+                                                                          GPU_ARCHITECTURE_IMR;
 
   /* macOS is the only supported platform, but check to ensure we are not building with Metal
    * enablement on another platform. */

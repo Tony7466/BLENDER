@@ -25,7 +25,7 @@ class GPUPlatformGlobal {
   char *support_key = nullptr;
   char *gpu_name = nullptr;
   eGPUBackendType backend = GPU_BACKEND_NONE;
-  eGPUArchitectureType architecture_type = GPU_ARCHITECTURE_IMR;
+  GPUArchitectureType architecture_type = GPU_ARCHITECTURE_IMR;
 
  public:
   void init(eGPUDeviceType gpu_device,
@@ -36,7 +36,7 @@ class GPUPlatformGlobal {
             const char *vendor_str,
             const char *renderer_str,
             const char *version_str,
-            eGPUArchitectureType arch_type);
+            GPUArchitectureType arch_type);
 
   void clear();
 };
