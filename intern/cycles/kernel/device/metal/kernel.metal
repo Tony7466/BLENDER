@@ -51,7 +51,7 @@ TReturn metalrt_local_hit(constant KernelParamsMetal &launch_params_metal,
 
   if ((object != payload.local_object) || context.intersection_skip_self_local(payload.self, prim))
   {
-    /* Only intersect with matching object and skip self-intersecton. */
+    /* Only intersect with matching object and skip self-intersection. */
     result.accept = false;
     result.continue_search = true;
     return result;
@@ -362,6 +362,59 @@ __anyhit__cycles_metalrt_shadow_all_hit_tri(
                METALRT_TAGS,
                extended_limits)]] BoundingBoxIntersectionResult
 __anyhit__cycles_metalrt_shadow_all_hit_box(const float ray_tmax [[max_distance]])
+{
+  /* unused function */
+  BoundingBoxIntersectionResult result;
+  result.distance = ray_tmax;
+  result.accept = false;
+  result.continue_search = false;
+  return result;
+}
+
+[[intersection(triangle,
+               triangle_data,
+               curve_data,
+               METALRT_TAGS,
+               extended_limits)]] PrimitiveIntersectionResult
+__anyhit__cycles_metalrt_volume_test_tri(
+    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+    ray_data MetalKernelContext::MetalRTIntersectionPayload &payload [[payload]],
+    const unsigned int object [[instance_id]],
+    const unsigned int primitive_id [[primitive_id]],
+    const uint primitive_id_offset [[user_instance_id]])
+{
+  PrimitiveIntersectionResult result;
+  result.continue_search = true;
+
+#  ifdef __VISIBILITY_FLAG__
+  if ((kernel_data_fetch(objects, object).visibility & payload.visibility) == 0) {
+    result.accept = false;
+    return result;
+  }
+#  endif
+
+  if ((kernel_data_fetch(object_flag, object) & SD_OBJECT_HAS_VOLUME) == 0) {
+    result.accept = false;
+    return result;
+  }
+
+  uint prim = primitive_id + primitive_id_offset;
+  MetalKernelContext context(launch_params_metal);
+  if (context.intersection_skip_self(payload.self, object, prim)) {
+    result.accept = false;
+    return result;
+  }
+
+  result.accept = true;
+  return result;
+}
+
+[[intersection(bounding_box,
+               triangle_data,
+               curve_data,
+               METALRT_TAGS,
+               extended_limits)]] BoundingBoxIntersectionResult
+__anyhit__cycles_metalrt_volume_test_box(const float ray_tmax [[max_distance]])
 {
   /* unused function */
   BoundingBoxIntersectionResult result;
