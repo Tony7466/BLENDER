@@ -54,8 +54,6 @@ ObjectHandle &SyncModule::sync_object(Object *ob)
   const int recalc_flags = ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM | ID_RECALC_SHADING |
                            ID_RECALC_GEOMETRY;
   if ((handle.recalc & recalc_flags) != 0) {
-    /** WARNING: Some objects are always created "on the fly" (ie. Geometry Nodes volumes),
-     * so this causes to redraw the sample 1 forever. */
     inst_.sampling.reset();
   }
 
