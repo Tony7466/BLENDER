@@ -118,8 +118,8 @@ class CollectionTreeViewItem : public BasicTreeViewItem {
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
     CollectionTreeView &view = static_cast<CollectionTreeView &>(get_tree_view());
 
-    PointerRNA collection_ptr;
-    RNA_pointer_create(&view.scene_.id, &RNA_LayerCollection, &collection_, &collection_ptr);
+    PointerRNA collection_ptr = RNA_pointer_create(
+        &view.scene_.id, &RNA_LayerCollection, &collection_);
 
     if (view.show_viewport_visibility_) {
       add_viewport_visibility_toggle(*sub, collection_ptr);
