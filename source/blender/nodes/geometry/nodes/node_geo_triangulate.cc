@@ -69,7 +69,7 @@ static Mesh *triangulate_mesh_selection(const Mesh &mesh,
   /* Positions are not changed by the triangulation operation, so the bounds are the same. */
   result->runtime->bounds_cache = mesh.runtime->bounds_cache;
 
-  if (geometry::debug_randomize_indices()) {
+  if (geometry::use_debug_randomization()) {
     /* Vertex order is not affected. */
     geometry::randomize_edge_order(*result);
     geometry::randomize_face_order(*result);

@@ -109,7 +109,7 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
   }
   attributes.remove("UVMap");
 
-  if (geometry::debug_randomize_indices()) {
+  if (geometry::use_debug_randomization()) {
     geometry::randomize_mesh_order(*mesh);
   }
 

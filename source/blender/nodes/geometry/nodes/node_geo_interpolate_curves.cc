@@ -761,7 +761,7 @@ static GeometrySet generate_interpolated_curves(
     child_curves_id->totcol = guide_curves_id.totcol;
   }
 
-  if (geometry::debug_randomize_indices()) {
+  if (geometry::use_debug_randomization()) {
     geometry::randomize_curve_order(child_curves);
   }
 

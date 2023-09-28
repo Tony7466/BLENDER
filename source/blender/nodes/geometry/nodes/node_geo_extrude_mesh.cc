@@ -1434,7 +1434,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         }
       }
 
-      if (geometry::debug_randomize_indices()) {
+      if (geometry::use_debug_randomization()) {
         geometry::randomize_mesh_order(*mesh);
       }
     }

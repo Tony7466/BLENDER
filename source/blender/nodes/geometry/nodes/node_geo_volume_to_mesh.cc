@@ -153,7 +153,7 @@ static Mesh *create_mesh_from_volume_grids(Span<openvdb::GridBase::ConstPtr> gri
   BKE_mesh_calc_edges(mesh, false, false);
   BKE_mesh_smooth_flag_set(mesh, false);
 
-  if (geometry::debug_randomize_indices()) {
+  if (geometry::use_debug_randomization()) {
     geometry::randomize_mesh_order(*mesh);
   }
 

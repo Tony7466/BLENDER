@@ -217,7 +217,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Mesh *mesh = compute_hull(geometry_set);
-    if (mesh && geometry::debug_randomize_indices()) {
+    if (mesh && geometry::use_debug_randomization()) {
       geometry::randomize_mesh_order(*mesh);
     }
     geometry_set.replace_mesh(mesh);

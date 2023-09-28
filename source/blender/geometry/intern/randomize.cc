@@ -191,7 +191,7 @@ void randomize_mesh_order(Mesh &mesh)
   randomize_face_order(mesh);
 }
 
-bool debug_randomize_indices()
+bool use_debug_randomization()
 {
   return G.randomize_geometry_element_order;
 }

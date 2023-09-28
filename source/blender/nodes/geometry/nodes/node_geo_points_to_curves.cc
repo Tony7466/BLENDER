@@ -154,7 +154,7 @@ static Curves *curves_from_points(const PointCloud &points,
                          indices,
                          curves.attributes_for_write());
 
-  if (geometry::debug_randomize_indices()) {
+  if (geometry::use_debug_randomization()) {
     geometry::randomize_curve_order(curves);
   }
 

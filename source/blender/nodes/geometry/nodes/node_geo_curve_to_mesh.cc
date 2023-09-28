@@ -39,7 +39,7 @@ static void geometry_set_curve_to_mesh(GeometrySet &geometry_set,
 
   if (profile_curves == nullptr) {
     Mesh *mesh = bke::curve_to_wire_mesh(curves.geometry.wrap(), propagation_info);
-    if (mesh && geometry::debug_randomize_indices()) {
+    if (mesh && geometry::use_debug_randomization()) {
       geometry::randomize_mesh_order(*mesh);
     }
     geometry_set.replace_mesh(mesh);
@@ -47,7 +47,7 @@ static void geometry_set_curve_to_mesh(GeometrySet &geometry_set,
   else {
     Mesh *mesh = bke::curve_to_mesh_sweep(
         curves.geometry.wrap(), profile_curves->geometry.wrap(), fill_caps, propagation_info);
-    if (mesh && geometry::debug_randomize_indices()) {
+    if (mesh && geometry::use_debug_randomization()) {
       geometry::randomize_mesh_order(*mesh);
     }
     geometry_set.replace_mesh(mesh);

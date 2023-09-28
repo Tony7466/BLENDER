@@ -161,7 +161,7 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
     BKE_id_free(nullptr, mesh_copy);
   }
 
-  if (result && geometry::debug_randomize_indices()) {
+  if (result && geometry::use_debug_randomization()) {
     geometry::randomize_mesh_order(*result);
   }
 

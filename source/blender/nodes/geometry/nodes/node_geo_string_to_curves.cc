@@ -298,7 +298,7 @@ static Map<int, int> create_curve_instances(GeoNodeExecParams &params,
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     BKE_nurbList_free(&cu.nurb);
 
-    if (geometry::debug_randomize_indices()) {
+    if (geometry::use_debug_randomization()) {
       geometry::randomize_curve_order(curves);
     }
 
