@@ -676,17 +676,6 @@ struct ShaderCreateInfo {
     return *(Self *)this;
   }
 
-  /* Fragment tile inputs. */
-  Self &fragment_tile_in(int slot,
-                         Type type,
-                         StringRefNull name,
-                         DualBlend blend = DualBlend::NONE,
-                         int raster_order_group = -1)
-  {
-    fragment_tile_inputs_.append({slot, type, blend, name, raster_order_group});
-    return *(Self *)this;
-  }
-
   /**
    * Allows to fetch frame-buffer values from previous render sub-pass.
    *
@@ -981,7 +970,6 @@ struct ShaderCreateInfo {
     TEST_VECTOR_EQUAL(*this, b, geometry_out_interfaces_);
     TEST_VECTOR_EQUAL(*this, b, push_constants_);
     TEST_VECTOR_EQUAL(*this, b, typedef_sources_);
-    TEST_VECTOR_EQUAL(*this, b, fragment_tile_inputs_);
     TEST_VECTOR_EQUAL(*this, b, subpass_inputs_);
     TEST_EQUAL(*this, b, vertex_source_);
     TEST_EQUAL(*this, b, geometry_source_);
