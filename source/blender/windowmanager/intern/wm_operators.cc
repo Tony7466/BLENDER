@@ -94,6 +94,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "wm.hh"
 #include "wm_draw.hh"
 #include "wm_event_system.h"
@@ -1699,6 +1701,37 @@ static void WM_OT_debug_menu(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
 
   RNA_def_int(ot->srna, "debug_value", 0, SHRT_MIN, SHRT_MAX, "Debug Value", "", -10000, 10000);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Geometry Element Order Randomization
+ *
+ * \{ */
+
+static int wm_toggle_geometry_element_order_randomization_exec(bContext *C, wmOperator * /*op*/)
+{
+  Main *bmain = CTX_data_main(C);
+
+  G.randomize_geometry_element_order = !G.randomize_geometry_element_order;
+
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  }
+  WM_event_add_notifier(C, NC_WINDOW, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static void WM_OT_toggle_geometry_element_order_randomization(wmOperatorType *ot)
+{
+  ot->name = "Toggle Geometry Element Order Randomization";
+  ot->idname = "WM_OT_toggle_geometry_element_order_randomization";
+  ot->description =
+      "Enabling element order randomization helps finding places where one depends on the order "
+      "of element indices in places where those are not guaranteed";
+
+  ot->exec = wm_toggle_geometry_element_order_randomization_exec;
 }
 
 /** \} */
@@ -3895,6 +3928,7 @@ void wm_operatortypes_register()
   WM_operatortype_append(WM_OT_redraw_timer);
   WM_operatortype_append(WM_OT_memory_statistics);
   WM_operatortype_append(WM_OT_debug_menu);
+  WM_operatortype_append(WM_OT_toggle_geometry_element_order_randomization);
   WM_operatortype_append(WM_OT_operator_defaults);
   WM_operatortype_append(WM_OT_splash);
   WM_operatortype_append(WM_OT_splash_about);
