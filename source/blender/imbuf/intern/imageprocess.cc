@@ -430,7 +430,7 @@ void IMB_processor_apply_threaded_scanlines(int total_scanlines,
 /** \name Alpha-under
  * \{ */
 
-void IMB_alpha_under_color_float(float *rect_float, int x, int y, const float backcol[3])
+void IMB_alpha_under_color_float(float *rect_float, int x, int y, float backcol[3])
 {
     // Calculate the total number of pixels in the rectangular region
     size_t num_pixels = static_cast<size_t>(x) * y;
