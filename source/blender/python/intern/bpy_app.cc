@@ -314,6 +314,34 @@ static int bpy_app_debug_value_set(PyObject * /*self*/, PyObject *value, void * 
   return 0;
 }
 
+PyDoc_STRVAR(bpy_app_randomize_geometry_element_order_doc,
+             "Randomize the order of elements after various geometry processing algorithms to "
+             "check if one depended on the order");
+static PyObject *bpy_app_randomize_geometry_element_order_get(PyObject * /*self*/,
+                                                              void * /*closure*/)
+{
+  return PyBool_FromLong(G.randomize_geometry_element_order);
+}
+
+static int bpy_app_randomize_geometry_element_order_set(PyObject * /*self*/,
+                                                        PyObject *value,
+                                                        void * /*closure*/)
+{
+  const short param = PyObject_IsTrue(value);
+
+  if (param == -1 && PyErr_Occurred()) {
+    PyC_Err_SetString_Prefix(PyExc_TypeError,
+                             "bpy.app.randomize_geometry_element_order can only be set to a bool");
+    return -1;
+  }
+
+  G.randomize_geometry_element_order = param;
+
+  WM_main_add_notifier(NC_WINDOW, nullptr);
+
+  return 0;
+}
+
 PyDoc_STRVAR(bpy_app_tempdir_doc, "String, the temp directory used by blender (read-only)");
 static PyObject *bpy_app_tempdir_get(PyObject * /*self*/, void * /*closure*/)
 {
@@ -456,6 +484,11 @@ static PyGetSetDef bpy_app_getsets[] = {
      bpy_app_debug_value_get,
      bpy_app_debug_value_set,
      bpy_app_debug_value_doc,
+     nullptr},
+    {"randomize_geometry_element_order",
+     bpy_app_randomize_geometry_element_order_get,
+     bpy_app_randomize_geometry_element_order_set,
+     bpy_app_randomize_geometry_element_order_doc,
      nullptr},
     {"tempdir", bpy_app_tempdir_get, nullptr, bpy_app_tempdir_doc, nullptr},
     {"driver_namespace", bpy_app_driver_dict_get, nullptr, bpy_app_driver_dict_doc, nullptr},

@@ -129,6 +129,8 @@ typedef struct Global {
    */
   int debug;
 
+  bool randomize_geometry_element_order;
+
   /**
    * Control behavior of file reading/writing.
    *
