@@ -71,7 +71,7 @@ void GPUPlatformGlobal::init(eGPUDeviceType gpu_device,
                              const char *vendor_str,
                              const char *renderer_str,
                              const char *version_str,
-                             eGPUArchitectureType arch_type)
+                             GPUArchitectureType arch_type)
 {
   this->clear();
 
@@ -151,7 +151,7 @@ const char *GPU_platform_gpu_name()
   return GPG.gpu_name;
 }
 
-eGPUArchitectureType GPU_platform_architecture()
+GPUArchitectureType GPU_platform_architecture()
 {
   BLI_assert(GPG.initialized);
   return GPG.architecture_type;
