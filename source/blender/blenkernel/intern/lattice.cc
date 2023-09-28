@@ -44,9 +44,9 @@
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void lattice_init_data(ID *id)
 {

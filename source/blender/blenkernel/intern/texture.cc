@@ -52,6 +52,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
 
@@ -61,7 +62,7 @@
 
 #include "DRW_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void texture_init_data(ID *id)
 {

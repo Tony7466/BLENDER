@@ -43,24 +43,6 @@ enum {
 
 /* ----------------------------------------------------- */
 
-#define REDRAW_FRAME_AVERAGE 8
-
-/**
- * For playback frame-rate info stored during runtime as `scene->fps_info`.
- */
-struct ScreenFrameRateInfo {
-  double redrawtime;
-  double lredrawtime;
-  float redrawtimes_fps[REDRAW_FRAME_AVERAGE];
-  short redrawtime_index;
-  /** The target FPS, use to reset on change. */
-  float fps_target;
-  /** Final result, ignore when -1.0. */
-  float fps_average;
-};
-
-/* ----------------------------------------------------- */
-
 /* Enum for Action Zone Edges. Which edge of area is action zone. */
 enum AZEdge {
   /** Region located on the left, _right_ edge is action zone.

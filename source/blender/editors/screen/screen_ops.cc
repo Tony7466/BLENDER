@@ -44,15 +44,15 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
@@ -62,6 +62,7 @@
 #include "ED_keyframes_keylist.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_scene.hh"
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 #include "ED_sequencer.hh"
@@ -781,7 +782,7 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   if (az->type == AZONE_REGION) {
     if (region->overlap && (region->v2d.keeptot != V2D_KEEPTOT_STRICT) &&
         /* Only when this isn't hidden (where it's displayed as an button that expands). */
-        ((az->region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) == 0))
+        region->visible)
     {
       /* A floating region to be resized, clip by the visible region. */
       switch (az->edge) {
@@ -855,6 +856,20 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
         break;
       }
       if (az->type == AZONE_REGION) {
+        const ARegion *region = az->region;
+        const int local_xy[2] = {xy[0] - region->winrct.xmin, xy[1] - region->winrct.ymin};
+
+        /* Respect button sections: If the mouse is horizontally hovering empty space defined by a
+         * separator-spacer between buttons, don't allow scaling the region from there. Used for
+         * regions that have a transparent background between such button sections, users don't
+         * expect to be able to resize from there. */
+        if (region->visible && (region->flag & RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS) &&
+            !UI_region_button_sections_is_inside_x(az->region, local_xy[0]))
+        {
+          az = nullptr;
+          break;
+        }
+
         break;
       }
       if (az->type == AZONE_FULLSCREEN) {
@@ -2754,6 +2769,10 @@ static int region_scale_invoke(bContext *C, wmOperator *op, const wmEvent *event
     {
       rmd->region = az->region->prev;
     }
+    /* Flag to always forward scaling to the previous region. */
+    else if (az->region->prev && (az->region->alignment & RGN_SPLIT_SCALE_PREV)) {
+      rmd->region = az->region->prev;
+    }
     else {
       rmd->region = az->region;
     }
@@ -2846,6 +2865,8 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
       const float aspect = BLI_rctf_size_x(&rmd->region->v2d.cur) /
                            (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1);
       const int snap_size_threshold = (U.widget_unit * 2) / aspect;
+      bool size_changed = false;
+
       if (ELEM(rmd->edge, AE_LEFT_TO_TOPRIGHT, AE_RIGHT_TO_TOPLEFT)) {
         delta = event->xy[0] - rmd->orig_xy[0];
         if (rmd->edge == AE_LEFT_TO_TOPRIGHT) {
@@ -2885,6 +2906,10 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
         /* Hiding/unhiding is handled above, but still fix the size as requested. */
         if (rmd->region->flag & RGN_FLAG_NO_USER_RESIZE) {
           rmd->region->sizex = rmd->origval;
+        }
+
+        if (rmd->region->sizex != rmd->origval) {
+          size_changed = true;
         }
       }
       else {
@@ -2930,6 +2955,13 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
         if (rmd->region->flag & RGN_FLAG_NO_USER_RESIZE) {
           rmd->region->sizey = rmd->origval;
         }
+
+        if (rmd->region->sizey != rmd->origval) {
+          size_changed = true;
+        }
+      }
+      if (size_changed && rmd->region->type->on_user_resize) {
+        rmd->region->type->on_user_resize(rmd->region);
       }
       ED_area_tag_redraw(rmd->area);
       WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
@@ -3178,6 +3210,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
       gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, active);
     }
+
+    if (ob->type == OB_GREASE_PENCIL) {
+      const bool active_layer_only = !(scene->flag & SCE_KEYS_NO_SELONLY);
+      grease_pencil_data_block_to_keylist(
+          nullptr, static_cast<const GreasePencil *>(ob->data), keylist, 0, active_layer_only);
+    }
   }
 
   {
@@ -3240,7 +3278,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 static bool keyframe_jump_poll(bContext *C)
 {
   /* There is a keyframe jump operator specifically for the Graph Editor. */
-  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+  return ED_operator_screenactive_norender(C) && !ED_operator_graphedit_active(C);
 }
 
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
@@ -4369,8 +4407,7 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
 {
   ScrArea *area = CTX_wm_area(C);
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     if (!ELEM(area->spacetype, SPACE_TOPBAR)) {
       uiItemR(layout, &ptr, "show_region_header", UI_ITEM_NONE, IFACE_("Show Header"), ICON_NONE);
     }
@@ -4407,8 +4444,7 @@ void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void * /
   ScrArea *area = CTX_wm_area(C);
 
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     uiItemR(layout, &ptr, "show_region_footer", UI_ITEM_NONE, IFACE_("Show Footer"), ICON_NONE);
   }
 
@@ -4434,9 +4470,7 @@ void ED_screens_region_flip_menu_create(bContext *C, uiLayout *layout, void * /*
 
 static void ed_screens_statusbar_menu_create(uiLayout *layout, void * /*arg*/)
 {
-  PointerRNA ptr;
-
-  RNA_pointer_create(nullptr, &RNA_PreferencesView, &U, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PreferencesView, &U);
   uiItemR(
       layout, &ptr, "show_statusbar_stats", UI_ITEM_NONE, IFACE_("Scene Statistics"), ICON_NONE);
   uiItemR(layout,
@@ -4491,7 +4525,7 @@ static int screen_context_menu_invoke(bContext *C, wmOperator * /*op*/, const wm
 static void SCREEN_OT_region_context_menu(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Region Context Menu";
+  ot->name = "Region";
   ot->description = "Display region context menu";
   ot->idname = "SCREEN_OT_region_context_menu";
 
@@ -4750,7 +4784,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
       /* Try to keep the playback in realtime by dropping frames. */
 
       /* How much time (in frames) has passed since the last frame was drawn? */
-      double delta_frames = wt->delta * FPS;
+      double delta_frames = wt->time_delta * FPS;
 
       /* Add the remaining fraction from the last time step. */
       delta_frames += sad->lagging_frame_count;
@@ -4868,18 +4902,19 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
     }
   }
 
-  /* update frame rate info too
-   * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
-   * have been calculated instead of just before updates have been done?
-   */
-  ED_scene_fps_average_accumulate(scene, wt->ltime);
+  if (U.uiflag & USER_SHOW_FPS) {
+    /* Update frame rate info too.
+     * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
+     * have been calculated instead of just before updates have been done? */
+    ED_scene_fps_average_accumulate(scene, U.playback_fps_samples, wt->time_last);
+  }
 
   /* Recalculate the time-step for the timer now that we've finished calculating this,
    * since the frames-per-second value may have been changed.
    */
   /* TODO: this may make evaluation a bit slower if the value doesn't change...
    * any way to avoid this? */
-  wt->timestep = (1.0 / FPS);
+  wt->time_step = (1.0 / FPS);
 
   return OPERATOR_FINISHED;
 }
@@ -5181,8 +5216,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   if (prop && RNA_property_is_set(op->ptr, prop)) {
     /* Set active section via RNA, so it can fail properly. */
 
-    PointerRNA pref_ptr;
-    RNA_pointer_create(nullptr, &RNA_Preferences, &U, &pref_ptr);
+    PointerRNA pref_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
     PropertyRNA *active_section_prop = RNA_struct_find_property(&pref_ptr, "active_section");
 
     RNA_property_enum_set(&pref_ptr, active_section_prop, RNA_property_enum_get(op->ptr, prop));
@@ -5479,7 +5513,7 @@ float ED_region_blend_alpha(ARegion *region)
     RegionAlphaInfo *rgi = static_cast<RegionAlphaInfo *>(region->regiontimer->customdata);
     float alpha;
 
-    alpha = float(region->regiontimer->duration) / TIMEOUT;
+    alpha = float(region->regiontimer->time_duration) / TIMEOUT;
     /* makes sure the blend out works 100% - without area redraws */
     if (rgi->hidden) {
       alpha = 0.9f - TIMESTEP - alpha;
@@ -5575,7 +5609,7 @@ static int region_blend_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
   }
 
   /* end timer? */
-  if (rgi->region->regiontimer->duration > double(TIMEOUT)) {
+  if (rgi->region->regiontimer->time_duration > double(TIMEOUT)) {
     region_blend_end(C, rgi->region, false);
     return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
   }
@@ -5615,9 +5649,8 @@ static int space_type_set_or_cycle_exec(bContext *C, wmOperator *op)
 {
   const int space_type = RNA_enum_get(op->ptr, "space_type");
 
-  PointerRNA ptr;
   ScrArea *area = CTX_wm_area(C);
-  RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area);
   PropertyRNA *prop_type = RNA_struct_find_property(&ptr, "type");
   PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
 
@@ -5698,11 +5731,11 @@ static void context_cycle_prop_get(bScreen *screen,
 
   switch (area->spacetype) {
     case SPACE_PROPERTIES:
-      RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first, r_ptr);
+      *r_ptr = RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first);
       propname = "context";
       break;
     case SPACE_USERPREF:
-      RNA_pointer_create(nullptr, &RNA_Preferences, &U, r_ptr);
+      *r_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
       propname = "active_section";
       break;
     default:
@@ -5921,16 +5954,16 @@ static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop
 void ED_keymap_screen(wmKeyConfig *keyconf)
 {
   /* Screen Editing ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen Editing", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Screen General ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Screen", 0, 0);
+  WM_keymap_ensure(keyconf, "Screen", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Anim Playback ------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "Frames", 0, 0);
+  WM_keymap_ensure(keyconf, "Frames", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* dropbox for entire window */
-  ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+  ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_dropbox_add(
       lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy, nullptr, nullptr);
   WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy, nullptr, nullptr);

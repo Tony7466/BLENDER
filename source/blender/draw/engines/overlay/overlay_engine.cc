@@ -11,7 +11,7 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_view3d.hh"
 
@@ -763,7 +763,7 @@ static void OVERLAY_engine_free()
 
 static void OVERLAY_instance_free(void *instance_)
 {
-  auto *instance = (Instance *)instance_;
+  Instance *instance = (Instance *)instance_;
   if (instance != nullptr) {
     delete instance;
   }

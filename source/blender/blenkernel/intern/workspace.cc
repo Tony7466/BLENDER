@@ -35,11 +35,11 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* -------------------------------------------------------------------- */
 

@@ -44,7 +44,7 @@
 #include "BKE_movieclip.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
 
@@ -56,6 +56,7 @@
 #include "ED_undo.hh"
 
 #include "UI_interface.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "BLF_api.h"
@@ -278,12 +279,12 @@ static void ui_selectcontext_apply(bContext *C,
                                    const double value_orig);
 
 /**
- * Only respond to events which are expected to be used for multi button editing,
- * e.g. ALT is also used for button array pasting, see #108096.
- */
-#  define IS_ALLSELECT_EVENT(event) \
-    (((event)->modifier & KM_ALT) != 0 && \
-     (ISMOUSE((event)->type) || ELEM((event)->type, EVT_RETKEY, EVT_PADENTER)))
+ * Ideally we would only respond to events which are expected to be used for multi button editing
+ * (additionally checking if this is a mouse[wheel] or return-key event to avoid the ALT conflict
+ * with button array pasting, see #108096, but unfortunately wheel events are not part of
+ * `win->eventstate` with modifiers held down. Instead, the conflict is avoided by specifically
+ * filtering out CTRL ALT V in #ui_apply_but(). */
+#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) != 0)
 
 /** just show a tinted color so users know its activated */
 #  define UI_BUT_IS_SELECT_CONTEXT UI_BUT_NODE_ACTIVE
@@ -503,7 +504,7 @@ struct uiAfterFunc {
   uiBlockInteraction_CallbackData custom_interaction_callbacks;
   uiBlockInteraction_Handle *custom_interaction_handle;
 
-  bContextStore *context;
+  std::optional<bContextStore> context;
 
   char undostr[BKE_UNDO_STR_MAX];
   char drawstr[UI_MAX_DRAW_STR];
@@ -789,7 +790,7 @@ static void ui_handle_afterfunc_add_operator_ex(wmOperatorType *ot,
   }
 
   if (context_but && context_but->context) {
-    after->context = CTX_store_copy(context_but->context);
+    after->context = *context_but->context;
   }
 
   if (context_but) {
@@ -905,7 +906,7 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
   }
 
   if (but->context) {
-    after->context = CTX_store_copy(but->context);
+    after->context = *but->context;
   }
 
   ui_but_drawstr_without_sep_char(but, after->drawstr, sizeof(after->drawstr));
@@ -1020,7 +1021,7 @@ static void ui_apply_but_funcs_after(bContext *C)
     MEM_delete(afterf);
 
     if (after.context) {
-      CTX_store_set(C, after.context);
+      CTX_store_set(C, &after.context.value());
     }
 
     if (after.popup_op) {
@@ -1053,7 +1054,6 @@ static void ui_apply_but_funcs_after(bContext *C)
 
     if (after.context) {
       CTX_store_set(C, nullptr);
-      CTX_store_free(after.context);
     }
 
     if (after.func) {
@@ -1253,6 +1253,8 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
   if ((but->func_arg2 == nullptr) && (but->type == UI_BTYPE_SEARCH_MENU)) {
     uiButSearch *search_but = (uiButSearch *)but;
     but->func_arg2 = search_but->item_active;
+
+    blender::ui::string_search::add_recent_search(search_but->item_active_str);
   }
 
   ui_apply_but_func(C, but);
@@ -2268,10 +2270,17 @@ static void ui_apply_but(
         if (data->select_others.elems_len == 0)
     {
       wmWindow *win = CTX_wm_window(C);
-      /* may have been enabled before activating */
-      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(win->eventstate)) {
-        ui_selectcontext_begin(C, but, &data->select_others);
-        data->select_others.is_enabled = true;
+      wmEvent *event = win->eventstate;
+      /* May have been enabled before activating, don't do for array pasting. */
+      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
+        /* See comment for #IS_ALLSELECT_EVENT why this needs to be filtered here. */
+        const bool is_array_paste = (event->val == KM_PRESS) &&
+                                    (event->modifier & (KM_CTRL | KM_OSKEY)) &&
+                                    (event->modifier & KM_SHIFT) == 0 && (event->type == EVT_VKEY);
+        if (!is_array_paste) {
+          ui_selectcontext_begin(C, but, &data->select_others);
+          data->select_others.is_enabled = true;
+        }
       }
     }
     if (data->select_others.elems_len == 0) {
@@ -3481,7 +3490,12 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   /* set cursor pos to the end of the text */
   but->editstr = data->str;
   but->pos = len;
-  but->selsta = 0;
+  if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT)) {
+    but->selsta = len;
+  }
+  else {
+    but->selsta = 0;
+  }
   but->selend = len;
 
   /* Initialize undo history tracking. */
@@ -3972,7 +3986,7 @@ static void ui_do_but_textedit(
       }
 
       if (utf8_buf[0]) {
-        const int utf8_buf_len = BLI_str_utf8_size(utf8_buf);
+        const int utf8_buf_len = BLI_str_utf8_size_or_error(utf8_buf);
         BLI_assert(utf8_buf_len != -1);
         changed = ui_textedit_insert_buf(but, data, utf8_buf, utf8_buf_len);
       }
@@ -4317,6 +4331,9 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   }
   else if (menufunc) {
     data->menu = ui_popup_menu_create(C, data->region, but, menufunc, arg);
+    if (MenuType *mt = UI_but_menutype_get(but)) {
+      STRNCPY(data->menu->menu_idname, mt->idname);
+    }
     if (but->block->handle) {
       data->menu->popup = but->block->handle->popup;
     }
@@ -4900,9 +4917,9 @@ static int ui_do_but_EXIT(bContext *C, uiBut *but, uiHandleButtonData *data, con
 
     if (ELEM(event->type, LEFTMOUSE, EVT_PADENTER, EVT_RETKEY) && event->val == KM_PRESS) {
       int ret = WM_UI_HANDLER_BREAK;
-      /* XXX: (a bit ugly) Special case handling for file-browser drag button. */
-      if (ui_but_drag_is_draggable(but) && but->imb &&
-          ui_but_contains_point_px_icon(but, data->region, event))
+      /* XXX: (a bit ugly) Special case handling for file-browser drag buttons (icon and filename
+       * label). */
+      if (ui_but_drag_is_draggable(but) && ui_but_contains_point_px_icon(but, data->region, event))
       {
         ret = WM_UI_HANDLER_CONTINUE;
       }
@@ -4973,8 +4990,8 @@ static float ui_numedit_apply_snapf(
     if (fac != 1.0f) {
       /* snap in unit-space */
       tempf /= fac;
-      /* softmin /= fac; */ /* UNUSED */
-      /* softmax /= fac; */ /* UNUSED */
+      // softmin /= fac; /* UNUSED */
+      // softmax /= fac; /* UNUSED */
       softrange /= fac;
     }
 
@@ -6370,10 +6387,9 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
             }
 
             if (updated) {
-              PointerRNA brush_ptr;
               PropertyRNA *brush_color_prop;
 
-              RNA_id_pointer_create(&brush->id, &brush_ptr);
+              PointerRNA brush_ptr = RNA_id_pointer_create(&brush->id);
               brush_color_prop = RNA_struct_find_property(&brush_ptr, "color");
               RNA_property_update(C, &brush_ptr, brush_color_prop);
             }
@@ -6895,7 +6911,7 @@ static void ui_ndofedit_but_HSVCIRCLE(uiBut *but,
   ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);
   float *hsv = cpicker->hsv_perceptual;
   float rgb[3];
-  float phi, r /*, sqr */ /* UNUSED */, v[2];
+  float phi, r, v[2];
   const float sensitivity = (shift ? 0.06f : 0.3f) * ndof->dt;
 
   ui_but_v3_get(but, rgb);
@@ -6905,7 +6921,7 @@ static void ui_ndofedit_but_HSVCIRCLE(uiBut *but,
   /* Convert current color on hue/sat disc to circular coordinates phi, r */
   phi = fmodf(hsv[0] + 0.25f, 1.0f) * -2.0f * float(M_PI);
   r = hsv[1];
-  /* sqr = r > 0.0f ? sqrtf(r) : 1; */ /* UNUSED */
+  // const float sqr = r > 0.0f ? sqrtf(r) : 1; /* UNUSED */
 
   /* Convert to 2d vectors */
   v[0] = r * cosf(phi);
@@ -10271,6 +10287,47 @@ float ui_block_calc_pie_segment(uiBlock *block, const float event_xy[2])
   return len;
 }
 
+static int ui_handle_menu_letter_press(
+    bContext *C, ARegion *region, uiPopupBlockHandle *menu, const wmEvent *event, uiBlock *block)
+{
+  /* Start menu search on key press if enabled. */
+  if (menu->menu_idname[0]) {
+    MenuType *mt = WM_menutype_find(menu->menu_idname, false);
+    if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+      uiAfterFunc *after = ui_afterfunc_new();
+      wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
+      after->optype = ot;
+      after->opcontext = WM_OP_INVOKE_DEFAULT;
+      after->opptr = MEM_cnew<PointerRNA>(__func__);
+      WM_operator_properties_create_ptr(after->opptr, ot);
+      RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+      const int num_bytes = BLI_str_utf8_size_or_error(event->utf8_buf);
+      if (num_bytes != -1) {
+        char buf[sizeof(event->utf8_buf) + 1];
+        memcpy(buf, event->utf8_buf, num_bytes);
+        buf[num_bytes] = '\0';
+        RNA_string_set(after->opptr, "initial_query", buf);
+      }
+      menu->menuretval = UI_RETURN_OK;
+      return WM_UI_HANDLER_BREAK;
+    }
+  }
+
+  /* Handle accelerator keys that allow "pressing" a menu entry by pressing a single key. */
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
+      if (but->type == UI_BTYPE_BUT) {
+        UI_but_execute(C, region, but);
+      }
+      else {
+        ui_handle_button_activate_by_type(C, region, but);
+      }
+      return WM_UI_HANDLER_BREAK;
+    }
+  }
+  return WM_UI_HANDLER_CONTINUE;
+}
+
 static int ui_handle_menu_event(bContext *C,
                                 const wmEvent *event,
                                 uiPopupBlockHandle *menu,
@@ -10483,19 +10540,18 @@ static int ui_handle_menu_event(bContext *C,
             if (val == KM_PRESS) {
               /* Determine scroll operation. */
               uiMenuScrollType scrolltype;
-              const bool ui_block_flipped = (block->flag & UI_BLOCK_IS_FLIP) != 0;
 
               if (ELEM(type, EVT_PAGEUPKEY, EVT_HOMEKEY)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_TOP : MENU_SCROLL_BOTTOM;
+                scrolltype = MENU_SCROLL_TOP;
               }
               else if (ELEM(type, EVT_PAGEDOWNKEY, EVT_ENDKEY)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_BOTTOM : MENU_SCROLL_TOP;
+                scrolltype = MENU_SCROLL_BOTTOM;
               }
               else if (ELEM(type, EVT_UPARROWKEY, WHEELUPMOUSE)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_UP : MENU_SCROLL_DOWN;
+                scrolltype = MENU_SCROLL_UP;
               }
               else {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_DOWN : MENU_SCROLL_UP;
+                scrolltype = MENU_SCROLL_DOWN;
               }
 
               if (ui_menu_pass_event_to_parent_if_nonactive(
@@ -10712,20 +10768,7 @@ static int ui_handle_menu_event(bContext *C,
                     menu, but, level, is_parent_menu, retval)) {
               break;
             }
-
-            for (but = static_cast<uiBut *>(block->buttons.first); but; but = but->next) {
-              if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
-                if (but->type == UI_BTYPE_BUT) {
-                  UI_but_execute(C, region, but);
-                }
-                else {
-                  ui_handle_button_activate_by_type(C, region, but);
-                }
-                break;
-              }
-            }
-
-            retval = WM_UI_HANDLER_BREAK;
+            retval = ui_handle_menu_letter_press(C, region, menu, event, block);
           }
           break;
         }
@@ -11053,10 +11096,10 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
   if (menu->scrolltimer == nullptr) {
     menu->scrolltimer = WM_event_timer_add(
         CTX_wm_manager(C), CTX_wm_window(C), TIMER, PIE_MENU_INTERVAL);
-    menu->scrolltimer->duration = 0.0;
+    menu->scrolltimer->time_duration = 0.0;
   }
 
-  const double duration = menu->scrolltimer->duration;
+  const double duration = menu->scrolltimer->time_duration;
 
   float event_xy[2] = {float(event->xy[0]), float(event->xy[1])};
 

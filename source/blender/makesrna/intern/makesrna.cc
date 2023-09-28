@@ -2374,7 +2374,7 @@ static void rna_def_property_funcs_header(FILE *f, StructRNA *srna, PropertyDefR
     }
     case PROP_POINTER: {
       fprintf(f, "PointerRNA %sget(PointerRNA *ptr);\n", func);
-      /*fprintf(f, "void %sset(PointerRNA *ptr, PointerRNA value);\n", func); */
+      // fprintf(f, "void %sset(PointerRNA *ptr, PointerRNA value);\n", func);
       break;
     }
     case PROP_COLLECTION: {
@@ -2969,11 +2969,11 @@ static void rna_def_struct_function_impl_cpp(FILE *f, StructRNA *srna, FunctionD
         fprintf(f, "\t\t::%s *retdata = ", rna_parameter_type_name(dp->prop));
         rna_def_struct_function_call_impl_cpp(f, srna, dfunc);
         if (ret_srna->flag & STRUCT_ID) {
-          fprintf(f, "\t\tRNA_id_pointer_create((::ID *) retdata, &result);\n");
+          fprintf(f, "\t\tresult = RNA_id_pointer_create((::ID *) retdata);\n");
         }
         else {
           fprintf(f,
-                  "\t\tRNA_pointer_create((::ID *) ptr.owner_id, &RNA_%s, retdata, &result);\n",
+                  "\t\tresult = RNA_pointer_create((::ID *) ptr.owner_id, &RNA_%s, retdata);\n",
                   (const char *)pprop->type);
         }
       }
@@ -4732,7 +4732,9 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_dynamicpaint.cc", nullptr, RNA_def_dynamic_paint},
     {"rna_fcurve.cc", "rna_fcurve_api.cc", RNA_def_fcurve},
     {"rna_gpencil_legacy.cc", nullptr, RNA_def_gpencil},
+#ifdef WITH_GREASE_PENCIL_V3
     {"rna_grease_pencil.cc", nullptr, RNA_def_grease_pencil},
+#endif
     {"rna_curves.cc", nullptr, RNA_def_curves},
     {"rna_image.cc", "rna_image_api.cc", RNA_def_image},
     {"rna_key.cc", nullptr, RNA_def_key},

@@ -105,6 +105,8 @@ BLI_INLINE BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh)
   return ((struct PBVHPublic *)pbvh)->bm;
 }
 
+Mesh *BKE_pbvh_get_mesh(PBVH *pbvh);
+
 BLI_INLINE PBVHVertRef BKE_pbvh_make_vref(intptr_t i)
 {
   PBVHVertRef ret = {i};
@@ -210,7 +212,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> grid_to_face_map,
                           DMFlagMat *flagmats,
                           unsigned int **grid_hidden,
                           Mesh *me,
@@ -275,7 +277,6 @@ bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
  * projecting the far clipping plane into the local object space.  This works out to
  * dividing view3d->clip_end by the object scale, which for small object and large
  * clip_end's can easily lead to floating-point overflows.
- *
  */
 void BKE_pbvh_clip_ray_ortho(
     PBVH *pbvh, bool original, float ray_start[3], float ray_end[3], float ray_normal[3]);
@@ -445,7 +446,7 @@ void BKE_pbvh_redraw_BB(PBVH *pbvh, float bb_min[3], float bb_max[3]);
 void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int *r_totface);
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> grid_to_face_map,
                            DMFlagMat *flagmats,
                            unsigned int **grid_hidden,
                            CCGKey *key);
@@ -462,7 +463,6 @@ void BKE_pbvh_face_sets_color_set(PBVH *pbvh, int seed, int color_default);
 
 /* Vertex Deformer. */
 
-float (*BKE_pbvh_vert_coords_alloc(PBVH *pbvh))[3];
 void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], int totvert);
 bool BKE_pbvh_is_deformed(PBVH *pbvh);
 
@@ -503,7 +503,7 @@ struct PBVHVertexIter {
   const bool *hide_vert;
   int totvert;
   const int *vert_indices;
-  float *vmask;
+  const float *vmask;
   bool is_mesh;
 
   /* bmesh */
@@ -518,7 +518,7 @@ struct PBVHVertexIter {
   float *co;
   const float *no;
   const float *fno;
-  float *mask;
+  const float *mask;
   bool visible;
 };
 

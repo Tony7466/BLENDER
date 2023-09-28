@@ -316,6 +316,7 @@ class SEQUENCER_PT_sequencer_overlay(Panel):
 
         layout.prop(overlay_settings, "show_strip_offset", text="Offsets")
         layout.prop(overlay_settings, "show_fcurves", text="F-Curves")
+        layout.prop(overlay_settings, "show_strip_retiming", text="Retiming")
         layout.prop(overlay_settings, "show_thumbnails", text="Thumbnails")
         layout.prop(overlay_settings, "show_grid", text="Grid")
 
@@ -794,13 +795,20 @@ class SEQUENCER_MT_add_effect(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         col = layout.column()
-        col.operator("sequencer.effect_strip_add", text="Add").type = 'ADD'
-        col.operator("sequencer.effect_strip_add", text="Subtract").type = 'SUBTRACT'
-        col.operator("sequencer.effect_strip_add", text="Multiply").type = 'MULTIPLY'
-        col.operator("sequencer.effect_strip_add", text="Over Drop").type = 'OVER_DROP'
-        col.operator("sequencer.effect_strip_add", text="Alpha Over").type = 'ALPHA_OVER'
-        col.operator("sequencer.effect_strip_add", text="Alpha Under").type = 'ALPHA_UNDER'
-        col.operator("sequencer.effect_strip_add", text="Color Mix").type = 'COLORMIX'
+        col.operator("sequencer.effect_strip_add", text="Add",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ADD'
+        col.operator("sequencer.effect_strip_add", text="Subtract",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'SUBTRACT'
+        col.operator("sequencer.effect_strip_add", text="Multiply",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'MULTIPLY'
+        col.operator("sequencer.effect_strip_add", text="Over Drop",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'OVER_DROP'
+        col.operator("sequencer.effect_strip_add", text="Alpha Over",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ALPHA_OVER'
+        col.operator("sequencer.effect_strip_add", text="Alpha Under",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ALPHA_UNDER'
+        col.operator("sequencer.effect_strip_add", text="Color Mix",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'COLORMIX'
         col.enabled = selected_sequences_len(context) >= 2
 
         layout.separator()
@@ -920,6 +928,52 @@ class SEQUENCER_MT_strip_movie(Menu):
         layout.operator("sequencer.deinterlace_selected_movies")
 
 
+class SEQUENCER_MT_strip_retiming(Menu):
+    bl_label = "Retiming"
+
+    def draw_strip_context(self, context):
+        layout = self.layout
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+        layout.separator()
+
+        layout.operator("sequencer.retiming_reset")
+        layout.separator()
+
+        icon = "CHECKBOX_DEHLT"
+        if context.active_sequence_strip.show_retiming_keys:
+            icon = "CHECKBOX_HLT"
+
+        layout.operator("sequencer.retiming_segment_speed_set")
+        layout.operator("sequencer.retiming_show", icon=icon)
+
+    def draw_retiming_context(self, context):
+        layout = self.layout
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+        layout.operator("sequencer.retiming_transition_add")
+        layout.separator()
+
+        layout.operator("sequencer.delete")
+        layout.separator()
+
+        layout.operator("sequencer.select_box")
+        layout.operator("sequencer.select_all")
+        layout.separator()
+
+        layout.operator("sequencer.retiming_segment_speed_set")
+        layout.operator("sequencer.retiming_show", icon="CHECKBOX_HLT")
+
+    def draw(self, context):
+        ed = context.scene.sequence_editor
+        if ed.selected_retiming_keys:
+            self.draw_retiming_context(context)
+        else:
+            self.draw_strip_context(context)
+
+
 class SEQUENCER_MT_strip(Menu):
     bl_label = "Strip"
 
@@ -929,9 +983,10 @@ class SEQUENCER_MT_strip(Menu):
         has_sequencer, _has_preview = _space_view_types(st)
 
         layout.menu("SEQUENCER_MT_strip_transform")
-        layout.separator()
 
         if has_sequencer:
+            layout.menu("SEQUENCER_MT_strip_retiming")
+            layout.separator()
 
             props = layout.operator("sequencer.split", text="Split")
             props.type = 'SOFT'
@@ -943,11 +998,11 @@ class SEQUENCER_MT_strip(Menu):
 
             layout.separator()
 
-        if has_sequencer:
             layout.operator("sequencer.copy", text="Copy")
             layout.operator("sequencer.paste", text="Paste")
             layout.operator("sequencer.duplicate_move")
 
+        layout.separator()
         layout.operator("sequencer.delete", text="Delete")
 
         strip = context.active_sequence_strip
@@ -959,11 +1014,9 @@ class SEQUENCER_MT_strip(Menu):
         if has_sequencer:
             if strip:
                 strip_type = strip.type
-
-                if strip_type != 'SOUND':
-                    layout.separator()
-                    layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
-                    layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
+                layout.separator()
+                layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
+                layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
 
                 if strip_type in {
                         'CROSS', 'ADD', 'SUBTRACT', 'ALPHA_OVER', 'ALPHA_UNDER',
@@ -1054,10 +1107,23 @@ class SEQUENCER_MT_image_apply(Menu):
         layout.operator("sequencer.strip_transform_fit", text="Stretch To Fill").fit_method = 'STRETCH'
 
 
-class SEQUENCER_MT_context_menu(Menu):
-    bl_label = "Sequencer Context Menu"
+class SEQUENCER_MT_retiming(Menu):
+    bl_label = "Retiming"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+
+
+class SEQUENCER_MT_context_menu(Menu):
+    bl_label = "Sequencer"
+
+    def draw_generic(self, context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
@@ -1101,19 +1167,19 @@ class SEQUENCER_MT_context_menu(Menu):
             strip_type = strip.type
             selected_sequences_count = selected_sequences_len(context)
 
-            if strip_type != 'SOUND':
-                layout.separator()
-                layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
-                layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
+            layout.separator()
+            layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
+            layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
 
+            if strip_type != 'SOUND':
                 if selected_sequences_count >= 2:
                     layout.separator()
                     col = layout.column()
                     col.menu("SEQUENCER_MT_add_transitions", text="Add Transition")
-
-            elif selected_sequences_count >= 2:
-                layout.separator()
-                layout.operator("sequencer.crossfade_sounds", text="Crossfade Sounds")
+            else:
+                if selected_sequences_count >= 2:
+                    layout.separator()
+                    layout.operator("sequencer.crossfade_sounds", text="Crossfade Sounds")
 
             if selected_sequences_count >= 1:
                 col = layout.column()
@@ -1155,9 +1221,31 @@ class SEQUENCER_MT_context_menu(Menu):
 
         layout.menu("SEQUENCER_MT_strip_lock_mute")
 
+    def draw_retime(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        if context.scene.sequence_editor.selected_retiming_keys:
+            layout.operator("sequencer.retiming_freeze_frame_add")
+            layout.operator("sequencer.retiming_transition_add")
+            layout.separator()
+
+            layout.operator("sequencer.retiming_segment_speed_set")
+            layout.separator()
+
+            layout.operator("sequencer.retiming_key_remove")
+
+    def draw(self, context):
+        ed = context.scene.sequence_editor
+        if ed.selected_retiming_keys:
+
+            self.draw_retime(context)
+        else:
+            self.draw_generic(context)
+
 
 class SEQUENCER_MT_preview_context_menu(Menu):
-    bl_label = "Sequencer Preview Context Menu"
+    bl_label = "Sequencer Preview"
 
     def draw(self, context):
         layout = self.layout
@@ -1880,12 +1968,6 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.label(text="Channel")
         split.prop(strip, "channel", text="")
 
-        if strip.type == 'SOUND':
-            split = layout.split(factor=0.5 + max_factor)
-            split.alignment = 'RIGHT'
-            split.label(text="Speed Factor")
-            split.prop(strip, "speed_factor", text="")
-
         sub = layout.column(align=True)
         split = sub.split(factor=0.5 + max_factor, align=True)
         split.alignment = 'RIGHT'
@@ -2503,8 +2585,13 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
 
         strip = context.active_sequence_strip
         ed = context.scene.sequence_editor
+        if strip.type == 'SOUND':
+            sound = strip.sound
+        else:
+            sound = None
 
-        layout.prop(strip, "use_linear_modifiers")
+        if sound is None:
+            layout.prop(strip, "use_linear_modifiers")
 
         layout.operator_menu_enum("sequencer.strip_modifier_add", "type")
         layout.operator("sequencer.strip_modifier_copy")
@@ -2531,45 +2618,78 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
             row.operator("sequencer.strip_modifier_remove", text="", icon='X', emboss=False).name = mod.name
 
             if mod.show_expanded:
-                row = box.row()
-                row.prop(mod, "input_mask_type", expand=True)
-
-                if mod.input_mask_type == 'STRIP':
-                    sequences_object = ed
-                    if ed.meta_stack:
-                        sequences_object = ed.meta_stack[-1]
-                    box.prop_search(mod, "input_mask_strip", sequences_object, "sequences", text="Mask")
-                else:
-                    box.prop(mod, "input_mask_id")
+                if sound is None:
                     row = box.row()
-                    row.prop(mod, "mask_time", expand=True)
+                    row.prop(mod, "input_mask_type", expand=True)
 
-                if mod.type == 'COLOR_BALANCE':
-                    box.prop(mod, "color_multiply")
-                    draw_color_balance(box, mod.color_balance)
-                elif mod.type == 'CURVES':
-                    box.template_curve_mapping(mod, "curve_mapping", type='COLOR', show_tone=True)
-                elif mod.type == 'HUE_CORRECT':
-                    box.template_curve_mapping(mod, "curve_mapping", type='HUE')
-                elif mod.type == 'BRIGHT_CONTRAST':
-                    col = box.column()
-                    col.prop(mod, "bright")
-                    col.prop(mod, "contrast")
-                elif mod.type == 'WHITE_BALANCE':
-                    col = box.column()
-                    col.prop(mod, "white_value")
-                elif mod.type == 'TONEMAP':
-                    col = box.column()
-                    col.prop(mod, "tonemap_type")
-                    if mod.tonemap_type == 'RD_PHOTORECEPTOR':
-                        col.prop(mod, "intensity")
+                    if mod.input_mask_type == 'STRIP':
+                        sequences_object = ed
+                        if ed.meta_stack:
+                            sequences_object = ed.meta_stack[-1]
+                        box.prop_search(mod, "input_mask_strip", sequences_object, "sequences", text="Mask")
+                    else:
+                        box.prop(mod, "input_mask_id")
+                        row = box.row()
+                        row.prop(mod, "mask_time", expand=True)
+
+                    if mod.type == 'COLOR_BALANCE':
+                        box.prop(mod, "color_multiply")
+                        draw_color_balance(box, mod.color_balance)
+                    elif mod.type == 'CURVES':
+                        box.template_curve_mapping(mod, "curve_mapping", type='COLOR', show_tone=True)
+                    elif mod.type == 'HUE_CORRECT':
+                        box.template_curve_mapping(mod, "curve_mapping", type='HUE')
+                    elif mod.type == 'BRIGHT_CONTRAST':
+                        col = box.column()
+                        col.prop(mod, "bright")
                         col.prop(mod, "contrast")
-                        col.prop(mod, "adaptation")
-                        col.prop(mod, "correction")
-                    elif mod.tonemap_type == 'RH_SIMPLE':
-                        col.prop(mod, "key")
-                        col.prop(mod, "offset")
-                        col.prop(mod, "gamma")
+                    elif mod.type == 'WHITE_BALANCE':
+                        col = box.column()
+                        col.prop(mod, "white_value")
+                    elif mod.type == 'TONEMAP':
+                        col = box.column()
+                        col.prop(mod, "tonemap_type")
+                        if mod.tonemap_type == 'RD_PHOTORECEPTOR':
+                            col.prop(mod, "intensity")
+                            col.prop(mod, "contrast")
+                            col.prop(mod, "adaptation")
+                            col.prop(mod, "correction")
+                        elif mod.tonemap_type == 'RH_SIMPLE':
+                            col.prop(mod, "key")
+                            col.prop(mod, "offset")
+                            col.prop(mod, "gamma")
+                else:
+                    if mod.type == 'SOUND_EQUALIZER':
+                        eq_row = box.row()
+                        # eq_graphs = eq_row.operator_menu_enum("sequencer.strip_modifier_equalizer_redefine", "graphs")
+                        # eq_graphs.name = mod.name
+                        flow = box.grid_flow(
+                            row_major=True,
+                            columns=0,
+                            even_columns=True,
+                            even_rows=False,
+                            align=False,
+                        )
+                        for sound_eq in mod.graphics:
+                            col = flow.column()
+                            box = col.box()
+                            split = box.split(factor=0.4)
+                            split.label(text="%.2f" % sound_eq.curve_mapping.clip_min_x)
+                            split.label(text="Hz")
+                            split.alignment = "RIGHT"
+                            split.label(text="%.2f" % sound_eq.curve_mapping.clip_max_x)
+                            box.template_curve_mapping(
+                                sound_eq,
+                                "curve_mapping",
+                                type='NONE',
+                                levels=False,
+                                brush=True,
+                                use_negative_slope=True,
+                                show_tone=False,
+                            )
+                            second_row = col.row()
+                            second_row.label(text="dB")
+                            second_row.alignment = 'CENTER'
 
 
 class SEQUENCER_PT_annotation(AnnotationDataPanel, SequencerButtonsPanel_Output, Panel):
@@ -2618,7 +2738,7 @@ class SEQUENCER_PT_annotation_onion(AnnotationOnionSkin, SequencerButtonsPanel_O
 
 
 class SEQUENCER_PT_custom_props(SequencerButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "active_sequence_strip"
     _property_type = (bpy.types.Sequence,)
     bl_category = "Strip"
@@ -2674,6 +2794,7 @@ classes = (
     SEQUENCER_MT_strip_movie,
     SEQUENCER_MT_strip,
     SEQUENCER_MT_strip_transform,
+    SEQUENCER_MT_strip_retiming,
     SEQUENCER_MT_strip_input,
     SEQUENCER_MT_strip_lock_mute,
     SEQUENCER_MT_image,
@@ -2684,6 +2805,7 @@ classes = (
     SEQUENCER_MT_context_menu,
     SEQUENCER_MT_preview_context_menu,
     SEQUENCER_MT_pivot_pie,
+    SEQUENCER_MT_retiming,
     SEQUENCER_MT_view_pie,
     SEQUENCER_MT_preview_view_pie,
 

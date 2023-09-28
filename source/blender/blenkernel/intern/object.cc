@@ -94,7 +94,6 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -121,6 +120,7 @@
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
 #include "BKE_pose_backup.h"
+#include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_shader_fx.h"
@@ -131,12 +131,12 @@
 #include "BKE_vfont.h"
 #include "BKE_volume.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 #include "BLO_readfile.h"
 
 #include "SEQ_sequencer.h"
@@ -1032,7 +1032,7 @@ static IDProperty *object_asset_dimensions_property(Object *ob)
   return property;
 }
 
-static void object_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
+static void object_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_data)
 {
   Object *ob = (Object *)asset_ptr;
   BLI_assert(GS(ob->id.name) == ID_OB);
@@ -1045,7 +1045,8 @@ static void object_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
 }
 
 static AssetTypeInfo AssetType_OB = {
-    /*pre_save_fn*/ object_asset_pre_save,
+    /*pre_save_fn*/ object_asset_metadata_ensure,
+    /*on_mark_asset_fn*/ object_asset_metadata_ensure,
 };
 
 IDTypeInfo IDType_ID_OB = {

@@ -27,7 +27,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
@@ -44,7 +44,7 @@
 #include "WM_message.hh"
 #include "WM_toolsystem.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "screen_intern.h" /* own module include */
 
@@ -390,7 +390,7 @@ static bool screen_areas_can_align(bScreen *screen, ScrArea *sa1, ScrArea *sa2, 
       if (area->v3->vec.x - area->v1->vec.x < tolerance &&
           (area->v1->vec.x == xmin || area->v3->vec.x == xmax))
       {
-        WM_report(RPT_ERROR, "A narrow vertical area interferes with this operation.");
+        WM_report(RPT_ERROR, "A narrow vertical area interferes with this operation");
         return false;
       }
     }
@@ -405,7 +405,7 @@ static bool screen_areas_can_align(bScreen *screen, ScrArea *sa1, ScrArea *sa2, 
       if (area->v3->vec.y - area->v1->vec.y < tolerance &&
           (area->v1->vec.y == ymin || area->v3->vec.y == ymax))
       {
-        WM_report(RPT_ERROR, "A narrow horizontal area interferes with this operation.");
+        WM_report(RPT_ERROR, "A narrow horizontal area interferes with this operation");
         return false;
       }
     }
@@ -1677,84 +1677,6 @@ ScrArea *ED_screen_temp_space_open(bContext *C,
   }
 
   return area;
-}
-
-void ED_scene_fps_average_clear(Scene *scene)
-{
-  MEM_SAFE_FREE(scene->fps_info);
-}
-
-void ED_scene_fps_average_accumulate(Scene *scene, const double ltime)
-{
-  if ((U.uiflag & USER_SHOW_FPS) == 0) {
-    /* Playback stopped or shouldn't be running. */
-    ED_scene_fps_average_clear(scene);
-    return;
-  }
-
-  /* Playback running. */
-  const float fps_target = float(FPS);
-  ScreenFrameRateInfo *fpsi = static_cast<ScreenFrameRateInfo *>(scene->fps_info);
-
-  /* Reset when the target FPS changes.
-   * Needed redraw times from when a different FPS was set do not contribute
-   * to an average that is over/under the new target. */
-  if (fpsi && (fpsi->fps_target != fps_target)) {
-    MEM_freeN(fpsi);
-    fpsi = nullptr;
-    scene->fps_info = nullptr;
-  }
-
-  /* If there isn't any info, initialize it first. */
-  if (fpsi == nullptr) {
-    fpsi = static_cast<ScreenFrameRateInfo *>(
-        scene->fps_info = MEM_callocN(sizeof(ScreenFrameRateInfo), __func__));
-    fpsi->fps_target = fps_target;
-  }
-
-  /* Update the values. */
-  fpsi->redrawtime = fpsi->lredrawtime;
-  fpsi->lredrawtime = ltime;
-
-  /* Mark as outdated. */
-  fpsi->fps_average = -1.0f;
-}
-
-bool ED_scene_fps_average_calc(const Scene *scene)
-{
-  ScreenFrameRateInfo *fpsi = static_cast<ScreenFrameRateInfo *>(scene->fps_info);
-  if (fpsi == nullptr) {
-    return false;
-  }
-
-  /* Doing an average for a more robust calculation. */
-  if (fpsi->lredrawtime == 0.0 || fpsi->redrawtime == 0.0) {
-    /* The user should never see this. */
-    fpsi->fps_average = -1.0f;
-    return false;
-  }
-
-  if (fpsi->fps_average != -1.0) {
-    return true;
-  }
-
-  fpsi->redrawtimes_fps[fpsi->redrawtime_index] = float(1.0 /
-                                                        (fpsi->lredrawtime - fpsi->redrawtime));
-
-  float fps = 0.0f;
-  int tot = 0;
-  for (int i = 0; i < REDRAW_FRAME_AVERAGE; i++) {
-    if (fpsi->redrawtimes_fps[i]) {
-      fps += fpsi->redrawtimes_fps[i];
-      tot++;
-    }
-  }
-  if (tot) {
-    fpsi->redrawtime_index = (fpsi->redrawtime_index + 1) % REDRAW_FRAME_AVERAGE;
-    fps = fps / tot;
-  }
-  fpsi->fps_average = fps;
-  return true;
 }
 
 void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)

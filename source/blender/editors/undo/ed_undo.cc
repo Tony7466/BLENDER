@@ -29,11 +29,11 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
-#include "BLO_blend_validate.h"
+#include "BLO_blend_validate.hh"
 
 #include "ED_asset.hh"
 #include "ED_gpencil_legacy.hh"
@@ -172,7 +172,8 @@ static void ed_undo_step_pre(bContext *C,
 
   if (G.debug & G_DEBUG_IO) {
     if (bmain->lock != nullptr) {
-      BKE_report(reports, RPT_INFO, "Checking sanity of current .blend file *BEFORE* undo step");
+      BKE_report(
+          reports, RPT_DEBUG, "Checking validity of current .blend file *BEFORE* undo step");
       BLO_main_validate_libraries(bmain, reports);
     }
   }
@@ -237,7 +238,7 @@ static void ed_undo_step_post(bContext *C,
 
   if (G.debug & G_DEBUG_IO) {
     if (bmain->lock != nullptr) {
-      BKE_report(reports, RPT_INFO, "Checking sanity of current .blend file *AFTER* undo step");
+      BKE_report(reports, RPT_INFO, "Checking validity of current .blend file *AFTER* undo step");
       BLO_main_validate_libraries(bmain, reports);
     }
   }

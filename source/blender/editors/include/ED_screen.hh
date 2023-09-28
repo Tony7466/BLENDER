@@ -118,6 +118,16 @@ void ED_region_header_init(ARegion *region);
 void ED_region_header(const bContext *C, ARegion *region);
 void ED_region_header_layout(const bContext *C, ARegion *region);
 void ED_region_header_draw(const bContext *C, ARegion *region);
+/* Forward declare enum. */
+enum class uiButtonSectionsAlign : int8_t;
+/** Version of #ED_region_header() that draws with button sections. */
+void ED_region_header_with_button_sections(const bContext *C,
+                                           ARegion *region,
+                                           uiButtonSectionsAlign align);
+/** Version of #ED_region_header_draw() that draws with button sections. */
+void ED_region_header_draw_with_button_sections(const bContext *C,
+                                                const ARegion *region,
+                                                uiButtonSectionsAlign align);
 
 void ED_region_cursor_set(wmWindow *win, ScrArea *area, ARegion *region);
 /**
@@ -441,22 +451,6 @@ void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
  * Results in fully updated anim system.
  */
 void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph);
-
-/**
- * Update frame rate info for viewport drawing.
- * \param ltime: Time since the last update,
- * compatible with the result of #PIL_check_seconds_timer.
- */
-void ED_scene_fps_average_accumulate(struct Scene *scene, const double ltime);
-/**
- * Calculate an average (if it's not already calculated).
- * \return True when #ScreenFrameRateInfo::fps_average should be used.
- */
-bool ED_scene_fps_average_calc(const struct Scene *scene);
-/**
- * Clear run-time data for accumulating animation playback average times.
- */
-void ED_scene_fps_average_clear(Scene *scene);
 
 /**
  * Toggle operator.

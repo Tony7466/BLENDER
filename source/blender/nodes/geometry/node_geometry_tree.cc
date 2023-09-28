@@ -4,6 +4,8 @@
 
 #include <cstring>
 
+#include "BLI_string.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "NOD_geometry.hh"
@@ -33,7 +35,7 @@ static void geometry_node_tree_get_from_context(
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
   if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-    *r_ntree = snode->nodetree;
+    *r_ntree = snode->geometry_nodes_tool_tree;
     return;
   }
 
