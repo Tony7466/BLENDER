@@ -478,9 +478,6 @@ struct ShaderCreateInfo {
   };
   Vector<FragOut> fragment_outputs_;
 
-  using FragTileIn = FragOut;
-  Vector<FragTileIn> fragment_tile_inputs_;
-
   using SubpassIn = FragOut;
   Vector<SubpassIn> subpass_inputs_;
   struct Sampler {
