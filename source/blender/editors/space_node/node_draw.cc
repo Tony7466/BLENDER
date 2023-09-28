@@ -819,8 +819,8 @@ static void add_panel_items_recursive(const bContext &C,
       locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
       parent_runtime->min_content_y = round(locy);
     }
+    locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
   }
-  locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
 }
 
 /* Advanced drawing with panels and arbitrary input/output ordering. */
