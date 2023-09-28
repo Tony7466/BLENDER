@@ -21,7 +21,7 @@
 
 #include "gpu_py_shader.h" /* own include */
 
-// #define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
+//#define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
 
 using blender::gpu::shader::DualBlend;
 using blender::gpu::shader::Frequency;
