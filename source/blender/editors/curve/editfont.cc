@@ -40,8 +40,8 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -478,7 +478,6 @@ static void font_select_update_primary_clipboard(Object *obedit)
 /** \name Generic Paste Functions
  * \{ */
 
-/* text_update_edited(C, scene, obedit, 1, FO_EDIT); */
 static bool font_paste_wchar(Object *obedit,
                              const char32_t *str,
                              const size_t str_len,
@@ -1753,13 +1752,13 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       if (accentcode) {
         if (ef->pos > 0) {
           inserted_text[0] = findaccent(ef->textbuf[ef->pos - 1],
-                                        BLI_str_utf8_as_unicode(event->utf8_buf));
+                                        BLI_str_utf8_as_unicode_or_error(event->utf8_buf));
           ef->textbuf[ef->pos - 1] = inserted_text[0];
         }
         accentcode = false;
       }
       else if (event->utf8_buf[0]) {
-        inserted_text[0] = BLI_str_utf8_as_unicode(event->utf8_buf);
+        inserted_text[0] = BLI_str_utf8_as_unicode_or_error(event->utf8_buf);
         insert_into_textbuf(obedit, inserted_text[0]);
         accentcode = false;
       }
