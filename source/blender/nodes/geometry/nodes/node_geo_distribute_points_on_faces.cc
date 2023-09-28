@@ -16,6 +16,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.h"
+#include "BKE_global.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
@@ -23,6 +24,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -556,6 +559,10 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   const bool use_legacy_normal = params.node().custom2 != 0;
   compute_attribute_outputs(
       mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs, use_legacy_normal);
+
+  if (G.randomize_geometry_element_order) {
+    geometry::randomize_point_order(*pointcloud);
+  }
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

@@ -8,8 +8,10 @@
 
 #include "GEO_randomize.hh"
 
+#include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_pointcloud_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
@@ -35,21 +37,30 @@ static int seed_from_mesh(const Mesh &mesh)
   return mesh.totvert;
 }
 
+static int seed_from_pointcloud(const PointCloud &pointcloud)
+{
+  return pointcloud.totpoint;
+}
+
+static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
+{
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
+
+  for (const int old_i : new_by_old_map.index_range()) {
+    const int new_i = new_by_old_map[old_i];
+    CustomData_copy_data(&data, &new_data, old_i, new_i, 1);
+  }
+  CustomData_free(&data, new_by_old_map.size());
+  data = new_data;
+}
+
 void randomize_vertex_order(Mesh &mesh)
 {
   const int seed = seed_from_mesh(mesh);
   const Array<int> new_by_old_map = get_permutation(mesh.totvert, seed);
 
-  CustomData new_vertex_data;
-  CustomData_copy_layout(
-      &mesh.vert_data, &new_vertex_data, CD_MASK_ALL, CD_CONSTRUCT, mesh.totvert);
-
-  for (const int old_i : IndexRange(mesh.totvert)) {
-    const int new_i = new_by_old_map[old_i];
-    CustomData_copy_data(&mesh.vert_data, &new_vertex_data, old_i, new_i, 1);
-  }
-  CustomData_free(&mesh.vert_data, mesh.totvert);
-  mesh.vert_data = new_vertex_data;
+  reorder_customdata(mesh.vert_data, new_by_old_map);
 
   for (int &v : mesh.edges_for_write().cast<int>()) {
     v = new_by_old_map[v];
@@ -64,15 +75,7 @@ void randomize_edge_order(Mesh &mesh)
   const int seed = seed_from_mesh(mesh);
   const Array<int> new_by_old_map = get_permutation(mesh.totedge, seed);
 
-  CustomData new_edge_data;
-  CustomData_copy_layout(&mesh.edge_data, &new_edge_data, CD_MASK_ALL, CD_CONSTRUCT, mesh.totedge);
-
-  for (const int old_i : IndexRange(mesh.totedge)) {
-    const int new_i = new_by_old_map[old_i];
-    CustomData_copy_data(&mesh.edge_data, &new_edge_data, old_i, new_i, 1);
-  }
-  CustomData_free(&mesh.edge_data, mesh.totedge);
-  mesh.edge_data = new_edge_data;
+  reorder_customdata(mesh.edge_data, new_by_old_map);
 
   for (int &e : mesh.corner_edges_for_write()) {
     e = new_by_old_map[e];
@@ -89,17 +92,7 @@ void randomize_face_order(Mesh &mesh)
     old_by_new_map[new_i] = old_i;
   }
 
-  {
-    CustomData new_face_data;
-    CustomData_copy_layout(
-        &mesh.face_data, &new_face_data, CD_MASK_ALL, CD_CONSTRUCT, mesh.faces_num);
-    for (const int old_i : IndexRange(mesh.faces_num)) {
-      const int new_i = new_by_old_map[old_i];
-      CustomData_copy_data(&mesh.face_data, &new_face_data, old_i, new_i, 1);
-    }
-    CustomData_free(&mesh.face_data, mesh.faces_num);
-    mesh.face_data = new_face_data;
-  }
+  reorder_customdata(mesh.face_data, new_by_old_map);
 
   const OffsetIndices old_faces = mesh.faces();
   Array<int> new_face_offsets(mesh.faces_num + 1);
@@ -127,6 +120,14 @@ void randomize_face_order(Mesh &mesh)
   }
 
   mesh.face_offsets_for_write().copy_from(new_face_offsets);
+}
+
+void randomize_point_order(PointCloud &pointcloud)
+{
+  const int seed = seed_from_pointcloud(pointcloud);
+  const Array<int> new_by_old_map = get_permutation(pointcloud.totpoint, seed);
+
+  reorder_customdata(pointcloud.pdata, new_by_old_map);
 }
 
 }  // namespace blender::geometry
