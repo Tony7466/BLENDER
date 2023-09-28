@@ -94,8 +94,6 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.hh"
-
 #include "wm.hh"
 #include "wm_draw.hh"
 #include "wm_event_system.h"
