@@ -130,8 +130,6 @@ void MTLFrameBuffer::bind(bool enabled_srgb)
     Shader::set_framebuffer_srgb_target(enabled_srgb && srgb_);
   }
 
-  this->mark_dirty();
-
   /* Reset clear state on bind -- Clears and load/store ops are set after binding. */
   this->reset_clear_state();
 
