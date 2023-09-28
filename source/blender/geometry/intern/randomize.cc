@@ -38,7 +38,7 @@ static Array<int> invert_permutation(const Span<int> permutation)
 {
   Array<int> data(permutation.size());
   for (const int i : permutation.index_range()) {
-    data[i] = permutation[i];
+    data[permutation[i]] = i;
   }
   return data;
 }
@@ -84,6 +84,8 @@ void randomize_vertex_order(Mesh &mesh)
   for (int &v : mesh.corner_verts_for_write()) {
     v = new_by_old_map[v];
   }
+
+  BKE_mesh_tag_topology_changed(&mesh);
 }
 
 void randomize_edge_order(Mesh &mesh)
@@ -96,6 +98,8 @@ void randomize_edge_order(Mesh &mesh)
   for (int &e : mesh.corner_edges_for_write()) {
     e = new_by_old_map[e];
   }
+
+  BKE_mesh_tag_topology_changed(&mesh);
 }
 
 static Array<int> make_new_offset_indices(const OffsetIndices<int> old_offsets,
@@ -115,18 +119,19 @@ static void reorder_customdata_groups(CustomData &data,
                                       const OffsetIndices<int> new_offsets,
                                       const Span<int> new_by_old_map)
 {
+  const int elements_num = new_offsets.total_size();
   const int groups_num = new_by_old_map.size();
-  CustomData new_loop;
-  CustomData_copy_layout(&data, &new_loop, CD_MASK_ALL, CD_CONSTRUCT, groups_num);
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, elements_num);
   for (const int old_i : IndexRange(groups_num)) {
     const int new_i = new_by_old_map[old_i];
     const IndexRange old_range = old_offsets[old_i];
     const IndexRange new_range = new_offsets[new_i];
     BLI_assert(old_range.size() == new_range.size());
-    CustomData_copy_data(&data, &new_loop, old_range.start(), new_range.start(), old_range.size());
+    CustomData_copy_data(&data, &new_data, old_range.start(), new_range.start(), old_range.size());
   }
-  CustomData_free(&data, groups_num);
-  data = new_loop;
+  CustomData_free(&data, elements_num);
+  data = new_data;
 }
 
 void randomize_face_order(Mesh &mesh)
@@ -144,6 +149,8 @@ void randomize_face_order(Mesh &mesh)
   reorder_customdata_groups(mesh.loop_data, old_faces, new_faces, new_by_old_map);
 
   mesh.face_offsets_for_write().copy_from(new_face_offsets);
+
+  BKE_mesh_tag_topology_changed(&mesh);
 }
 
 void randomize_point_order(PointCloud &pointcloud)
@@ -152,6 +159,9 @@ void randomize_point_order(PointCloud &pointcloud)
   const Array<int> new_by_old_map = get_permutation(pointcloud.totpoint, seed);
 
   reorder_customdata(pointcloud.pdata, new_by_old_map);
+
+  pointcloud.tag_positions_changed();
+  pointcloud.tag_radii_changed();
 }
 
 void randomize_curve_order(bke::CurvesGeometry &curves)
@@ -170,6 +180,8 @@ void randomize_curve_order(bke::CurvesGeometry &curves)
       curves.point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
 
   curves.offsets_for_write().copy_from(new_curve_offsets);
+
+  curves.tag_topology_changed();
 }
 
 bool debug_randomize_indices()
