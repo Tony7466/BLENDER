@@ -17,8 +17,8 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
-#include "DNA_defaults.h"
 #include "DNA_curve_types.h"
+#include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
@@ -1551,11 +1551,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
-        /* Set default values of existing Noise Texture nodes. */
+        /* Set Normalize property of Noise Texture node to true. */
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == SH_NODE_TEX_NOISE) {
-            (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
-            (static_cast<NodeTexNoise *>(node->storage))->normalize = true;
+            ((NodeTexNoise *)node->storage)->normalize = true;
           }
         }
       }
@@ -1564,14 +1563,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 17)) {
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type != NTREE_CUSTOM) {
-        /* Convert Musgrave Texture nodes to Noise Texture nodes. */
-        versioning_replace_musgrave_texture_node(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
-
     if (!DNA_struct_exists(fd->filesdna, "NodeShaderHairPrincipled")) {
       FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
         if (ntree->type == NTREE_SHADER) {
@@ -1931,6 +1922,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        /* Convert Musgrave Texture nodes to Noise Texture nodes. */
+        versioning_replace_musgrave_texture_node(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
   }
   /**
    * Versioning code until next subversion bump goes here.
