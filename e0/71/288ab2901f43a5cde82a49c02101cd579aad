@@ -11,3 +11,4 @@ Referenced by issue #112014, Regression: Crash when creating compositor node gro
 Referenced by commit f47de98def3d45b38695244f8e7c1185a3b41200, Fix: Node link drag search attachment to existing group input broken
 Referenced by pull request #112027, Fix #112014: Crash making node group with multiple input links
 Referenced by commit f9c733dbd68cd5d4b70a4f830b1bf2983f51ad65, Fix #112014: Crash making node group with multiple input links
+Referenced by issue #112992, Scroll bar and resize widget missing from the Group tab on the Node editor's side panel
