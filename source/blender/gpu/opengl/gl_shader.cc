@@ -301,62 +301,6 @@ static const Type to_component_type(const Type &type)
   return Type::FLOAT;
 }
 
-static const Type vector_of_type(const Type &type, int comp_len)
-{
-  switch (type) {
-    case Type::FLOAT:
-      switch (comp_len) {
-        case 1:
-          return Type::FLOAT;
-        case 2:
-          return Type::VEC2;
-        case 3:
-          return Type::VEC3;
-        case 4:
-          return Type::VEC4;
-        case 9:
-          return Type::MAT3;
-        case 16:
-          return Type::MAT4;
-        default:
-          break;
-      }
-      break;
-    case Type::UINT:
-      switch (comp_len) {
-        case 1:
-          return Type::UINT;
-        case 2:
-          return Type::UVEC2;
-        case 3:
-          return Type::UVEC3;
-        case 4:
-          return Type::UVEC4;
-        default:
-          break;
-      }
-      break;
-    case Type::INT:
-      switch (comp_len) {
-        case 1:
-          return Type::INT;
-        case 2:
-          return Type::IVEC2;
-        case 3:
-          return Type::IVEC3;
-        case 4:
-          return Type::IVEC4;
-        default:
-          break;
-      }
-      break;
-    default:
-      break;
-  }
-  BLI_assert_unreachable();
-  return Type::FLOAT;
-}
-
 static const char *to_string(const eGPUTextureFormat &type)
 {
   switch (type) {
@@ -847,7 +791,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
     }
     else if (epoxy_has_gl_extension("GL_AMD_shader_explicit_vertex_parameter")) {
-      std::cout << "native" << std::endl;
       /* NOTE(fclem): This won't work with geometry shader. Hopefully, we don't need geometry
        * shader workaround if this extension/feature is detected. */
       ss << "\n/* Stable Barycentric Coordinates. */\n";
@@ -927,8 +870,7 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
        * collide with other resources. */
       Resource res(Resource::BindType::IMAGE, input.index);
       res.image.format = to_texture_format_type(input.type);
-      /* TODO(fclem): Could be made READ only if we know we don't write to it. */
-      res.image.qualifiers = Qualifier::READ_WRITE;
+      res.image.qualifiers = Qualifier::READ;
       res.image.type = image_type;
       res.image.name = image_name;
       print_resource(ss, res, false);
@@ -943,44 +885,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   }
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
-    if ((fetched_attachment_bits & (1u << output.index)) != 0) {
-      /* When emulating framebuffer fetch support, the storing is done using imageStore.*/
-      /* Declare global for output. */
-      ss << to_string(output.type) << " " << output.name << ";\n";
-
-      char swizzle[] = "xyzw";
-      swizzle[to_component_count(output.type)] = '\0';
-
-      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
-       * built-in flag. */
-      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
-
-      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
-                                               "ivec2(gl_FragCoord.xy)";
-
-      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
-       * built-in flag. */
-      if (bool(info.builtins_ & BuiltinBits::LAYER)) {
-        texel_co = "ivec3(gl_FragCoord.xy, gpu_Layer)";
-      }
-
-      std::string image_name = "gpu_subpass_img_";
-      image_name += std::to_string(output.index);
-
-      shader::Type tmp_var_type = vector_of_type(to_component_type(output.type), 4);
-      std::string tmp_var = "tmp_subpass_output_";
-      tmp_var += std::to_string(output.index);
-
-      std::stringstream ss_post;
-      /* Cast to `(u|i)vec4`. */
-      ss_post << "  " << to_string(tmp_var_type) << "  " << tmp_var << ";\n";
-      ss_post << "  " << tmp_var << "." << swizzle << " = " << output.name << ";\n";
-      /* Store the global after main using imageStore. */
-      ss_post << "  imageStore(" << image_name << ", " << texel_co << ", " << tmp_var << ");\n";
-
-      post_main += ss_post.str();
-      continue;
-    }
     ss << "layout(location = " << output.index;
     switch (output.blend) {
       case DualBlend::SRC_0:
@@ -1000,7 +904,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (!pre_main.empty() || !post_main.empty()) {
     ss << main_function_wrapper(pre_main, post_main);
   }
-  std::cout << ss.str() << std::endl;
   return ss.str();
 }
 

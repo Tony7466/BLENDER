@@ -226,24 +226,36 @@ void GLFrameBuffer::update_attachments()
   }
 }
 
-void GLFrameBuffer::subpass_transition(const GPUAttachmentLayout *attachment_layouts,
-                                       uint attachment_len)
+void GLFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment_state,
+                                       Span<GPUAttachmentState> color_attachment_states)
 {
-  /* TODO(fclem): attachment_len is equal to number of attachments. */
+  /* NOTE: Depth is not supported as input attachment because the Metal API doesn't support it and
+   * because depth is not compatible with `imageLoad` workaround. */
+  BLI_assert(depth_attachment_state != GPU_ATTACHEMENT_READ);
 
-  /* TODO(fclem): Only do this if needed. */
-  GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
-  /* TODO(fclem): Barrier if attachment was written and will be read. */
+  GPU_depth_mask(depth_attachment_state == GPU_ATTACHEMENT_WRITE);
 
-  /* TODO depth. */
-  int type = GPU_FB_COLOR_ATTACHMENT0;
-  for (int i = 1; i < attachment_len && type < GPU_FB_MAX_ATTACHMENT; i++, type++) {
-    if (this->attachments_[type].tex != nullptr) {
-      if (attachment_layouts[i] == GPU_LAYOUT_INPUT) {
-        GPU_texture_image_bind(this->attachments_[type].tex, i - 1);
+  /* Change the draw attachments to turn writing on and off. */
+  GLenum draw_attachments[GPU_FB_MAX_COLOR_ATTACHMENT] = {GL_NONE};
+
+  if (false) {
+    /* TODO(fclem): Add GL_EXT_shader_framebuffer_fetch support. */
+  }
+  else {
+    for (int i : color_attachment_states.index_range()) {
+      GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+      if (this->attachments_[type].tex != nullptr) {
+        if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
+          GPU_texture_image_bind(this->attachments_[type].tex, i);
+        }
+        else if (color_attachment_states[i] == GPU_ATTACHEMENT_WRITE) {
+          draw_attachments[i] = to_gl(type);
+        }
       }
     }
   }
+
+  glDrawBuffers(ARRAY_SIZE(draw_attachments), draw_attachments);
 }
 
 void GLFrameBuffer::apply_state()

@@ -266,10 +266,11 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *gpu_fb,
 }
 
 void GPU_framebuffer_subpass_transition_array(GPUFrameBuffer *gpu_fb,
-                                              const GPUAttachmentLayout *attachment_layouts,
+                                              const GPUAttachmentState *attachment_states,
                                               uint attachment_len)
 {
-  unwrap(gpu_fb)->subpass_transition(attachment_layouts, attachment_len);
+  unwrap(gpu_fb)->subpass_transition(
+      attachment_states[0], Span<GPUAttachmentState>(attachment_states + 1, attachment_len - 1));
 }
 
 void GPU_framebuffer_bind_no_srgb(GPUFrameBuffer *gpu_fb)

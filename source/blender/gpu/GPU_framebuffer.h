@@ -182,14 +182,14 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
  * TODO
  */
 void GPU_framebuffer_subpass_transition_array(GPUFrameBuffer *framebuffer,
-                                              const GPUAttachmentLayout *attachment_layouts,
+                                              const GPUAttachmentState *attachment_states,
                                               uint attachment_len);
 
 #define GPU_framebuffer_subpass_transition(_fb, ...) \
   { \
-    GPUAttachmentLayout actions[] = __VA_ARGS__; \
+    GPUAttachmentState actions[] = __VA_ARGS__; \
     GPU_framebuffer_subpass_transition_array( \
-        _fb, actions, (sizeof(actions) / sizeof(GPUAttachmentLayout))); \
+        _fb, actions, (sizeof(actions) / sizeof(GPUAttachmentState))); \
   }
 
 /** \} */

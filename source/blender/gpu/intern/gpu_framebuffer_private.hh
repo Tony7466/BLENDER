@@ -127,8 +127,8 @@ class FrameBuffer {
                        int dst_offset_x,
                        int dst_offset_y) = 0;
 
-  virtual void subpass_transition(const GPUAttachmentLayout *attachment_layouts,
-                                  uint attachment_len) = 0;
+  virtual void subpass_transition(const GPUAttachmentState depth_attachment_state,
+                                  Span<GPUAttachmentState> color_attachment_states) = 0;
 
   void load_store_config_array(const GPULoadStore *load_store_actions, uint actions_len);
 
