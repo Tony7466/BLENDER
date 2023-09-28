@@ -230,28 +230,42 @@ void GLFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment
                                        Span<GPUAttachmentState> color_attachment_states)
 {
   /* NOTE: Depth is not supported as input attachment because the Metal API doesn't support it and
-   * because depth is not compatible with `imageLoad` workaround. */
+   * because depth is not compatible with `imageLoad` workaround nor with the framebuffer fetch
+   * implementation. */
   BLI_assert(depth_attachment_state != GPU_ATTACHEMENT_READ);
 
   GPU_depth_mask(depth_attachment_state == GPU_ATTACHEMENT_WRITE);
 
-  /* Change the draw attachments to turn writing on and off. */
-  GLenum draw_attachments[GPU_FB_MAX_COLOR_ATTACHMENT] = {GL_NONE};
-
-  if (false) {
-    /* TODO(fclem): Add GL_EXT_shader_framebuffer_fetch support. */
+  if (GLContext::framebuffer_fetch_support) {
+    bool any_read = false;
+    for (auto attachment : color_attachment_states.index_range()) {
+      if (attachment == GPU_ATTACHEMENT_READ) {
+        any_read = true;
+        break;
+      }
+    }
+    if (any_read) {
+      glFramebufferFetchBarrierEXT();
+    }
   }
   else {
     for (int i : color_attachment_states.index_range()) {
       GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
-      if (this->attachments_[type].tex != nullptr) {
-        if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
-          GPU_texture_image_bind(this->attachments_[type].tex, i);
-        }
-        else if (color_attachment_states[i] == GPU_ATTACHEMENT_WRITE) {
-          draw_attachments[i] = to_gl(type);
-        }
+      if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
+        BLI_assert(this->attachments_[type].tex);
+        GPU_texture_image_bind(this->attachments_[type].tex, i);
       }
+    }
+  }
+
+  /* Change the draw attachments to turn writing on and off. */
+  GLenum draw_attachments[GPU_FB_MAX_COLOR_ATTACHMENT] = {GL_NONE};
+
+  for (int i : color_attachment_states.index_range()) {
+    GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+    if (color_attachment_states[i] == GPU_ATTACHEMENT_WRITE) {
+      BLI_assert(this->attachments_[type].tex);
+      draw_attachments[i] = to_gl(type);
     }
   }
 

@@ -823,16 +823,24 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
     ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
   }
+
   ss << "\n/* Sub-pass Inputs. */\n";
-  /* Used to detect which attachments needs imageStore emulation. One bit per attachment. */
-  uint32_t fetched_attachment_bits = 0u;
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
-    if (false) {
-      /* TODO(fclem): Add GL_EXT_shader_framebuffer_fetch support. */
+    if (GLContext::framebuffer_fetch_support) {
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(input.type)] = '\0';
+
+      /* Declare global for input. */
+      ss << to_string(input.type) << " " << input.name << ";\n";
+
+      std::stringstream ss_pre;
+      /* Populate the global before main using imageLoad. */
+      ss_pre << "  " << input.name << " = gl_LastFragData[" << std::to_string(input.index) << "]."
+             << swizzle << ";\n";
+
+      pre_main += ss_pre.str();
     }
     else {
-      fetched_attachment_bits |= 1u << input.index;
-
       char swizzle[] = "xyzw";
       swizzle[to_component_count(input.type)] = '\0';
 
@@ -1127,6 +1135,9 @@ static char *glsl_patch_default_get()
   }
   if (GLContext::native_barycentric_support) {
     STR_CONCAT(patch, slen, "#extension GL_AMD_shader_explicit_vertex_parameter: enable\n");
+  }
+  if (GLContext::framebuffer_fetch_support) {
+    STR_CONCAT(patch, slen, "#extension GL_EXT_shader_framebuffer_fetch: enable\n");
   }
 
   /* Fallbacks. */
