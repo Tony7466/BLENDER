@@ -39,6 +39,8 @@
 
 #include "BLO_read_write.hh"
 
+#include "GEO_randomize.hh"
+
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
@@ -229,6 +231,10 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
              bm->ftoolflagpool == nullptr);
 
   BM_mesh_free(bm);
+
+  if (blender::geometry::use_debug_randomization()) {
+    blender::geometry::randomize_mesh_order(*result);
+  }
 
   return result;
 }

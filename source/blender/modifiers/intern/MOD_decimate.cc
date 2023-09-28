@@ -32,6 +32,8 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_randomize.hh"
+
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
@@ -206,6 +208,10 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
 
   BM_mesh_free(bm);
+
+  if (blender::geometry::use_debug_randomization()) {
+    blender::geometry::randomize_mesh_order(*result);
+  }
 
 #ifdef USE_TIMEIT
   TIMEIT_END(decim);
