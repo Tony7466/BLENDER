@@ -179,7 +179,20 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
   }
 
 /**
- * TODO
+ * Sub-pass config array matches attachment structure of `GPU_framebuffer_config_array`.
+ * This allows to explicitly specify attachment state within the next sub-pass.
+ * This enables a number of bandwidth optimizations specially on Tile Based Deferred Renderers
+ * where the attachments can be kept into tile memory and used in place for later sub-passes.
+ *
+ * Example:
+ * \code{.c}
+ * GPU_framebuffer_bind_loadstore(&fb, {
+ *         GPU_ATTACHEMENT_WRITE,  // must be depth buffer
+ *         GPU_ATTACHEMENT_READ,   // Color attachment 0
+ *         GPU_ATTACHEMENT_IGNORE, // Color attachment 1
+ *         GPU_ATTACHEMENT_WRITE}  // Color attachment 2
+ * })
+ * \endcode
  */
 void GPU_framebuffer_subpass_transition_array(GPUFrameBuffer *framebuffer,
                                               const GPUAttachmentState *attachment_states,
