@@ -13,6 +13,7 @@
 #include "BKE_pointcloud.h"
 
 #include "GEO_point_merge_by_distance.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
 
@@ -152,6 +153,10 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
         dst_attribute.finish();
       }
     });
+  }
+
+  if (debug_randomize_indices()) {
+    randomize_point_order(*dst_pointcloud);
   }
 
   return dst_pointcloud;
