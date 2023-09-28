@@ -48,6 +48,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DEG_depsgraph.hh"
+
 #include "RNA_enum_types.hh" /* For `rna_enum_wm_job_type_items`. */
 
 /* for notifiers */
@@ -336,6 +338,10 @@ static int bpy_app_randomize_geometry_element_order_set(PyObject * /*self*/,
   }
 
   G.randomize_geometry_element_order = param;
+
+  LISTBASE_FOREACH (Object *, object, &G_MAIN->objects) {
+    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  }
 
   WM_main_add_notifier(NC_WINDOW, nullptr);
 

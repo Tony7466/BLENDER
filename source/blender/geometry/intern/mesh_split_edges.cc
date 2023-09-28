@@ -8,10 +8,12 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_global.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
 #include "GEO_mesh_split_edges.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
 
@@ -591,6 +593,10 @@ void split_edges(Mesh &mesh,
   propagate_vert_attributes(mesh, vert_map);
 
   BKE_mesh_tag_edges_split(&mesh);
+
+  if (G.randomize_geometry_element_order) {
+    randomize_vertex_order(mesh);
+  }
 }
 
 }  // namespace blender::geometry
