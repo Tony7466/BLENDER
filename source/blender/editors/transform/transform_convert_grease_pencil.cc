@@ -230,7 +230,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
   }
 }
 
-static void recalcData_greasepencil(TransInfo *t)
+static void recalcData_grease_pencil(TransInfo *t)
 {
   bContext *C = t->context;
   Scene *scene = CTX_data_scene(C);
@@ -258,6 +258,6 @@ static void recalcData_greasepencil(TransInfo *t)
 TransConvertTypeInfo TransConvertType_GreasePencil = {
     /*flags*/ (T_EDIT | T_POINTS),
     /*create_trans_data*/ blender::ed::transform::greasepencil::createTransGreasePencilVerts,
-    /*recalc_data*/ blender::ed::transform::greasepencil::recalcData_greasepencil,
+    /*recalc_data*/ blender::ed::transform::greasepencil::recalcData_grease_pencil,
     /*special_aftertrans_update*/ nullptr,
 };

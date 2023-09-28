@@ -724,6 +724,7 @@ static int countAndCleanTransDataContainer(TransInfo *t)
 static void init_proportional_edit(TransInfo *t)
 {
   /* NOTE: Proportional editing is not usable in pose mode yet #32444. */
+  /* NOTE: This `ELEM` uses more than 16 elements and so has been split. */
   if (!(ELEM(t->data_type,
              &TransConvertType_Action,
              &TransConvertType_Curve,
