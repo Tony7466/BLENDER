@@ -598,6 +598,14 @@ static void versioning_update_noise_texture_node(bNodeTree *ntree)
     if (node->type == SH_NODE_TEX_NOISE) {
       (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
 
+      bNodeSocket *sockRoughness = nodeFindSocket(node, SOCK_IN, "Roughness");
+      if (sockRoughness == nullptr) {
+        /* Noise Texture node was created before the Roughness input was added. */
+        continue;
+      }
+
+      float *roughness = version_cycles_node_socket_float_value(sockRoughness);
+
       bNodeLink *roughnessLink = nullptr;
       bNode *roughnessFromNode = nullptr;
       bNodeSocket *roughnessFromSock = nullptr;
@@ -610,9 +618,6 @@ static void versioning_update_noise_texture_node(bNodeTree *ntree)
           roughnessFromSock = link->fromsock;
         }
       }
-
-      bNodeSocket *sockRoughness = nodeFindSocket(node, SOCK_IN, "Roughness");
-      float *roughness = version_cycles_node_socket_float_value(sockRoughness);
 
       if (roughnessLink != nullptr) {
         /* Add Clamp node before Roughness input. */
