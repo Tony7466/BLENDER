@@ -56,7 +56,15 @@ typedef enum eGPUSupportLevel {
 } eGPUSupportLevel;
 
 typedef enum GPUArchitectureType {
+  /* Immediate Mode Renderer (IMR).
+   * Typically, an IMR architecture will execute GPU work in sequence, rasterizing primitives in
+   * order. */
   GPU_ARCHITECTURE_IMR = 0,
+
+  /* Tile-Based-Deferred-Renderer (TBDR).
+   * A TBDR architecture will typically execute the vertex stage up-front for all primitives,
+   * binning geometry into distinct tiled regions. Fragments will then be rasterized within
+   * the bounds of one tile at a time. */
   GPU_ARCHITECTURE_TBDR = 1,
 } GPUArchitectureType;
 
