@@ -2045,7 +2045,7 @@ static int selectbuffer_ret_hits_9(blender::MutableSpan<GPUSelectResult> results
                                    const int hits9)
 {
   const int ofs = hits15;
-  results.copy_from(results.slice(ofs, hits9)); /* Shift results to beginning. */
+  results.slice(0, hits9).copy_from(results.slice(ofs, hits9)); /* Shift results to beginning. */
   return hits9;
 }
 
@@ -2055,7 +2055,7 @@ static int selectbuffer_ret_hits_5(blender::MutableSpan<GPUSelectResult> results
                                    const int hits5)
 {
   const int ofs = hits15 + hits9;
-  results.copy_from(results.slice(ofs, hits5)); /* Shift results to beginning. */
+  results.slice(0, hits5).copy_from(results.slice(ofs, hits5)); /* Shift results to beginning. */
   return hits5;
 }
 

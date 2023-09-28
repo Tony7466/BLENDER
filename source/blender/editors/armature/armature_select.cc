@@ -640,7 +640,7 @@ static int selectbuffer_ret_hits_5(blender::MutableSpan<GPUSelectResult> results
                                    const int hits5)
 {
   const int ofs = hits12;
-  results.copy_from(results.slice(ofs, hits5)); /* Shift results to beginning. */
+  results.slice(0, hits5).copy_from(results.slice(ofs, hits5)); /* Shift results to beginning. */
   return hits5;
 }
 
@@ -702,9 +702,6 @@ static EditBone *get_nearest_editbonepoint(
       goto cache_end;
     }
     else if (hits12 > 0) {
-      int ofs;
-
-      ofs = hits12;
       BLI_rcti_init_pt_radius(&rect, vc->mval, 5);
       const int hits5 = view3d_opengl_select_with_id_filter(
           vc, &buffer, &rect, eV3DSelectMode(select_mode), select_filter, select_id_ignore);

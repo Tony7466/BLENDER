@@ -613,7 +613,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
     float dot_best = FLT_MAX;
 
     for (const GPUSelectResult &result : hit_results) {
-      BLI_assert(buf_iter->id != -1);
+      BLI_assert(result.id != -1);
       wmGizmo *gz = visible_gizmos[result.id >> 8];
       float co_3d[3];
       co_screen[2] = float(double(result.depth) / double(UINT_MAX));
