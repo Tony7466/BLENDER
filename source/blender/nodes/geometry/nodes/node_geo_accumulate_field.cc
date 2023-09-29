@@ -231,7 +231,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
     }
 
     const bke::GeometryFieldContext source_context{
-        context.geometry(), context.type(), source_domain_};
+        context.geometry(), context.type(), source_domain_, context.grease_pencil_layer_index()};
     fn::FieldEvaluator evaluator{source_context, domain_size};
     evaluator.add(input_);
     evaluator.add(group_index_);
@@ -337,7 +337,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
     }
 
     const bke::GeometryFieldContext source_context{
-        context.geometry(), context.type(), source_domain_};
+        context.geometry(), context.type(), source_domain_, context.grease_pencil_layer_index()};
     fn::FieldEvaluator evaluator{source_context, domain_size};
     evaluator.add(input_);
     evaluator.add(group_index_);

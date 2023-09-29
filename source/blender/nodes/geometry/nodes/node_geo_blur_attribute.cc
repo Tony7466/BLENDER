@@ -17,6 +17,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -448,6 +449,13 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
           }
         }
         break;
+      case GeometryComponent::Type::GreasePencil:
+        if (context.domain() == ATTR_DOMAIN_POINT) {
+          if (const bke::greasepencil::Drawing *drawing = context.grease_pencil_layer_drawing()) {
+            result_buffer = blur_on_curves(
+                drawing->strokes(), iterations_, neighbor_weights, buffer_a, buffer_b);
+          }
+        }
       default:
         break;
     }

@@ -114,7 +114,7 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
     const bke::AttributeAccessor attributes = *context.attributes();
 
     const bke::GeometryFieldContext other_domain_context{
-        context.geometry(), context.type(), src_domain_};
+        context.geometry(), context.type(), src_domain_, context.grease_pencil_layer_index()};
     const int64_t src_domain_size = attributes.domain_size(src_domain_);
     GArray<> values(src_field_.cpp_type(), src_domain_size);
     FieldEvaluator value_evaluator{other_domain_context, src_domain_size};

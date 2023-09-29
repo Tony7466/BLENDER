@@ -53,40 +53,14 @@ static std::optional<const bke::greasepencil::Drawing *> get_eval_drawing_from_g
   return &drawing;
 }
 
-GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
-                                                            const IndexMask &mask,
-                                                            ResourceScope &scope) const
-{
-  if (const AttributeFieldInput *field = dynamic_cast<const AttributeFieldInput *>(&field_input)) {
-    if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
-      return *grease_pencil_.attributes().lookup(field->attribute_name());
-    }
-    if (std::optional<const bke::greasepencil::Drawing *> drawing =
-            get_eval_drawing_from_grease_pencil_layer(grease_pencil_, layer_index_))
-    {
-      const CurvesGeometry &curves = drawing.value()->strokes();
-      /* Check if attribute is on the curves and return it if it was found. */
-      if (GVArray varray = *curves.attributes().lookup(field->attribute_name(), domain_)) {
-        return varray;
-      }
-      /* Check if the attribute is on the layers and return it as a single across the point or
-       * curves domain. */
-      if (GVArray varray = *grease_pencil_.attributes().lookup(field->attribute_name())) {
-        BUFFER_FOR_CPP_TYPE_VALUE(varray.type(), value);
-        BLI_SCOPED_DEFER([&]() { varray.type().destruct(value); });
-        varray.get_internal_single(value);
-        const int domain_size = drawing.value()->strokes().attributes().domain_size(domain_);
-        return GVArray::ForSingle(varray.type(), domain_size, value);
-      }
-    }
-  }
-  return field_input.get_varray_for_context(*this, mask, scope);
-}
-
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
                                            const GeometryComponent::Type type,
-                                           const eAttrDomain domain)
-    : geometry_(geometry), type_(type), domain_(domain)
+                                           const eAttrDomain domain,
+                                           const int grease_pencil_layer_index)
+    : geometry_(geometry),
+      type_(type),
+      domain_(domain),
+      grease_pencil_layer_index_(grease_pencil_layer_index)
 {
   BLI_assert(ELEM(type,
                   GeometryComponent::Type::Mesh,
@@ -122,6 +96,8 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       const GreasePencilComponent &grease_pencil_component =
           static_cast<const GreasePencilComponent &>(component);
       geometry_ = grease_pencil_component.get();
+      /* Need to use another constructor for other domains. */
+      BLI_assert(domain == ATTR_DOMAIN_GREASE_PENCIL_LAYER);
       break;
     }
     case GeometryComponent::Type::Instance: {
@@ -149,10 +125,13 @@ GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
     : geometry_(&points), type_(GeometryComponent::Type::PointCloud), domain_(ATTR_DOMAIN_POINT)
 {
 }
-GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil)
+GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil,
+                                           const eAttrDomain domain,
+                                           const int layer_index)
     : geometry_(&grease_pencil),
       type_(GeometryComponent::Type::GreasePencil),
-      domain_(ATTR_DOMAIN_GREASE_PENCIL_LAYER)
+      domain_(domain),
+      grease_pencil_layer_index_(layer_index)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const Instances &instances)
@@ -174,7 +153,15 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
     return pointcloud->attributes();
   }
   if (const GreasePencil *grease_pencil = this->grease_pencil()) {
-    return grease_pencil->attributes();
+    if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
+      return grease_pencil->attributes();
+    }
+    else if (std::optional<const greasepencil::Drawing *> drawing =
+                 get_eval_drawing_from_grease_pencil_layer(*grease_pencil,
+                                                           grease_pencil_layer_index_))
+    {
+      return (*drawing)->strokes().attributes();
+    }
   }
   if (const Instances *instances = this->instances()) {
     return instances->attributes();
@@ -203,6 +190,15 @@ const GreasePencil *GeometryFieldContext::grease_pencil() const
 {
   return this->type() == GeometryComponent::Type::GreasePencil ?
              static_cast<const GreasePencil *>(geometry_) :
+             nullptr;
+}
+const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing() const
+{
+  return this->type() == GeometryComponent::Type::GreasePencil &&
+                 ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT) ?
+             get_eval_drawing_from_grease_pencil_layer(*this->grease_pencil(),
+                                                       grease_pencil_layer_index_)
+                 .value_or(nullptr) :
              nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
@@ -236,7 +232,10 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   if (const GreasePencilLayerFieldContext *grease_pencil_context =
           dynamic_cast<const GreasePencilLayerFieldContext *>(&context))
   {
-    return this->get_varray_for_context({grease_pencil_context->grease_pencil()}, mask);
+    return this->get_varray_for_context({grease_pencil_context->grease_pencil(),
+                                         grease_pencil_context->domain(),
+                                         grease_pencil_context->layer_index()},
+                                        mask);
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(
           &context))
@@ -359,8 +358,30 @@ GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &
                                                     const IndexMask & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
-  if (auto attributes = context.attributes()) {
-    return *attributes->lookup(name_, context.domain(), data_type);
+  const eAttrDomain domain = context.domain();
+  if (const GreasePencil *grease_pencil = context.grease_pencil()) {
+    const AttributeAccessor layer_attributes = grease_pencil->attributes();
+    if (domain == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
+      return *layer_attributes.lookup(name_, data_type);
+    }
+    else if (ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
+      const int layer_index = context.grease_pencil_layer_index();
+      const AttributeAccessor curves_attributes = *context.attributes();
+      if (const GAttributeReader reader = curves_attributes.lookup(name_, domain, data_type)) {
+        return *reader;
+      }
+      if (const GAttributeReader reader = layer_attributes.lookup(name_)) {
+        const CPPType &cpp_type = reader.varray.type();
+        BUFFER_FOR_CPP_TYPE_VALUE(cpp_type, value);
+        BLI_SCOPED_DEFER([&]() { cpp_type.destruct(value); });
+        reader.varray.get_to_uninitialized(layer_index, value);
+        const int domain_size = curves_attributes.domain_size(domain);
+        return GVArray::ForSingle(cpp_type, domain_size, value);
+      }
+    }
+  }
+  else if (auto attributes = context.attributes()) {
+    return *attributes->lookup(name_, domain, data_type);
   }
   return {};
 }

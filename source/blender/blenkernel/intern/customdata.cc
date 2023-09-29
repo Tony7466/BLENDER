@@ -2423,7 +2423,7 @@ static void CustomData_replace_layer_data(CustomDataLayer *layer,
                                           const int new_size,
                                           void *new_layer_data)
 {
-  /* Remove ownership of old array */
+  /* Remove ownership of old array. */
   if (layer->sharing_info) {
     layer->sharing_info->remove_user_and_delete_if_last();
     layer->sharing_info = nullptr;

@@ -37,8 +37,10 @@ GVArray EvaluateAtIndexInput::get_varray_for_context(const bke::GeometryFieldCon
     return {};
   }
 
-  const bke::GeometryFieldContext value_context{
-      context.geometry(), context.type(), value_field_domain_};
+  const bke::GeometryFieldContext value_context{context.geometry(),
+                                                context.type(),
+                                                value_field_domain_,
+                                                context.grease_pencil_layer_index()};
   FieldEvaluator value_evaluator{value_context, attributes->domain_size(value_field_domain_)};
   value_evaluator.add(value_field_);
   value_evaluator.evaluate();
