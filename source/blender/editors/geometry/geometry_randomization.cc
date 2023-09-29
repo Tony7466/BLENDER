@@ -52,7 +52,7 @@ void GEOMETRY_OT_geometry_randomization(wmOperatorType *ot)
                   "Value",
                   "Randomize the order of geometry elements (e.g. vertices or edges) after some "
                   "operations where there are no guarantees about the order. This avoids "
-                  "accidentally depending on something that is likely to change in the future");
+                  "accidentally depending on something that may change in the future");
 }
 
 }  // namespace blender::ed::geometry
