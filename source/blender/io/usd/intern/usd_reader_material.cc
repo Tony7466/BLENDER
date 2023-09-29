@@ -58,6 +58,8 @@ static const pxr::TfToken st("st", pxr::TfToken::Immortal);
 static const pxr::TfToken varname("varname", pxr::TfToken::Immortal);
 
 /* Color space names. */
+static const pxr::TfToken auto_("auto", pxr::TfToken::Immortal);
+static const pxr::TfToken sRGB("sRGB", pxr::TfToken::Immortal);
 static const pxr::TfToken raw("raw", pxr::TfToken::Immortal);
 static const pxr::TfToken RAW("RAW", pxr::TfToken::Immortal);
 
@@ -461,7 +463,7 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
   /* Recursively set the principled shader inputs. */
 
   if (pxr::UsdShadeInput diffuse_input = usd_shader.GetInput(usdtokens::diffuseColor)) {
-    set_node_input(diffuse_input, principled, "Base Color", ntree, column, &context);
+    set_node_input(diffuse_input, principled, "Base Color", ntree, column, &context, true);
   }
 
   float emission_strength = 0.0f;
@@ -514,7 +516,8 @@ bool USDMaterialReader::set_node_input(const pxr::UsdShadeInput &usd_input,
                                        const char *dest_socket_name,
                                        bNodeTree *ntree,
                                        const int column,
-                                       NodePlacementContext *r_ctx) const
+                                       NodePlacementContext *r_ctx,
+                                       bool is_color_corrected) const
 {
   if (!(usd_input && dest_node && r_ctx)) {
     return false;
@@ -523,7 +526,8 @@ bool USDMaterialReader::set_node_input(const pxr::UsdShadeInput &usd_input,
   if (usd_input.HasConnectedSource()) {
     /* The USD shader input has a connected source shader. Follow the connection
      * and attempt to convert the connected USD shader to a Blender node. */
-    return follow_connection(usd_input, dest_node, dest_socket_name, ntree, column, r_ctx);
+    return follow_connection(
+        usd_input, dest_node, dest_socket_name, ntree, column, r_ctx, is_color_corrected);
   }
   else {
     /* Set the destination node socket value from the USD shader input value. */
@@ -588,7 +592,8 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
                                           const char *dest_socket_name,
                                           bNodeTree *ntree,
                                           int column,
-                                          NodePlacementContext *r_ctx) const
+                                          NodePlacementContext *r_ctx,
+                                          bool is_color_corrected) const
 {
   if (!(usd_input && dest_node && dest_socket_name && ntree && r_ctx)) {
     return false;
@@ -636,12 +641,24 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
       link_nodes(ntree, normal_map, "Normal", dest_node, "Normal");
 
       /* Now, create the Texture Image node input to the Normal Map "Color" input. */
-      convert_usd_uv_texture(
-          source_shader, source_name, normal_map, "Color", ntree, column + 2, r_ctx);
+      convert_usd_uv_texture(source_shader,
+                             source_name,
+                             normal_map,
+                             "Color",
+                             ntree,
+                             column + 2,
+                             r_ctx,
+                             is_color_corrected);
     }
     else {
-      convert_usd_uv_texture(
-          source_shader, source_name, dest_node, dest_socket_name, ntree, column + 1, r_ctx);
+      convert_usd_uv_texture(source_shader,
+                             source_name,
+                             dest_node,
+                             dest_socket_name,
+                             ntree,
+                             column + 1,
+                             r_ctx,
+                             is_color_corrected);
     }
   }
   else if (shader_id == usdtokens::UsdPrimvarReader_float2) {
@@ -658,7 +675,8 @@ void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_sh
                                                const char *dest_socket_name,
                                                bNodeTree *ntree,
                                                const int column,
-                                               NodePlacementContext *r_ctx) const
+                                               NodePlacementContext *r_ctx,
+                                               bool is_color_corrected) const
 {
   if (!usd_shader || !dest_node || !ntree || !dest_socket_name || !bmain_ || !r_ctx) {
     return;
@@ -684,7 +702,7 @@ void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_sh
     cache_node(r_ctx->node_cache, usd_shader, tex_image);
 
     /* Load the texture image. */
-    load_tex_image(usd_shader, tex_image);
+    load_tex_image(usd_shader, tex_image, is_color_corrected);
   }
 
   /* Connect to destination node input. */
@@ -701,7 +719,8 @@ void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_sh
 }
 
 void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
-                                       bNode *tex_image) const
+                                       bNode *tex_image,
+                                       bool is_color_corrected) const
 {
   if (!(usd_shader && tex_image && tex_image->type == SH_NODE_TEX_IMAGE)) {
     return;
@@ -796,8 +815,23 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
     color_space = file_input.GetAttr().GetColorSpace();
   }
 
-  if (ELEM(color_space, usdtokens::RAW, usdtokens::raw)) {
-    STRNCPY(image->colorspace_settings.name, "Raw");
+  if (color_space.IsEmpty()) {
+    /* At this point, assume the "auto" space and translate accordingly. */
+    color_space = usdtokens::auto_;
+  }
+
+  if (ELEM(color_space, usdtokens::auto_)) {
+    /* If it's auto, determine whether to apply color correction based
+     * on incoming connection (passed in from outer functions). */
+    STRNCPY(image->colorspace_settings.name, is_color_corrected ? "sRGB" : "Non-Color");
+  }
+
+  else if (ELEM(color_space, usdtokens::sRGB)) {
+    STRNCPY(image->colorspace_settings.name, "sRGB");
+  }
+
+  else if (ELEM(color_space, usdtokens::RAW, usdtokens::raw)) {
+    STRNCPY(image->colorspace_settings.name, "Non-Color");
   }
 
   if (import_textures && params_.import_textures_mode == USD_TEX_IMPORT_PACK &&
