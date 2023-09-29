@@ -123,19 +123,27 @@ static void clean_unused_attributes(const AnonymousAttributePropagationInfo &pro
                                     GeometryComponent &component)
 {
   std::optional<MutableAttributeAccessor> attributes = component.attributes_for_write();
-  const Set<AttributeIDRef> all_ids = attributes.has_value() ? attributes->all_ids() :
-                                                               Set<AttributeIDRef>();
-  for (const AttributeIDRef &id : all_ids) {
+  if (!attributes.has_value()) {
+    return;
+  }
+
+  Vector<std::string> unused_ids;
+  attributes->for_all([&](const AttributeIDRef &id, const AttributeMetaData /*meta_data*/) {
     if (!id.is_anonymous()) {
-      continue;
+      return true;
     }
     if (skip.contains(id)) {
-      continue;
+      return true;
     }
     if (propagation_info.propagate(id.anonymous_id())) {
-      continue;
+      return true;
     }
-    attributes->remove(id);
+    unused_ids.append(id.name());
+    return true;
+  });
+
+  for (const std::string &unused_id : unused_ids) {
+    attributes->remove(unused_id);
   }
 }
 
