@@ -15,6 +15,7 @@
 #include "GPU_texture.h"
 
 #include "DNA_movieclip_types.h"
+#include "DNA_tracking_types.h"
 
 #include "COM_cached_resource.hh"
 
@@ -28,8 +29,9 @@ class Context;
 class KeyingScreenKey {
  public:
   int2 frame;
+  float smoothness;
 
-  KeyingScreenKey(int frame);
+  KeyingScreenKey(int frame, float smoothness);
 
   uint64_t hash() const;
 };
@@ -48,13 +50,16 @@ class KeyingScreen : public CachedResource {
  public:
   KeyingScreen(Context &context,
                MovieClip *movie_clip,
-               MovieTrackingObject *movie_tracking_object);
+               MovieTrackingObject *movie_tracking_object,
+               float smoothness);
 
   ~KeyingScreen();
 
   void bind_as_texture(GPUShader *shader, const char *texture_name) const;
 
   void unbind_as_texture() const;
+
+  GPUTexture *texture() const;
 };
 
 /* ------------------------------------------------------------------------------------------------
@@ -75,7 +80,8 @@ class KeyingScreenContainer : CachedResourceContainer {
    * cached resource as needed to keep it cached for the next evaluation. */
   KeyingScreen &get(Context &context,
                     MovieClip *movie_clip,
-                    MovieTrackingObject *movie_tracking_object);
+                    MovieTrackingObject *movie_tracking_object,
+                    float smoothness);
 };
 
 }  // namespace blender::realtime_compositor
