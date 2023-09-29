@@ -447,8 +447,8 @@ def km_property_editor(params):
         ("object.modifier_remove", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("object.modifier_copy", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
         # Grease pencil modifier panels
-        ("object.gpencil_modifier_remove", {"type": 'BACK_SPACE',
-         "value": 'PRESS'}, {"properties": [("report", True)]}),
+        ("object.gpencil_modifier_remove",
+         {"type": 'BACK_SPACE', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("object.gpencil_modifier_remove", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("object.gpencil_modifier_copy", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
         # ShaderFX panels
@@ -3186,7 +3186,6 @@ def km_pose(params):
         ("pose.select_hierarchy", {"type": 'DOWN_ARROW', "value": 'PRESS', "shift": True, "repeat": True},
          {"properties": [("direction", 'CHILD'), ("extend", True)]}),
         ("pose.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
-        ("pose.bone_layers", {"type": 'G', "value": 'PRESS'}, None),
         ("anim.keyframe_insert_menu", {"type": 'S', "value": 'PRESS', "shift": True}, None),
         ("anim.keyframe_insert_by_name", {"type": 'S', "value": 'PRESS'},
          {"properties": [("type", 'LocRotScale')]}),
