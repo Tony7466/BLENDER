@@ -34,7 +34,6 @@ template<typename T> class Pass;
 namespace command {
 class DrawCommandBuf;
 class DrawMultiBuf;
-struct RecordingState;
 }  // namespace command
 
 using PassSimple = detail::Pass<command::DrawCommandBuf>;

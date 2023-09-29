@@ -480,6 +480,7 @@ struct ShaderCreateInfo {
 
   using SubpassIn = FragOut;
   Vector<SubpassIn> subpass_inputs_;
+  
   struct Sampler {
     ImageType type;
     GPUSamplerState sampler;

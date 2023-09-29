@@ -308,6 +308,7 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
       }
     }
 #endif
+
     NSString *source_to_compile = shd_builder_->msl_source_vert_;
 
     /* Vertex/Fragment compile stages 0 and/or 1.
