@@ -256,13 +256,6 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   }
 
-  if (grease_pencil.runtime->has_stroke_cache()) {
-    total_verts_num += 1 + grease_pencil.runtime->stroke_cache.size() + 1;
-    total_triangles_num += grease_pencil.runtime->stroke_cache.size() * 2;
-    total_triangles_num += grease_pencil.runtime->stroke_cache.triangles_num();
-    /* TODO: triangles for stroke buffer. */
-  }
-
   static GPUVertFormat format_edit_points_pos = {0};
   if (format_edit_points_pos.attr_len == 0) {
     GPU_vertformat_attr_add(&format_edit_points_pos, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -423,47 +416,6 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         verts_slice.last().mat = -1;
       }
     });
-  }
-
-  if (grease_pencil.runtime->has_stroke_cache()) {
-    bke::greasepencil::StrokeCache &stroke_cache = grease_pencil.runtime->stroke_cache;
-    const int verts_start_offset = v_offset;
-    const int num_verts = 1 + stroke_cache.size() + 1;
-    IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
-    MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
-    MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-    const int material_nr = stroke_cache.material_index();
-
-    verts_slice.first().mat = -1;
-    for (const int i : IndexRange(stroke_cache.size())) {
-      const int idx = i + 1;
-      GreasePencilStrokeVert &s_vert = verts_slice[idx];
-      GreasePencilColorVert &c_vert = cols_slice[idx];
-
-      copy_v3_v3(s_vert.pos, stroke_cache.positions()[i]);
-      s_vert.radius = stroke_cache.radii()[i];
-      s_vert.opacity = stroke_cache.opacities()[i];
-      s_vert.point_id = verts_range[idx];
-      s_vert.stroke_id = verts_range.first();
-      s_vert.mat = material_nr % GPENCIL_MATERIAL_BUFFER_LEN;
-
-      /* TODO */
-      s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
-      /* TODO */
-      s_vert.u_stroke = 0;
-      /* TODO */
-      s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
-
-      copy_v4_v4(c_vert.vcol, stroke_cache.vertex_colors()[i]);
-      copy_v4_v4(c_vert.fcol, stroke_cache.vertex_colors()[i]);
-      c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
-
-      int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
-      GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
-      GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
-    }
-
-    verts_slice.last().mat = -1;
   }
 
   /* Mark last 2 verts as invalid. */

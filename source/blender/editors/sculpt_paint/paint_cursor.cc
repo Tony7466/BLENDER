@@ -1512,7 +1512,6 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
   if (object->type != OB_GREASE_PENCIL) {
     return;
   }
-  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(object->data);
 
   /* default radius and color */
   float color[3] = {1.0f, 1.0f, 1.0f};
@@ -1527,11 +1526,6 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     Paint *paint = pcontext->paint;
     Brush *brush = pcontext->brush;
     if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-      return;
-    }
-
-    /* while drawing hide */
-    if (grease_pencil.runtime->has_stroke_cache()) {
       return;
     }
 

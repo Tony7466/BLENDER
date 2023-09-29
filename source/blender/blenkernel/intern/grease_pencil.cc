@@ -259,93 +259,6 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
   return span;
 }
 
-void StrokeCache::clear()
-{
-  positions_.clear_and_shrink();
-  radii_.clear_and_shrink();
-  opacities_.clear_and_shrink();
-  vertex_colors_.clear_and_shrink();
-  triangles_.clear_and_shrink();
-  material_index_ = 0;
-  size_ = 0;
-}
-
-void StrokeCache::reserve(const int64_t new_capacity)
-{
-  positions_.reserve(new_capacity);
-  radii_.reserve(new_capacity);
-  opacities_.reserve(new_capacity);
-  vertex_colors_.reserve(new_capacity);
-}
-
-void StrokeCache::resize(const int64_t new_size)
-{
-  positions_.resize(new_size);
-  radii_.resize(new_size);
-  opacities_.resize(new_size);
-  vertex_colors_.resize(new_size);
-  size_ = new_size;
-}
-
-int64_t StrokeCache::size() const
-{
-  return size_;
-}
-
-Span<float3> StrokeCache::positions() const
-{
-  return positions_.as_span();
-}
-MutableSpan<float3> StrokeCache::positions_for_write()
-{
-  return positions_.as_mutable_span();
-}
-
-Span<float> StrokeCache::radii() const
-{
-  return radii_.as_span();
-}
-MutableSpan<float> StrokeCache::radii_for_write()
-{
-  return radii_.as_mutable_span();
-}
-
-Span<float> StrokeCache::opacities() const
-{
-  return opacities_.as_span();
-}
-MutableSpan<float> StrokeCache::opacities_for_write()
-{
-  return opacities_.as_mutable_span();
-}
-
-Span<ColorGeometry4f> StrokeCache::vertex_colors() const
-{
-  return vertex_colors_.as_span();
-}
-MutableSpan<ColorGeometry4f> StrokeCache::vertex_colors_for_write()
-{
-  return vertex_colors_.as_mutable_span();
-}
-
-int64_t StrokeCache::triangles_num() const
-{
-  return triangles_.size();
-}
-Span<uint3> StrokeCache::triangles() const
-{
-  return triangles_.as_span();
-}
-
-int StrokeCache::material_index() const
-{
-  return material_index_;
-}
-void StrokeCache::set_material_index(int new_material_index)
-{
-  material_index_ = new_material_index;
-}
-
 Drawing::Drawing()
 {
   this->base.type = GP_DRAWING;
@@ -1424,17 +1337,6 @@ void BKE_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
   if (grease_pencil->runtime && grease_pencil->runtime->batch_cache) {
     BKE_grease_pencil_batch_cache_free_cb(grease_pencil);
   }
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
-/** \name Grease Pencil runtime API
- * \{ */
-
-bool blender::bke::GreasePencilRuntime::has_stroke_cache() const
-{
-  return this->stroke_cache.size() > 0;
 }
 
 /** \} */

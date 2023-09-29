@@ -34,47 +34,6 @@ namespace blender::bke {
 
 namespace greasepencil {
 
-/**
- * Stroke cache for a stroke that is currently being drawn.
- */
-class StrokeCache {
- public:
-  void clear();
-  void reserve(int64_t new_capacity);
-  void resize(int64_t new_size);
-
-  int64_t size() const;
-
-  Span<float3> positions() const;
-  MutableSpan<float3> positions_for_write();
-
-  Span<float> radii() const;
-  MutableSpan<float> radii_for_write();
-
-  Span<float> opacities() const;
-  MutableSpan<float> opacities_for_write();
-
-  Span<ColorGeometry4f> vertex_colors() const;
-  MutableSpan<ColorGeometry4f> vertex_colors_for_write();
-
-  int64_t triangles_num() const;
-  Span<uint3> triangles() const;
-
-  int material_index() const;
-  void set_material_index(int new_material_index);
-
- private:
-  /* Stroke cache attributes. */
-  Vector<float3> positions_;
-  Vector<float> radii_;
-  Vector<float> opacities_;
-  Vector<ColorGeometry4f> vertex_colors_;
-  int64_t size_ = 0;
-
-  Vector<uint3> triangles_;
-  int material_index_ = 0;
-};
-
 class DrawingRuntime {
  public:
   /**
@@ -686,19 +645,12 @@ class GreasePencilRuntime {
    * Allocated and freed by the drawing code. See `DRW_grease_pencil_batch_cache_*` functions.
    */
   void *batch_cache = nullptr;
-
-  /**
-   * A buffer for a single stroke while drawing.
-   */
-  bke::greasepencil::StrokeCache stroke_cache;
   /* The frame on which the object was evaluated (only valid for evaluated object). */
   int eval_frame;
 
  public:
   GreasePencilRuntime() {}
   ~GreasePencilRuntime() {}
-
-  bool has_stroke_cache() const;
 };
 
 }  // namespace blender::bke
