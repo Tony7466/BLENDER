@@ -150,7 +150,6 @@ static void find_prefix_to_skip(pxr::UsdStageRefPtr stage, ImportSettings *r_set
 
   /* Treat the root as empty */
   auto path_string = path.GetString();
-  std::cout << path_string << std::endl;
   if (path == pxr::SdfPath("/")) {
     path = pxr::SdfPath();
   }
