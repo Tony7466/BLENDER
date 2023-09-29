@@ -405,4 +405,9 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
 std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &component,
                                                    const fn::GField &field);
 
+const greasepencil::Drawing *get_eval_grease_pencil_layer_drawing(
+    const GreasePencil &grease_pencil, int layer_index);
+greasepencil::Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
+                                                                      int layer_index);
+
 }  // namespace blender::bke
