@@ -334,15 +334,6 @@ struct PaintOperationExecutor {
         self.screen_space_curve_fitted_coordinates_.clear();
       }
     }
-
-#ifdef DEBUG
-    /* Visualize active window. */
-    self.stroke_cache_->vertex_colors_for_write().fill(ColorGeometry4f(float4(0.0f)));
-    for (const int64_t i : smooth_window.index_range()) {
-      self.stroke_cache_->vertex_colors_for_write().slice(smooth_window)[i] = ColorGeometry4f(
-          float4(1.0f, 0.1f, 0.1f, 1.0f));
-    }
-#endif
   }
 
   void process_extension_sample(PaintOperation &self,
