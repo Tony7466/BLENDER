@@ -45,7 +45,7 @@ void main()
   float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
 
-#if defined(RAYTRACE_REFLECT)
+#if defined(RAYTRACE_REFLECT) || defined(RAYTRACE_DIFFUSE)
   const bool discard_backface = true;
   const bool allow_self_intersection = false;
 #elif defined(RAYTRACE_REFRACT)
@@ -75,7 +75,7 @@ void main()
 
   if (hit.valid) {
     vec3 hit_P = transform_point(drw_view.viewinv, hit.v_hit_P);
-    /* TODO(fclem): Split matrix mult for precision. */
+    /* TODO(@fclem): Split matrix multiply for precision. */
     vec3 history_ndc_hit_P = project_point(uniform_buf.raytrace.radiance_persmat, hit_P);
     vec3 history_ss_hit_P = history_ndc_hit_P * 0.5 + 0.5;
     /* Evaluate radiance at hit-point. */
