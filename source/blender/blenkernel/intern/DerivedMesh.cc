@@ -447,37 +447,6 @@ static void add_orco_mesh(
   }
 }
 
-static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *mesh_final)
-{
-  using namespace blender::bke;
-  const MeshNormalDomain domain = mesh_final->normals_domain();
-
-  /* Needed as `final_datamask` is not preserved outside modifier stack evaluation. */
-  SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
-  if (subsurf_runtime_data) {
-    subsurf_runtime_data->calc_loop_normals = domain == MeshNormalDomain::Corner;
-  }
-
-  if (domain == MeshNormalDomain::Corner) {
-    /* Compute loop normals (NOTE: will compute face and vert normals as well, if needed!). In case
-     * of deferred CPU subdivision, this will be computed when the wrapper is generated. */
-    if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
-      mesh_final->corner_normals();
-    }
-  }
-  else {
-    if (sculpt_dyntopo == false) {
-      /* Eager normal calculation can potentially be faster than deferring to drawing code. */
-      if (domain == MeshNormalDomain::Face) {
-        mesh_final->face_normals();
-      }
-      else if (domain == MeshNormalDomain::Point) {
-        mesh_final->vert_normals();
-      }
-    }
-  }
-}
-
 /* Does final touches to the final evaluated mesh, making sure it is perfectly usable.
  *
  * This is needed because certain information is not passed along intermediate meshes allocated
@@ -987,7 +956,6 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
 
   /* Compute normals. */
   if (is_own_mesh) {
-    mesh_calc_modifier_final_normals(sculpt_dyntopo, mesh_final);
     mesh_calc_finalize(mesh_input, mesh_final);
   }
   else {
@@ -999,7 +967,6 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
          * Isolate since computing normals is multithreaded and we are holding a lock. */
         blender::threading::isolate_task([&] {
           mesh_final = BKE_mesh_copy_for_eval(mesh_input);
-          mesh_calc_modifier_final_normals(sculpt_dyntopo, mesh_final);
           mesh_calc_finalize(mesh_input, mesh_final);
           runtime->mesh_eval = mesh_final;
         });
@@ -1062,7 +1029,6 @@ static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
   switch (mesh_final->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      mesh_calc_modifier_final_normals(false, mesh_final);
       break;
     case ME_WRAPPER_TYPE_BMESH: {
       BMEditMesh *em = mesh_final->edit_mesh;

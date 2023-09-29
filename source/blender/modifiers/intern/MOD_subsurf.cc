@@ -205,7 +205,6 @@ static void subdiv_cache_mesh_wrapper_settings(const ModifierEvalContext *ctx,
   runtime_data->has_gpu_subdiv = true;
   runtime_data->resolution = mesh_settings.resolution;
   runtime_data->use_optimal_display = mesh_settings.use_optimal_display;
-  runtime_data->calc_loop_normals = false; /* Set at the end of modifier stack evaluation. */
   runtime_data->use_loop_normals = (smd->flags & eSubsurfModifierFlag_UseCustomNormals);
 
   mesh->runtime->subsurf_runtime_data = runtime_data;
