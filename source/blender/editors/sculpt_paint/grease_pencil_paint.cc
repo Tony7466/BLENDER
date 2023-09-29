@@ -291,6 +291,7 @@ struct PaintOperationExecutor {
                                               .positions_for_write()
                                               .slice(points_range)
                                               .slice(smooth_window);
+    const float converging_threshold_px = 0.1f;
     bool stop_counting_converged = false;
     int num_converged = 0;
     for (const int64_t i : smooth_window.index_range()) {
