@@ -115,8 +115,6 @@ struct Curves2DSpace {
   Array<int> point_size;
   /* Cyclic flag for each curve. */
   Array<bool> is_cyclic;
-  /* Fill flag for each curve. */
-  Array<bool> is_filled;
   /* Index reference to `drawings` for each curve. */
   Array<int> drawing_index_2d;
   /* Contiguous array with all point positions in 2D space. */
@@ -133,7 +131,6 @@ struct Curves2DSpace {
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
-                                     Vector<int> &drawing_indices,
-                                     const bool get_fill = false);
+                                     Vector<int> &drawing_indices);
 
 }  // namespace blender::ed::greasepencil
