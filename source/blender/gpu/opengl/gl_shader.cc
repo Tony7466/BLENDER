@@ -827,19 +827,9 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   ss << "\n/* Sub-pass Inputs. */\n";
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
     if (GLContext::framebuffer_fetch_support) {
-      char swizzle[] = "xyzw";
-      swizzle[to_component_count(input.type)] = '\0';
-
-      /* Declare global for input. */
-      ss << "vec4 gl_LastFragData[gl_MaxDrawBuffers];\n ";
-      ss << to_string(input.type) << " " << input.name << ";\n";
-
-      std::stringstream ss_pre;
-      /* Populate the global before main using gl_LastFragData. */
-      ss_pre << "  " << input.name << " = gl_LastFragData[" << std::to_string(input.index) << "]."
-             << swizzle << ";\n";
-
-      pre_main += ss_pre.str();
+      /* Declare as inout but do not write to it. */
+      ss << "layout(location = " << std::to_string(input.index) << ") inout "
+         << to_string(input.type) << " " << input.name << ";\n";
     }
     else {
       char swizzle[] = "xyzw";
