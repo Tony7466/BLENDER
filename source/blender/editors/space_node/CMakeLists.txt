@@ -35,6 +35,7 @@ set(SRC
   drawnode.cc
   link_drag_search.cc
   node_add.cc
+  node_connection.cc
   node_context_path.cc
   node_draw.cc
   node_edit.cc
