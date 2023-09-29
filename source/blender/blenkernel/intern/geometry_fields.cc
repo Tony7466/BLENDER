@@ -35,22 +35,29 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const eAttr
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
-static std::optional<const bke::greasepencil::Drawing *> get_eval_drawing_from_grease_pencil_layer(
+static const greasepencil::Drawing *get_eval_drawing_from_grease_pencil_layer(
     const GreasePencil &grease_pencil, const int layer_index)
 {
   BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
   const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
   const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
   if (drawing_index == -1) {
-    return {};
+    return nullptr;
   }
   const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
   if (drawing_base->type != GP_DRAWING) {
-    return {};
+    return nullptr;
   }
   const bke::greasepencil::Drawing &drawing =
       reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
   return &drawing;
+}
+
+static greasepencil::Drawing *get_eval_drawing_from_grease_pencil_layer_for_write(
+    GreasePencil &grease_pencil, const int layer)
+{
+  return const_cast<greasepencil::Drawing *>(
+      get_eval_drawing_from_grease_pencil_layer(grease_pencil, layer));
 }
 
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
@@ -156,11 +163,10 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
     if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
       return grease_pencil->attributes();
     }
-    else if (std::optional<const greasepencil::Drawing *> drawing =
-                 get_eval_drawing_from_grease_pencil_layer(*grease_pencil,
-                                                           grease_pencil_layer_index_))
+    else if (const greasepencil::Drawing *drawing = get_eval_drawing_from_grease_pencil_layer(
+                 *grease_pencil, grease_pencil_layer_index_))
     {
-      return (*drawing)->strokes().attributes();
+      return drawing->strokes().attributes();
     }
   }
   if (const Instances *instances = this->instances()) {
@@ -197,8 +203,7 @@ const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing()
   return this->type() == GeometryComponent::Type::GreasePencil &&
                  ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT) ?
              get_eval_drawing_from_grease_pencil_layer(*this->grease_pencil(),
-                                                       grease_pencil_layer_index_)
-                 .value_or(nullptr) :
+                                                       grease_pencil_layer_index_) :
              nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
@@ -594,13 +599,13 @@ static bool try_add_shared_field_attribute(MutableAttributeAccessor attributes,
   return attributes.add(id_to_create, domain, data_type, init);
 }
 
-bool try_capture_field_on_geometry(GeometryComponent &component,
-                                   const AttributeIDRef &attribute_id,
-                                   const eAttrDomain domain,
-                                   const fn::Field<bool> &selection,
-                                   const fn::GField &field)
+static bool try_capture_field_on_geometry(MutableAttributeAccessor attributes,
+                                          GeometryFieldContext field_context,
+                                          const AttributeIDRef &attribute_id,
+                                          const eAttrDomain domain,
+                                          const fn::Field<bool> &selection,
+                                          const fn::GField &field)
 {
-  MutableAttributeAccessor attributes = *component.attributes_for_write();
   const int domain_size = attributes.domain_size(domain);
   const CPPType &type = field.cpp_type();
   const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(type);
@@ -609,7 +614,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     return attributes.add(attribute_id, domain, data_type, AttributeInitConstruct{});
   }
 
-  const bke::GeometryFieldContext field_context{component, domain};
   const bke::AttributeValidator validator = attributes.lookup_validator(attribute_id);
 
   const std::optional<AttributeMetaData> meta_data = attributes.lookup_meta_data(attribute_id);
@@ -619,7 +623,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   /* We are writing to an attribute that exists already with the correct domain and type. */
   if (attribute_matches) {
     if (GSpanAttributeWriter dst_attribute = attributes.lookup_for_write_span(attribute_id)) {
-      const bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator evaluator{field_context, domain_size};
       evaluator.add(validator.validate_field_if_necessary(field));
       evaluator.set_selection(selection);
@@ -675,6 +678,51 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   type.destruct_n(buffer, domain_size);
   MEM_freeN(buffer);
   return false;
+}
+
+bool try_capture_field_on_geometry(GeometryComponent &component,
+                                   const AttributeIDRef &attribute_id,
+                                   const eAttrDomain domain,
+                                   const fn::Field<bool> &selection,
+                                   const fn::GField &field)
+{
+  if (component.type() == GeometryComponent::Type::GreasePencil &&
+      ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE))
+  {
+    auto &grease_pencil_component = static_cast<GreasePencilComponent &>(component);
+    GreasePencil *grease_pencil = grease_pencil_component.get_for_write();
+    if (grease_pencil == nullptr) {
+      return false;
+    }
+    std::atomic<bool> any_success = false;
+    threading::parallel_for(
+        grease_pencil->layers().index_range(), 64, [&](const IndexRange range) {
+          for (const int layer_index : range) {
+            if (greasepencil::Drawing *drawing =
+                    get_eval_drawing_from_grease_pencil_layer_for_write(*grease_pencil,
+                                                                        layer_index))
+            {
+              const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
+              const bool success = try_capture_field_on_geometry(
+                  drawing->strokes_for_write().attributes_for_write(),
+                  field_context,
+                  attribute_id,
+                  domain,
+                  selection,
+                  field);
+              if (success & !any_success) {
+                any_success = true;
+              }
+            }
+          }
+        });
+    return any_success;
+  }
+
+  MutableAttributeAccessor attributes = *component.attributes_for_write();
+  const GeometryFieldContext field_context{component, domain};
+  return try_capture_field_on_geometry(
+      attributes, field_context, attribute_id, domain, selection, field);
 }
 
 bool try_capture_field_on_geometry(GeometryComponent &component,
