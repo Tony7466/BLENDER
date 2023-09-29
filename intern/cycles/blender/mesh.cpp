@@ -818,7 +818,7 @@ static void create_mesh(Scene *scene,
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
   int numfaces = (!subdivision) ? b_mesh.looptris().size() : faces.size();
 
-  bool use_loop_normals = b_mesh.normals_domain() == ATTR_DOMAIN_CORNER &&
+  bool use_loop_normals = b_mesh.normals_domain() == blender::bke::MeshNormalDomain::Corner &&
                           (mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK);
 
   /* If no faces, create empty mesh. */
@@ -832,9 +832,7 @@ static void create_mesh(Scene *scene,
                                                                      ATTR_DOMAIN_FACE);
   blender::Span<blender::float3> corner_normals;
   if (use_loop_normals) {
-    corner_normals = {
-        static_cast<const blender::float3 *>(CustomData_get_layer(&b_mesh.loop_data, CD_NORMAL)),
-        corner_verts.size()};
+    corner_normals = b_mesh.corner_normals();
   }
 
   int numngons = 0;
