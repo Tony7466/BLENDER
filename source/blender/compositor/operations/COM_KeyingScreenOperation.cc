@@ -6,7 +6,7 @@
 
 #include "DNA_defaults.h"
 
-#include "BLI_array.h"
+#include "BLI_array.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
@@ -64,7 +64,7 @@ Array<KeyingScreenOperation::MarkerPoint> *KeyingScreenOperation::compute_marker
   else {
     tracking_object = BKE_tracking_object_get_active(tracking);
   }
-  BLI_assert(tracking_object != 0);
+  BLI_assert(tracking_object != nullptr);
 
   int clip_frame = BKE_movieclip_remap_scene_to_clip_frame(movie_clip_, framenumber_);
 

@@ -59,7 +59,7 @@ class KeyingScreenOperation : public MultiThreadedOperation {
   }
   void set_smoothness(float smoothness)
   {
-    smoothness_ = math::max(0.05f, smoothness);
+    smoothness_ = math::interpolate(0.15f, 1.0f, smoothness);
   }
   void set_framenumber(int framenumber)
   {

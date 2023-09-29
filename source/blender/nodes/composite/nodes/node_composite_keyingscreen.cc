@@ -41,8 +41,8 @@ static void node_composit_init_keyingscreen(const bContext *C, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
 
   NodeKeyingScreenData *data = MEM_cnew<NodeKeyingScreenData>(__func__);
+  data->smoothness = 0.2f;
   node->storage = data;
-  data->smoothness = 0.2;
 
   const Scene *scene = CTX_data_scene(C);
   if (scene->clip) {
