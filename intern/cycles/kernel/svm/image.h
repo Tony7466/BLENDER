@@ -199,7 +199,7 @@ ccl_device_noinline void svm_node_tex_image_box(KernelGlobals kg,
     f += weight.y * svm_image_texture(kg, id, uv.x, uv.y, flags);
   }
   if (weight.z > 0.0f) {
-    float2 uv = make_float2((signed_N.z > 0.0f) ? 1.0f - co.y : co.y, co.x);
+    float2 uv = make_float2((signed_N.z < 0.0f) ? 1.0f - co.x : co.x, co.y);
     f += weight.z * svm_image_texture(kg, id, uv.x, uv.y, flags);
   }
 

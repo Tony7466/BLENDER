@@ -216,7 +216,7 @@ shader node_image_texture(int use_mapping = 0,
       Alpha += weight[1] * tmp_alpha;
     }
     if (weight[2] > 0.0) {
-      point UV = point((signed_Nob[2] > 0.0) ? 1.0 - p[1] : p[1], p[0], 0.0);
+      point UV = point((signed_Nob[2] < 0.0) ? 1.0 - p[0] : p[0], p[1], 0.0);
       Color += weight[2] * image_texture_lookup(filename,
                                                 UV[0],
                                                 UV[1],

@@ -82,8 +82,8 @@ void tex_box_sample_linear(
   }
   color2 = texture(ima, uv);
   /* Z projection */
-  uv = texco.yx;
-  if (N.z > 0.0) {
+  uv = texco.xy;
+  if (N.z < 0.0) {
     uv.x = 1.0 - uv.x;
   }
   color3 = texture(ima, uv);
@@ -106,8 +106,8 @@ void tex_box_sample_cubic(
   }
   node_tex_image_cubic(uv.xyy, ima, color2, alpha);
   /* Z projection */
-  uv = texco.yx;
-  if (N.z > 0.0) {
+  uv = texco.xy;
+  if (N.z < 0.0) {
     uv.x = 1.0 - uv.x;
   }
   node_tex_image_cubic(uv.xyy, ima, color3, alpha);
