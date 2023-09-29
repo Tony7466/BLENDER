@@ -6,6 +6,7 @@
  * \ingroup cmpnodes
  */
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 
@@ -47,7 +48,7 @@ static void node_composit_init_keyingscreen(const bContext *C, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
 
   NodeKeyingScreenData *data = MEM_cnew<NodeKeyingScreenData>(__func__);
-  data->smoothness = 0.5f;
+  data->smoothness = 0.0f;
   node->storage = data;
 
   const Scene *scene = CTX_data_scene(C);
@@ -105,7 +106,7 @@ class KeyingScreenOperation : public NodeOperation {
     }
 
     KeyingScreen &cached_keying_screen = context().cache_manager().keying_screens.get(
-        context(), get_movie_clip(), movie_tracking_object, node_storage(bnode()).smoothness);
+        context(), get_movie_clip(), movie_tracking_object, get_smoothness());
 
     const Domain domain = compute_domain();
     keying_screen.allocate_texture(domain);
@@ -145,6 +146,14 @@ class KeyingScreenOperation : public NodeOperation {
     int2 size;
     BKE_movieclip_get_size(get_movie_clip(), &movie_clip_user, &size.x, &size.y);
     return size;
+  }
+
+  /* The reciprocal of the smoothness is used as a shaping parameter for the radial basis function
+   * used in the RBF interpolation. The exponential nature of the function can cause numerical
+   * instability for low smoothness values, so we empirically choose 0.15 as a lower limit. */
+  float get_smoothness()
+  {
+    return math::interpolate(0.15f, 1.0f, node_storage(bnode()).smoothness);
   }
 
   MovieClip *get_movie_clip()
