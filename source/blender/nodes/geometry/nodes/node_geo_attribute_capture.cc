@@ -191,12 +191,18 @@ static void node_geo_exec(GeoNodeExecParams params)
       break;
   }
 
+  const auto capture_on = [&](GeometryComponent &component) {
+    /* Changing of the anonymous attributes may require removing attributes that are no longer
+     * needed. */
+    bke::clean_unused_attributes_on_geometry(params.get_output_propagation_info("Geometry"),
+                                             component);
+    bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
+  };
+
   /* Run on the instances component separately to only affect the top level of instances. */
   if (domain == ATTR_DOMAIN_INSTANCE) {
     if (geometry_set.has_instances()) {
-      GeometryComponent &component = geometry_set.get_component_for_write(
-          GeometryComponent::Type::Instance);
-      bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
+      capture_on(geometry_set.get_component_for_write(GeometryComponent::Type::Instance));
     }
   }
   else {
@@ -207,8 +213,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
       for (const GeometryComponent::Type type : types) {
         if (geometry_set.has(type)) {
-          GeometryComponent &component = geometry_set.get_component_for_write(type);
-          bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
+          capture_on(geometry_set.get_component_for_write(type));
         }
       }
     });
