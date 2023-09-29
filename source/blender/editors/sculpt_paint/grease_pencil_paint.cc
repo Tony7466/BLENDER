@@ -87,7 +87,7 @@ static void interp_polyline_to_polyline(Span<float2> src, MutableSpan<float2> ds
     if (index + 1 >= normalized_parameters_src.size()) {
       break;
     }
-    if (math::distance_squared(src[index], dst[i]) < 1e-6 ||
+    if (math::distance_squared(src[index], dst[i]) < 1e-6f ||
         math::abs(normalized_parameters_src[index + 1] - normalized_parameters_src[index]) < 1e-8)
     {
       dst[i] = src[index];
@@ -249,23 +249,24 @@ struct PaintOperationExecutor {
         smooth_window);
 
     /* Detect corners in the current slice of coordinates. */
+    const float corner_min_radius_px = 5.0f;
+    const float corner_max_radius_px = 30.0f;
+    const int64_t corner_max_samples = 64;
+    const float corner_angle_threshold = 0.6f;
     IndexMaskMemory memory;
-    const float min_radius_px = 5.0f;
-    const float max_radius_px = 30.0f;
-    const int64_t max_samples = 64;
-    const float angle_threshold = 0.6f;
     IndexMask corner_mask = ed::greasepencil::polyline_detect_corners(
-        screen_space_coords_smooth_slice,
-        min_radius_px,
-        max_radius_px,
-        max_samples,
-        angle_threshold,
+        screen_space_coords_smooth_slice.drop_front(1).drop_back(1),
+        corner_min_radius_px,
+        corner_max_radius_px,
+        corner_max_samples,
+        corner_angle_threshold,
         memory);
 
     /* Pre-blur the coordinates for the curve fitting. This generally leads to a better fit. */
     Array<float2> coords_pre_blur(smooth_window.size());
+    const int pre_blur_iterations = 3;
     ed::greasepencil::gaussian_blur_1D(screen_space_coords_smooth_slice,
-                                       3,
+                                       pre_blur_iterations,
                                        1.0f,
                                        true,
                                        true,
@@ -480,7 +481,7 @@ static float dist_to_interpolated_2d(
   const float dist1 = math::distance_squared(posA, pos);
   const float dist2 = math::distance_squared(posB, pos);
 
-  if (dist1 + dist2 > 0.0f) {
+  if (dist1 + dist2 > 1e-5f) {
     const float interpolated_val = interpf(valB, valA, dist1 / (dist1 + dist2));
     return math::distance(interpolated_val, val);
   }
