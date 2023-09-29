@@ -50,10 +50,7 @@ static Mesh *simple_subdivide_mesh(const Mesh &mesh, const int level)
 
   BKE_subdiv_free(subdiv);
 
-  if (result && geometry::use_debug_randomization()) {
-    geometry::randomize_mesh_order(*result);
-  }
-
+  geometry::debug_randomize_mesh_order(result);
   return result;
 }
 #endif /* WITH_OPENSUBDIV */

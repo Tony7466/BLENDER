@@ -298,9 +298,7 @@ static Map<int, int> create_curve_instances(GeoNodeExecParams &params,
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     BKE_nurbList_free(&cu.nurb);
 
-    if (geometry::use_debug_randomization()) {
-      geometry::randomize_curve_order(curves);
-    }
+    geometry::debug_randomize_curve_order(&curves);
 
     float4x4 size_matrix = math::from_scale<float4x4>(float3(layout.final_font_size));
     curves.transform(size_matrix);

@@ -593,9 +593,7 @@ void split_edges(Mesh &mesh,
 
   BKE_mesh_tag_edges_split(&mesh);
 
-  if (use_debug_randomization()) {
-    randomize_mesh_order(mesh);
-  }
+  debug_randomize_mesh_order(&mesh);
 }
 
 }  // namespace blender::geometry

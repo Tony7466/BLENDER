@@ -503,9 +503,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
     MutableSpan(result->mat, result->totcol).copy_from(materials);
   }
 
-  if (result && blender::geometry::use_debug_randomization()) {
-    blender::geometry::randomize_mesh_order(*result);
-  }
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }
@@ -604,9 +602,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
   }
 
-  if (result && blender::geometry::use_debug_randomization()) {
-    blender::geometry::randomize_mesh_order(*result);
-  }
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

@@ -105,9 +105,7 @@ Mesh *doEdgeSplit(const Mesh *mesh, EdgeSplitModifierData *emd)
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
   BM_mesh_free(bm);
 
-  if (blender::geometry::use_debug_randomization()) {
-    blender::geometry::randomize_mesh_order(*result);
-  }
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

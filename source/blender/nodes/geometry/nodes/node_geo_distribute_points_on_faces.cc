@@ -559,9 +559,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   compute_attribute_outputs(
       mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs, use_legacy_normal);
 
-  if (geometry::use_debug_randomization()) {
-    geometry::randomize_point_order(*pointcloud);
-  }
+  geometry::debug_randomize_point_order(pointcloud);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

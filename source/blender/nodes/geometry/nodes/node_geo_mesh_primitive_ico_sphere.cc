@@ -109,9 +109,7 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
   }
   attributes.remove("UVMap");
 
-  if (geometry::use_debug_randomization()) {
-    geometry::randomize_mesh_order(*mesh);
-  }
+  geometry::debug_randomize_mesh_order(mesh);
 
   mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
 

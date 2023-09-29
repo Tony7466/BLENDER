@@ -155,9 +155,7 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
     });
   }
 
-  if (use_debug_randomization()) {
-    randomize_point_order(*dst_pointcloud);
-  }
+  debug_randomize_point_order(dst_pointcloud);
 
   return dst_pointcloud;
 }

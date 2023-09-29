@@ -147,9 +147,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     selection.finish();
   }
 
-  if (geometry::use_debug_randomization()) {
-    geometry::randomize_mesh_order(*result);
-  }
+  geometry::debug_randomize_mesh_order(result);
 
   params.set_output("Mesh", GeometrySet::from_mesh(result));
 #else

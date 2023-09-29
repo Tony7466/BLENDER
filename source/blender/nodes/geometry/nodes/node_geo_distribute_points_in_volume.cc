@@ -255,9 +255,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     point_radii.span.fill(0.05f);
     point_radii.finish();
 
-    if (geometry::use_debug_randomization()) {
-      geometry::randomize_point_order(*pointcloud);
-    }
+    geometry::debug_randomize_point_order(pointcloud);
 
     geometry_set.replace_pointcloud(pointcloud);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});

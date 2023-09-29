@@ -923,9 +923,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (const Mesh *mesh = geometry_set.get_mesh()) {
       Mesh *new_mesh = calc_dual_mesh(
           *mesh, keep_boundaries, params.get_output_propagation_info("Dual Mesh"));
-      if (new_mesh && geometry::use_debug_randomization()) {
-        geometry::randomize_mesh_order(*new_mesh);
-      }
+      geometry::debug_randomize_mesh_order(new_mesh);
       geometry_set.replace_mesh(new_mesh);
     }
   });

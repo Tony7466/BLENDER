@@ -201,9 +201,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, 
   BKE_mesh_copy_parameters_for_eval(result, mesh);
   BKE_mesh_calc_edges(result, true, false);
 
-  if (blender::geometry::use_debug_randomization()) {
-    blender::geometry::randomize_mesh_order(*result);
-  }
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

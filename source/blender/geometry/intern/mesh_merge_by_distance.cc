@@ -1681,9 +1681,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
   BLI_assert(int(r_i) == result_nfaces);
   BLI_assert(loop_cur == result_nloops);
 
-  if (use_debug_randomization()) {
-    randomize_mesh_order(*result);
-  }
+  debug_randomize_mesh_order(result);
 
   return result;
 }

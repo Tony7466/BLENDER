@@ -75,9 +75,7 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
         return true;
       });
 
-  if (use_debug_randomization()) {
-    randomize_curve_order(curves);
-  }
+  debug_randomize_curve_order(&curves);
 
   return curves;
 }

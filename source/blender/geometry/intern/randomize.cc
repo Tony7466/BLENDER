@@ -79,35 +79,43 @@ static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
   data = new_data;
 }
 
-void randomize_vertex_order(Mesh &mesh)
+void debug_randomize_vertex_order(Mesh *mesh)
 {
-  const int seed = seed_from_mesh(mesh);
-  const Array<int> new_by_old_map = get_permutation(mesh.totvert, seed);
-
-  reorder_customdata(mesh.vert_data, new_by_old_map);
-
-  for (int &v : mesh.edges_for_write().cast<int>()) {
-    v = new_by_old_map[v];
-  }
-  for (int &v : mesh.corner_verts_for_write()) {
-    v = new_by_old_map[v];
+  if (mesh == nullptr || !use_debug_randomization()) {
+    return;
   }
 
-  BKE_mesh_tag_topology_changed(&mesh);
+  const int seed = seed_from_mesh(*mesh);
+  const Array<int> new_by_old_map = get_permutation(mesh->totvert, seed);
+
+  reorder_customdata(mesh->vert_data, new_by_old_map);
+
+  for (int &v : mesh->edges_for_write().cast<int>()) {
+    v = new_by_old_map[v];
+  }
+  for (int &v : mesh->corner_verts_for_write()) {
+    v = new_by_old_map[v];
+  }
+
+  BKE_mesh_tag_topology_changed(mesh);
 }
 
-void randomize_edge_order(Mesh &mesh)
+void debug_randomize_edge_order(Mesh *mesh)
 {
-  const int seed = seed_from_mesh(mesh);
-  const Array<int> new_by_old_map = get_permutation(mesh.totedge, seed);
+  if (mesh == nullptr || !use_debug_randomization()) {
+    return;
+  }
 
-  reorder_customdata(mesh.edge_data, new_by_old_map);
+  const int seed = seed_from_mesh(*mesh);
+  const Array<int> new_by_old_map = get_permutation(mesh->totedge, seed);
 
-  for (int &e : mesh.corner_edges_for_write()) {
+  reorder_customdata(mesh->edge_data, new_by_old_map);
+
+  for (int &e : mesh->corner_edges_for_write()) {
     e = new_by_old_map[e];
   }
 
-  BKE_mesh_tag_topology_changed(&mesh);
+  BKE_mesh_tag_topology_changed(mesh);
 }
 
 static Array<int> make_new_offset_indices(const OffsetIndices<int> old_offsets,
@@ -142,61 +150,77 @@ static void reorder_customdata_groups(CustomData &data,
   data = new_data;
 }
 
-void randomize_face_order(Mesh &mesh)
+void debug_randomize_face_order(Mesh *mesh)
 {
-  const int seed = seed_from_mesh(mesh);
-  const Array<int> new_by_old_map = get_permutation(mesh.faces_num, seed);
+  if (mesh == nullptr || !use_debug_randomization()) {
+    return;
+  }
+
+  const int seed = seed_from_mesh(*mesh);
+  const Array<int> new_by_old_map = get_permutation(mesh->faces_num, seed);
   const Array<int> old_by_new_map = invert_permutation(new_by_old_map);
 
-  reorder_customdata(mesh.face_data, new_by_old_map);
+  reorder_customdata(mesh->face_data, new_by_old_map);
 
-  const OffsetIndices old_faces = mesh.faces();
+  const OffsetIndices old_faces = mesh->faces();
   Array<int> new_face_offsets = make_new_offset_indices(old_faces, old_by_new_map);
   const OffsetIndices<int> new_faces = new_face_offsets.as_span();
 
-  reorder_customdata_groups(mesh.loop_data, old_faces, new_faces, new_by_old_map);
+  reorder_customdata_groups(mesh->loop_data, old_faces, new_faces, new_by_old_map);
 
-  mesh.face_offsets_for_write().copy_from(new_face_offsets);
+  mesh->face_offsets_for_write().copy_from(new_face_offsets);
 
-  BKE_mesh_tag_topology_changed(&mesh);
+  BKE_mesh_tag_topology_changed(mesh);
 }
 
-void randomize_point_order(PointCloud &pointcloud)
+void debug_randomize_point_order(PointCloud *pointcloud)
 {
-  const int seed = seed_from_pointcloud(pointcloud);
-  const Array<int> new_by_old_map = get_permutation(pointcloud.totpoint, seed);
+  if (pointcloud == nullptr || !use_debug_randomization()) {
+    return;
+  }
 
-  reorder_customdata(pointcloud.pdata, new_by_old_map);
+  const int seed = seed_from_pointcloud(*pointcloud);
+  const Array<int> new_by_old_map = get_permutation(pointcloud->totpoint, seed);
 
-  pointcloud.tag_positions_changed();
-  pointcloud.tag_radii_changed();
+  reorder_customdata(pointcloud->pdata, new_by_old_map);
+
+  pointcloud->tag_positions_changed();
+  pointcloud->tag_radii_changed();
 }
 
-void randomize_curve_order(bke::CurvesGeometry &curves)
+void debug_randomize_curve_order(bke::CurvesGeometry *curves)
 {
-  const int seed = seed_from_curves(curves);
-  const Array<int> new_by_old_map = get_permutation(curves.curve_num, seed);
+  if (curves == nullptr || !use_debug_randomization()) {
+    return;
+  }
+
+  const int seed = seed_from_curves(*curves);
+  const Array<int> new_by_old_map = get_permutation(curves->curve_num, seed);
   const Array<int> old_by_new_map = invert_permutation(new_by_old_map);
 
-  reorder_customdata(curves.curve_data, new_by_old_map);
+  reorder_customdata(curves->curve_data, new_by_old_map);
 
-  const OffsetIndices old_points_by_curve = curves.points_by_curve();
+  const OffsetIndices old_points_by_curve = curves->points_by_curve();
   Array<int> new_curve_offsets = make_new_offset_indices(old_points_by_curve, old_by_new_map);
   const OffsetIndices<int> new_points_by_curve = new_curve_offsets.as_span();
 
   reorder_customdata_groups(
-      curves.point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
+      curves->point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
 
-  curves.offsets_for_write().copy_from(new_curve_offsets);
+  curves->offsets_for_write().copy_from(new_curve_offsets);
 
-  curves.tag_topology_changed();
+  curves->tag_topology_changed();
 }
 
-void randomize_mesh_order(Mesh &mesh)
+void debug_randomize_mesh_order(Mesh *mesh)
 {
-  randomize_vertex_order(mesh);
-  randomize_edge_order(mesh);
-  randomize_face_order(mesh);
+  if (mesh == nullptr || !use_debug_randomization()) {
+    return;
+  }
+
+  debug_randomize_vertex_order(mesh);
+  debug_randomize_edge_order(mesh);
+  debug_randomize_face_order(mesh);
 }
 
 bool use_debug_randomization()

@@ -14,11 +14,11 @@ namespace blender::geometry {
 
 bool use_debug_randomization();
 
-void randomize_vertex_order(Mesh &mesh);
-void randomize_edge_order(Mesh &mesh);
-void randomize_face_order(Mesh &mesh);
-void randomize_mesh_order(Mesh &mesh);
-void randomize_point_order(PointCloud &pointcloud);
-void randomize_curve_order(bke::CurvesGeometry &curves);
+void debug_randomize_vertex_order(Mesh *mesh);
+void debug_randomize_edge_order(Mesh *mesh);
+void debug_randomize_face_order(Mesh *mesh);
+void debug_randomize_mesh_order(Mesh *mesh);
+void debug_randomize_point_order(PointCloud *pointcloud);
+void debug_randomize_curve_order(bke::CurvesGeometry *curves);
 
 };  // namespace blender::geometry

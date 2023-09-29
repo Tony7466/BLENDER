@@ -209,9 +209,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
 
   BM_mesh_free(bm);
 
-  if (blender::geometry::use_debug_randomization()) {
-    blender::geometry::randomize_mesh_order(*result);
-  }
+  blender::geometry::debug_randomize_mesh_order(result);
 
 #ifdef USE_TIMEIT
   TIMEIT_END(decim);
