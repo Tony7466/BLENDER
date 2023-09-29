@@ -224,8 +224,9 @@ IDTypeInfo IDType_ID_GP = {
 
 namespace blender::bke::greasepencil {
 
-static const std::string ATTR_OPACITY = "opacity";
 static const std::string ATTR_RADIUS = "radius";
+static const std::string ATTR_OPACITY = "opacity";
+static const std::string ATTR_VERTEX_COLOR = "vertex_color";
 
 /* Curves attributes getters */
 static int domain_num(const CurvesGeometry &curves, const eAttrDomain domain)
@@ -461,6 +462,20 @@ MutableSpan<float> Drawing::opacities_for_write()
 {
   return get_mutable_attribute<float>(
       this->strokes_for_write(), ATTR_DOMAIN_POINT, ATTR_OPACITY, 1.0f);
+}
+
+VArray<ColorGeometry4f> Drawing::vertex_colors() const
+{
+  return *this->strokes().attributes().lookup_or_default<ColorGeometry4f>(
+      ATTR_VERTEX_COLOR, ATTR_DOMAIN_POINT, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+}
+
+MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
+{
+  return get_mutable_attribute<ColorGeometry4f>(this->strokes_for_write(),
+                                                ATTR_DOMAIN_POINT,
+                                                ATTR_VERTEX_COLOR,
+                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void Drawing::tag_positions_changed()
