@@ -368,7 +368,7 @@ void OBJMesh::store_normal_coords_and_indices()
   loop_to_normal_index_.fill(-1);
 
   Span<float3> corner_normals;
-  if (export_mesh_->normals_domain() == ATTR_DOMAIN_CORNER) {
+  if (export_mesh_->normals_domain() == blender::bke::MeshNormalDomain::Corner) {
     corner_normals = export_mesh_->corner_normals();
   }
 

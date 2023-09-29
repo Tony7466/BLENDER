@@ -337,7 +337,7 @@ static void compute_normal_outputs(const Mesh &mesh,
                                    MutableSpan<float3> r_normals)
 {
   switch (mesh.normals_domain()) {
-    case ATTR_DOMAIN_POINT: {
+    case bke::MeshNormalDomain::Point: {
       const Span<int> corner_verts = mesh.corner_verts();
       const Span<MLoopTri> looptris = mesh.looptris();
       const Span<float3> vert_normals = mesh.vert_normals();
@@ -347,7 +347,7 @@ static void compute_normal_outputs(const Mesh &mesh,
       });
       break;
     }
-    case ATTR_DOMAIN_FACE: {
+    case bke::MeshNormalDomain::Face: {
       const Span<int> looptri_faces = mesh.looptri_faces();
       VArray<float3> face_normals = VArray<float3>::ForSpan(mesh.face_normals());
       threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
@@ -356,7 +356,7 @@ static void compute_normal_outputs(const Mesh &mesh,
       });
       break;
     }
-    case ATTR_DOMAIN_CORNER: {
+    case bke::MeshNormalDomain::Corner: {
       const Span<MLoopTri> looptris = mesh.looptris();
       const Span<float3> corner_normals = mesh.corner_normals();
       threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
@@ -365,8 +365,6 @@ static void compute_normal_outputs(const Mesh &mesh,
       });
       break;
     }
-    default:
-      BLI_assert_unreachable();
   }
 }
 

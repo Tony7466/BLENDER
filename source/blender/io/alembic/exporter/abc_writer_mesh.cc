@@ -526,12 +526,12 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
   normals.clear();
 
   switch (mesh->normals_domain()) {
-    case ATTR_DOMAIN_POINT: {
+    case blender::bke::MeshNormalDomain::Point: {
       /* If all faces are smooth shaded, and there are no custom normals, we don't need to
        * export normals at all. This is also done by other software, see #71246. */
       break;
     }
-    case ATTR_DOMAIN_FACE: {
+    case blender::bke::MeshNormalDomain::Face: {
       normals.resize(mesh->totloop);
       MutableSpan dst_normals(reinterpret_cast<float3 *>(normals.data()), normals.size());
 
@@ -546,7 +546,7 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
       });
       break;
     }
-    case ATTR_DOMAIN_CORNER: {
+    case blender::bke::MeshNormalDomain::Corner: {
       normals.resize(mesh->totloop);
       MutableSpan dst_normals(reinterpret_cast<float3 *>(normals.data()), normals.size());
 
@@ -563,8 +563,6 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
       });
       break;
     }
-    default:
-      BLI_assert_unreachable();
   }
 }
 

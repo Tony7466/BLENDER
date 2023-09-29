@@ -23,6 +23,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_editmesh.h"
+#include "BKE_mesh_types.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -1619,7 +1620,7 @@ int rna_Mesh_loops_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 
 static int rna_Mesh_normals_domain_get(PointerRNA *ptr)
 {
-  return rna_mesh(ptr)->normals_domain();
+  return int(rna_mesh(ptr)->normals_domain());
 }
 
 static void rna_Mesh_vertex_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -2999,11 +3000,18 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   rna_def_normal_layer_value(brna);
 
+  static const EnumPropertyItem normal_domain_items[] = {
+      {int(blender::bke::MeshNormalDomain::Point), "POINT", 0, "Point", ""},
+      {int(blender::bke::MeshNormalDomain::Face), "FACE", 0, "Face", ""},
+      {int(blender::bke::MeshNormalDomain::Corner), "CORNER", 0, "Corner", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   prop = RNA_def_property(srna, "normals_domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_only_mesh_no_edge_items);
+  RNA_def_property_enum_items(prop, normal_domain_items);
   RNA_def_property_ui_text(
       prop,
-      "Normal Domain All Info",
+      "Normal Domain",
       "The attribute domain that gives enough information to represent the mesh's normals");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_funcs(prop, "rna_Mesh_normals_domain_get", NULL, NULL);

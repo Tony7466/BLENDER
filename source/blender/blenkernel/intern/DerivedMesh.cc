@@ -449,15 +449,16 @@ static void add_orco_mesh(
 
 static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *mesh_final)
 {
-  const eAttrDomain domain = eAttrDomain(mesh_final->normals_domain());
+  using namespace blender::bke;
+  const MeshNormalDomain domain = mesh_final->normals_domain();
 
   /* Needed as `final_datamask` is not preserved outside modifier stack evaluation. */
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
   if (subsurf_runtime_data) {
-    subsurf_runtime_data->calc_loop_normals = domain == ATTR_DOMAIN_CORNER;
+    subsurf_runtime_data->calc_loop_normals = domain == MeshNormalDomain::Corner;
   }
 
-  if (domain == ATTR_DOMAIN_CORNER) {
+  if (domain == MeshNormalDomain::Corner) {
     /* Compute loop normals (NOTE: will compute face and vert normals as well, if needed!). In case
      * of deferred CPU subdivision, this will be computed when the wrapper is generated. */
     if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
@@ -467,10 +468,10 @@ static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *me
   else {
     if (sculpt_dyntopo == false) {
       /* Eager normal calculation can potentially be faster than deferring to drawing code. */
-      if (domain == ATTR_DOMAIN_FACE) {
+      if (domain == MeshNormalDomain::Face) {
         mesh_final->face_normals();
       }
-      else if (domain == ATTR_DOMAIN_POINT) {
+      else if (domain == MeshNormalDomain::Point) {
         mesh_final->vert_normals();
       }
     }

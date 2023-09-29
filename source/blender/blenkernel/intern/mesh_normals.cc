@@ -299,16 +299,16 @@ static void normals_calc_faces_and_verts(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
-int Mesh::normals_domain() const
+blender::bke::MeshNormalDomain Mesh::normals_domain() const
 {
   using namespace blender;
   using namespace blender::bke;
   if (this->faces_num == 0) {
-    return ATTR_DOMAIN_POINT;
+    return MeshNormalDomain::Point;
   }
 
   if (CustomData_has_layer(&this->loop_data, CD_CUSTOMLOOPNORMAL)) {
-    return ATTR_DOMAIN_CORNER;
+    return MeshNormalDomain::Corner;
   }
 
   const AttributeAccessor attributes = this->attributes();
@@ -317,22 +317,22 @@ int Mesh::normals_domain() const
 
   const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
   if (face_mix == array_utils::BooleanMix::AllTrue) {
-    return ATTR_DOMAIN_FACE;
+    return MeshNormalDomain::Face;
   }
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
   const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
   if (edge_mix == array_utils::BooleanMix::AllTrue) {
-    return ATTR_DOMAIN_FACE;
+    return MeshNormalDomain::Face;
   }
 
   if (edge_mix == array_utils::BooleanMix::AllFalse &&
       face_mix == array_utils::BooleanMix::AllFalse) {
-    return ATTR_DOMAIN_POINT;
+    return MeshNormalDomain::Point;
   }
 
-  return ATTR_DOMAIN_CORNER;
+  return MeshNormalDomain::Corner;
 }
 
 blender::Span<blender::float3> Mesh::vert_normals() const
@@ -387,15 +387,16 @@ blender::Span<blender::float3> Mesh::face_normals() const
 blender::Span<blender::float3> Mesh::corner_normals() const
 {
   using namespace blender;
+  using namespace blender::bke;
   this->runtime->corner_normals_cache.ensure([&](Vector<float3> &r_data) {
+    r_data.reinitialize(this->totloop);
     const OffsetIndices faces = this->faces();
-    r_data.reinitialize(faces.total_size());
     switch (this->normals_domain()) {
-      case ATTR_DOMAIN_POINT: {
+      case MeshNormalDomain::Point: {
         array_utils::gather(this->vert_normals(), this->corner_verts(), r_data.as_mutable_span());
         break;
       }
-      case ATTR_DOMAIN_FACE: {
+      case MeshNormalDomain::Face: {
         const Span<float3> face_normals = this->face_normals();
         threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
           for (const int i : range) {
@@ -404,30 +405,28 @@ blender::Span<blender::float3> Mesh::corner_normals() const
         });
         break;
       }
-      case ATTR_DOMAIN_CORNER: {
+      case MeshNormalDomain::Corner: {
         const bool *sharp_edges = static_cast<const bool *>(
             CustomData_get_layer_named(&this->edge_data, CD_PROP_BOOL, "sharp_edge"));
         const bool *sharp_faces = static_cast<const bool *>(
             CustomData_get_layer_named(&this->face_data, CD_PROP_BOOL, "sharp_face"));
         const short2 *custom_normals = static_cast<const short2 *>(
             CustomData_get_layer(&this->loop_data, CD_CUSTOMLOOPNORMAL));
-        bke::mesh::normals_calc_loop(this->vert_positions(),
-                                     this->edges(),
-                                     this->faces(),
-                                     this->corner_verts(),
-                                     this->corner_edges(),
-                                     this->corner_to_face_map(),
-                                     this->vert_normals(),
-                                     this->face_normals(),
-                                     sharp_edges,
-                                     sharp_faces,
-                                     custom_normals,
-                                     nullptr,
-                                     r_data);
+        mesh::normals_calc_loop(this->vert_positions(),
+                                this->edges(),
+                                this->faces(),
+                                this->corner_verts(),
+                                this->corner_edges(),
+                                this->corner_to_face_map(),
+                                this->vert_normals(),
+                                this->face_normals(),
+                                sharp_edges,
+                                sharp_faces,
+                                custom_normals,
+                                nullptr,
+                                r_data);
         break;
       }
-      default:
-        BLI_assert_unreachable();
     }
   });
   return this->runtime->corner_normals_cache.data();

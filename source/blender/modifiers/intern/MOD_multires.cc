@@ -216,7 +216,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     return result;
   }
   const bool use_clnors = mmd->flags & eMultiresModifierFlag_UseCustomNormals &&
-                          mesh->normals_domain() == ATTR_DOMAIN_CORNER;
+                          mesh->normals_domain() == blender::bke::MeshNormalDomain::Corner;
   /* NOTE: Orco needs final coordinates on CPU side, which are expected to be
    * accessible via mesh vertices. For this reason we do not evaluate multires to
    * grids when orco is requested. */

@@ -653,11 +653,11 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   MutableSpan dst_normals(reinterpret_cast<float3 *>(loop_normals.data()), loop_normals.size());
 
   switch (mesh->normals_domain()) {
-    case ATTR_DOMAIN_POINT: {
+    case bke::MeshNormalDomain::Point: {
       array_utils::gather(mesh->vert_normals(), mesh->corner_verts(), dst_normals);
       break;
     }
-    case ATTR_DOMAIN_FACE: {
+    case bke::MeshNormalDomain::Face: {
       const OffsetIndices faces = mesh->faces();
       const Span<float3> face_normals = mesh->face_normals();
       for (const int i : faces.index_range()) {
@@ -665,12 +665,10 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
       }
       break;
     }
-    case ATTR_DOMAIN_CORNER: {
+    case bke::MeshNormalDomain::Corner: {
       array_utils::copy(mesh->corner_normals(), dst_normals);
       break;
     }
-    default:
-      BLI_assert_unreachable();
   }
 
   pxr::UsdAttribute attr_normals = usd_mesh.CreateNormalsAttr(pxr::VtValue(), true);

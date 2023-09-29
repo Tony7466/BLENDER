@@ -32,6 +32,7 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 struct LooseVertCache;
 struct LooseEdgeCache;
+enum class MeshNormalDomain : int8_t;
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -366,7 +367,7 @@ typedef struct Mesh {
    * face corner normals, since there is a 2-4x performance cost increase for each more complex
    * domain.
    */
-  int normals_domain() const;
+  blender::bke::MeshNormalDomain normals_domain() const;
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
    */
@@ -438,7 +439,7 @@ enum {
   ME_FLAG_DEPRECATED_2 = 1 << 2, /* deprecated */
   ME_FLAG_UNUSED_3 = 1 << 3,     /* cleared */
   ME_FLAG_UNUSED_4 = 1 << 4,     /* cleared */
-  ME_AUTOSMOOTH_LEGACY = 1 << 5,        /* deprecated */
+  ME_AUTOSMOOTH_LEGACY = 1 << 5, /* deprecated */
   ME_FLAG_UNUSED_6 = 1 << 6,     /* cleared */
   ME_FLAG_UNUSED_7 = 1 << 7,     /* cleared */
   ME_REMESH_REPROJECT_VERTEX_COLORS = 1 << 8,
