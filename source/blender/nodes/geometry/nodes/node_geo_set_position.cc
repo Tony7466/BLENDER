@@ -131,7 +131,7 @@ static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
 
     const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
     if (selection.is_empty()) {
-      return;
+      continue;
     }
 
     const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
