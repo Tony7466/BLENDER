@@ -571,22 +571,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   return try_capture_field_on_geometry(component, attribute_id, domain, selection, field);
 }
 
-void clean_unused_attributes_on_geometry(const AnonymousAttributePropagationInfo &propagation_info,
-                                         GeometryComponent &component)
-{
-  MutableAttributeAccessor attributes = *component.attributes_for_write();
-  const Set<AttributeIDRef> all_ids = attributes.all_ids();
-  for (const AttributeIDRef &id : all_ids) {
-    if (!id.is_anonymous()) {
-      continue;
-    }
-    if (propagation_info.propagate(id.anonymous_id())) {
-      continue;
-    }
-    attributes.remove(id);
-  }
-}
-
 std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &component,
                                                    const fn::GField &field)
 {

@@ -118,6 +118,27 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
+                                    const Set<AttributeIDRef> skip,
+                                    GeometryComponent &component)
+{
+  std::optional<MutableAttributeAccessor> attributes = component.attributes_for_write();
+  const Set<AttributeIDRef> all_ids = attributes.has_value() ? attributes->all_ids() :
+                                                               Set<AttributeIDRef>();
+  for (const AttributeIDRef &id : all_ids) {
+    if (!id.is_anonymous()) {
+      continue;
+    }
+    if (skip.contains(id)) {
+      continue;
+    }
+    if (propagation_info.propagate(id.anonymous_id())) {
+      continue;
+    }
+    attributes->remove(id);
+  }
+}
+
 static StringRefNull identifier_suffix(eCustomDataType data_type)
 {
   switch (data_type) {
@@ -192,11 +213,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const auto capture_on = [&](GeometryComponent &component) {
+    bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
     /* Changing of the anonymous attributes may require removing attributes that are no longer
      * needed. */
-    bke::clean_unused_attributes_on_geometry(params.get_output_propagation_info("Geometry"),
-                                             component);
-    bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
+    clean_unused_attributes(
+        params.get_output_propagation_info("Geometry"), {*attribute_id}, component);
   };
 
   /* Run on the instances component separately to only affect the top level of instances. */

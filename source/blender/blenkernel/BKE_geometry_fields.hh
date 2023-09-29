@@ -345,9 +345,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
                                    const fn::Field<bool> &selection,
                                    const fn::GField &field);
 
-void clean_unused_attributes_on_geometry(const AnonymousAttributePropagationInfo &propagation_info,
-                                         GeometryComponent &component);
-
 /**
  * Try to find the geometry domain that the field should be evaluated on. If it is not obvious
  * which domain is correct, none is returned.
