@@ -70,13 +70,12 @@ void ARMATURE_OT_split(struct wmOperatorType *ot);
 void ARMATURE_OT_autoside_names(struct wmOperatorType *ot);
 void ARMATURE_OT_flip_names(struct wmOperatorType *ot);
 
-void ARMATURE_OT_layers_show_all(struct wmOperatorType *ot);
-
 void ARMATURE_OT_collection_add(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_remove(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_move(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_assign(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_unassign(struct wmOperatorType *ot);
+void ARMATURE_OT_collection_unassign_named(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_select(struct wmOperatorType *ot);
 void ARMATURE_OT_collection_deselect(struct wmOperatorType *ot);
 
