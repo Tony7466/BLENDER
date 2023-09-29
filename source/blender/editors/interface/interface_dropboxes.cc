@@ -56,6 +56,19 @@ static char *ui_view_drop_tooltip(bContext *C, wmDrag *drag, const int xy[2], wm
   return drop_target_tooltip(*region, *drop_target, *drag, *win->eventstate);
 }
 
+static void ui_view_drop_on_drag_over(const bContext *C,
+                                      const wmDropBox * /*drop*/,
+                                      const wmDrag *drag,
+                                      const wmEvent *event)
+{
+  const ARegion *region = CTX_wm_region(C);
+  std::unique_ptr<DropTargetInterface> drop_target = region_views_find_drop_target_at(region,
+                                                                                      event->xy);
+  if (drop_target) {
+    drop_target_on_drag_over(*region, *drop_target, *drag, *event);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -139,8 +152,11 @@ static char *ui_drop_material_tooltip(bContext *C,
 void ED_dropboxes_ui()
 {
   ListBase *lb = WM_dropboxmap_find("User Interface", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  wmDropBox *dropbox;
 
-  WM_dropbox_add(lb, "UI_OT_view_drop", ui_view_drop_poll, nullptr, nullptr, ui_view_drop_tooltip);
+  dropbox = WM_dropbox_add(
+      lb, "UI_OT_view_drop", ui_view_drop_poll, nullptr, nullptr, ui_view_drop_tooltip);
+  dropbox->on_drag_over = ui_view_drop_on_drag_over;
   WM_dropbox_add(lb,
                  "UI_OT_drop_name",
                  ui_drop_name_poll,

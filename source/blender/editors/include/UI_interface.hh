@@ -159,6 +159,11 @@ class DropTargetInterface {
    * to check that again. The returned value must be a translated string.
    */
   virtual std::string drop_tooltip(const DragInfo &drag) const = 0;
+
+  /** Called while dragging over this drop-target. This is part of event handling, so don't use it
+   * for drawing (drawing context might not be available). */
+  virtual void on_drag_over(const ARegion &region, const wmEvent &event) const;
+
   /**
    * Execute the logic to apply a drop of the data dragged with \a drag onto/into the UI element
    * this drop target is for.
@@ -183,6 +188,11 @@ char *drop_target_tooltip(const ARegion &region,
                           const DropTargetInterface &drop_target,
                           const wmDrag &drag,
                           const wmEvent &event);
+
+void drop_target_on_drag_over(const ARegion &region,
+                              const DropTargetInterface &drop_target,
+                              const wmDrag &drag,
+                              const wmEvent &event);
 
 std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle);
 std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle);

@@ -1233,6 +1233,12 @@ struct wmDropBox {
    * So this callback is called on every dropbox that is registered in the current screen. */
   void (*on_drag_start)(bContext *C, wmDrag *drag);
 
+  /** Called while dragging over this drop-box. */
+  void (*on_drag_over)(const bContext *C,
+                       const wmDropBox *drop,
+                       const wmDrag *drag,
+                       const wmEvent *event);
+
   /** Before exec, this copies drag info to #wmDrop properties. */
   void (*copy)(bContext *C, wmDrag *drag, wmDropBox *drop);
 

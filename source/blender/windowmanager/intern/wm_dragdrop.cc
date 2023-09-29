@@ -459,6 +459,10 @@ static void wm_drop_update_active(bContext *C, wmDrag *drag, const wmEvent *even
     drag->drop_state.region_from = drop ? CTX_wm_region(C) : nullptr;
   }
 
+  if (drop && drop->on_drag_over) {
+    drop->on_drag_over(C, drop, drag, event);
+  }
+
   if (!drag->drop_state.active_dropbox) {
     drag->drop_state.ui_context.reset();
   }
