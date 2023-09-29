@@ -28,24 +28,44 @@ FCurveKey = Tuple[
     int,
 ]
 
+# List of `[frame0, value0, frame1, value1, ...]` pairs.
+ListKeyframes = List[float]
+
 
 @dataclass
 class BakeOptions:
     only_selected: bool
+    """Only bake selected bones."""
+
     do_pose: bool
+    """Bake pose channels"""
+
     do_object: bool
+    """Bake objects."""
+
     do_visual_keying: bool
+    """Use the final transformations for baking ('visual keying')."""
+
     do_constraint_clear: bool
+    """Remove constraints after baking."""
+
     do_parents_clear: bool
+    """Unparent after baking objects."""
+
     do_clean: bool
+    """Remove redundant keyframes after baking."""
+
     do_location: bool
+    """Bake location channels"""
+
     do_rotation: bool
+    """Bake rotation channels"""
+
     do_scale: bool
+    """Bake scale channels"""
+
     do_bbone: bool
-
-
-# List of `[frame0, value0, frame1, value1, ...]` pairs.
-ListKeyframes = List[float]
+    """Bake b-bone channels"""
 
 
 def bake_action(
@@ -66,13 +86,13 @@ def bake_action(
     :return: an action or None
     :rtype: :class:`bpy.types.Action`
     """
-    if not (kwargs.get("do_pose") or kwargs.get("do_object")):
+    if not (bake_options.do_pose or bake_options.do_object):
         return None
 
     action, = bake_action_objects(
         [(obj, action)],
         frames=frames,
-        bake_options=bake_options,
+        bake_options=bake_options
     )
     return action
 
@@ -136,17 +156,6 @@ def bake_action_iter(
         *,
         action,
         bake_options: BakeOptions
-        # only_selected=False,
-        # do_pose=True,
-        # do_object=True,
-        # do_visual_keying=True,
-        # do_constraint_clear=False,
-        # do_parents_clear=False,
-        # do_clean=False,
-        # do_location=True,
-        # do_rotation=True,
-        # do_scale=True,
-        # do_bbone=True
 ):
     """
     An coroutine that bakes action for a single object.
@@ -156,28 +165,8 @@ def bake_action_iter(
     :arg action: An action to bake the data into, or None for a new action
        to be created.
     :type action: :class:`bpy.types.Action` or None
-    :arg only_selected: Only bake selected bones.
-    :type only_selected: bool
-    :arg do_pose: Bake pose channels.
-    :type do_pose: bool
-    :arg do_object: Bake objects.
-    :type do_object: bool
-    :arg do_visual_keying: Use the final transformations for baking ('visual keying')
-    :type do_visual_keying: bool
-    :arg do_constraint_clear: Remove constraints after baking.
-    :type do_constraint_clear: bool
-    :arg do_parents_clear: Unparent after baking objects.
-    :type do_parents_clear: bool
-    :arg do_clean: Remove redundant keyframes after baking.
-    :type do_clean: bool
-    :arg do_location: Bake location channels.
-    :type do_location: bool
-    :arg do_rotation: Bake rotation channels.
-    :type do_rotation: bool
-    :arg do_scale: Bake scale channels.
-    :type do_scale: bool
-    :arg do_bbone: Bake b-bone channels.
-    :type do_bbone: bool
+    :arg bake_options: Boolean options of what to include into the action bake.
+    :type bake_options: :class: `anim_utils.BakeOptions`
 
     :return: an action or None
     :rtype: :class:`bpy.types.Action`
@@ -251,9 +240,9 @@ def bake_action_iter(
     # Setup the Context
 
     if obj.pose is None:
-        do_pose = False
+        bake_options.do_pose = False
 
-    if not (do_pose or bake_options.do_object):
+    if not (bake_options.do_pose or bake_options.do_object):
         raise Exception("Pose and object baking is disabled, no action needed")
 
     pose_info = []
@@ -270,7 +259,7 @@ def bake_action_iter(
         if frame is None:
             break
 
-        if do_pose:
+        if bake_options.do_pose:
             pose_info.append((frame, *pose_frame_info(obj)))
         if bake_options.do_object:
             obj_info.append((frame, obj_frame_info(obj)))
@@ -308,7 +297,7 @@ def bake_action_iter(
 
     # pose
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
-    if do_pose:
+    if bake_options.do_pose:
         for name, pbone in obj.pose.bones.items():
             if bake_options.only_selected and not pbone.bone.select:
                 continue
