@@ -780,17 +780,13 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
                                       NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
   const blender::Span<const bNodeTreeInterfaceItem *> items = this->items();
 
-  /* Comparison function for item sorting.
-   * Returns:
-   * -1 for a < b
-   * 1 for a > b
-   * 0 if a and b are equivalent */
+  /* True if item a should be above item b. */
   auto item_compare = [sockets_above_panels](const bNodeTreeInterfaceItem &a,
-                                             const bNodeTreeInterfaceItem &b) -> int {
+                                             const bNodeTreeInterfaceItem &b) -> bool {
     if (a.item_type != b.item_type) {
       /* Keep sockets above panels. */
       if (sockets_above_panels) {
-        return a.item_type == NODE_INTERFACE_SOCKET ? -1 : 1;
+        return a.item_type == NODE_INTERFACE_SOCKET;
       }
     }
     else {
@@ -801,11 +797,11 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
         const bool is_output_a = sa.flag & NODE_INTERFACE_SOCKET_OUTPUT;
         const bool is_output_b = sb.flag & NODE_INTERFACE_SOCKET_OUTPUT;
         if (is_output_a != is_output_b) {
-          return is_output_a ? -1 : 1;
+          return is_output_a;
         }
       }
     }
-    return 0;
+    return false;
   };
 
   if (items.is_empty()) {
@@ -815,12 +811,12 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
   /* Insertion sort for a single item. */
   int test_pos = clamp_i(initial_pos, 0, items.size() - 1);
   /* Move upward until valid position found. */
-  while (test_pos > 0 && item_compare(item, *items[test_pos - 1]) < 0) {
+  while (test_pos > 0 && item_compare(item, *items[test_pos - 1])) {
     --test_pos;
   }
   /* Move downward until valid position found.
    * Result can be out of range, this is valid, items get appended. */
-  while (test_pos < items.size() && item_compare(item, *items[test_pos]) > 0) {
+  while (test_pos < items.size() && item_compare(*items[test_pos], item)) {
     ++test_pos;
   }
   return test_pos;
