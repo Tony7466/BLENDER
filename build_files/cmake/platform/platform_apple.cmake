@@ -102,11 +102,7 @@ if(WITH_MATERIALX)
 endif()
 add_bundled_libraries(materialx/lib)
 
-if(WITH_VULKAN_BACKEND)
-  find_package(MoltenVK REQUIRED)
-  find_package(ShaderC REQUIRED)
-  find_package(Vulkan REQUIRED)
-endif()
+set(WITH_VULKAN_BACKEND OFF)
 
 if(WITH_OPENSUBDIV)
   find_package(OpenSubdiv)
