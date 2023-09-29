@@ -192,7 +192,10 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
   return groups;
 }
 
-/* Calculate groups of corners that are contiguously connected to each input vertex. */
+/* Calculate groups of corners that are contiguously connected to each input vertex.
+ * BLI_NOINLINE because MSVC 17.7 has a codegen bug here, given there is only a single call to this
+ * function, not inlining it for all platforms won't affect performance. See
+ * https://developercommunity.visualstudio.com/t/10448291 for details. */
 BLI_NOINLINE static Array<Vector<CornerGroup>> calc_all_corner_groups(
     const OffsetIndices<int> faces,
     const Span<int> corner_verts,
