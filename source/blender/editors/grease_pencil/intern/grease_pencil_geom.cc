@@ -49,11 +49,11 @@ int64_t ramer_douglas_peucker_simplify(
     if (sub_range.size() < 3) {
       continue;
     }
-
-    /* Compute the maximum distance and the corresponding distance. */
+    const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
+    /* Compute the maximum distance and the corresponding index. */
     float max_dist = -1.0f;
     int max_index = -1;
-    for (const int64_t index : sub_range.drop_front(1).drop_back(1)) {
+    for (const int64_t index : inside_range) {
       const float dist = dist_function(sub_range.first(), sub_range.last(), index);
       if (dist > max_dist) {
         max_dist = dist;
@@ -69,7 +69,6 @@ int64_t ramer_douglas_peucker_simplify(
     }
     else {
       /* Points in `sub_range` are inside the epsilon-sized strip. Mark them to be deleted. */
-      const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
       total_points_to_remove += inside_range.size();
       points_to_delete.slice(inside_range).fill(true);
     }
