@@ -119,7 +119,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 }
 
 static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
-                                    const Set<AttributeIDRef> skip,
+                                    const Set<AttributeIDRef> &skip,
                                     GeometryComponent &component)
 {
   std::optional<MutableAttributeAccessor> attributes = component.attributes_for_write();
