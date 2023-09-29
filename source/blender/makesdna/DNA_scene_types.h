@@ -2114,9 +2114,9 @@ enum {
   R_NO_OVERWRITE = 1 << 22,   /* Skip existing files. */
   R_TOUCH = 1 << 23,          /* Touch files before rendering. */
   R_SIMPLIFY = 1 << 24,
-  R_EDGE_FRS = 1 << 25,        /* R_EDGE reserved for Freestyle */
-  R_PERSISTENT_DATA = 1 << 26, /* Keep data around for re-render. */
-  R_MODE_UNUSED_27 = 1 << 27,  /* cleared */
+  R_EDGE_FRS = 1 << 25,         /* R_EDGE reserved for Freestyle */
+  R_PERSISTENT_DATA = 1 << 26,  /* Keep data around for re-render. */
+  R_SIMPLIFY_NORMALS = 1 << 27, /* cleared */
 };
 
 /** #RenderData::seq_flag */

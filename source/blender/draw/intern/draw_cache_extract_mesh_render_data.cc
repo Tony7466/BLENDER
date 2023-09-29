@@ -413,9 +413,10 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
     if (data_flag & (MR_DATA_POLY_NOR | MR_DATA_LOOP_NOR | MR_DATA_TAN_LOOP_NOR)) {
       mr.face_normals = mr.me->face_normals();
     }
-    if (((data_flag & MR_DATA_LOOP_NOR) && ELEM(mr.me->normals_domain(),
-                                                blender::bke::MeshNormalDomain::Corner,
-                                                blender::bke::MeshNormalDomain::Face)) ||
+    if (((data_flag & MR_DATA_LOOP_NOR) && !mr.use_simplify_normals &&
+         ELEM(mr.me->normals_domain(),
+              blender::bke::MeshNormalDomain::Corner,
+              blender::bke::MeshNormalDomain::Face)) ||
         (data_flag & MR_DATA_TAN_LOOP_NOR))
     {
       mr.loop_normals = mr.me->corner_normals();
