@@ -60,6 +60,15 @@ greasepencil::Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePenc
       get_eval_grease_pencil_layer_drawing(grease_pencil, layer));
 }
 
+GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
+                                           const eAttrDomain domain)
+    : geometry_(other.geometry_),
+      type_(other.type_),
+      domain_(domain),
+      grease_pencil_layer_index_(other.grease_pencil_layer_index_)
+{
+}
+
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
                                            const GeometryComponent::Type type,
                                            const eAttrDomain domain,

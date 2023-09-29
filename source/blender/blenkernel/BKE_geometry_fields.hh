@@ -139,6 +139,7 @@ class GeometryFieldContext : public fn::FieldContext {
   friend GeometryFieldInput;
 
  public:
+  GeometryFieldContext(const GeometryFieldContext &other, eAttrDomain domain);
   GeometryFieldContext(const GeometryComponent &component, eAttrDomain domain);
   GeometryFieldContext(const void *geometry,
                        GeometryComponent::Type type,
