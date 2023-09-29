@@ -33,17 +33,10 @@
 
 /* ********************** THE IK SOLVER ******************* */
 
-/* allocates PoseTree, and links that to root bone/channel */
-/* NOTE: detecting the IK chain is duplicate code...
- * in drawarmature.c and in transform_conversions.c */
-static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
+static void find_ik_constraints(ListBase *constraints,
+                                blender::Vector<bConstraint *> &ik_constraints)
 {
-  bPoseChannel *curchan, *pchan_root = nullptr, *chanlist[256], **oldchan;
-  int a, t, segcount = 0, size, newsize, *oldparent, parent;
-  blender::Vector<bConstraint *> ik_constraints;
-
-  /* find IK constraint, and validate it */
-  LISTBASE_FOREACH (bConstraint *, con, &pchan_tip->constraints) {
+  LISTBASE_FOREACH (bConstraint *, con, constraints) {
     if (con->type == CONSTRAINT_TYPE_KINEMATIC) {
       bKinematicConstraint *data = (bKinematicConstraint *)con->data;
       if (data->flag & CONSTRAINT_IK_AUTO) {
@@ -62,12 +55,23 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
       ik_constraints.append(con);
     }
   }
+}
+
+/* allocates PoseTree, and links that to root bone/channel */
+/* NOTE: detecting the IK chain is duplicate code...
+ * in drawarmature.c and in transform_conversions.c */
+static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
+{
+  blender::Vector<bConstraint *> ik_constraints;
+  find_ik_constraints(&pchan_tip->constraints, ik_constraints);
 
   if (ik_constraints.size() == 0) {
     return;
   }
 
   for (bConstraint *constraint : ik_constraints) {
+    bPoseChannel *curchan, *pchan_root = nullptr, *chanlist[256], **oldchan;
+    int segcount = 0;
     PoseTarget *target;
     PoseTree *tree;
     bKinematicConstraint *data = (bKinematicConstraint *)constraint->data;
@@ -128,7 +132,7 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
       tree->pchan = static_cast<bPoseChannel **>(
           MEM_callocN(segcount * sizeof(void *), "ik tree pchan"));
       tree->parent = static_cast<int *>(MEM_callocN(segcount * sizeof(int), "ik tree parent"));
-      for (a = 0; a < segcount; a++) {
+      for (int a = 0; a < segcount; a++) {
         tree->pchan[a] = chanlist[segcount - a - 1];
         tree->parent[a] = a - 1;
       }
@@ -142,7 +146,8 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
       tree->stretch = tree->stretch && !(data->flag & CONSTRAINT_IK_STRETCH);
 
       /* Skip common pose channels and add remaining. */
-      size = MIN2(segcount, tree->totchannel);
+      const int size = MIN2(segcount, tree->totchannel);
+      int a, t;
       a = t = 0;
       while (a < size && t < tree->totchannel) {
         /* locate first matching channel */
@@ -162,6 +167,7 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
       target->tip = tree->totchannel + segcount - 1;
 
       if (segcount > 0) {
+        int parent;
         for (parent = a - 1; parent < tree->totchannel; parent++) {
           if (tree->pchan[parent] == chanlist[segcount - 1]->parent) {
             break;
@@ -174,9 +180,9 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
         }
 
         /* resize array */
-        newsize = tree->totchannel + segcount;
+        const int newsize = tree->totchannel + segcount;
         oldchan = tree->pchan;
-        oldparent = tree->parent;
+        int *oldparent = tree->parent;
 
         tree->pchan = static_cast<bPoseChannel **>(
             MEM_callocN(newsize * sizeof(void *), "ik tree pchan"));
@@ -203,9 +209,9 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
 
     /* add target to the tree */
     BLI_addtail(&tree->targets, target);
+    /* mark root channel having an IK tree */
+    pchan_root->flag |= POSE_IKTREE;
   }
-  /* mark root channel having an IK tree */
-  pchan_root->flag |= POSE_IKTREE;
 }
 
 /* transform from bone(b) to bone(b+1), store in chan_mat */
