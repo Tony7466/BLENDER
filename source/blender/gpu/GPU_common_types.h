@@ -39,7 +39,7 @@ typedef enum eGPULoadOp {
  */
 typedef enum eGPUStoreOp {
   /**
-   * Do not care about the content of the attachment when the render pass starts.
+   * Do not care about the content of the attachment when the render pass ends.
    * Useful if only the values being written are important.
    * Cannot be used with memoryless attachments.
    */
@@ -64,7 +64,7 @@ typedef enum eGPUStoreOp {
 typedef enum GPUAttachmentState {
   /** Attachment will not be written during rendering. */
   GPU_ATTACHEMENT_IGNORE = 0,
-  /** Attachment will be written during geometry passes. This also works with blending. */
+  /** Attachment will be written during render sub-pass. This also works with blending. */
   GPU_ATTACHEMENT_WRITE,
   /** Attachment is used as input in the fragment shader. Incompatible with depth on Metal. */
   GPU_ATTACHEMENT_READ,
