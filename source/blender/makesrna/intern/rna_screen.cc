@@ -523,6 +523,12 @@ static void rna_def_region(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Region Type", "Type of this region");
 
+  prop = RNA_def_property(srna, "poll_failed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", RGN_FLAG_POLL_FAILED);
+  RNA_def_property_ui_text(
+      prop, "", "If true, the region is not available in the current context");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
   prop = RNA_def_property(srna, "x", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "winrct.xmin");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

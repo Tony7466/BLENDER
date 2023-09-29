@@ -1338,6 +1338,11 @@ class VIEW3D_MT_uv_map(Menu):
 
 # ********** View menus **********
 
+def asset_shelf_available(context):
+    for region in context.area.regions:
+        if region.type == 'ASSET_SHELF' and not region.poll_failed:
+            return True
+    return False
 
 class VIEW3D_MT_view(Menu):
     bl_label = "View"
@@ -1350,7 +1355,8 @@ class VIEW3D_MT_view(Menu):
         layout.prop(view, "show_region_toolbar")
         layout.prop(view, "show_region_ui")
         layout.prop(view, "show_region_tool_header")
-        layout.prop(view, "show_region_asset_shelf")
+        if asset_shelf_available(context):
+            layout.prop(view, "show_region_asset_shelf")
         layout.prop(view, "show_region_hud")
 
         layout.separator()

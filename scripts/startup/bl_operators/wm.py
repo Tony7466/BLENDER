@@ -3398,6 +3398,9 @@ class WM_MT_region_toggle_pie(Menu):
         region_by_type = {}
 
         for region in context.area.regions:
+            if region.poll_failed:
+                continue
+
             region_type = region.type
             attr = cls._region_info.get(region_type, None)
             if attr is None:
