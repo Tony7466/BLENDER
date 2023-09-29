@@ -176,21 +176,21 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
   if (geometry_set.has_grease_pencil()) {
     using namespace bke::greasepencil;
     GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
-    for (const Layer *layer : grease_pencil.layers()) {
-      Drawing *drawing = grease_pencil.get_editable_drawing_at(layer,
-                                                               grease_pencil.runtime->eval_frame);
+    for (const int layer_index : grease_pencil.layers().index_range()) {
+      Drawing *drawing = bke::get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                             layer_index);
       if (drawing == nullptr) {
         continue;
       }
       const bke::CurvesGeometry &src_curves = drawing->strokes();
       bke::CurvesGeometry dst_curves;
       if (set_curve_trim(src_curves,
-                          mode,
-                          selection_field,
-                          start_field,
-                          end_field,
-                          propagation_info,
-                          dst_curves))
+                         mode,
+                         selection_field,
+                         start_field,
+                         end_field,
+                         propagation_info,
+                         dst_curves))
       {
         drawing->strokes_for_write() = std::move(dst_curves);
       }
