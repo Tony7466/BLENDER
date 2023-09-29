@@ -125,7 +125,6 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
         const bke::GeometryFieldContext src_domain_context{
             context.geometry(), context.type(), ATTR_DOMAIN_GREASE_PENCIL_LAYER, -1};
         const int layer_index = context.grease_pencil_layer_index();
-        const int layer_num = context.grease_pencil()->layers().size();
 
         const IndexMask single_layer_mask = IndexRange(layer_index, 1);
         FieldEvaluator value_evaluator{src_domain_context, &single_layer_mask};
