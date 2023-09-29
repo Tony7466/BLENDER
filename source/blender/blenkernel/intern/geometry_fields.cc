@@ -321,25 +321,6 @@ GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &con
   return {};
 }
 
-GVArray GreasePencilFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                       const IndexMask &mask,
-                                                       ResourceScope & /*scope*/) const
-{
-  if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context))
-  {
-    if (const GreasePencil *grease_pencil = geometry_context->grease_pencil()) {
-      return this->get_varray_for_context(*grease_pencil, mask);
-    }
-  }
-  if (const GreasePencilLayerFieldContext *grease_pencil_context =
-          dynamic_cast<const GreasePencilLayerFieldContext *>(&context))
-  {
-    return this->get_varray_for_context(grease_pencil_context->grease_pencil(), mask);
-  }
-  return {};
-}
-
 GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &context,
                                                     const IndexMask &mask,
                                                     ResourceScope & /*scope*/) const
@@ -375,6 +356,7 @@ GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &
       if (const GAttributeReader reader = curves_attributes.lookup(name_, domain, data_type)) {
         return *reader;
       }
+      /* Lookup attribute on the layer domain if it does not exist on points or curves. */
       if (const GAttributeReader reader = layer_attributes.lookup(name_)) {
         const CPPType &cpp_type = reader.varray.type();
         BUFFER_FOR_CPP_TYPE_VALUE(cpp_type, value);
@@ -689,6 +671,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   if (component.type() == GeometryComponent::Type::GreasePencil &&
       ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE))
   {
+    /* Capture the field on every layer individually. */
     auto &grease_pencil_component = static_cast<GreasePencilComponent &>(component);
     GreasePencil *grease_pencil = grease_pencil_component.get_for_write();
     if (grease_pencil == nullptr) {

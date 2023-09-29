@@ -119,8 +119,8 @@ class InstancesFieldContext : public fn::FieldContext {
 };
 
 /**
- * A field context that can represent meshes, curves, point clouds, or instances,
- * used for field inputs that can work for multiple geometry types.
+ * A field context that can represent meshes, curves, point clouds, instances or grease pencil
+ * layers, used for field inputs that can work for multiple geometry types.
  */
 class GeometryFieldContext : public fn::FieldContext {
  private:
@@ -132,6 +132,8 @@ class GeometryFieldContext : public fn::FieldContext {
   const void *geometry_;
   const GeometryComponent::Type type_;
   const eAttrDomain domain_;
+  /** Only used when the type is grease pencil and the domain is either points or curves
+   * (not layers). */
   int grease_pencil_layer_index_;
 
   friend GeometryFieldInput;
@@ -219,16 +221,6 @@ class PointCloudFieldInput : public fn::FieldInput {
                                  const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const PointCloud &pointcloud,
-                                         const IndexMask &mask) const = 0;
-};
-
-class GreasePencilFieldInput : public fn::FieldInput {
- public:
-  using fn::FieldInput::FieldInput;
-  GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 const IndexMask &mask,
-                                 ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const GreasePencil &grease_pencil,
                                          const IndexMask &mask) const = 0;
 };
 

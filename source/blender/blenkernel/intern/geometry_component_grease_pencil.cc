@@ -121,26 +121,14 @@ static ComponentAttributeProviders create_attribute_providers_for_grease_pencil(
   return ComponentAttributeProviders({}, {&layer_custom_data});
 }
 
-static GVArray adapt_grease_pencil_attribute_domain(const GreasePencil &grease_pencil,
+static GVArray adapt_grease_pencil_attribute_domain(const GreasePencil & /*grease_pencil*/,
                                                     const GVArray &varray,
                                                     const eAttrDomain from,
                                                     const eAttrDomain to)
 {
-  if (!varray) {
-    return {};
-  }
-  if (varray.is_empty()) {
-    return {};
-  }
   if (from == to) {
     return varray;
   }
-  if (varray.is_single()) {
-    BUFFER_FOR_CPP_TYPE_VALUE(varray.type(), value);
-    varray.get_internal_single(value);
-    return GVArray::ForSingle(varray.type(), grease_pencil.attributes().domain_size(to), value);
-  }
-
   return {};
 }
 

@@ -115,24 +115,15 @@ static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
                                           const Field<float3> &offset_field)
 {
   using namespace blender::bke::greasepencil;
-  const GrainSize grain_size{10000};
-
-  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
   for (const int layer_index : grease_pencil.layers().index_range()) {
-    const Layer *layer = grease_pencil.layers()[layer_index];
-    int drawing_index = layer->drawing_index_at(grease_pencil.runtime->eval_frame);
-    if (drawing_index == -1) {
+    Drawing *drawing = bke::get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                           layer_index);
+    if (drawing == nullptr) {
       continue;
     }
-    GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
-    if (drawing_base->type != GP_DRAWING) {
-      continue;
-    }
-    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-
     bke::GreasePencilLayerFieldContext field_context(
         grease_pencil, ATTR_DOMAIN_POINT, layer_index);
-    fn::FieldEvaluator evaluator{field_context, drawing.strokes().points_num()};
+    fn::FieldEvaluator evaluator{field_context, drawing->strokes().points_num()};
     evaluator.set_selection(selection_field);
     evaluator.add(position_field);
     evaluator.add(offset_field);
@@ -146,12 +137,13 @@ static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
     const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
     const VArray<float3> offsets_input = evaluator.get_evaluated<float3>(1);
 
-    MutableSpan<float3> positions = drawing.strokes_for_write().positions_for_write();
+    MutableSpan<float3> positions = drawing->strokes_for_write().positions_for_write();
 
-    selection.foreach_index_optimized<int>(
-        grain_size, [&](const int i) { positions[i] = positions_input[i] + offsets_input[i]; });
+    selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i) {
+      positions[i] = positions_input[i] + offsets_input[i];
+    });
 
-    drawing.tag_positions_changed();
+    drawing->tag_positions_changed();
   }
 }
 
