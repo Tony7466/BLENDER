@@ -20,8 +20,6 @@
 
 namespace blender::eevee {
 
-#define SQUARE(a) ((a) * (a))
-
 /* -------------------------------------------------------------------- */
 /** \name World Pipeline
  *
@@ -157,14 +155,30 @@ void WorldVolumePipeline::render(View &view)
 
 void ShadowPipeline::sync()
 {
+  surface_ps_.init();
+
   /* NOTE: Metal backend performs a three-pass implementation. First performing the clear directly
    * on tile, followed by a fast depth-only pass, then storing the on-tile results into the shadow
    * atlas during a final storage pass. This takes advantage of Apple Silicon's tile-based
    * architecture, reducing overdraw and additional per-fragment calculations. */
   bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
                              ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
+  if (shadow_update_tbdr) {
+    tbdr_page_clear_ps_ = &surface_ps_.sub("Shadow.TilePageClear");
+    tbdr_page_clear_ps_->shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_CLEAR));
+    tbdr_page_clear_ps_->state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER_EQUAL);
+    tbdr_page_clear_ps_->bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    tbdr_page_clear_ps_->bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    tbdr_page_clear_ps_->bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+    tbdr_page_clear_ps_->bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+                                   &inst_.shadows.viewport_index_buf_);
+    tbdr_page_clear_ps_->bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+    inst_.sampling.bind_resources(tbdr_page_clear_ps_);
+    inst_.bind_uniform_data(tbdr_page_clear_ps_);
+    tbdr_page_clear_ps_->draw_procedural_indirect(GPU_PRIM_TRIS,
+                                                  inst_.shadows.tile_page_pass_buf_);
+  }
 
-  surface_ps_.init();
   DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
   if (shadow_update_tbdr) {
     /* Metal writes depth value in local tile memory, which is considered a color attachment. */
@@ -181,27 +195,19 @@ void ShadowPipeline::sync()
   }
   inst_.bind_uniform_data(&surface_ps_);
   inst_.sampling.bind_resources(&surface_ps_);
+}
 
+void ShadowPipeline::end_sync()
+{
   /* Configure page clear and page write passes optimal for tile-based architecture implementation.
    * Page clear runs as a pre-pass for clearing depth of passes being updated within the render
    * pipeline. Page write pass writes final tile depth results into the shadow atlas. */
-  if (shadow_update_tbdr) {
-    tbdr_page_clear_ps_.init();
-    tbdr_page_clear_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_CLEAR));
-    tbdr_page_clear_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER_EQUAL);
-    tbdr_page_clear_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    tbdr_page_clear_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-    tbdr_page_clear_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-    tbdr_page_clear_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
-                                  &inst_.shadows.viewport_index_buf_);
-    tbdr_page_clear_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-    inst_.sampling.bind_resources(&tbdr_page_clear_ps_);
-    inst_.bind_uniform_data(&tbdr_page_clear_ps_);
-    tbdr_page_clear_ps_.draw_procedural(
-        GPU_PRIM_TRIS, SQUARE(SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX, 6);
+  bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
+                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
 
-    tbdr_page_store_ps_.init();
-    tbdr_page_store_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_STORE));
+  if (shadow_update_tbdr) {
+    tbdr_page_store_ps_ = &surface_ps_.sub("Shadow.TilePageStore");
+    tbdr_page_store_ps_->shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_STORE));
     /* NOTE: Setting to DRW_STATE_DEPTH_ALWAYS allows removal of the SHADOW_PAGE_CLEAR pass as
      * all tile texels are cleared within tile memory and stored.
      * DRW_STATE_DEPTH_GREATER/GREATER_EQUAL is the most optimal for the update pass itself, as it
@@ -210,17 +216,17 @@ void ShadowPipeline::sync()
      *
      * For relative perf, raster-based clear within tile update adds around 0.1ms vs 0.25ms for
      * compute based for a simple testcase. */
-    tbdr_page_store_ps_.state_set(DRW_STATE_DEPTH_ALWAYS);
-    tbdr_page_store_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    tbdr_page_store_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-    tbdr_page_store_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-    tbdr_page_store_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
-                                  &inst_.shadows.viewport_index_buf_);
-    tbdr_page_store_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-    inst_.sampling.bind_resources(&tbdr_page_store_ps_);
-    inst_.bind_uniform_data(&tbdr_page_store_ps_);
-    tbdr_page_store_ps_.draw_procedural(
-        GPU_PRIM_TRIS, SQUARE(SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX, 6);
+    tbdr_page_store_ps_->state_set(DRW_STATE_DEPTH_ALWAYS);
+    tbdr_page_store_ps_->bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    tbdr_page_store_ps_->bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    tbdr_page_store_ps_->bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+    tbdr_page_store_ps_->bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+                                   &inst_.shadows.viewport_index_buf_);
+    tbdr_page_store_ps_->bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+    inst_.sampling.bind_resources(tbdr_page_store_ps_);
+    inst_.bind_uniform_data(tbdr_page_store_ps_);
+    tbdr_page_store_ps_->draw_procedural_indirect(GPU_PRIM_TRIS,
+                                                  inst_.shadows.tile_page_pass_buf_);
   }
 }
 
@@ -232,26 +238,6 @@ PassMain::Sub *ShadowPipeline::surface_material_add(GPUMaterial *gpumat)
 void ShadowPipeline::render(View &view)
 {
   inst_.manager->submit(surface_ps_, view);
-}
-
-void ShadowPipeline::render_prepare_visibility(View &view, command::RecordingState *state)
-{
-  inst_.manager->submit_prepare_visibility(surface_ps_, view, state);
-}
-
-void ShadowPipeline::render_main_pass(View &view, command::RecordingState *state)
-{
-  inst_.manager->submit_pass_only(surface_ps_, view, state);
-}
-
-void ShadowPipeline::render_tile_clear(View &view)
-{
-  inst_.manager->submit(tbdr_page_clear_ps_, view);
-}
-
-void ShadowPipeline::render_tile_store(View &view)
-{
-  inst_.manager->submit(tbdr_page_store_ps_, view);
 }
 
 /** \} */

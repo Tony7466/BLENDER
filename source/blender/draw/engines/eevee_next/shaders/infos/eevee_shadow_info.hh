@@ -176,6 +176,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_allocate_renderbuf_clear)
     .do_static_compilation(true)
     .additional_info("eevee_shadow_page_allocate")
     .storage_buf(7, Qualifier::WRITE, "uint", "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+    .storage_buf(8, Qualifier::WRITE, "DrawCommand", "tile_page_pass_buf")
     .define("SHADOW_UPDATE_TBDR_ROG");
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)

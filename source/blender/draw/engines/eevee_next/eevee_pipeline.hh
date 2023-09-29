@@ -111,8 +111,8 @@ class ShadowPipeline {
   PassMain surface_ps_ = {"Shadow.Surface"};
 
   /* Shadow passes for ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
-  PassSimple tbdr_page_clear_ps_ = {"Shadow.MetalTBDRPageClear"};
-  PassSimple tbdr_page_store_ps_ = {"Shadow.MetalTBDRPageStore"};
+  PassMain::Sub *tbdr_page_clear_ps_ = nullptr;
+  PassMain::Sub *tbdr_page_store_ps_ = nullptr;
 
  public:
   ShadowPipeline(Instance &inst) : inst_(inst){};
@@ -120,15 +120,9 @@ class ShadowPipeline {
   PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
 
   void sync();
+  void end_sync();
 
-  /* Execute passes for ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER. */
   void render(View &view);
-
-  /* Execute passes for ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG. */
-  void render_prepare_visibility(View &view, command::RecordingState *state);
-  void render_main_pass(View &view, command::RecordingState *state);
-  void render_tile_clear(View &view);
-  void render_tile_store(View &view);
 };
 
 /** \} */
@@ -494,6 +488,7 @@ class PipelineModule {
   {
     probe.end_sync();
     deferred.end_sync();
+    shadow.end_sync();
   }
 
   PassMain::Sub *material_add(Object *ob,

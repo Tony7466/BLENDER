@@ -1152,6 +1152,7 @@ void ShadowModule::end_sync()
         /* For the tile optimized update, we need to clear tiles being updated early. */
         if (shadow_technique == ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
           sub.bind_ssbo("render_map_buf", render_map_buf_);
+          sub.bind_ssbo("tile_page_pass_buf", tile_page_pass_buf_);
         }
 
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
@@ -1353,6 +1354,10 @@ void ShadowModule::set_view(View &view)
 
         case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
 
+          /* Isolate shadow update into own command buffer.
+           * If parameter buffer is exceeds limits, then other work will not be impacted.  */
+          GPU_flush();
+
           /* Specify explicit load-store config for memoryless attachments, and defining
            * explicit clear values for this pass. */
           GPU_framebuffer_bind_ex(
@@ -1360,20 +1365,11 @@ void ShadowModule::set_view(View &view)
               {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
                {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
 
-          /* Shadow pass visibility computation and preparation. */
-          command::RecordingState state;
-          inst_.pipelines.shadow.render_prepare_visibility(shadow_multi_view_, &state);
-
-          /* Perform tile-based clear to ensure only tiles being updated are cleared to 1.0f.
-           * All other tiles will be cleared to 0.0f to ensure depth test fails and unneeded
-           * raster work is efficiently skipped.  */
-          inst_.pipelines.shadow.render_tile_clear(shadow_multi_view_);
-
           /* Main shadow geometry pass. */
-          inst_.pipelines.shadow.render_main_pass(shadow_multi_view_, &state);
+          inst_.pipelines.shadow.render(shadow_multi_view_);
 
-          /* Perform tile-based shadow atlas storage pass. */
-          inst_.pipelines.shadow.render_tile_store(shadow_multi_view_);
+          /* Isolate shadow update into own command buffer. */
+          GPU_flush();
         } break;
       }
 

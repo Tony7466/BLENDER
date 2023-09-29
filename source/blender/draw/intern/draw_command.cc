@@ -665,64 +665,6 @@ void DrawMultiBuf::bind(RecordingState &state,
   GPU_debug_group_end();
 }
 
-void DrawMultiBuf::bind_no_comp(RecordingState &state,
-                                Vector<Header, 0> & /*headers*/,
-                                Vector<Undetermined, 0> & /*commands*/,
-                                VisibilityBuf &visibility_buf,
-                                int visibility_word_per_draw,
-                                int view_len,
-                                bool use_custom_ids)
-{
-  GPU_debug_group_begin("DrawMultiBuf.bind");
-
-  resource_id_count_ = 0u;
-  for (DrawGroup &group : MutableSpan<DrawGroup>(group_buf_.data(), group_count_)) {
-    /* Compute prefix sum of all instance of previous group. */
-    group.start = resource_id_count_;
-    resource_id_count_ += group.len * view_len;
-
-    int batch_vert_len, batch_vert_first, batch_base_index, batch_inst_len;
-    /* Now that GPUBatches are guaranteed to be finished, extract their parameters. */
-    GPU_batch_draw_parameter_get(
-        group.gpu_batch, &batch_vert_len, &batch_vert_first, &batch_base_index, &batch_inst_len);
-
-    group.vertex_len = group.vertex_len == -1 ? batch_vert_len : group.vertex_len;
-    group.vertex_first = group.vertex_first == -1 ? batch_vert_first : group.vertex_first;
-    group.base_index = batch_base_index;
-
-    /* Instancing attributes are not supported using the new pipeline since we use the base
-     * instance to set the correct resource_id. Workaround is a storage_buf + gl_InstanceID. */
-    BLI_assert(batch_inst_len == 1);
-    UNUSED_VARS_NDEBUG(batch_inst_len);
-
-    /* Now that we got the batch information, we can set the counters to 0. */
-    group.total_counter = group.front_facing_counter = group.back_facing_counter = 0;
-  }
-
-  group_buf_.push_update();
-  prototype_buf_.push_update();
-  /* Allocate enough for the expansion pass. */
-  resource_id_buf_.get_or_resize(resource_id_count_ * (use_custom_ids ? 2 : 1));
-  /* Two command per group. */
-  command_buf_.get_or_resize(group_count_ * 2);
-
-  if (prototype_count_ > 0) {
-    GPUShader *shader = DRW_shader_draw_command_generate_get();
-    GPU_shader_bind(shader);
-    GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
-    GPU_shader_uniform_1i(shader, "visibility_word_per_draw", visibility_word_per_draw);
-    GPU_shader_uniform_1i(shader, "view_shift", log2_ceil_u(view_len));
-    GPU_shader_uniform_1b(shader, "use_custom_ids", use_custom_ids);
-    GPU_storagebuf_bind(group_buf_, GPU_shader_get_ssbo_binding(shader, "group_buf"));
-    GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
-    GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));
-    GPU_storagebuf_bind(command_buf_, GPU_shader_get_ssbo_binding(shader, "command_buf"));
-    GPU_storagebuf_bind(resource_id_buf_, DRW_RESOURCE_ID_SLOT);
-  }
-
-  GPU_debug_group_end();
-}
-
 /** \} */
 
 };  // namespace blender::draw::command

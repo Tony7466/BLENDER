@@ -243,6 +243,9 @@ class ShadowModule {
   /** View to viewport index mapping. */
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> viewport_index_buf_ = {"viewport_index_buf"};
 
+  /** Indirect arguments for TBDR Tile Page passes. */
+  DrawIndirectBuf tile_page_pass_buf_ = {"TilePassDrawCommand"};
+
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
   float tilemap_projection_ratio_;

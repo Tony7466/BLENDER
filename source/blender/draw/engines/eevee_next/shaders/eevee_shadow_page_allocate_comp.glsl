@@ -52,5 +52,13 @@ void main()
       render_map_buf[i] = 0xFFFFFFFFu;
     }
   }
+
+  /* Temp: Prepare maximal draw call for tile clear and storage passes. */
+  DrawCommand tile_pass_cmd;
+  tile_pass_cmd.vertex_len = 6u;
+  tile_pass_cmd.instance_len = (SHADOW_TILEMAP_RES * SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX;
+  tile_pass_cmd.vertex_first = 0u;
+  tile_pass_cmd.base_index = 0u;
+  tile_page_pass_buf = tile_pass_cmd;
 #endif
 }

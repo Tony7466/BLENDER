@@ -600,14 +600,6 @@ class DrawMultiBuf {
             int visibility_word_per_draw,
             int view_len,
             bool use_custom_ids);
-
-  void bind_no_comp(RecordingState &state,
-                    Vector<Header, 0> &headers,
-                    Vector<Undetermined, 0> &commands,
-                    VisibilityBuf &visibility_buf,
-                    int visibility_word_per_draw,
-                    int view_len,
-                    bool use_custom_ids);
 };
 
 /** \} */
