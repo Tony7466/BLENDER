@@ -1222,7 +1222,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_RGBA>,
     std_node_socket_color_fn<SOCK_SHADER>,
     std_node_socket_color_fn<SOCK_BOOLEAN>,
-    nullptr /* UNUSED */,
+    nullptr /* UNUSED. */,
     std_node_socket_color_fn<SOCK_INT>,
     std_node_socket_color_fn<SOCK_STRING>,
     std_node_socket_color_fn<SOCK_OBJECT>,
@@ -1284,14 +1284,18 @@ static void node_file_output_socket_draw(bContext *C,
 
 static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
 {
-  if (node.runtime->declaration == nullptr) {
+  const nodes::NodeDeclaration *node_decl = node.declaration();
+  if (node_decl == nullptr) {
+    return false;
+  }
+  if (node_decl->skip_updating_sockets) {
     return false;
   }
   if (socket.in_out == SOCK_OUT) {
     return false;
   }
   const int socket_index = BLI_findindex(&node.inputs, &socket);
-  return node.declaration()->inputs[socket_index]->is_attribute_name;
+  return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
 static void std_node_socket_draw(
@@ -1508,6 +1512,7 @@ static void std_node_socket_interface_draw(ID *id,
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, &ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "force_non_field", DEFAULT_FLAGS, nullptr, ICON_NONE);
   }
 }
 

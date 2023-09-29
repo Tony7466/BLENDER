@@ -990,7 +990,7 @@ static PFace *p_face_add(ParamHandle *handle)
 
   /* allocate */
   f = (PFace *)BLI_memarena_alloc(handle->arena, sizeof(*f));
-  f->flag = 0; /* init ! */
+  f->flag = 0;
 
   PEdge *e1 = (PEdge *)BLI_memarena_calloc(handle->arena, sizeof(*e1));
   PEdge *e2 = (PEdge *)BLI_memarena_calloc(handle->arena, sizeof(*e2));
@@ -2708,12 +2708,12 @@ static bool p_chart_abf_solve(PChart *chart)
     p_abf_compute_sines(&sys);
 
     /* iteration */
-    /* lastnorm = 1e10; */ /* UNUSED */
+    // lastnorm = 1e10; /* UNUSED. */
 
     for (i = 0; i < ABF_MAX_ITER; i++) {
       float norm = p_abf_compute_gradient(&sys, chart);
 
-      /* lastnorm = norm; */ /* UNUSED */
+      // lastnorm = norm; /* UNUSED. */
 
       if (norm < limit) {
         break;
