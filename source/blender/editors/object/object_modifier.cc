@@ -3317,7 +3317,6 @@ static void oceanbake_startjob(void *customdata, bool *stop, bool *do_update, fl
   oj->do_update = do_update;
   oj->progress = progress;
 
-  printf("%s;\n", __func__);
   G.is_break = false; /* XXX shared with render - replace with job 'stop' switch */
 
   BKE_ocean_bake(oj->ocean, oj->och, oceanbake_update, (void *)oj);
@@ -3334,7 +3333,7 @@ static void oceanbake_endjob(void *customdata)
     BKE_ocean_free(oj->ocean);
     oj->ocean = nullptr;
   }
-  printf("%s;\n", __func__);
+
   oj->omd->oceancache = oj->och;
   oj->omd->cached = true;
 
