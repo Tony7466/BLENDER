@@ -1,36 +1,9 @@
 
 /**
- * Virtual Shadow map accumulation storage.
+ * Virtual Shadow map tile shader.
  *
- * On Apple silicon, we can use a three-pass method to perform virtual shadow map updates,
- * leveraging efficient use of tile-based GPUs. Shadow updates rasterize geometry for each view in
- * much the same way as a conventional shadow map render, but for the standard path, there is an
- * additional cost of an atomic-min abd store to allow for indirection into the atlas. This setup
- * can lead to excessive overdraw, rasterization and increased complexity in the material depth
- * fragment shader, reducing rendering performance.
- *
- * On a tile-based GPU, as shadow updates are still relative, we can still leverage on-tile depth
- * testing, to avoid atomic-min operations against global memory, and only write out the final
- * depth value stored in each tile. Large memory-less render targets are used to create a virtual
- * render target, where only the updated regions and layers are processed.
- *
- * Firstly, invoke an instance of this shader with PASS_CLEAR to clear the depth values to default
- * for tiles being updated. The first optimization also enables tiles which are not being updated
- * in this pass to be cleared to zero, saving on fragment invocation costs for unused regions of
- * the render target.
- * This allows us to also remove the compute-based tile clear pass in Metal.
- *
- * Secondly, eevee_surf_shadow_frag is used to generate depth information which is stored
- * on tile for the closest fragment. The Metal path uses a simple variant of this shader
- * which just outputs the depth, without any virtual shadow map processing on top.
- *
- * The third pass then runs, writing out only the highest-level final pixel to memory,
- * avoiding the requirement for atomic texture operations.
- *
- * Output shadow atlas page indirection is calculated in the vertex shader, which generates
- * a lattice of quads covering the shadow pages which are to be updated. The quads which
- * belong to shadow pages not being updated in this pass are discarded.
- **/
+ * See fragment shader for more infos.
+ */
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 void main()
