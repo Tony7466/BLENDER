@@ -8,6 +8,7 @@
 #include "GEO_randomize.hh"
 
 #include "BKE_instances.hh"
+#include "BKE_mesh.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -61,34 +62,56 @@ static void node_geo_exec(GeoNodeExecParams params)
     const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
 
     MultiValueMap<int, int> indices_by_group;
+
+    /* TODO: Take selection into account. */
     selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
+    const int groups_num = indices_by_group.size();
 
-    Array<bool> group_selection(domain_size, false);
-    const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
-    for (auto item : indices_by_group.items()) {
-      const int group_id = item.key;
-      const Span<int> elements = item.value;
-      for (int i : elements) {
-        group_selection[i] = true;
-      }
+    Vector<int> groups_ids_ordered;
+    groups_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
 
-      std::optional<Mesh *> group_mesh_opt = geometry::mesh_copy_selection(
-          src_mesh, group_selection_varray, domain, propagation_info);
-      GeometrySet group_geometry;
-      if (group_mesh_opt.has_value()) {
-        if (Mesh *group_mesh = *group_mesh_opt) {
-          group_geometry = GeometrySet::from_mesh(group_mesh);
+    Vector<GeometrySet> group_geometries(groups_num);
+
+    threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
+        [&]() { return Array<bool>(domain_size, false); }};
+
+    threading::parallel_for(groups_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+      /* Need task isolation because of the thread local variable. */
+      threading::isolate_task([&]() {
+        MutableSpan<bool> group_selection = group_selection_per_thread.local();
+        const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
+        for (const int group_index : range) {
+          const int group_id = groups_ids_ordered[group_index];
+          const Span<int> elements = indices_by_group.lookup(group_id);
+          for (int i : elements) {
+            group_selection[i] = true;
+          }
+
+          /* Using #mesh_copy_selection here is not ideal, because it can lead to O(n^2) behavior
+           * when there are many groups. */
+          std::optional<Mesh *> group_mesh_opt = geometry::mesh_copy_selection(
+              src_mesh, group_selection_varray, domain, propagation_info);
+          GeometrySet &group_geometry = group_geometries[group_index];
+          if (group_mesh_opt.has_value()) {
+            if (Mesh *group_mesh = *group_mesh_opt) {
+              group_geometry = GeometrySet::from_mesh(group_mesh);
+            }
+          }
+          else {
+            group_geometry.add(component);
+          }
+
+          for (int i : elements) {
+            group_selection[i] = false;
+          }
         }
-      }
-      else {
-        group_geometry.add(component);
-      }
+      });
+    });
+
+    for (const int group_index : IndexRange(groups_num)) {
+      GeometrySet &group_geometry = group_geometries[group_index];
       const int handle = dst_instances->add_reference(std::move(group_geometry));
       dst_instances->add_instance(handle, float4x4::identity());
-
-      for (int i : elements) {
-        group_selection[i] = false;
-      }
     }
   }
 
