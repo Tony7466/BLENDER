@@ -42,23 +42,4 @@ void main()
     }
     tile_start += lod_len;
   }
-
-#ifdef SHADOW_UPDATE_TBDR_ROG
-  if (gl_GlobalInvocationID.z == 0) {
-    /* Temp: Clear render_map_buf in Metal, as we need to ensure that only the tiles updated in the
-     * current pass are marked with valid IDs. */
-    int start = SHADOW_VIEW_MAX * gl_GlobalInvocationID.x;
-    for (int i = start; i < start + SHADOW_VIEW_MAX; i++) {
-      render_map_buf[i] = 0xFFFFFFFFu;
-    }
-  }
-
-  /* Temp: Prepare maximal draw call for tile clear and storage passes. */
-  DrawCommand tile_pass_cmd;
-  tile_pass_cmd.vertex_len = 6u;
-  tile_pass_cmd.instance_len = (SHADOW_TILEMAP_RES * SHADOW_TILEMAP_RES) * SHADOW_VIEW_MAX;
-  tile_pass_cmd.vertex_first = 0u;
-  tile_pass_cmd.base_index = 0u;
-  tile_page_pass_buf = tile_pass_cmd;
-#endif
 }

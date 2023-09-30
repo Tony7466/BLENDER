@@ -841,7 +841,8 @@ static void test_eevee_shadow_finalize()
 
   StorageArrayBuffer<ViewMatrices, DRW_VIEW_MAX> shadow_multi_view_buf = {"ShadowMultiView"};
   StorageBuffer<DispatchCommand> clear_dispatch_buf;
-  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_list_buf = {"clear_list_buf"};
+  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> dst_coord_buf = {"dst_coord_buf"};
+  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> src_coord_buf = {"src_coord_buf"};
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE> render_map_buf = {"render_map_buf"};
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX> viewport_index_buf = {"viewport_index_buf"};
 
@@ -857,7 +858,8 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("view_infos_buf", shadow_multi_view_buf);
   pass.bind_ssbo("statistics_buf", statistics_buf);
   pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
-  pass.bind_ssbo("clear_list_buf", clear_list_buf);
+  pass.bind_ssbo("dst_coord_buf", dst_coord_buf);
+  pass.bind_ssbo("src_coord_buf", src_coord_buf);
   pass.bind_ssbo("render_map_buf", render_map_buf);
   pass.bind_ssbo("viewport_index_buf", viewport_index_buf);
   pass.bind_ssbo("pages_infos_buf", pages_infos_data);

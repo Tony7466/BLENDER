@@ -155,89 +155,73 @@ void WorldVolumePipeline::render(View &view)
 
 void ShadowPipeline::sync()
 {
-  surface_ps_.init();
+  render_ps_.init();
 
-  /* NOTE: Metal backend performs a three-pass implementation. First performing the clear directly
+  /* NOTE: TBDR technique perform a three-pass implementation. First performing the clear directly
    * on tile, followed by a fast depth-only pass, then storing the on-tile results into the shadow
-   * atlas during a final storage pass. This takes advantage of Apple Silicon's tile-based
-   * architecture, reducing overdraw and additional per-fragment calculations. */
+   * atlas during a final storage pass. This takes advantage of TBDR architecture, reducing
+   * overdraw and additional per-fragment calculations. */
   bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
-                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
+                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR);
   if (shadow_update_tbdr) {
-    tbdr_page_clear_ps_ = &surface_ps_.sub("Shadow.TilePageClear");
-    tbdr_page_clear_ps_->shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_CLEAR));
-    tbdr_page_clear_ps_->state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER_EQUAL);
-    tbdr_page_clear_ps_->bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    tbdr_page_clear_ps_->bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-    tbdr_page_clear_ps_->bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-    tbdr_page_clear_ps_->bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
-                                   &inst_.shadows.viewport_index_buf_);
-    tbdr_page_clear_ps_->bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-    inst_.sampling.bind_resources(tbdr_page_clear_ps_);
-    inst_.bind_uniform_data(tbdr_page_clear_ps_);
-    tbdr_page_clear_ps_->draw_procedural_indirect(GPU_PRIM_TRIS,
-                                                  inst_.shadows.tile_page_pass_buf_);
+    draw::PassMain::Sub &sub = render_ps_.sub("Shadow.TilePageClear");
+    sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));
+    /* Only manually clear depth of the updated tiles.
+     * This is because the depth is initialized to near depth using attachments for fast clear and
+     * color is cleared to far depth. This way we can save a bit of bandwidth by only clearing
+     * the updated tiles depth to far depth and not touch the color attachment. */
+    sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
+    sub.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
+    sub.draw_procedural_indirect(GPU_PRIM_TRIS, inst_.shadows.tile_draw_buf_);
   }
 
-  DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
-  if (shadow_update_tbdr) {
-    /* Metal writes depth value in local tile memory, which is considered a color attachment. */
-    state |= DRW_STATE_WRITE_COLOR;
-  }
-  surface_ps_.state_set(state);
-  surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  surface_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
-  if (!shadow_update_tbdr) {
-    /* We do not need all of the shadow information when using the TBDR-optimized approach. */
-    surface_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-    surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-    surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-  }
-  inst_.bind_uniform_data(&surface_ps_);
-  inst_.sampling.bind_resources(&surface_ps_);
-}
+  {
+    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
+    if (shadow_update_tbdr) {
+      /* Metal writes depth value in local tile memory, which is considered a color attachment. */
+      state |= DRW_STATE_WRITE_COLOR;
+    }
 
-void ShadowPipeline::end_sync()
-{
-  /* Configure page clear and page write passes optimal for tile-based architecture implementation.
-   * Page clear runs as a pre-pass for clearing depth of passes being updated within the render
-   * pipeline. Page write pass writes final tile depth results into the shadow atlas. */
-  bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
-                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG);
+    draw::PassMain::Sub &pass = render_ps_.sub("Shadow.Surface");
+    pass.state_set(state);
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    pass.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
+    if (!shadow_update_tbdr) {
+      /* We do not need all of the shadow information when using the TBDR-optimized approach. */
+      pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+      pass.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+      pass.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+    }
+    inst_.bind_uniform_data(&pass);
+    inst_.sampling.bind_resources(&pass);
+    surface_ps_ = &pass;
+  }
 
   if (shadow_update_tbdr) {
-    tbdr_page_store_ps_ = &surface_ps_.sub("Shadow.TilePageStore");
-    tbdr_page_store_ps_->shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_STORE));
-    /* NOTE: Setting to DRW_STATE_DEPTH_ALWAYS allows removal of the SHADOW_PAGE_CLEAR pass as
-     * all tile texels are cleared within tile memory and stored.
-     * DRW_STATE_DEPTH_GREATER/GREATER_EQUAL is the most optimal for the update pass itself, as it
-     * means only those pixels whose depth has been updated by geometry get rastered. However, in
-     * this case, the more expensive split compute-based clear is required.
+    draw::PassMain::Sub &pass = render_ps_.sub("Shadow.TilePageStore");
+    pass.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_STORE));
+    /* The most optimal way would be to only store pixels that have been rendered to (depth > 0).
+     * But that requires that the destination pages in the atlas would have been already cleared
+     * using compute. Experiments showed that it is faster to just copy the whole tiles back.
      *
      * For relative perf, raster-based clear within tile update adds around 0.1ms vs 0.25ms for
-     * compute based for a simple testcase. */
-    tbdr_page_store_ps_->state_set(DRW_STATE_DEPTH_ALWAYS);
-    tbdr_page_store_ps_->bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    tbdr_page_store_ps_->bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-    tbdr_page_store_ps_->bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-    tbdr_page_store_ps_->bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
-                                   &inst_.shadows.viewport_index_buf_);
-    tbdr_page_store_ps_->bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-    inst_.sampling.bind_resources(tbdr_page_store_ps_);
-    inst_.bind_uniform_data(tbdr_page_store_ps_);
-    tbdr_page_store_ps_->draw_procedural_indirect(GPU_PRIM_TRIS,
-                                                  inst_.shadows.tile_page_pass_buf_);
+     * compute based clear for a simple testcase. */
+    pass.state_set(DRW_STATE_DEPTH_ALWAYS);
+    pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    pass.bind_ssbo("dst_coord_buf", inst_.shadows.dst_coord_buf_);
+    pass.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
+    pass.draw_procedural_indirect(GPU_PRIM_TRIS, inst_.shadows.tile_draw_buf_);
   }
 }
 
 PassMain::Sub *ShadowPipeline::surface_material_add(GPUMaterial *gpumat)
 {
-  return &surface_ps_.sub(GPU_material_get_name(gpumat));
+  return &surface_ps_->sub(GPU_material_get_name(gpumat));
 }
 
 void ShadowPipeline::render(View &view)
 {
-  inst_.manager->submit(surface_ps_, view);
+  inst_.manager->submit(render_ps_, view);
 }
 
 /** \} */

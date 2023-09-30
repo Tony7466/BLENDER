@@ -210,8 +210,6 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_debug";
     case SHADOW_PAGE_ALLOCATE:
       return "eevee_shadow_page_allocate";
-    case SHADOW_PAGE_ALLOCATE_RBUF_CLEAR:
-      return "eevee_shadow_page_allocate_renderbuf_clear";
     case SHADOW_PAGE_CLEAR:
       return "eevee_shadow_page_clear";
     case SHADOW_PAGE_DEFRAG:
@@ -234,10 +232,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_surfels";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
-    case SHADOW_DEPTH_TBDR_PAGE_CLEAR:
-      return "eevee_shadow_page_clear_metal_tbdr";
-    case SHADOW_DEPTH_TBDR_PAGE_STORE:
-      return "eevee_shadow_page_store_tile";
+    case SHADOW_PAGE_TILE_CLEAR:
+      return "eevee_shadow_page_tile_clear";
+    case SHADOW_PAGE_TILE_STORE:
+      return "eevee_shadow_page_tile_store";
     case SHADOW_TILEMAP_TAG_USAGE_VOLUME:
       return "eevee_shadow_tag_usage_volume";
     case SUBSURFACE_CONVOLVE:
@@ -565,10 +563,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           /* Determine surface shadow shader depending on used update technique. */
           switch (ShadowModule::shadow_technique) {
             case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-              info.additional_info("eevee_surf_shadow_atomic_update");
+              info.additional_info("eevee_surf_shadow_atomic");
             } break;
-            case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
-              info.additional_info("eevee_surf_shadow_tbdr_rog_update");
+            case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
+              info.additional_info("eevee_surf_shadow_tbdr");
             } break;
             default: {
               BLI_assert_unreachable();

@@ -190,14 +190,10 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", "64")
     .define("MAT_SHADOW")
-    .define("USE_ATOMIC")
     .builtins(BuiltinBits::VIEWPORT_INDEX)
     .builtins(BuiltinBits::LAYER)
-    .builtins(BuiltinBits::TEXTURE_ATOMIC)
     .vertex_out(eevee_surf_iface)
     .vertex_out(eevee_surf_flat_iface)
-    .builtins(BuiltinBits::VIEWPORT_INDEX)
-    .builtins(BuiltinBits::LAYER)
     .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -205,7 +201,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .fragment_source("eevee_surf_shadow_frag.glsl")
     .additional_info("eevee_global_ubo", "eevee_utility_texture", "eevee_sampling_data");
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_common)
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_ATOMIC_RASTER")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
@@ -213,22 +209,17 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_common)
                  Qualifier::READ,
                  "uint",
                  "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
-    .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf");
-
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update)
-    .additional_info("eevee_surf_shadow_atomic_update_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img");
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr_rog_update)
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr)
     .additional_info("eevee_surf_shadow")
-    .define("SHADOW_UPDATE_TBDR_ROG")
-    /* F32 colour attachment with raster order group for on-tile depth accumulation without
-     * atomics. */
-    .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, 0);
+    .define("SHADOW_UPDATE_TBDR")
+    /* F32 color attachment for on-tile depth accumulation without atomics. */
+    .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, SHADOW_ROG_ID);
 
 #undef image_out
 #undef image_array_out
@@ -349,9 +340,8 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     EEVEE_MAT_GEOM_VARIATIONS(name##_deferred, "eevee_surf_deferred", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
-    EEVEE_MAT_GEOM_VARIATIONS( \
-        name##_shadow_atomic, "eevee_surf_shadow_atomic_update", __VA_ARGS__) \
-    EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr_rog_update", __VA_ARGS__)
+    EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_atomic, "eevee_surf_shadow_atomic", __VA_ARGS__) \
+    EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")
 

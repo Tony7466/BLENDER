@@ -53,7 +53,7 @@ void main()
   u_depth += 2;
 
   /* Write result to altas. */
-#  ifdef METAL
+#  ifdef GPU_METAL
   /* NOTE: Use the fastest possible write function without any parameter wrapping or conversion.*/
   shadow_atlas_img.texture->write(u_depth, ushort2(out_texel_xy), out_page_z);
 #  else

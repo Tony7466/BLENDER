@@ -64,10 +64,8 @@ enum ShadowUpdateTechnique {
   /* Tile-architecture optimized virtual shadow map update, leveraging on-tile memory for clearing
    * and depth-testing during geometry rasterization to avoid atomic operations, simplify mesh
    * depth shader and only perform a single storage operation per pixel. This technique performs
-   * a 3-pass solution, first clearing tiles, updating depth and storing final results.
-   * NOTE: This is currently only supported on Apple Silicon as it requires rasterization order
-   * groups to perform ordered attachment operations. */
-  SHADOW_UPDATE_TBDR_ROG = 1,
+   * a 3-pass solution, first clearing tiles, updating depth and storing final results. */
+  SHADOW_UPDATE_TBDR = 1,
 };
 
 /* -------------------------------------------------------------------- */
@@ -235,16 +233,17 @@ class ShadowModule {
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
   /** Indirect arguments for page clearing. */
-  DispatchIndirectBuf clear_dispatch_buf_;
-  /** Array containing a compact stream of tiles to clear. */
-  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> clear_list_buf_ = {"clear_list_buf"};
-  /** Tile to pages mapping. */
+  DispatchIndirectBuf clear_dispatch_buf_ = {"clear_dispatch_buf"};
+  /** Indirect arguments for TBDR Tile Page passes. */
+  DrawIndirectBuf tile_draw_buf_ = {"tile_draw_buf"};
+  /** A compact stream of rendered tile coordinates in the shadow atlas. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> dst_coord_buf_ = {"dst_coord_buf"};
+  /** A compact stream of rendered tile coordinates in the framebuffer. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> src_coord_buf_ = {"src_coord_buf"};
+  /** Same as dst_coord_buf_ but is not compact. More like a linear texture. */
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> render_map_buf_ = {"render_map_buf"};
   /** View to viewport index mapping. */
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> viewport_index_buf_ = {"viewport_index_buf"};
-
-  /** Indirect arguments for TBDR Tile Page passes. */
-  DrawIndirectBuf tile_page_pass_buf_ = {"TilePassDrawCommand"};
 
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */

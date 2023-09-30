@@ -724,10 +724,10 @@ void ShadowModule::init()
 {
   /* Determine shadow update technique and atlas format.
    * NOTE(Metal): Metal utilizes a tile-optimized approach for Apple Silicon's architecture. */
-  bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
-  bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+  const bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
+  const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
   if (is_metal_backend && is_tile_based_arch) {
-    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
+    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_TBDR;
   }
   else {
     ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
@@ -808,6 +808,8 @@ void ShadowModule::init()
   /* Create different viewport to support different update region size. The most fitting viewport
    * is then selected during the tilemap finalize stage in `viewport_select`. */
   for (int i = 0; i < multi_viewports_.size(); i++) {
+    /** IMPORTANT: Reflect changes in TBDR tile vertex shader which assumes viewport index 15
+     * covers the whole framebuffer. */
     int size_in_tile = min_ii(1 << i, SHADOW_TILEMAP_RES);
     multi_viewports_[i][0] = 0;
     multi_viewports_[i][1] = 0;
@@ -1132,29 +1134,20 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
+        sub.bind_ssbo("tile_draw_buf", tile_draw_buf_);
         sub.dispatch(int3(1, 1, 1));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
       {
         /** Assign pages to tiles that have been marked as used but possess no page. */
         PassSimple::Sub &sub = pass.sub("AllocatePages");
-        sub.shader_set(inst_.shaders.static_shader_get(
-            (shadow_technique == ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) ?
-                SHADOW_PAGE_ALLOCATE_RBUF_CLEAR :
-                SHADOW_PAGE_ALLOCATE));
+        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_ALLOCATE));
         sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("pages_free_buf", pages_free_data_);
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
-
-        /* For the tile optimized update, we need to clear tiles being updated early. */
-        if (shadow_technique == ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
-          sub.bind_ssbo("render_map_buf", render_map_buf_);
-          sub.bind_ssbo("tile_page_pass_buf", tile_page_pass_buf_);
-        }
-
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
@@ -1168,7 +1161,8 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("view_infos_buf", &shadow_multi_view_.matrices_ubo_get());
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
-        sub.bind_ssbo("clear_list_buf", clear_list_buf_);
+        sub.bind_ssbo("dst_coord_buf", dst_coord_buf_);
+        sub.bind_ssbo("src_coord_buf", src_coord_buf_);
         sub.bind_ssbo("render_map_buf", render_map_buf_);
         sub.bind_ssbo("viewport_index_buf", viewport_index_buf_);
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
@@ -1180,14 +1174,14 @@ void ShadowModule::end_sync()
 
       /* NOTE: We do not need to run the clear pass when using the TBDR update variant, as tiles
        * will be fully cleared as part of the shadow raster step. */
-      if (ShadowModule::shadow_technique != ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
+      if (ShadowModule::shadow_technique != ShadowUpdateTechnique::SHADOW_UPDATE_TBDR) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
         sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_CLEAR));
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
-        sub.bind_ssbo("clear_list_buf", clear_list_buf_);
+        sub.bind_ssbo("dst_coord_buf", dst_coord_buf_);
         sub.bind_image("shadow_atlas_img", atlas_tx_);
         sub.dispatch(clear_dispatch_buf_);
         sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -1308,7 +1302,7 @@ void ShadowModule::set_view(View &view)
       GPU_framebuffer_bind(render_fb_);
     } break;
 
-    case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+    case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
       /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
       shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
                                           int2(SHADOW_TILEMAP_RES * shadow_page_size_),
@@ -1346,30 +1340,26 @@ void ShadowModule::set_view(View &view)
 
       switch (shadow_technique) {
         case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-
-          /* Main shadow geometry pass. */
           inst_.pipelines.shadow.render(shadow_multi_view_);
-
         } break;
 
-        case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+        case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
+          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+            /* Isolate shadow update into own command buffer.
+             * If parameter buffer is exceeds limits, then other work will not be impacted.  */
+            GPU_flush();
+          }
 
-          /* Isolate shadow update into own command buffer.
-           * If parameter buffer is exceeds limits, then other work will not be impacted.  */
-          GPU_flush();
-
-          /* Specify explicit load-store config for memoryless attachments, and defining
-           * explicit clear values for this pass. */
           GPU_framebuffer_bind_ex(
               render_fb_,
               {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
                {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
-
-          /* Main shadow geometry pass. */
           inst_.pipelines.shadow.render(shadow_multi_view_);
 
-          /* Isolate shadow update into own command buffer. */
-          GPU_flush();
+          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+            /* Isolate shadow update into own command buffer. */
+            GPU_flush();
+          }
         } break;
       }
 
