@@ -710,7 +710,7 @@ class VIEW3D_PT_slots_vertex_groups(Panel):
             col.operator("object.vertex_group_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
 
-class VIEW3D_PT_mask(View3DPanel, Panel):
+class VIEW3D_PT_mask(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Masking"
@@ -721,7 +721,7 @@ class VIEW3D_PT_mask(View3DPanel, Panel):
 
 
 # TODO, move to space_view3d.py
-class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
+class VIEW3D_PT_stencil_projectpaint(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Stencil Mask"
