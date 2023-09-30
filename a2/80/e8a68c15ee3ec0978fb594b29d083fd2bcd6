@@ -1,1 +1,2 @@
 Referenced by issue #111117, Regression: Mesh method from_pydata in Python API does not work with quads and tris
+Referenced by commit 3f633503d34e0189bc72d709e3e59151cbfea23c, Fix #111117:  Partially revert a280e8a6
