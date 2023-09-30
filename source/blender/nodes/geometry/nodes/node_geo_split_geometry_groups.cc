@@ -72,7 +72,19 @@ static void split_mesh_groups(const MeshComponent &component,
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
+
+  if (selection.is_empty()) {
+    return;
+  }
+  if (selection.size() == domain_size && group_ids_varray.is_single()) {
+    const int group_id = group_ids_varray.get_internal_single();
+    ensure_group_geometries(geometry_by_group_id, {group_id});
+    geometry_by_group_id.lookup(group_id)->add(component);
+    return;
+  }
+
+  const VArraySpan<int> group_ids = group_ids_varray;
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
@@ -135,7 +147,19 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
+
+  if (selection.is_empty()) {
+    return;
+  }
+  if (selection.size() == points_num && group_ids_varray.is_single()) {
+    const int group_id = group_ids_varray.get_internal_single();
+    ensure_group_geometries(geometry_by_group_id, {group_id});
+    geometry_by_group_id.lookup(group_id)->add(component);
+    return;
+  }
+
+  const VArraySpan<int> group_ids = group_ids_varray;
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
@@ -177,11 +201,22 @@ static void split_curve_groups(const bke::CurveComponent &component,
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
+
+  if (selection.is_empty()) {
+    return;
+  }
+  if (selection.size() == domain_size && group_ids_varray.is_single()) {
+    const int group_id = group_ids_varray.get_internal_single();
+    ensure_group_geometries(geometry_by_group_id, {group_id});
+    geometry_by_group_id.lookup(group_id)->add(component);
+    return;
+  }
+
+  const VArraySpan<int> group_ids = group_ids_varray;
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  const int groups_num = indices_by_group.size();
 
   Vector<int> group_ids_ordered;
   group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
@@ -224,11 +259,22 @@ static void split_instance_groups(const InstancesComponent &component,
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
+
+  if (selection.is_empty()) {
+    return;
+  }
+  if (selection.size() == instances_num && group_ids_varray.is_single()) {
+    const int group_id = group_ids_varray.get_internal_single();
+    ensure_group_geometries(geometry_by_group_id, {group_id});
+    geometry_by_group_id.lookup(group_id)->add(component);
+    return;
+  }
+
+  const VArraySpan<int> group_ids = group_ids_varray;
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  const int groups_num = indices_by_group.size();
 
   Vector<int> group_ids_ordered;
   group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
