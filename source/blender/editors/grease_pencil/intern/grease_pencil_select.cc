@@ -267,8 +267,6 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
                   "(De)select the first and last point of each stroke");
 }
 
-
-
 static int select_similar_exec(bContext *C, wmOperator *op)
 {
   const int type = RNA_enum_get(op->ptr, "type");
@@ -281,29 +279,23 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   switch (type) {
     case LAYER:
       ed::curves::select_similar_layer(
-          grease_pencil, scene, selection_domain, type, threshold, "", "asadf");
+          grease_pencil, scene, selection_domain, type);
       break;
     case MATERIAL:
       ed::curves::select_similar<int>(
-          grease_pencil, scene, selection_domain, type, threshold, "material_index", 0);
+          grease_pencil, scene, selection_domain, type, threshold, "material_index");
       break;
     case VERTEX_COLOR:
-      // fixme: is vertex_color defined? It seems that the default value is always used....
-      ed::curves::select_similar<ColorGeometry4f>(grease_pencil,
-                                                       scene,
-                                                       selection_domain,
-                                                       type,
-                                                       threshold,
-                                                       "vertex_color",
-                                                       ColorGeometry4f{3.0f, 3.0f, 3.0f, 3.0f});
+      ed::curves::select_similar<ColorGeometry4f>(
+          grease_pencil, scene, selection_domain, type, threshold, "vertex_color");
       break;
     case RADIUS:
       ed::curves::select_similar<float>(
-          grease_pencil, scene, selection_domain, type, threshold, "radius", 0.0f);
+          grease_pencil, scene, selection_domain, type, threshold, "radius");
       break;
     case OPACITY:
       ed::curves::select_similar<float>(
-          grease_pencil, scene, selection_domain, type, threshold, "opacity", 0.0f);
+          grease_pencil, scene, selection_domain, type, threshold, "opacity");
       break;
     default:
       throw std::invalid_argument("Undefined behavior for eSelectSimilar_Mode " + type);
@@ -328,12 +320,7 @@ static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna,
-               "type",
-               prop_select_similar_types,
-               LAYER,
-               "Type",
-               "");
+  RNA_def_enum(ot->srna, "type", prop_select_similar_types, LAYER, "Type", "");
 
   RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
 }

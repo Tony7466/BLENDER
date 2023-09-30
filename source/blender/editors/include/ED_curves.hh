@@ -177,15 +177,27 @@ void select_linked(bke::CurvesGeometry &curves);
  */
 void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends);
 
+template<typename T> static T default_for_lookup() {
+  if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
+    return 0;
+  }
+  else if constexpr (std::is_same<T, ColorGeometry4f>::value) {
+    return ColorGeometry4f{0.0f, 0.0f, 0.0f, 0.0f};
+  }
+  else if constexpr (std::is_same<T, std::string>::value) {
+    return "default";
+  }
+  throw std::invalid_argument("Undefined behavior for distance function for the used type");
+}
+
 template<typename T>
 blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curves,
                                                        int type,
-                                                       std::string attribute_id,
-                                                       const T default_for_lookup)
+                                                       std::string attribute_id)
 {
   blender::Set<T> selectedValuesForAttribute;
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup);
+      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
@@ -243,11 +255,10 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
                                           blender::Set<T> &set_active_if_similar_to,
                                           float threshold,
                                           int type,
-                                          std::string attribute_id,
-                                          T default_attribute)
+                                          std::string attribute_id)
 {
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, ATTR_DOMAIN_POINT, default_attribute);
+      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
@@ -278,10 +289,7 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
 static void select_similar_layer(GreasePencil &grease_pencil,
                                  Scene *scene,
                                  eAttrDomain selection_domain,
-                                 int type,
-                                 float threshold,
-                                 std::string attribute_id,
-                                 std::string default_value)
+                                 int type)
 {
   blender::Vector<blender::Set<std::string>> currentlySelectedLayers(
       grease_pencil.drawings().size());
@@ -320,8 +328,7 @@ static void select_similar(GreasePencil &grease_pencil,
                            eAttrDomain selection_domain,
                            int type,
                            float threshold,
-                           std::string attribute_id,
-                           T default_value)
+                           std::string attribute_id)
 {
   blender::Vector<blender::Set<T>> currentlySelectedValuesPerDrawing;
 
@@ -329,7 +336,7 @@ static void select_similar(GreasePencil &grease_pencil,
       scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
         currentlySelectedValuesPerDrawing.append(
             blender::ed::curves::selected_values_for_attribute_in_curve<T>(
-                drawing.strokes_for_write(), type, attribute_id, default_value));
+                drawing.strokes_for_write(), type, attribute_id));
       });
 
   Set<T> currentlySelectedValues = join_sets<T>(currentlySelectedValuesPerDrawing);
@@ -340,8 +347,7 @@ static void select_similar(GreasePencil &grease_pencil,
                                                               currentlySelectedValues,
                                                               threshold,
                                                               type,
-                                                              attribute_id,
-                                                              default_value);
+                                                              attribute_id);
       });
 }
 
