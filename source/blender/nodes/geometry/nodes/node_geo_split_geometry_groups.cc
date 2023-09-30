@@ -5,6 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "GEO_mesh_copy_selection.hh"
+#include "GEO_randomize.hh"
 
 #include "BKE_instances.hh"
 
@@ -74,6 +75,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
     }
   }
+
+  geometry::debug_randomize_instance_order(dst_instances);
 
   params.set_output("Geometry", std::move(dst_geometry));
 }
