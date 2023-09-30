@@ -64,6 +64,7 @@ class GLContext : public Context {
   static bool multi_draw_indirect_support;
   static bool shader_draw_parameters_support;
   static bool stencil_texturing_support;
+  static bool texture_barrier_support;
   static bool texture_cube_map_array_support;
   static bool texture_filter_anisotropic_support;
   static bool texture_gather_support;
