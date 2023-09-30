@@ -832,16 +832,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
          << to_string(input.type) << " " << input.name << ";\n";
     }
     else {
-      char swizzle[] = "xyzw";
-      swizzle[to_component_count(input.type)] = '\0';
-
-      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
-       * built-in flag. */
-      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
-
-      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
-                                               "ivec2(gl_FragCoord.xy)";
-
       std::string image_name = "gpu_subpass_img_";
       image_name += std::to_string(input.index);
 
@@ -867,16 +857,25 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       using Resource = ShaderCreateInfo::Resource;
       /* NOTE(fclem): Using the attachment index as resource index might be problematic as it might
        * collide with other resources. */
-      Resource res(Resource::BindType::IMAGE, input.index);
-      res.image.format = to_texture_format_type(input.type);
-      res.image.qualifiers = Qualifier::READ;
-      res.image.type = image_type;
-      res.image.name = image_name;
+      Resource res(Resource::BindType::SAMPLER, input.index);
+      res.sampler.type = image_type;
+      res.sampler.sampler = GPUSamplerState::default_sampler();
+      res.sampler.name = image_name;
       print_resource(ss, res, false);
+
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(input.type)] = '\0';
+
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
+
+      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
+                                               "ivec2(gl_FragCoord.xy)";
 
       std::stringstream ss_pre;
       /* Populate the global before main using imageLoad. */
-      ss_pre << "  " << input.name << " = imageLoad(" << image_name << ", " << texel_co << ")."
+      ss_pre << "  " << input.name << " = texelFetch(" << image_name << ", " << texel_co << ")."
              << swizzle << ";\n";
 
       pre_main += ss_pre.str();

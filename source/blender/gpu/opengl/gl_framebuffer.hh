@@ -34,6 +34,8 @@ class GLFrameBuffer : public FrameBuffer {
   GLStateManager *state_manager_ = nullptr;
   /** Copy of the GL state. Contains ONLY color attachments enums for slot binding. */
   GLenum gl_attachments_[GPU_FB_MAX_COLOR_ATTACHMENT] = {0};
+  /** List of textures that are associated with this frame-buffer but temporarily detached. */
+  GPUTexture *tmp_detached_[GPU_FB_MAX_ATTACHMENT];
   /** Internal frame-buffers are immutable. */
   bool immutable_ = false;
   /** True is the frame-buffer has its first color target using the GPU_SRGB8_A8 format. */

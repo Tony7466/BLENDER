@@ -230,46 +230,75 @@ void GLFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment
                                        Span<GPUAttachmentState> color_attachment_states)
 {
   /* NOTE: Depth is not supported as input attachment because the Metal API doesn't support it and
-   * because depth is not compatible with `imageLoad` workaround nor with the framebuffer fetch
-   * implementation. */
+   * because depth is not compatible with the framebuffer fetch implementation. */
   BLI_assert(depth_attachment_state != GPU_ATTACHEMENT_READ);
-
   GPU_depth_mask(depth_attachment_state == GPU_ATTACHEMENT_WRITE);
 
-  if (GLContext::framebuffer_fetch_support) {
-    bool any_read = false;
-    for (auto attachment : color_attachment_states.index_range()) {
-      if (attachment == GPU_ATTACHEMENT_READ) {
-        any_read = true;
-        break;
-      }
+  bool any_read = false;
+  for (auto attachment : color_attachment_states.index_range()) {
+    if (attachment == GPU_ATTACHEMENT_READ) {
+      any_read = true;
+      break;
     }
+  }
+
+  if (GLContext::framebuffer_fetch_support) {
     if (any_read) {
       glFramebufferFetchBarrierEXT();
     }
   }
-  else {
+  else if (GLContext::texture_barrier_support) {
+    if (any_read) {
+      glTextureBarrier();
+    }
+
+    GLenum attachments[GPU_FB_MAX_COLOR_ATTACHMENT] = {GL_NONE};
     for (int i : color_attachment_states.index_range()) {
       GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+      GPUTexture *attach_tex = this->attachments_[type].tex;
       if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
-        BLI_assert(this->attachments_[type].tex);
-        GPU_texture_image_bind(this->attachments_[type].tex, i);
+        tmp_detached_[type] = attach_tex; /* Bypass feedback loop check. */
+        GPU_texture_bind_ex(attach_tex, GPUSamplerState::default_sampler(), i);
+      }
+      else {
+        tmp_detached_[type] = nullptr;
+      }
+      bool attach_write = color_attachment_states[i] == GPU_ATTACHEMENT_WRITE;
+      attachments[i] = (attach_tex && attach_write) ? to_gl(type) : GL_NONE;
+    }
+    /* We have to use `glDrawBuffers` instead of `glColorMaski` because the later is overwritten
+     * by the `GLStateManager`. */
+    /* WATCH(fclem): This modifies the frame-buffer state without setting `dirty_attachments_`. */
+    glDrawBuffers(ARRAY_SIZE(attachments), attachments);
+  }
+  else {
+    /* The only way to have correct visibility without extensions and ensure defined behavior, is
+     * to unbind the textures and update the frame-buffer. This is a slow operation but that's all
+     * we can do to emulate the sub-pass input. */
+    for (int i : color_attachment_states.index_range()) {
+      GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+
+      if (color_attachment_states[i] == GPU_ATTACHEMENT_WRITE) {
+        if (tmp_detached_[type] != nullptr) {
+          /* Re-attach previous read attachments. */
+          this->attachment_set(type, tmp_detached_[type]);
+          tmp_detached_[type] = nullptr;
+        }
+      }
+      else {
+        GPUTexture *tex = this->attachments_[type].tex;
+        tmp_detached_[type] = tex;
+        unwrap(tex)->detach_from(this);
+      }
+
+      if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
+        GPU_texture_bind_ex(tmp_detached_[type], GPUSamplerState::default_sampler(), i);
       }
     }
-  }
-
-  /* Change the draw attachments to turn writing on and off. */
-  GLenum draw_attachments[GPU_FB_MAX_COLOR_ATTACHMENT] = {GL_NONE};
-
-  for (int i : color_attachment_states.index_range()) {
-    GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
-    if (color_attachment_states[i] == GPU_ATTACHEMENT_WRITE) {
-      BLI_assert(this->attachments_[type].tex);
-      draw_attachments[i] = to_gl(type);
+    if (dirty_attachments_) {
+      this->update_attachments();
     }
   }
-
-  glDrawBuffers(ARRAY_SIZE(draw_attachments), draw_attachments);
 }
 
 void GLFrameBuffer::apply_state()
