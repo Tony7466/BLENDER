@@ -21,6 +21,8 @@
 
 #include "RNA_enum_types.hh"
 
+#include "BLI_array_utils.hh"
+
 namespace blender::nodes::node_geo_split_geometry_groups_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -207,6 +209,63 @@ static void split_curve_groups(const bke::CurveComponent &component,
   });
 }
 
+static void split_instance_groups(const InstancesComponent &component,
+                                  const Field<bool> &selection_field,
+                                  const Field<int> &group_id_field,
+                                  const AnonymousAttributePropagationInfo &propagation_info,
+                                  Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
+{
+  const bke::Instances &src_instances = *component.get();
+  const int instances_num = src_instances.instances_num();
+
+  const bke::InstancesFieldContext field_context{src_instances};
+  FieldEvaluator field_evaluator{field_context, instances_num};
+  field_evaluator.set_selection(selection_field);
+  field_evaluator.add(group_id_field);
+  field_evaluator.evaluate();
+  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+
+  MultiValueMap<int, int> indices_by_group;
+  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
+  const int groups_num = indices_by_group.size();
+
+  Vector<int> group_ids_ordered;
+  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
+  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
+
+  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+    IndexMaskMemory memory;
+    for (const int group_index : range) {
+      const int group_id = group_ids_ordered[group_index];
+      const Span<int> instance_indices = indices_by_group.lookup(group_id);
+
+      bke::Instances *group_instances = new bke::Instances();
+      group_instances->resize(instance_indices.size());
+
+      for (const bke::InstanceReference &reference : src_instances.references()) {
+        group_instances->add_reference(reference);
+      }
+
+      array_utils::gather(
+          src_instances.transforms(), instance_indices, group_instances->transforms());
+      array_utils::gather(src_instances.reference_handles(),
+                          instance_indices,
+                          group_instances->reference_handles());
+      bke::gather_attributes(src_instances.attributes(),
+                             ATTR_DOMAIN_INSTANCE,
+                             propagation_info,
+                             {},
+                             instance_indices,
+                             group_instances->attributes_for_write());
+      group_instances->remove_unused_references();
+
+      GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
+      group_geometry.replace_instances(group_instances);
+    }
+  });
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
@@ -244,6 +303,11 @@ static void node_geo_exec(GeoNodeExecParams params)
                        group_id_field,
                        propagation_info,
                        geometry_by_group_id);
+  }
+  if (src_geometry.has_instances() && domain == ATTR_DOMAIN_INSTANCE) {
+    const auto &component = *src_geometry.get_component<bke::InstancesComponent>();
+    split_instance_groups(
+        component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
   }
 
   bke::Instances *dst_instances = new bke::Instances();
