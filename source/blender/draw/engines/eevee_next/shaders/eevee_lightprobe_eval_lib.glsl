@@ -12,6 +12,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
 
 /**
  * Return the brick coordinate inside the grid.
@@ -191,6 +192,11 @@ void lightprobe_eval(ClosureDiffuse diffuse,
   out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
 }
 
+struct LightProbeSample {
+  SphericalHarmonicL1 volume_irradiance;
+  int spherical_id;
+};
+
 /**
  * Return cached lightprobe data at P.
  * Ng and V are use for biases.
@@ -198,30 +204,57 @@ void lightprobe_eval(ClosureDiffuse diffuse,
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
   LightProbeSample result;
-  result.volume = lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
-  result.cubemap = lightprobe_cubemap_select(P);
+  result.volume_irradiance = lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
+  result.spherical_id = reflection_probes_find_closest(P);
+}
+
+/**
+ * Return spherical sample normalized by irradianced at sample position.
+ * This avoid most of light leaking and reduce the need for many local probes.
+ */
+vec3 lightprobe_spherical_sample_normalized(int probe_index,
+                                            vec3 L,
+                                            float lod,
+                                            SphericalHarmonicL1 irradiance_at_P)
+{
+  ReflectionProbeData probe = reflection_probe_buf[closest_probe_id];
+  /* Use the same encoding scheme to remove the uneeded components. */
+  vec4 sh_encoded = reflection_probes_spherical_harmonic_encode(irradiance_at_P);
+  SphericalHarmonicL1 irradiance_at_P = reflection_probes_spherical_harmonic_encode(sh_encoded);
+
+  float normalization_factor = spherical_harmonics_evaluate(irradiance_at_P).r *
+                               safe_rcp(spherical_harmonics_evaluate(probe.irradiance).r);
+
+  return normalization_factor * reflection_probes_sample(L, 0.0, probe).rgb;
+}
+
+float pdf_to_lod(float pdf)
+{
+  return 0.0; /* TODO */
 }
 
 vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
 {
-  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
-      irradiance_atlas_tx, P, V, Ng, true);
+  vec3 radiance_sh = lightprobe_spherical_sample_normalized(
+      samp.spherical_id, L, pdf_to_lod(pdf), samp.volume_irradiance);
 
-  float lod = pdf_to_lod(pdf);
-  vec3 radiance_sh = lightprobe_cubemap_sample_normalized(P, L, pdf, irradiance);
+  return radiance_sh;
 }
 
-vec3 lightprobe_eval_diffuse(LightProbeSample samp, ClosureDiffuse diffuse)
+#if 0
+vec3 lightprobe_eval_diffuse(LightProbeSample samp, ClosureDiffuse diffuse, vec3 V)
 {
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
   return radiance_sh;
 }
 
-vec3 lightprobe_eval_reflection(LightProbeSample samp, ClosureReflection reflection)
+vec3 lightprobe_eval_reflection(LightProbeSample samp, ClosureReflection reflection, vec3 V)
 {
   float lod = roughness_to_lod(reflection.roughness);
-  vec3 radiance_cube = lightprobe_cubemap_sample_normalized(P, L, lod, samp.irradiance);
+  vec3 radiance_cube = lightprobe_spherical_sample_normalized(
+      samp.cubemap, L, lod, samp.volume_irradiance);
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(reflection.N, samp.irradiance);
   float fac = roughness_to_cube_sh_mix_fac(reflection.roughness);
   return mix(radiance_cube, radiance_sh, fac)
 }
+#endif

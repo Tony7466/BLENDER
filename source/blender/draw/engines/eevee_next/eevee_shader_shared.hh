@@ -1306,6 +1306,12 @@ struct ReflectionProbeData {
    * LOD factor for mipmap selection.
    */
   float lod_factor;
+
+  /**
+   * Irradiance at the probe location encoded as spherical harmonics.
+   * Only contain the average luminance. Used for cubemap normalization.
+   */
+  float4 irradiance;
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
