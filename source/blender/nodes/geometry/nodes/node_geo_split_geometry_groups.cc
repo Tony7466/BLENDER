@@ -7,6 +7,7 @@
 #include "GEO_mesh_copy_selection.hh"
 #include "GEO_randomize.hh"
 
+#include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
@@ -24,7 +25,10 @@ namespace blender::nodes::node_geo_split_geometry_groups_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Geometry>("Geometry")
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::PointCloud,
+                       GeometryComponent::Type::Curve});
   b.add_input<decl::Bool>("Selection").supports_field().hide_value().default_value(true);
   b.add_input<decl::Int>("Group ID").supports_field().hide_value();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
@@ -155,6 +159,47 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
   });
 }
 
+static void split_curve_groups(const bke::CurveComponent &component,
+                               const Field<bool> &selection_field,
+                               const Field<int> &group_id_field,
+                               const AnonymousAttributePropagationInfo &propagation_info,
+                               Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
+{
+  const bke::CurvesGeometry &src_curves = component.get()->geometry.wrap();
+  const int curves_num = src_curves.curve_num;
+
+  const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
+  FieldEvaluator field_evaluator{field_context, curves_num};
+  field_evaluator.set_selection(selection_field);
+  field_evaluator.add(group_id_field);
+  field_evaluator.evaluate();
+  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+
+  MultiValueMap<int, int> indices_by_group;
+  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
+  const int groups_num = indices_by_group.size();
+
+  Vector<int> group_ids_ordered;
+  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
+  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
+
+  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+    IndexMaskMemory memory;
+    for (const int group_index : range) {
+      const int group_id = group_ids_ordered[group_index];
+      const Span<int> curve_indices = indices_by_group.lookup(group_id);
+      const IndexMask curve_indices_mask = IndexMask::from_indices(curve_indices, memory);
+      bke::CurvesGeometry group_curves = bke::curves_copy_curve_selection(
+          src_curves, curve_indices_mask, propagation_info);
+      Curves *group_curves_id = bke::curves_new_nomain(std::move(group_curves));
+
+      GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
+      group_geometry.replace_curves(group_curves_id);
+    }
+  });
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
@@ -182,6 +227,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (src_geometry.has_pointcloud() && domain == ATTR_DOMAIN_POINT) {
     const auto &component = *src_geometry.get_component<PointCloudComponent>();
     split_pointcloud_groups(
+        component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
+  }
+  if (src_geometry.has_curves() && domain == ATTR_DOMAIN_CURVE) {
+    const auto &component = *src_geometry.get_component<bke::CurveComponent>();
+    split_curve_groups(
         component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
   }
 
