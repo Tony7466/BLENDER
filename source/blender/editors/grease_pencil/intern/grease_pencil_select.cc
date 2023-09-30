@@ -280,17 +280,16 @@ static int select_similar_exec(bContext *C, wmOperator *op)
 
   switch (type) {
     case LAYER:
-      std::cout << "select similar for layer not implemented\n";
-      ed::curves::select_similar_main<std::string>(
+      ed::curves::select_similar_layer(
           grease_pencil, scene, selection_domain, type, threshold, "", "asadf");
       break;
     case MATERIAL:
-      ed::curves::select_similar_main<int>(
+      ed::curves::select_similar<int>(
           grease_pencil, scene, selection_domain, type, threshold, "material_index", 0);
       break;
     case VERTEX_COLOR:
       // fixme: is vertex_color defined? It seems that the default value is always used....
-      ed::curves::select_similar_main<ColorGeometry4f>(grease_pencil,
+      ed::curves::select_similar<ColorGeometry4f>(grease_pencil,
                                                        scene,
                                                        selection_domain,
                                                        type,
@@ -299,11 +298,11 @@ static int select_similar_exec(bContext *C, wmOperator *op)
                                                        ColorGeometry4f{3.0f, 3.0f, 3.0f, 3.0f});
       break;
     case RADIUS:
-      ed::curves::select_similar_main<float>(
+      ed::curves::select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "radius", 0.0f);
       break;
     case OPACITY:
-      ed::curves::select_similar_main<float>(
+      ed::curves::select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "opacity", 0.0f);
       break;
     default:
