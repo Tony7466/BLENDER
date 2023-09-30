@@ -50,13 +50,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Geometry");
 
-  bke::Instances *dst_instances = new bke::Instances();
-  GeometrySet dst_geometry = GeometrySet::from_instances(dst_instances);
+  Map<int, std::unique_ptr<GeometrySet>> geometry_by_group_id;
 
-  AnonymousAttributeIDPtr dst_group_id_attribute_id =
-      params.get_output_anonymous_attribute_id_if_needed("Group ID");
-
-  Map<int, int> dst_index_by_group_id;
+  auto ensure_group_geometries = [&](const Span<int> group_ids) {
+    for (const int group_id : group_ids) {
+      geometry_by_group_id.lookup_or_add_cb(group_id,
+                                            []() { return std::make_unique<GeometrySet>(); });
+    }
+  };
 
   if (src_geometry.has_mesh()) {
     const MeshComponent &component = *src_geometry.get_component<MeshComponent>();
@@ -76,8 +77,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     Vector<int> group_ids_ordered;
     group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-
-    Vector<GeometrySet> group_geometries(groups_num);
+    ensure_group_geometries(group_ids_ordered);
 
     threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
         [&]() { return Array<bool>(domain_size, false); }};
@@ -98,10 +98,13 @@ static void node_geo_exec(GeoNodeExecParams params)
            * when there are many groups. */
           std::optional<Mesh *> group_mesh_opt = geometry::mesh_copy_selection(
               src_mesh, group_selection_varray, domain, propagation_info);
-          GeometrySet &group_geometry = group_geometries[group_index];
+          GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
           if (group_mesh_opt.has_value()) {
             if (Mesh *group_mesh = *group_mesh_opt) {
-              group_geometry = GeometrySet::from_mesh(group_mesh);
+              group_geometry.replace_mesh(group_mesh);
+            }
+            else {
+              group_geometry.replace_mesh(nullptr);
             }
           }
           else {
@@ -114,14 +117,6 @@ static void node_geo_exec(GeoNodeExecParams params)
         }
       });
     });
-
-    for (const int group_index : IndexRange(groups_num)) {
-      const int group_id = group_ids_ordered[group_index];
-      dst_index_by_group_id.add(group_id, group_index);
-      GeometrySet &group_geometry = group_geometries[group_index];
-      const int handle = dst_instances->add_reference(std::move(group_geometry));
-      dst_instances->add_instance(handle, float4x4::identity());
-    }
   }
   if (src_geometry.has_pointcloud() && domain == ATTR_DOMAIN_POINT) {
     const PointCloudComponent &component = *src_geometry.get_component<PointCloudComponent>();
@@ -142,8 +137,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     Vector<int> group_ids_ordered;
     group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-
-    Vector<GeometrySet> group_geometries(groups_num);
+    ensure_group_geometries(group_ids_ordered);
 
     threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
       for (const int group_index : range) {
@@ -161,33 +155,41 @@ static void node_geo_exec(GeoNodeExecParams params)
                                point_indices,
                                dst_attributes);
 
-        group_geometries[group_index] = GeometrySet::from_pointcloud(group_pointcloud);
+        GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
+        group_geometry.replace_pointcloud(group_pointcloud);
       }
     });
-
-    for (const int local_group_index : IndexRange(groups_num)) {
-      const int group_id = group_ids_ordered[local_group_index];
-      if (const int *global_group_index = dst_index_by_group_id.lookup_ptr(group_id)) {
-        GeometrySet &geometry = const_cast<GeometrySet &>(
-            dst_instances->references()[*global_group_index].geometry_set());
-        geometry.add(*group_geometries[local_group_index].get_component<PointCloudComponent>());
-      }
-      else {
-        const int handle = dst_instances->add_reference(
-            std::move(group_geometries[local_group_index]));
-        dst_instances->add_instance(handle, float4x4::identity());
-        dst_index_by_group_id.add(group_id, dst_instances->instances_num() - 1);
-      }
-    }
   }
 
+  bke::Instances *dst_instances = new bke::Instances();
+  GeometrySet dst_geometry = GeometrySet::from_instances(dst_instances);
+  const int total_groups_num = geometry_by_group_id.size();
+  dst_instances->resize(total_groups_num);
+
+  AnonymousAttributeIDPtr dst_group_id_attribute_id =
+      params.get_output_anonymous_attribute_id_if_needed("Group ID");
+  SpanAttributeWriter<int> dst_group_id;
   if (dst_group_id_attribute_id) {
-    SpanAttributeWriter dst_group_id =
-        dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
-            *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
-    for (auto item : dst_index_by_group_id.items()) {
-      dst_group_id.span[item.value] = item.key;
+    dst_group_id = dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
+        *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
+  }
+
+  dst_instances->transforms().fill(float4x4::identity());
+  MutableSpan<int> dst_instance_handles = dst_instances->reference_handles();
+  std::iota(dst_instance_handles.begin(), dst_instance_handles.end(), 0);
+
+  int index = 0;
+  for (auto item : geometry_by_group_id.items()) {
+    const int group_id = item.key;
+    std::unique_ptr<GeometrySet> &group_geometry = item.value;
+    dst_instances->add_reference(std::move(group_geometry));
+    if (dst_group_id) {
+      dst_group_id.span[index] = group_id;
     }
+    index++;
+  }
+
+  if (dst_group_id) {
     dst_group_id.finish();
   }
 
