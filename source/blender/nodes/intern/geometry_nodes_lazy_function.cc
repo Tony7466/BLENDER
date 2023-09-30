@@ -2544,7 +2544,7 @@ struct GeometryNodesLazyFunctionBuilder {
     body_fn.function = &scope_.construct<lf::GraphExecutor>(
         lf_body_graph, lf_body_inputs, lf_body_outputs, &logger, &side_effect_provider, nullptr);
 
-    std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
     return body_fn;
   }
@@ -2702,7 +2702,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
