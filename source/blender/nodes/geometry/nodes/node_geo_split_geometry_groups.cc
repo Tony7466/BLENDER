@@ -38,6 +38,123 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
+static void ensure_group_geometries(Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id,
+                                    const Span<int> group_ids)
+{
+  for (const int group_id : group_ids) {
+    geometry_by_group_id.lookup_or_add_cb(group_id,
+                                          []() { return std::make_unique<GeometrySet>(); });
+  }
+}
+
+static void split_mesh_groups(const MeshComponent &component,
+                              const eAttrDomain domain,
+                              const Field<bool> &selection_field,
+                              const Field<int> &group_id_field,
+                              const AnonymousAttributePropagationInfo &propagation_info,
+                              Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
+{
+  const Mesh &src_mesh = *component.get();
+  const int domain_size = component.attribute_domain_size(domain);
+  const bke::MeshFieldContext field_context{src_mesh, domain};
+  FieldEvaluator field_evaluator{field_context, domain_size};
+  field_evaluator.set_selection(selection_field);
+  field_evaluator.add(group_id_field);
+  field_evaluator.evaluate();
+  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+
+  MultiValueMap<int, int> indices_by_group;
+  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
+  const int groups_num = indices_by_group.size();
+
+  Vector<int> group_ids_ordered;
+  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
+  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
+
+  threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
+      [&]() { return Array<bool>(domain_size, false); }};
+
+  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+    /* Need task isolation because of the thread local variable. */
+    threading::isolate_task([&]() {
+      MutableSpan<bool> group_selection = group_selection_per_thread.local();
+      const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
+      for (const int group_index : range) {
+        const int group_id = group_ids_ordered[group_index];
+        const Span<int> elements = indices_by_group.lookup(group_id);
+        for (int i : elements) {
+          group_selection[i] = true;
+        }
+
+        /* Using #mesh_copy_selection here is not ideal, because it can lead to O(n^2) behavior
+         * when there are many groups. */
+        std::optional<Mesh *> group_mesh_opt = geometry::mesh_copy_selection(
+            src_mesh, group_selection_varray, domain, propagation_info);
+        GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
+        if (group_mesh_opt.has_value()) {
+          if (Mesh *group_mesh = *group_mesh_opt) {
+            group_geometry.replace_mesh(group_mesh);
+          }
+          else {
+            group_geometry.replace_mesh(nullptr);
+          }
+        }
+        else {
+          group_geometry.add(component);
+        }
+
+        for (int i : elements) {
+          group_selection[i] = false;
+        }
+      }
+    });
+  });
+}
+
+static void split_pointcloud_groups(const PointCloudComponent &component,
+                                    const Field<bool> &selection_field,
+                                    const Field<int> &group_id_field,
+                                    const AnonymousAttributePropagationInfo &propagation_info,
+                                    Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
+{
+  const PointCloud &src_pointcloud = *component.get();
+  const int points_num = src_pointcloud.totpoint;
+
+  const bke::PointCloudFieldContext field_context{src_pointcloud};
+  FieldEvaluator field_evaluator{field_context, points_num};
+  field_evaluator.set_selection(selection_field);
+  field_evaluator.add(group_id_field);
+  field_evaluator.evaluate();
+  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
+
+  MultiValueMap<int, int> indices_by_group;
+  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
+  const int groups_num = indices_by_group.size();
+
+  Vector<int> group_ids_ordered;
+  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
+  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
+
+  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+    for (const int group_index : range) {
+      const int group_id = group_ids_ordered[group_index];
+      const Span<int> point_indices = indices_by_group.lookup(group_id);
+      const int group_points_num = point_indices.size();
+      PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(group_points_num);
+
+      const AttributeAccessor src_attributes = src_pointcloud.attributes();
+      MutableAttributeAccessor dst_attributes = group_pointcloud->attributes_for_write();
+      bke::gather_attributes(
+          src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, point_indices, dst_attributes);
+
+      GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
+      group_geometry.replace_pointcloud(group_pointcloud);
+    }
+  });
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
@@ -52,113 +169,20 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   Map<int, std::unique_ptr<GeometrySet>> geometry_by_group_id;
 
-  auto ensure_group_geometries = [&](const Span<int> group_ids) {
-    for (const int group_id : group_ids) {
-      geometry_by_group_id.lookup_or_add_cb(group_id,
-                                            []() { return std::make_unique<GeometrySet>(); });
-    }
-  };
-
-  if (src_geometry.has_mesh()) {
-    const MeshComponent &component = *src_geometry.get_component<MeshComponent>();
-    const Mesh &src_mesh = *component.get();
-    const int domain_size = component.attribute_domain_size(domain);
-    const bke::MeshFieldContext field_context{src_mesh, domain};
-    FieldEvaluator field_evaluator{field_context, domain_size};
-    field_evaluator.set_selection(selection_field);
-    field_evaluator.add(group_id_field);
-    field_evaluator.evaluate();
-    const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-    const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
-
-    MultiValueMap<int, int> indices_by_group;
-    selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-    const int groups_num = indices_by_group.size();
-
-    Vector<int> group_ids_ordered;
-    group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-    ensure_group_geometries(group_ids_ordered);
-
-    threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
-        [&]() { return Array<bool>(domain_size, false); }};
-
-    threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
-      /* Need task isolation because of the thread local variable. */
-      threading::isolate_task([&]() {
-        MutableSpan<bool> group_selection = group_selection_per_thread.local();
-        const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
-        for (const int group_index : range) {
-          const int group_id = group_ids_ordered[group_index];
-          const Span<int> elements = indices_by_group.lookup(group_id);
-          for (int i : elements) {
-            group_selection[i] = true;
-          }
-
-          /* Using #mesh_copy_selection here is not ideal, because it can lead to O(n^2) behavior
-           * when there are many groups. */
-          std::optional<Mesh *> group_mesh_opt = geometry::mesh_copy_selection(
-              src_mesh, group_selection_varray, domain, propagation_info);
-          GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
-          if (group_mesh_opt.has_value()) {
-            if (Mesh *group_mesh = *group_mesh_opt) {
-              group_geometry.replace_mesh(group_mesh);
-            }
-            else {
-              group_geometry.replace_mesh(nullptr);
-            }
-          }
-          else {
-            group_geometry.add(component);
-          }
-
-          for (int i : elements) {
-            group_selection[i] = false;
-          }
-        }
-      });
-    });
+  if (src_geometry.has_mesh() &&
+      ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
+    const auto &component = *src_geometry.get_component<MeshComponent>();
+    split_mesh_groups(component,
+                      domain,
+                      selection_field,
+                      group_id_field,
+                      propagation_info,
+                      geometry_by_group_id);
   }
   if (src_geometry.has_pointcloud() && domain == ATTR_DOMAIN_POINT) {
-    const PointCloudComponent &component = *src_geometry.get_component<PointCloudComponent>();
-    const PointCloud &src_pointcloud = *component.get();
-    const int points_num = src_pointcloud.totpoint;
-
-    const bke::PointCloudFieldContext field_context{src_pointcloud};
-    FieldEvaluator field_evaluator{field_context, points_num};
-    field_evaluator.set_selection(selection_field);
-    field_evaluator.add(group_id_field);
-    field_evaluator.evaluate();
-    const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-    const VArraySpan<int> group_ids = field_evaluator.get_evaluated<int>(0);
-
-    MultiValueMap<int, int> indices_by_group;
-    selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-    const int groups_num = indices_by_group.size();
-
-    Vector<int> group_ids_ordered;
-    group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-    ensure_group_geometries(group_ids_ordered);
-
-    threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
-      for (const int group_index : range) {
-        const int group_id = group_ids_ordered[group_index];
-        const Span<int> point_indices = indices_by_group.lookup(group_id);
-        const int group_points_num = point_indices.size();
-        PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(group_points_num);
-
-        const AttributeAccessor src_attributes = src_pointcloud.attributes();
-        MutableAttributeAccessor dst_attributes = group_pointcloud->attributes_for_write();
-        bke::gather_attributes(src_attributes,
-                               ATTR_DOMAIN_POINT,
-                               propagation_info,
-                               {},
-                               point_indices,
-                               dst_attributes);
-
-        GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
-        group_geometry.replace_pointcloud(group_pointcloud);
-      }
-    });
+    const auto &component = *src_geometry.get_component<PointCloudComponent>();
+    split_pointcloud_groups(
+        component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
   }
 
   bke::Instances *dst_instances = new bke::Instances();
