@@ -36,6 +36,8 @@
 
 #include "DNA_ID.h"
 
+#include "GEO_join_geometries.hh"
+
 #include "BKE_compute_contexts.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
@@ -1897,10 +1899,25 @@ class LazyFunctionForForeachZone : public LazyFunction {
   {
     debug_name_ = "For-Each Zone";
     build_interface_for_zone_function(zone, body_fn, zone_info, inputs_, outputs_);
+    /* The Amount input is always used. */
+    inputs_[zone_info.indices.inputs.main[0]].usage = lf::ValueUsage::Used;
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    const int amount = params.get_input<int>(zone_info_.indices.inputs.main[0]);
+    Array<GeometrySet> output_values(amount, NoInitialization{});
+    for (const int i : IndexRange(amount)) {
+      GeometrySet &output_geometry = output_values[i];
+      bool usage_index;
+      lf::execute_lazy_function_eagerly(*body_fn_.function,
+                                        context.user_data,
+                                        context.local_user_data,
+                                        std::make_tuple(ValueOrField<int>(i), true),
+                                        std::make_tuple(&usage_index, &output_geometry));
+    }
+    GeometrySet reduced_geometry = geometry::join_geometries(output_values, {});
+    params.set_output(zone_info_.indices.outputs.main[0], std::move(reduced_geometry));
     params.set_default_remaining_outputs();
   }
 
