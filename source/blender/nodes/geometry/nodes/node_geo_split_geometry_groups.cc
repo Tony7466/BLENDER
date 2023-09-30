@@ -25,6 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Selection").supports_field().hide_value().default_value(true);
   b.add_input<decl::Int>("Group ID").supports_field().hide_value();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
+  b.add_output<decl::Int>("Group ID").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -48,6 +49,11 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   bke::Instances *dst_instances = new bke::Instances();
   GeometrySet dst_geometry = GeometrySet::from_instances(dst_instances);
+
+  AnonymousAttributeIDPtr dst_group_id_attribute_id =
+      params.get_output_anonymous_attribute_id_if_needed("Group ID");
+
+  Map<int, int> dst_index_by_group_id;
 
   if (src_geometry.has_mesh()) {
     const MeshComponent &component = *src_geometry.get_component<MeshComponent>();
@@ -108,10 +114,22 @@ static void node_geo_exec(GeoNodeExecParams params)
     });
 
     for (const int group_index : IndexRange(groups_num)) {
+      const int group_id = groups_ids_ordered[group_index];
+      dst_index_by_group_id.add(group_id, group_index);
       GeometrySet &group_geometry = group_geometries[group_index];
       const int handle = dst_instances->add_reference(std::move(group_geometry));
       dst_instances->add_instance(handle, float4x4::identity());
     }
+  }
+
+  if (dst_group_id_attribute_id) {
+    SpanAttributeWriter dst_group_id =
+        dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
+            *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
+    for (auto item : dst_index_by_group_id.items()) {
+      dst_group_id.span[item.value] = item.key;
+    }
+    dst_group_id.finish();
   }
 
   geometry::debug_randomize_instance_order(dst_instances);
