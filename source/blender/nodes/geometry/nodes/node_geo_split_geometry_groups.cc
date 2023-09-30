@@ -76,8 +76,6 @@ static void split_mesh_groups(const MeshComponent &component,
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  const int groups_num = indices_by_group.size();
-
   Vector<int> group_ids_ordered;
   group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
   ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
@@ -141,8 +139,6 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
 
   MultiValueMap<int, int> indices_by_group;
   selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  const int groups_num = indices_by_group.size();
-
   Vector<int> group_ids_ordered;
   group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
   ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
