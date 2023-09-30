@@ -596,6 +596,12 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
             typed_elem.repeat_output_node_id, typed_elem.iteration);
         break;
       }
+      case VIEWER_PATH_ELEM_TYPE_FOREACH_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const ForEachZoneViewerPathElem *>(elem);
+        compute_context_builder.push<bke::ForEachZoneComputeContext>(
+            typed_elem.foreach_output_node_id, typed_elem.index);
+        break;
+      }
       default: {
         BLI_assert_unreachable();
         break;

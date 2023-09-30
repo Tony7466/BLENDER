@@ -43,6 +43,12 @@ static ViewerPathElem *viewer_path_elem_for_zone(const bNodeTreeZone &zone)
       node_elem->iteration = storage.inspection_index;
       return &node_elem->base;
     }
+    case GEO_NODE_FOR_EACH_OUTPUT: {
+      ForEachZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_foreach_zone();
+      node_elem->foreach_output_node_id = zone.output_node->identifier;
+      node_elem->index = 0;
+      return &node_elem->base;
+    }
   }
   BLI_assert_unreachable();
   return nullptr;
@@ -252,7 +258,8 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
     if (!ELEM(elem->type,
               VIEWER_PATH_ELEM_TYPE_GROUP_NODE,
               VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE,
-              VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE))
+              VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE,
+              VIEWER_PATH_ELEM_TYPE_FOREACH_ZONE))
     {
       return std::nullopt;
     }
@@ -310,6 +317,19 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
         const auto &typed_elem = *reinterpret_cast<const RepeatZoneViewerPathElem *>(path_elem);
         const bNodeTreeZone *next_zone = tree_zones->get_zone_by_node(
             typed_elem.repeat_output_node_id);
+        if (next_zone == nullptr) {
+          return false;
+        }
+        if (next_zone->parent_zone != zone) {
+          return false;
+        }
+        zone = next_zone;
+        break;
+      }
+      case VIEWER_PATH_ELEM_TYPE_FOREACH_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const ForEachZoneViewerPathElem *>(path_elem);
+        const bNodeTreeZone *next_zone = tree_zones->get_zone_by_node(
+            typed_elem.foreach_output_node_id);
         if (next_zone == nullptr) {
           return false;
         }

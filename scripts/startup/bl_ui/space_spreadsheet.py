@@ -93,6 +93,8 @@ class SPREADSHEET_HT_header(bpy.types.Header):
             layout.label(text="Simulation Zone")
         elif ctx.type == 'REPEAT_ZONE':
             layout.label(text="Repeat Zone")
+        elif ctx.type == 'FOREACH_ZONE':
+            layout.label(text='For-Each Zone')
         elif ctx.type == 'VIEWER_NODE':
             layout.label(text=ctx.ui_name)
 

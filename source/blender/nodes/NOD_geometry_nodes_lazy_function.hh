@@ -135,6 +135,7 @@ struct GeoNodesSideEffectNodes {
    * repeat output node.
    */
   MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> iterations_by_repeat_zone;
+  MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> indices_by_foreach_zone;
 };
 
 /**

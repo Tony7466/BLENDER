@@ -1915,9 +1915,18 @@ class LazyFunctionForForeachZone : public LazyFunction {
         GeometrySet &output_geometry = output_values[i];
         bool usage_index;
 
-        GeoNodesLFLocalUserData body_local_user_data{user_data};
+        const bke::ForEachZoneComputeContext body_compute_context{
+            user_data.compute_context, *zone_.output_node, i};
+        GeoNodesLFUserData body_user_data = user_data;
+        body_user_data.compute_context = &body_compute_context;
+        if (user_data.modifier_data && user_data.modifier_data->socket_log_contexts) {
+          body_user_data.log_socket_values =
+              user_data.modifier_data->socket_log_contexts->contains(body_compute_context.hash());
+        }
+
+        GeoNodesLFLocalUserData body_local_user_data{body_user_data};
         lf::execute_lazy_function_eagerly(*body_fn_.function,
-                                          context.user_data,
+                                          &body_user_data,
                                           &body_local_user_data,
                                           std::make_tuple(ValueOrField<int>(i), true),
                                           std::make_tuple(&usage_index, &output_geometry));
