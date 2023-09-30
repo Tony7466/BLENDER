@@ -3317,6 +3317,7 @@ static void oceanbake_startjob(void *customdata, bool *stop, bool *do_update, fl
   oj->do_update = do_update;
   oj->progress = progress;
 
+  printf("%s;\n", __func__);
   G.is_break = false; /* XXX shared with render - replace with job 'stop' switch */
 
   BKE_ocean_bake(oj->ocean, oj->och, oceanbake_update, (void *)oj);
@@ -3333,7 +3334,7 @@ static void oceanbake_endjob(void *customdata)
     BKE_ocean_free(oj->ocean);
     oj->ocean = nullptr;
   }
-
+  printf("%s;\n", __func__);
   oj->omd->oceancache = oj->och;
   oj->omd->cached = true;
 
@@ -3348,13 +3349,14 @@ static int ocean_bake_exec(bContext *C, wmOperator *op)
   OceanModifierData *omd = (OceanModifierData *)edit_modifier_property_get(
       op, ob, eModifierType_Ocean);
   Scene *scene = CTX_data_scene(C);
-  const bool free = RNA_boolean_get(op->ptr, "free");
 
   if (!omd) {
     return OPERATOR_CANCELLED;
   }
 
-  if (free) {
+  const bool is_cached = omd->cached;
+
+  if (is_cached) {
     BKE_ocean_free_modifier_cache(omd);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -3442,11 +3444,11 @@ static int ocean_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*even
   return OPERATOR_CANCELLED;
 }
 
-void OBJECT_OT_ocean_bake(wmOperatorType *ot)
+void OBJECT_OT_ocean_bake_toggle(wmOperatorType *ot)
 {
   ot->name = "Bake Ocean";
   ot->description = "Bake an image sequence of ocean data";
-  ot->idname = "OBJECT_OT_ocean_bake";
+  ot->idname = "OBJECT_OT_ocean_bake_toggle";
 
   ot->poll = ocean_bake_poll;
   ot->invoke = ocean_bake_invoke;
@@ -3455,8 +3457,6 @@ void OBJECT_OT_ocean_bake(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
   edit_modifier_properties(ot);
-
-  RNA_def_boolean(ot->srna, "free", false, "Free", "Free the bake, rather than generating it");
 }
 
 /** \} */

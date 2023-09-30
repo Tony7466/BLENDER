@@ -215,7 +215,7 @@ void OBJECT_OT_multires_external_pack(struct wmOperatorType *ot);
 void OBJECT_OT_correctivesmooth_bind(struct wmOperatorType *ot);
 void OBJECT_OT_meshdeform_bind(struct wmOperatorType *ot);
 void OBJECT_OT_explode_refresh(struct wmOperatorType *ot);
-void OBJECT_OT_ocean_bake(struct wmOperatorType *ot);
+void OBJECT_OT_ocean_bake_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_skin_root_mark(struct wmOperatorType *ot);
 void OBJECT_OT_skin_loose_mark_clear(struct wmOperatorType *ot);
 void OBJECT_OT_skin_radii_equalize(struct wmOperatorType *ot);
