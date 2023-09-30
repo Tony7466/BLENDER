@@ -1980,7 +1980,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 0)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
         /* versioning_update_noise_texture_node must be done before
