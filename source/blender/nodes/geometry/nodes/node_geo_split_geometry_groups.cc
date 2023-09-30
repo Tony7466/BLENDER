@@ -9,6 +9,13 @@
 
 #include "BKE_instances.hh"
 
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
+
 namespace blender::nodes::node_geo_split_geometry_groups_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -19,8 +26,18 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  const bNode &node = params.node();
+  const eAttrDomain domain = eAttrDomain(node.custom1);
+
   GeometrySet src_geometry = params.extract_input<GeometrySet>("Geometry");
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const Field<int> group_id_field = params.extract_input<Field<int>>("Group ID");
@@ -34,7 +51,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (src_geometry.has_mesh()) {
     const MeshComponent &component = *src_geometry.get_component<MeshComponent>();
     const Mesh &src_mesh = *component.get();
-    const eAttrDomain domain = ATTR_DOMAIN_FACE;
     const int domain_size = component.attribute_domain_size(domain);
     const bke::MeshFieldContext field_context{src_mesh, domain};
     FieldEvaluator field_evaluator{field_context, domain_size};
@@ -81,6 +97,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(dst_geometry));
 }
 
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Attribute domain for the selection and group id inputs",
+                    rna_enum_attribute_domain_without_corner_items,
+                    NOD_inline_enum_accessors(custom1),
+                    ATTR_DOMAIN_POINT);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -88,7 +115,10 @@ static void node_register()
       &ntype, GEO_NODE_SPLIT_GEOMETRY_GROUPS, "Split Geometry Groups", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
