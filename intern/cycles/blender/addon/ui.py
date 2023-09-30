@@ -833,8 +833,8 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
             # When using CPU + GPU and using a custom BVH on the GPU,
             # don't expose BVH2 settings unless Cycles is built without Embree,
             # since the CPU will use BVH2 in that case.
-            if (use_multi_device(context) and not built_with_embree) or
-                    (show_device_active(context) and not gpu_uses_custom_bvh):
+            if (use_multi_device(context) and not built_with_embree) or (
+                    show_device_active(context) and not gpu_uses_custom_bvh):
                 # BVH2 Settings
                 sub = col.column()
                 sub.active = not cscene.debug_use_spatial_splits
