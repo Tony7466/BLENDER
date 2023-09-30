@@ -16,7 +16,7 @@ void main()
     return;
   }
 
-  SphericalHarmonicL1 sh = lightprobe_irradiance_sample(reflection_probe_buf[idx].pos);
+  SphericalHarmonicL1 sh = lightprobe_irradiance_sample(reflection_probe_buf[idx].pos.xyz);
 
   reflection_probe_buf[idx].irradiance = reflection_probes_spherical_harmonic_encode(sh);
 }

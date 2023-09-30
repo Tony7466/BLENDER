@@ -6,7 +6,7 @@
  * Use screen space tracing against depth buffer to find intersection with the scene.
  */
 
-#pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)

@@ -192,6 +192,8 @@ void lightprobe_eval(ClosureDiffuse diffuse,
   out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
 }
 
+#ifdef REFLECTION_PROBE
+
 struct LightProbeSample {
   SphericalHarmonicL1 volume_irradiance;
   int spherical_id;
@@ -206,6 +208,7 @@ LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
   LightProbeSample result;
   result.volume_irradiance = lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
   result.spherical_id = reflection_probes_find_closest(P);
+  return result;
 }
 
 /**
@@ -217,20 +220,21 @@ vec3 lightprobe_spherical_sample_normalized(int probe_index,
                                             float lod,
                                             SphericalHarmonicL1 irradiance_at_P)
 {
-  ReflectionProbeData probe = reflection_probe_buf[closest_probe_id];
+  ReflectionProbeData probe = reflection_probe_buf[probe_index];
   /* Use the same encoding scheme to remove the uneeded components. */
   vec4 sh_encoded = reflection_probes_spherical_harmonic_encode(irradiance_at_P);
-  SphericalHarmonicL1 irradiance_at_P = reflection_probes_spherical_harmonic_encode(sh_encoded);
+  SphericalHarmonicL1 shading_sh = reflection_probes_spherical_harmonic_decode(sh_encoded);
+  SphericalHarmonicL1 probe_sh = reflection_probes_spherical_harmonic_decode(probe.irradiance);
 
-  float normalization_factor = spherical_harmonics_evaluate(irradiance_at_P).r *
-                               safe_rcp(spherical_harmonics_evaluate(probe.irradiance).r);
+  float normalization_factor = spherical_harmonics_evaluate(L, shading_sh).r *
+                               safe_rcp(spherical_harmonics_evaluate(L, probe_sh).r);
 
-  return normalization_factor * reflection_probes_sample(L, 0.0, probe).rgb;
+  return normalization_factor * reflection_probes_sample(L, lod, probe).rgb;
 }
 
 float pdf_to_lod(float pdf)
 {
-  return 0.0; /* TODO */
+  return 8.0; /* TODO */
 }
 
 vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
@@ -241,7 +245,7 @@ vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
   return radiance_sh;
 }
 
-#if 0
+#  if 0
 vec3 lightprobe_eval_diffuse(LightProbeSample samp, ClosureDiffuse diffuse, vec3 V)
 {
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
@@ -257,4 +261,6 @@ vec3 lightprobe_eval_reflection(LightProbeSample samp, ClosureReflection reflect
   float fac = roughness_to_cube_sh_mix_fac(reflection.roughness);
   return mix(radiance_cube, radiance_sh, fac)
 }
-#endif
+#  endif
+
+#endif /* REFLECTION_PROBE */

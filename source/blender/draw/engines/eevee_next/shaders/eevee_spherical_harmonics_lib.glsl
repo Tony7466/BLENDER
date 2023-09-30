@@ -191,24 +191,24 @@ vec4 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
          spherical_harmonics_L2_Mp2(direction) * L2.Mp2;
 }
 
-vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicBandL0 L0)
+vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicL0 sh)
 {
-  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb;
+  vec3 radiance = spherical_harmonics_L0_evaluate(direction, sh.L0).rgb;
   return max(vec3(0.0), radiance);
 }
 
-vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicBandL1 L1)
+vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicL1 sh)
 {
-  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb +
-                  spherical_harmonics_L1_evaluate(N, sh.L1).rgb;
+  vec3 radiance = spherical_harmonics_L0_evaluate(direction, sh.L0).rgb +
+                  spherical_harmonics_L1_evaluate(direction, sh.L1).rgb;
   return max(vec3(0.0), radiance);
 }
 
-vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
+vec3 spherical_harmonics_evaluate(vec3 direction, SphericalHarmonicL2 sh)
 {
-  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb +
-                  spherical_harmonics_L1_evaluate(N, sh.L1).rgb +
-                  spherical_harmonics_L2_evaluate(N, sh.L2).rgb;
+  vec3 radiance = spherical_harmonics_L0_evaluate(direction, sh.L0).rgb +
+                  spherical_harmonics_L1_evaluate(direction, sh.L1).rgb +
+                  spherical_harmonics_L2_evaluate(direction, sh.L2).rgb;
   return max(vec3(0.0), radiance);
 }
 
