@@ -821,19 +821,20 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
         use_embree = built_with_embree and (use_oneapirt(context) or (use_cpu(context) and (
             context.scene.cycles.debug_bvh_layout == "EMBREE" or not CyclesDebugButtonsPanel.poll(context))))
 
-        # The GPU backend isn't using BVH2 or Embree
-        gpu_uses_custom_bvh = use_optix(context) or use_hiprt(context) or use_metalrt(context)
-
         # Common Setting
         col.prop(cscene, "debug_use_spatial_splits")
         if use_embree:
             # Embree Setting
             col.prop(cscene, "debug_use_compact_bvh")
         else:
+            # The GPU backend isn't using BVH2 or Embree
+            gpu_uses_custom_bvh = use_optix(context) or use_hiprt(context) or use_metalrt(context)
+
             # When using CPU + GPU and using a custom BVH on the GPU,
             # don't expose BVH2 settings unless Cycles is built without Embree,
             # since the CPU will use BVH2 in that case.
-            if (use_multi_device(context) and not built_with_embree) or not (gpu_uses_custom_bvh):
+            if (use_multi_device(context) and not built_with_embree) or
+                    (show_device_active(context) and not gpu_uses_custom_bvh):
                 # BVH2 Settings
                 sub = col.column()
                 sub.active = not cscene.debug_use_spatial_splits
