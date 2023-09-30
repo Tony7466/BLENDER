@@ -57,6 +57,56 @@ static void ensure_group_geometries(Map<int, std::unique_ptr<GeometrySet>> &geom
   }
 }
 
+struct SplitGroups {
+  std::optional<bke::GeometryFieldContext> field_context;
+  std::optional<FieldEvaluator> field_evaluator;
+
+  MultiValueMap<int, int> indices_by_group;
+  Vector<int> group_ids;
+};
+
+/**
+ * \return True, if the component is already fully handled and does not need further processing.
+ */
+[[nodiscard]] static bool do_common_split(
+    const GeometryComponent &src_component,
+    const eAttrDomain domain,
+    const Field<bool> &selection_field,
+    const Field<int> &group_id_field,
+    Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id,
+    SplitGroups &r_groups)
+{
+  const int domain_size = src_component.attribute_domain_size(domain);
+
+  r_groups.field_context.emplace(src_component, domain);
+  FieldEvaluator &field_evaluator = r_groups.field_evaluator.emplace(*r_groups.field_context,
+                                                                     domain_size);
+  field_evaluator.set_selection(selection_field);
+  field_evaluator.add(group_id_field);
+  field_evaluator.evaluate();
+
+  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  if (selection.is_empty()) {
+    return true;
+  }
+
+  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
+  if (selection.size() == domain_size && group_ids_varray.is_single()) {
+    const int group_id = group_ids_varray.get_internal_single();
+    ensure_group_geometries(geometry_by_group_id, {group_id});
+    geometry_by_group_id.lookup(group_id)->add(src_component);
+    return true;
+  }
+
+  const VArraySpan<int> group_ids = group_ids_varray;
+
+  selection.foreach_index([&](const int i) { r_groups.indices_by_group.add(group_ids[i], i); });
+  r_groups.group_ids.extend(r_groups.indices_by_group.keys().begin(),
+                            r_groups.indices_by_group.keys().end());
+  ensure_group_geometries(geometry_by_group_id, r_groups.group_ids);
+  return false;
+}
+
 static void split_mesh_groups(const MeshComponent &component,
                               const eAttrDomain domain,
                               const Field<bool> &selection_field,
@@ -64,45 +114,26 @@ static void split_mesh_groups(const MeshComponent &component,
                               const AnonymousAttributePropagationInfo &propagation_info,
                               Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
 {
+  SplitGroups split_groups;
+  if (do_common_split(
+          component, domain, selection_field, group_id_field, geometry_by_group_id, split_groups))
+  {
+    return;
+  }
   const Mesh &src_mesh = *component.get();
   const int domain_size = component.attribute_domain_size(domain);
-  const bke::MeshFieldContext field_context{src_mesh, domain};
-  FieldEvaluator field_evaluator{field_context, domain_size};
-  field_evaluator.set_selection(selection_field);
-  field_evaluator.add(group_id_field);
-  field_evaluator.evaluate();
-  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
-
-  if (selection.is_empty()) {
-    return;
-  }
-  if (selection.size() == domain_size && group_ids_varray.is_single()) {
-    const int group_id = group_ids_varray.get_internal_single();
-    ensure_group_geometries(geometry_by_group_id, {group_id});
-    geometry_by_group_id.lookup(group_id)->add(component);
-    return;
-  }
-
-  const VArraySpan<int> group_ids = group_ids_varray;
-
-  MultiValueMap<int, int> indices_by_group;
-  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  Vector<int> group_ids_ordered;
-  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
 
   threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
       [&]() { return Array<bool>(domain_size, false); }};
 
-  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+  threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
     /* Need task isolation because of the thread local variable. */
     threading::isolate_task([&]() {
       MutableSpan<bool> group_selection = group_selection_per_thread.local();
       const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
       for (const int group_index : range) {
-        const int group_id = group_ids_ordered[group_index];
-        const Span<int> elements = indices_by_group.lookup(group_id);
+        const int group_id = split_groups.group_ids[group_index];
+        const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
         for (int i : elements) {
           group_selection[i] = true;
         }
@@ -138,39 +169,21 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
                                     const AnonymousAttributePropagationInfo &propagation_info,
                                     Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
 {
+  SplitGroups split_groups;
+  if (do_common_split(component,
+                      ATTR_DOMAIN_POINT,
+                      selection_field,
+                      group_id_field,
+                      geometry_by_group_id,
+                      split_groups))
+  {
+    return;
+  }
   const PointCloud &src_pointcloud = *component.get();
-  const int points_num = src_pointcloud.totpoint;
-
-  const bke::PointCloudFieldContext field_context{src_pointcloud};
-  FieldEvaluator field_evaluator{field_context, points_num};
-  field_evaluator.set_selection(selection_field);
-  field_evaluator.add(group_id_field);
-  field_evaluator.evaluate();
-  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
-
-  if (selection.is_empty()) {
-    return;
-  }
-  if (selection.size() == points_num && group_ids_varray.is_single()) {
-    const int group_id = group_ids_varray.get_internal_single();
-    ensure_group_geometries(geometry_by_group_id, {group_id});
-    geometry_by_group_id.lookup(group_id)->add(component);
-    return;
-  }
-
-  const VArraySpan<int> group_ids = group_ids_varray;
-
-  MultiValueMap<int, int> indices_by_group;
-  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-  Vector<int> group_ids_ordered;
-  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
-
-  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+  threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
     for (const int group_index : range) {
-      const int group_id = group_ids_ordered[group_index];
-      const Span<int> point_indices = indices_by_group.lookup(group_id);
+      const int group_id = split_groups.group_ids[group_index];
+      const Span<int> point_indices = split_groups.indices_by_group.lookup(group_id);
       const int group_points_num = point_indices.size();
       PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(group_points_num);
 
@@ -192,41 +205,18 @@ static void split_curve_groups(const bke::CurveComponent &component,
                                const AnonymousAttributePropagationInfo &propagation_info,
                                Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
 {
+  SplitGroups split_groups;
+  if (do_common_split(
+          component, domain, selection_field, group_id_field, geometry_by_group_id, split_groups))
+  {
+    return;
+  }
   const bke::CurvesGeometry &src_curves = component.get()->geometry.wrap();
-  const int domain_size = src_curves.attributes().domain_size(domain);
-
-  const bke::CurvesFieldContext field_context{src_curves, domain};
-  FieldEvaluator field_evaluator{field_context, domain_size};
-  field_evaluator.set_selection(selection_field);
-  field_evaluator.add(group_id_field);
-  field_evaluator.evaluate();
-  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
-
-  if (selection.is_empty()) {
-    return;
-  }
-  if (selection.size() == domain_size && group_ids_varray.is_single()) {
-    const int group_id = group_ids_varray.get_internal_single();
-    ensure_group_geometries(geometry_by_group_id, {group_id});
-    geometry_by_group_id.lookup(group_id)->add(component);
-    return;
-  }
-
-  const VArraySpan<int> group_ids = group_ids_varray;
-
-  MultiValueMap<int, int> indices_by_group;
-  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-
-  Vector<int> group_ids_ordered;
-  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
-
-  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+  threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
     IndexMaskMemory memory;
     for (const int group_index : range) {
-      const int group_id = group_ids_ordered[group_index];
-      const Span<int> elements = indices_by_group.lookup(group_id);
+      const int group_id = split_groups.group_ids[group_index];
+      const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
       const IndexMask elements_mask = IndexMask::from_indices(elements, memory);
       std::optional<bke::CurvesGeometry> group_curves;
       if (domain == ATTR_DOMAIN_POINT) {
@@ -250,41 +240,22 @@ static void split_instance_groups(const InstancesComponent &component,
                                   const AnonymousAttributePropagationInfo &propagation_info,
                                   Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
 {
+  SplitGroups split_groups;
+  if (do_common_split(component,
+                      ATTR_DOMAIN_INSTANCE,
+                      selection_field,
+                      group_id_field,
+                      geometry_by_group_id,
+                      split_groups))
+  {
+    return;
+  }
   const bke::Instances &src_instances = *component.get();
-  const int instances_num = src_instances.instances_num();
-
-  const bke::InstancesFieldContext field_context{src_instances};
-  FieldEvaluator field_evaluator{field_context, instances_num};
-  field_evaluator.set_selection(selection_field);
-  field_evaluator.add(group_id_field);
-  field_evaluator.evaluate();
-  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-  const VArray<int> group_ids_varray = field_evaluator.get_evaluated<int>(0);
-
-  if (selection.is_empty()) {
-    return;
-  }
-  if (selection.size() == instances_num && group_ids_varray.is_single()) {
-    const int group_id = group_ids_varray.get_internal_single();
-    ensure_group_geometries(geometry_by_group_id, {group_id});
-    geometry_by_group_id.lookup(group_id)->add(component);
-    return;
-  }
-
-  const VArraySpan<int> group_ids = group_ids_varray;
-
-  MultiValueMap<int, int> indices_by_group;
-  selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
-
-  Vector<int> group_ids_ordered;
-  group_ids_ordered.extend(indices_by_group.keys().begin(), indices_by_group.keys().end());
-  ensure_group_geometries(geometry_by_group_id, group_ids_ordered);
-
-  threading::parallel_for(group_ids_ordered.index_range(), 16, [&](const IndexRange range) {
+  threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
     IndexMaskMemory memory;
     for (const int group_index : range) {
-      const int group_id = group_ids_ordered[group_index];
-      const Span<int> instance_indices = indices_by_group.lookup(group_id);
+      const int group_id = split_groups.group_ids[group_index];
+      const Span<int> instance_indices = split_groups.indices_by_group.lookup(group_id);
 
       bke::Instances *group_instances = new bke::Instances();
       group_instances->resize(instance_indices.size());
