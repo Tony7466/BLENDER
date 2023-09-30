@@ -102,6 +102,10 @@ def use_metal(context):
     return (get_device_type(context) == 'METAL' and cscene.device == 'GPU')
 
 
+def use_metalrt(context):
+    return (context.preferences.addons[__package__].preferences.use_metalrt and use_metal(context))
+
+
 def use_cuda(context):
     cscene = context.scene.cycles
 
@@ -114,6 +118,10 @@ def use_hip(context):
     return (get_device_type(context) == 'HIP' and cscene.device == 'GPU')
 
 
+def use_hiprt(context):
+    return (context.preferences.addons[__package__].preferences.use_hiprt and use_hip(context))
+
+
 def use_optix(context):
     cscene = context.scene.cycles
 
@@ -124,6 +132,10 @@ def use_oneapi(context):
     cscene = context.scene.cycles
 
     return (get_device_type(context) == 'ONEAPI' and cscene.device == 'GPU')
+
+
+def use_oneapirt(context):
+    return (context.preferences.addons[__package__].preferences.use_oneapirt and use_oneapi(context))
 
 
 def use_multi_device(context):
@@ -790,7 +802,7 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
 
     @classmethod
     def poll(cls, context):
-        return not use_optix(context) or use_multi_device(context)
+        return use_multi_device(context) or not (use_optix(context) or use_hiprt(context) or use_metalrt(context))
 
     def draw(self, context):
         import _cycles
@@ -804,32 +816,27 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
 
         col = layout.column()
 
-        use_embree = _cycles.with_embree
+        built_with_embree = _cycles.with_embree
+        use_embree = built_with_embree and (use_oneapirt(context) or (use_cpu(context) and (
+            context.scene.cycles.debug_bvh_layout == "EMBREE" or not CyclesDebugButtonsPanel.poll(context))))
 
-        if use_cpu(context):
-            col.prop(cscene, "debug_use_spatial_splits")
-            if use_embree:
-                col.prop(cscene, "debug_use_compact_bvh")
-            else:
-                sub = col.column()
-                sub.active = not cscene.debug_use_spatial_splits
-                sub.prop(cscene, "debug_bvh_time_steps")
-
-                col.prop(cscene, "debug_use_hair_bvh")
-
-                sub = col.column(align=True)
-                sub.label(text="Cycles built without Embree support")
-                sub.label(text="CPU raytracing performance will be poor")
+        col.prop(cscene, "debug_use_spatial_splits")
+        if use_embree:
+            col.prop(cscene, "debug_use_compact_bvh")
         else:
-            col.prop(cscene, "debug_use_spatial_splits")
             sub = col.column()
             sub.active = not cscene.debug_use_spatial_splits
             sub.prop(cscene, "debug_bvh_time_steps")
 
             col.prop(cscene, "debug_use_hair_bvh")
 
+            if use_cpu(context) or (use_multi_device(context) and not built_with_embree):
+                sub = col.column(align=True)
+                sub.label(text="Cycles is not using, or was built without Embree")
+                sub.label(text="CPU raytracing performance will be reduced")
+
             # CPU is used in addition to a GPU
-            if use_multi_device(context) and use_embree:
+            if use_multi_device(context) and built_with_embree:
                 col.prop(cscene, "debug_use_compact_bvh")
 
 
