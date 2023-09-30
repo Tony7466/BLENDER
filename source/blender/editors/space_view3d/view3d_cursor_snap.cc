@@ -374,7 +374,7 @@ static void cursor_box_draw(const float dimensions[3], uchar color[4])
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void cursor_point_draw(
+static void cursor_point_draw__industry(
     uint attr_pos, const float loc[3], const float size, eSnapMode snap_type, const uchar color[4])
 {
   immUniformColor4ubv(color);
@@ -446,13 +446,125 @@ static void cursor_point_draw(
   GPU_matrix_pop();
 }
 
+static void cursor_point_draw__minimalist(uint attr_pos,
+                                          const float loc[3],
+                                          const float nor[3],
+                                          const float size,
+                                          eSnapMode snap_type,
+                                          const uchar color[4],
+                                          bool is_persp)
+{
+  immUniformColor4ubv(color);
+
+  GPU_matrix_push();
+
+  float rotate_view[3][3], model_view_new[4][4];
+  GPU_matrix_model_view_get(model_view_new);
+  copy_m3_m4(rotate_view, model_view_new);
+  translate_m4(model_view_new, UNPACK3(loc));
+  copy_v3_fl3(model_view_new[0], size, 0.0f, 0.0f);
+  copy_v3_fl3(model_view_new[1], 0.0f, size, 0.0f);
+  copy_v3_fl3(model_view_new[2], 0.0f, 0.0f, size);
+  GPU_matrix_set(model_view_new);
+
+  float size_b = 0.8f;
+  switch (snap_type) {
+    case SCE_SNAP_TO_NONE:
+      immBegin(GPU_PRIM_LINES, 4);
+      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
+      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
+      immEnd();
+      break;
+    case SCE_SNAP_TO_EDGE_MIDPOINT:
+    case SCE_SNAP_TO_EDGE_PERPENDICULAR:
+    case SCE_SNAP_TO_EDGE: {
+      float x_dir[3];
+      mul_v3_m3v3(x_dir, rotate_view, nor);
+      if (is_persp) {
+        float *translation = model_view_new[3];
+        add_v3_v3(x_dir, translation);
+        float fac = translation[2] / x_dir[2];
+        x_dir[0] *= fac;
+        x_dir[1] *= fac;
+        sub_v2_v2(x_dir, translation);
+      }
+      normalize_v2_length(x_dir, size);
+      model_view_new[0][0] = x_dir[0];
+      model_view_new[0][1] = x_dir[1];
+      model_view_new[1][0] = x_dir[1];
+      model_view_new[1][1] = -x_dir[0];
+      GPU_matrix_set(model_view_new);
+
+      immBegin(GPU_PRIM_LINES, 4);
+      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
+      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
+      immEnd();
+      if (snap_type == SCE_SNAP_TO_EDGE) {
+        break;
+      }
+      immBegin(GPU_PRIM_LINES, 4);
+      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
+      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
+      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
+      immEnd();
+      break;
+    }
+    case SCE_SNAP_TO_FACE: {
+      float z_dir[3];
+      mul_v3_m3v3(z_dir, rotate_view, nor);
+      copy_v3_v3(model_view_new[2], z_dir);
+      ortho_basis_v3v3_v3(model_view_new[0], model_view_new[1], model_view_new[2]);
+      mul_mat3_m4_fl(model_view_new, size * 1.4);
+      GPU_matrix_set(model_view_new);
+
+      immBegin(GPU_PRIM_LINES, 2);
+      immVertex3f(attr_pos, 0.0f, 0.0f, 0.0f);
+      immVertex3f(attr_pos, 0.0f, 0.0f, size_b);
+      immEnd();
+
+      ATTR_FALLTHROUGH;
+    }
+    case SCE_SNAP_TO_POINT:
+    /* case SCE_SNAP_TO_EDGE_ENDPOINT: */
+    default:
+      imm_draw_circle_wire_3d(attr_pos, 0.0f, 0.0f, 1.0f, 24);
+      break;
+  }
+
+  GPU_matrix_pop();
+}
+
+static void cursor_point_draw(uint attr_pos,
+                              const float loc[3],
+                              const float nor[3],
+                              const float size,
+                              eSnapMode snap_type,
+                              const uchar color[4],
+                              bool is_persp,
+                              bool use_simplified_snap_symbols)
+{
+  if (use_simplified_snap_symbols) {
+    return cursor_point_draw__minimalist(attr_pos, loc, nor, size, snap_type, color, is_persp);
+  }
+  else {
+    return cursor_point_draw__industry(attr_pos, loc, size, snap_type, color);
+  }
+}
+
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
+                                     const float target_normal[3],
                                      const eSnapMode source_type,
                                      const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4])
+                                     const uchar target_color[4],
+                                     bool use_simplified_snap_symbols)
 {
   if (!source_loc && !target_loc) {
     return;
@@ -471,17 +583,23 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   if (target_loc) {
     cursor_point_draw(pos,
                       target_loc,
+                      target_normal,
                       radius * ED_view3d_pixel_size(rv3d, target_loc),
                       target_type,
-                      target_color);
+                      target_color,
+                      rv3d->is_persp,
+                      use_simplified_snap_symbols);
   }
 
   if (source_loc) {
     cursor_point_draw(pos,
                       source_loc,
+                      target_normal,
                       radius * ED_view3d_pixel_size(rv3d, source_loc),
-                      source_type,
-                      source_color);
+                      use_simplified_snap_symbols ? SCE_SNAP_TO_NONE : source_type,
+                      source_color,
+                      rv3d->is_persp,
+                      use_simplified_snap_symbols);
 
     if (target_loc && (target_type & SCE_SNAP_TO_EDGE_PERPENDICULAR)) {
       /* Dashed line. */
@@ -931,10 +1049,12 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void * /*customda
     ED_view3d_cursor_snap_draw_util(rv3d,
                                     source_loc,
                                     snap_data->loc,
+                                    snap_data->nor,
                                     snap_data->type_source,
                                     snap_data->type_target,
                                     state->source_color,
-                                    state->target_color);
+                                    state->target_color,
+                                    state->use_simplified_snap_symbols);
   }
 
   if (state->draw_box) {
@@ -1043,6 +1163,8 @@ V3DSnapCursorState *ED_view3d_cursor_snap_state_create()
   SnapStateIntern *state_intern = static_cast<SnapStateIntern *>(
       MEM_mallocN(sizeof(*state_intern), __func__));
   state_intern->snap_state = g_data_intern.state_default;
+  state_intern->snap_state.use_simplified_snap_symbols =
+      UI_GetTheme()->space_view3d.use_simplified_snap_symbols;
   BLI_addtail(&g_data_intern.state_intern, state_intern);
 
   return (V3DSnapCursorState *)&state_intern->snap_state;

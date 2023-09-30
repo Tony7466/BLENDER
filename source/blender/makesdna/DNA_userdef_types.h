@@ -329,7 +329,8 @@ typedef struct ThemeSpace {
   unsigned char vertex_size, edge_width, outline_width, obcenter_dia, facedot_size;
   unsigned char noodle_curving;
   unsigned char grid_levels;
-  char _pad5[2];
+  unsigned char use_simplified_snap_symbols;
+  char _pad5[1];
   float dash_alpha;
 
   /* Syntax for text-window and nodes. */

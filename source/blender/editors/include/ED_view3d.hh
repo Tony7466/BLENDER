@@ -325,6 +325,7 @@ struct V3DSnapCursorState {
   bool draw_point;
   bool draw_plane;
   bool draw_box;
+  bool use_simplified_snap_symbols;
 
   bool (*poll)(ARegion *region, void *custom_poll_data);
   void *poll_data;
@@ -343,10 +344,12 @@ SnapObjectContext *ED_view3d_cursor_snap_context_ensure(Scene *scene);
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
+                                     const float target_normal[3],
                                      const eSnapMode source_type,
                                      const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4]);
+                                     const uchar target_color[4],
+                                     bool use_simplified_snap_symbols);
 
 /* view3d_iterators.cc */
 
