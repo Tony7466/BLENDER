@@ -31,40 +31,6 @@
 
 namespace blender::ed::transform::greasepencil {
 
-/* TODO: move and/or combine with the blender::ed::transform::curves. */
-static void calculate_curve_point_distances_for_proportional_editing(
-    const Span<float3> positions, MutableSpan<float> r_distances)
-{
-  Array<bool, 32> visited(positions.size(), false);
-
-  InplacePriorityQueue<float, std::less<float>> queue(r_distances);
-  while (!queue.is_empty()) {
-    int64_t index = queue.pop_index();
-    if (visited[index]) {
-      continue;
-    }
-    visited[index] = true;
-
-    /* TODO(Falk): Handle cyclic curves here. */
-    if (index > 0 && !visited[index - 1]) {
-      int adjacent = index - 1;
-      float dist = r_distances[index] + math::distance(positions[index], positions[adjacent]);
-      if (dist < r_distances[adjacent]) {
-        r_distances[adjacent] = dist;
-        queue.priority_changed(adjacent);
-      }
-    }
-    if (index < positions.size() - 1 && !visited[index + 1]) {
-      int adjacent = index + 1;
-      float dist = r_distances[index] + math::distance(positions[index], positions[adjacent]);
-      if (dist < r_distances[adjacent]) {
-        r_distances[adjacent] = dist;
-        queue.priority_changed(adjacent);
-      }
-    }
-  }
-}
-
 static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 {
   Scene *scene = CTX_data_scene(C);
@@ -101,7 +67,9 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     }
   }
 
+  /* Reuse the variable `layer_offset` */
   layer_offset = 0;
+
   /* Populate TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
     TransDataContainer &tc = trans_data_contrainers[i];
@@ -120,110 +88,32 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
-          MutableSpan<float3> positions = curves.positions_for_write();
-          MutableSpan<float> radii = drawing.radii_for_write();
-          MutableSpan<float> opacities = drawing.opacities_for_write();
-          if (use_proportional_edit) {
-            const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-            const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-                ".selection", ATTR_DOMAIN_POINT, true);
-            threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
-              Vector<float> closest_distances;
-              for (const int curve_i : range) {
-                const IndexRange points = points_by_curve[curve_i];
-                const bool has_any_selected = ed::curves::has_anything_selected(selection, points);
-                if (!has_any_selected && use_connected_only) {
-                  for (const int point_i : points) {
-                    TransData &td = tc.data[point_i + layer_points_offset];
-                    td.flag |= TD_SKIP;
-                  }
-                  continue;
-                }
+          const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
 
-                closest_distances.reinitialize(points.size());
-                closest_distances.fill(std::numeric_limits<float>::max());
+          MutableSpan<float> *value_attribute = nullptr;
 
-                for (const int i : IndexRange(points.size())) {
-                  const int point_i = points[i];
-                  TransData &td = tc.data[point_i + layer_points_offset];
-                  float3 *elem = &positions[point_i];
-
-                  copy_v3_v3(td.iloc, *elem);
-                  copy_v3_v3(td.center, td.iloc);
-                  td.loc = *elem;
-
-                  td.flag = 0;
-                  if (selection[point_i]) {
-                    closest_distances[i] = 0.0f;
-                    td.flag = TD_SELECTED;
-                  }
-
-                  if (t->mode == TFM_CURVE_SHRINKFATTEN) {
-                    float *radius = &radii[point_i];
-                    td.val = radius;
-                    td.ival = *radius;
-                  }
-                  else if (t->mode == TFM_GPENCIL_OPACITY) {
-                    float *opacity = &opacities[point_i];
-                    td.val = opacity;
-                    td.ival = *opacity;
-                  }
-
-                  td.ext = nullptr;
-
-                  copy_m3_m3(td.smtx, smtx);
-                  copy_m3_m3(td.mtx, mtx);
-                }
-
-                if (use_connected_only) {
-                  calculate_curve_point_distances_for_proportional_editing(
-                      positions.slice(points), closest_distances.as_mutable_span());
-                  for (const int i : IndexRange(points.size())) {
-                    TransData &td = tc.data[points[i] + layer_points_offset];
-                    td.dist = closest_distances[i];
-                  }
-                }
-              }
-            });
+          if (t->mode == TFM_CURVE_SHRINKFATTEN) {
+            MutableSpan<float> radii = drawing.radii_for_write();
+            value_attribute = &radii;
           }
-          else {
-            const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
-            threading::parallel_for(
-                selected_indices.index_range(), 1024, [&](const IndexRange range) {
-                  for (const int selection_i : range) {
-                    TransData *td = &tc.data[selection_i + layer_points_offset];
-                    const int point_i = selected_indices[selection_i];
-                    float3 *elem = &positions[point_i];
-
-                    copy_v3_v3(td->iloc, *elem);
-                    copy_v3_v3(td->center, td->iloc);
-                    td->loc = *elem;
-
-                    if (t->mode == TFM_CURVE_SHRINKFATTEN) {
-                      float *radius = &radii[point_i];
-                      td->val = radius;
-                      td->ival = *radius;
-                    }
-                    else if (t->mode == TFM_GPENCIL_OPACITY) {
-                      float *opacity = &opacities[point_i];
-                      td->val = opacity;
-                      td->ival = *opacity;
-                    }
-
-                    td->flag = TD_SELECTED;
-                    td->ext = nullptr;
-
-                    copy_m3_m3(td->smtx, smtx);
-                    copy_m3_m3(td->mtx, mtx);
-                  }
-                });
+          else if (t->mode == TFM_GPENCIL_OPACITY) {
+            MutableSpan<float> opacities = drawing.opacities_for_write();
+            value_attribute = &opacities;
           }
+
+          curvePopulateTransDataStructs(tc,
+                                        curves,
+                                        value_attribute,
+                                        selected_indices,
+                                        use_proportional_edit,
+                                        use_connected_only,
+                                        layer_points_offset);
 
           if (use_proportional_edit) {
             layer_points_offset += curves.point_num;
           }
           else {
-            layer_points_offset += selection_per_layer_per_object[i + layer_offset].size();
+            layer_points_offset += selected_indices.size();
           }
           layer_offset++;
         });

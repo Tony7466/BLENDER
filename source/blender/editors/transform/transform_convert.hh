@@ -11,6 +11,10 @@
 
 #include "RE_engine.h"
 
+#include "BKE_curves.hh"
+
+#include "BLI_index_mask.hh"
+
 struct BMEditMesh;
 struct BMesh;
 struct BezTriple;
@@ -106,6 +110,19 @@ void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc);
  */
 void animrecord_check_state(TransInfo *t, ID *id);
 
+/* `transform_convert_curves.cc` */
+
+/**
+ * Used for both curves and grease pencil objects.
+ */
+void curvePopulateTransDataStructs(TransDataContainer &tc,
+                                   blender::bke::CurvesGeometry &curves,
+                                   blender::MutableSpan<float> *value_attribute,
+                                   const blender::IndexMask &selected_indices,
+                                   const bool use_proportional_edit,
+                                   const bool use_connected_only,
+                                   const int data_offset);
+
 /* `transform_convert_action.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Action;
@@ -131,7 +148,7 @@ extern TransConvertTypeInfo TransConvertType_Cursor3D;
 
 extern TransConvertTypeInfo TransConvertType_Curve;
 
-/* transform_convert_curves.cc */
+/* `transform_convert_curves.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Curves;
 
