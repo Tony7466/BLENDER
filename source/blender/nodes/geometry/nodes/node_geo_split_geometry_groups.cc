@@ -160,16 +160,17 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
 }
 
 static void split_curve_groups(const bke::CurveComponent &component,
+                               const eAttrDomain domain,
                                const Field<bool> &selection_field,
                                const Field<int> &group_id_field,
                                const AnonymousAttributePropagationInfo &propagation_info,
                                Map<int, std::unique_ptr<GeometrySet>> &geometry_by_group_id)
 {
   const bke::CurvesGeometry &src_curves = component.get()->geometry.wrap();
-  const int curves_num = src_curves.curve_num;
+  const int domain_size = src_curves.attributes().domain_size(domain);
 
-  const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
-  FieldEvaluator field_evaluator{field_context, curves_num};
+  const bke::CurvesFieldContext field_context{src_curves, domain};
+  FieldEvaluator field_evaluator{field_context, domain_size};
   field_evaluator.set_selection(selection_field);
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
@@ -188,12 +189,18 @@ static void split_curve_groups(const bke::CurveComponent &component,
     IndexMaskMemory memory;
     for (const int group_index : range) {
       const int group_id = group_ids_ordered[group_index];
-      const Span<int> curve_indices = indices_by_group.lookup(group_id);
-      const IndexMask curve_indices_mask = IndexMask::from_indices(curve_indices, memory);
-      bke::CurvesGeometry group_curves = bke::curves_copy_curve_selection(
-          src_curves, curve_indices_mask, propagation_info);
-      Curves *group_curves_id = bke::curves_new_nomain(std::move(group_curves));
-
+      const Span<int> elements = indices_by_group.lookup(group_id);
+      const IndexMask elements_mask = IndexMask::from_indices(elements, memory);
+      std::optional<bke::CurvesGeometry> group_curves;
+      if (domain == ATTR_DOMAIN_POINT) {
+        group_curves = bke::curves_copy_point_selection(
+            src_curves, elements_mask, propagation_info);
+      }
+      else {
+        group_curves = bke::curves_copy_curve_selection(
+            src_curves, elements_mask, propagation_info);
+      }
+      Curves *group_curves_id = bke::curves_new_nomain(std::move(*group_curves));
       GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
       group_geometry.replace_curves(group_curves_id);
     }
@@ -229,10 +236,14 @@ static void node_geo_exec(GeoNodeExecParams params)
     split_pointcloud_groups(
         component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
   }
-  if (src_geometry.has_curves() && domain == ATTR_DOMAIN_CURVE) {
+  if (src_geometry.has_curves() && ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
     const auto &component = *src_geometry.get_component<bke::CurveComponent>();
-    split_curve_groups(
-        component, selection_field, group_id_field, propagation_info, geometry_by_group_id);
+    split_curve_groups(component,
+                       domain,
+                       selection_field,
+                       group_id_field,
+                       propagation_info,
+                       geometry_by_group_id);
   }
 
   bke::Instances *dst_instances = new bke::Instances();
