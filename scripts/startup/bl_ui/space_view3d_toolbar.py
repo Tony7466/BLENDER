@@ -711,7 +711,8 @@ class VIEW3D_PT_slots_vertex_groups(Panel):
 
 
 class VIEW3D_PT_mask(View3DPanel, Panel):
-    bl_category = "Tool"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
     bl_label = "Masking"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -721,8 +722,8 @@ class VIEW3D_PT_mask(View3DPanel, Panel):
 
 # TODO, move to space_view3d.py
 class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
-    bl_category = "Tool"
-    bl_context = ".imagepaint"  # dot on purpose (access from topbar)
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
     bl_label = "Stencil Mask"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "VIEW3D_PT_mask"
@@ -1388,8 +1389,9 @@ class VIEW3D_PT_tools_imagepaint_options(View3DPaintPanel, Panel):
         col.prop(ipaint, "use_backface_culling", text="Backface Culling")
 
 
-class VIEW3D_PT_tools_imagepaint_options_cavity(View3DPaintPanel, Panel):
-    bl_context = ".imagepaint"  # dot on purpose (access from topbar)
+class VIEW3D_PT_tools_imagepaint_options_cavity(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
     bl_label = "Cavity Mask"
     bl_parent_id = "VIEW3D_PT_mask"
     bl_options = {'DEFAULT_CLOSED'}
