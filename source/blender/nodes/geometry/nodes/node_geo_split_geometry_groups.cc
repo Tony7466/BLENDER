@@ -63,7 +63,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     MultiValueMap<int, int> indices_by_group;
 
-    /* TODO: Take selection into account. */
     selection.foreach_index([&](const int i) { indices_by_group.add(group_ids[i], i); });
     const int groups_num = indices_by_group.size();
 
