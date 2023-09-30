@@ -131,8 +131,7 @@ static void split_mesh_groups(const MeshComponent &component,
     threading::isolate_task([&]() {
       MutableSpan<bool> group_selection = group_selection_per_thread.local();
       const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
-      for (const int group_index : range) {
-        const int group_id = split_groups.group_ids[group_index];
+      for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
         const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
         for (int i : elements) {
           group_selection[i] = true;
@@ -181,8 +180,7 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
   }
   const PointCloud &src_pointcloud = *component.get();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
-    for (const int group_index : range) {
-      const int group_id = split_groups.group_ids[group_index];
+    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
       const Span<int> point_indices = split_groups.indices_by_group.lookup(group_id);
       const int group_points_num = point_indices.size();
       PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(group_points_num);
@@ -214,8 +212,7 @@ static void split_curve_groups(const bke::CurveComponent &component,
   const bke::CurvesGeometry &src_curves = component.get()->geometry.wrap();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
     IndexMaskMemory memory;
-    for (const int group_index : range) {
-      const int group_id = split_groups.group_ids[group_index];
+    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
       const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
       const IndexMask elements_mask = IndexMask::from_indices(elements, memory);
       std::optional<bke::CurvesGeometry> group_curves;
@@ -252,9 +249,7 @@ static void split_instance_groups(const InstancesComponent &component,
   }
   const bke::Instances &src_instances = *component.get();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
-    IndexMaskMemory memory;
-    for (const int group_index : range) {
-      const int group_id = split_groups.group_ids[group_index];
+    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
       const Span<int> instance_indices = split_groups.indices_by_group.lookup(group_id);
 
       bke::Instances *group_instances = new bke::Instances();
