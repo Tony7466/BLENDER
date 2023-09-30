@@ -1905,17 +1905,24 @@ class LazyFunctionForForeachZone : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    // auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+
     const int amount = params.get_input<int>(zone_info_.indices.inputs.main[0]);
     Array<GeometrySet> output_values(amount, NoInitialization{});
-    for (const int i : IndexRange(amount)) {
-      GeometrySet &output_geometry = output_values[i];
-      bool usage_index;
-      lf::execute_lazy_function_eagerly(*body_fn_.function,
-                                        context.user_data,
-                                        context.local_user_data,
-                                        std::make_tuple(ValueOrField<int>(i), true),
-                                        std::make_tuple(&usage_index, &output_geometry));
-    }
+    threading::parallel_for(IndexRange(amount), 32, [&](const IndexRange range) {
+      for (const int i : range) {
+        GeometrySet &output_geometry = output_values[i];
+        bool usage_index;
+
+        GeoNodesLFLocalUserData body_local_user_data{user_data};
+        lf::execute_lazy_function_eagerly(*body_fn_.function,
+                                          context.user_data,
+                                          &body_local_user_data,
+                                          std::make_tuple(ValueOrField<int>(i), true),
+                                          std::make_tuple(&usage_index, &output_geometry));
+      }
+    });
     GeometrySet reduced_geometry = geometry::join_geometries(output_values, {});
     params.set_output(zone_info_.indices.outputs.main[0], std::move(reduced_geometry));
     params.set_default_remaining_outputs();
