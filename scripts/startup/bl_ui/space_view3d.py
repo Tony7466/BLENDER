@@ -5642,6 +5642,9 @@ class VIEW3D_MT_edit_greasepencil(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
+        layout.menu("VIEW3D_MT_mirror")
+        
+        layout.separator()
         
         layout.menu("VIEW3D_MT_edit_greasepencil_delete")
 

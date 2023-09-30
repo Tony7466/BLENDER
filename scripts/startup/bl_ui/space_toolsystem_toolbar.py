@@ -367,6 +367,16 @@ class _defs_transform:
         )
 
     @ToolDef.from_fn
+    def bend():
+        return dict(
+            idname="builtin.bend",
+            label="Bend",
+            icon="ops.gpencil.edit_bend",
+            widget=None,
+            keymap=(),
+        )
+
+    @ToolDef.from_fn
     def transform():
         def draw_settings(context, layout, tool):
             if layout.use_property_split:
@@ -3039,9 +3049,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_transform,
             None,
             _defs_edit_curve.curve_radius,
+            _defs_transform.bend,
             (
-                _defs_gpencil_edit.shear,
-                _defs_gpencil_edit.tosphere,
+                _defs_transform.shear,
+                _defs_edit_mesh.tosphere,
             ),
             None,
             *_tools_annotate,
