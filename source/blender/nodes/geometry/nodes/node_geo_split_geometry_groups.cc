@@ -33,8 +33,12 @@ static void node_declare(NodeDeclarationBuilder &b)
                        GeometryComponent::Type::Curve});
   b.add_input<decl::Bool>("Selection").supports_field().hide_value().default_value(true);
   b.add_input<decl::Int>("Group ID").supports_field().hide_value();
-  b.add_output<decl::Geometry>("Geometry").propagate_all();
-  b.add_output<decl::Int>("Group ID").field_on_all();
+  b.add_output<decl::Geometry>("Geometry")
+      .propagate_all()
+      .description("All geometry groups as separate instances");
+  b.add_output<decl::Int>("Group ID")
+      .field_on_all()
+      .description("The group id of each group instance");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
