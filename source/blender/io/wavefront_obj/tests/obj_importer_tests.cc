@@ -137,7 +137,7 @@ class obj_importer_test : public BlendfileLoadingBaseTest {
         const Span<float3> positions = mesh->vert_positions();
         EXPECT_V3_NEAR(positions.first(), exp.vert_first, 0.0001f);
         EXPECT_V3_NEAR(positions.last(), exp.vert_last, 0.0001f);
-        const float3 *lnors = &mesh->corner_normals().first();
+        const float3 *lnors = mesh->corner_normals().data();
         float3 normal_first = lnors != nullptr ? lnors[0] : float3(0, 0, 0);
         EXPECT_V3_NEAR(normal_first, exp.normal_first, 0.0001f);
         const float2 *mloopuv = static_cast<const float2 *>(
