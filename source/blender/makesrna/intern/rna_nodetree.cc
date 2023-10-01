@@ -598,6 +598,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
 #  include "NOD_texture.h"
+#  include "NOD_zone_item_arrays.hh"
 
 #  include "RE_engine.h"
 #  include "RE_pipeline.h"
@@ -606,6 +607,8 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "WM_api.hh"
 
 using namespace blender::nodes::item_arrays;
+using blender::nodes::RepeatItemsAccessor;
+using blender::nodes::SimulationItemsAccessor;
 
 extern FunctionRNA rna_NodeTree_poll_func;
 extern FunctionRNA rna_NodeTree_update_func;
