@@ -143,12 +143,11 @@ inline void set_item_name(bNode &node, typename Accessor::ItemT &item, const cha
 }
 
 template<typename Accessor>
-inline typename Accessor::ItemT *add_item_with_socket_and_name(bNode &node,
-                                                               const int socket_type,
-                                                               const char *name)
+inline typename Accessor::ItemT *add_item_with_socket_and_name(
+    bNode &node, const eNodeSocketDatatype socket_type, const char *name)
 {
   using ItemT = typename Accessor::ItemT;
-  BLI_assert(Accessor::supports_socket_type(eNodeSocketDatatype(socket_type)));
+  BLI_assert(Accessor::supports_socket_type(socket_type));
 
   ItemArrayRef array = Accessor::get_items_from_node(node);
 
@@ -160,7 +159,7 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(bNode &node,
   std::copy_n(old_items, old_items_num, new_items);
   ItemT &new_item = new_items[old_items_num];
 
-  Accessor::init_with_socket_type_and_name(node, new_item, eNodeSocketDatatype(socket_type), name);
+  Accessor::init_with_socket_type_and_name(node, new_item, socket_type, name);
 
   MEM_SAFE_FREE(old_items);
   *array.items_p = new_items;

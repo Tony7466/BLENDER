@@ -3302,7 +3302,8 @@ typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
     BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
     return nullptr;
   }
-  ItemT *new_item = add_item_with_socket_and_name<Accessor>(*node, socket_type, name);
+  ItemT *new_item = add_item_with_socket_and_name<Accessor>(
+      *node, eNodeSocketDatatype(socket_type), name);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
