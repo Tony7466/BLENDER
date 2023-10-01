@@ -238,6 +238,7 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(bNode &node,
   std::copy_n(old_items, old_items_num, new_items);
   ItemT &new_item = new_items[old_items_num];
 
+  /* TODO: Initialize identifier. */
   set_item_name<Accessor>(node, new_item, name);
   *Accessor::get_socket_type(new_item) = socket_type;
 

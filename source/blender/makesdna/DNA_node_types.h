@@ -1838,8 +1838,6 @@ typedef struct NodeGeometryRepeatOutput {
 #ifdef __cplusplus
   blender::Span<NodeRepeatItem> items_span() const;
   blender::MutableSpan<NodeRepeatItem> items_span();
-  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
-  void set_item_name(NodeRepeatItem &item, const char *name);
 #endif
 } NodeGeometryRepeatOutput;
 
