@@ -3286,7 +3286,6 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   return item;
 }
 
-template<typename T, typename U>
 static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
@@ -9019,7 +9018,7 @@ static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "Items", "Collection of repeat items");
 
-  func = RNA_def_function(srna, "new", "rna_NodeGeometryRepeatOutput_items_new<int, float>");
+  func = RNA_def_function(srna, "new", "rna_NodeGeometryRepeatOutput_items_new");
   RNA_def_function_ui_description(func, "Add a item to this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
