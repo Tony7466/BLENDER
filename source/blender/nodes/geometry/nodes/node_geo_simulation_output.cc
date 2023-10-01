@@ -999,11 +999,6 @@ blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_spa
   return blender::MutableSpan<NodeSimulationItem>(items, items_num);
 }
 
-blender::IndexRange NodeGeometrySimulationOutput::items_range() const
-{
-  return blender::IndexRange(items_num);
-}
-
 bool NOD_geometry_simulation_output_item_socket_type_supported(
     const eNodeSocketDatatype socket_type)
 {
