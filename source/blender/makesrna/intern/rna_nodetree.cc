@@ -3449,19 +3449,16 @@ template<typename Accessor> static void rna_Node_items_clear(ID *id, bNode *node
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-template<typename T>
-static void rna_Node_item_move(ID *id,
-                               bNode *node,
-                               Main *bmain,
-                               T *items,
-                               const int items_num,
-                               const int from_index,
-                               const int to_index)
+template<typename Accessor>
+static void rna_Node_item_move(
+    ID *id, bNode *node, Main *bmain, const int from_index, const int to_index)
 {
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  const int items_num = *array.items_num_p;
   if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
     return;
   }
-  move_item(items, items_num, from_index, to_index);
+  move_item(*array.items_p, items_num, from_index, to_index);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3494,15 +3491,13 @@ static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *
 static void rna_NodeGeometrySimulationOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_item_move(id, node, bmain, storage->items, storage->items_num, from_index, to_index);
+  rna_Node_item_move<SimulationItemsAccessors>(id, node, bmain, from_index, to_index);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_item_move(id, node, bmain, storage->items, storage->items_num, from_index, to_index);
+  rna_Node_item_move<RepeatItemsAccessors>(id, node, bmain, from_index, to_index);
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
