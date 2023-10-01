@@ -3151,6 +3151,18 @@ struct SimulationItemsAccessors {
   {
     return &item.name;
   }
+  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  {
+    return ELEM(socket_type,
+                SOCK_FLOAT,
+                SOCK_VECTOR,
+                SOCK_RGBA,
+                SOCK_BOOLEAN,
+                SOCK_ROTATION,
+                SOCK_INT,
+                SOCK_STRING,
+                SOCK_GEOMETRY);
+  }
 };
 
 struct RepeatItemsAccessors {
@@ -3175,6 +3187,22 @@ struct RepeatItemsAccessors {
   static char **get_name(NodeRepeatItem &item)
   {
     return &item.name;
+  }
+  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  {
+    return ELEM(socket_type,
+                SOCK_FLOAT,
+                SOCK_VECTOR,
+                SOCK_RGBA,
+                SOCK_BOOLEAN,
+                SOCK_ROTATION,
+                SOCK_INT,
+                SOCK_STRING,
+                SOCK_GEOMETRY,
+                SOCK_OBJECT,
+                SOCK_MATERIAL,
+                SOCK_IMAGE,
+                SOCK_COLLECTION);
   }
 };
 
@@ -3407,15 +3435,11 @@ static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/
                               rna_RepeatItem_socket_type_supported);
 }
 
-template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
+template<typename Accessor>
+static void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
 {
   using ItemT = typename Accessor::ItemT;
-  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = find_node_by_item<Accessor>(ntree, item);
-  BLI_assert(node != nullptr);
-
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemsArrayRef array = Accessor::get_items_from_node(node);
   const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
 
   char unique_name[MAX_NAME + 4];
@@ -3446,6 +3470,16 @@ template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, 
   char **item_name = Accessor::get_name(item);
   MEM_SAFE_FREE(*item_name);
   *item_name = BLI_strdup(unique_name);
+}
+
+template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
+{
+  using ItemT = typename Accessor::ItemT;
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  bNode *node = find_node_by_item<Accessor>(ntree, item);
+  BLI_assert(node != nullptr);
+  set_item_name<Accessor>(*node, item, value);
 }
 
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
@@ -3521,42 +3555,53 @@ static bool rna_Node_pair_with_output(
   return true;
 }
 
+template<typename Accessor>
+typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
+{
+  using ItemT = typename Accessor::ItemT;
+  if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
+    BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
+    return nullptr;
+  }
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+
+  ItemT *old_items = *array.items_p;
+  const int old_items_num = *array.items_num_p;
+  const int new_items_num = old_items_num + 1;
+
+  ItemT *new_items = MEM_cnew_array<ItemT>(new_items_num, __func__);
+  std::copy_n(old_items, old_items_num, new_items);
+  ItemT &new_item = new_items[old_items_num];
+
+  set_item_name<Accessor>(*node, new_item, name);
+  *Accessor::get_socket_type(new_item) = socket_type;
+
+  MEM_SAFE_FREE(old_items);
+  *array.items_p = new_items;
+  *array.items_num_p = new_items_num;
+  *array.active_index_p = old_items_num;
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return &new_item;
+}
+
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NodeSimulationItem *item = NOD_geometry_simulation_output_add_item(
-      sim, short(socket_type), name);
-
-  if (item == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create socket");
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-
-  return item;
+  return rna_Node_item_new_with_socket_and_name<SimulationItemsAccessors>(
+      id, node, bmain, reports, socket_type, name);
 }
 
 static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  NodeRepeatItem *item = storage->add_item(name, eNodeSocketDatatype(socket_type));
-  if (item == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create socket");
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-
-  return item;
+  return rna_Node_item_new_with_socket_and_name<RepeatItemsAccessors>(
+      id, node, bmain, reports, socket_type, name);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(

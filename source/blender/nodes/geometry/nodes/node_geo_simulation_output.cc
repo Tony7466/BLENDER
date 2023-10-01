@@ -1101,13 +1101,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
   return name_changed;
 }
 
-NodeSimulationItem *NOD_geometry_simulation_output_add_item(NodeGeometrySimulationOutput *sim,
-                                                            const short socket_type,
-                                                            const char *name)
-{
-  return NOD_geometry_simulation_output_insert_item(sim, socket_type, name, sim->items_num);
-}
-
 NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimulationOutput *sim,
                                                                const short socket_type,
                                                                const char *name,
