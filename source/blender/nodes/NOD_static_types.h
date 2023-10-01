@@ -322,8 +322,8 @@ DefNode(GeometryNode, GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME, 0, "DISTRIBUTE_POINT
 DefNode(GeometryNode, GEO_NODE_DISTRIBUTE_POINTS_ON_FACES, def_geo_distribute_points_on_faces, "DISTRIBUTE_POINTS_ON_FACES", DistributePointsOnFaces, "Distribute Points on Faces", "Generate points spread out on the surface of a mesh")
 DefNode(GeometryNode, GEO_NODE_DUAL_MESH, 0, "DUAL_MESH", DualMesh, "Dual Mesh", "Convert Faces into vertices and vertices into faces")
 DefNode(GeometryNode, GEO_NODE_DUPLICATE_ELEMENTS, 0, "DUPLICATE_ELEMENTS", DuplicateElements, "Duplicate Elements", "Generate an arbitrary number copies of each selected input element")
-DefNode(GeometryNode, GEO_NODE_EDGE_PATHS_TO_CURVES, 0, "EDGE_PATHS_TO_CURVES", EdgePathsToCurves, "Edge Paths to Curves", "")
-DefNode(GeometryNode, GEO_NODE_EDGE_PATHS_TO_SELECTION, 0, "EDGE_PATHS_TO_SELECTION", EdgePathsToSelection, "Edge Paths to Selection", "")
+DefNode(GeometryNode, GEO_NODE_EDGE_PATHS_TO_CURVES, 0, "EDGE_PATHS_TO_CURVES", EdgePathsToCurves, "Edge Paths to Curves", "Output curves following paths across mesh edges")
+DefNode(GeometryNode, GEO_NODE_EDGE_PATHS_TO_SELECTION, 0, "EDGE_PATHS_TO_SELECTION", EdgePathsToSelection, "Edge Paths to Selection", "Output a selection of visited edges by following paths across mesh edges")
 DefNode(GeometryNode, GEO_NODE_EDGES_TO_FACE_GROUPS, 0, "EDGES_TO_FACE_GROUPS", EdgesToFaceGroups, "Edges to Face Groups", "Group faces into regions surrounded by the selected boundary edges")
 DefNode(GeometryNode, GEO_NODE_EVALUATE_AT_INDEX, 0, "FIELD_AT_INDEX", FieldAtIndex, "Evaluate at Index", "Retrieve data of other elements in the context's geometry")
 DefNode(GeometryNode, GEO_NODE_EVALUATE_ON_DOMAIN, 0, "FIELD_ON_DOMAIN", FieldOnDomain, "Evaluate on Domain", "Retrieve values from a field on a different domain besides the domain from the context")
@@ -358,7 +358,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_POSITION, 0, "POSITION", InputPosition, "Po
 DefNode(GeometryNode, GEO_NODE_INPUT_RADIUS, 0, "INPUT_RADIUS", InputRadius, "Radius", "Retrieve the radius at each point on curve or point cloud geometry")
 DefNode(GeometryNode, GEO_NODE_INPUT_SCENE_TIME, 0, "INPUT_SCENE_TIME", InputSceneTime, "Scene Time", "Retrieve the current time in the scene's animation in units of seconds or frames")
 DefNode(GeometryNode, GEO_NODE_INPUT_FACE_SMOOTH, 0, "INPUT_SHADE_SMOOTH", InputShadeSmooth, "Is Face Smooth", "Retrieve whether each face is marked for smooth or sharp normals")
-DefNode(GeometryNode, GEO_NODE_INPUT_SHORTEST_EDGE_PATHS, 0, "SHORTEST_EDGE_PATHS", InputShortestEdgePaths, "Shortest Edge Paths", "")
+DefNode(GeometryNode, GEO_NODE_INPUT_SHORTEST_EDGE_PATHS, 0, "SHORTEST_EDGE_PATHS", InputShortestEdgePaths, "Shortest Edge Paths", "Find the shortest paths along mesh edges to selected end vertices, with customizable cost settings")
 DefNode(GeometryNode, GEO_NODE_INPUT_SIGNED_DISTANCE, 0, "SIGNED_DISTANCE", InputSignedDistance, "Signed Distance", "Retrieve the signed distance field grid called 'distance' from a volume")
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_CYCLIC, 0, "INPUT_SPLINE_CYCLIC",InputSplineCyclic, "Is Spline Cyclic", "Retrieve whether each spline endpoint connects to the beginning")
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_LENGTH, 0, "SPLINE_LENGTH", SplineLength, "Spline Length", "Retrieve the total length of each spline, as a distance or as a number of points")
@@ -409,8 +409,10 @@ DefNode(GeometryNode, GEO_NODE_PROXIMITY, 0, "PROXIMITY", Proximity, "Geometry P
 DefNode(GeometryNode, GEO_NODE_RAYCAST, 0, "RAYCAST", Raycast, "Raycast", "Cast rays from the context geometry onto a target geometry, and retrieve information from each hit point")
 DefNode(GeometryNode, GEO_NODE_REALIZE_INSTANCES, 0, "REALIZE_INSTANCES", RealizeInstances, "Realize Instances", "Convert instances into real geometry data")
 DefNode(GeometryNode, GEO_NODE_REMOVE_ATTRIBUTE, 0, "REMOVE_ATTRIBUTE", RemoveAttribute, "Remove Named Attribute", "Delete an attribute with a specified name from a geometry. Typically used to optimize performance")
+
 DefNode(GeometryNode, GEO_NODE_REPEAT_INPUT, def_geo_repeat_input, "REPEAT_INPUT", RepeatInput, "Repeat Input", "")
 DefNode(GeometryNode, GEO_NODE_REPEAT_OUTPUT, def_geo_repeat_output, "REPEAT_OUTPUT", RepeatOutput, "Repeat Output", "")
+
 DefNode(GeometryNode, GEO_NODE_REPLACE_MATERIAL, 0, "REPLACE_MATERIAL", ReplaceMaterial, "Replace Material", "Swap one material with another")
 DefNode(GeometryNode, GEO_NODE_RESAMPLE_CURVE, 0, "RESAMPLE_CURVE", ResampleCurve, "Resample Curve", "Generate a poly spline for each input spline")
 DefNode(GeometryNode, GEO_NODE_REVERSE_CURVE, 0, "REVERSE_CURVE", ReverseCurve, "Reverse Curve", "Change the direction of curves by swapping their start and end data")
@@ -439,8 +441,10 @@ DefNode(GeometryNode, GEO_NODE_SET_POSITION, 0, "SET_POSITION", SetPosition, "Se
 DefNode(GeometryNode, GEO_NODE_SET_SHADE_SMOOTH, 0, "SET_SHADE_SMOOTH", SetShadeSmooth, "Set Shade Smooth", "Control the smoothness of mesh normals around each face by changing the \"shade smooth\" attribute")
 DefNode(GeometryNode, GEO_NODE_SET_SPLINE_CYCLIC, 0, "SET_SPLINE_CYCLIC", SetSplineCyclic, "Set Spline Cyclic", "Control whether each spline loops back on itself by changing the \"cyclic\" attribute")
 DefNode(GeometryNode, GEO_NODE_SET_SPLINE_RESOLUTION, 0, "SET_SPLINE_RESOLUTION", SetSplineResolution, "Set Spline Resolution", "Control how many evaluated points should be generated on every curve segment")
-DefNode(GeometryNode, GEO_NODE_SIMULATION_INPUT, def_geo_simulation_input, "SIMULATION_INPUT", SimulationInput, "Simulation Input", "")
-DefNode(GeometryNode, GEO_NODE_SIMULATION_OUTPUT, def_geo_simulation_output, "SIMULATION_OUTPUT", SimulationOutput, "Simulation Output", "")
+
+DefNode(GeometryNode, GEO_NODE_SIMULATION_INPUT, def_geo_simulation_input, "SIMULATION_INPUT", SimulationInput, "Simulation Input", "Input data for the simulation zone")
+DefNode(GeometryNode, GEO_NODE_SIMULATION_OUTPUT, def_geo_simulation_output, "SIMULATION_OUTPUT", SimulationOutput, "Simulation Output", " Output data from the simulation zone")
+
 DefNode(GeometryNode, GEO_NODE_SPLIT_EDGES, 0, "SPLIT_EDGES", SplitEdges, "Split Edges", "Duplicate mesh edges and break connections with the surrounding faces")
 DefNode(GeometryNode, GEO_NODE_STORE_NAMED_ATTRIBUTE, 0, "STORE_NAMED_ATTRIBUTE", StoreNamedAttribute, "Store Named Attribute", "Store the result of a field on a geometry as an attribute with the specified name")
 DefNode(GeometryNode, GEO_NODE_STRING_JOIN, 0, "STRING_JOIN", StringJoin, "Join Strings", "Combine any number of input strings")
