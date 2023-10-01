@@ -726,10 +726,10 @@ void ShadowModule::init()
   const bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
   const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
   if (is_metal_backend && is_tile_based_arch) {
-    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_TBDR;
+    ShadowModule::shadow_technique = ShadowTechnique::TILE_COPY;
   }
   else {
-    ShadowModule::shadow_technique = ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+    ShadowModule::shadow_technique = ShadowTechnique::ATOMIC_RASTER;
   }
 
   ::Scene &scene = *inst_.scene;

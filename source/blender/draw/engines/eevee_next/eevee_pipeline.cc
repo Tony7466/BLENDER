@@ -206,6 +206,9 @@ void ShadowPipeline::sync()
      * For relative perf, raster-based clear within tile update adds around 0.1ms vs 0.25ms for
      * compute based clear for a simple testcase. */
     pass.state_set(DRW_STATE_DEPTH_ALWAYS);
+    /* Metal have implicit sync with Raster Order Groups. Other backend need to have manual
+     * sub-pass transition to allow reading the framebuffer. This is a no-op on Metal. */
+    pass.subpass_transition(GPU_ATTACHEMENT_WRITE, {GPU_ATTACHEMENT_READ});
     pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
     pass.bind_ssbo("dst_coord_buf", inst_.shadows.dst_coord_buf_);
     pass.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
