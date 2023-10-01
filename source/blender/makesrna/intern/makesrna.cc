@@ -3045,6 +3045,7 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
   rna_construct_wrapper_function_name(
       funcname, sizeof(funcname), srna->identifier, func->identifier, "func");
 
+  /* A function with templates cannot have C linkage. */
   if (!(dfunc->call && count_template_args(dfunc->call) > 0)) {
     fprintf(f, "RNA_EXTERN_C ");
   }
