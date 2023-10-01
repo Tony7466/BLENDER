@@ -3304,6 +3304,40 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
   return item;
 }
 
+template<typename T> struct ItemsArrayRef {
+  T **items_p;
+  int *items_num_p;
+  int *active_index_p = nullptr;
+};
+
+struct SimulationItemsAccessors {
+  using value_type = NodeSimulationItem;
+
+  static ItemsArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
+  {
+    auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
+    return {&storage->items, &storage->items_num, &storage->active_index};
+  }
+  static void destruct_item(NodeSimulationItem *item)
+  {
+    MEM_SAFE_FREE(item->name);
+  }
+};
+
+struct RepeatItemsAccessors {
+  using value_type = NodeRepeatItem;
+
+  static ItemsArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
+  {
+    auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
+    return {&storage->items, &storage->items_num, &storage->active_index};
+  }
+  static void destruct_item(NodeRepeatItem *item)
+  {
+    MEM_SAFE_FREE(item->name);
+  }
+};
+
 template<typename T>
 static void remove_item(T **items,
                         int *items_num,
@@ -3379,23 +3413,24 @@ static void move_item(T *items, const int items_num, const int from_index, const
   }
 }
 
-template<typename T>
+template<typename Accessor>
 static void rna_Node_item_remove(ID *id,
                                  bNode *node,
                                  Main *bmain,
                                  ReportList *reports,
-                                 T **items,
-                                 int *items_num,
-                                 int *active_index,
-                                 T *item_to_remove,
-                                 void (*destruct_item)(T *))
+                                 typename Accessor::value_type *item_to_remove)
 {
-  if (item_to_remove < *items || item_to_remove >= *items + *items_num) {
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  if (item_to_remove < *array.items_p || item_to_remove >= *array.items_p + *array.items_num_p) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
   }
-  const int remove_index = item_to_remove - *items;
-  remove_item<T>(items, items_num, active_index, remove_index, destruct_item);
+  const int remove_index = item_to_remove - *array.items_p;
+  remove_item(array.items_p,
+              array.items_num_p,
+              array.active_index_p,
+              remove_index,
+              Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3443,33 +3478,13 @@ static void rna_Node_item_move(ID *id,
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
-  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_item_remove(
-      id,
-      node,
-      bmain,
-      reports,
-      &storage->items,
-      &storage->items_num,
-      &storage->active_index,
-      item,
-      +[](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_item_remove<SimulationItemsAccessors>(id, node, bmain, reports, item);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
 {
-  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_item_remove(
-      id,
-      node,
-      bmain,
-      reports,
-      &storage->items,
-      &storage->items_num,
-      &storage->active_index,
-      item,
-      +[](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_item_remove<RepeatItemsAccessors>(id, node, bmain, reports, item);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
