@@ -3179,17 +3179,14 @@ static void rna_Node_item_remove(ID *id,
                                  ReportList *reports,
                                  typename Accessor::ItemT *item_to_remove)
 {
-  blender::nodes::item_arrays::ItemArrayRef array = Accessor::get_items_from_node(*node);
-  if (item_to_remove < *array.items_p || item_to_remove >= *array.items_p + *array.items_num_p) {
+  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
   }
-  const int remove_index = item_to_remove - *array.items_p;
-  blender::nodes::item_arrays::remove_item(array.items_p,
-                                           array.items_num_p,
-                                           array.active_index_p,
-                                           remove_index,
-                                           Accessor::destruct_item);
+  const int remove_index = item_to_remove - *ref.items;
+  blender::nodes::item_arrays::remove_item(
+      ref.items, ref.items_num, ref.active_index, remove_index, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3199,9 +3196,9 @@ static void rna_Node_item_remove(ID *id,
 
 template<typename Accessor> static void rna_Node_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  blender::nodes::item_arrays::ItemArrayRef array = Accessor::get_items_from_node(*node);
+  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
   blender::nodes::item_arrays::clear_items(
-      array.items_p, array.items_num_p, array.active_index_p, Accessor::destruct_item);
+      ref.items, ref.items_num, ref.active_index, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3213,12 +3210,12 @@ template<typename Accessor>
 static void rna_Node_item_move(
     ID *id, bNode *node, Main *bmain, const int from_index, const int to_index)
 {
-  blender::nodes::item_arrays::ItemArrayRef array = Accessor::get_items_from_node(*node);
-  const int items_num = *array.items_num_p;
+  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  const int items_num = *ref.items_num;
   if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
     return;
   }
-  blender::nodes::item_arrays::move_item(*array.items_p, items_num, from_index, to_index);
+  blender::nodes::item_arrays::move_item(*ref.items, items_num, from_index, to_index);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3229,12 +3226,12 @@ static void rna_Node_item_move(
 template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  blender::nodes::item_arrays::ItemArrayRef array = Accessor::get_items_from_node(*node);
+  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
   typename Accessor::ItemT *active_item = nullptr;
-  const int active_index = *array.active_index_p;
-  const int items_num = *array.items_num_p;
+  const int active_index = *ref.active_index;
+  const int items_num = *ref.items_num;
   if (active_index >= 0 && active_index < items_num) {
-    active_item = &(*array.items_p)[active_index];
+    active_item = &(*ref.items)[active_index];
   }
   return RNA_pointer_create(ptr->owner_id, Accessor::srna, active_item);
 }
@@ -3244,9 +3241,9 @@ template<typename Accessor> static void rna_Node_item_active_set(PointerRNA *ptr
   bNode *node = static_cast<bNode *>(ptr->data);
   ItemT *item = static_cast<ItemT *>(value.data);
 
-  blender::nodes::item_arrays::ItemArrayRef array = Accessor::get_items_from_node(*node);
-  if (item >= *array.items_p && item < *array.items_p + *array.items_num_p) {
-    *array.active_index_p = item - *array.items_p;
+  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  if (item >= *ref.items && item < *ref.items + *ref.items_num) {
+    *ref.active_index = item - *ref.items;
   }
 }
 

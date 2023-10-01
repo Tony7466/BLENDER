@@ -15,9 +15,9 @@
 namespace blender::nodes::item_arrays {
 
 template<typename T> struct ItemArrayRef {
-  T **items_p;
-  int *items_num_p;
-  int *active_index_p = nullptr;
+  T **items;
+  int *items_num;
+  int *active_index;
 };
 
 template<typename Accessor>
@@ -26,7 +26,7 @@ inline bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT
   ntree.ensure_topology_cache();
   for (bNode *node : ntree.nodes_by_type(Accessor::node_idname)) {
     ItemArrayRef array = Accessor::get_items_from_node(*node);
-    if (&item >= *array.items_p && &item < *array.items_p + *array.items_num_p) {
+    if (&item >= *array.items && &item < *array.items + *array.items_num) {
       return node;
     }
   }
@@ -125,7 +125,7 @@ inline void set_item_name(bNode &node, typename Accessor::ItemT &item, const cha
   BLI_uniquename_cb(
       [](void *arg, const char *name) {
         const Args &args = *static_cast<Args *>(arg);
-        for (ItemT &item : blender::MutableSpan(*args.array.items_p, *args.array.items_num_p)) {
+        for (ItemT &item : blender::MutableSpan(*args.array.items, *args.array.items_num)) {
           if (&item != args.item) {
             if (STREQ(*Accessor::get_name(item), name)) {
               return true;
@@ -154,8 +154,8 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
 
   ItemArrayRef array = Accessor::get_items_from_node(node);
 
-  ItemT *old_items = *array.items_p;
-  const int old_items_num = *array.items_num_p;
+  ItemT *old_items = *array.items;
+  const int old_items_num = *array.items_num;
   const int new_items_num = old_items_num + 1;
 
   ItemT *new_items = MEM_cnew_array<ItemT>(new_items_num, __func__);
@@ -165,9 +165,9 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
   Accessor::init_with_socket_type_and_name(node, new_item, socket_type, name);
 
   MEM_SAFE_FREE(old_items);
-  *array.items_p = new_items;
-  *array.items_num_p = new_items_num;
-  *array.active_index_p = old_items_num;
+  *array.items = new_items;
+  *array.items_num = new_items_num;
+  *array.active_index = old_items_num;
 
   return &new_item;
 }
