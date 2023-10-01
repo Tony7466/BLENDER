@@ -24,6 +24,7 @@
 
 #include "NOD_common.h"
 #include "NOD_geometry.hh"
+#include "NOD_item_arrays.hh"
 #include "NOD_socket.hh"
 
 #include "FN_field_cpp_type.hh"
@@ -988,11 +989,11 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  NodeGeometrySimulationOutput &storage = node_storage(*node);
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->fromsock))
+      if (const NodeSimulationItem *item =
+              item_arrays::add_item_with_socket_and_name<item_arrays::SimulationItemsAccessors>(
+                  *node, link->fromsock->type, link->fromsock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(
@@ -1006,8 +1007,9 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   else {
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->tosock))
+      if (const NodeSimulationItem *item =
+              item_arrays::add_item_with_socket_and_name<item_arrays::SimulationItemsAccessors>(
+                  *node, link->tosock->type, link->tosock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(
@@ -1117,11 +1119,4 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
   MEM_SAFE_FREE(old_items);
 
   return &added_item;
-}
-
-NodeSimulationItem *NOD_geometry_simulation_output_add_item_from_socket(
-    NodeGeometrySimulationOutput *sim, const bNode * /*from_node*/, const bNodeSocket *from_sock)
-{
-  return NOD_geometry_simulation_output_insert_item(
-      sim, from_sock->type, from_sock->name, sim->items_num);
 }

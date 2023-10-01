@@ -33,7 +33,5 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
                                                                short socket_type,
                                                                const char *name,
                                                                int index);
-NodeSimulationItem *NOD_geometry_simulation_output_add_item_from_socket(
-    NodeGeometrySimulationOutput *sim, const bNode *from_node, const bNodeSocket *from_sock);
 
 /** \} */

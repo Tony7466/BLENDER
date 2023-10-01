@@ -11,6 +11,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_geometry.hh"
+#include "NOD_item_arrays.hh"
 #include "NOD_socket.hh"
 
 #include "node_geometry_util.hh"
@@ -211,18 +212,16 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  const bNode *output_node = ntree->node_by_id(node_storage(*node).output_node_id);
+  bNode *output_node = ntree->node_by_id(node_storage(*node).output_node_id);
   if (!output_node) {
     return true;
   }
 
-  NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-      output_node->storage);
-
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->fromsock))
+      if (const NodeSimulationItem *item =
+              item_arrays::add_item_with_socket_and_name<item_arrays::SimulationItemsAccessors>(
+                  *output_node, link->fromsock->type, link->fromsock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(
@@ -236,8 +235,9 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   else {
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->tonode, link->tosock))
+      if (const NodeSimulationItem *item =
+              item_arrays::add_item_with_socket_and_name<item_arrays::SimulationItemsAccessors>(
+                  *output_node, link->tosock->type, link->tosock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(
