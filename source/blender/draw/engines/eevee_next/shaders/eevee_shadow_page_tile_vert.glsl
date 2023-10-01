@@ -16,14 +16,14 @@ void main()
 
 #ifdef PASS_DEPTH_STORE
   /* Load where fragment should write the tile data. */
-  uvec3 dst_page_co = dst_coord_buf[tile_id];
+  uvec3 dst_page_co = shadow_page_unpack(dst_coord_buf[tile_id]);
   /* Interpolate output texel  */
   out_texel_xy = (vec2(dst_page_co.xy) + tile_corner) * vec2(SHADOW_PAGE_RES);
   out_page_z = dst_page_co.z;
 #endif
 
   /* Load where the quad should be positioned. */
-  uvec3 src_page_co = src_coord_buf[tile_id];
+  uvec3 src_page_co = shadow_page_unpack(src_coord_buf[tile_id]);
 
   vec2 uv_pos = (tile_corner + vec2(src_page_co.xy)) / float(SHADOW_TILEMAP_RES);
   vec2 ndc_pos = uv_pos * 2.0 - 1.0;

@@ -167,7 +167,7 @@ void main()
           /* Add page mapping for indexing the page position in atlas and in the framebuffer. */
           dst_coord_buf[page_index] = page_packed;
           src_coord_buf[page_index] = shadow_page_pack(
-              uvec3(relative_tile_co.x, relative_tile_co.y, view_index));
+              uvec3(viewport_tile_co.x, viewport_tile_co.y, view_index));
           /* Statistics. */
           atomicAdd(statistics_buf.page_rendered_count, 1);
         }

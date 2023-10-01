@@ -19,8 +19,7 @@
 
 namespace blender::eevee {
 
-ShadowUpdateTechnique ShadowModule::shadow_technique =
-    ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+ShadowTechnique ShadowModule::shadow_technique = ShadowTechnique::ATOMIC_RASTER;
 
 /* -------------------------------------------------------------------- */
 /** \name Tile map
@@ -1175,7 +1174,7 @@ void ShadowModule::end_sync()
 
       /* NOTE: We do not need to run the clear pass when using the TBDR update variant, as tiles
        * will be fully cleared as part of the shadow raster step. */
-      if (ShadowModule::shadow_technique != ShadowUpdateTechnique::SHADOW_UPDATE_TBDR) {
+      if (ShadowModule::shadow_technique != ShadowTechnique::TILE_COPY) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
@@ -1289,7 +1288,7 @@ void ShadowModule::set_view(View &view)
   int2 fb_size = int2(SHADOW_TILEMAP_RES * shadow_page_size_);
   int fb_layers = SHADOW_VIEW_MAX;
 
-  if (shadow_technique == SHADOW_UPDATE_ATOMIC_RASTER) {
+  if (shadow_technique == ShadowTechnique::ATOMIC_RASTER) {
     if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
       /* Metal requires a memoryless attachment to create an empty framebuffer.
        * Might as well make use of it. */
@@ -1304,7 +1303,7 @@ void ShadowModule::set_view(View &view)
       render_fb_.ensure(fb_size);
     }
   }
-  else if (shadow_technique == SHADOW_UPDATE_TBDR) {
+  else if (shadow_technique == ShadowTechnique::TILE_COPY) {
     /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
     shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, fb_size, fb_layers, usage);
     shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F, fb_size, fb_layers, usage);
@@ -1329,9 +1328,12 @@ void ShadowModule::set_view(View &view)
 
       shadow_multi_view_.compute_procedural_bounds();
 
-      if (shadow_technique == SHADOW_UPDATE_TBDR && GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        /* Isolate shadow update into own command buffer.
-         * If parameter buffer exceeds limits, then other work will not be impacted.  */
+      /* Isolate shadow update into own command buffer.
+       * If parameter buffer exceeds limits, then other work will not be impacted.  */
+      bool use_flush = (shadow_technique == ShadowTechnique::TILE_COPY) &&
+                       (GPU_backend_get_type() == GPU_BACKEND_METAL);
+
+      if (use_flush) {
         GPU_flush();
       }
 
@@ -1361,8 +1363,7 @@ void ShadowModule::set_view(View &view)
 
       inst_.pipelines.shadow.render(shadow_multi_view_);
 
-      if (shadow_technique == SHADOW_UPDATE_TBDR && GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        /* Isolate shadow update into own command buffer. */
+      if (use_flush) {
         GPU_flush();
       }
 

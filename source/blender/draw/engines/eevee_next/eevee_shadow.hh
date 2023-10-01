@@ -55,17 +55,17 @@ constexpr static const float shadow_clipmap_scale_mat[4][4] = {{SHADOW_TILEMAP_R
                                                                {0, 0, 0.5, 1}};
 
 /* Technique used for updating the virtual shadow map contents. */
-enum ShadowUpdateTechnique {
+enum class ShadowTechnique {
   /* Default virtual shadow map update using large virtual framebuffer to rasterize geometry with
    * per-fragment textureAtomicMin to perform depth-test and indirectly store nearest depth value
    * in the shadow atlas. */
-  SHADOW_UPDATE_ATOMIC_RASTER = 0,
+  ATOMIC_RASTER = 0,
 
   /* Tile-architecture optimized virtual shadow map update, leveraging on-tile memory for clearing
    * and depth-testing during geometry rasterization to avoid atomic operations, simplify mesh
    * depth shader and only perform a single storage operation per pixel. This technique performs
    * a 3-pass solution, first clearing tiles, updating depth and storing final results. */
-  SHADOW_UPDATE_TBDR = 1,
+  TILE_COPY = 1,
 };
 
 /* -------------------------------------------------------------------- */
@@ -197,7 +197,7 @@ class ShadowModule {
 
  public:
   /* Shadowing technique. */
-  static ShadowUpdateTechnique shadow_technique;
+  static ShadowTechnique shadow_technique;
 
   /** Need to be first because of destructor order. */
   ShadowTileMapPool tilemap_pool;

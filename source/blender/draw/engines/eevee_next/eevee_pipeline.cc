@@ -157,12 +157,11 @@ void ShadowPipeline::sync()
 {
   render_ps_.init();
 
-  /* NOTE: TBDR technique perform a three-pass implementation. First performing the clear directly
-   * on tile, followed by a fast depth-only pass, then storing the on-tile results into the shadow
-   * atlas during a final storage pass. This takes advantage of TBDR architecture, reducing
-   * overdraw and additional per-fragment calculations. */
-  bool shadow_update_tbdr = (ShadowModule::shadow_technique ==
-                             ShadowUpdateTechnique::SHADOW_UPDATE_TBDR);
+  /* NOTE: TILE_COPY technique perform a three-pass implementation. First performing the clear
+   * directly on tile, followed by a fast depth-only pass, then storing the on-tile results into
+   * the shadow atlas during a final storage pass. This takes advantage of TBDR architecture,
+   * reducing overdraw and additional per-fragment calculations. */
+  bool shadow_update_tbdr = (ShadowModule::shadow_technique == ShadowTechnique::TILE_COPY);
   if (shadow_update_tbdr) {
     draw::PassMain::Sub &sub = render_ps_.sub("Shadow.TilePageClear");
     sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));

@@ -562,10 +562,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         case MAT_PIPE_SHADOW:
           /* Determine surface shadow shader depending on used update technique. */
           switch (ShadowModule::shadow_technique) {
-            case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+            case ShadowTechnique::ATOMIC_RASTER: {
               info.additional_info("eevee_surf_shadow_atomic");
             } break;
-            case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
+            case ShadowTechnique::TILE_COPY: {
               info.additional_info("eevee_surf_shadow_tbdr");
             } break;
             default: {
