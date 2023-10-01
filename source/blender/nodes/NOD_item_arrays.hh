@@ -6,6 +6,9 @@
 
 #include "DNA_node_types.h"
 
+#include "BLI_string.h"
+#include "BLI_string_utils.h"
+
 namespace blender::nodes::item_arrays {
 
 template<typename T> struct ItemArrayRef {
@@ -178,6 +181,43 @@ inline void move_item(T *items, const int items_num, const int from_index, const
     }
     items[to_index] = tmp;
   }
+}
+
+template<typename Accessor>
+static void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
+{
+  using ItemT = typename Accessor::ItemT;
+  ItemArrayRef array = Accessor::get_items_from_node(node);
+  const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
+
+  char unique_name[MAX_NAME + 4];
+  STRNCPY(unique_name, value);
+
+  struct Args {
+    ItemArrayRef<ItemT> array;
+    ItemT *item;
+  } args = {array, &item};
+  BLI_uniquename_cb(
+      [](void *arg, const char *name) {
+        const Args &args = *static_cast<Args *>(arg);
+        for (ItemT &item : blender::MutableSpan(*args.array.items_p, *args.array.items_num_p)) {
+          if (&item != args.item) {
+            if (STREQ(*Accessor::get_name(item), name)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      &args,
+      default_name,
+      '.',
+      unique_name,
+      ARRAY_SIZE(unique_name));
+
+  char **item_name = Accessor::get_name(item);
+  MEM_SAFE_FREE(*item_name);
+  *item_name = BLI_strdup(unique_name);
 }
 
 }  // namespace blender::nodes::item_arrays
