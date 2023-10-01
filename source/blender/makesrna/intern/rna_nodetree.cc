@@ -3224,34 +3224,33 @@ static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *pt
   rna_Node_item_update<RepeatItemsAccessors>(bmain, ptr);
 }
 
-static bool rna_SimulationStateItem_socket_type_supported(const EnumPropertyItem *item)
+template<typename Accessor>
+static const EnumPropertyItem *rna_Node_item_socket_type_itemf(bContext * /*C*/,
+                                                               PointerRNA * /*ptr*/,
+                                                               PropertyRNA * /*prop*/,
+                                                               bool *r_free)
 {
-  return SimulationItemsAccessors::supports_socket_type(eNodeSocketDatatype(item->value));
+  *r_free = true;
+  return itemf_function_check(
+      rna_enum_node_socket_data_type_items, [](const EnumPropertyItem *item) {
+        return Accessor::supports_socket_type(eNodeSocketDatatype(item->value));
+      });
 }
 
-static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext * /*C*/,
-                                                                         PointerRNA * /*ptr*/,
-                                                                         PropertyRNA * /*prop*/,
+static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext *C,
+                                                                         PointerRNA *ptr,
+                                                                         PropertyRNA *prop,
                                                                          bool *r_free)
 {
-  *r_free = true;
-  return itemf_function_check(rna_enum_node_socket_data_type_items,
-                              rna_SimulationStateItem_socket_type_supported);
+  return rna_Node_item_socket_type_itemf<SimulationItemsAccessors>(C, ptr, prop, r_free);
 }
 
-static bool rna_RepeatItem_socket_type_supported(const EnumPropertyItem *item)
-{
-  return RepeatItemsAccessors::supports_socket_type(eNodeSocketDatatype(item->value));
-}
-
-static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/,
-                                                                PointerRNA * /*ptr*/,
-                                                                PropertyRNA * /*prop*/,
+static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext *C,
+                                                                PointerRNA *ptr,
+                                                                PropertyRNA *prop,
                                                                 bool *r_free)
 {
-  *r_free = true;
-  return itemf_function_check(rna_enum_node_socket_data_type_items,
-                              rna_RepeatItem_socket_type_supported);
+  return rna_Node_item_socket_type_itemf<RepeatItemsAccessors>(C, ptr, prop, r_free);
 }
 
 template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
