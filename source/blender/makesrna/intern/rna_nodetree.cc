@@ -3331,21 +3331,23 @@ static void remove_item(T **items,
   *items_num = new_items_num;
 }
 
-static void rna_NodeGeometrySimulationOutput_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
+template<typename T>
+static void rna_Node_item_remove(ID *id,
+                                 bNode *node,
+                                 Main *bmain,
+                                 ReportList *reports,
+                                 T **items,
+                                 int *items_num,
+                                 T *item_to_remove,
+                                 void (*destruct_item)(T *))
 {
-  NodeGeometrySimulationOutput *storage = static_cast<NodeGeometrySimulationOutput *>(
-      node->storage);
-  if (!storage->items_span().contains_ptr(item)) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
+
+  if (item_to_remove < *items || item_to_remove >= *items + *items_num) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
   }
-
-  const int remove_index = item - storage->items;
-  remove_item<NodeSimulationItem>(&storage->items,
-                                  &storage->items_num,
-                                  remove_index,
-                                  [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+  const int remove_index = item_to_remove - *items;
+  remove_item<T>(items, items_num, remove_index, destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3353,25 +3355,33 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+static void rna_NodeGeometrySimulationOutput_items_remove(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
+{
+  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  rna_Node_item_remove<NodeSimulationItem>(
+      id,
+      node,
+      bmain,
+      reports,
+      &storage->items,
+      &storage->items_num,
+      item,
+      [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+}
+
 static void rna_NodeGeometryRepeatOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
 {
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  if (!storage->items_span().contains_ptr(item)) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
-    return;
-  }
-
-  const int remove_index = item - storage->items;
-  remove_item<NodeRepeatItem>(&storage->items,
-                              &storage->items_num,
-                              remove_index,
-                              [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  rna_Node_item_remove<NodeRepeatItem>(id,
+                                       node,
+                                       bmain,
+                                       reports,
+                                       &storage->items,
+                                       &storage->items_num,
+                                       item,
+                                       [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
