@@ -1161,6 +1161,7 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("view_infos_buf", &shadow_multi_view_.matrices_ubo_get());
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
+        sub.bind_ssbo("tile_draw_buf", tile_draw_buf_);
         sub.bind_ssbo("dst_coord_buf", dst_coord_buf_);
         sub.bind_ssbo("src_coord_buf", src_coord_buf_);
         sub.bind_ssbo("render_map_buf", render_map_buf_);
@@ -1284,43 +1285,35 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  switch (shadow_technique) {
-    case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        /* Metal requires a memoryless attachment to create an empty framebuffer. */
-        shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
-                                            int2(SHADOW_TILEMAP_RES * shadow_page_size_),
-                                            SHADOW_VIEW_MAX,
-                                            GPU_TEXTURE_USAGE_ATTACHMENT |
-                                                GPU_TEXTURE_USAGE_MEMORYLESS);
-        render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_));
-      }
-      else {
-        /* Create attachment-less framebuffer.*/
-        render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
-      }
-      GPU_framebuffer_bind(render_fb_);
-    } break;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_MEMORYLESS;
+  int2 fb_size = int2(SHADOW_TILEMAP_RES * shadow_page_size_);
+  int fb_layers = SHADOW_VIEW_MAX;
 
-    case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
-      /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
-      shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
-                                          int2(SHADOW_TILEMAP_RES * shadow_page_size_),
-                                          SHADOW_VIEW_MAX,
-                                          GPU_TEXTURE_USAGE_ATTACHMENT |
-                                              GPU_TEXTURE_USAGE_MEMORYLESS);
-      shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F,
-                                             int2(SHADOW_TILEMAP_RES * shadow_page_size_),
-                                             SHADOW_VIEW_MAX,
-                                             GPU_TEXTURE_USAGE_ATTACHMENT |
-                                                 GPU_TEXTURE_USAGE_MEMORYLESS);
-      render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_),
-                        GPU_ATTACHMENT_TEXTURE(shadow_depth_accum_tx_));
-    } break;
+  if (shadow_technique == SHADOW_UPDATE_ATOMIC_RASTER) {
+    if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+      /* Metal requires a memoryless attachment to create an empty framebuffer.
+       * Might as well make use of it. */
+      shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, fb_size, fb_layers, usage);
+      shadow_depth_accum_tx_.free();
+      render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_));
+    }
+    else {
+      /* Create attachment-less framebuffer. */
+      shadow_depth_fb_tx_.free();
+      shadow_depth_accum_tx_.free();
+      render_fb_.ensure(fb_size);
+    }
   }
-
-  GPU_framebuffer_multi_viewports_set(render_fb_,
-                                      reinterpret_cast<int(*)[4]>(multi_viewports_.data()));
+  else if (shadow_technique == SHADOW_UPDATE_TBDR) {
+    /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
+    shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, fb_size, fb_layers, usage);
+    shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F, fb_size, fb_layers, usage);
+    render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_),
+                      GPU_ATTACHMENT_TEXTURE(shadow_depth_accum_tx_));
+  }
+  else {
+    BLI_assert_unreachable();
+  }
 
   inst_.hiz_buffer.update();
 
@@ -1331,36 +1324,46 @@ void ShadowModule::set_view(View &view)
       GPU_uniformbuf_clear_to_zero(shadow_multi_view_.matrices_ubo_get());
 
       inst_.manager->submit(tilemap_setup_ps_, view);
-
       inst_.manager->submit(tilemap_usage_ps_, view);
-
       inst_.manager->submit(tilemap_update_ps_, view);
 
       shadow_multi_view_.compute_procedural_bounds();
 
-      switch (shadow_technique) {
-        case ShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-          inst_.pipelines.shadow.render(shadow_multi_view_);
-        } break;
+      if (shadow_technique == SHADOW_UPDATE_TBDR && GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        /* Isolate shadow update into own command buffer.
+         * If parameter buffer exceeds limits, then other work will not be impacted.  */
+        GPU_flush();
+      }
 
-        case ShadowUpdateTechnique::SHADOW_UPDATE_TBDR: {
-          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-            /* Isolate shadow update into own command buffer.
-             * If parameter buffer is exceeds limits, then other work will not be impacted.  */
-            GPU_flush();
-          }
+      /* TODO(fclem): Move all of this to the draw::PassMain. */
+      if (shadow_depth_fb_tx_.is_valid() && shadow_depth_accum_tx_.is_valid()) {
+        GPU_framebuffer_bind_ex(
+            render_fb_,
+            {
+                /* Depth is cleared to 0 for TBDR optimization. */
+                {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
+                {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}},
+            });
+      }
+      else if (shadow_depth_fb_tx_.is_valid()) {
+        GPU_framebuffer_bind_ex(
+            render_fb_,
+            {
+                {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}},
+            });
+      }
+      else {
+        GPU_framebuffer_bind(render_fb_);
+      }
 
-          GPU_framebuffer_bind_ex(
-              render_fb_,
-              {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
-               {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
-          inst_.pipelines.shadow.render(shadow_multi_view_);
+      GPU_framebuffer_multi_viewports_set(render_fb_,
+                                          reinterpret_cast<int(*)[4]>(multi_viewports_.data()));
 
-          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-            /* Isolate shadow update into own command buffer. */
-            GPU_flush();
-          }
-        } break;
+      inst_.pipelines.shadow.render(shadow_multi_view_);
+
+      if (shadow_technique == SHADOW_UPDATE_TBDR && GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        /* Isolate shadow update into own command buffer. */
+        GPU_flush();
       }
 
       GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
@@ -1373,8 +1376,7 @@ void ShadowModule::set_view(View &view)
     else {
       /* This provoke a GPU/CPU sync. Avoid it if we are sure that all tile-maps will be rendered
        * in a single iteration. */
-      bool enough_tilemap_for_single_iteration = tilemap_pool.tilemaps_data.size() <=
-                                                 SHADOW_VIEW_MAX;
+      bool enough_tilemap_for_single_iteration = tilemap_pool.tilemaps_data.size() <= fb_layers;
       if (enough_tilemap_for_single_iteration) {
         tile_update_remains = false;
       }

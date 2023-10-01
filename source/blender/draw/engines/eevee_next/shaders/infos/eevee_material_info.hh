@@ -188,10 +188,12 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
                      "eevee_utility_texture");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
-    .define("DRW_VIEW_LEN", "64")
+    .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
-    .builtins(BuiltinBits::VIEWPORT_INDEX)
-    .builtins(BuiltinBits::LAYER)
+    .builtins(BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)
+    /* Early fragment test for speeding up platforms that requires a depth buffer. */
+    /* NOTE: This removes the possibility of using gl_FragDepth. */
+    .early_fragment_test(true)
     .vertex_out(eevee_surf_iface)
     .vertex_out(eevee_surf_flat_iface)
     .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
