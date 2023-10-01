@@ -594,6 +594,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "NOD_common.h"
 #  include "NOD_composite.h"
 #  include "NOD_geometry.hh"
+#  include "NOD_item_arrays.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
 #  include "NOD_texture.h"
@@ -603,6 +604,10 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
+
+using blender::nodes::ItemArrayRef;
+using blender::nodes::RepeatItemsAccessors;
+using blender::nodes::SimulationItemsAccessors;
 
 extern FunctionRNA rna_NodeTree_poll_func;
 extern FunctionRNA rna_NodeTree_update_func;
@@ -3122,96 +3127,12 @@ static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, Pointer
   rna_Node_update(bmain, scene, ptr);
 }
 
-template<typename T> struct ItemsArrayRef {
-  T **items_p;
-  int *items_num_p;
-  int *active_index_p = nullptr;
-};
-
-struct SimulationItemsAccessors {
-  using ItemT = NodeSimulationItem;
-  static constexpr StructRNA *srna = &RNA_SimulationStateItem;
-  static constexpr int node_type = GEO_NODE_SIMULATION_OUTPUT;
-  static constexpr const char *node_idname = "GeometryNodeSimulationOutput";
-
-  static ItemsArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
-  {
-    auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
-    return {&storage->items, &storage->items_num, &storage->active_index};
-  }
-  static void destruct_item(NodeSimulationItem *item)
-  {
-    MEM_SAFE_FREE(item->name);
-  }
-  static short *get_socket_type(NodeSimulationItem &item)
-  {
-    return &item.socket_type;
-  }
-  static char **get_name(NodeSimulationItem &item)
-  {
-    return &item.name;
-  }
-  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
-  {
-    return ELEM(socket_type,
-                SOCK_FLOAT,
-                SOCK_VECTOR,
-                SOCK_RGBA,
-                SOCK_BOOLEAN,
-                SOCK_ROTATION,
-                SOCK_INT,
-                SOCK_STRING,
-                SOCK_GEOMETRY);
-  }
-};
-
-struct RepeatItemsAccessors {
-  using ItemT = NodeRepeatItem;
-  static constexpr StructRNA *srna = &RNA_RepeatItem;
-  static constexpr int node_type = GEO_NODE_REPEAT_OUTPUT;
-  static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
-
-  static ItemsArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
-  {
-    auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
-    return {&storage->items, &storage->items_num, &storage->active_index};
-  }
-  static void destruct_item(NodeRepeatItem *item)
-  {
-    MEM_SAFE_FREE(item->name);
-  }
-  static short *get_socket_type(NodeRepeatItem &item)
-  {
-    return &item.socket_type;
-  }
-  static char **get_name(NodeRepeatItem &item)
-  {
-    return &item.name;
-  }
-  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
-  {
-    return ELEM(socket_type,
-                SOCK_FLOAT,
-                SOCK_VECTOR,
-                SOCK_RGBA,
-                SOCK_BOOLEAN,
-                SOCK_ROTATION,
-                SOCK_INT,
-                SOCK_STRING,
-                SOCK_GEOMETRY,
-                SOCK_OBJECT,
-                SOCK_MATERIAL,
-                SOCK_IMAGE,
-                SOCK_COLLECTION);
-  }
-};
-
 template<typename Accessor>
 static bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT &item)
 {
   ntree.ensure_topology_cache();
   for (bNode *node : ntree.nodes_by_type(Accessor::node_idname)) {
-    ItemsArrayRef array = Accessor::get_items_from_node(*node);
+    ItemArrayRef array = Accessor::get_items_from_node(*node);
     if (&item >= *array.items_p && &item < *array.items_p + *array.items_num_p) {
       return node;
     }
@@ -3301,7 +3222,7 @@ static void rna_Node_item_remove(ID *id,
                                  ReportList *reports,
                                  typename Accessor::ItemT *item_to_remove)
 {
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
   if (item_to_remove < *array.items_p || item_to_remove >= *array.items_p + *array.items_num_p) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
@@ -3321,7 +3242,7 @@ static void rna_Node_item_remove(ID *id,
 
 template<typename Accessor> static void rna_Node_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
   clear_items(array.items_p, array.items_num_p, array.active_index_p, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -3334,7 +3255,7 @@ template<typename Accessor>
 static void rna_Node_item_move(
     ID *id, bNode *node, Main *bmain, const int from_index, const int to_index)
 {
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
   const int items_num = *array.items_num_p;
   if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
     return;
@@ -3350,7 +3271,7 @@ static void rna_Node_item_move(
 template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
   typename Accessor::ItemT *active_item = nullptr;
   const int active_index = *array.active_index_p;
   const int items_num = *array.items_num_p;
@@ -3365,7 +3286,7 @@ template<typename Accessor> static void rna_Node_item_active_set(PointerRNA *ptr
   bNode *node = static_cast<bNode *>(ptr->data);
   ItemT *item = static_cast<ItemT *>(value.data);
 
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
   if (item >= *array.items_p && item < *array.items_p + *array.items_num_p) {
     *array.active_index_p = item - *array.items_p;
   }
@@ -3439,14 +3360,14 @@ template<typename Accessor>
 static void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
 {
   using ItemT = typename Accessor::ItemT;
-  ItemsArrayRef array = Accessor::get_items_from_node(node);
+  ItemArrayRef array = Accessor::get_items_from_node(node);
   const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
 
   char unique_name[MAX_NAME + 4];
   STRNCPY(unique_name, value);
 
   struct Args {
-    ItemsArrayRef<ItemT> array;
+    ItemArrayRef<ItemT> array;
     ItemT *item;
   } args = {array, &item};
   BLI_uniquename_cb(
@@ -3564,7 +3485,7 @@ typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
     BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
     return nullptr;
   }
-  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  ItemArrayRef array = Accessor::get_items_from_node(*node);
 
   ItemT *old_items = *array.items_p;
   const int old_items_num = *array.items_num_p;

@@ -85,6 +85,7 @@ set(SRC
   intern/node_declaration.cc
   intern/node_exec.cc
   intern/node_geometry_exec.cc
+  intern/node_item_arrays.cc
   intern/node_multi_function.cc
   intern/node_register.cc
   intern/node_rna_define.cc
@@ -101,6 +102,7 @@ set(SRC
   NOD_geometry_nodes_execute.hh
   NOD_geometry_nodes_lazy_function.hh
   NOD_geometry_nodes_log.hh
+  NOD_item_arrays.hh
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
