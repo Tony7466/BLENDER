@@ -88,7 +88,7 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_repeat_item(
   }
 
   decl->name = item.name ? item.name : "";
-  decl->identifier = item.identifier_str();
+  decl->identifier = RepeatItemsAccessor::socket_identifier_for_item(item);
   decl->in_out = in_out;
   return decl;
 }
@@ -202,9 +202,4 @@ blender::Span<NodeRepeatItem> NodeGeometryRepeatOutput::items_span() const
 blender::MutableSpan<NodeRepeatItem> NodeGeometryRepeatOutput::items_span()
 {
   return blender::MutableSpan<NodeRepeatItem>(items, items_num);
-}
-
-std::string NodeRepeatItem::identifier_str() const
-{
-  return blender::nodes::RepeatItemsAccessor::socket_identifier_for_item(*this);
 }
