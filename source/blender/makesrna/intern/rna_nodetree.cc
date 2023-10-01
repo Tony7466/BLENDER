@@ -3444,7 +3444,7 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
   auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_item_remove<NodeSimulationItem>(
+  rna_Node_item_remove(
       id,
       node,
       bmain,
@@ -3453,63 +3453,63 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
       &storage->items_num,
       &storage->active_index,
       item,
-      [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+      +[](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometryRepeatOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
 {
   auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_item_remove<NodeRepeatItem>(id,
-                                       node,
-                                       bmain,
-                                       reports,
-                                       &storage->items,
-                                       &storage->items_num,
-                                       &storage->active_index,
-                                       item,
-                                       [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_item_remove(
+      id,
+      node,
+      bmain,
+      reports,
+      &storage->items,
+      &storage->items_num,
+      &storage->active_index,
+      item,
+      +[](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
   auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_items_clear<NodeSimulationItem>(
+  rna_Node_items_clear(
       id,
       node,
       bmain,
       &storage->items,
       &storage->items_num,
       &storage->active_index,
-      [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+      +[](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
   auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_items_clear<NodeRepeatItem>(id,
-                                       node,
-                                       bmain,
-                                       &storage->items,
-                                       &storage->items_num,
-                                       &storage->active_index,
-                                       [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_items_clear(
+      id,
+      node,
+      bmain,
+      &storage->items,
+      &storage->items_num,
+      &storage->active_index,
+      +[](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
   auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_item_move<NodeSimulationItem>(
-      id, node, bmain, storage->items, storage->items_num, from_index, to_index);
+  rna_Node_item_move(id, node, bmain, storage->items, storage->items_num, from_index, to_index);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
   auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_item_move<NodeRepeatItem>(
-      id, node, bmain, storage->items, storage->items_num, from_index, to_index);
+  rna_Node_item_move(id, node, bmain, storage->items, storage->items_num, from_index, to_index);
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
