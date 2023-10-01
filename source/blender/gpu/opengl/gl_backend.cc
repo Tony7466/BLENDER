@@ -451,14 +451,6 @@ static void detect_workarounds()
     GLContext::debug_layer_workaround = true;
   }
 
-  /* Certain Intel/AMD based platforms don't clear the viewport textures. Always clearing leads to
-   * noticeable performance regressions on other platforms as well. */
-  if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY) ||
-      GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_ANY, GPU_DRIVER_ANY))
-  {
-    GCaps.clear_viewport_workaround = true;
-  }
-
   /* There is an issue in AMD official driver where we cannot use multi bind when using images. AMD
    * is aware of the issue, but hasn't released a fix. */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL)) {
