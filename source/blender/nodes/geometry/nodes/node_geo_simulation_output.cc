@@ -1101,20 +1101,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
   return name_changed;
 }
 
-bool NOD_geometry_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
-                                                  const NodeSimulationItem *item)
-{
-  return sim->items_span().contains_ptr(item);
-}
-
-void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
-                                                    NodeSimulationItem *item)
-{
-  if (sim->items_span().contains_ptr(item)) {
-    sim->active_index = item - sim->items;
-  }
-}
-
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name)
 {

@@ -32,10 +32,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
 bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
                                                         const NodeSimulationItem *item);
 
-bool NOD_geometry_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
-                                                  const NodeSimulationItem *item);
-void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
-                                                    NodeSimulationItem *item);
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name);
 NodeSimulationItem *NOD_geometry_simulation_output_add_item(NodeGeometrySimulationOutput *sim,

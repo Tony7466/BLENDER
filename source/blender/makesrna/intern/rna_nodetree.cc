@@ -3480,6 +3480,17 @@ template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRN
   }
   return RNA_pointer_create(ptr->owner_id, Accessor::srna, active_item);
 }
+template<typename Accessor> static void rna_Node_item_active_set(PointerRNA *ptr, PointerRNA value)
+{
+  using ItemT = typename Accessor::value_type;
+  bNode *node = static_cast<bNode *>(ptr->data);
+  ItemT *item = static_cast<ItemT *>(value.data);
+
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  if (item >= *array.items_p && item < *array.items_p + *array.items_num_p) {
+    *array.active_index_p = item - *array.items_p;
+  }
+}
 
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
@@ -3529,22 +3540,14 @@ static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
                                                              PointerRNA value,
                                                              ReportList * /*reports*/)
 {
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NOD_geometry_simulation_output_set_active_item(sim,
-                                                 static_cast<NodeSimulationItem *>(value.data));
+  rna_Node_item_active_set<SimulationItemsAccessors>(ptr, value);
 }
 
 static void rna_NodeGeometryRepeatOutput_active_item_set(PointerRNA *ptr,
                                                          PointerRNA value,
                                                          ReportList * /*reports*/)
 {
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(value.data);
-  if (storage->items_span().contains_ptr(item)) {
-    storage->active_index = item - storage->items;
-  }
+  rna_Node_item_active_set<RepeatItemsAccessors>(ptr, value);
 }
 
 /* ******** Node Socket Types ******** */
