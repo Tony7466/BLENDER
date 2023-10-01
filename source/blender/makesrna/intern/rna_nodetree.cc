@@ -3279,7 +3279,7 @@ template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, 
   ItemT &item = *static_cast<ItemT *>(ptr->data);
   bNode *node = blender::nodes::item_arrays::find_node_by_item<Accessor>(ntree, item);
   BLI_assert(node != nullptr);
-  blender::nodes::item_arrays::set_item_name<Accessor>(*node, item, value);
+  blender::nodes::item_arrays::set_item_name_and_make_unique<Accessor>(*node, item, value);
 }
 
 template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr, float *values)

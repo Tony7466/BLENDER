@@ -10,6 +10,10 @@
 
 namespace blender::nodes {
 
+/**
+ * Makes it possible to use various functions (e.g. the ones in `NOD_item_arrays.hh`) with
+ * simulation items.
+ */
 struct SimulationItemsAccessor {
   using ItemT = NodeSimulationItem;
   static StructRNA *srna;
@@ -53,7 +57,7 @@ struct SimulationItemsAccessor {
     auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
-    item_arrays::set_item_name<SimulationItemsAccessor>(node, item, name);
+    item_arrays::set_item_name_and_make_unique<SimulationItemsAccessor>(node, item, name);
   }
   static std::string socket_identifier_for_item(const NodeSimulationItem &item)
   {
@@ -61,6 +65,10 @@ struct SimulationItemsAccessor {
   }
 };
 
+/**
+ * Makes it possible to use various functions (e.g. the ones in `NOD_item_arrays.hh`) with
+ * repeat items.
+ */
 struct RepeatItemsAccessor {
   using ItemT = NodeRepeatItem;
   static StructRNA *srna;
@@ -108,7 +116,7 @@ struct RepeatItemsAccessor {
     auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
-    item_arrays::set_item_name<RepeatItemsAccessor>(node, item, name);
+    item_arrays::set_item_name_and_make_unique<RepeatItemsAccessor>(node, item, name);
   }
   static std::string socket_identifier_for_item(const NodeRepeatItem &item)
   {

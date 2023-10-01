@@ -4,6 +4,18 @@
 
 #pragma once
 
+/**
+ * Some nodes have a dynamic number of sockets (e.g. simulation input/output). These nodes store an
+ * array of items in their `bNode->storage`. Different nodes have slightly different storage
+ * requirements, but a lot of the logic is still the same between nodes. This file implements
+ * various shared functionality that can be used by different nodes to deal with these item arrays.
+ *
+ * In order to use the functions, one has to implement an "accessor" which tells the shared code
+ * how to deal with specific item arrays. Different functions have different requirements for the
+ * accessor. It's easiest to just look at existing accessors like #SimulationItemsAccessor and
+ * #RepeatItemsAccessor and to implement the same methods.
+ */
+
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 
@@ -14,12 +26,19 @@
 
 namespace blender::nodes::item_arrays {
 
+/**
+ * References a "C-Array" that is stored elsewhere. This is different from a MutableSpan, because
+ * one can even resize the array through this reference.
+ */
 template<typename T> struct ItemArrayRef {
   T **items;
   int *items_num;
   int *active_index;
 };
 
+/**
+ * Iterates over the node tree to find the node that this item belongs to.
+ */
 template<typename Accessor>
 inline bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT &item)
 {
@@ -33,6 +52,9 @@ inline bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT
   return nullptr;
 }
 
+/**
+ * Low level utility to remove an item from the array and to shift the elements after it.
+ */
 template<typename T>
 inline void remove_item(T **items,
                         int *items_num,
@@ -66,6 +88,9 @@ inline void remove_item(T **items,
   *active_index = new_active_index;
 }
 
+/**
+ * Low level utility to remove all elements from an items array.
+ */
 template<typename T>
 inline void clear_items(T **items, int *items_num, int *active_index, void (*destruct_item)(T *))
 {
@@ -78,6 +103,9 @@ inline void clear_items(T **items, int *items_num, int *active_index, void (*des
   *active_index = 0;
 }
 
+/**
+ * Low level utility to move one item from one index to another.
+ */
 template<typename T>
 inline void move_item(T *items, const int items_num, const int from_index, const int to_index)
 {
@@ -108,8 +136,14 @@ inline void move_item(T *items, const int items_num, const int from_index, const
   }
 }
 
+/**
+ * Changes the name of an existing item and makes sure that the name is unique among other the
+ * other items in the same array.
+ */
 template<typename Accessor>
-inline void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
+inline void set_item_name_and_make_unique(bNode &node,
+                                          typename Accessor::ItemT &item,
+                                          const char *value)
 {
   using ItemT = typename Accessor::ItemT;
   ItemArrayRef array = Accessor::get_items_from_node(node);
@@ -145,6 +179,9 @@ inline void set_item_name(bNode &node, typename Accessor::ItemT &item, const cha
   *item_name = BLI_strdup(unique_name);
 }
 
+/**
+ * Add a new item at the end with the given socket type and name.
+ */
 template<typename Accessor>
 inline typename Accessor::ItemT *add_item_with_socket_and_name(
     bNode &node, const eNodeSocketDatatype socket_type, const char *name)
@@ -172,6 +209,11 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
   return &new_item;
 }
 
+/**
+ * Check if the links connects to the `extend_socket`. If yes, create a new item for the linked
+ * socket, update the node and then change the link to point to the new socket.
+ * \return False if the link should be removed.
+ */
 template<typename Accessor>
 [[nodiscard]] inline bool try_add_item_via_extend_socket(bNodeTree &ntree,
                                                          bNode &extend_node,
@@ -212,7 +254,10 @@ template<typename Accessor>
   return true;
 }
 
-/** Returns false when the link should be removed. */
+/**
+ * Allow the item array to be extended from any extend-socket in the node.
+ * \return False if the link should be removed.
+ */
 template<typename Accessor>
 [[nodiscard]] inline bool try_add_item_via_any_extend_socket(bNodeTree &ntree,
                                                              bNode &extend_node,
