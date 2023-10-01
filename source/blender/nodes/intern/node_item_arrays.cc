@@ -8,7 +8,7 @@
 
 #include "BKE_node.hh"
 
-namespace blender ::nodes {
+namespace blender::nodes::item_arrays {
 
 StructRNA *SimulationItemsAccessors::srna = &RNA_SimulationStateItem;
 int SimulationItemsAccessors::node_type = GEO_NODE_SIMULATION_OUTPUT;
@@ -16,4 +16,4 @@ int SimulationItemsAccessors::node_type = GEO_NODE_SIMULATION_OUTPUT;
 StructRNA *RepeatItemsAccessors::srna = &RNA_RepeatItem;
 int RepeatItemsAccessors::node_type = GEO_NODE_REPEAT_OUTPUT;
 
-}  // namespace blender::nodes
+}  // namespace blender::nodes::item_arrays

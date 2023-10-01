@@ -6,7 +6,7 @@
 
 #include "DNA_node_types.h"
 
-namespace blender::nodes {
+namespace blender::nodes::item_arrays {
 
 template<typename T> struct ItemArrayRef {
   T **items_p;
@@ -92,4 +92,4 @@ struct RepeatItemsAccessors {
   }
 };
 
-}  // namespace blender::nodes
+}  // namespace blender::nodes::item_arrays

@@ -605,9 +605,9 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
 
-using blender::nodes::ItemArrayRef;
-using blender::nodes::RepeatItemsAccessors;
-using blender::nodes::SimulationItemsAccessors;
+using blender::nodes::item_arrays::ItemArrayRef;
+using blender::nodes::item_arrays::RepeatItemsAccessors;
+using blender::nodes::item_arrays::SimulationItemsAccessors;
 
 extern FunctionRNA rna_NodeTree_poll_func;
 extern FunctionRNA rna_NodeTree_update_func;
