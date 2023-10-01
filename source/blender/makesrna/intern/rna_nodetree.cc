@@ -3236,7 +3236,9 @@ template<typename Accessor> static PointerRNA rna_Node_ItemArray_active_get(Poin
   return RNA_pointer_create(ptr->owner_id, Accessor::srna, active_item);
 }
 template<typename Accessor>
-static void rna_Node_ItemArray_active_set(PointerRNA *ptr, PointerRNA value)
+static void rna_Node_ItemArray_active_set(PointerRNA *ptr,
+                                          PointerRNA value,
+                                          ReportList * /*reports*/)
 {
   using ItemT = typename Accessor::ItemT;
   bNode *node = static_cast<bNode *>(ptr->data);
@@ -3249,7 +3251,7 @@ static void rna_Node_ItemArray_active_set(PointerRNA *ptr, PointerRNA value)
 }
 
 template<typename Accessor>
-static void rna_Node_ItemArray_item_update(Main *bmain, PointerRNA *ptr)
+static void rna_Node_ItemArray_item_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   using ItemT = typename Accessor::ItemT;
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
@@ -3314,52 +3316,6 @@ typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
   return new_item;
 }
 
-static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  rna_Node_ItemArray_item_update<SimulationItemsAccessor>(bmain, ptr);
-}
-
-static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  rna_Node_ItemArray_item_update<RepeatItemsAccessor>(bmain, ptr);
-}
-
-static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext *C,
-                                                                         PointerRNA *ptr,
-                                                                         PropertyRNA *prop,
-                                                                         bool *r_free)
-{
-  return rna_Node_ItemArray_socket_type_itemf<SimulationItemsAccessor>(C, ptr, prop, r_free);
-}
-
-static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext *C,
-                                                                PointerRNA *ptr,
-                                                                PropertyRNA *prop,
-                                                                bool *r_free)
-{
-  return rna_Node_ItemArray_socket_type_itemf<RepeatItemsAccessor>(C, ptr, prop, r_free);
-}
-
-static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
-{
-  rna_Node_ItemArray_item_name_set<SimulationItemsAccessor>(ptr, value);
-}
-
-static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
-{
-  rna_Node_ItemArray_item_name_set<RepeatItemsAccessor>(ptr, value);
-}
-
-static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
-{
-  rna_Node_ItemArray_item_color_get<SimulationItemsAccessor>(ptr, values);
-}
-
-static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
-{
-  rna_Node_ItemArray_item_color_get<RepeatItemsAccessor>(ptr, values);
-}
-
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
@@ -3372,64 +3328,6 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
 {
   return rna_Node_ItemArray_new_with_socket_and_name<RepeatItemsAccessor>(
       id, node, bmain, reports, socket_type, name);
-}
-
-static void rna_NodeGeometrySimulationOutput_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
-{
-  rna_Node_ItemArray_remove<SimulationItemsAccessor>(id, node, bmain, reports, item);
-}
-
-static void rna_NodeGeometryRepeatOutput_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
-{
-  rna_Node_ItemArray_remove<RepeatItemsAccessor>(id, node, bmain, reports, item);
-}
-
-static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
-{
-  rna_Node_ItemArray_clear<SimulationItemsAccessor>(id, node, bmain);
-}
-
-static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *bmain)
-{
-  rna_Node_ItemArray_clear<RepeatItemsAccessor>(id, node, bmain);
-}
-
-static void rna_NodeGeometrySimulationOutput_items_move(
-    ID *id, bNode *node, Main *bmain, int from_index, int to_index)
-{
-  rna_Node_ItemArray_move<SimulationItemsAccessor>(id, node, bmain, from_index, to_index);
-}
-
-static void rna_NodeGeometryRepeatOutput_items_move(
-    ID *id, bNode *node, Main *bmain, int from_index, int to_index)
-{
-  rna_Node_ItemArray_move<RepeatItemsAccessor>(id, node, bmain, from_index, to_index);
-}
-
-static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
-{
-  return rna_Node_ItemArray_active_get<SimulationItemsAccessor>(ptr);
-}
-
-static PointerRNA rna_NodeGeometryRepeatOutput_active_item_get(PointerRNA *ptr)
-{
-  return rna_Node_ItemArray_active_get<RepeatItemsAccessor>(ptr);
-}
-
-static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
-                                                             PointerRNA value,
-                                                             ReportList * /*reports*/)
-{
-  rna_Node_ItemArray_active_set<SimulationItemsAccessor>(ptr, value);
-}
-
-static void rna_NodeGeometryRepeatOutput_active_item_set(PointerRNA *ptr,
-                                                         PointerRNA value,
-                                                         ReportList * /*reports*/)
-{
-  rna_Node_ItemArray_active_set<RepeatItemsAccessor>(ptr, value);
 }
 
 /* ******** Node Socket Types ******** */
@@ -8842,17 +8740,21 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "NodeSimulationItem");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_SimulationStateItem_name_set");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_Node_ItemArray_item_name_set<SimulationItemsAccessor>");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_SimulationStateItem_socket_type_itemf");
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_Node_ItemArray_socket_type_itemf<SimulationItemsAccessor>");
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
@@ -8861,11 +8763,13 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
       "Attribute Domain",
       "Attribute domain where the attribute is stored in the simulation state");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_SimulationStateItem_color_get", nullptr, nullptr);
+  RNA_def_property_float_funcs(
+      prop, "rna_Node_ItemArray_item_color_get<SimulationItemsAccessor>", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Color", "Color of the corresponding socket type in the node editor");
@@ -8897,17 +8801,17 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_NodeGeometrySimulationOutput_items_remove");
+  func = RNA_def_function(srna, "remove", "rna_Node_ItemArray_remove<SimulationItemsAccessor>");
   RNA_def_function_ui_description(func, "Remove an item from this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "clear", "rna_NodeGeometrySimulationOutput_items_clear");
+  func = RNA_def_function(srna, "clear", "rna_Node_ItemArray_clear<SimulationItemsAccessor>");
   RNA_def_function_ui_description(func, "Remove all items from this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 
-  func = RNA_def_function(srna, "move", "rna_NodeGeometrySimulationOutput_items_move");
+  func = RNA_def_function(srna, "move", "rna_Node_ItemArray_move<SimulationItemsAccessor>");
   RNA_def_function_ui_description(func, "Move an item to another position");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_int(
@@ -8940,8 +8844,8 @@ static void def_geo_simulation_output(StructRNA *srna)
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "SimulationStateItem");
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeGeometrySimulationOutput_active_item_get",
-                                 "rna_NodeGeometrySimulationOutput_active_item_set",
+                                 "rna_Node_ItemArray_active_get<SimulationItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<SimulationItemsAccessor>",
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NO_DEG_UPDATE);
@@ -8958,21 +8862,26 @@ static void rna_def_repeat_item(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "NodeRepeatItem");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_RepeatItem_name_set");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_Node_ItemArray_item_name_set<RepeatItemsAccessor>");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<RepeatItemsAccessor>");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_RepeatItem_socket_type_itemf");
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_Node_ItemArray_socket_type_itemf<RepeatItemsAccessor>");
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<RepeatItemsAccessor>");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_RepeatItem_color_get", nullptr, nullptr);
+  RNA_def_property_float_funcs(
+      prop, "rna_Node_ItemArray_item_color_get<RepeatItemsAccessor>", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Color", "Color of the corresponding socket type in the node editor");
@@ -9004,17 +8913,17 @@ static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_NodeGeometryRepeatOutput_items_remove");
+  func = RNA_def_function(srna, "remove", "rna_Node_ItemArray_remove<RepeatItemsAccessor>");
   RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "clear", "rna_NodeGeometryRepeatOutput_items_clear");
+  func = RNA_def_function(srna, "clear", "rna_Node_ItemArray_clear<RepeatItemsAccessor>");
   RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 
-  func = RNA_def_function(srna, "move", "rna_NodeGeometryRepeatOutput_items_move");
+  func = RNA_def_function(srna, "move", "rna_Node_ItemArray_move<RepeatItemsAccessor>");
   RNA_def_function_ui_description(func, "Move an item to another position");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_int(
@@ -9047,8 +8956,8 @@ static void def_geo_repeat_output(StructRNA *srna)
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "RepeatItem");
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeGeometryRepeatOutput_active_item_get",
-                                 "rna_NodeGeometryRepeatOutput_active_item_set",
+                                 "rna_Node_ItemArray_active_get<RepeatItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<RepeatItemsAccessor>",
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NO_DEG_UPDATE);
