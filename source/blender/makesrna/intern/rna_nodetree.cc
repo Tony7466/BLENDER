@@ -3125,6 +3125,51 @@ static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, Pointer
   rna_Node_update(bmain, scene, ptr);
 }
 
+static PointerRNA rna_Node_paired_output_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = static_cast<bNode *>(ptr->data);
+  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
+  bNode *output_node = zone_type.get_corresponding_output(*ntree, *node);
+  PointerRNA r_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, output_node);
+  return r_ptr;
+}
+
+static bool rna_Node_pair_with_output(
+    ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
+  if (output_node->type != zone_type.output_type) {
+    BKE_reportf(
+        reports,
+        RPT_ERROR,
+        "Can't pair zone input node %s with %s because it does not have the same zone type",
+        node->name,
+        output_node->name);
+    return false;
+  }
+  for (const bNode *other_input_node : ntree->nodes_by_type(zone_type.input_idname)) {
+    if (other_input_node != node) {
+      if (zone_type.get_corresponding_output(*ntree, *other_input_node) == output_node) {
+        BKE_reportf(reports,
+                    RPT_ERROR,
+                    "The output node %s is already paired with %s",
+                    output_node->name,
+                    other_input_node->name);
+        return false;
+      }
+    }
+  }
+  int &output_node_id = zone_type.get_corresponding_output_id(*node);
+  output_node_id = output_node->identifier;
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  return true;
+}
+
 template<typename Accessor>
 static void rna_Node_item_remove(ID *id,
                                  bNode *node,
@@ -3214,16 +3259,6 @@ template<typename Accessor> static void rna_Node_item_update(Main *bmain, Pointe
   ED_node_tree_propagate_change(nullptr, bmain, &ntree);
 }
 
-static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  rna_Node_item_update<SimulationItemsAccessors>(bmain, ptr);
-}
-
-static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  rna_Node_item_update<RepeatItemsAccessors>(bmain, ptr);
-}
-
 template<typename Accessor>
 static const EnumPropertyItem *rna_Node_item_socket_type_itemf(bContext * /*C*/,
                                                                PointerRNA * /*ptr*/,
@@ -3235,6 +3270,34 @@ static const EnumPropertyItem *rna_Node_item_socket_type_itemf(bContext * /*C*/,
       rna_enum_node_socket_data_type_items, [](const EnumPropertyItem *item) {
         return Accessor::supports_socket_type(eNodeSocketDatatype(item->value));
       });
+}
+
+template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
+{
+  using ItemT = typename Accessor::ItemT;
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  bNode *node = find_node_by_item<Accessor>(ntree, item);
+  BLI_assert(node != nullptr);
+  set_item_name<Accessor>(*node, item, value);
+}
+
+template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr, float *values)
+{
+  using ItemT = typename Accessors::ItemT;
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  const char *socket_type_idname = nodeStaticSocketType(*Accessors::get_socket_type(item), 0);
+  ED_node_type_draw_color(socket_type_idname, values);
+}
+
+static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  rna_Node_item_update<SimulationItemsAccessors>(bmain, ptr);
+}
+
+static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  rna_Node_item_update<RepeatItemsAccessors>(bmain, ptr);
 }
 
 static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext *C,
@@ -3253,16 +3316,6 @@ static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext *C,
   return rna_Node_item_socket_type_itemf<RepeatItemsAccessors>(C, ptr, prop, r_free);
 }
 
-template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
-{
-  using ItemT = typename Accessor::ItemT;
-  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = find_node_by_item<Accessor>(ntree, item);
-  BLI_assert(node != nullptr);
-  set_item_name<Accessor>(*node, item, value);
-}
-
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
   rna_Node_item_name_set<SimulationItemsAccessors>(ptr, value);
@@ -3273,14 +3326,6 @@ static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
   rna_Node_item_name_set<RepeatItemsAccessors>(ptr, value);
 }
 
-template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr, float *values)
-{
-  using ItemT = typename Accessors::ItemT;
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  const char *socket_type_idname = nodeStaticSocketType(*Accessors::get_socket_type(item), 0);
-  ED_node_type_draw_color(socket_type_idname, values);
-}
-
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
   rna_Node_item_color_get<SimulationItemsAccessors>(ptr, values);
@@ -3289,51 +3334,6 @@ static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
   rna_Node_item_color_get<RepeatItemsAccessors>(ptr, values);
-}
-
-static PointerRNA rna_Node_paired_output_get(PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
-  bNode *output_node = zone_type.get_corresponding_output(*ntree, *node);
-  PointerRNA r_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, output_node);
-  return r_ptr;
-}
-
-static bool rna_Node_pair_with_output(
-    ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
-  if (output_node->type != zone_type.output_type) {
-    BKE_reportf(
-        reports,
-        RPT_ERROR,
-        "Can't pair zone input node %s with %s because it does not have the same zone type",
-        node->name,
-        output_node->name);
-    return false;
-  }
-  for (const bNode *other_input_node : ntree->nodes_by_type(zone_type.input_idname)) {
-    if (other_input_node != node) {
-      if (zone_type.get_corresponding_output(*ntree, *other_input_node) == output_node) {
-        BKE_reportf(reports,
-                    RPT_ERROR,
-                    "The output node %s is already paired with %s",
-                    output_node->name,
-                    other_input_node->name);
-        return false;
-      }
-    }
-  }
-  int &output_node_id = zone_type.get_corresponding_output_id(*node);
-  output_node_id = output_node->identifier;
-
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  return true;
 }
 
 template<typename Accessor>
