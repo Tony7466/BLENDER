@@ -1101,17 +1101,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
   return name_changed;
 }
 
-NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
-                                                             const char *name)
-{
-  for (NodeSimulationItem &item : sim->items_span()) {
-    if (STREQ(item.name, name)) {
-      return &item;
-    }
-  }
-  return nullptr;
-}
-
 NodeSimulationItem *NOD_geometry_simulation_output_add_item(NodeGeometrySimulationOutput *sim,
                                                             const short socket_type,
                                                             const char *name)
