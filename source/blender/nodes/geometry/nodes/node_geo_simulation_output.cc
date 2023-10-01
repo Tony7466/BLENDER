@@ -1068,19 +1068,6 @@ bool NOD_geometry_simulation_output_item_socket_type_supported(
               SOCK_GEOMETRY);
 }
 
-bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
-                                                        const NodeSimulationItem *item)
-{
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeSimulationOutput")) {
-    NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-    if (sim->items_span().contains_ptr(item)) {
-      return node;
-    }
-  }
-  return nullptr;
-}
-
 bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationOutput *sim,
                                                          NodeSimulationItem *item,
                                                          const char *name,

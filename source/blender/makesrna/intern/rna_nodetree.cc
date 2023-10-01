@@ -3202,37 +3202,26 @@ template<typename Accessor> static void rna_Node_item_active_set(PointerRNA *ptr
   }
 }
 
-static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+template<typename Accessor> static void rna_Node_item_update(Main *bmain, PointerRNA *ptr)
 {
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
-  bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
+  using ItemT = typename Accessor::ItemT;
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  bNode *node = find_node_by_item<Accessor>(ntree, item);
+  BLI_assert(node != nullptr);
 
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  BKE_ntree_update_tag_node_property(&ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, &ntree);
 }
 
-static bNode *find_node_by_repeat_item(PointerRNA *ptr)
+static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  const NodeRepeatItem *item = static_cast<const NodeRepeatItem *>(ptr->data);
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeRepeatOutput")) {
-    NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-    if (storage->items_span().contains_ptr(item)) {
-      return node;
-    }
-  }
-  return nullptr;
+  rna_Node_item_update<SimulationItemsAccessors>(bmain, ptr);
 }
 
 static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = find_node_by_repeat_item(ptr);
-
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  rna_Node_item_update<RepeatItemsAccessors>(bmain, ptr);
 }
 
 static bool rna_SimulationStateItem_socket_type_supported(const EnumPropertyItem *item)

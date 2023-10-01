@@ -29,8 +29,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
 /**
  * Find the node owning this simulation state item.
  */
-bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
-                                                        const NodeSimulationItem *item);
 NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimulationOutput *sim,
                                                                short socket_type,
                                                                const char *name,
