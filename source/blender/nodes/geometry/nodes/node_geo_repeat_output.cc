@@ -179,7 +179,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
       if (const NodeRepeatItem *item =
-              item_arrays::add_item_with_socket_and_name<item_arrays::RepeatItemsAccessors>(
+              item_arrays::add_item_with_socket_and_name<item_arrays::RepeatItemsAccessor>(
                   *node, link->fromsock->type, link->fromsock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);
@@ -194,7 +194,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (link->fromnode == node) {
     if (link->fromsock->identifier == StringRef("__extend__")) {
       if (const NodeRepeatItem *item =
-              item_arrays::add_item_with_socket_and_name<item_arrays::RepeatItemsAccessors>(
+              item_arrays::add_item_with_socket_and_name<item_arrays::RepeatItemsAccessor>(
                   *node, link->tosock->type, link->tosock->name))
       {
         update_node_declaration_and_sockets(*ntree, *node);

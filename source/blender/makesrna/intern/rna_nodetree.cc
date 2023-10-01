@@ -3311,12 +3311,12 @@ typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
 
 static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  rna_Node_item_update<SimulationItemsAccessors>(bmain, ptr);
+  rna_Node_item_update<SimulationItemsAccessor>(bmain, ptr);
 }
 
 static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  rna_Node_item_update<RepeatItemsAccessors>(bmain, ptr);
+  rna_Node_item_update<RepeatItemsAccessor>(bmain, ptr);
 }
 
 static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext *C,
@@ -3324,7 +3324,7 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
                                                                          PropertyRNA *prop,
                                                                          bool *r_free)
 {
-  return rna_Node_item_socket_type_itemf<SimulationItemsAccessors>(C, ptr, prop, r_free);
+  return rna_Node_item_socket_type_itemf<SimulationItemsAccessor>(C, ptr, prop, r_free);
 }
 
 static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext *C,
@@ -3332,99 +3332,99 @@ static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext *C,
                                                                 PropertyRNA *prop,
                                                                 bool *r_free)
 {
-  return rna_Node_item_socket_type_itemf<RepeatItemsAccessors>(C, ptr, prop, r_free);
+  return rna_Node_item_socket_type_itemf<RepeatItemsAccessor>(C, ptr, prop, r_free);
 }
 
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
-  rna_Node_item_name_set<SimulationItemsAccessors>(ptr, value);
+  rna_Node_item_name_set<SimulationItemsAccessor>(ptr, value);
 }
 
 static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
 {
-  rna_Node_item_name_set<RepeatItemsAccessors>(ptr, value);
+  rna_Node_item_name_set<RepeatItemsAccessor>(ptr, value);
 }
 
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
-  rna_Node_item_color_get<SimulationItemsAccessors>(ptr, values);
+  rna_Node_item_color_get<SimulationItemsAccessor>(ptr, values);
 }
 
 static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
-  rna_Node_item_color_get<RepeatItemsAccessors>(ptr, values);
+  rna_Node_item_color_get<RepeatItemsAccessor>(ptr, values);
 }
 
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  return rna_Node_item_new_with_socket_and_name<SimulationItemsAccessors>(
+  return rna_Node_item_new_with_socket_and_name<SimulationItemsAccessor>(
       id, node, bmain, reports, socket_type, name);
 }
 
 static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  return rna_Node_item_new_with_socket_and_name<RepeatItemsAccessors>(
+  return rna_Node_item_new_with_socket_and_name<RepeatItemsAccessor>(
       id, node, bmain, reports, socket_type, name);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
-  rna_Node_item_remove<SimulationItemsAccessors>(id, node, bmain, reports, item);
+  rna_Node_item_remove<SimulationItemsAccessor>(id, node, bmain, reports, item);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
 {
-  rna_Node_item_remove<RepeatItemsAccessors>(id, node, bmain, reports, item);
+  rna_Node_item_remove<RepeatItemsAccessor>(id, node, bmain, reports, item);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  rna_Node_items_clear<SimulationItemsAccessors>(id, node, bmain);
+  rna_Node_items_clear<SimulationItemsAccessor>(id, node, bmain);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  rna_Node_items_clear<RepeatItemsAccessors>(id, node, bmain);
+  rna_Node_items_clear<RepeatItemsAccessor>(id, node, bmain);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  rna_Node_item_move<SimulationItemsAccessors>(id, node, bmain, from_index, to_index);
+  rna_Node_item_move<SimulationItemsAccessor>(id, node, bmain, from_index, to_index);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  rna_Node_item_move<RepeatItemsAccessors>(id, node, bmain, from_index, to_index);
+  rna_Node_item_move<RepeatItemsAccessor>(id, node, bmain, from_index, to_index);
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
 {
-  return rna_Node_item_active_get<SimulationItemsAccessors>(ptr);
+  return rna_Node_item_active_get<SimulationItemsAccessor>(ptr);
 }
 
 static PointerRNA rna_NodeGeometryRepeatOutput_active_item_get(PointerRNA *ptr)
 {
-  return rna_Node_item_active_get<RepeatItemsAccessors>(ptr);
+  return rna_Node_item_active_get<RepeatItemsAccessor>(ptr);
 }
 
 static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
                                                              PointerRNA value,
                                                              ReportList * /*reports*/)
 {
-  rna_Node_item_active_set<SimulationItemsAccessors>(ptr, value);
+  rna_Node_item_active_set<SimulationItemsAccessor>(ptr, value);
 }
 
 static void rna_NodeGeometryRepeatOutput_active_item_set(PointerRNA *ptr,
                                                          PointerRNA value,
                                                          ReportList * /*reports*/)
 {
-  rna_Node_item_active_set<RepeatItemsAccessors>(ptr, value);
+  rna_Node_item_active_set<RepeatItemsAccessor>(ptr, value);
 }
 
 /* ******** Node Socket Types ******** */

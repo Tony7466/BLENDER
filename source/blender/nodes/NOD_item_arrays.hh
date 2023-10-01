@@ -17,7 +17,7 @@ template<typename T> struct ItemArrayRef {
   int *active_index_p = nullptr;
 };
 
-struct SimulationItemsAccessors {
+struct SimulationItemsAccessor {
   using ItemT = NodeSimulationItem;
   static StructRNA *srna;
   static int node_type;
@@ -54,7 +54,7 @@ struct SimulationItemsAccessors {
   }
 };
 
-struct RepeatItemsAccessors {
+struct RepeatItemsAccessor {
   using ItemT = NodeRepeatItem;
   static StructRNA *srna;
   static int node_type;

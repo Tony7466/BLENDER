@@ -10,10 +10,10 @@
 
 namespace blender::nodes::item_arrays {
 
-StructRNA *SimulationItemsAccessors::srna = &RNA_SimulationStateItem;
-int SimulationItemsAccessors::node_type = GEO_NODE_SIMULATION_OUTPUT;
+StructRNA *SimulationItemsAccessor::srna = &RNA_SimulationStateItem;
+int SimulationItemsAccessor::node_type = GEO_NODE_SIMULATION_OUTPUT;
 
-StructRNA *RepeatItemsAccessors::srna = &RNA_RepeatItem;
-int RepeatItemsAccessors::node_type = GEO_NODE_REPEAT_OUTPUT;
+StructRNA *RepeatItemsAccessor::srna = &RNA_RepeatItem;
+int RepeatItemsAccessor::node_type = GEO_NODE_REPEAT_OUTPUT;
 
 }  // namespace blender::nodes::item_arrays
