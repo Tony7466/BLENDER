@@ -1817,7 +1817,6 @@ typedef struct NodeRepeatItem {
   int identifier;
 
 #ifdef __cplusplus
-  static bool supports_type(eNodeSocketDatatype type);
   std::string identifier_str() const;
 #endif
 } NodeRepeatItem;

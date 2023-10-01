@@ -3226,8 +3226,7 @@ static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *pt
 
 static bool rna_SimulationStateItem_socket_type_supported(const EnumPropertyItem *item)
 {
-  return NOD_geometry_simulation_output_item_socket_type_supported(
-      (eNodeSocketDatatype)item->value);
+  return SimulationItemsAccessors::supports_socket_type(eNodeSocketDatatype(item->value));
 }
 
 static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext * /*C*/,
@@ -3242,7 +3241,7 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
 
 static bool rna_RepeatItem_socket_type_supported(const EnumPropertyItem *item)
 {
-  return NodeRepeatItem::supports_type(eNodeSocketDatatype(item->value));
+  return RepeatItemsAccessors::supports_socket_type(eNodeSocketDatatype(item->value));
 }
 
 static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/,

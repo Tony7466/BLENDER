@@ -233,23 +233,6 @@ blender::MutableSpan<NodeRepeatItem> NodeGeometryRepeatOutput::items_span()
   return blender::MutableSpan<NodeRepeatItem>(items, items_num);
 }
 
-bool NodeRepeatItem::supports_type(const eNodeSocketDatatype type)
-{
-  return ELEM(type,
-              SOCK_FLOAT,
-              SOCK_VECTOR,
-              SOCK_RGBA,
-              SOCK_BOOLEAN,
-              SOCK_ROTATION,
-              SOCK_INT,
-              SOCK_STRING,
-              SOCK_GEOMETRY,
-              SOCK_OBJECT,
-              SOCK_MATERIAL,
-              SOCK_IMAGE,
-              SOCK_COLLECTION);
-}
-
 std::string NodeRepeatItem::identifier_str() const
 {
   return "Item_" + std::to_string(this->identifier);
