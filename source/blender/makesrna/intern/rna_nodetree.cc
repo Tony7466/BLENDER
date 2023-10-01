@@ -3312,6 +3312,7 @@ template<typename T> struct ItemsArrayRef {
 
 struct SimulationItemsAccessors {
   using value_type = NodeSimulationItem;
+  static constexpr StructRNA *srna = &RNA_SimulationStateItem;
 
   static ItemsArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
   {
@@ -3326,6 +3327,7 @@ struct SimulationItemsAccessors {
 
 struct RepeatItemsAccessors {
   using value_type = NodeRepeatItem;
+  static constexpr StructRNA *srna = &RNA_RepeatItem;
 
   static ItemsArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
   {
@@ -3466,6 +3468,19 @@ static void rna_Node_item_move(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRNA *ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  typename Accessor::value_type *active_item = nullptr;
+  const int active_index = *array.active_index_p;
+  const int items_num = *array.items_num_p;
+  if (active_index >= 0 && active_index < items_num) {
+    active_item = &(*array.items_p)[active_index];
+  }
+  return RNA_pointer_create(ptr->owner_id, Accessor::srna, active_item);
+}
+
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
@@ -3502,23 +3517,12 @@ static void rna_NodeGeometryRepeatOutput_items_move(
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
 {
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NodeSimulationItem *item = NOD_geometry_simulation_output_get_active_item(sim);
-  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_SimulationStateItem, item);
-  return r_ptr;
+  return rna_Node_item_active_get<SimulationItemsAccessors>(ptr);
 }
 
 static PointerRNA rna_NodeGeometryRepeatOutput_active_item_get(PointerRNA *ptr)
 {
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  blender::MutableSpan<NodeRepeatItem> items = storage->items_span();
-  PointerRNA r_ptr{};
-  if (items.index_range().contains(storage->active_index)) {
-    r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_RepeatItem, &items[storage->active_index]);
-  }
-  return r_ptr;
+  return rna_Node_item_active_get<RepeatItemsAccessors>(ptr);
 }
 
 static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,

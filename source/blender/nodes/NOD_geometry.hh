@@ -34,8 +34,6 @@ bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
 
 bool NOD_geometry_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
                                                   const NodeSimulationItem *item);
-NodeSimulationItem *NOD_geometry_simulation_output_get_active_item(
-    NodeGeometrySimulationOutput *sim);
 void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
                                                     NodeSimulationItem *item);
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,

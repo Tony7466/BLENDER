@@ -1107,15 +1107,6 @@ bool NOD_geometry_simulation_output_contains_item(NodeGeometrySimulationOutput *
   return sim->items_span().contains_ptr(item);
 }
 
-NodeSimulationItem *NOD_geometry_simulation_output_get_active_item(
-    NodeGeometrySimulationOutput *sim)
-{
-  if (!sim->items_range().contains(sim->active_index)) {
-    return nullptr;
-  }
-  return &sim->items[sim->active_index];
-}
-
 void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
                                                     NodeSimulationItem *item)
 {
