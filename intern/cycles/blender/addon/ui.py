@@ -90,16 +90,27 @@ def get_device_type(context):
     return context.preferences.addons[__package__].preferences.compute_device_type
 
 
+def backend_has_active_gpu(context):
+    return context.preferences.addons[__package__].preferences.has_active_device()
+
+
+def show_device_active(context):
+    cscene = context.scene.cycles
+    if cscene.device != 'GPU':
+        return True
+    return backend_has_active_gpu(context)
+
+
 def use_cpu(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'NONE' or cscene.device == 'CPU')
+    return (get_device_type(context) == 'NONE' or cscene.device == 'CPU' or not backend_has_active_gpu(context))
 
 
 def use_metal(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'METAL' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'METAL' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_metalrt(context):
@@ -109,13 +120,13 @@ def use_metalrt(context):
 def use_cuda(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'CUDA' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'CUDA' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_hip(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'HIP' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'HIP' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_hiprt(context):
@@ -125,13 +136,13 @@ def use_hiprt(context):
 def use_optix(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'OPTIX' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'OPTIX' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_oneapi(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'ONEAPI' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'ONEAPI' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_oneapirt(context):
@@ -143,17 +154,6 @@ def use_multi_device(context):
     if cscene.device != 'GPU':
         return False
     return context.preferences.addons[__package__].preferences.has_multi_device()
-
-
-def backend_has_active_gpu(context):
-    return context.preferences.addons[__package__].preferences.has_active_device()
-
-
-def show_device_active(context):
-    cscene = context.scene.cycles
-    if cscene.device != 'GPU':
-        return True
-    return backend_has_active_gpu(context)
 
 
 def get_effective_preview_denoiser(context):
@@ -806,8 +806,9 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
 
     @classmethod
     def poll(cls, context):
-        custom_gpu_bvh = use_optix(context) or use_hiprt(context) or use_metalrt(context)
-        return use_multi_device(context) or not (custom_gpu_bvh) or not backend_has_active_gpu(context)
+        # GPU backend isn't using BVH2 or Embree
+        gpu_uses_custom = use_optix(context) or use_hiprt(context) or use_metalrt(context)
+        return use_multi_device(context) or not gpu_uses_custom
 
     def draw(self, context):
         import _cycles
@@ -821,28 +822,35 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
 
         col = layout.column()
 
-        no_active_gpu = not backend_has_active_gpu(context)
-        cpu_only = use_cpu(context) or no_active_gpu
-        cpu_bvh_is_embree = not CyclesDebugButtonsPanel.poll(context) or cscene.debug_bvh_layout == "EMBREE"
-        use_embree_gpu = use_oneapirt(context) and backend_has_active_gpu(context)
+        # GPU backend isn't using BVH2 or Embree
+        gpu_uses_custom = use_optix(context) or use_hiprt(context) or use_metalrt(context)
+        cpu_and_custom_gpu = use_multi_device(context) and gpu_uses_custom
+
+        cpu_only = use_cpu(context)
+        cpu_uses_embree = not CyclesDebugButtonsPanel.poll(context) or cscene.debug_bvh_layout == 'EMBREE'
+        gpu_uses_embree = use_oneapirt(context)
         built_with_embree = _cycles.with_embree
 
-        use_embree = built_with_embree and ((cpu_only and cpu_bvh_is_embree) or use_embree_gpu)
+        use_embree = built_with_embree and ((cpu_only and cpu_uses_embree) or gpu_uses_embree or cpu_and_custom_gpu)
 
         # Common Setting
         col.prop(cscene, "debug_use_spatial_splits")
         if use_embree:
-            # Embree Setting
             col.prop(cscene, "debug_use_compact_bvh")
         else:
-            # GPU backend isn't using BVH2 or Embree
-            custom_gpu_bvh = use_optix(context) or use_hiprt(context) or use_metalrt(context)
+            # `cpu_uses_bvh2 = cpu_only` because `cpu_only` is only True here if
+            # `cpu_only and not (cpu_uses_embree and built_with_embree)`
+            cpu_uses_bvh2 = cpu_only
 
-            cpu_bvh2_is_used = no_active_gpu  # `and cpu_only and not cpu_bvh_is_embree` from earlier
-            gpu_is_custom_and_cpu_is_bvh2 = not built_with_embree and custom_gpu_bvh and backend_has_active_gpu(context)
-            # `and use_multi_device(context)` from earlier
+            # `gpu_uses_bvh2` works under the assumption that the CPU will use BVH2
+            # when the GPU is using BVH2 when `use_multi_device(context)` is True
+            gpu_uses_bvh2 = not gpu_uses_custom  # `and not cpu_only` where `not cpu_only = using_gpu`
 
-            if cpu_bvh2_is_used or not custom_gpu_bvh or gpu_is_custom_and_cpu_is_bvh2:
+            # `gpu_uses_custom` is only True and relevant here if `use_multi_device(context)` is True,
+            # meaning a CPU will be used along side the GPU.
+            gpu_uses_custom_and_cpu_uses_bvh2 = not built_with_embree and gpu_uses_custom
+
+            if cpu_uses_bvh2 or gpu_uses_bvh2 or gpu_uses_custom_and_cpu_uses_bvh2:
                 # BVH2 Settings
                 sub = col.column()
                 sub.active = not cscene.debug_use_spatial_splits
@@ -850,18 +858,12 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
 
                 col.prop(cscene, "debug_use_hair_bvh")
 
-            cpu_and_custom_gpu = use_multi_device(context) and custom_gpu_bvh and not cpu_only
-
             # CPU is using BVH2 when it could be using Embree
-            if cpu_only or (not built_with_embree and cpu_and_custom_gpu):
+            # `cpu_and_custom_gpu` is only True here if `not built_with_embree` meaning the CPU is using BVH2
+            if cpu_uses_bvh2 or cpu_and_custom_gpu:
                 sub = col.column(align=True)
                 sub.label(text="Cycles is configure to not use, or was built without Embree")
                 sub.label(text="CPU raytracing performance will be reduced")
-
-            # CPU is used in addition to a GPU
-            if built_with_embree and cpu_and_custom_gpu:
-                # Embree Setting
-                col.prop(cscene, "debug_use_compact_bvh")
 
 
 class CYCLES_RENDER_PT_performance_final_render(CyclesButtonsPanel, Panel):
