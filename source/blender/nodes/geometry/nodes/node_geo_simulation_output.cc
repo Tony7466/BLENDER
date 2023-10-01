@@ -1188,30 +1188,3 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item_from_socket(
 {
   return NOD_geometry_simulation_output_insert_item(sim, from_sock->type, from_sock->name, index);
 }
-
-void NOD_geometry_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
-                                              int from_index,
-                                              int to_index)
-{
-  BLI_assert(from_index >= 0 && from_index < sim->items_num);
-  BLI_assert(to_index >= 0 && to_index < sim->items_num);
-
-  if (from_index == to_index) {
-    return;
-  }
-
-  if (from_index < to_index) {
-    const NodeSimulationItem tmp = sim->items[from_index];
-    for (int i = from_index; i < to_index; ++i) {
-      sim->items[i] = sim->items[i + 1];
-    }
-    sim->items[to_index] = tmp;
-  }
-  else /* from_index > to_index */ {
-    const NodeSimulationItem tmp = sim->items[from_index];
-    for (int i = from_index; i > to_index; --i) {
-      sim->items[i] = sim->items[i - 1];
-    }
-    sim->items[to_index] = tmp;
-  }
-}

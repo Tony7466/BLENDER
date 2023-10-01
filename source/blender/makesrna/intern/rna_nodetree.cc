@@ -3340,12 +3340,43 @@ static void remove_item(T **items,
 template<typename T>
 static void clear_items(T **items, int *items_num, int *active_index, void (*destruct_item)(T *))
 {
+  static_assert(std::is_trivial_v<T>);
   for (const int i : blender::IndexRange(*items_num)) {
     destruct_item(&(*items)[i]);
   }
   MEM_SAFE_FREE(*items);
   *items_num = 0;
   *active_index = 0;
+}
+
+template<typename T>
+static void move_item(T *items, const int items_num, const int from_index, const int to_index)
+{
+  static_assert(std::is_trivial_v<T>);
+  BLI_assert(from_index >= 0);
+  BLI_assert(from_index < items_num);
+  BLI_assert(to_index >= 0);
+  BLI_assert(to_index < items_num);
+  UNUSED_VARS_NDEBUG(items_num);
+
+  if (from_index == to_index) {
+    return;
+  }
+
+  if (from_index < to_index) {
+    const T tmp = items[from_index];
+    for (int i = from_index; i < to_index; i++) {
+      items[i] = items[i + 1];
+    }
+    items[to_index] = tmp;
+  }
+  else if (from_index > to_index) {
+    const T tmp = items[from_index];
+    for (int i = from_index; i > to_index; i--) {
+      items[i] = items[i - 1];
+    }
+    items[to_index] = tmp;
+  }
 }
 
 template<typename T>
@@ -3382,6 +3413,26 @@ static void rna_Node_items_clear(ID *id,
                                  void (*destruct_item)(T *))
 {
   clear_items(items, items_num, active_index, destruct_item);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+template<typename T>
+static void rna_Node_item_move(ID *id,
+                               bNode *node,
+                               Main *bmain,
+                               T *items,
+                               const int items_num,
+                               const int from_index,
+                               const int to_index)
+{
+  if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
+    return;
+  }
+  move_item(items, items_num, from_index, to_index);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3448,50 +3499,17 @@ static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *
 static void rna_NodeGeometrySimulationOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-
-  if (from_index < 0 || from_index >= sim->items_num || to_index < 0 || to_index >= sim->items_num)
-  {
-    return;
-  }
-
-  NOD_geometry_simulation_output_move_item(sim, from_index, to_index);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  rna_Node_item_move<NodeSimulationItem>(
+      id, node, bmain, storage->items, storage->items_num, from_index, to_index);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  if (from_index < 0 || from_index >= storage->items_num || to_index < 0 ||
-      to_index >= storage->items_num)
-  {
-    return;
-  }
-
-  if (from_index < to_index) {
-    const NodeRepeatItem tmp = storage->items[from_index];
-    for (int i = from_index; i < to_index; i++) {
-      storage->items[i] = storage->items[i + 1];
-    }
-    storage->items[to_index] = tmp;
-  }
-  else if (from_index > to_index) {
-    const NodeRepeatItem tmp = storage->items[from_index];
-    for (int i = from_index; i > to_index; i--) {
-      storage->items[i] = storage->items[i - 1];
-    }
-    storage->items[to_index] = tmp;
-  }
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  rna_Node_item_move<NodeRepeatItem>(
+      id, node, bmain, storage->items, storage->items_num, from_index, to_index);
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
