@@ -4279,10 +4279,10 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.separator()
 
+        layout.menu("VIEW3D_MT_edit_mesh_attributes")
         layout.menu("VIEW3D_MT_edit_mesh_normals")
         layout.menu("VIEW3D_MT_edit_mesh_shading")
         layout.menu("VIEW3D_MT_edit_mesh_weights")
-        layout.operator("mesh.attribute_set")
         layout.operator_menu_enum("mesh.sort_elements", "type", text="Sort Elements...")
 
         layout.separator()
@@ -4298,7 +4298,7 @@ class VIEW3D_MT_edit_mesh(Menu):
 
 
 class VIEW3D_MT_edit_mesh_context_menu(Menu):
-    bl_label = ""
+    bl_label = "Mesh"
 
     def draw(self, context):
 
@@ -4313,7 +4313,6 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
                 selected_faces_len += f
             return (selected_verts_len, selected_edges_len, selected_faces_len)
 
-        is_vert_mode, is_edge_mode, is_face_mode = context.tool_settings.mesh_select_mode
         selected_verts_len, selected_edges_len, selected_faces_len = count_selected_items_for_objects_in_mode()
 
         del count_selected_items_for_objects_in_mode
@@ -4336,176 +4335,134 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         # Else something is selected
 
-        row = layout.row()
+        # Subdivision
+        if selected_edges_len > 0:
+            layout.operator("mesh.subdivide")
+            layout.operator("mesh.unsubdivide")
 
-        if is_vert_mode:
-            col = row.column(align=True)
+        layout.separator()
 
-            col.label(text="Vertex", icon='VERTEXSEL')
-            col.separator()
+        # Extrude & Bevel
+        layout.operator("view3d.edit_mesh_extrude_move_normal",
+                         text="Extrude and Move on Normals").alt_navigation = True
+        layout.menu("VIEW3D_MT_edit_mesh_extrude")
+        if selected_faces_len > 0:
+            layout.operator("mesh.inset")
+        layout.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
+        if selected_edges_len > 0:
+            layout.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
 
-            # Additive Operators
-            col.operator("mesh.subdivide", text="Subdivide")
+        layout.separator()
 
-            col.separator()
+        # Fill & Connect
+        if selected_verts_len > 1:
+            layout.separator()
+            layout.operator("mesh.edge_face_add")
+        if selected_edges_len >= 2:
+            layout.operator("mesh.fill")
+        if selected_verts_len > 1:
+            layout.operator("mesh.vert_connect_path")
+        if selected_edges_len >= 2:
+            layout.operator("mesh.bridge_edge_loops")
 
-            col.operator("mesh.extrude_vertices_move", text="Extrude Vertices")
-            col.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
+        layout.separator()
 
-            if selected_verts_len > 1:
-                col.separator()
-                col.operator("mesh.edge_face_add", text="New Edge/Face from Vertices")
-                col.operator("mesh.vert_connect_path", text="Connect Vertex Path")
-                col.operator("mesh.vert_connect", text="Connect Vertex Pairs")
+        layout.operator("mesh.loopcut_slide")
+        layout.operator("mesh.offset_edge_loops_slide")
 
-            col.separator()
+        layout.separator()
 
-            # Deform Operators
-            col.operator("transform.push_pull", text="Push/Pull")
-            col.operator("transform.shrink_fatten", text="Shrink/Fatten")
-            col.operator("transform.shear", text="Shear")
-            col.operator("transform.vert_slide", text="Slide Vertices")
-            col.operator_context = 'EXEC_REGION_WIN'
-            col.operator("transform.vertex_random", text="Randomize Vertices").offset = 0.1
-            col.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
-            col.operator_context = 'INVOKE_REGION_WIN'
-            col.operator("mesh.vertices_smooth_laplacian", text="Smooth Laplacian")
+        layout.operator("mesh.knife_tool")
+        if selected_edges_len > 0:
+            layout.operator("mesh.bisect")
 
-            col.separator()
+        layout.separator()
 
-            col.menu("VIEW3D_MT_mirror", text="Mirror Vertices")
-            col.menu("VIEW3D_MT_snap", text="Snap Vertices")
+        # Deform Operators
+        layout.menu("VIEW3D_MT_transform")
+        layout.operator("transform.vert_slide")
+        if selected_edges_len > 0:
+            layout.operator("transform.edge_slide")
+        layout.operator_context = 'EXEC_REGION_WIN'
+        layout.operator("mesh.vertices_smooth").factor = 0.5
+        # This could get a check for a skin modifier
+        layout.operator("mesh.skin_resize")
 
-            col.separator()
+        layout.separator()
 
-            col.operator("transform.vert_crease")
+        layout.menu("VIEW3D_MT_mirror")
+        layout.menu("VIEW3D_MT_snap")
 
-            col.separator()
+        layout.separator()
 
-            # Removal Operators
-            if selected_verts_len > 1:
-                col.menu("VIEW3D_MT_edit_mesh_merge", text="Merge Vertices")
-            col.operator("mesh.split")
-            col.operator_menu_enum("mesh.separate", "type")
-            col.operator("mesh.dissolve_verts")
-            col.operator("mesh.delete", text="Delete Vertices").type = 'VERT'
+        if selected_verts_len > 1:
+            layout.menu("VIEW3D_MT_uv_map")
 
-        if is_edge_mode:
-            col = row.column(align=True)
-            col.label(text="Edge", icon='EDGESEL')
-            col.separator()
+        layout.separator()
 
-            # Additive Operators
-            col.operator("mesh.subdivide", text="Subdivide")
+        # Attributes
+        layout.menu("VIEW3D_MT_edit_mesh_attributes")
 
-            col.separator()
+        layout.separator()
 
-            col.operator("mesh.extrude_edges_move", text="Extrude Edges")
-            col.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
-            if selected_edges_len >= 2:
-                col.operator("mesh.bridge_edge_loops")
-            if selected_edges_len >= 1:
-                col.operator("mesh.edge_face_add", text="New Face from Edges")
-            if selected_edges_len >= 2:
-                col.operator("mesh.fill")
+        layout.operator("mesh.faces_shade_smooth")
+        layout.operator("mesh.faces_shade_flat")
+        layout.operator("mesh.normals_make_consistent").inside = False
 
-            col.separator()
+        layout.separator()
 
-            props = col.operator("mesh.loopcut_slide")
-            props.TRANSFORM_OT_edge_slide.release_confirm = False
-            col.operator("mesh.offset_edge_loops_slide")
-
-            col.separator()
-
-            col.operator("mesh.knife_tool")
-            col.operator("mesh.bisect")
-
-            col.separator()
-
-            # Deform Operators
-            col.operator("mesh.edge_rotate", text="Rotate Edge CW").use_ccw = False
-            col.operator("transform.edge_slide")
-            col.operator("mesh.edge_split")
-
-            col.separator()
-
-            # Edge Flags
-            col.operator("transform.edge_crease")
-            col.operator("transform.edge_bevelweight")
-
-            col.separator()
-
-            col.operator("mesh.mark_seam").clear = False
-            col.operator("mesh.mark_seam", text="Clear Seam").clear = True
-
-            col.separator()
-
-            col.operator("mesh.mark_sharp")
-            col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
-
-            if with_freestyle:
-                col.separator()
-
-                col.operator("mesh.mark_freestyle_edge").clear = False
-                col.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
-
-            col.separator()
-
-            # Removal Operators
-            col.operator("mesh.unsubdivide")
-            col.operator("mesh.split")
-            col.operator_menu_enum("mesh.separate", "type")
-            col.operator("mesh.dissolve_edges")
-            col.operator("mesh.delete", text="Delete Edges").type = 'EDGE'
-
-        if is_face_mode:
-            col = row.column(align=True)
-
-            col.label(text="Face", icon='FACESEL')
-            col.separator()
-
-            # Additive Operators
-            col.operator("mesh.subdivide", text="Subdivide")
-
-            col.separator()
-
-            col.operator("view3d.edit_mesh_extrude_move_normal",
-                         text="Extrude Faces")
-            col.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                         text="Extrude Faces Along Normals")
-            col.operator("mesh.extrude_faces_move",
-                         text="Extrude Individual Faces")
-
-            col.operator("mesh.inset")
-            col.operator("mesh.poke")
-
-            if selected_faces_len >= 2:
-                col.operator("mesh.bridge_edge_loops", text="Bridge Faces")
-
-            col.separator()
-
-            # Modify Operators
-            col.menu("VIEW3D_MT_uv_map", text="UV Unwrap Faces")
-
-            col.separator()
-
-            props = col.operator("mesh.quads_convert_to_tris")
+        # Tris & Quads
+        if selected_faces_len > 0:
+            props = layout.operator("mesh.quads_convert_to_tris")
             props.quad_method = props.ngon_method = 'BEAUTY'
-            col.operator("mesh.tris_convert_to_quads")
+            layout.operator("mesh.tris_convert_to_quads")
 
-            col.separator()
+        layout.separator()
 
-            col.operator("mesh.faces_shade_smooth")
-            col.operator("mesh.faces_shade_flat")
+        # Delete and Split
+        if selected_verts_len > 1:
+            layout.menu("VIEW3D_MT_edit_mesh_merge")
+        layout.operator("mesh.split")
+        layout.operator_menu_enum("mesh.separate", "type")
+        layout.menu("VIEW3D_MT_edit_mesh_delete")
 
-            col.separator()
 
-            # Removal Operators
-            col.operator("mesh.unsubdivide")
-            col.operator("mesh.split")
-            col.operator_menu_enum("mesh.separate", "type")
-            col.operator("mesh.dissolve_faces")
-            col.operator("mesh.delete", text="Delete Faces").type = 'FACE'
+class VIEW3D_MT_edit_mesh_attributes(Menu):
+    bl_label = "Attributes"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        with_freestyle = bpy.app.build_options.freestyle
+
+        layout.operator("mesh.attribute_set")
+
+        layout.separator()
+
+        layout.operator("transform.vert_crease")
+        layout.operator("transform.edge_crease")
+        layout.operator("transform.edge_bevelweight")
+
+        layout.separator()
+
+        layout.operator("mesh.mark_seam").clear = False
+        layout.operator("mesh.mark_seam", text="Clear Seam").clear = True
+
+        layout.separator()
+
+        layout.operator("mesh.mark_sharp")
+        layout.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
+
+        layout.operator("mesh.mark_sharp", text="Mark Sharp from Vertices").use_verts = True
+        props = layout.operator("mesh.mark_sharp", text="Clear Sharp from Vertices")
+        props.use_verts = True
+        props.clear = True
+
+        if with_freestyle:
+            layout.separator()
+
+            layout.operator("mesh.mark_freestyle_edge").clear = False
+            layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
 
 
 class VIEW3D_MT_edit_mesh_select_mode(Menu):
@@ -4917,6 +4874,7 @@ class VIEW3D_MT_edit_mesh_delete(Menu):
 
         layout.separator()
 
+        layout.operator("mesh.dissolve_mode")
         layout.operator("mesh.dissolve_limited")
 
         layout.separator()
@@ -8886,6 +8844,7 @@ classes = (
     VIEW3D_MT_bone_options_disable,
     VIEW3D_MT_edit_mesh_context_menu,
     VIEW3D_MT_edit_mesh_select_mode,
+    VIEW3D_MT_edit_mesh_attributes,
     VIEW3D_MT_edit_mesh_select_linked,
     VIEW3D_MT_edit_mesh_select_loops,
     VIEW3D_MT_edit_mesh_extrude,
