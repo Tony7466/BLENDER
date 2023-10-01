@@ -139,28 +139,6 @@ void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> ite
   r_declaration.items.append(std::move(output_extend_decl));
 }
 
-struct SimulationItemsUniqueNameArgs {
-  NodeGeometrySimulationOutput *sim;
-  const NodeSimulationItem *item;
-};
-
-static bool simulation_items_unique_name_check(void *arg, const char *name)
-{
-  const SimulationItemsUniqueNameArgs &args = *static_cast<const SimulationItemsUniqueNameArgs *>(
-      arg);
-  for (const NodeSimulationItem &item : args.sim->items_span()) {
-    if (&item != args.item) {
-      if (STREQ(item.name, name)) {
-        return true;
-      }
-    }
-  }
-  if (STREQ(name, "Delta Time")) {
-    return true;
-  }
-  return false;
-}
-
 const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
   const char *socket_idname = nodeStaticSocketType(socket_type, 0);
@@ -1068,55 +1046,4 @@ bool NOD_geometry_simulation_output_item_socket_type_supported(
               SOCK_INT,
               SOCK_STRING,
               SOCK_GEOMETRY);
-}
-
-bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationOutput *sim,
-                                                         NodeSimulationItem *item,
-                                                         const char *name,
-                                                         const char *defname)
-{
-  char unique_name[MAX_NAME + 4];
-  STRNCPY(unique_name, name);
-
-  blender::nodes::SimulationItemsUniqueNameArgs args{sim, item};
-  const bool name_changed = BLI_uniquename_cb(blender::nodes::simulation_items_unique_name_check,
-                                              &args,
-                                              defname,
-                                              '.',
-                                              unique_name,
-                                              ARRAY_SIZE(unique_name));
-  MEM_delete(item->name);
-  item->name = BLI_strdup(unique_name);
-  return name_changed;
-}
-
-NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimulationOutput *sim,
-                                                               const short socket_type,
-                                                               const char *name,
-                                                               int index)
-{
-  if (!NOD_geometry_simulation_output_item_socket_type_supported(eNodeSocketDatatype(socket_type)))
-  {
-    return nullptr;
-  }
-
-  NodeSimulationItem *old_items = sim->items;
-  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
-  for (const int i : blender::IndexRange(index)) {
-    sim->items[i] = old_items[i];
-  }
-  for (const int i : blender::IndexRange(index, sim->items_num - index)) {
-    sim->items[i + 1] = old_items[i];
-  }
-
-  const char *defname = nodeStaticSocketLabel(socket_type, 0);
-  NodeSimulationItem &added_item = sim->items[index];
-  added_item.identifier = sim->next_identifier++;
-  NOD_geometry_simulation_output_item_set_unique_name(sim, &added_item, name, defname);
-  added_item.socket_type = socket_type;
-
-  sim->items_num++;
-  MEM_SAFE_FREE(old_items);
-
-  return &added_item;
 }
