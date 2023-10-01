@@ -69,11 +69,12 @@
 #ifndef WITH_HEADLESS
 #  define ICON_GRID_COLS 26
 #  define ICON_GRID_ROWS 30
-
-#  define ICON_MONO_BORDER_OUTSET 2
-#  define ICON_GRID_MARGIN 10
-#  define ICON_GRID_W 32
-#  define ICON_GRID_H 32
+#  define ICON_GRID_WIDTH_MIN 602
+#  define ICON_GRID_HEIGHT_MIN 640
+#  define ICON_MONO_BORDER_OUTSET 4
+#  define ICON_GRID_MARGIN 20
+#  define ICON_GRID_W 64
+#  define ICON_GRID_H 64
 #endif /* WITH_HEADLESS */
 
 struct IconImage {
@@ -870,40 +871,70 @@ void UI_icons_reload_internal_textures()
 {
   bTheme *btheme = UI_GetTheme();
   ImBuf *b16buf = nullptr, *b32buf = nullptr, *b16buf_border = nullptr, *b32buf_border = nullptr;
+  ImBuf *b64buf = nullptr, *b64buf_border = nullptr;
   const float icon_border_intensity = btheme->tui.icon_border_intensity;
   const bool need_icons_with_border = icon_border_intensity > 0.0f;
 
-  if (b16buf == nullptr) {
+  const char *icon_directory = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
+  char path[FILE_MAX];
+  BLI_path_join(path, sizeof(path), icon_directory, "icons.png");
+  if (BLI_exists(path)) {
+    b64buf = IMB_loadiffname(path, IB_rect, NULL);
+  }
+
+  if (b64buf) {
+    if (b64buf->x > (ICON_GRID_WIDTH_MIN * 2)) {
+      IMB_scaleImBuf(b64buf, ICON_GRID_WIDTH_MIN * 4, ICON_GRID_HEIGHT_MIN * 4);
+    }
+    b32buf = IMB_dupImBuf(b64buf);
+    IMB_scaleImBuf(b32buf, ICON_GRID_WIDTH_MIN * 2, ICON_GRID_HEIGHT_MIN * 2);
+
+    b16buf = IMB_dupImBuf(b32buf);
+    IMB_scaleImBuf(b16buf, ICON_GRID_WIDTH_MIN, ICON_GRID_HEIGHT_MIN);
+  }
+  else {
+    b64buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons64_png,
+                                   datatoc_blender_icons64_png_size,
+                                   IB_rect,
+                                   nullptr,
+                                   "<blender icons>");
+    b32buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons32_png,
+                                   datatoc_blender_icons32_png_size,
+                                   IB_rect,
+                                   nullptr,
+                                   "<blender icons>");
     b16buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons16_png,
                                    datatoc_blender_icons16_png_size,
                                    IB_rect,
                                    nullptr,
                                    "<blender icons>");
   }
+
   if (b16buf) {
     if (need_icons_with_border) {
-      b16buf_border = create_mono_icon_with_border(b16buf, 2, icon_border_intensity);
+      b16buf_border = create_mono_icon_with_border(b16buf, 4, icon_border_intensity);
       IMB_premultiply_alpha(b16buf_border);
     }
     IMB_premultiply_alpha(b16buf);
   }
 
-  if (b32buf == nullptr) {
-    b32buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons32_png,
-                                   datatoc_blender_icons32_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
-  }
   if (b32buf) {
     if (need_icons_with_border) {
-      b32buf_border = create_mono_icon_with_border(b32buf, 1, icon_border_intensity);
+      b32buf_border = create_mono_icon_with_border(b32buf, 2, icon_border_intensity);
       IMB_premultiply_alpha(b32buf_border);
     }
     IMB_premultiply_alpha(b32buf);
   }
 
-  if (b16buf && b32buf) {
+  if (b64buf) {
+    if (need_icons_with_border) {
+      b64buf_border = create_mono_icon_with_border(b64buf, 1, icon_border_intensity);
+      IMB_premultiply_alpha(b64buf_border);
+    }
+    IMB_premultiply_alpha(b64buf);
+  }
+
+  if (b16buf && b32buf && b64buf) {
     /* Free existing texture if any. */
     free_icons_textures();
 
@@ -913,36 +944,41 @@ void UI_icons_reload_internal_textures()
     /* Note the filter and LOD bias were tweaked to better preserve icon
      * sharpness at different UI scales. */
     if (icongltex.tex[0] == nullptr) {
-      icongltex.w = b32buf->x;
-      icongltex.h = b32buf->y;
-      icongltex.invw = 1.0f / b32buf->x;
-      icongltex.invh = 1.0f / b32buf->y;
+      icongltex.w = b64buf->x;
+      icongltex.h = b64buf->y;
+      icongltex.invw = 1.0f / b64buf->x;
+      icongltex.invh = 1.0f / b64buf->y;
 
       icongltex.tex[0] = GPU_texture_create_2d(
-          "icons", b32buf->x, b32buf->y, 2, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
-      GPU_texture_update_mipmap(icongltex.tex[0], 0, GPU_DATA_UBYTE, b32buf->byte_buffer.data);
-      GPU_texture_update_mipmap(icongltex.tex[0], 1, GPU_DATA_UBYTE, b16buf->byte_buffer.data);
+          "icons", icongltex.w, icongltex.h, 3, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
+      GPU_texture_update_mipmap(icongltex.tex[0], 0, GPU_DATA_UBYTE, b64buf->byte_buffer.data);
+      GPU_texture_update_mipmap(icongltex.tex[0], 1, GPU_DATA_UBYTE, b32buf->byte_buffer.data);
+      GPU_texture_update_mipmap(icongltex.tex[0], 2, GPU_DATA_UBYTE, b16buf->byte_buffer.data);
     }
 
     if (need_icons_with_border && icongltex.tex[1] == nullptr) {
       icongltex.tex[1] = GPU_texture_create_2d("icons_border",
-                                               b32buf_border->x,
-                                               b32buf_border->y,
-                                               2,
+                                               icongltex.w,
+                                               icongltex.h,
+                                               3,
                                                GPU_RGBA8,
                                                GPU_TEXTURE_USAGE_SHADER_READ,
                                                nullptr);
       GPU_texture_update_mipmap(
-          icongltex.tex[1], 0, GPU_DATA_UBYTE, b32buf_border->byte_buffer.data);
+          icongltex.tex[1], 0, GPU_DATA_UBYTE, b64buf_border->byte_buffer.data);
       GPU_texture_update_mipmap(
-          icongltex.tex[1], 1, GPU_DATA_UBYTE, b16buf_border->byte_buffer.data);
+          icongltex.tex[1], 1, GPU_DATA_UBYTE, b32buf_border->byte_buffer.data);
+      GPU_texture_update_mipmap(
+          icongltex.tex[1], 2, GPU_DATA_UBYTE, b16buf_border->byte_buffer.data);
     }
   }
 
   IMB_freeImBuf(b16buf);
   IMB_freeImBuf(b32buf);
+  IMB_freeImBuf(b64buf);
   IMB_freeImBuf(b16buf_border);
   IMB_freeImBuf(b32buf_border);
+  IMB_freeImBuf(b64buf_border);
 }
 
 static void init_internal_icons()
