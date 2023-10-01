@@ -45,6 +45,16 @@ struct SimulationItemsAccessor {
                 SOCK_STRING,
                 SOCK_GEOMETRY);
   }
+  static void init_with_socket_type_and_name(bNode &node,
+                                             NodeSimulationItem &item,
+                                             const eNodeSocketDatatype socket_type,
+                                             const char *name)
+  {
+    auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
+    item.socket_type = socket_type;
+    item.identifier = storage->next_identifier++;
+    item_arrays::set_item_name<SimulationItemsAccessor>(node, item, name);
+  }
 };
 
 struct RepeatItemsAccessor {
@@ -85,6 +95,16 @@ struct RepeatItemsAccessor {
                 SOCK_MATERIAL,
                 SOCK_IMAGE,
                 SOCK_COLLECTION);
+  }
+  static void init_with_socket_type_and_name(bNode &node,
+                                             NodeRepeatItem &item,
+                                             const eNodeSocketDatatype socket_type,
+                                             const char *name)
+  {
+    auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
+    item.socket_type = socket_type;
+    item.identifier = storage->next_identifier++;
+    item_arrays::set_item_name<RepeatItemsAccessor>(node, item, name);
   }
 };
 
