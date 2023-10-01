@@ -3010,6 +3010,20 @@ static void rna_def_property_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Propert
   }
 }
 
+static int count_template_args(const char *function_name)
+{
+  if (!strstr(function_name, "<")) {
+    return 0;
+  }
+  int count = 1;
+  for (const char *c = function_name; *c; c++) {
+    if (*c == ',') {
+      count++;
+    }
+  }
+  return count;
+}
+
 static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA *dfunc)
 {
   StructRNA *srna = dsrna->srna;
@@ -3026,7 +3040,7 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
   rna_construct_wrapper_function_name(
       funcname, sizeof(funcname), srna->identifier, func->identifier, "func");
 
-  if (!(dfunc->call && strstr(dfunc->call, "<"))) {
+  if (!(dfunc->call && count_template_args(dfunc->call) > 0)) {
     fprintf(f, "RNA_EXTERN_C ");
   }
   rna_generate_static_parameter_prototypes(f, srna, dfunc, funcname, 0);
@@ -3787,8 +3801,17 @@ static void rna_generate_static_parameter_prototypes(FILE *f,
   dsrna = rna_find_struct_def(srna);
   func = dfunc->func;
 
-  if (!name_override && dfunc->call && strstr(dfunc->call, "<")) {
-    fprintf(f, "template<typename T> ");
+  const int template_args_num = dfunc->call ? count_template_args(dfunc->call) : 0;
+  if (!name_override && template_args_num > 0) {
+    BLI_assert(template_args_num <= 26);
+    fprintf(f, "template<typename A");
+    char template_name = 'B';
+    for (int i = 0; i < template_args_num - 1; i++) {
+      BLI_assert(template_name <= 'Z');
+      fprintf(f, ", typename %c", template_name);
+      template_name++;
+    }
+    fprintf(f, "> ");
   }
 
   /* return type */
