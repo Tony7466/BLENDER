@@ -1564,6 +1564,7 @@ typedef enum eSpaceNodeOverlay_Flag {
   SN_OVERLAY_SHOW_PATH = (1 << 4),
   SN_OVERLAY_SHOW_NAMED_ATTRIBUTES = (1 << 5),
   SN_OVERLAY_SHOW_PREVIEWS = (1 << 6),
+  SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS = (1 << 7),
 } eSpaceNodeOverlay_Flag;
 
 typedef enum eSpaceNodeOverlay_preview_shape {

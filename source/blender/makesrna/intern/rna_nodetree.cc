@@ -2061,6 +2061,16 @@ static void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr
   DEG_relations_tag_update(bmain);
 }
 
+static void rna_Node_update_node_labels(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = static_cast<bNode *>(ptr->data);
+
+  if (node->is_reroute()) {
+    blender::bke::ntree_update_auto_labels(ntree);
+  }
+}
+
 static void rna_Node_socket_value_update(ID *id, bNode * /*node*/, bContext *C)
 {
   BKE_ntree_update_tag_all(reinterpret_cast<bNodeTree *>(id));
@@ -9486,7 +9496,7 @@ static void rna_def_node(BlenderRNA *brna)
   prop = RNA_def_property(srna, "label", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "label");
   RNA_def_property_ui_text(prop, "Label", "Optional custom node label");
-  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Node_update_node_labels");
 
   prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "inputs", nullptr);
