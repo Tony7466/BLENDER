@@ -3129,7 +3129,7 @@ template<typename T> struct ItemsArrayRef {
 };
 
 struct SimulationItemsAccessors {
-  using value_type = NodeSimulationItem;
+  using ItemT = NodeSimulationItem;
   static constexpr StructRNA *srna = &RNA_SimulationStateItem;
 
   static ItemsArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
@@ -3141,14 +3141,14 @@ struct SimulationItemsAccessors {
   {
     MEM_SAFE_FREE(item->name);
   }
-  static short *get_socket_type(NodeSimulationItem *item)
+  static short *get_socket_type(NodeSimulationItem &item)
   {
-    return &item->socket_type;
+    return &item.socket_type;
   }
 };
 
 struct RepeatItemsAccessors {
-  using value_type = NodeRepeatItem;
+  using ItemT = NodeRepeatItem;
   static constexpr StructRNA *srna = &RNA_RepeatItem;
 
   static ItemsArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
@@ -3160,9 +3160,9 @@ struct RepeatItemsAccessors {
   {
     MEM_SAFE_FREE(item->name);
   }
-  static short *get_socket_type(NodeRepeatItem *item)
+  static short *get_socket_type(NodeRepeatItem &item)
   {
-    return &item->socket_type;
+    return &item.socket_type;
   }
 };
 
@@ -3246,7 +3246,7 @@ static void rna_Node_item_remove(ID *id,
                                  bNode *node,
                                  Main *bmain,
                                  ReportList *reports,
-                                 typename Accessor::value_type *item_to_remove)
+                                 typename Accessor::ItemT *item_to_remove)
 {
   ItemsArrayRef array = Accessor::get_items_from_node(*node);
   if (item_to_remove < *array.items_p || item_to_remove >= *array.items_p + *array.items_num_p) {
@@ -3298,7 +3298,7 @@ template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRN
 {
   bNode *node = static_cast<bNode *>(ptr->data);
   ItemsArrayRef array = Accessor::get_items_from_node(*node);
-  typename Accessor::value_type *active_item = nullptr;
+  typename Accessor::ItemT *active_item = nullptr;
   const int active_index = *array.active_index_p;
   const int items_num = *array.items_num_p;
   if (active_index >= 0 && active_index < items_num) {
@@ -3308,7 +3308,7 @@ template<typename Accessor> static PointerRNA rna_Node_item_active_get(PointerRN
 }
 template<typename Accessor> static void rna_Node_item_active_set(PointerRNA *ptr, PointerRNA value)
 {
-  using ItemT = typename Accessor::value_type;
+  using ItemT = typename Accessor::ItemT;
   bNode *node = static_cast<bNode *>(ptr->data);
   ItemT *item = static_cast<ItemT *>(value.data);
 
@@ -3401,20 +3401,22 @@ static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
   storage->set_item_name(*item, value);
 }
 
+template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr, float *values)
+{
+  using ItemT = typename Accessors::ItemT;
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  const char *socket_type_idname = nodeStaticSocketType(*Accessors::get_socket_type(item), 0);
+  ED_node_type_draw_color(socket_type_idname, values);
+}
+
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
-
-  const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
-  ED_node_type_draw_color(socket_type_idname, values);
+  rna_Node_item_color_get<SimulationItemsAccessors>(ptr, values);
 }
 
 static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
-  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(ptr->data);
-
-  const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
-  ED_node_type_draw_color(socket_type_idname, values);
+  rna_Node_item_color_get<RepeatItemsAccessors>(ptr, values);
 }
 
 static PointerRNA rna_Node_paired_output_get(PointerRNA *ptr)
