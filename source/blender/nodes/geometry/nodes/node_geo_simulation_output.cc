@@ -1189,16 +1189,6 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item_from_socket(
   return NOD_geometry_simulation_output_insert_item(sim, from_sock->type, from_sock->name, index);
 }
 
-void NOD_geometry_simulation_output_clear_items(NodeGeometrySimulationOutput *sim)
-{
-  for (NodeSimulationItem &item : sim->items_span()) {
-    MEM_SAFE_FREE(item.name);
-  }
-  MEM_SAFE_FREE(sim->items);
-  sim->items = nullptr;
-  sim->items_num = 0;
-}
-
 void NOD_geometry_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
                                               int from_index,
                                               int to_index)

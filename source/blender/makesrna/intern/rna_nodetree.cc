@@ -3307,6 +3307,7 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
 template<typename T>
 static void remove_item(T **items,
                         int *items_num,
+                        int *active_index,
                         const int remove_index,
                         void (*destruct_item)(T *))
 {
@@ -3316,6 +3317,7 @@ static void remove_item(T **items,
 
   const int old_items_num = *items_num;
   const int new_items_num = old_items_num - 1;
+  const int old_active_index = *active_index;
 
   T *old_items = *items;
   T *new_items = MEM_cnew_array<T>(new_items_num, __func__);
@@ -3327,8 +3329,23 @@ static void remove_item(T **items,
   destruct_item(&old_items[remove_index]);
   MEM_SAFE_FREE(old_items);
 
+  const int new_active_index = std::max(
+      0, old_active_index == new_items_num ? new_items_num - 1 : old_active_index);
+
   *items = new_items;
   *items_num = new_items_num;
+  *active_index = new_active_index;
+}
+
+template<typename T>
+static void clear_items(T **items, int *items_num, int *active_index, void (*destruct_item)(T *))
+{
+  for (const int i : blender::IndexRange(*items_num)) {
+    destruct_item(&(*items)[i]);
+  }
+  MEM_SAFE_FREE(*items);
+  *items_num = 0;
+  *active_index = 0;
 }
 
 template<typename T>
@@ -3338,16 +3355,33 @@ static void rna_Node_item_remove(ID *id,
                                  ReportList *reports,
                                  T **items,
                                  int *items_num,
+                                 int *active_index,
                                  T *item_to_remove,
                                  void (*destruct_item)(T *))
 {
-
   if (item_to_remove < *items || item_to_remove >= *items + *items_num) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
   }
   const int remove_index = item_to_remove - *items;
-  remove_item<T>(items, items_num, remove_index, destruct_item);
+  remove_item<T>(items, items_num, active_index, remove_index, destruct_item);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+template<typename T>
+static void rna_Node_items_clear(ID *id,
+                                 bNode *node,
+                                 Main *bmain,
+                                 T **items,
+                                 int *items_num,
+                                 int *active_index,
+                                 void (*destruct_item)(T *))
+{
+  clear_items(items, items_num, active_index, destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3366,6 +3400,7 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
       reports,
       &storage->items,
       &storage->items_num,
+      &storage->active_index,
       item,
       [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
 }
@@ -3380,30 +3415,34 @@ static void rna_NodeGeometryRepeatOutput_items_remove(
                                        reports,
                                        &storage->items,
                                        &storage->items_num,
+                                       &storage->active_index,
                                        item,
                                        [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NOD_geometry_simulation_output_clear_items(sim);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  rna_Node_items_clear<NodeSimulationItem>(
+      id,
+      node,
+      bmain,
+      &storage->items,
+      &storage->items_num,
+      &storage->active_index,
+      [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
-static void rna_NodeGeometryRepeatOutput_items_clear(ID * /*id*/, bNode *node, Main * /*bmain*/)
+static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  for (NodeRepeatItem &item : storage->items_span()) {
-    MEM_SAFE_FREE(item.name);
-  }
-  MEM_SAFE_FREE(storage->items);
-  storage->items_num = 0;
-  storage->active_index = 0;
+  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  rna_Node_items_clear<NodeRepeatItem>(id,
+                                       node,
+                                       bmain,
+                                       &storage->items,
+                                       &storage->items_num,
+                                       &storage->active_index,
+                                       [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(
