@@ -1145,12 +1145,3 @@ NodeSimulationItem *NOD_geometry_simulation_output_add_item_from_socket(
   return NOD_geometry_simulation_output_insert_item(
       sim, from_sock->type, from_sock->name, sim->items_num);
 }
-
-NodeSimulationItem *NOD_geometry_simulation_output_insert_item_from_socket(
-    NodeGeometrySimulationOutput *sim,
-    const bNode * /*from_node*/,
-    const bNodeSocket *from_sock,
-    int index)
-{
-  return NOD_geometry_simulation_output_insert_item(sim, from_sock->type, from_sock->name, index);
-}

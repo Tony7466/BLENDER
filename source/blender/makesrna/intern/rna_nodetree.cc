@@ -3131,6 +3131,8 @@ template<typename T> struct ItemsArrayRef {
 struct SimulationItemsAccessors {
   using ItemT = NodeSimulationItem;
   static constexpr StructRNA *srna = &RNA_SimulationStateItem;
+  static constexpr int node_type = GEO_NODE_SIMULATION_OUTPUT;
+  static constexpr const char *node_idname = "GeometryNodeSimulationOutput";
 
   static ItemsArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
   {
@@ -3145,11 +3147,17 @@ struct SimulationItemsAccessors {
   {
     return &item.socket_type;
   }
+  static char **get_name(NodeSimulationItem &item)
+  {
+    return &item.name;
+  }
 };
 
 struct RepeatItemsAccessors {
   using ItemT = NodeRepeatItem;
   static constexpr StructRNA *srna = &RNA_RepeatItem;
+  static constexpr int node_type = GEO_NODE_REPEAT_OUTPUT;
+  static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
 
   static ItemsArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
   {
@@ -3164,7 +3172,24 @@ struct RepeatItemsAccessors {
   {
     return &item.socket_type;
   }
+  static char **get_name(NodeRepeatItem &item)
+  {
+    return &item.name;
+  }
 };
+
+template<typename Accessor>
+static bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT &item)
+{
+  ntree.ensure_topology_cache();
+  for (bNode *node : ntree.nodes_by_type(Accessor::node_idname)) {
+    ItemsArrayRef array = Accessor::get_items_from_node(*node);
+    if (&item >= *array.items_p && &item < *array.items_p + *array.items_num_p) {
+      return node;
+    }
+  }
+  return nullptr;
+}
 
 template<typename T>
 static void remove_item(T **items,
@@ -3382,23 +3407,55 @@ static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/
                               rna_RepeatItem_socket_type_supported);
 }
 
+template<typename Accessor> static void rna_Node_item_name_set(PointerRNA *ptr, const char *value)
+{
+  using ItemT = typename Accessor::ItemT;
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  bNode *node = find_node_by_item<Accessor>(ntree, item);
+  BLI_assert(node != nullptr);
+
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
+
+  char unique_name[MAX_NAME + 4];
+  STRNCPY(unique_name, value);
+
+  struct Args {
+    ItemsArrayRef<ItemT> array;
+    ItemT *item;
+  } args = {array, &item};
+  BLI_uniquename_cb(
+      [](void *arg, const char *name) {
+        const Args &args = *static_cast<Args *>(arg);
+        for (ItemT &item : blender::MutableSpan(*args.array.items_p, *args.array.items_num_p)) {
+          if (&item != args.item) {
+            if (STREQ(*Accessor::get_name(item), name)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      &args,
+      default_name,
+      '.',
+      unique_name,
+      ARRAY_SIZE(unique_name));
+
+  char **item_name = Accessor::get_name(item);
+  MEM_SAFE_FREE(*item_name);
+  *item_name = BLI_strdup(unique_name);
+}
+
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
-  bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-
-  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
-  NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
+  rna_Node_item_name_set<SimulationItemsAccessors>(ptr, value);
 }
 
 static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
 {
-  bNode *node = find_node_by_repeat_item(ptr);
-  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(ptr->data);
-  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  storage->set_item_name(*item, value);
+  rna_Node_item_name_set<RepeatItemsAccessors>(ptr, value);
 }
 
 template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr, float *values)
