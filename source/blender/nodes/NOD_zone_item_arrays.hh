@@ -55,6 +55,10 @@ struct SimulationItemsAccessor {
     item.identifier = storage->next_identifier++;
     item_arrays::set_item_name<SimulationItemsAccessor>(node, item, name);
   }
+  static std::string socket_identifier_for_item(const NodeSimulationItem &item)
+  {
+    return "Item_" + std::to_string(item.identifier);
+  }
 };
 
 struct RepeatItemsAccessor {
@@ -105,6 +109,10 @@ struct RepeatItemsAccessor {
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
     item_arrays::set_item_name<RepeatItemsAccessor>(node, item, name);
+  }
+  static std::string socket_identifier_for_item(const NodeRepeatItem &item)
+  {
+    return "Item_" + std::to_string(item.identifier);
   }
 };
 

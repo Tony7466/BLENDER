@@ -52,7 +52,7 @@ namespace blender::nodes {
 
 std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item)
 {
-  return "Item_" + std::to_string(item.identifier);
+  return SimulationItemsAccessor::socket_identifier_for_item(item);
 }
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
@@ -967,38 +967,8 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  if (link->tonode == node) {
-    if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item =
-              item_arrays::add_item_with_socket_and_name<SimulationItemsAccessor>(
-                  *node, eNodeSocketDatatype(link->fromsock->type), link->fromsock->name))
-      {
-        update_node_declaration_and_sockets(*ntree, *node);
-        link->tosock = nodeFindSocket(
-            node, SOCK_IN, socket_identifier_for_simulation_item(*item).c_str());
-      }
-      else {
-        return false;
-      }
-    }
-  }
-  else {
-    BLI_assert(link->fromnode == node);
-    if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item =
-              item_arrays::add_item_with_socket_and_name<SimulationItemsAccessor>(
-                  *node, eNodeSocketDatatype(link->tosock->type), link->tosock->name))
-      {
-        update_node_declaration_and_sockets(*ntree, *node);
-        link->fromsock = nodeFindSocket(
-            node, SOCK_OUT, socket_identifier_for_simulation_item(*item).c_str());
-      }
-      else {
-        return false;
-      }
-    }
-  }
-  return true;
+  return item_arrays::try_add_item_via_any_extend_socket<SimulationItemsAccessor>(
+      *ntree, *node, *node, *link);
 }
 
 static void node_register()

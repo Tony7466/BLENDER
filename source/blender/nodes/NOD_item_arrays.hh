@@ -8,6 +8,9 @@
 #include "BLI_string_utils.h"
 
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
+
+#include "NOD_socket.hh"
 
 namespace blender::nodes::item_arrays {
 
@@ -167,6 +170,70 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
   *array.active_index_p = old_items_num;
 
   return &new_item;
+}
+
+template<typename Accessor>
+[[nodiscard]] inline bool try_add_item_via_extend_socket(bNodeTree &ntree,
+                                                         bNode &extend_node,
+                                                         bNodeSocket &extend_socket,
+                                                         bNode &storage_node,
+                                                         bNodeLink &link)
+{
+  using ItemT = typename Accessor::ItemT;
+  bNodeSocket *src_socket = nullptr;
+  if (link.tosock == &extend_socket) {
+    src_socket = link.fromsock;
+  }
+  else if (link.fromsock == &extend_socket) {
+    src_socket = link.tosock;
+  }
+  else {
+    return false;
+  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(src_socket->type);
+  if (!Accessor::supports_socket_type(socket_type)) {
+    return false;
+  }
+  const ItemT *item = add_item_with_socket_and_name<Accessor>(
+      storage_node, socket_type, src_socket->name);
+  if (item == nullptr) {
+    return false;
+  }
+  update_node_declaration_and_sockets(ntree, extend_node);
+  const std::string item_identifier = Accessor::socket_identifier_for_item(*item);
+  if (extend_socket.is_input()) {
+    bNodeSocket *new_socket = nodeFindSocket(&extend_node, SOCK_IN, item_identifier.c_str());
+    link.tosock = new_socket;
+  }
+  else {
+    bNodeSocket *new_socket = nodeFindSocket(&extend_node, SOCK_OUT, item_identifier.c_str());
+    link.fromsock = new_socket;
+  }
+  return true;
+}
+
+/** Returns false when the link should be removed. */
+template<typename Accessor>
+[[nodiscard]] inline bool try_add_item_via_any_extend_socket(bNodeTree &ntree,
+                                                             bNode &extend_node,
+                                                             bNode &storage_node,
+                                                             bNodeLink &link)
+{
+  bNodeSocket *possible_extend_socket = nullptr;
+  if (link.fromnode == &extend_node) {
+    possible_extend_socket = link.fromsock;
+  }
+  if (link.tonode == &extend_node) {
+    possible_extend_socket = link.tosock;
+  }
+  if (possible_extend_socket == nullptr) {
+    return true;
+  }
+  if (!STREQ(possible_extend_socket->idname, "NodeSocketVirtual")) {
+    return true;
+  }
+  return try_add_item_via_extend_socket<Accessor>(
+      ntree, extend_node, *possible_extend_socket, storage_node, link);
 }
 
 }  // namespace blender::nodes::item_arrays
