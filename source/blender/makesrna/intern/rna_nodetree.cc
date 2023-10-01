@@ -3307,18 +3307,29 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  if (!NOD_geometry_simulation_output_contains_item(sim, item)) {
+  NodeGeometrySimulationOutput *storage = static_cast<NodeGeometrySimulationOutput *>(
+      node->storage);
+  if (!storage->items_span().contains_ptr(item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
+    return;
   }
-  else {
-    NOD_geometry_simulation_output_remove_item(sim, item);
 
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
+  const int remove_index = item - storage->items;
+  NodeSimulationItem *old_items = storage->items;
+  storage->items = MEM_cnew_array<NodeSimulationItem>(storage->items_num - 1, __func__);
+  std::copy_n(old_items, remove_index, storage->items);
+  std::copy_n(old_items + remove_index + 1,
+              storage->items_num - remove_index - 1,
+              storage->items + remove_index);
+
+  MEM_SAFE_FREE(old_items[remove_index].name);
+  storage->items_num--;
+  MEM_SAFE_FREE(old_items);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_remove(

@@ -54,8 +54,6 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item_from_socket(
     const bNode *from_node,
     const bNodeSocket *from_sock,
     int index);
-void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *sim,
-                                                NodeSimulationItem *item);
 void NOD_geometry_simulation_output_clear_items(NodeGeometrySimulationOutput *sim);
 void NOD_geometry_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
                                               int from_index,

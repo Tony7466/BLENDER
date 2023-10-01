@@ -1189,29 +1189,6 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item_from_socket(
   return NOD_geometry_simulation_output_insert_item(sim, from_sock->type, from_sock->name, index);
 }
 
-void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *sim,
-                                                NodeSimulationItem *item)
-{
-  const int index = item - sim->items;
-  if (index < 0 || index >= sim->items_num) {
-    return;
-  }
-
-  NodeSimulationItem *old_items = sim->items;
-  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num - 1, __func__);
-  for (const int i : blender::IndexRange(index)) {
-    sim->items[i] = old_items[i];
-  }
-  for (const int i : blender::IndexRange(index, sim->items_num - index).drop_front(1)) {
-    sim->items[i - 1] = old_items[i];
-  }
-
-  MEM_SAFE_FREE(old_items[index].name);
-
-  sim->items_num--;
-  MEM_SAFE_FREE(old_items);
-}
-
 void NOD_geometry_simulation_output_clear_items(NodeGeometrySimulationOutput *sim)
 {
   for (NodeSimulationItem &item : sim->items_span()) {
