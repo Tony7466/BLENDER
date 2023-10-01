@@ -293,6 +293,11 @@ struct PanelType {
   void (*draw_header_preset)(const bContext *C, Panel *panel);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const bContext *C, Panel *panel);
+  /**
+   * Listener to redraw the region this is contained in on changes. Only used for panels displayed
+   * in popover regions.
+   */
+  void (*listener)(const wmRegionListenerParams *params);
 
   /* For instanced panels corresponding to a list: */
 
@@ -334,9 +339,9 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
-/* uilist types */
+/* #uiList types. */
 
-/* Draw an item in the uiList */
+/** Draw an item in the `ui_list`. */
 using uiListDrawItemFunc = void (*)(uiList *ui_list,
                                     const bContext *C,
                                     uiLayout *layout,
