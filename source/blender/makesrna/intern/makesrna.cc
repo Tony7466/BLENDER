@@ -3016,6 +3016,7 @@ static void rna_def_property_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Propert
  */
 static int count_template_args(const char *function_name)
 {
+  BLI_assert(function_name != nullptr);
   if (!strstr(function_name, "<")) {
     return 0;
   }
