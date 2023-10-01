@@ -198,62 +198,6 @@ static const int to_component_count(const Type &type)
   return -1;
 }
 
-static const eGPUTextureFormat to_texture_format_type(const Type &type)
-{
-  switch (type) {
-    case Type::FLOAT:
-      return GPU_R32F;
-    case Type::VEC2:
-      return GPU_RG32F;
-    case Type::VEC4:
-      return GPU_RGBA32F;
-    case Type::UINT:
-      return GPU_R32UI;
-    case Type::UVEC2:
-      return GPU_RG32UI;
-    case Type::UVEC4:
-      return GPU_RGBA32UI;
-    case Type::INT:
-      return GPU_R32I;
-    case Type::IVEC2:
-      return GPU_RG32I;
-    case Type::IVEC4:
-      return GPU_RGBA32I;
-
-    /* Alias special types. */
-    case Type::UCHAR:
-    case Type::UCHAR2:
-    case Type::UCHAR3:
-    case Type::UCHAR4:
-    case Type::USHORT:
-    case Type::USHORT2:
-    case Type::USHORT3:
-    case Type::USHORT4:
-    case Type::CHAR:
-    case Type::CHAR2:
-    case Type::CHAR3:
-    case Type::CHAR4:
-    case Type::SHORT:
-    case Type::SHORT2:
-    case Type::SHORT3:
-    case Type::SHORT4:
-    case Type::VEC3_101010I2:
-      /* TODO(fclem): This could add support for lower bit depth formats. */
-      break;
-
-    /* Unsupported. */
-    case Type::IVEC3:
-    case Type::BOOL:
-    case Type::UVEC3:
-    case Type::VEC3:
-    case Type::MAT3:
-    case Type::MAT4:
-      break;
-  }
-  BLI_assert_unreachable();
-  return GPU_R32F;
-}
-
 static const Type to_component_type(const Type &type)
 {
   switch (type) {
@@ -838,6 +782,10 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       /* Declare global for input. */
       ss << to_string(input.type) << " " << input.name << ";\n";
 
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
+
       /* Start with invalid value to detect failure cases. */
       ImageType image_type = ImageType::FLOAT_BUFFER;
       switch (to_component_type(input.type)) {
@@ -866,16 +814,12 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       char swizzle[] = "xyzw";
       swizzle[to_component_count(input.type)] = '\0';
 
-      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
-       * built-in flag. */
-      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
-
       std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
                                                "ivec2(gl_FragCoord.xy)";
 
       std::stringstream ss_pre;
       /* Populate the global before main using imageLoad. */
-      ss_pre << "  " << input.name << " = texelFetch(" << image_name << ", " << texel_co << ")."
+      ss_pre << "  " << input.name << " = texelFetch(" << image_name << ", " << texel_co << ", 0)."
              << swizzle << ";\n";
 
       pre_main += ss_pre.str();

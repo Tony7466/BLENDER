@@ -818,9 +818,9 @@ void GLTexture::check_feedback_loop()
       GPUAttachmentType type = fb_attachment_[i];
       GPUAttachment attachment = fb->attachments_[type];
       /* Check for when texture is used with texture barrier. */
-      GPUTexture *attachment_read = fb->tmp_detached_[type];
+      GPUAttachment attachment_read = fb->tmp_detached_[type];
       if (attachment.mip <= mip_max_ && attachment.mip >= mip_min_ &&
-          attachment_read != wrap(this)) {
+          attachment_read.tex == nullptr) {
         char msg[256];
         SNPRINTF(msg,
                  "Feedback loop: Trying to bind a texture (%s) with mip range %d-%d but mip %d is "

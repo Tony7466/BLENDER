@@ -634,6 +634,9 @@ void GLBackend::capabilities_init()
   GLContext::vertex_attrib_binding_support = epoxy_has_gl_extension(
       "GL_ARB_vertex_attrib_binding");
 
+  /* Disabled until it is proven to work. */
+  GLContext::framebuffer_fetch_support = false;
+
   detect_workarounds();
 
   /* Disable this feature entirely when not debugging. */
