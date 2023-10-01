@@ -3438,16 +3438,10 @@ static void rna_Node_item_remove(ID *id,
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-template<typename T>
-static void rna_Node_items_clear(ID *id,
-                                 bNode *node,
-                                 Main *bmain,
-                                 T **items,
-                                 int *items_num,
-                                 int *active_index,
-                                 void (*destruct_item)(T *))
+template<typename Accessor> static void rna_Node_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  clear_items(items, items_num, active_index, destruct_item);
+  ItemsArrayRef array = Accessor::get_items_from_node(*node);
+  clear_items(array.items_p, array.items_num_p, array.active_index_p, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3489,28 +3483,12 @@ static void rna_NodeGeometryRepeatOutput_items_remove(
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  auto *storage = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  rna_Node_items_clear(
-      id,
-      node,
-      bmain,
-      &storage->items,
-      &storage->items_num,
-      &storage->active_index,
-      +[](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_items_clear<SimulationItemsAccessors>(id, node, bmain);
 }
 
 static void rna_NodeGeometryRepeatOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
-  rna_Node_items_clear(
-      id,
-      node,
-      bmain,
-      &storage->items,
-      &storage->items_num,
-      &storage->active_index,
-      +[](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
+  rna_Node_items_clear<RepeatItemsAccessors>(id, node, bmain);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(
