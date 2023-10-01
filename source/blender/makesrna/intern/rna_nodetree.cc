@@ -3358,30 +3358,14 @@ typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
     BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
     return nullptr;
   }
-  ItemArrayRef array = Accessor::get_items_from_node(*node);
-
-  ItemT *old_items = *array.items_p;
-  const int old_items_num = *array.items_num_p;
-  const int new_items_num = old_items_num + 1;
-
-  ItemT *new_items = MEM_cnew_array<ItemT>(new_items_num, __func__);
-  std::copy_n(old_items, old_items_num, new_items);
-  ItemT &new_item = new_items[old_items_num];
-
-  set_item_name<Accessor>(*node, new_item, name);
-  *Accessor::get_socket_type(new_item) = socket_type;
-
-  MEM_SAFE_FREE(old_items);
-  *array.items_p = new_items;
-  *array.items_num_p = new_items_num;
-  *array.active_index_p = old_items_num;
+  ItemT *new_item = add_item_with_socket_and_name<Accessor>(*node, socket_type, name);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 
-  return &new_item;
+  return new_item;
 }
 
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(

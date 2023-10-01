@@ -184,7 +184,7 @@ inline void move_item(T *items, const int items_num, const int from_index, const
 }
 
 template<typename Accessor>
-static void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
+inline void set_item_name(bNode &node, typename Accessor::ItemT &item, const char *value)
 {
   using ItemT = typename Accessor::ItemT;
   ItemArrayRef array = Accessor::get_items_from_node(node);
@@ -218,6 +218,35 @@ static void set_item_name(bNode &node, typename Accessor::ItemT &item, const cha
   char **item_name = Accessor::get_name(item);
   MEM_SAFE_FREE(*item_name);
   *item_name = BLI_strdup(unique_name);
+}
+
+template<typename Accessor>
+inline typename Accessor::ItemT *add_item_with_socket_and_name(bNode &node,
+                                                               const int socket_type,
+                                                               const char *name)
+{
+  using ItemT = typename Accessor::ItemT;
+  BLI_assert(Accessor::supports_socket_type(eNodeSocketDatatype(socket_type)));
+
+  ItemArrayRef array = Accessor::get_items_from_node(node);
+
+  ItemT *old_items = *array.items_p;
+  const int old_items_num = *array.items_num_p;
+  const int new_items_num = old_items_num + 1;
+
+  ItemT *new_items = MEM_cnew_array<ItemT>(new_items_num, __func__);
+  std::copy_n(old_items, old_items_num, new_items);
+  ItemT &new_item = new_items[old_items_num];
+
+  set_item_name<Accessor>(node, new_item, name);
+  *Accessor::get_socket_type(new_item) = socket_type;
+
+  MEM_SAFE_FREE(old_items);
+  *array.items_p = new_items;
+  *array.items_num_p = new_items_num;
+  *array.active_index_p = old_items_num;
+
+  return &new_item;
 }
 
 }  // namespace blender::nodes::item_arrays

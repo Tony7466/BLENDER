@@ -13,6 +13,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_geometry.hh"
+#include "NOD_item_arrays.hh"
 #include "NOD_socket.hh"
 
 #include "BLI_string_utils.h"
