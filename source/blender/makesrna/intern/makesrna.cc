@@ -3803,11 +3803,11 @@ static void rna_generate_static_parameter_prototypes(FILE *f,
 
   const int template_args_num = dfunc->call ? count_template_args(dfunc->call) : 0;
   if (!name_override && template_args_num > 0) {
+    /* The template names are called A, B, C, etc. */
     BLI_assert(template_args_num <= 26);
     fprintf(f, "template<typename A");
     char template_name = 'B';
     for (int i = 0; i < template_args_num - 1; i++) {
-      BLI_assert(template_name <= 'Z');
       fprintf(f, ", typename %c", template_name);
       template_name++;
     }
@@ -3839,6 +3839,7 @@ static void rna_generate_static_parameter_prototypes(FILE *f,
 
   /* function name */
   if (name_override == nullptr || name_override[0] == '\0') {
+    /* Here we only need the function name without the template parameters. */
     const char *template_begin = strstr(dfunc->call, "<");
     if (template_begin) {
       const int num_chars = template_begin - dfunc->call;
