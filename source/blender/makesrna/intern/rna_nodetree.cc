@@ -3290,6 +3290,25 @@ template<typename Accessors> static void rna_Node_item_color_get(PointerRNA *ptr
   ED_node_type_draw_color(socket_type_idname, values);
 }
 
+template<typename Accessor>
+typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
+{
+  using ItemT = typename Accessor::ItemT;
+  if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
+    BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
+    return nullptr;
+  }
+  ItemT *new_item = add_item_with_socket_and_name<Accessor>(*node, socket_type, name);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return new_item;
+}
+
 static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   rna_Node_item_update<SimulationItemsAccessors>(bmain, ptr);
@@ -3334,25 +3353,6 @@ static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
   rna_Node_item_color_get<RepeatItemsAccessors>(ptr, values);
-}
-
-template<typename Accessor>
-typename Accessor::ItemT *rna_Node_item_new_with_socket_and_name(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
-{
-  using ItemT = typename Accessor::ItemT;
-  if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
-    BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
-    return nullptr;
-  }
-  ItemT *new_item = add_item_with_socket_and_name<Accessor>(*node, socket_type, name);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-
-  return new_item;
 }
 
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
