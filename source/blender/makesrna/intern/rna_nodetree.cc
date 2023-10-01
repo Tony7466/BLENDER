@@ -3304,6 +3304,33 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
   return item;
 }
 
+template<typename T>
+static void remove_item(T **items,
+                        int *items_num,
+                        const int remove_index,
+                        void (*destruct_item)(T *))
+{
+  static_assert(std::is_trivial_v<T>);
+  BLI_assert(remove_index >= 0);
+  BLI_assert(remove_index < *items_num);
+
+  const int old_items_num = *items_num;
+  const int new_items_num = old_items_num - 1;
+
+  T *old_items = *items;
+  T *new_items = MEM_cnew_array<T>(new_items_num, __func__);
+
+  std::copy_n(old_items, remove_index, new_items);
+  std::copy_n(
+      old_items + remove_index + 1, old_items_num - remove_index - 1, new_items + remove_index);
+
+  destruct_item(&old_items[remove_index]);
+  MEM_SAFE_FREE(old_items);
+
+  *items = new_items;
+  *items_num = new_items_num;
+}
+
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
@@ -3315,16 +3342,10 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
   }
 
   const int remove_index = item - storage->items;
-  NodeSimulationItem *old_items = storage->items;
-  storage->items = MEM_cnew_array<NodeSimulationItem>(storage->items_num - 1, __func__);
-  std::copy_n(old_items, remove_index, storage->items);
-  std::copy_n(old_items + remove_index + 1,
-              storage->items_num - remove_index - 1,
-              storage->items + remove_index);
-
-  MEM_SAFE_FREE(old_items[remove_index].name);
-  storage->items_num--;
-  MEM_SAFE_FREE(old_items);
+  remove_item<NodeSimulationItem>(&storage->items,
+                                  &storage->items_num,
+                                  remove_index,
+                                  [](NodeSimulationItem *item) { MEM_SAFE_FREE(item->name); });
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3342,16 +3363,10 @@ static void rna_NodeGeometryRepeatOutput_items_remove(
   }
 
   const int remove_index = item - storage->items;
-  NodeRepeatItem *old_items = storage->items;
-  storage->items = MEM_cnew_array<NodeRepeatItem>(storage->items_num - 1, __func__);
-  std::copy_n(old_items, remove_index, storage->items);
-  std::copy_n(old_items + remove_index + 1,
-              storage->items_num - remove_index - 1,
-              storage->items + remove_index);
-
-  MEM_SAFE_FREE(old_items[remove_index].name);
-  storage->items_num--;
-  MEM_SAFE_FREE(old_items);
+  remove_item<NodeRepeatItem>(&storage->items,
+                              &storage->items_num,
+                              remove_index,
+                              [](NodeRepeatItem *item) { MEM_SAFE_FREE(item->name); });
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
