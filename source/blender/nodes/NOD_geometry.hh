@@ -10,11 +10,3 @@ extern bNodeTreeType *ntreeType_Geometry;
 
 void register_node_tree_type_geo();
 void register_node_type_geo_custom_group(bNodeType *ntype);
-
-/* -------------------------------------------------------------------- */
-/** \name Simulation Output Node
- * \{ */
-
-bool NOD_geometry_simulation_output_item_socket_type_supported(eNodeSocketDatatype socket_type);
-
-/** \} */

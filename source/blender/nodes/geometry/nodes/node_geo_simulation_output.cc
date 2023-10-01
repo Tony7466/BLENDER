@@ -61,7 +61,7 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
     const int corresponding_input = -1)
 {
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-  BLI_assert(NOD_geometry_simulation_output_item_socket_type_supported(socket_type));
+  BLI_assert(SimulationItemsAccessor::supports_socket_type(socket_type));
 
   std::unique_ptr<SocketDeclaration> decl;
   switch (socket_type) {
@@ -997,18 +997,4 @@ blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() con
 blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span()
 {
   return blender::MutableSpan<NodeSimulationItem>(items, items_num);
-}
-
-bool NOD_geometry_simulation_output_item_socket_type_supported(
-    const eNodeSocketDatatype socket_type)
-{
-  return ELEM(socket_type,
-              SOCK_FLOAT,
-              SOCK_VECTOR,
-              SOCK_RGBA,
-              SOCK_BOOLEAN,
-              SOCK_ROTATION,
-              SOCK_INT,
-              SOCK_STRING,
-              SOCK_GEOMETRY);
 }
