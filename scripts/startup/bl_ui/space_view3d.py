@@ -4256,19 +4256,22 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.operator("mesh.duplicate_move", text="Duplicate")
         layout.menu("VIEW3D_MT_edit_mesh_extrude")
+        layout.operator("mesh.inset", text="Inset Faces")
+        layout.operator("mesh.poke", text="Poke Faces")
+        layout.menu("VIEW3D_MT_edit_mesh_bevel")
+        layout.menu("VIEW3D_MT_edit_mesh_fill_connect")
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_edit_mesh_merge", text="Merge")
-        layout.menu("VIEW3D_MT_edit_mesh_split", text="Split")
+        layout.menu("VIEW3D_MT_edit_mesh_merge")
+        layout.menu("VIEW3D_MT_edit_mesh_cut_slide")
+        layout.menu("VIEW3D_MT_edit_mesh_rip")
+        layout.menu("VIEW3D_MT_edit_mesh_split")
         layout.operator_menu_enum("mesh.separate", "type")
 
-        layout.separator()
-
-        layout.operator("mesh.bisect")
-        layout.operator("mesh.knife_project")
-        layout.operator("mesh.knife_tool")
-
+        layout.menu("VIEW3D_MT_edit_mesh_subdivide")
+        layout.menu("VIEW3D_MT_edit_mesh_generate")
+        layout.menu("VIEW3D_MT_edit_mesh_convert")
         if with_bullet:
             layout.operator("mesh.convex_hull")
 
@@ -4276,14 +4279,28 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.operator("mesh.symmetrize")
         layout.operator("mesh.symmetry_snap")
+        layout.menu("VIEW3D_MT_edit_mesh_smooth")
+        layout.operator("mesh.beautify_fill")
+
+        layout.separator()
+
+        layout.operator("mesh.edge_rotate", text="Rotate Edge CW").use_ccw = False
+        layout.operator("mesh.edge_rotate", text="Rotate Edge CCW").use_ccw = True
 
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_mesh_normals")
         layout.menu("VIEW3D_MT_edit_mesh_shading")
+        layout.menu("VIEW3D_MT_edit_mesh_attributes")
+        layout.menu("VIEW3D_MT_vertex_group")
         layout.menu("VIEW3D_MT_edit_mesh_weights")
-        layout.operator("mesh.attribute_set")
+        layout.menu("VIEW3D_MT_edit_mesh_shape_keys")
         layout.operator_menu_enum("mesh.sort_elements", "type", text="Sort Elements...")
+
+        layout.separator()
+
+        layout.operator("object.vertex_parent_set")
+        layout.menu("VIEW3D_MT_hook")
 
         layout.separator()
 
@@ -4508,6 +4525,45 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.delete", text="Delete Faces").type = 'FACE'
 
 
+class VIEW3D_MT_edit_mesh_attributes(Menu):
+    bl_label = "Attributes"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        with_freestyle = bpy.app.build_options.freestyle
+
+        layout.operator("mesh.attribute_set")
+
+        layout.separator()
+
+        layout.operator("transform.vert_crease")
+        layout.operator("transform.edge_crease")
+        layout.operator("transform.edge_bevelweight")
+
+        layout.separator()
+
+        layout.operator("mesh.mark_seam").clear = False
+        layout.operator("mesh.mark_seam", text="Clear Seam").clear = True
+
+        layout.separator()
+
+        layout.operator("mesh.mark_sharp")
+        layout.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
+
+        layout.operator("mesh.mark_sharp", text="Mark Sharp from Vertices").use_verts = True
+        props = layout.operator("mesh.mark_sharp", text="Clear Sharp from Vertices")
+        props.use_verts = True
+        props.clear = True
+
+        if with_freestyle:
+            layout.separator()
+
+            layout.operator("mesh.mark_freestyle_edge").clear = False
+            layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
+
+        layout.menu("VIEW3D_MT_edit_mesh_faces_data")
+
 class VIEW3D_MT_edit_mesh_select_mode(Menu):
     bl_label = "Mesh Select Mode"
 
@@ -4555,92 +4611,45 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
         layout.separator()
 
         layout.operator("mesh.extrude_repeat")
+        layout.operator("mesh.dupli_extrude_cursor").rotate_source = True
         layout.operator("mesh.spin").angle = pi * 2
+        layout.operator("mesh.screw")
         layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Extrude")
 
-
-class VIEW3D_MT_edit_mesh_vertices(Menu):
-    bl_label = "Vertex"
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("mesh.extrude_vertices_move", text="Extrude Vertices")
-        layout.operator("mesh.dupli_extrude_cursor").rotate_source = True
-        layout.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
-
-        layout.separator()
-
-        layout.operator("mesh.edge_face_add", text="New Edge/Face from Vertices")
-        layout.operator("mesh.vert_connect_path", text="Connect Vertex Path")
-        layout.operator("mesh.vert_connect", text="Connect Vertex Pairs")
-
-        layout.separator()
-
-        props = layout.operator("mesh.rip_move", text="Rip Vertices")
-        props.MESH_OT_rip.use_fill = False
-        props = layout.operator("mesh.rip_move", text="Rip Vertices and Fill")
-        props.MESH_OT_rip.use_fill = True
-        layout.operator("mesh.rip_edge_move", text="Rip Vertices and Extend")
-
-        layout.separator()
-
-        layout.operator("transform.vert_slide", text="Slide Vertices")
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
-        layout.operator("mesh.vertices_smooth_laplacian", text="Smooth Vertices (Laplacian)")
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.separator()
-
-        layout.operator("transform.vert_crease")
-
-        layout.separator()
-
-        layout.operator("mesh.blend_from_shape")
-        layout.operator("mesh.shape_propagate_to_all", text="Propagate to Shapes")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_vertex_group")
-        layout.menu("VIEW3D_MT_hook")
-
-        layout.separator()
-
-        layout.operator("object.vertex_parent_set")
-
-        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
-
-
-class VIEW3D_MT_edit_mesh_edges(Menu):
-    bl_label = "Edge"
+class VIEW3D_MT_edit_mesh_bevel(Menu):
+    bl_label = "Bevel"
 
     def draw(self, _context):
         layout = self.layout
 
-        with_freestyle = bpy.app.build_options.freestyle
+        layout.operator("mesh.bevel").affect = 'VERTICES'
+        layout.operator("mesh.bisect").affect = 'EDGES'
 
-        layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("mesh.extrude_edges_move", text="Extrude Edges")
-        layout.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
+class VIEW3D_MT_edit_mesh_fill_connect(Menu):
+    bl_label = "Fill/Connect"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("mesh.edge_face_add")
+        layout.operator("mesh.fill")
+        layout.operator("mesh.fill_grid")
+
+        layout.separator()
+
+        layout.operator("mesh.vert_connect_path")
+        layout.operator("mesh.vert_connect")
         layout.operator("mesh.bridge_edge_loops")
-        layout.operator("mesh.screw")
 
-        layout.separator()
 
-        layout.operator("mesh.subdivide")
-        layout.operator("mesh.subdivide_edgering")
-        layout.operator("mesh.unsubdivide")
+class VIEW3D_MT_edit_mesh_cut_slide(Menu):
+    bl_label = "Cut/Slide"
 
-        layout.separator()
+    def draw(self, _context):
+        layout = self.layout
 
-        layout.operator("mesh.edge_rotate", text="Rotate Edge CW").use_ccw = False
-        layout.operator("mesh.edge_rotate", text="Rotate Edge CCW").use_ccw = True
-
-        layout.separator()
-
+        layout.operator("transform.vert_slide")
         layout.operator("transform.edge_slide")
         props = layout.operator("mesh.loopcut_slide")
         props.TRANSFORM_OT_edge_slide.release_confirm = False
@@ -4648,31 +4657,76 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
         layout.separator()
 
-        layout.operator("transform.edge_crease")
-        layout.operator("transform.edge_bevelweight")
+        layout.operator("mesh.bisect")
+        layout.operator("mesh.knife_project")
+        layout.operator("mesh.knife_tool")
+        layout.operator("mesh.intersect")
+        layout.operator("mesh.intersect_boolean")
 
-        layout.separator()
 
-        layout.operator("mesh.mark_seam").clear = False
-        layout.operator("mesh.mark_seam", text="Clear Seam").clear = True
+class VIEW3D_MT_edit_mesh_rip(Menu):
+    bl_label = "Rip"
 
-        layout.separator()
+    def draw(self, _context):
+        layout = self.layout
 
-        layout.operator("mesh.mark_sharp")
-        layout.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
+        props = layout.operator("mesh.rip_move", text="Rip Vertices")
+        props.MESH_OT_rip.use_fill = False
+        props = layout.operator("mesh.rip_move", text="Rip Vertices and Fill")
+        props.MESH_OT_rip.use_fill = True
+        layout.operator("mesh.rip_edge_move", text="Rip Vertices and Extend")
 
-        layout.operator("mesh.mark_sharp", text="Mark Sharp from Vertices").use_verts = True
-        props = layout.operator("mesh.mark_sharp", text="Clear Sharp from Vertices")
-        props.use_verts = True
-        props.clear = True
 
-        if with_freestyle:
-            layout.separator()
+class VIEW3D_MT_edit_mesh_subdivide(Menu):
+    bl_label = "Subdivide"
 
-            layout.operator("mesh.mark_freestyle_edge").clear = False
-            layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
+    def draw(self, _context):
+        layout = self.layout
 
-        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+        layout.operator("mesh.subdivide")
+        layout.operator("mesh.subdivide_edgering")
+        layout.operator("mesh.unsubdivide")
+
+
+class VIEW3D_MT_edit_mesh_generate(Menu):
+    bl_label = "Generate"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("mesh.solidify", text="Solidify Faces")
+        layout.operator("mesh.wireframe")
+
+
+class VIEW3D_MT_edit_mesh_convert(Menu):
+    bl_label = "Convert"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        props = layout.operator("mesh.quads_convert_to_tris")
+        props.quad_method = props.ngon_method = 'BEAUTY'
+        layout.operator("mesh.tris_convert_to_quads")
+
+
+class VIEW3D_MT_edit_mesh_smooth(Menu):
+    bl_label = "Smooth"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
+        layout.operator("mesh.vertices_smooth_laplacian", text="Smooth Vertices (Laplacian)")
+
+
+class VIEW3D_MT_edit_mesh_shape_keys(Menu):
+    bl_label = "Shape Keys"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("mesh.blend_from_shape")
+        layout.operator("mesh.shape_propagate_to_all", text="Propagate to Shapes")
 
 
 class VIEW3D_MT_edit_mesh_faces_data(Menu):
@@ -4702,58 +4756,6 @@ class VIEW3D_MT_edit_mesh_faces_data(Menu):
             layout.operator("mesh.mark_freestyle_face").clear = False
             layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True
         layout.template_node_operator_asset_menu_items(catalog_path="Face/Face Data")
-
-
-class VIEW3D_MT_edit_mesh_faces(Menu):
-    bl_label = "Face"
-    bl_idname = "VIEW3D_MT_edit_mesh_faces"
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("view3d.edit_mesh_extrude_move_normal",
-                        text="Extrude Faces")
-        layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                        text="Extrude Faces Along Normals")
-        layout.operator("mesh.extrude_faces_move", text="Extrude Individual Faces")
-
-        layout.separator()
-
-        layout.operator("mesh.inset")
-        layout.operator("mesh.poke")
-        props = layout.operator("mesh.quads_convert_to_tris")
-        props.quad_method = props.ngon_method = 'BEAUTY'
-        layout.operator("mesh.tris_convert_to_quads")
-        layout.operator("mesh.solidify", text="Solidify Faces")
-        layout.operator("mesh.wireframe")
-
-        layout.separator()
-
-        layout.operator("mesh.fill")
-        layout.operator("mesh.fill_grid")
-        layout.operator("mesh.beautify_fill")
-
-        layout.separator()
-
-        layout.operator("mesh.intersect")
-        layout.operator("mesh.intersect_boolean")
-
-        layout.separator()
-
-        layout.operator("mesh.face_split_by_edges")
-
-        layout.separator()
-
-        layout.operator("mesh.faces_shade_smooth")
-        layout.operator("mesh.faces_shade_flat")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_edit_mesh_faces_data")
-
-        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_mesh_normals_select_strength(Menu):
@@ -4953,6 +4955,7 @@ class VIEW3D_MT_edit_mesh_split(Menu):
         layout.separator()
 
         layout.operator_enum("mesh.edge_split", "type")
+        layout.operator("mesh.face_split_by_edges")
 
         layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Split")
 
@@ -8885,13 +8888,20 @@ classes = (
     VIEW3D_MT_bone_options_enable,
     VIEW3D_MT_bone_options_disable,
     VIEW3D_MT_edit_mesh_context_menu,
+    VIEW3D_MT_edit_mesh_attributes,
     VIEW3D_MT_edit_mesh_select_mode,
     VIEW3D_MT_edit_mesh_select_linked,
     VIEW3D_MT_edit_mesh_select_loops,
     VIEW3D_MT_edit_mesh_extrude,
-    VIEW3D_MT_edit_mesh_vertices,
-    VIEW3D_MT_edit_mesh_edges,
-    VIEW3D_MT_edit_mesh_faces,
+    VIEW3D_MT_edit_mesh_bevel,
+    VIEW3D_MT_edit_mesh_fill_connect,
+    VIEW3D_MT_edit_mesh_cut_slide,
+    VIEW3D_MT_edit_mesh_rip,
+    VIEW3D_MT_edit_mesh_subdivide,
+    VIEW3D_MT_edit_mesh_generate,
+    VIEW3D_MT_edit_mesh_convert,
+    VIEW3D_MT_edit_mesh_smooth,
+    VIEW3D_MT_edit_mesh_shape_keys,
     VIEW3D_MT_edit_mesh_faces_data,
     VIEW3D_MT_edit_mesh_normals,
     VIEW3D_MT_edit_mesh_normals_select_strength,
