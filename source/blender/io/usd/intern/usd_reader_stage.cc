@@ -14,6 +14,7 @@
 #include "usd_reader_skeleton.h"
 #include "usd_reader_volume.h"
 #include "usd_reader_xform.h"
+#include "usd_reader_pointinstancer.h"
 
 #include <pxr/pxr.h>
 #include <pxr/usd/usd/primRange.h>
@@ -29,6 +30,7 @@
 #include <pxr/usd/usdGeom/sphere.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdShade/material.h>
+#include <pxr/usd/usdGeom/pointInstancer.h>
 
 #if PXR_VERSION >= 2111
 #  include <pxr/usd/usdLux/boundableLightBase.h>
@@ -79,6 +81,9 @@ USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim
 {
   if (params_.import_shapes && is_primitive_prim(prim)) {
     return new USDShapeReader(prim, params_, settings_);
+  }
+  if (prim.IsA<pxr::UsdGeomPointInstancer>()) {
+    return new USDPointInstancerReader(prim, params_, settings_);
   }
   if (params_.import_cameras && prim.IsA<pxr::UsdGeomCamera>()) {
     return new USDCameraReader(prim, params_, settings_);

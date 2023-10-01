@@ -111,6 +111,7 @@ set(SRC
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
+  intern/usd_reader_pointinstancer.cc
   intern/usd_skel_convert.cc
 
   usd.h
