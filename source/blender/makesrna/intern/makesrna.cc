@@ -3010,6 +3010,10 @@ static void rna_def_property_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Propert
   }
 }
 
+/**
+ * Counts the number of template arguments by looking at `<` and `,` characters in the name. More
+ * complex template arguments that contains `,` themselves are not handled yet.
+ */
 static int count_template_args(const char *function_name)
 {
   if (!strstr(function_name, "<")) {
