@@ -12,6 +12,7 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_string.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
 
@@ -8761,6 +8762,45 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
       prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
+struct ItemArrayCommonFunctionBuffers {
+  char remove_call[64];
+  char clear_call[64];
+  char move_call[64];
+};
+
+static void rna_def_node_item_array_common_functions(StructRNA *srna,
+                                                     const char *item_name,
+                                                     const char *accessor_name,
+                                                     ItemArrayCommonFunctionBuffers &buffers)
+{
+  PropertyRNA *parm;
+  FunctionRNA *func;
+
+  SNPRINTF(buffers.remove_call, "rna_Node_ItemArray_remove<%s>", accessor_name);
+  SNPRINTF(buffers.clear_call, "rna_Node_ItemArray_clear<%s>", accessor_name);
+  SNPRINTF(buffers.move_call, "rna_Node_ItemArray_move<%s>", accessor_name);
+
+  func = RNA_def_function(srna, "remove", buffers.remove_call);
+  RNA_def_function_ui_description(func, "Remove an item");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", item_name, "Item", "The item to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", buffers.clear_call);
+  RNA_def_function_ui_description(func, "Remove all items");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+
+  func = RNA_def_function(srna, "move", buffers.move_call);
+  RNA_def_function_ui_description(func, "Move an item to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -8788,25 +8828,9 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_Node_ItemArray_remove<SimulationItemsAccessor>");
-  RNA_def_function_ui_description(func, "Remove an item from this simulation zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "The item to remove");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-
-  func = RNA_def_function(srna, "clear", "rna_Node_ItemArray_clear<SimulationItemsAccessor>");
-  RNA_def_function_ui_description(func, "Remove all items from this simulation zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "move", "rna_Node_ItemArray_move<SimulationItemsAccessor>");
-  RNA_def_function_ui_description(func, "Move an item to another position");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-  parm = RNA_def_int(
-      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  static ItemArrayCommonFunctionBuffers buffers;
+  rna_def_node_item_array_common_functions(
+      srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
 }
 
 static void def_geo_simulation_output(StructRNA *srna)
@@ -8901,25 +8925,8 @@ static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_Node_ItemArray_remove<RepeatItemsAccessor>");
-  RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-
-  func = RNA_def_function(srna, "clear", "rna_Node_ItemArray_clear<RepeatItemsAccessor>");
-  RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "move", "rna_Node_ItemArray_move<RepeatItemsAccessor>");
-  RNA_def_function_ui_description(func, "Move an item to another position");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-  parm = RNA_def_int(
-      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  static ItemArrayCommonFunctionBuffers buffers;
+  rna_def_node_item_array_common_functions(srna, "RepeatItem", "RepeatItemsAccessor", buffers);
 }
 
 static void def_geo_repeat_output(StructRNA *srna)
