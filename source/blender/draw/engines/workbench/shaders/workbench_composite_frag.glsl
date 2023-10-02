@@ -64,18 +64,6 @@ void main()
     color.a = 1.0f;
   }
 
-#ifdef WORKBENCH_OUTLINE
-  vec3 offset = vec3(world_data.viewport_size_inv, 0.0) * world_data.ui_scale;
-
-  uint center_id = texture(object_id_tx, uv).r;
-  uvec4 adjacent_ids = uvec4(texture(object_id_tx, uv + offset.zy).r,
-                             texture(object_id_tx, uv - offset.zy).r,
-                             texture(object_id_tx, uv + offset.xz).r,
-                             texture(object_id_tx, uv - offset.xz).r);
-
-  float outline_opacity = 1.0 - dot(vec4(equal(uvec4(center_id), adjacent_ids)), vec4(0.25));
-  color = mix(color, world_data.object_outline_color, outline_opacity);
-#endif
 
   if (all(equal(color, world_data.background_color))) {
     discard;
