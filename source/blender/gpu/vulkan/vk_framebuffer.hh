@@ -35,7 +35,6 @@ class VKFrameBuffer : public FrameBuffer {
   int depth_ = 1;
 
   Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
-  std::optional<std::reference_wrapper<VKTexture>> dummy_color_attachment_;
 
  public:
   /**
@@ -111,6 +110,8 @@ class VKFrameBuffer : public FrameBuffer {
    * set, when activating the frame buffer.
    */
   void update_size();
+
+  int64_t max_color_attachments() const;
 
  private:
   void update_attachments();

@@ -27,11 +27,6 @@ VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 VKFrameBuffer::~VKFrameBuffer()
 {
   render_pass_free();
-
-  if (dummy_color_attachment_.has_value()) {
-    delete &(*dummy_color_attachment_).get();
-    dummy_color_attachment_.reset();
-  }
 }
 
 /** \} */
@@ -519,24 +514,8 @@ void VKFrameBuffer::render_pass_create()
 
   /* Full missing attachments. */
   if (has_missing_attachments) {
-    if (!dummy_color_attachment_.has_value() ||
-        (*dummy_color_attachment_).get().width_get() != width_ ||
-        (*dummy_color_attachment_).get().height_get() != height_)
-    {
-      GPUTexture *texture = GPU_texture_create_2d("missing_attachment",
-                                                  width_,
-                                                  height_,
-                                                  1,
-                                                  GPU_R32F,
-                                                  GPU_TEXTURE_USAGE_ATTACHMENT,
-                                                  nullptr);
-      BLI_assert(texture);
-
-      VKTexture &vk_texture = *unwrap(unwrap(texture));
-      dummy_color_attachment_.emplace(std::reference_wrapper(vk_texture));
-    }
-
-    VKImageView &image_view = (*dummy_color_attachment_).get().image_view_get();
+    const VKImageView &image_view =
+        VKBackend::get().device_get().dummy_color_attachment_get().image_view_get();
 
     for (int64_t attachment_index : IndexRange(attachment_references.size())) {
       VkAttachmentReference &attachment_reference = attachment_references[attachment_index];
