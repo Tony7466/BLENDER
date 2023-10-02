@@ -45,26 +45,6 @@ blender_bin = os.environ.get("BLENDER_BIN", blender_bin)
 cmd = (
     inkscape_bin,
     os.path.join(BASEDIR, "blender_icons.svg"),
-    "--export-width=602",
-    "--export-height=640",
-    "--export-type=png",
-    "--export-filename=" + os.path.join(BASEDIR, "blender_icons16.png"),
-)
-run(cmd, env=env)
-
-cmd = (
-    inkscape_bin,
-    os.path.join(BASEDIR, "blender_icons.svg"),
-    "--export-width=1204",
-    "--export-height=1280",
-    "--export-type=png",
-    "--export-filename=" + os.path.join(BASEDIR, "blender_icons32.png"),
-)
-run(cmd, env=env)
-
-cmd = (
-    inkscape_bin,
-    os.path.join(BASEDIR, "blender_icons.svg"),
     "--export-width=2408",
     "--export-height=2560",
     "--export-type=png",
@@ -72,3 +52,6 @@ cmd = (
 )
 run(cmd, env=env)
 
+This PR adds a third MIP level to our icons, in 64x64, allowing sizes
+that are not blurry above 2X scale (1X scale with Retina). Also allows
+users customization.

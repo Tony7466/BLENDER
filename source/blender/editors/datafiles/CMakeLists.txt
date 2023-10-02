@@ -912,8 +912,6 @@ if(WITH_BLENDER)
     data_to_c_simple(../../../../release/datafiles/blender_logo.png SRC)
 
     # Interface icons.
-    data_to_c_simple(../../../../release/datafiles/blender_icons16.png SRC)
-    data_to_c_simple(../../../../release/datafiles/blender_icons32.png SRC)
     data_to_c_simple(../../../../release/datafiles/blender_icons64.png SRC)
 
     # Larger icons used for File Browser Thumbnail Views.

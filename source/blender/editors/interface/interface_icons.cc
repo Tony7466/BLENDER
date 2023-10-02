@@ -880,17 +880,7 @@ void UI_icons_reload_internal_textures()
   BLI_path_join(path, sizeof(path), icon_directory, "icons.png");
   if (BLI_exists(path)) {
     b64buf = IMB_loadiffname(path, IB_rect, NULL);
-  }
-
-  if (b64buf) {
-    if (b64buf->x > (ICON_GRID_WIDTH_MIN * 2)) {
-      IMB_scaleImBuf(b64buf, ICON_GRID_WIDTH_MIN * 4, ICON_GRID_HEIGHT_MIN * 4);
-    }
-    b32buf = IMB_dupImBuf(b64buf);
-    IMB_scaleImBuf(b32buf, ICON_GRID_WIDTH_MIN * 2, ICON_GRID_HEIGHT_MIN * 2);
-
-    b16buf = IMB_dupImBuf(b32buf);
-    IMB_scaleImBuf(b16buf, ICON_GRID_WIDTH_MIN, ICON_GRID_HEIGHT_MIN);
+    IMB_scaleImBuf(b64buf, ICON_GRID_WIDTH_MIN * 4, ICON_GRID_HEIGHT_MIN * 4);
   }
   else {
     b64buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons64_png,
@@ -898,40 +888,28 @@ void UI_icons_reload_internal_textures()
                                    IB_rect,
                                    nullptr,
                                    "<blender icons>");
-    b32buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons32_png,
-                                   datatoc_blender_icons32_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
-    b16buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons16_png,
-                                   datatoc_blender_icons16_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
   }
 
-  if (b16buf) {
-    if (need_icons_with_border) {
-      b16buf_border = create_mono_icon_with_border(b16buf, 4, icon_border_intensity);
-      IMB_premultiply_alpha(b16buf_border);
-    }
-    IMB_premultiply_alpha(b16buf);
+  if (need_icons_with_border) {
+    b64buf_border = create_mono_icon_with_border(b64buf, 1, icon_border_intensity);
+    IMB_premultiply_alpha(b64buf_border);
+  }
+  IMB_premultiply_alpha(b64buf);
+
+  /* Create 32x32 level from 64x64. */
+  b32buf = IMB_dupImBuf(b64buf);
+  IMB_scaleImBuf(b32buf, ICON_GRID_WIDTH_MIN * 2, ICON_GRID_HEIGHT_MIN * 2);
+  if (need_icons_with_border) {
+    b32buf_border = create_mono_icon_with_border(b32buf, 2, icon_border_intensity);
+    IMB_premultiply_alpha(b32buf_border);
   }
 
-  if (b32buf) {
-    if (need_icons_with_border) {
-      b32buf_border = create_mono_icon_with_border(b32buf, 2, icon_border_intensity);
-      IMB_premultiply_alpha(b32buf_border);
-    }
-    IMB_premultiply_alpha(b32buf);
-  }
-
-  if (b64buf) {
-    if (need_icons_with_border) {
-      b64buf_border = create_mono_icon_with_border(b64buf, 1, icon_border_intensity);
-      IMB_premultiply_alpha(b64buf_border);
-    }
-    IMB_premultiply_alpha(b64buf);
+  /* Create 16x16 level from 32x32. */
+  b16buf = IMB_dupImBuf(b32buf);
+  IMB_scaleImBuf(b16buf, ICON_GRID_WIDTH_MIN, ICON_GRID_HEIGHT_MIN);
+  if (need_icons_with_border) {
+    b16buf_border = create_mono_icon_with_border(b16buf, 4, icon_border_intensity);
+    IMB_premultiply_alpha(b16buf_border);
   }
 
   if (b16buf && b32buf && b64buf) {
