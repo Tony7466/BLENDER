@@ -191,8 +191,6 @@ static void interp_slerp_co_no_v3(
       /* create planes */
       cross_v3_v3v3(v_a_no_ortho, no_ortho, no_a);
       cross_v3_v3v3(v_b_no_ortho, no_ortho, no_b);
-      project_v3_plane(v_a_no_ortho, no_ortho, v_a_no_ortho);
-      project_v3_plane(v_b_no_ortho, no_ortho, v_b_no_ortho);
 
       plane_from_point_normal_v3(plane_a, co_a, v_a_no_ortho);
       plane_from_point_normal_v3(plane_b, co_b, v_b_no_ortho);
