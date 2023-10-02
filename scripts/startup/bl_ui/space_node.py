@@ -950,6 +950,7 @@ class NODE_PT_node_tree_interface(Panel):
                         if 'OUTPUT' in active_item.in_out:
                             layout.prop(active_item, "attribute_domain")
                         layout.prop(active_item, "default_attribute_name")
+                        layout.prop(active_item, "default_input")
                 active_item.draw(context, layout)
 
             if active_item.item_type == 'PANEL':

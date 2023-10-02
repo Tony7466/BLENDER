@@ -933,6 +933,18 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
                            "geometry nodes modifier");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
+  static const EnumPropertyItem default_input_items[] = {
+      {NODE_INTERFACE_DEFAULT_INPUT_NONE, "NONE", 0, "None", ""},
+      {NODE_INTERFACE_DEFAULT_INPUT_ID_INDEX, "ID_INDEX", 0, "ID/Index", ""},
+      {NODE_INTERFACE_DEFAULT_INPUT_POSITION, "POSITION", 0, "Position", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "default_input", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, default_input_items);
+  RNA_def_property_ui_text(prop, "Default Input", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
   /* Registered properties and functions for custom socket types. */
   prop = RNA_def_property(srna, "bl_socket_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "socket_type");

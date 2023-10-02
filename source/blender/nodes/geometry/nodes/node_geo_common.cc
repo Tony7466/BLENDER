@@ -33,7 +33,9 @@ static void node_group_declare(const bNodeTree &node_tree,
 
   const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;
   for (const int i : r_declaration.inputs.index_range()) {
-    r_declaration.inputs[i]->input_field_type = field_interface.inputs[i];
+    if (!r_declaration.inputs[i]->implicit_input_fn_) {
+      r_declaration.inputs[i]->input_field_type = field_interface.inputs[i];
+    }
   }
   for (const int i : r_declaration.outputs.index_range()) {
     r_declaration.outputs[i]->output_field_dependency = field_interface.outputs[i];

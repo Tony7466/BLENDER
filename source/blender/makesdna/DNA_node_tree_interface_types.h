@@ -79,7 +79,8 @@ typedef struct bNodeTreeInterfaceSocket {
   int flag;
 
   /* eAttrDomain */
-  int attribute_domain;
+  int16_t attribute_domain;
+  int16_t default_input;
   char *default_attribute_name;
 
   /* Unique identifier for generated sockets. */
@@ -117,6 +118,12 @@ typedef enum NodeTreeInterfacePanelFlag {
   NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS = 1 << 2,
 } NodeTreeInterfacePanelFlag;
 ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
+
+typedef enum NodeInterfaceDefaultInput {
+  NODE_INTERFACE_DEFAULT_INPUT_NONE = 0,
+  NODE_INTERFACE_DEFAULT_INPUT_ID_INDEX = 1,
+  NODE_INTERFACE_DEFAULT_INPUT_POSITION = 2,
+} NodeInterfaceDefaultInput;
 
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;

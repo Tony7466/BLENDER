@@ -256,6 +256,11 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       decl->default_value = value.value;
       decl->soft_min_value = value.min;
       decl->soft_max_value = value.max;
+      if (io_socket.default_input == NODE_INTERFACE_DEFAULT_INPUT_ID_INDEX) {
+        decl->input_field_type = InputSocketFieldType::Implicit;
+        decl->implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+            implicit_field_inputs::id_or_index);
+      }
       dst = std::move(decl);
       break;
     }
