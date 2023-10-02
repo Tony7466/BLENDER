@@ -61,6 +61,7 @@ static const pxr::TfToken varname("varname", pxr::TfToken::Immortal);
 static const pxr::TfToken auto_("auto", pxr::TfToken::Immortal);
 static const pxr::TfToken sRGB("sRGB", pxr::TfToken::Immortal);
 static const pxr::TfToken raw("raw", pxr::TfToken::Immortal);
+static const pxr::TfToken Raw("Raw", pxr::TfToken::Immortal);
 static const pxr::TfToken RAW("RAW", pxr::TfToken::Immortal);
 
 /* USD shader names. */
@@ -830,7 +831,7 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
     STRNCPY(image->colorspace_settings.name, "sRGB");
   }
 
-  else if (ELEM(color_space, usdtokens::RAW, usdtokens::raw)) {
+  else if (ELEM(color_space, usdtokens::RAW, usdtokens::Raw, usdtokens::raw)) {
     STRNCPY(image->colorspace_settings.name, "Non-Color");
   }
 
