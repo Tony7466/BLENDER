@@ -774,6 +774,7 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(
       eContextObjectMode(CTX_data_mode_enum(C)));
 
+  bool first = true;
   bool add_separator = !tree->unassigned_assets.is_empty();
   Main &bmain = *CTX_data_main(C);
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
@@ -788,8 +789,11 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
 
     if (add_separator) {
       uiItemS(layout);
-      uiItemL(layout, IFACE_("Non-Assets"), ICON_NONE);
       add_separator = false;
+    }
+    if (first) {
+      uiItemL(layout, IFACE_("Non-Assets"), ICON_NONE);
+      first = false;
     }
 
     PointerRNA props_ptr;
@@ -802,6 +806,8 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
                     UI_ITEM_NONE,
                     &props_ptr);
     WM_operator_properties_id_lookup_set_from_id(&props_ptr, &group->id);
+    /* Also set the name so it can be used for #run_node_group_get_name. */
+    RNA_string_set(&props_ptr, "name", group->id.name + 2);
   }
 }
 
@@ -841,7 +847,6 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   if (path_ptr.data == nullptr) {
     return;
   }
-  uiItemS(&layout);
   uiLayout *col = uiLayoutColumn(&layout, false);
   uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
   uiItemMContents(col, "GEO_MT_node_operator_catalog_assets");
