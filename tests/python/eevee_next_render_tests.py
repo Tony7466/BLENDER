@@ -21,7 +21,6 @@ def setup():
     scene = bpy.context.scene
     eevee = scene.eevee
 
-    eevee.use_soft_shadows = True
     eevee.gtao_distance = 1
     eevee.use_volumetric_shadows = True
     eevee.volumetric_tile_size = '2'
@@ -133,7 +132,7 @@ def main():
     report.set_pixelated(True)
     report.set_reference_dir("eevee_next_renders")
     report.set_reference_override_dir(reference_override_dir)
-    #report.set_compare_engine('cycles', 'CPU')
+    report.set_compare_engine('cycles', 'CPU')
 
     test_dir_name = Path(test_dir).name
     if test_dir_name.startswith('image'):
