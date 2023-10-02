@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_function_util.hh"
 
@@ -76,7 +76,7 @@ static void node_easing_declare(NodeDeclarationBuilder &b)
 
 static void node_easing_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "operation", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_easing_update(bNodeTree *ntree, bNode *node)
@@ -902,19 +902,18 @@ static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBu
   }
 }
 
-}  // namespace blender::nodes::node_fn_easing_cc
-
-void register_node_type_fn_easing()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_fn_easing_cc;
-
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_EASING, "Easing", NODE_CLASS_CONVERTER);
-  ntype.declare = file_ns::node_easing_declare;
-  ntype.updatefunc = file_ns::node_easing_update;
-  ntype.initfunc = file_ns::node_easing_init;
+  ntype.declare = node_easing_declare;
+  ntype.updatefunc = node_easing_update;
+  ntype.initfunc = node_easing_init;
   node_type_storage(&ntype, "NodeEasing", node_free_standard_storage, node_copy_standard_storage);
-  ntype.build_multi_function = file_ns::node_easing_build_multi_function;
-  ntype.draw_buttons = file_ns::node_easing_layout;
+  ntype.build_multi_function = node_easing_build_multi_function;
+  ntype.draw_buttons = node_easing_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_fn_easing_cc

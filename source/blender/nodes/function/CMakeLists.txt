@@ -23,7 +23,7 @@ set(SRC
   nodes/node_fn_boolean_math.cc
   nodes/node_fn_combine_color.cc
   nodes/node_fn_compare.cc
-node_fn_easing
+  nodes/node_fn_easing
   nodes/node_fn_euler_to_rotation.cc
   nodes/node_fn_float_to_int.cc
   nodes/node_fn_input_bool.cc

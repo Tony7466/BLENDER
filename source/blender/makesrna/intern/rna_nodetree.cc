@@ -8771,7 +8771,6 @@ static void def_fn_random_value(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-
 static void def_fn_easing(StructRNA *srna)
 {
   static const EnumPropertyItem rna_enum_node_easing_items[] = {
