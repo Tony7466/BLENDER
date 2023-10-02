@@ -92,7 +92,7 @@ def get_arguments(filepath, output_filepath):
     return [
         "--background",
         "-noaudio",
-        # "--factory-startup", Disabled so EEVEE Next can be used.
+        "--factory-startup",
         "--enable-autoexec",
         "--debug-memory",
         "--debug-exit-on-error",
