@@ -20,6 +20,7 @@ from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
 )
 from rna_prop_ui import PropertyPanel
+from bl_ui_utils.layout import operator_context
 
 
 def _space_view_types(st):
@@ -990,11 +991,9 @@ class SEQUENCER_MT_strip(Menu):
 
             props = layout.operator("sequencer.split", text="Split")
             props.type = 'SOFT'
-            props.side = 'RIGHT'
 
             props = layout.operator("sequencer.split", text="Hold Split")
             props.type = 'HARD'
-            props.side = 'RIGHT'
 
             layout.separator()
 
