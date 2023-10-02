@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 #include "BLI_vector.hh"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -100,7 +101,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_init_times.span[stroke_i] = float(gps->inittime);
     stroke_start_caps.span[stroke_i] = int8_t(gps->caps[0]);
     stroke_end_caps.span[stroke_i] = int8_t(gps->caps[1]);
-    stroke_hardnesses.span[stroke_i] = gps->hardeness;
+    stroke_hardnesses.span[stroke_i] = gps->hardness;
     stroke_point_aspect_ratios.span[stroke_i] = gps->aspect_ratio[0] /
                                                 max_ff(gps->aspect_ratio[1], 1e-8);
     stroke_fill_translations.span[stroke_i] = float2(gps->uv_translation);
@@ -190,11 +191,9 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
         grease_pencil.root_group(), StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
-    SET_FLAG_FROM_TEST(new_layer.base.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
-    SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_LOCKED), GP_LAYER_TREE_NODE_LOCKED);
-    SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_SELECT), GP_LAYER_TREE_NODE_SELECT);
+    new_layer.set_visible((gpl->flag & GP_LAYER_HIDE) == 0);
+    new_layer.set_locked((gpl->flag & GP_LAYER_LOCKED) != 0);
+    new_layer.set_selected((gpl->flag & GP_LAYER_SELECT) != 0);
     SET_FLAG_FROM_TEST(
         new_layer.base.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
     SET_FLAG_FROM_TEST(

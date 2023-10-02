@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,8 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -51,9 +52,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_light_linking.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace deg = blender::deg;
 

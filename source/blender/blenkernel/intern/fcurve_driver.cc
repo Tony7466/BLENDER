@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 #include "BLI_alloca.h"
 #include "BLI_expr_pylike_eval.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
@@ -32,19 +34,21 @@
 #include "BKE_global.h"
 #include "BKE_object.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "atomic_ops.h"
 
 #include "CLG_log.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
+
+#include <cstring>
 
 #ifdef WITH_PYTHON
 static ThreadMutex python_driver_lock = BLI_MUTEX_INITIALIZER;
@@ -100,14 +104,12 @@ static bool driver_get_target_context_property(const DriverTargetContext *driver
 {
   switch (dtar->context_property) {
     case DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE:
-      RNA_id_pointer_create(&driver_target_context->scene->id, r_property_ptr);
+      *r_property_ptr = RNA_id_pointer_create(&driver_target_context->scene->id);
       return true;
 
     case DTAR_CONTEXT_PROPERTY_ACTIVE_VIEW_LAYER: {
-      RNA_pointer_create(&driver_target_context->scene->id,
-                         &RNA_ViewLayer,
-                         driver_target_context->view_layer,
-                         r_property_ptr);
+      *r_property_ptr = RNA_pointer_create(
+          &driver_target_context->scene->id, &RNA_ViewLayer, driver_target_context->view_layer);
       return true;
     }
   }
@@ -138,7 +140,7 @@ bool driver_get_target_property(const DriverTargetContext *driver_target_context
     return false;
   }
 
-  RNA_id_pointer_create(dtar->id, r_prop);
+  *r_prop = RNA_id_pointer_create(dtar->id);
 
   return true;
 }
@@ -213,10 +215,10 @@ static float dtar_get_prop_val(const AnimationEvalContext *anim_eval_context,
 
     switch (RNA_property_type(value_prop)) {
       case PROP_BOOLEAN:
-        value = (float)RNA_property_boolean_get_index(&value_ptr, value_prop, index);
+        value = float(RNA_property_boolean_get_index(&value_ptr, value_prop, index));
         break;
       case PROP_INT:
-        value = (float)RNA_property_int_get_index(&value_ptr, value_prop, index);
+        value = float(RNA_property_int_get_index(&value_ptr, value_prop, index));
         break;
       case PROP_FLOAT:
         value = RNA_property_float_get_index(&value_ptr, value_prop, index);
@@ -229,16 +231,16 @@ static float dtar_get_prop_val(const AnimationEvalContext *anim_eval_context,
     /* Not an array. */
     switch (RNA_property_type(value_prop)) {
       case PROP_BOOLEAN:
-        value = (float)RNA_property_boolean_get(&value_ptr, value_prop);
+        value = float(RNA_property_boolean_get(&value_ptr, value_prop));
         break;
       case PROP_INT:
-        value = (float)RNA_property_int_get(&value_ptr, value_prop);
+        value = float(RNA_property_int_get(&value_ptr, value_prop));
         break;
       case PROP_FLOAT:
         value = RNA_property_float_get(&value_ptr, value_prop);
         break;
       case PROP_ENUM:
-        value = (float)RNA_property_enum_get(&value_ptr, value_prop);
+        value = float(RNA_property_enum_get(&value_ptr, value_prop));
         break;
       default:
         break;
@@ -411,7 +413,7 @@ static float dvar_eval_rotDiff(const AnimationEvalContext * /*anim_eval_context*
   angle = 2.0f * saacos(quat[0]);
   angle = fabsf(angle);
 
-  return (angle > (float)M_PI) ? (float)((2.0f * (float)M_PI) - angle) : (float)(angle);
+  return (angle > float(M_PI)) ? float((2.0f * float(M_PI)) - angle) : float(angle);
 }
 
 /**
@@ -1094,7 +1096,7 @@ static bool driver_evaluate_simple_expr(const AnimationEvalContext *anim_eval_co
   switch (status) {
     case EXPR_PYLIKE_SUCCESS:
       if (isfinite(result_val)) {
-        *result = (float)result_val;
+        *result = float(result_val);
       }
       return true;
 
@@ -1264,14 +1266,14 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
   int tot = 0;
 
   /* Loop through targets, adding (hopefully we don't get any overflow!). */
-  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
+  LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
     value += driver_get_variable_value(anim_eval_context, driver, dvar);
     tot++;
   }
 
   /* Perform operations on the total if appropriate. */
   if (driver->type == DRIVER_TYPE_AVERAGE) {
-    driver->curval = tot ? (value / (float)tot) : 0.0f;
+    driver->curval = tot ? (value / float(tot)) : 0.0f;
   }
   else {
     driver->curval = value;
@@ -1281,11 +1283,10 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
 static void evaluate_driver_min_max(const AnimationEvalContext *anim_eval_context,
                                     ChannelDriver *driver)
 {
-  DriverVar *dvar;
   float value = 0.0f;
 
   /* Loop through the variables, getting the values and comparing them to existing ones. */
-  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
+  LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
     /* Get value. */
     float tmp_val = driver_get_variable_value(anim_eval_context, driver, dvar);
 

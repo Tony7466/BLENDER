@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,7 +30,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 
@@ -42,7 +41,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
@@ -50,37 +49,37 @@
 
 #include "BLT_translation.h"
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_info.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_asset.hh"
+#include "ED_fileselect.hh"
+#include "ED_info.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "PIL_time.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
-#include "wm_surface.h"
-#include "wm_window.h"
+#include "wm_event_types.hh"
+#include "wm_surface.hh"
+#include "wm_window.hh"
 #include "wm_window_private.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 
@@ -263,8 +262,7 @@ static void wm_event_free_last(wmWindow *win)
 
 void wm_event_free_all(wmWindow *win)
 {
-  wmEvent *event;
-  while ((event = static_cast<wmEvent *>(BLI_pophead(&win->event_queue)))) {
+  while (wmEvent *event = static_cast<wmEvent *>(BLI_pophead(&win->event_queue))) {
     wm_event_free(event);
   }
 }
@@ -628,8 +626,8 @@ void wm_event_do_notifiers(bContext *C)
   }
 
   /* The notifiers are sent without context, to keep it clean. */
-  const wmNotifier *note;
-  while ((note = static_cast<const wmNotifier *>(BLI_pophead(&wm->notifier_queue)))) {
+  while (
+      const wmNotifier *note = static_cast<const wmNotifier *>(BLI_pophead(&wm->notifier_queue))) {
     if (wm_notifier_is_clear(note)) {
       MEM_freeN((void *)note);
       continue;
@@ -1007,35 +1005,38 @@ bool WM_operator_poll_context(bContext *C, wmOperatorType *ot, short context)
       C, ot, nullptr, nullptr, static_cast<wmOperatorCallContext>(context), true, nullptr);
 }
 
-bool WM_operator_check_ui_empty(wmOperatorType *ot)
+bool WM_operator_ui_poll(wmOperatorType *ot, PointerRNA *ptr)
 {
   if (ot->macro.first != nullptr) {
     /* For macros, check all have exec() we can call. */
     LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
       wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
-      if (otm && !WM_operator_check_ui_empty(otm)) {
-        return false;
+      if (otm && WM_operator_ui_poll(otm, ptr)) {
+        return true;
       }
+    }
+    return false;
+  }
+
+  if (ot->ui) {
+    if (ot->ui_poll) {
+      return ot->ui_poll(ot, ptr);
     }
     return true;
   }
 
-  /* Assume a UI callback will draw something. */
-  if (ot->ui) {
-    return false;
-  }
-
-  PointerRNA ptr;
-  WM_operator_properties_create_ptr(&ptr, ot);
-  RNA_STRUCT_BEGIN (&ptr, prop) {
+  bool result = false;
+  PointerRNA op_ptr;
+  WM_operator_properties_create_ptr(&op_ptr, ot);
+  RNA_STRUCT_BEGIN (&op_ptr, prop) {
     int flag = RNA_property_flag(prop);
-    if (flag & PROP_HIDDEN) {
-      continue;
+    if ((flag & PROP_HIDDEN) == 0) {
+      result = true;
+      break;
     }
-    return false;
   }
   RNA_STRUCT_END;
-  return true;
+  return result;
 }
 
 void WM_operator_region_active_win_set(bContext *C)
@@ -1367,7 +1368,7 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
     IDPropertyTemplate val = {0};
     op->properties = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
   }
-  RNA_pointer_create(&wm->id, ot->srna, op->properties, op->ptr);
+  *op->ptr = RNA_pointer_create(&wm->id, ot->srna, op->properties);
 
   /* Initialize error reports. */
   if (reports) {
@@ -1810,10 +1811,9 @@ int WM_operator_name_call_with_properties(bContext *C,
                                           IDProperty *properties,
                                           const wmEvent *event)
 {
-  PointerRNA props_ptr;
   wmOperatorType *ot = WM_operatortype_find(opstring, false);
-  RNA_pointer_create(
-      &static_cast<wmWindowManager *>(G_MAIN->wm.first)->id, ot->srna, properties, &props_ptr);
+  PointerRNA props_ptr = RNA_pointer_create(
+      &static_cast<wmWindowManager *>(G_MAIN->wm.first)->id, ot->srna, properties);
   return WM_operator_name_call_ptr(C, ot, context, &props_ptr, event);
 }
 
@@ -1864,7 +1864,7 @@ int WM_operator_call_py(bContext *C,
 struct uiOperatorWaitForInput {
   ScrArea *area;
   wmOperatorCallParams optype_params;
-  bContextStore *context;
+  std::optional<bContextStore> context;
 };
 
 static void ui_handler_wait_for_input_remove(bContext *C, void *userdata)
@@ -1876,9 +1876,6 @@ static void ui_handler_wait_for_input_remove(bContext *C, void *userdata)
     }
     MEM_freeN(opwait->optype_params.opptr);
   }
-  if (opwait->context) {
-    CTX_store_free(opwait->context);
-  }
 
   if (opwait->area != nullptr) {
     ED_area_status_text(opwait->area, nullptr);
@@ -1887,7 +1884,7 @@ static void ui_handler_wait_for_input_remove(bContext *C, void *userdata)
     ED_workspace_status_text(C, nullptr);
   }
 
-  MEM_freeN(opwait);
+  MEM_delete(opwait);
 }
 
 static int ui_handler_wait_for_input(bContext *C, const wmEvent *event, void *userdata)
@@ -1931,7 +1928,7 @@ static int ui_handler_wait_for_input(bContext *C, const wmEvent *event, void *us
     WM_cursor_modal_restore(win);
 
     if (state == EXECUTE) {
-      CTX_store_set(C, opwait->context);
+      CTX_store_set(C, opwait->context ? &opwait->context.value() : nullptr);
       WM_operator_name_call_ptr(C,
                                 opwait->optype_params.optype,
                                 opwait->optype_params.opcontext,
@@ -1997,7 +1994,7 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
 
   WM_cursor_modal_set(win, ot->cursor_pending);
 
-  uiOperatorWaitForInput *opwait = MEM_cnew<uiOperatorWaitForInput>(__func__);
+  uiOperatorWaitForInput *opwait = MEM_new<uiOperatorWaitForInput>(__func__);
   opwait->optype_params.optype = ot;
   opwait->optype_params.opcontext = opcontext;
   opwait->optype_params.opptr = properties;
@@ -2013,9 +2010,8 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
     }
   }
 
-  bContextStore *store = CTX_store_get(C);
-  if (store) {
-    opwait->context = CTX_store_copy(store);
+  if (const bContextStore *store = CTX_store_get(C)) {
+    opwait->context = *store;
   }
 
   WM_event_add_ui_handler(C,
@@ -2128,8 +2124,7 @@ void WM_event_remove_handlers(bContext *C, ListBase *handlers)
   wmWindowManager *wm = CTX_wm_manager(C);
 
   /* C is zero on freeing database, modal handlers then already were freed. */
-  wmEventHandler *handler_base;
-  while ((handler_base = static_cast<wmEventHandler *>(BLI_pophead(handlers)))) {
+  while (wmEventHandler *handler_base = static_cast<wmEventHandler *>(BLI_pophead(handlers))) {
     BLI_assert(handler_base->type != 0);
     if (handler_base->type == WM_HANDLER_TYPE_OP) {
       wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
@@ -2647,17 +2642,24 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
   switch (val) {
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
-      ScrArea *area;
+      const int window_center[2] = {
+          WM_window_pixels_x(win) / 2,
+          WM_window_pixels_y(win) / 2,
+      };
 
-      if ((area = ED_screen_temp_space_open(C,
-                                            IFACE_("Blender File View"),
-                                            WM_window_pixels_x(win) / 2,
-                                            WM_window_pixels_y(win) / 2,
-                                            U.file_space_data.temp_win_sizex * UI_SCALE_FAC,
-                                            U.file_space_data.temp_win_sizey * UI_SCALE_FAC,
-                                            SPACE_FILE,
-                                            U.filebrowser_display_type,
-                                            true)))
+      const rcti window_rect = {
+          /*xmin*/ window_center[0],
+          /*xmax*/ window_center[0] + int(U.file_space_data.temp_win_sizex * UI_SCALE_FAC),
+          /*ymin*/ window_center[1],
+          /*ymax*/ window_center[1] + int(U.file_space_data.temp_win_sizey * UI_SCALE_FAC),
+      };
+
+      if (ScrArea *area = ED_screen_temp_space_open(C,
+                                                    IFACE_("Blender File View"),
+                                                    &window_rect,
+                                                    SPACE_FILE,
+                                                    U.filebrowser_display_type,
+                                                    true))
       {
         ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
@@ -4082,7 +4084,7 @@ void wm_event_do_handlers(bContext *C)
          * after modal handlers have been done. */
         if (event->type == MOUSEMOVE) {
           /* State variables in screen, cursors.
-           * Also used in `wm_draw.c`, fails for modal handlers though. */
+           * Also used in `wm_draw.cc`, fails for modal handlers though. */
           ED_screen_set_active_region(C, win, event->xy);
           /* For regions having custom cursors. */
           wm_paintcursor_test(C, event);
@@ -4353,7 +4355,7 @@ void WM_event_add_fileselect(bContext *C, wmOperator *op)
 /** \name Consecutive Event Access
  * \{ */
 
-using wmEvent_ConsecutiveData = struct wmEvent_ConsecutiveData {
+struct wmEvent_ConsecutiveData {
   /** Owned custom-data. */
   void *custom_data;
   /** Unique identifier per struct type. */
@@ -4629,7 +4631,7 @@ void WM_event_get_keymap_from_toolsystem(wmWindowManager *wm,
 }
 
 wmEventHandler_Keymap *WM_event_add_keymap_handler_dynamic(
-    ListBase *handlers, wmEventHandler_KeymapDynamicFn *keymap_fn, void *user_data)
+    ListBase *handlers, wmEventHandler_KeymapDynamicFn keymap_fn, void *user_data)
 {
   if (!keymap_fn) {
     CLOG_WARN(WM_LOG_HANDLERS, "called with nullptr keymap_fn");
@@ -5668,7 +5670,9 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
         event.utf8_buf[0] = '\0';
       }
       else {
-        if (event.utf8_buf[0] < 32 && event.utf8_buf[0] > 0) {
+        /* Check for ASCII control characters.
+         * Inline `iscntrl` because the users locale must not change behavior. */
+        if ((event.utf8_buf[0] < 32 && event.utf8_buf[0] > 0) || (event.utf8_buf[0] == 127)) {
           event.utf8_buf[0] = '\0';
         }
       }
@@ -5690,11 +5694,23 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
                      utf8_buf_len);
         }
 
-        if (BLI_str_utf8_size(event.utf8_buf) == -1) {
+        const int utf8_buf_len = BLI_str_utf8_size_or_error(event.utf8_buf);
+        if (utf8_buf_len == -1) {
           CLOG_ERROR(WM_LOG_EVENTS,
                      "ghost detected an invalid unicode character '%d'",
                      int(uchar(event.utf8_buf[0])));
           event.utf8_buf[0] = '\0';
+        }
+        else {
+#ifndef NDEBUG
+          /* Ensure callers don't accidentally treat this as a "string",
+           * it's not null terminated. */
+          if (utf8_buf_len > 0) {
+            for (int i = utf8_buf_len; i < ARRAY_SIZE(event.utf8_buf); i++) {
+              event.utf8_buf[i] = 0xff;
+            }
+          }
+#endif /* !NDEBUG */
         }
       }
 
@@ -6157,6 +6173,7 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
            RGN_TYPE_HEADER,
            RGN_TYPE_TOOL_HEADER,
            RGN_TYPE_FOOTER,
+           RGN_TYPE_ASSET_SHELF_HEADER,
            RGN_TYPE_TEMPORARY,
            RGN_TYPE_HUD))
   {
@@ -6243,7 +6260,8 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
     }
     if (kmi) {
       wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
-      const char *name = (ot) ? WM_operatortype_name(ot, kmi->ptr) : kmi->idname;
+      const std::string operator_name = WM_operatortype_name(ot, kmi->ptr);
+      const char *name = (ot) ? operator_name.c_str() : kmi->idname;
       STRNCPY(cd->text[button_index][type_index], name);
     }
   }
@@ -6271,10 +6289,11 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
       if (handler->op != nullptr) {
         /* 'handler->keymap' could be checked too, seems not to be used. */
-        wmKeyMap *keymap_test = WM_keymap_active(wm, handler->op->type->modalkeymap);
+        wmOperator *op_test = handler->op->opm ? handler->op->opm : handler->op;
+        wmKeyMap *keymap_test = WM_keymap_active(wm, op_test->type->modalkeymap);
         if (keymap_test && keymap_test->modal_items) {
           keymap = keymap_test;
-          op = handler->op;
+          op = op_test;
           break;
         }
       }
@@ -6324,7 +6343,7 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       p -= 1;
       if (p > buf) {
         BLI_snprintf(p, available_len, ": %s", items[i].name);
-        uiItemL(row, buf, 0);
+        uiItemL(row, buf, ICON_NONE);
       }
     }
   }

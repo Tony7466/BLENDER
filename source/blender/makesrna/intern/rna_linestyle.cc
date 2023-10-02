@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,16 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "BLT_translation.h"
+
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -20,8 +23,8 @@
 #include "DNA_material_types.h"
 #include "DNA_texture_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_linestyle_color_modifier_type_items[] = {
     {LS_MODIFIER_ALONG_STROKE, "ALONG_STROKE", ICON_MODIFIER, "Along Stroke", ""},
@@ -117,11 +120,11 @@ const EnumPropertyItem rna_enum_linestyle_geometry_modifier_type_items[] = {
 #  include "BKE_linestyle.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "ED_node.h"
+#  include "ED_node.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 static StructRNA *rna_LineStyle_color_modifier_refine(PointerRNA *ptr)
 {
@@ -515,8 +518,6 @@ static void rna_LineStyle_geometry_modifier_remove(FreestyleLineStyle *linestyle
 
 #else
 
-#  include "BLI_math.h"
-
 static void rna_def_linestyle_mtex(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -596,6 +597,7 @@ static void rna_def_linestyle_mtex(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_update(prop, 0, "rna_LineStyle_update");
 
   /* map to */
@@ -1337,6 +1339,7 @@ static void rna_def_linestyle_modifiers(BlenderRNA *brna)
   prop = RNA_def_property(srna, "smooth", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", LS_MODIFIER_SPATIAL_NOISE_SMOOTH);
   RNA_def_property_ui_text(prop, "Smooth", "If true, the spatial noise is smooth");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_FREESTYLELINESTYLE);
   RNA_def_property_update(prop, NC_LINESTYLE, "rna_LineStyle_update");
 
   prop = RNA_def_property(srna, "use_pure_random", PROP_BOOLEAN, PROP_NONE);

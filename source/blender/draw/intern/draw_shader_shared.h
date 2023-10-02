@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -45,6 +45,10 @@ struct ObjectRef;
 typedef enum eObjectInfoFlag eObjectInfoFlag;
 
 #  endif
+#endif
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+extern "C" {
 #endif
 
 #define DRW_SHADER_SHARED_H
@@ -169,7 +173,7 @@ enum eObjectInfoFlag {
 
 struct ObjectInfos {
 #if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
-  /* TODO Rename to struct member for glsl too. */
+  /* TODO Rename to struct member for GLSL too. */
   float4 orco_mul_bias[2];
   float4 ob_color;
   float4 infos;
@@ -380,3 +384,7 @@ BLI_STATIC_ASSERT_ALIGN(DRWDebugPrintBuffer, 16)
 #define drw_debug_draw_offset 2
 
 /** \} */
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+}
+#endif

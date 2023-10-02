@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -56,12 +56,15 @@ class GLContext : public Context {
   static bool explicit_location_support;
   static bool geometry_shader_invocations;
   static bool fixed_restart_index_support;
+  static bool framebuffer_fetch_support;
   static bool layered_rendering_support;
   static bool native_barycentric_support;
   static bool multi_bind_support;
+  static bool multi_bind_image_support;
   static bool multi_draw_indirect_support;
   static bool shader_draw_parameters_support;
   static bool stencil_texturing_support;
+  static bool texture_barrier_support;
   static bool texture_cube_map_array_support;
   static bool texture_filter_anisotropic_support;
   static bool texture_gather_support;

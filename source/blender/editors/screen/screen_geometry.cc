@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,19 +11,19 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "screen_intern.h"
 

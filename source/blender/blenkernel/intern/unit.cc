@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,12 +6,12 @@
  * \ingroup bke
  */
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utf8_symbols.h"
@@ -146,7 +146,7 @@ static   bUnitDef buMetricLenDef[] = {
 {"decimeter",  "decimeters",  "dm",  nullptr, "10 Centimeters", "DECIMETERS",  UN_SC_DM,  0.0, B_UNIT_DEF_SUPPRESS}, {"centimeter", "centimeters", "cm",  nullptr, "Centimeters",    "CENTIMETERS", UN_SC_CM,  0.0, B_UNIT_DEF_NONE}, {"millimeter", "millimeters", "mm",  nullptr, "Millimeters",    "MILLIMETERS", UN_SC_MM,  0.0, B_UNIT_DEF_NONE | B_UNIT_DEF_TENTH}, {"micrometer", "micrometers", "µm",  "um", "Micrometers",    "MICROMETERS", UN_SC_UM,  0.0, B_UNIT_DEF_NONE},
 
 /* These get displayed because of float precision problems in the transform header,
-* could work around, but for now probably people won't use these. */
+ * could work around, but for now probably people won't use these. */
 #if 0
 {"nanometer", "Nanometers",     "nm", nullptr, 0.000000001, 0.0,   B_UNIT_DEF_NONE}, {"picometer", "Picometers",     "pm", nullptr, 0.000000000001, 0.0, B_UNIT_DEF_NONE},
 #endif
@@ -201,10 +201,8 @@ static   bUnitDef buImperialMassDef[] = {
 {"ounce",         "ounces",         "oz",  nullptr, "Ounces",         "OUNCES",         UN_SC_OZ,   0.0, B_UNIT_DEF_NONE}, NULL_UNIT, };
 static   bUnitCollection buImperialMassCollection = {buImperialMassDef, 3, 0, UNIT_COLLECTION_LENGTH(buImperialMassDef)};
 
-
 /* Even if user scales the system to a point where km^3 is used, velocity and
-* acceleration aren't scaled: that's why we have so few units for them. */
-
+ * acceleration aren't scaled: that's why we have so few units for them. */
 
 /* Velocity. */
 static   bUnitDef buMetricVelDef[] = {
@@ -816,7 +814,7 @@ static bool unit_distribute_negatives(char *str, const int str_maxncpy)
   while ((remaining_str = const_cast<char *>(find_next_negative(str, remaining_str))) != nullptr) {
     int remaining_str_maxncpy;
     /* Exit early in the unlikely situation that we've run out of length to add the parentheses. */
-    remaining_str_maxncpy = str_maxncpy - (int)(remaining_str - str);
+    remaining_str_maxncpy = str_maxncpy - int(remaining_str - str);
     if (remaining_str_maxncpy <= 2) {
       return changed;
     }
@@ -829,7 +827,7 @@ static bool unit_distribute_negatives(char *str, const int str_maxncpy)
 
     /* Add the ')' before the next operation or at the end. */
     remaining_str = find_next_op(str, remaining_str + 1, remaining_str_maxncpy);
-    remaining_str_maxncpy = str_maxncpy - (int)(remaining_str - str);
+    remaining_str_maxncpy = str_maxncpy - int(remaining_str - str);
     memmove(remaining_str + 1, remaining_str, remaining_str_maxncpy - 2);
     *remaining_str = ')';
 
@@ -889,7 +887,7 @@ static int unit_scale_str(char *str,
     return 0;
   }
 
-  int found_ofs = (int)(str_found - str);
+  int found_ofs = int(str_found - str);
 
   int len = strlen(str);
 
@@ -1101,17 +1099,19 @@ bool BKE_unit_replace_string(
    * not 4 inches. I do think this is the desired behavior!
    */
   for (int system_iter = 0; system_iter < UNIT_SYSTEM_TOT; system_iter++) {
-    if (system_iter != system) {
-      const bUnitCollection *usys_iter = unit_get_system(system_iter, type);
-      if (usys_iter) {
-        for (const bUnitDef *unit = usys_iter->units; unit->name; unit++) {
-          int ofs = 0;
-          /* In case there are multiple instances. */
-          while (
-              (ofs = unit_replace(str + ofs, str_maxncpy - ofs, str_tmp, scale_pref_base, unit))) {
-            changed = true;
-          }
-        }
+    if (system_iter == system) {
+      continue;
+    }
+    const bUnitCollection *usys_iter = unit_get_system(system_iter, type);
+    if (usys_iter == nullptr) {
+      continue;
+    }
+
+    for (const bUnitDef *unit = usys_iter->units; unit->name; unit++) {
+      int ofs = 0;
+      /* In case there are multiple instances. */
+      while ((ofs = unit_replace(str + ofs, str_maxncpy - ofs, str_tmp, scale_pref_base, unit))) {
+        changed = true;
       }
     }
   }
@@ -1148,40 +1148,36 @@ void BKE_unit_name_to_alt(char *str, int str_maxncpy, const char *orig_str, int 
   const bUnitCollection *usys = unit_get_system(system, type);
 
   /* Find and substitute all units. */
-  for (const bUnitDef *unit = usys->units; unit->name; unit++) {
-    if (str_maxncpy > 0 && unit->name_alt) {
-      const bool case_sensitive = (unit->flag & B_UNIT_DEF_CASE_SENSITIVE) != 0;
-      const char *found = unit_find_str(orig_str, unit->name_short, case_sensitive);
-      if (found) {
-        int offset = (int)(found - orig_str);
-        int len_name = 0;
-
-        /* Copy everything before the unit. */
-        if (offset < str_maxncpy) {
-          memcpy(str, orig_str, offset);
-        }
-        else {
-          BLI_strncpy(str, orig_str, str_maxncpy);
-          offset = str_maxncpy;
-        }
-
-        str += offset;
-        orig_str += offset + strlen(unit->name_short);
-        str_maxncpy -= offset;
-
-        /* Print the alt_name. */
-        if (unit->name_alt) {
-          len_name = BLI_strncpy_rlen(str, unit->name_alt, str_maxncpy);
-        }
-        else {
-          len_name = 0;
-        }
-
-        len_name = (len_name < str_maxncpy ? len_name : str_maxncpy);
-        str += len_name;
-        str_maxncpy -= len_name;
-      }
+  for (const bUnitDef *unit = usys->units; unit->name && (str_maxncpy > 0); unit++) {
+    if (unit->name_alt == nullptr) {
+      continue;
     }
+    const bool case_sensitive = (unit->flag & B_UNIT_DEF_CASE_SENSITIVE) != 0;
+    const char *found = unit_find_str(orig_str, unit->name_short, case_sensitive);
+    if (found == nullptr) {
+      continue;
+    }
+
+    int offset = int(found - orig_str);
+
+    /* Copy everything before the unit. */
+    if (offset < str_maxncpy) {
+      memcpy(str, orig_str, offset);
+    }
+    else {
+      BLI_strncpy(str, orig_str, str_maxncpy);
+      offset = str_maxncpy;
+    }
+
+    str += offset;
+    orig_str += offset + strlen(unit->name_short);
+    str_maxncpy -= offset;
+
+    /* Print the alt_name. */
+    const int len_name = BLI_strncpy_rlen(str, unit->name_alt, str_maxncpy);
+    BLI_assert(len_name < str_maxncpy);
+    str += len_name;
+    str_maxncpy -= len_name;
   }
 
   /* Finally copy the rest of the string. */
@@ -1245,19 +1241,19 @@ int BKE_unit_base_of_type_get(int system, int type)
 const char *BKE_unit_name_get(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
-  BLI_assert((uint)index < (uint)usys->length);
+  BLI_assert(uint(index) < uint(usys->length));
   return usys->units[index].name;
 }
 const char *BKE_unit_display_name_get(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
-  BLI_assert((uint)index < (uint)usys->length);
+  BLI_assert(uint(index) < uint(usys->length));
   return usys->units[index].name_display;
 }
 const char *BKE_unit_identifier_get(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
-  BLI_assert((uint)index < (uint)usys->length);
+  BLI_assert(uint(index) < uint(usys->length));
   const bUnitDef *unit = &usys->units[index];
   if (unit->identifier == nullptr) {
     BLI_assert_msg(0, "identifier for this unit is not specified yet");
@@ -1268,13 +1264,13 @@ const char *BKE_unit_identifier_get(const void *usys_pt, int index)
 double BKE_unit_scalar_get(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
-  BLI_assert((uint)index < (uint)usys->length);
+  BLI_assert(uint(index) < uint(usys->length));
   return usys->units[index].scalar;
 }
 
 bool BKE_unit_is_suppressed(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
-  BLI_assert((uint)index < (uint)usys->length);
+  BLI_assert(uint(index) < uint(usys->length));
   return (usys->units[index].flag & B_UNIT_DEF_SUPPRESS) != 0;
 }

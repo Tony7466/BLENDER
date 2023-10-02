@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -15,18 +15,22 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_nla.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLT_translation.h"
+
+#include "ED_sequencer.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -1148,6 +1152,10 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
 {
   t->mode = eTfmMode(mode);
   t->mode_info = mode_info_get(t, mode);
+
+  if (t->spacetype == SPACE_SEQ && sequencer_retiming_mode_is_active(t->context)) {
+    t->mode_info = &TransMode_translate;
+  }
 
   if (t->mode_info) {
     t->flag |= eTFlag(t->mode_info->flags);

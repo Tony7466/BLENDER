@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,19 +7,21 @@
  * \brief Blender-side interface and methods for dealing with Rigid Body simulations
  */
 
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #ifdef WITH_BULLET
 #  include "RBI_api.h"
@@ -39,8 +41,8 @@
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
@@ -51,8 +53,8 @@
 #  include "BKE_lib_query.h"
 #endif
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_BULLET
 static CLG_LogRef LOG = {"bke.rigidbody"};
@@ -368,7 +370,8 @@ static rbCollisionShape *rigidbody_get_shape_convexhull_from_mesh(Object *ob,
 
   if (ob->type == OB_MESH && ob->data) {
     mesh = rigidbody_get_mesh(ob);
-    positions = (mesh) ? BKE_mesh_vert_positions_for_write(mesh) : nullptr;
+    positions = (mesh) ? reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()) :
+                         nullptr;
     totvert = (mesh) ? mesh->totvert : 0;
   }
   else {
@@ -394,23 +397,16 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
   rbCollisionShape *shape = nullptr;
 
   if (ob->type == OB_MESH) {
-    Mesh *mesh = nullptr;
-    const MLoopTri *looptri;
-    int totvert;
-    int tottri;
-
-    mesh = rigidbody_get_mesh(ob);
-
-    /* ensure mesh validity, then grab data */
+    Mesh *mesh = rigidbody_get_mesh(ob);
     if (mesh == nullptr) {
       return nullptr;
     }
 
-    const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
-    totvert = mesh->totvert;
-    looptri = BKE_mesh_runtime_looptri_ensure(mesh);
-    tottri = BKE_mesh_runtime_looptri_len(mesh);
-    const int *corner_verts = BKE_mesh_corner_verts(mesh);
+    const blender::Span<blender::float3> positions = mesh->vert_positions();
+    const int totvert = mesh->totvert;
+    const blender::Span<MLoopTri> looptris = mesh->looptris();
+    const int tottri = looptris.size();
+    const blender::Span<int> corner_verts = mesh->corner_verts();
 
     /* sanity checking - potential case when no data will be present */
     if ((totvert == 0) || (tottri == 0)) {
@@ -424,20 +420,20 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
       /* init mesh data for collision shape */
       mdata = RB_trimesh_data_new(tottri, totvert);
 
-      RB_trimesh_add_vertices(mdata, (float *)positions, totvert, sizeof(float[3]));
+      RB_trimesh_add_vertices(mdata, (float *)positions.data(), totvert, sizeof(float[3]));
 
       /* loop over all faces, adding them as triangles to the collision shape
        * (so for some faces, more than triangle will get added)
        */
-      if (positions && looptri) {
+      if (positions.data()) {
         for (i = 0; i < tottri; i++) {
           /* add first triangle - verts 1,2,3 */
-          const MLoopTri *lt = &looptri[i];
+          const MLoopTri &lt = looptris[i];
           int vtri[3];
 
-          vtri[0] = corner_verts[lt->tri[0]];
-          vtri[1] = corner_verts[lt->tri[1]];
-          vtri[2] = corner_verts[lt->tri[2]];
+          vtri[0] = corner_verts[lt.tri[0]];
+          vtri[1] = corner_verts[lt.tri[1]];
+          vtri[2] = corner_verts[lt.tri[2]];
 
           RB_trimesh_add_triangle_indices(mdata, i, UNPACK3(vtri));
         }
@@ -657,39 +653,39 @@ void BKE_rigidbody_calc_volume(Object *ob, float *r_vol)
       break;
 
     case RB_SHAPE_SPHERE:
-      volume = 4.0f / 3.0f * (float)M_PI * radius * radius * radius;
+      volume = 4.0f / 3.0f * float(M_PI) * radius * radius * radius;
       break;
 
     /* for now, assume that capsule is close enough to a cylinder... */
     case RB_SHAPE_CAPSULE:
     case RB_SHAPE_CYLINDER:
-      volume = (float)M_PI * radius * radius * height;
+      volume = float(M_PI) * radius * radius * height;
       break;
 
     case RB_SHAPE_CONE:
-      volume = (float)M_PI / 3.0f * radius * radius * height;
+      volume = float(M_PI) / 3.0f * radius * radius * height;
       break;
 
     case RB_SHAPE_CONVEXH:
     case RB_SHAPE_TRIMESH: {
       if (ob->type == OB_MESH) {
         Mesh *mesh = rigidbody_get_mesh(ob);
-        const MLoopTri *lt = nullptr;
-        int totvert, tottri = 0;
-
-        /* ensure mesh validity, then grab data */
         if (mesh == nullptr) {
           return;
         }
 
-        const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
-        totvert = mesh->totvert;
-        lt = BKE_mesh_runtime_looptri_ensure(mesh);
-        tottri = BKE_mesh_runtime_looptri_len(mesh);
+        const blender::Span<blender::float3> positions = mesh->vert_positions();
+        const blender::Span<MLoopTri> looptris = mesh->looptris();
         const int *corner_verts = BKE_mesh_corner_verts(mesh);
 
-        if (totvert > 0 && tottri > 0) {
-          BKE_mesh_calc_volume(positions, totvert, lt, tottri, corner_verts, &volume, nullptr);
+        if (!positions.is_empty() && !looptris.is_empty()) {
+          BKE_mesh_calc_volume(reinterpret_cast<const float(*)[3]>(positions.data()),
+                               positions.size(),
+                               looptris.data(),
+                               looptris.size(),
+                               corner_verts,
+                               &volume,
+                               nullptr);
           const float volume_scale = mat4_to_volume_scale(ob->object_to_world);
           volume *= fabsf(volume_scale);
         }
@@ -748,22 +744,21 @@ void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_center[3])
     case RB_SHAPE_TRIMESH: {
       if (ob->type == OB_MESH) {
         Mesh *mesh = rigidbody_get_mesh(ob);
-        const MLoopTri *looptri;
-        int totvert, tottri;
-
-        /* ensure mesh validity, then grab data */
         if (mesh == nullptr) {
           return;
         }
 
-        const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
-        totvert = mesh->totvert;
-        looptri = BKE_mesh_runtime_looptri_ensure(mesh);
-        tottri = BKE_mesh_runtime_looptri_len(mesh);
+        const blender::Span<blender::float3> positions = mesh->vert_positions();
+        const blender::Span<MLoopTri> looptris = mesh->looptris();
 
-        if (totvert > 0 && tottri > 0) {
-          BKE_mesh_calc_volume(
-              positions, totvert, looptri, tottri, BKE_mesh_corner_verts(mesh), nullptr, r_center);
+        if (!positions.is_empty() && !looptris.is_empty()) {
+          BKE_mesh_calc_volume(reinterpret_cast<const float(*)[3]>(positions.data()),
+                               positions.size(),
+                               looptris.data(),
+                               looptris.size(),
+                               mesh->corner_verts().data(),
+                               nullptr,
+                               r_center);
         }
       }
       break;
@@ -1771,7 +1766,8 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
   if (rbo->shape == RB_SHAPE_TRIMESH && rbo->flag & RBO_FLAG_USE_DEFORM) {
     Mesh *mesh = ob->runtime.mesh_deform_eval;
     if (mesh) {
-      float(*positions)[3] = BKE_mesh_vert_positions_for_write(mesh);
+      float(*positions)[3] = reinterpret_cast<float(*)[3]>(
+          mesh->vert_positions_for_write().data());
       int totvert = mesh->totvert;
       const BoundBox *bb = BKE_object_boundbox_get(ob);
 
@@ -2285,7 +2281,7 @@ void BKE_rigidbody_rebuild_world(Depsgraph *depsgraph, Scene *scene, float ctime
     if (cache->flag & PTCACHE_OUTDATED) {
       BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
       rigidbody_update_simulation(depsgraph, scene, rbw, true);
-      BKE_ptcache_validate(cache, (int)ctime);
+      BKE_ptcache_validate(cache, int(ctime));
       cache->last_exact = 0;
       cache->flag &= ~PTCACHE_REDO_NEEDED;
     }
@@ -2325,7 +2321,7 @@ void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime
   bool can_simulate = (ctime == rbw->ltime + 1) && !(cache->flag & PTCACHE_BAKED);
 
   if (BKE_ptcache_read(&pid, ctime, can_simulate) == PTCACHE_READ_EXACT) {
-    BKE_ptcache_validate(cache, (int)ctime);
+    BKE_ptcache_validate(cache, int(ctime));
     rbw->ltime = ctime;
     return;
   }
@@ -2345,7 +2341,7 @@ void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime
 
     const float frame_diff = ctime - rbw->ltime;
     /* calculate how much time elapsed since last step in seconds */
-    const float timestep = 1.0f / (float)FPS * frame_diff * rbw->time_scale;
+    const float timestep = 1.0f / float(FPS) * frame_diff * rbw->time_scale;
 
     const float substep = timestep / rbw->substeps_per_frame;
 
@@ -2369,8 +2365,8 @@ void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime
     rigidbody_update_simulation_post_step(depsgraph, rbw);
 
     /* write cache for current frame */
-    BKE_ptcache_validate(cache, (int)ctime);
-    BKE_ptcache_write(&pid, (uint)ctime);
+    BKE_ptcache_validate(cache, int(ctime));
+    BKE_ptcache_write(&pid, uint(ctime));
 
     rbw->ltime = ctime;
   }
@@ -2403,29 +2399,25 @@ void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_center[3])
 {
   zero_v3(r_center);
 }
-struct RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene)
+RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene)
 {
   return nullptr;
 }
-struct RigidBodyWorld *BKE_rigidbody_world_copy(RigidBodyWorld *rbw, const int flag)
+RigidBodyWorld *BKE_rigidbody_world_copy(RigidBodyWorld *rbw, const int flag)
 {
   return nullptr;
 }
-void BKE_rigidbody_world_groups_relink(struct RigidBodyWorld *rbw) {}
-void BKE_rigidbody_world_id_loop(struct RigidBodyWorld *rbw,
-                                 RigidbodyWorldIDFunc func,
-                                 void *userdata)
-{
-}
-struct RigidBodyOb *BKE_rigidbody_create_object(Scene *scene, Object *ob, short type)
+void BKE_rigidbody_world_groups_relink(RigidBodyWorld *rbw) {}
+void BKE_rigidbody_world_id_loop(RigidBodyWorld *rbw, RigidbodyWorldIDFunc func, void *userdata) {}
+RigidBodyOb *BKE_rigidbody_create_object(Scene *scene, Object *ob, short type)
 {
   return nullptr;
 }
-struct RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short type)
+RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short type)
 {
   return nullptr;
 }
-struct RigidBodyWorld *BKE_rigidbody_get_world(Scene *scene)
+RigidBodyWorld *BKE_rigidbody_get_world(Scene *scene)
 {
   return nullptr;
 }
@@ -2438,9 +2430,7 @@ bool BKE_rigidbody_add_object(Main *bmain, Scene *scene, Object *ob, int type, R
   return false;
 }
 
-void BKE_rigidbody_remove_object(struct Main *bmain, Scene *scene, Object *ob, const bool free_us)
-{
-}
+void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob, const bool free_us) {}
 void BKE_rigidbody_remove_constraint(Main *bmain, Scene *scene, Object *ob, const bool free_us) {}
 void BKE_rigidbody_sync_transforms(RigidBodyWorld *rbw, Object *ob, float ctime) {}
 void BKE_rigidbody_aftertrans_update(

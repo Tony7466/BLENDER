@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -28,13 +30,13 @@
 
 #include "BIK_api.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ********************** SPLINE IK SOLVER ******************* */
 
 /* Temporary evaluation tree data used for Spline IK */
 struct tSplineIK_Tree {
-  struct tSplineIK_Tree *next, *prev;
+  tSplineIK_Tree *next, *prev;
 
   int type; /* type of IK that this serves (CONSTRAINT_TYPE_KINEMATIC or ..._SPLINEIK) */
 
@@ -107,7 +109,7 @@ static void splineik_init_tree_from_pchan(Scene * /*scene*/,
 
   /* Perform binding step if required. */
   if ((ik_data->flag & CONSTRAINT_SPLINEIK_BOUND) == 0) {
-    float segmentLen = (1.0f / (float)segcount);
+    float segmentLen = (1.0f / float(segcount));
 
     /* Setup new empty array for the points list. */
     if (ik_data->points) {
@@ -182,11 +184,9 @@ static void splineik_init_tree_from_pchan(Scene * /*scene*/,
 /* Tag which bones are members of Spline IK chains. */
 static void splineik_init_tree(Scene *scene, Object *ob, float /*ctime*/)
 {
-  bPoseChannel *pchan;
-
   /* Find the tips of Spline IK chains,
    * which are simply the bones which have been tagged as such. */
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     if (pchan->constflag & PCHAN_HAS_SPLINEIK) {
       splineik_init_tree_from_pchan(scene, ob, pchan);
     }
@@ -656,7 +656,7 @@ static void splineik_evaluate_bone(
 
               float range = bulge_max - 1.0f;
               float scale = (range > 0.0f) ? 1.0f / range : 0.0f;
-              float soft = 1.0f + range * atanf((bulge - 1.0f) * scale) / (float)M_PI_2;
+              float soft = 1.0f + range * atanf((bulge - 1.0f) * scale) / float(M_PI_2);
 
               bulge = interpf(soft, hard, ik_data->bulge_smooth);
             }
@@ -668,7 +668,7 @@ static void splineik_evaluate_bone(
 
               float range = 1.0f - bulge_min;
               float scale = (range > 0.0f) ? 1.0f / range : 0.0f;
-              float soft = 1.0f - range * atanf((1.0f - bulge) * scale) / (float)M_PI_2;
+              float soft = 1.0f - range * atanf((1.0f - bulge) * scale) / float(M_PI_2);
 
               bulge = interpf(soft, hard, ik_data->bulge_smooth);
             }
@@ -750,7 +750,7 @@ static void splineik_execute_tree(
     /* Firstly, calculate the bone matrix the standard way,
      * since this is needed for roll control. */
     for (int i = tree->chainlen - 1; i >= 0; i--) {
-      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, true);
     }
 
     /* After that, evaluate the actual Spline IK, unless there are missing dependencies. */
@@ -891,7 +891,7 @@ void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int 
         if ((pchan->flag & POSE_DONE) == 0) {
           /* TODO(sergey): Use time source node for time. */
           float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
         }
       }
     }
@@ -919,7 +919,7 @@ void BKE_pose_constraints_evaluate(Depsgraph *depsgraph,
   else {
     if ((pchan->flag & POSE_DONE) == 0) {
       float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
     }
   }
 }
@@ -942,6 +942,7 @@ static void pose_channel_flush_to_orig_if_needed(Depsgraph *depsgraph,
   copy_v3_v3(pchan_orig->pose_head, pchan->pose_mat[3]);
   copy_m4_m4(pchan_orig->constinv, pchan->constinv);
   copy_v3_v3(pchan_orig->pose_tail, pchan->pose_tail);
+  pchan_orig->constflag = pchan->constflag;
 }
 
 void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)

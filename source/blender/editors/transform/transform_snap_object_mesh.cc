@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,15 +6,15 @@
  * \ingroup edtransform
  */
 
-#include "BLI_math.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.h"
 
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
-#include "ED_transform_snap_object_context.h"
+#include "ED_transform_snap_object_context.hh"
 
 #include "transform_snap_object.hh"
 
@@ -34,21 +34,9 @@ static void snap_object_data_mesh_get(const Mesh *me_eval,
                                       bool use_hide,
                                       BVHTreeFromMesh *r_treedata)
 {
-  const Span<float3> vert_positions = me_eval->vert_positions();
-  const blender::OffsetIndices polys = me_eval->polys();
-  const Span<int> corner_verts = me_eval->corner_verts();
-
   /* The BVHTree from looptris is always required. */
   BKE_bvhtree_from_mesh_get(
       r_treedata, me_eval, use_hide ? BVHTREE_FROM_LOOPTRI_NO_HIDDEN : BVHTREE_FROM_LOOPTRI, 4);
-
-  BLI_assert(reinterpret_cast<const float3 *>(r_treedata->vert_positions) ==
-             vert_positions.data());
-  BLI_assert(r_treedata->corner_verts == corner_verts.data());
-  BLI_assert(!polys.data() || r_treedata->looptri);
-  BLI_assert(!r_treedata->tree || r_treedata->looptri);
-
-  UNUSED_VARS_NDEBUG(vert_positions, polys, corner_verts);
 }
 
 /** \} */
@@ -96,7 +84,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
 {
   bool retval = false;
 
-  if (me_eval->totpoly == 0) {
+  if (me_eval->faces_num == 0) {
     return retval;
   }
 
@@ -108,7 +96,10 @@ static bool raycastMesh(SnapObjectContext *sctx,
   /* local scale in normal direction */
   ray_normal_local = math::normalize_and_get_length(ray_normal_local, local_scale);
 
-  local_depth = sctx->ret.ray_depth_max;
+  const bool is_in_front = sctx->runtime.params.use_occlusion_test &&
+                           (ob_eval->dtx & OB_DRAW_IN_FRONT) != 0;
+  const float depth_max = is_in_front ? sctx->ret.ray_depth_max_in_front : sctx->ret.ray_depth_max;
+  local_depth = depth_max;
   if (local_depth != BVH_RAYCAST_DIST_MAX) {
     local_depth *= local_scale;
   }
@@ -142,7 +133,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
   BVHTreeFromMesh treedata;
   snap_object_data_mesh_get(me_eval, use_hide, &treedata);
 
-  const blender::Span<int> looptri_polys = me_eval->looptri_polys();
+  const blender::Span<int> looptri_faces = me_eval->looptri_faces();
 
   if (treedata.tree == nullptr) {
     return retval;
@@ -161,13 +152,8 @@ static bool raycastMesh(SnapObjectContext *sctx,
     data.hit_list = sctx->ret.hit_list;
 
     void *hit_last_prev = data.hit_list->last;
-    BLI_bvhtree_ray_cast_all(treedata.tree,
-                             ray_start_local,
-                             ray_normal_local,
-                             0.0f,
-                             sctx->ret.ray_depth_max,
-                             raycast_all_cb,
-                             &data);
+    BLI_bvhtree_ray_cast_all(
+        treedata.tree, ray_start_local, ray_normal_local, 0.0f, depth_max, raycast_all_cb, &data);
 
     retval = hit_last_prev != data.hit_list->last;
   }
@@ -188,14 +174,11 @@ static bool raycastMesh(SnapObjectContext *sctx,
     {
       hit.dist += len_diff;
       hit.dist /= local_scale;
-      if (hit.dist <= sctx->ret.ray_depth_max) {
-        sctx->ret.loc = math::transform_point(obmat, float3(hit.co));
-        sctx->ret.no = math::normalize(math::transform_direction(obmat, float3(hit.no)));
-
-        sctx->ret.ray_depth_max = hit.dist;
-        sctx->ret.index = looptri_polys[hit.index];
+      if (hit.dist <= depth_max) {
+        hit.index = looptri_faces[hit.index];
         retval = true;
       }
+      SnapData::register_result_raycast(sctx, ob_eval, &me_eval->id, obmat, &hit, is_in_front);
     }
   }
 
@@ -382,28 +365,28 @@ eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
                             const ID *id,
                             const float4x4 &obmat,
                             eSnapMode snap_to_flag,
-                            int polygon)
+                            int face_index)
 {
   eSnapMode elem = SCE_SNAP_TO_NONE;
 
   const Mesh *mesh_eval = reinterpret_cast<const Mesh *>(id);
 
   SnapData_Mesh nearest2d(sctx, mesh_eval, obmat);
-  nearest2d.clip_planes_enable(sctx);
+  nearest2d.clip_planes_enable(sctx, ob_eval);
 
   BVHTreeNearest nearest{};
   nearest.index = -1;
   nearest.dist_sq = sctx->ret.dist_px_sq;
 
-  const blender::IndexRange poly = mesh_eval->polys()[polygon];
+  const blender::IndexRange face = mesh_eval->faces()[face_index];
 
   if (snap_to_flag & SCE_SNAP_TO_EDGE) {
     elem = SCE_SNAP_TO_EDGE;
     BLI_assert(nearest2d.edges != nullptr);
-    const int *poly_edges = &nearest2d.corner_edges[poly.start()];
-    for (int i = poly.size(); i--;) {
+    const int *face_edges = &nearest2d.corner_edges[face.start()];
+    for (int i = face.size(); i--;) {
       cb_snap_edge(&nearest2d,
-                   poly_edges[i],
+                   face_edges[i],
                    &nearest2d.nearest_precalc,
                    reinterpret_cast<float(*)[4]>(nearest2d.clip_planes.data()),
                    nearest2d.clip_planes.size(),
@@ -412,10 +395,10 @@ eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
   }
   else {
     elem = SCE_SNAP_TO_VERTEX;
-    const int *poly_verts = &nearest2d.corner_verts[poly.start()];
-    for (int i = poly.size(); i--;) {
+    const int *face_verts = &nearest2d.corner_verts[face.start()];
+    for (int i = face.size(); i--;) {
       cb_snap_vert(&nearest2d,
-                   poly_verts[i],
+                   face_verts[i],
                    &nearest2d.nearest_precalc,
                    reinterpret_cast<float(*)[4]>(nearest2d.clip_planes.data()),
                    nearest2d.clip_planes.size(),
@@ -450,7 +433,7 @@ eSnapMode snap_edge_points_mesh(SnapObjectContext *sctx,
 static eSnapMode mesh_snap_mode_supported(const Mesh *mesh)
 {
   eSnapMode snap_mode_supported = mesh->loose_verts().count ? SCE_SNAP_TO_POINT : SCE_SNAP_TO_NONE;
-  if (mesh->totpoly) {
+  if (mesh->faces_num) {
     snap_mode_supported |= SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_NEAREST | SNAP_TO_EDGE_ELEMENTS;
   }
   else if (mesh->totedge) {
@@ -493,7 +476,7 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
     BLI_assert(treedata_dummy.cached);
   }
 
-  nearest2d.clip_planes_enable(sctx);
+  nearest2d.clip_planes_enable(sctx, ob_eval);
 
   BVHTreeNearest nearest{};
   nearest.index = -1;
