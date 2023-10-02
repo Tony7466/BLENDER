@@ -67,6 +67,9 @@ class BakeOptions:
     do_bbone: bool
     """Bake b-bone channels"""
 
+    do_custom_props: bool
+    """Bake custom properties."""
+
 
 def bake_action(
         obj,
@@ -198,6 +201,7 @@ def bake_action_iter(
     def pose_frame_info(obj):
         matrix = {}
         bbones = {}
+        custom_props = {}
         for name, pbone in obj.pose.bones.items():
             if bake_options.do_visual_keying:
                 # Get the final transform of the bone in its own local space...
@@ -209,32 +213,36 @@ def bake_action_iter(
             # Bendy Bones
             if pbone.bone.bbone_segments > 1:
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
-        return matrix, bbones
+
+            # Custom Properties
+            custom_props = pbone.id_properties_ensure().to_dict()
+
+        return matrix, bbones, custom_props
 
     if bake_options.do_parents_clear:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
-                return obj.matrix_world.copy()
+                return obj.matrix_world.copy(), obj.id_properties_ensure().to_dict()
         else:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_basis
                 if parent:
-                    return parent.matrix_world @ matrix
+                    return parent.matrix_world @ matrix, obj.id_properties_ensure().to_dict()
                 else:
-                    return matrix.copy()
+                    return matrix.copy(), obj.id_properties_ensure().to_dict()
     else:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_world
                 if parent:
-                    return parent.matrix_world.inverted_safe() @ matrix
+                    return parent.matrix_world.inverted_safe() @ matrix, obj.id_properties_ensure().to_dict()
                 else:
-                    return matrix.copy()
+                    return matrix.copy(), obj.id_properties_ensure().to_dict()
         else:
             def obj_frame_info(obj):
-                return obj.matrix_basis.copy()
+                return obj.matrix_basis.copy(), obj.id_properties_ensure().to_dict()
 
     # -------------------------------------------------------------------------
     # Setup the Context
@@ -262,7 +270,7 @@ def bake_action_iter(
         if bake_options.do_pose:
             pose_info.append((frame, *pose_frame_info(obj)))
         if bake_options.do_object:
-            obj_info.append((frame, obj_frame_info(obj)))
+            obj_info.append((frame, *obj_frame_info(obj)))
 
     # -------------------------------------------------------------------------
     # Clean (store initial data)
@@ -335,7 +343,7 @@ def bake_action_iter(
 
             rotation_mode = pbone.rotation_mode
             total_new_keys = len(pose_info)
-            for (f, matrix, bbones) in pose_info:
+            for (f, matrix, bbones, custom_props) in pose_info:
                 pbone.matrix_basis = matrix[name].copy()
 
                 if bake_options.do_location:
@@ -378,6 +386,11 @@ def bake_action_iter(
                             keyframes.extend_co_value(
                                 paths_bbprops[prop_index], f, bbone_shape[prop_name]
                             )
+                # Custom Properties
+                if bake_options.do_custom_props:
+                    for key, value in custom_props.items():
+                        pbone[key] = value
+                        pbone.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
 
             if is_new_action:
                 keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
@@ -412,7 +425,7 @@ def bake_action_iter(
 
         rotation_mode = obj.rotation_mode
         total_new_keys = len(obj_info)
-        for (f, matrix) in obj_info:
+        for (f, matrix, custom_props) in obj_info:
             name = "Action Bake"  # XXX: placeholder
             obj.matrix_basis = matrix
 
@@ -441,6 +454,11 @@ def bake_action_iter(
 
             if bake_options.do_scale:
                 keyframes.extend_co_values(path_scale, 3, f, obj.scale)
+
+            if bake_options.do_custom_props:
+                for key, value in custom_props.items():
+                    obj[key] = value
+                    obj.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
 
         if is_new_action:
             keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
