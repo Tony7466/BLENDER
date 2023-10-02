@@ -55,9 +55,9 @@
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void metaball_init_data(ID *id)
 {

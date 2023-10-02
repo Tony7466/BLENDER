@@ -10,7 +10,7 @@
 
 int reflection_probes_find_closest(vec3 P)
 {
-  int closest_index = -1;
+  int closest_index = 0;
   float closest_distance = FLT_MAX;
 
   /* ReflectionProbeData doesn't contain any gab, exit at first item that is invalid. */
@@ -60,7 +60,7 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
 
   if (NL > 0.0) {
     /* Coarse Approximation of the mapping distortion
-     * Unit Sphere -> Cubemap Face */
+     * Unit Sphere -> Cube-map Face. */
     const float dist = 4.0 * M_PI / 6.0;
 
     /* http://http.developer.nvidia.com/GPUGems3/gpugems3_ch20.html : Equation 13 */
@@ -69,9 +69,9 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
 
     /* Clamped brightness. */
     /* For artistic freedom this should be read from the scene/reflection probe.
-     * Note: Eevee-legacy read the firefly_factor from gi_glossy_clamp.
-     * Note: Firefly removal should be moved to a different shader and also take SSR into
-     * account.*/
+     * Note: EEVEE-legacy read the firefly_factor from gi_glossy_clamp.
+     * Note: Firefly removal should be moved to a different shader and also take SSR into account.
+     */
     float luma = max(1e-8, max_v3(l_col));
     const float firefly_factor = 1e16;
     l_col.rgb *= 1.0 - max(0.0, luma - firefly_factor) / luma;
@@ -79,24 +79,5 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
     return l_col;
   }
   return vec4(0.0);
-}
-
-void reflection_probes_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
-{
-  int closest_reflection_probe = reflection_probes_find_closest(P);
-  vec4 light_color = vec4(0.0);
-  if (closest_reflection_probe != -1) {
-    ReflectionProbeData probe_data = reflection_probe_buf[closest_reflection_probe];
-    light_color = reflection_probe_eval(reflection, P, V, probe_data);
-  }
-
-  /* Mix world lighting. */
-  if (light_color.a != 1.0) {
-    ReflectionProbeData probe_data = reflection_probe_buf[0];
-    light_color.rgb = mix(
-        reflection_probe_eval(reflection, P, V, probe_data).rgb, light_color.rgb, light_color.a);
-  }
-
-  out_specular += light_color.rgb;
 }
 #endif

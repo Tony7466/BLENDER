@@ -43,7 +43,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_mesh.hh"
 #include "ED_object.hh"
@@ -67,7 +67,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "PIL_time_utildefines.h"
 
@@ -3540,7 +3540,7 @@ static void PE_mirror_x(Depsgraph *depsgraph, Scene *scene, Object *ob, int tagg
   }
 
   const bool use_dm_final_indices = (psys->part->use_modifier_stack &&
-                                     !BKE_mesh_is_deformed_only(psmd_eval->mesh_final));
+                                     !psmd_eval->mesh_final->runtime->deformed_only);
 
   /* NOTE: this is not nice to use tessfaces but hard to avoid since pa->num uses tessfaces */
   BKE_mesh_tessface_ensure(me);
@@ -4363,7 +4363,7 @@ static void brush_add_count_iter(void *__restrict iter_data_v,
                               0,
                               nullptr))
   {
-    if (psys->part->use_modifier_stack && !BKE_mesh_is_deformed_only(psmd_eval->mesh_final)) {
+    if (psys->part->use_modifier_stack && !psmd_eval->mesh_final->runtime->deformed_only) {
       add_pars[iter].num = add_pars[iter].num_dmcache;
       add_pars[iter].num_dmcache = DMCACHE_ISCHILD;
     }
@@ -4441,7 +4441,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
 
   timestep = psys_get_timestep(&sim);
 
-  if (psys->part->use_modifier_stack || BKE_mesh_is_deformed_only(psmd_eval->mesh_final)) {
+  if (psys->part->use_modifier_stack || psmd_eval->mesh_final->runtime->deformed_only) {
     mesh = psmd_eval->mesh_final;
   }
   else {

@@ -44,7 +44,7 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -113,32 +113,27 @@ int ED_sculpt_face_sets_active_update_and_get(bContext *C, Object *ob, const flo
 
 /* Draw Face Sets Brush. */
 
-static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
-                                               const int n,
-                                               const TaskParallelTLS *__restrict tls)
+static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender;
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  const Brush *brush = data->brush;
+  SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+      ss, &test, brush->falloff_shape);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   const Span<float3> positions(
       reinterpret_cast<const float3 *>(SCULPT_mesh_deformed_positions_get(ss)),
       SCULPT_vertex_count_get(ss));
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
   bool changed = false;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
@@ -161,7 +156,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                     sqrtf(test.dist),
                                                                     vd.no,
                                                                     vd.fno,
-                                                                    vd.mask ? *vd.mask : 0.0f,
+                                                                    vd.mask,
                                                                     vd.vertex,
                                                                     thread_id,
                                                                     &automask_data);
@@ -182,7 +177,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                   sqrtf(test.dist),
                                                                   vd.no,
                                                                   vd.fno,
-                                                                  vd.mask ? *vd.mask : 0.0f,
+                                                                  vd.mask,
                                                                   vd.vertex,
                                                                   thread_id,
                                                                   &automask_data);
@@ -196,37 +191,35 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 
   if (changed) {
-    SCULPT_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_FACE_SETS);
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
   }
 }
 
-static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
-                                                const int n,
-                                                const TaskParallelTLS *__restrict tls)
+static void do_relax_face_sets_brush_task(Object *ob,
+                                          const Brush *brush,
+                                          const int iteration,
+                                          PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  const Brush *brush = data->brush;
+  SculptSession *ss = ob->sculpt;
   float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
+      ss, &test, brush->falloff_shape);
 
   const bool relax_face_sets = !(ss->cache->iteration_count % 3 == 0);
   /* This operations needs a strength tweak as the relax deformation is too weak by default. */
-  if (relax_face_sets && data->iteration < 2) {
+  if (relax_face_sets && iteration < 2) {
     bstrength *= 1.5f;
   }
 
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -242,7 +235,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                 sqrtf(test.dist),
                                                                 vd.no,
                                                                 vd.fno,
-                                                                vd.mask ? *vd.mask : 0.0f,
+                                                                vd.mask,
                                                                 vd.vertex,
                                                                 thread_id,
                                                                 &automask_data);
@@ -257,6 +250,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
 
 void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -268,25 +262,24 @@ void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nod
 
   BKE_curvemapping_init(brush->curve);
 
-  /* Threaded loop over nodes. */
-  SculptThreadedTaskData data{};
-  data.sd = sd;
-  data.ob = ob;
-  data.brush = brush;
-  data.nodes = nodes;
-
   TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
   if (ss->cache->alt_smooth) {
     SCULPT_boundary_info_ensure(ob);
     for (int i = 0; i < 4; i++) {
-      data.iteration = i;
-      BLI_task_parallel_range(
-          0, nodes.size(), &data, do_relax_face_sets_brush_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_relax_face_sets_brush_task(ob, brush, i, nodes[i]);
+        }
+      });
     }
   }
   else {
-    BLI_task_parallel_range(0, nodes.size(), &data, do_draw_face_sets_brush_task_cb_ex, &settings);
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (const int i : range) {
+        do_draw_face_sets_brush_task(ob, brush, nodes[i]);
+      }
+    });
   }
 }
 
@@ -717,7 +710,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 
@@ -900,7 +893,7 @@ static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 
@@ -1210,6 +1203,7 @@ static void sculpt_face_set_edit_fair_face_set(Object *ob,
   for (int i = 0; i < totvert; i++) {
     if (fair_verts[i]) {
       interp_v3_v3v3(positions[i], orig_positions[i], positions[i], strength);
+      BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_index_to_vertex(ss->pbvh, i));
     }
   }
 }
@@ -1312,7 +1306,7 @@ static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 }
 
 static void sculpt_face_set_edit_modify_face_sets(Object *ob,
@@ -1505,7 +1499,7 @@ static int sculpt_face_sets_invert_visibility_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 

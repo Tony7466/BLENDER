@@ -16,7 +16,7 @@
 
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -26,7 +26,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
 #endif
@@ -97,7 +97,7 @@ static void script_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_STANDARD, region->winx, region->winy);
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Script", SPACE_SCRIPT, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Script", SPACE_SCRIPT, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -155,8 +155,8 @@ static void script_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 }
 
 static void script_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
-                                        ID * /*parent_id*/,
-                                        SpaceLink *sl)
+                                                  ID * /*parent_id*/,
+                                                  SpaceLink *sl)
 {
   SpaceScript *scpt = reinterpret_cast<SpaceScript *>(sl);
 

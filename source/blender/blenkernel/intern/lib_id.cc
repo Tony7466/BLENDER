@@ -58,13 +58,13 @@
 #include "BKE_node.h"
 #include "BKE_rigidbody.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -935,7 +935,6 @@ void BKE_lib_id_swap_full(
 bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
 {
   ID *newid = nullptr;
-  PointerRNA idptr;
 
   if (id && (ID_REAL_USERS(id) > 1)) {
     /* If property isn't editable,
@@ -950,7 +949,7 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
         id_us_min(newid);
 
         /* assign copy */
-        RNA_id_pointer_create(newid, &idptr);
+        PointerRNA idptr = RNA_id_pointer_create(newid);
         RNA_property_pointer_set(ptr, prop, idptr, nullptr);
         RNA_property_update(C, ptr, prop);
 

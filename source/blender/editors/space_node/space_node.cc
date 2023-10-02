@@ -6,23 +6,33 @@
  * \ingroup spnode
  */
 
+#include "AS_asset_representation.hh"
+
+#include "BLI_string.h"
+
 #include "DNA_ID.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
+#include "DNA_object_types.h"
 #include "DNA_world_types.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_asset.h"
+#include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_screen.h"
+#include "BKE_node_tree_zones.hh"
+#include "BKE_screen.hh"
 
 #include "ED_node.hh"
 #include "ED_node_preview.hh"
@@ -33,9 +43,9 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -233,6 +243,137 @@ float2 space_node_group_offset(const SpaceNode &snode)
     return float2(path->view_center) - float2(path->prev->view_center);
   }
   return float2(0);
+}
+
+static const bNode *group_node_by_name(const bNodeTree &ntree, StringRef name)
+{
+  for (const bNode *node : ntree.group_nodes()) {
+    if (node->name == name) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+std::optional<int32_t> find_nested_node_id_in_root(const SpaceNode &snode, const bNode &query_node)
+{
+  BLI_assert(snode.edittree->runtime->nodes_by_id.contains(const_cast<bNode *>(&query_node)));
+
+  std::optional<int32_t> id_in_node;
+  const char *group_node_name = nullptr;
+  const bNode *node = &query_node;
+  LISTBASE_FOREACH_BACKWARD (const bNodeTreePath *, path, &snode.treepath) {
+    const bNodeTree *ntree = path->nodetree;
+    if (group_node_name) {
+      node = group_node_by_name(*ntree, group_node_name);
+    }
+    bool found = false;
+    for (const bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
+      if (node->is_group()) {
+        if (ref.path.node_id == node->identifier && ref.path.id_in_node == id_in_node) {
+          group_node_name = path->node_name;
+          id_in_node = ref.id;
+          found = true;
+          break;
+        }
+      }
+      else if (ref.path.node_id == node->identifier) {
+        group_node_name = path->node_name;
+        id_in_node = ref.id;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return std::nullopt;
+    }
+  }
+  return id_in_node;
+}
+
+std::optional<ObjectAndModifier> get_modifier_for_node_editor(const SpaceNode &snode)
+{
+  if (snode.id == nullptr) {
+    return std::nullopt;
+  }
+  if (GS(snode.id->name) != ID_OB) {
+    return std::nullopt;
+  }
+  const Object *object = reinterpret_cast<Object *>(snode.id);
+  const NodesModifierData *used_modifier = nullptr;
+  if (snode.flag & SNODE_PIN) {
+    LISTBASE_FOREACH (const ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        const NodesModifierData *nmd = reinterpret_cast<const NodesModifierData *>(md);
+        /* Would be good to store the name of the pinned modifier in the node editor. */
+        if (nmd->node_group == snode.nodetree) {
+          used_modifier = nmd;
+          break;
+        }
+      }
+    }
+  }
+  else {
+    LISTBASE_FOREACH (const ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        const NodesModifierData *nmd = reinterpret_cast<const NodesModifierData *>(md);
+        if (nmd->node_group == snode.nodetree) {
+          if (md->flag & eModifierFlag_Active) {
+            used_modifier = nmd;
+            break;
+          }
+        }
+      }
+    }
+  }
+  if (used_modifier == nullptr) {
+    return std::nullopt;
+  }
+  return ObjectAndModifier{object, used_modifier};
+}
+
+bool push_compute_context_for_tree_path(const SpaceNode &snode,
+                                        ComputeContextBuilder &compute_context_builder)
+{
+  Vector<const bNodeTreePath *> tree_path;
+  LISTBASE_FOREACH (const bNodeTreePath *, item, &snode.treepath) {
+    tree_path.append(item);
+  }
+  if (tree_path.is_empty()) {
+    return true;
+  }
+
+  for (const int i : tree_path.index_range().drop_back(1)) {
+    bNodeTree *tree = tree_path[i]->nodetree;
+    const char *group_node_name = tree_path[i + 1]->node_name;
+    const bNode *group_node = nodeFindNodebyName(tree, group_node_name);
+    if (group_node == nullptr) {
+      return false;
+    }
+    const bke::bNodeTreeZones *tree_zones = tree->zones();
+    if (tree_zones == nullptr) {
+      return false;
+    }
+    const Vector<const bke::bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
+        group_node->identifier);
+    for (const bke::bNodeTreeZone *zone : zone_stack) {
+      switch (zone->output_node->type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+          break;
+        }
+        case GEO_NODE_REPEAT_OUTPUT: {
+          const auto &storage = *static_cast<const NodeGeometryRepeatOutput *>(
+              zone->output_node->storage);
+          compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone->output_node,
+                                                                      storage.inspection_index);
+          break;
+        }
+      }
+    }
+    compute_context_builder.push<bke::NodeGroupComputeContext>(*group_node);
+  }
+  return true;
 }
 
 /* ******************** default callbacks for node space ***************** */
@@ -596,7 +737,7 @@ static void node_buttons_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -612,7 +753,7 @@ static void node_toolbar_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -649,10 +790,10 @@ static void node_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_CUSTOM, region->winx, region->winy);
 
   /* own keymaps */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Node Generic", SPACE_NODE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Node Editor", SPACE_NODE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Node Editor", SPACE_NODE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* add drop boxes */
@@ -672,9 +813,40 @@ static void node_main_region_draw(const bContext *C, ARegion *region)
 
 /* ************* dropboxes ************* */
 
-static bool node_group_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
+static bool node_group_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
-  return WM_drag_is_ID_type(drag, ID_NT);
+  SpaceNode *snode = CTX_wm_space_node(C);
+
+  if (snode->edittree == nullptr) {
+    return false;
+  }
+
+  if (!WM_drag_is_ID_type(drag, ID_NT)) {
+    return false;
+  }
+
+  if (drag->type == WM_DRAG_ID) {
+    const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
+        WM_drag_get_local_ID(drag, ID_NT));
+    if (!node_tree) {
+      return false;
+    }
+    return node_tree->type == snode->edittree->type;
+  }
+
+  if (drag->type == WM_DRAG_ASSET) {
+    const wmDragAsset *asset_data = WM_drag_get_asset_data(drag, ID_NT);
+    if (!asset_data) {
+      return false;
+    }
+    const AssetMetaData *metadata = &asset_data->asset->get_metadata();
+    const IDProperty *tree_type = BKE_asset_metadata_idprop_find(metadata, "type");
+    if (!tree_type || IDP_Int(tree_type) != snode->edittree->type) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 static bool node_object_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
@@ -700,6 +872,11 @@ static bool node_ima_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /
 static bool node_mask_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
   return WM_drag_is_ID_type(drag, ID_MSK);
+}
+
+static bool node_material_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
+{
+  return WM_drag_is_ID_type(drag, ID_MA) && !UI_but_active_drop_name(C);
 }
 
 static void node_group_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
@@ -768,6 +945,12 @@ static void node_dropboxes()
   WM_dropbox_add(lb,
                  "NODE_OT_add_mask",
                  node_mask_drop_poll,
+                 node_id_drop_copy,
+                 WM_drag_free_imported_drag_ID,
+                 nullptr);
+  WM_dropbox_add(lb,
+                 "NODE_OT_add_material",
+                 node_material_drop_poll,
                  node_id_drop_copy,
                  WM_drag_free_imported_drag_ID,
                  nullptr);
@@ -1070,6 +1253,8 @@ static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
     }
   }
 
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, snode->geometry_nodes_tool_tree, IDWALK_CB_USER_ONE);
+
   /* Both `snode->id` and `snode->nodetree` have been remapped now, so their data can be
    * accessed. */
   BLI_assert(snode->id == nullptr || snode->nodetree == nullptr ||
@@ -1263,6 +1448,7 @@ void ED_spacetype_node()
   BLI_addhead(&st->regiontypes, art);
 
   WM_menutype_add(MEM_new<MenuType>(__func__, add_catalog_assets_menu_type()));
+  WM_menutype_add(MEM_new<MenuType>(__func__, add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, add_root_catalogs_menu_type()));
 
   BKE_spacetype_register(st);

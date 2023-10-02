@@ -50,10 +50,10 @@
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "SEQ_sequencer.h"
 #include "SEQ_sound.h"
@@ -259,7 +259,7 @@ bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
 
   sound = static_cast<bSound *>(BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0));
   STRNCPY(sound->filepath, filepath);
-  /* sound->type = SOUND_TYPE_FILE; */ /* XXX unused currently */
+  // sound->type = SOUND_TYPE_FILE; /* UNUSED. */
 
   /* Extract sound specs for bSound */
   SoundInfo info;
@@ -788,6 +788,19 @@ void BKE_sound_update_scene_sound(void *handle, bSound *sound)
 {
   AUD_SequenceEntry_setSound(handle, sound->playback_handle);
 }
+
+#endif /* WITH_AUDASPACE */
+
+void BKE_sound_update_sequence_handle(void *handle, void *sound_handle)
+{
+#ifdef WITH_AUDASPACE
+  AUD_SequenceEntry_setSound(handle, sound_handle);
+#else
+  UNUSED_VARS(handle, sound_handle);
+#endif
+}
+
+#ifdef WITH_AUDASPACE
 
 void BKE_sound_set_cfra(int cfra)
 {

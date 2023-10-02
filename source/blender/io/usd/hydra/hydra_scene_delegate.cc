@@ -9,8 +9,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_set.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io::hydra {
 
@@ -239,7 +240,7 @@ pxr::SdfPath HydraSceneDelegate::prim_id(const ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  BLI_snprintf(name, sizeof(name), "%s_%p", prefix, id);
+  SNPRINTF(name, "%s_%p", prefix, id);
   return GetDelegateID().AppendElementString(name);
 }
 
@@ -384,21 +385,21 @@ void HydraSceneDelegate::check_updates()
     switch (GS(id->name)) {
       case ID_OB: {
         do_update_collection = true;
-      } break;
-
+        break;
+      }
       case ID_MA: {
         MaterialData *mat_data = material_data(material_prim_id((Material *)id));
         if (mat_data) {
           mat_data->update();
         }
-      } break;
-
+        break;
+      }
       case ID_WO: {
         if (shading_settings.use_scene_world && id->recalc & ID_RECALC_SHADING) {
           do_update_world = true;
         }
-      } break;
-
+        break;
+      }
       case ID_SCE: {
         if ((id->recalc & ID_RECALC_COPY_ON_WRITE && !(id->recalc & ID_RECALC_SELECT)) ||
             id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_BASE_FLAGS))
@@ -410,7 +411,8 @@ void HydraSceneDelegate::check_updates()
         {
           do_update_world = true;
         }
-      } break;
+        break;
+      }
 
       default:
         break;

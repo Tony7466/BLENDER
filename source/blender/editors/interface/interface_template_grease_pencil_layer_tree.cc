@@ -19,6 +19,8 @@
 
 #include "ED_undo.hh"
 
+#include "WM_api.hh"
+
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -74,15 +76,14 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     return "";
   }
 
-  bool on_drop(bContext * /*C*/, const DragInfo &drag_info) const override
+  bool on_drop(bContext *C, const DragInfo &drag_info) const override
   {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
+    GreasePencil &grease_pencil = *drag_grease_pencil->grease_pencil;
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
-    LayerGroup &drag_parent = drag_layer.parent_group();
-    LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
-    if (!drop_parent_group) {
+    if (!drop_tree_node_.parent_group()) {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
        */
       BLI_assert_unreachable();
@@ -98,25 +99,28 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
         BLI_assert_msg(drop_tree_node_.is_group(),
                        "Inserting should not be possible for layers, only for groups, because "
                        "only groups use DropBehavior::Reorder_and_Insert");
-
         LayerGroup &drop_group = drop_tree_node_.as_group();
-        drag_parent.unlink_node(&drag_layer.as_node());
-        drop_group.add_layer(&drag_layer);
-        return true;
+        grease_pencil.move_node_into(drag_layer.as_node(), drop_group);
+        break;
       }
-      case DropLocation::Before:
-        drag_parent.unlink_node(&drag_layer.as_node());
-        /* Draw order is inverted, so inserting before means inserting below. */
-        drop_parent_group->add_layer_after(&drag_layer, &drop_tree_node_);
-        return true;
-      case DropLocation::After:
-        drag_parent.unlink_node(&drag_layer.as_node());
-        /* Draw order is inverted, so inserting after means inserting above. */
-        drop_parent_group->add_layer_before(&drag_layer, &drop_tree_node_);
-        return true;
+      case DropLocation::Before: {
+        /* Draw order is inverted, so inserting before (above) means inserting the node after. */
+        grease_pencil.move_node_after(drag_layer.as_node(), drop_tree_node_);
+        break;
+      }
+      case DropLocation::After: {
+        /* Draw order is inverted, so inserting after (below) means inserting the node before. */
+        grease_pencil.move_node_before(drag_layer.as_node(), drop_tree_node_);
+        break;
+      }
+      default: {
+        BLI_assert_unreachable();
+        return false;
+      }
     }
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
-    return false;
+    return true;
   }
 };
 
@@ -141,6 +145,7 @@ class LayerViewItemDragController : public AbstractViewItemDragController {
   {
     wmDragGreasePencilLayer *drag_data = MEM_new<wmDragGreasePencilLayer>(__func__);
     drag_data->layer = &dragged_layer_;
+    drag_data->grease_pencil = &grease_pencil_;
     return drag_data;
   }
 
@@ -183,9 +188,9 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   void on_activate(bContext &C) override
   {
-    PointerRNA grease_pencil_ptr, value_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
+    PointerRNA grease_pencil_ptr = RNA_pointer_create(
+        &grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr);
+    PointerRNA value_ptr = RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_);
 
     PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
 
@@ -200,7 +205,7 @@ class LayerViewItem : public AbstractTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext & /*C*/, StringRefNull new_name) override
   {
     grease_pencil_.rename_node(layer_.as_node(), new_name);
     return true;
@@ -239,8 +244,7 @@ class LayerViewItem : public AbstractTreeViewItem {
   void build_layer_buttons(uiLayout &row)
   {
     uiBut *but;
-    PointerRNA layer_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &layer_ptr);
+    PointerRNA layer_ptr = RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_);
 
     uiBlock *block = uiLayoutGetBlock(&row);
     but = uiDefIconButR(block,
@@ -309,7 +313,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext & /*C*/, StringRefNull new_name) override
   {
     grease_pencil_.rename_node(group_.as_node(), new_name);
     return true;
@@ -341,8 +345,8 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
 
   void build_layer_group_buttons(uiLayout &row)
   {
-    PointerRNA group_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayerGroup, &group_, &group_ptr);
+    PointerRNA group_ptr = RNA_pointer_create(
+        &grease_pencil_.id, &RNA_GreasePencilLayerGroup, &group_);
 
     uiItemR(&row, &group_ptr, "hide", UI_ITEM_R_ICON_ONLY, nullptr, ICON_NONE);
     uiItemR(&row, &group_ptr, "lock", UI_ITEM_R_ICON_ONLY, nullptr, ICON_NONE);

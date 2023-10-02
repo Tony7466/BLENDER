@@ -26,7 +26,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_screen.hh"
@@ -503,7 +503,7 @@ void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   // RNA_def_property_flag(prop, PROP_HIDDEN);
 }
@@ -792,7 +792,7 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
   int i = 0;
 
   if (C == nullptr) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* active Keying Set
@@ -946,10 +946,10 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
 
   /* depending on what data we have, create using ID or full pointer call */
   if (srna && data) {
-    RNA_pointer_create(id, srna, data, &ds->ptr);
+    ds->ptr = RNA_pointer_create(id, srna, data);
   }
   else {
-    RNA_id_pointer_create(id, &ds->ptr);
+    ds->ptr = RNA_id_pointer_create(id);
   }
 }
 
@@ -1117,10 +1117,10 @@ int ANIM_apply_keyingset(
 
     /* get length of array if whole array option is enabled */
     if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
-      PointerRNA id_ptr, ptr;
+      PointerRNA ptr;
       PropertyRNA *prop;
 
-      RNA_id_pointer_create(ksp->id, &id_ptr);
+      PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
       if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
         arraylen = RNA_property_array_length(&ptr, prop);
         /* start from start of array, instead of the previously specified index - #48020 */

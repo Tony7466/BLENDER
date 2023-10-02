@@ -36,7 +36,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
 #include "WM_api.hh"
@@ -58,7 +58,7 @@
 #  include "BPY_extern_run.h"
 #endif
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* ****************************************************** */
 

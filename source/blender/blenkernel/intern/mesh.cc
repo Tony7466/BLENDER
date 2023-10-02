@@ -19,7 +19,6 @@
 #include "DNA_object_types.h"
 
 #include "BLI_bounds.hh"
-#include "BLI_edgehash.h"
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
@@ -30,7 +29,9 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
+#include "BLI_ordered_edge.hh"
 #include "BLI_resource_scope.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_task.hh"
@@ -62,10 +63,10 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 using blender::float3;
 using blender::MutableSpan;
@@ -131,11 +132,17 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
    * when the source is persistent and edits to the destination mesh don't affect the caches.
    * Caches will be "un-shared" as necessary later on. */
   mesh_dst->runtime->bounds_cache = mesh_src->runtime->bounds_cache;
+  mesh_dst->runtime->vert_normals_cache = mesh_src->runtime->vert_normals_cache;
+  mesh_dst->runtime->face_normals_cache = mesh_src->runtime->face_normals_cache;
   mesh_dst->runtime->loose_verts_cache = mesh_src->runtime->loose_verts_cache;
   mesh_dst->runtime->verts_no_face_cache = mesh_src->runtime->verts_no_face_cache;
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
   mesh_dst->runtime->looptris_cache = mesh_src->runtime->looptris_cache;
   mesh_dst->runtime->looptri_faces_cache = mesh_src->runtime->looptri_faces_cache;
+  mesh_dst->runtime->vert_to_face_offset_cache = mesh_src->runtime->vert_to_face_offset_cache;
+  mesh_dst->runtime->vert_to_face_map_cache = mesh_src->runtime->vert_to_face_map_cache;
+  mesh_dst->runtime->vert_to_corner_map_cache = mesh_src->runtime->vert_to_corner_map_cache;
+  mesh_dst->runtime->corner_to_face_map_cache = mesh_src->runtime->corner_to_face_map_cache;
 
   /* Only do tessface if we have no faces. */
   const bool do_tessface = ((mesh_src->totface_legacy != 0) && (mesh_src->faces_num == 0));
@@ -466,6 +473,7 @@ static bool is_uv_bool_sublayer(const CustomDataLayer &layer)
 static int customdata_compare(
     CustomData *c1, CustomData *c2, const int total_length, Mesh *m1, const float thresh)
 {
+  using namespace blender;
   CustomDataLayer *l1, *l2;
   int layer_count1 = 0, layer_count2 = 0, j;
   const uint64_t cd_mask_non_generic = CD_MASK_MDEFORMVERT;
@@ -533,18 +541,17 @@ static int customdata_compare(
 
           if (StringRef(l1->name) == ".edge_verts") {
             int etot = m1->totedge;
-            EdgeHash *eh = BLI_edgehash_new_ex(__func__, etot);
-
-            for (j = 0; j < etot; j++, e1++) {
-              BLI_edgehash_insert(eh, (*e1)[0], (*e1)[1], e1);
+            Set<OrderedEdge> ordered_edges;
+            ordered_edges.reserve(etot);
+            for (const int2 value : Span(e1, etot)) {
+              ordered_edges.add(value);
             }
 
-            for (j = 0; j < etot; j++, e2++) {
-              if (!BLI_edgehash_lookup(eh, (*e2)[0], (*e2)[1])) {
+            for (j = 0; j < etot; j++) {
+              if (!ordered_edges.contains(e2[j])) {
                 return MESHCMP_EDGEUNKNOWN;
               }
             }
-            BLI_edgehash_free(eh, nullptr);
           }
           else {
             for (j = 0; j < total_length; j++) {
@@ -1050,9 +1057,6 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
   if (do_tessface && !CustomData_get_layer(&me_dst->fdata_legacy, CD_MFACE)) {
     CustomData_add_layer(&me_dst->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, me_dst->totface_legacy);
   }
-
-  /* Expect that normals aren't copied at all, since the destination mesh is new. */
-  BLI_assert(BKE_mesh_vert_normals_are_dirty(me_dst));
 
   return me_dst;
 }
@@ -1775,7 +1779,7 @@ void BKE_mesh_calc_normals_split_ex(const Mesh *mesh,
       mesh->faces(),
       mesh->corner_verts(),
       mesh->corner_edges(),
-      {},
+      mesh->corner_to_face_map(),
       mesh->vert_normals(),
       mesh->face_normals(),
       sharp_edges,
