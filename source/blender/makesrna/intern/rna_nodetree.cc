@@ -11,6 +11,7 @@
 #include <cstring>
 
 #include "BLI_function_ref.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8_symbols.h"
@@ -8762,35 +8763,32 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
       prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
-struct ItemArrayCommonFunctionBuffers {
-  char remove_call[64];
-  char clear_call[64];
-  char move_call[64];
-};
-
 static void rna_def_node_item_array_common_functions(StructRNA *srna,
                                                      const char *item_name,
                                                      const char *accessor_name,
-                                                     ItemArrayCommonFunctionBuffers &buffers)
+                                                     blender::LinearAllocator<> &allocator)
 {
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  SNPRINTF(buffers.remove_call, "rna_Node_ItemArray_remove<%s>", accessor_name);
-  SNPRINTF(buffers.clear_call, "rna_Node_ItemArray_clear<%s>", accessor_name);
-  SNPRINTF(buffers.move_call, "rna_Node_ItemArray_move<%s>", accessor_name);
+  char remove_call[64];
+  SNPRINTF(remove_call, "rna_Node_ItemArray_remove<%s>", accessor_name);
+  char clear_call[64];
+  SNPRINTF(clear_call, "rna_Node_ItemArray_clear<%s>", accessor_name);
+  char move_call[64];
+  SNPRINTF(move_call, "rna_Node_ItemArray_move<%s>", accessor_name);
 
-  func = RNA_def_function(srna, "remove", buffers.remove_call);
+  func = RNA_def_function(srna, "remove", allocator.copy_string(remove_call).c_str());
   RNA_def_function_ui_description(func, "Remove an item");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", item_name, "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "clear", buffers.clear_call);
+  func = RNA_def_function(srna, "clear", allocator.copy_string(clear_call).c_str());
   RNA_def_function_ui_description(func, "Remove all items");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 
-  func = RNA_def_function(srna, "move", buffers.move_call);
+  func = RNA_def_function(srna, "move", allocator.copy_string(move_call).c_str());
   RNA_def_function_ui_description(func, "Move an item to another position");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_int(
@@ -8801,22 +8799,18 @@ static void rna_def_node_item_array_common_functions(StructRNA *srna,
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
-struct ItemArrayNewWithSocketAndNameBuffers {
-  char name[128];
-};
-
-static void rna_def_node_item_array_new_with_socket_and_name(
-    StructRNA *srna,
-    const char *item_name,
-    const char *accessor_name,
-    ItemArrayNewWithSocketAndNameBuffers &buffers)
+static void rna_def_node_item_array_new_with_socket_and_name(StructRNA *srna,
+                                                             const char *item_name,
+                                                             const char *accessor_name,
+                                                             blender::LinearAllocator<> &allocator)
 {
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  SNPRINTF(buffers.name, "rna_Node_ItemArray_new_with_socket_and_name<%s>", accessor_name);
+  char name[128];
+  SNPRINTF(name, "rna_Node_ItemArray_new_with_socket_and_name<%s>", accessor_name);
 
-  func = RNA_def_function(srna, "new", buffers.name);
+  func = RNA_def_function(srna, "new", allocator.copy_string(name).c_str());
   RNA_def_function_ui_description(func, "Add a item at the end");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
@@ -8836,21 +8830,16 @@ static void rna_def_node_item_array_new_with_socket_and_name(
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
 {
   StructRNA *srna;
+  static blender::LinearAllocator<> allocator;
 
   srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "Items", "Collection of simulation items");
 
-  {
-    static ItemArrayNewWithSocketAndNameBuffers buffers;
-    rna_def_node_item_array_new_with_socket_and_name(
-        srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
-  }
-  {
-    static ItemArrayCommonFunctionBuffers buffers;
-    rna_def_node_item_array_common_functions(
-        srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
-  }
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "SimulationStateItem", "SimulationItemsAccessor", allocator);
+  rna_def_node_item_array_common_functions(
+      srna, "SimulationStateItem", "SimulationItemsAccessor", allocator);
 }
 
 static void def_geo_simulation_output(StructRNA *srna)
@@ -8921,20 +8910,15 @@ static void rna_def_repeat_item(BlenderRNA *brna)
 static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
 {
   StructRNA *srna;
+  static blender::LinearAllocator<> allocator;
 
   srna = RNA_def_struct(brna, "NodeGeometryRepeatOutputItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "Items", "Collection of repeat items");
 
-  {
-    static ItemArrayNewWithSocketAndNameBuffers buffers;
-    rna_def_node_item_array_new_with_socket_and_name(
-        srna, "RepeatItem", "RepeatItemsAccessor", buffers);
-  }
-  {
-    static ItemArrayCommonFunctionBuffers buffers;
-    rna_def_node_item_array_common_functions(srna, "RepeatItem", "RepeatItemsAccessor", buffers);
-  }
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "RepeatItem", "RepeatItemsAccessor", allocator);
+  rna_def_node_item_array_common_functions(srna, "RepeatItem", "RepeatItemsAccessor", allocator);
 }
 
 static void def_geo_repeat_output(StructRNA *srna)
