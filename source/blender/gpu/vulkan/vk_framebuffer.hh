@@ -18,6 +18,8 @@
 #include "vk_common.hh"
 #include "vk_image_view.hh"
 
+#include <optional>
+
 namespace blender::gpu {
 class VKContext;
 
@@ -33,6 +35,7 @@ class VKFrameBuffer : public FrameBuffer {
   int depth_ = 1;
 
   Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
+  std::optional<std::reference_wrapper<VKTexture>> dummy_color_attachment_;
 
  public:
   /**
