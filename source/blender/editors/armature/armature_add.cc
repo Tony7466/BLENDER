@@ -87,7 +87,7 @@ EditBone *ED_armature_ebone_add(bArmature *arm, const char *name)
   return bone;
 }
 
-EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm, float length, bool view_aligned)
+EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm, const float length)
 {
   bArmature *arm = static_cast<bArmature *>(obedit_arm->data);
   EditBone *bone;
@@ -100,9 +100,9 @@ EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm, float length, bool
   arm->act_edbone = bone;
 
   zero_v3(bone->head);
-  zero_v3(bone->tail);
-
-  bone->tail[view_aligned ? 1 : 2] = length;
+  bone->tail[0] = 0;
+  bone->tail[1] = length;
+  bone->tail[2] = 0;
 
   if (arm->runtime.active_collection) {
     ANIM_armature_bonecoll_assign_editbone(arm->runtime.active_collection, bone);

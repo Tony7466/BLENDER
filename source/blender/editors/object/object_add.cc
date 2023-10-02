@@ -1119,12 +1119,10 @@ static int object_armature_add_exec(bContext *C, wmOperator *op)
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *obedit = BKE_view_layer_edit_object_get(view_layer);
 
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
   bool newob = false;
   bool enter_editmode;
   ushort local_view_bits;
   float loc[3], rot[3], dia;
-  bool view_aligned = rv3d && (U.flag & USER_ADD_VIEWALIGNED);
 
   WM_operator_view3d_unit_defaults(C, op);
   if (!ED_object_add_generic_get_opts(
@@ -1152,7 +1150,7 @@ static int object_armature_add_exec(bContext *C, wmOperator *op)
   ANIM_armature_bonecoll_active_set(armature, default_bonecoll);
 
   dia = RNA_float_get(op->ptr, "radius");
-  ED_armature_ebone_add_primitive(obedit, dia, view_aligned);
+  ED_armature_ebone_add_primitive(obedit, dia);
 
   /* userdef */
   if (newob && !enter_editmode) {

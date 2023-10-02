@@ -62,7 +62,11 @@ struct wmOperator;
  * \note should be used everywhere, now it allocates bones still locally in functions.
  */
 EditBone *ED_armature_ebone_add(bArmature *arm, const char *name);
-EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm, float length, bool view_aligned);
+
+/**
+ * Add a new editbone, with the head at the origin and the tail at (0, length, 0).
+ */
+EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm, float length);
 
 void ED_armature_ebone_copy(EditBone *dest, const EditBone *source);
 
