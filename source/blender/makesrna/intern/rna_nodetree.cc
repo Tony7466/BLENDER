@@ -8762,28 +8762,6 @@ static void rna_def_node_item_array_socket_item_common(StructRNA *srna,
       prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
-static void rna_def_simulation_state_item(BlenderRNA *brna)
-{
-  PropertyRNA *prop;
-  static blender::LinearAllocator<> allocator;
-
-  StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", nullptr);
-  RNA_def_struct_ui_text(srna, "Simulation Item", "");
-  RNA_def_struct_sdna(srna, "NodeSimulationItem");
-
-  rna_def_node_item_array_socket_item_common(srna, "SimulationItemsAccessor", allocator);
-
-  prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_ui_text(
-      prop,
-      "Attribute Domain",
-      "Attribute domain where the attribute is stored in the simulation state");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
-}
-
 static void rna_def_node_item_array_common_functions(StructRNA *srna,
                                                      const char *item_name,
                                                      const char *accessor_name,
@@ -8846,6 +8824,28 @@ static void rna_def_node_item_array_new_with_socket_and_name(StructRNA *srna,
   /* return value */
   parm = RNA_def_pointer(func, "item", item_name, "Item", "New item");
   RNA_def_function_return(func, parm);
+}
+
+static void rna_def_simulation_state_item(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+  static blender::LinearAllocator<> allocator;
+
+  StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Simulation Item", "");
+  RNA_def_struct_sdna(srna, "NodeSimulationItem");
+
+  rna_def_node_item_array_socket_item_common(srna, "SimulationItemsAccessor", allocator);
+
+  prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Attribute Domain",
+      "Attribute domain where the attribute is stored in the simulation state");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
