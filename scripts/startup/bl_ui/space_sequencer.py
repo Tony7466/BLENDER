@@ -989,11 +989,12 @@ class SEQUENCER_MT_strip(Menu):
             layout.menu("SEQUENCER_MT_strip_retiming")
             layout.separator()
 
-            props = layout.operator("sequencer.split", text="Split")
-            props.type = 'SOFT'
+            with operator_context(layout, 'EXEC_DEFAULT'):
+                props = layout.operator("sequencer.split", text="Split")
+                props.type = 'SOFT'
 
-            props = layout.operator("sequencer.split", text="Hold Split")
-            props.type = 'HARD'
+                props = layout.operator("sequencer.split", text="Hold Split")
+                props.type = 'HARD'
 
             layout.separator()
 
