@@ -1121,8 +1121,8 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
 #ifdef BLF_SUBPIXEL_AA
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x)
 {
-  if (font->flags & BLF_HINTING_NONE) {
-    /* Not if we are not also hinting.*/
+  if (!(font->flags & BLF_RENDER_SUBPIXELAA) || (font->flags & BLF_MONOCHROME)) {
+    /* Not if we are in mono mode (aliased) or the feature is turned off. */
     return g;
   }
 
@@ -1132,7 +1132,7 @@ GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *
   }
 
   /* Four sub-pixel positions up to 16 point, 2 until 35 points. */
-  const uint8_t subpixel = (uint8_t)(pen_x & ((font->size > 16.0f) ? 32L : 48L));
+  const uint8_t subpixel = uint8_t(pen_x & ((font->size > 16.0f) ? 32L : 48L));
 
   if (g->subpixel != subpixel) {
     g = blf_glyph_ensure_ex(font, gc, g->c, subpixel);

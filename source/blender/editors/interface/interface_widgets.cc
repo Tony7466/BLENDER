@@ -3211,6 +3211,8 @@ void ui_hsvcube_pos_from_vals(
       /* exception only for value strip - use the range set in but->min/max */
       y = (hsv[2] - hsv_but->softmin) / (hsv_but->softmax - hsv_but->softmin);
       break;
+    case UI_GRAD_NONE:
+      BLI_assert_unreachable();
   }
 
   /* cursor */
@@ -4178,19 +4180,32 @@ static void widget_menu_radial_itembut(uiBut *but,
   widgetbase_draw(&wtb, wcol);
 }
 
-static void widget_list_itembut(uiWidgetColors *wcol,
+static void widget_list_itembut(uiBut *but,
+                                uiWidgetColors *wcol,
                                 rcti *rect,
                                 const uiWidgetStateInfo *state,
                                 int /*roundboxalign*/,
                                 const float zoom)
 {
+  rcti draw_rect = *rect;
+
+  if (but->type == UI_BTYPE_VIEW_ITEM) {
+    uiButViewItem *item_but = static_cast<uiButViewItem *>(but);
+    if (item_but->draw_width > 0) {
+      BLI_rcti_resize_x(&draw_rect, item_but->draw_width);
+    }
+    if (item_but->draw_height > 0) {
+      BLI_rcti_resize_y(&draw_rect, item_but->draw_height);
+    }
+  }
+
   uiWidgetBase wtb;
   widget_init(&wtb);
 
   /* no outline */
   wtb.draw_outline = false;
   const float rad = widget_radius_from_zoom(zoom, wcol);
-  round_box_edges(&wtb, UI_CNR_ALL, rect, rad);
+  round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
 
   if (state->but_flag & UI_ACTIVE && !(state->but_flag & UI_SELECT)) {
     copy_v3_v3_uchar(wcol->inner, wcol->text);
@@ -4208,7 +4223,7 @@ static void widget_preview_tile(uiBut *but,
                                 const float zoom)
 {
   if (!ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS)) {
-    widget_list_itembut(wcol, rect, state, roundboxalign, zoom);
+    widget_list_itembut(but, wcol, rect, state, roundboxalign, zoom);
   }
 
   /* When the button is not tagged as having a preview icon, do regular icon drawing with the
@@ -4666,7 +4681,7 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
     case UI_WTYPE_LISTITEM:
     case UI_WTYPE_VIEW_ITEM:
       wt.wcol_theme = &btheme->tui.wcol_list_item;
-      wt.draw = widget_list_itembut;
+      wt.custom = widget_list_itembut;
       break;
 
     case UI_WTYPE_PROGRESS:
@@ -4773,6 +4788,8 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
     switch (but->type) {
       case UI_BTYPE_LABEL:
         widget_draw_text_icon(&style->widgetlabel, &tui->wcol_menu_back, but, rect);
+        break;
+      case UI_BTYPE_SEPR:
         break;
       case UI_BTYPE_SEPR_LINE:
         ui_draw_separator(rect, &tui->wcol_menu_item);
