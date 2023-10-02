@@ -1655,13 +1655,7 @@ static int armature_bone_primitive_add_exec(bContext *C, wmOperator *op)
   ANIM_armature_bonecoll_assign_active(static_cast<bArmature *>(obedit->data), bone);
 
   copy_v3_v3(bone->head, curs);
-
-  if (rv3d && (U.flag & USER_ADD_VIEWALIGNED)) {
-    add_v3_v3v3(bone->tail, bone->head, imat[1]); /* bone with unit length 1 */
-  }
-  else {
-    add_v3_v3v3(bone->tail, bone->head, imat[2]); /* bone with unit length 1, pointing up Z */
-  }
+  add_v3_v3v3(bone->tail, bone->head, imat[1]); /* bone with unit length 1 */
 
   /* NOTE: notifier might evolve. */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
