@@ -101,6 +101,7 @@ static eStrCursorDelimType cursor_delim_type_utf8(const char *ch_utf8,
                                                   const int pos)
 {
   BLI_assert(ch_utf8_len >= 0);
+  BLI_assert(pos >= 0);
   /* for full unicode support we really need to have large lookup tables to figure
    * out what's what in every possible char set - and python, glib both have these. */
   size_t index = (size_t)pos;
@@ -344,9 +345,10 @@ void BLI_str_cursor_step_bounds_utf8(
 {
   BLI_assert(str_maxlen >= 0);
   /* Identify the type of characters are on either side of the current cursor position. */
-  const eStrCursorDelimType prev = (pos > 0) ? cursor_delim_type_utf8(str, str_maxlen, pos - 1) :
-                                               STRCUR_DELIM_NONE;
-  const eStrCursorDelimType next = (pos < str_maxlen) ?
+  const eStrCursorDelimType prev = (pos > 0 && pos < str_maxlen) ?
+                                       cursor_delim_type_utf8(str, str_maxlen, pos - 1) :
+                                       STRCUR_DELIM_NONE;
+  const eStrCursorDelimType next = (pos >= 0 && pos < str_maxlen) ?
                                        cursor_delim_type_utf8(str, str_maxlen, pos) :
                                        STRCUR_DELIM_NONE;
   *r_start = pos;
