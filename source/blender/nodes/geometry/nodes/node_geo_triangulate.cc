@@ -11,6 +11,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_randomize.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_triangulate_cc {
@@ -66,9 +68,15 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry::TriangulateNGonMode(ngon_method),
         geometry::TriangulateQuadMode(quad_method),
         propagation_info);
-    if (mesh) {
-      geometry_set.replace_mesh(*mesh);
+    if (!mesh) {
+      return;
     }
+
+    /* Vertex order is not affected. */
+    geometry::debug_randomize_edge_order(*mesh);
+    geometry::debug_randomize_face_order(*mesh);
+
+    geometry_set.replace_mesh(*mesh);
   });
 
   params.set_output("Mesh", std::move(geometry_set));

@@ -241,7 +241,7 @@ static void gather_vert_attributes(const Mesh &mesh_src,
 
 std::optional<Mesh *> mesh_copy_selection(
     const Mesh &src_mesh,
-    const fn::Field<bool> &selection_field,
+    const VArray<bool> &selection,
     const eAttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -251,11 +251,6 @@ std::optional<Mesh *> mesh_copy_selection(
   const Span<int> src_corner_edges = src_mesh.corner_edges();
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
 
-  const bke::MeshFieldContext context(src_mesh, selection_domain);
-  fn::FieldEvaluator evaluator(context, src_attributes.domain_size(selection_domain));
-  evaluator.add(selection_field);
-  evaluator.evaluate();
-  const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (selection.is_empty()) {
     return std::nullopt;
   }
@@ -395,7 +390,7 @@ std::optional<Mesh *> mesh_copy_selection(
 
 std::optional<Mesh *> mesh_copy_selection_keep_verts(
     const Mesh &src_mesh,
-    const fn::Field<bool> &selection_field,
+    const VArray<bool> &selection,
     const eAttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -405,11 +400,6 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
   const Span<int> src_corner_edges = src_mesh.corner_edges();
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
 
-  const bke::MeshFieldContext context(src_mesh, selection_domain);
-  fn::FieldEvaluator evaluator(context, src_attributes.domain_size(selection_domain));
-  evaluator.add(selection_field);
-  evaluator.evaluate();
-  const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (selection.is_empty()) {
     return std::nullopt;
   }
@@ -507,18 +497,13 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
 
 std::optional<Mesh *> mesh_copy_selection_keep_edges(
     const Mesh &src_mesh,
-    const fn::Field<bool> &selection_field,
+    const VArray<bool> &selection,
     const eAttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices src_faces = src_mesh.faces();
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
 
-  const bke::MeshFieldContext context(src_mesh, selection_domain);
-  fn::FieldEvaluator evaluator(context, src_attributes.domain_size(selection_domain));
-  evaluator.add(selection_field);
-  evaluator.evaluate();
-  const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (selection.is_empty()) {
     return std::nullopt;
   }
