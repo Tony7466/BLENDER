@@ -1320,6 +1320,12 @@ static void blf_font_fill(FontBLF *font)
   font->clip_rec.ymax = 0;
   font->flags = 0;
   font->size = 0;
+
+  font->char_weight = 400;
+  font->char_slant = 0.0f;
+  font->char_width = 1.0f;
+  font->char_spacing = 1.0f;
+
   BLI_listbase_clear(&font->cache);
   font->kerning_cache = nullptr;
 #if BLF_BLUR_ENABLE

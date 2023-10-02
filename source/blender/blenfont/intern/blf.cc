@@ -309,19 +309,19 @@ void BLF_disable(int fontid, int option)
   }
 }
 
-void BLF_character_weight(int fontid, float factor)
+void BLF_character_weight(int fontid,  int weight)
 {
   FontBLF *font = blf_get(fontid);
   if (font) {
-    font->char_weight = factor;
+    font->char_weight = weight;
   }
 }
 
-void BLF_character_slant(int fontid, float factor)
+void BLF_character_slant(int fontid, float degrees)
 {
   FontBLF *font = blf_get(fontid);
   if (font) {
-    font->char_slant = factor;
+    font->char_slant = degrees;
   }
 }
 

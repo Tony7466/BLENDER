@@ -1294,34 +1294,33 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Points", "Font size in points");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
-	prop = RNA_def_property(srna, "character_weight", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_range(prop, -1.0f, 1.0f);
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
-  RNA_def_property_ui_text(prop, "Character Weight", "Change to the weight of the characters");
+	prop = RNA_def_property(srna, "character_weight", PROP_INT, PROP_NONE);
+  RNA_def_property_int_default(prop, 400);
+  RNA_def_property_range(prop, 100.0f, 900.0f);
+  RNA_def_property_ui_range(prop, 100.0f, 900.0f, 1, 0);
+  RNA_def_property_ui_text(
+      prop, "Character Weight", "Weight of the characters. 100-900, 400 is normal");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "character_slant", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_range(prop, -1.0f, 1.0f);
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
-  RNA_def_property_ui_text(prop,
-                           "Character Slant",
-                           "Slant of the characters. Use negative values for a rightward slant.");
+  RNA_def_property_range(prop, -45.0f, 45.0f);
+  RNA_def_property_ui_range(prop, -15.0f, 15.0f, 1.0f, 2);
+  RNA_def_property_ui_text(prop, "Character Slant", "Slant of the characters in degrees");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "character_width", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_range(prop, -1.0f, 1.0f);
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
-  RNA_def_property_ui_text(prop, "Character Width", "Change to the width of the characters");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_range(prop, 0.01f, 5.0f);
+  RNA_def_property_ui_range(prop, 0.5f, 2.0f, 1.0, 3);
+  RNA_def_property_ui_text(prop, "Character Width", "Factor for character width. 1 is normal");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "character_spacing", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_range(prop, -1.0f, 1.0f);
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.1, 3);
-  RNA_def_property_ui_text(prop, "Character Spacing", "Change to the spacing of the characters");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_range(prop, 0.00f, 10.0f);
+  RNA_def_property_ui_range(prop, 0.5f, 5.0f, 1.0, 3);
+  RNA_def_property_ui_text(prop, "Character Spacing", "Factor for character spacing. 1 is normal");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_PIXEL);

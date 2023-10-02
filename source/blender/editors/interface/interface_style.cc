@@ -69,6 +69,10 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
 
   style->paneltitle.uifont_id = uifont_id;
   style->paneltitle.points = UI_DEFAULT_TITLE_POINTS;
+  style->paneltitle.character_weight = 400;
+  style->paneltitle.character_width = 1.0f;
+  style->paneltitle.character_slant = 0.0f;
+  style->paneltitle.character_spacing = 1.0f;
   style->paneltitle.shadow = 3;
   style->paneltitle.shadx = 0;
   style->paneltitle.shady = -1;
@@ -77,6 +81,10 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
 
   style->grouplabel.uifont_id = uifont_id;
   style->grouplabel.points = UI_DEFAULT_TITLE_POINTS;
+  style->grouplabel.character_weight = 400;
+  style->grouplabel.character_width = 1.0f;
+  style->grouplabel.character_slant = 0.0f;
+  style->grouplabel.character_spacing = 1.0f;
   style->grouplabel.shadow = 3;
   style->grouplabel.shadx = 0;
   style->grouplabel.shady = -1;
@@ -85,6 +93,10 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
 
   style->widgetlabel.uifont_id = uifont_id;
   style->widgetlabel.points = UI_DEFAULT_TEXT_POINTS;
+  style->widgetlabel.character_weight = 400;
+  style->widgetlabel.character_width = 1.0f;
+  style->widgetlabel.character_slant = 0.0f;
+  style->widgetlabel.character_spacing = 1.0f;
   style->widgetlabel.shadow = 3;
   style->widgetlabel.shadx = 0;
   style->widgetlabel.shady = -1;
@@ -93,6 +105,10 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
 
   style->widget.uifont_id = uifont_id;
   style->widget.points = UI_DEFAULT_TEXT_POINTS;
+  style->widget.character_weight = 400;
+  style->widget.character_width = 1.0f;
+  style->widget.character_slant = 0.0f;
+  style->widget.character_spacing = 1.0f;
   style->widget.shadow = 1;
   style->widget.shady = -1;
   style->widget.shadowalpha = 0.5f;

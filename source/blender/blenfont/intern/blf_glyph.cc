@@ -58,6 +58,14 @@ static FT_Fixed to_16dot16(double val)
   return (FT_Fixed)lround(val * 65536.0);
 }
 
+/**
+ * Convert a floating point value to a FreeType 16.16 fixed point value.
+ */
+static float from_16dot16(FT_Fixed val)
+{
+  return float(val) / 65536.0f;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -862,17 +870,60 @@ static bool blf_glyph_set_variation_normalized(const FontBLF *font,
 static bool blf_glyph_set_variation_float(FontBLF *font,
                                           FT_Fixed coords[],
                                           uint32_t tag,
-                                          float value)
+                                          float *value)
 {
   int axis_index;
   const FT_Var_Axis *axis = blf_var_axis_by_tag(font->variations, tag, &axis_index);
   if (axis && (axis_index < BLF_VARIATIONS_MAX)) {
-    FT_Fixed int_value = to_16dot16(value);
+    FT_Fixed int_value = to_16dot16(*value);
     CLAMP(int_value, axis->minimum, axis->maximum);
     coords[axis_index] = int_value;
+    *value = from_16dot16(int_value);
     return true;
   }
   return false;
+}
+
+static float blf_glyph_set_variation_weight(FontBLF *font, FT_Fixed coords[], float weight)
+{
+  float value = weight;
+  if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_WEIGHT, &value)) {
+    return value;
+  }
+  return 400.0f;
+}
+
+static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], float degrees)
+{
+  float value = -degrees;
+  if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_SLANT, &value)) {
+    return -value;
+  }
+  return 0.0f;
+}
+
+static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], float width)
+{
+  float value = width;
+  if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_WIDTH, &value)) {
+    return value;
+  }
+  return 1.0f;
+}
+
+static float blf_glyph_set_variation_spacing(FontBLF *font, FT_Fixed coords[], float spacing)
+{
+  float value = spacing;
+  if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_SPACING, &value)) {
+    return value;
+  }
+  return 1.0f;
+}
+
+static bool blf_glyph_set_variation_optical_size(FontBLF *font, FT_Fixed coords[], const float points)
+{
+  float value = points;
+  return blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_OPTSIZE, &value);
 }
 
 /** \} */
@@ -885,14 +936,15 @@ static bool blf_glyph_set_variation_float(FontBLF *font,
  * Adjust the glyph's weight by a factor.
  * Used for fonts without #BLF_VARIATION_AXIS_WEIGHT variable axis.
  *
- * \param factor: -1 (min stroke width) <= 0 (normal) => 1 (max boldness).
+ * \param width: -500 (make thinner) <= 0 (normal) => 500 (add boldness).
  */
-static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float factor, bool monospaced)
+static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float width, bool monospaced)
 {
   if (glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
     const FontBLF *font = (FontBLF *)glyph->face->generic.data;
     const FT_Pos average_width = font->ft_size->metrics.height;
-    FT_Pos change = (FT_Pos)(float(average_width) * factor * 0.12f);
+    float factor = width * 0.000225f;
+    FT_Pos change = (FT_Pos)(float(average_width) * factor);
     FT_Outline_EmboldenXY(&glyph->outline, change, 0);
     if (monospaced) {
       /* Widened fixed-pitch font needs a nudge left. */
@@ -911,16 +963,19 @@ static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float factor, bool mo
  * Adjust the glyph's slant by a factor.
  * Used for fonts without #BLF_VARIATION_AXIS_SLANT variable axis.
  *
- * \param factor: -1 (max right-leaning) <= 0 (no slant) => 1 (max left-leaning).
- *
- * \note that left-leaning italics are possible in some RTL writing systems.
+ * \param degrees: amount of tilt in clockwise degrees.
  */
-static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float factor)
+static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float degrees)
 {
   if (glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-    /* Slant angle is counter-clockwise as per OTF specs. */
-    FT_Matrix transform = {to_16dot16(1), to_16dot16(-factor / 4.0f), 0, to_16dot16(1)};
+    FT_Matrix transform = {to_16dot16(1), to_16dot16(degrees * 0.0225f), 0, to_16dot16(1)};
     FT_Outline_Transform(&glyph->outline, &transform);
+    if (degrees < 0.0f) {
+      const FontBLF *font = (FontBLF *)glyph->face->generic.data;
+      const FT_Pos average_width = font->ft_size->metrics.height;
+      FT_Pos change = (FT_Pos)(float(average_width) * degrees * -0.01f);
+      FT_Outline_Translate(&glyph->outline, change, 0);
+    }
     return true;
   }
   return false;
@@ -930,12 +985,12 @@ static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float factor)
  * Adjust the glyph width by factor.
  * Used for fonts without #BLF_VARIATION_AXIS_WIDTH variable axis.
  *
- * \param factor: -1 (min width) <= 0 (normal) => 1 (max width).
+ * \param factor: -1 (subtract width) <= 0 (normal) => 1 (add width).
  */
 static bool blf_glyph_transform_width(FT_GlyphSlot glyph, float factor)
 {
   if (glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-    float scale = (factor * 0.4f) + 1.0f; /* 0.6f - 1.4f */
+    float scale = factor + 1.0f;
     FT_Matrix matrix = {to_16dot16(scale), 0, 0, to_16dot16(1)};
     FT_Outline_Transform(&glyph->outline, &matrix);
     glyph->advance.x = (FT_Pos)(double(glyph->advance.x) * scale);
@@ -948,7 +1003,7 @@ static bool blf_glyph_transform_width(FT_GlyphSlot glyph, float factor)
  * Adjust the glyph spacing by factor.
  * Used for fonts without #BLF_VARIATION_AXIS_SPACING variable axis.
  *
- * \param factor: -1 (min tightness) <= 0 (normal) => 1 (max looseness).
+ * \param factor: -1 (make tighter) <= 0 (normal) => 1 (add space).
  */
 static bool blf_glyph_transform_spacing(FT_GlyphSlot glyph, float factor)
 {
@@ -1011,21 +1066,23 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
 
   blf_ensure_size(glyph_font);
 
-  /* We need to keep track if changes are still needed. */
-  bool weight_done = false;
-  bool slant_done = false;
-  bool width_done = false;
-  bool spacing_done = false;
+  /* Current variation values. */
+  float weight = 400.0f;
+  float slant = 0.0f;
+  float width = 1.0f;
+  float spacing = 1.0f;
 
-  /* Treat bold as 75% of maximum weight. */
-  float weight = (settings_font->flags & BLF_BOLD) ? 0.75f : settings_font->char_weight;
-
-  /* Treat italics as 75% of maximum rightward slant. Note that slant angle is in
-   * counter-clockwise degrees per OTF spec, so negative. */
-  float slant = (settings_font->flags & BLF_ITALIC) ? -0.75f : settings_font->char_slant;
-
-  float width = settings_font->char_width;
-  float spacing = settings_font->char_spacing;
+  /* The variation targets we are hoping to get. */
+  float weight_target = float(settings_font->char_weight);
+  if (settings_font->flags & BLF_BOLD) {
+    weight_target = MIN2(weight_target + 300.0f, 900.0f);
+  }
+  float slant_target = settings_font->char_slant;
+  if (settings_font->flags & BLF_ITALIC) {
+    slant_target = MIN2(slant_target + 8.0f, 15.0f);
+  }
+  float width_target = settings_font->char_width;
+  float spacing_target = settings_font->char_spacing;
 
   /* Font variations need to be set before glyph loading. Even if new value is zero. */
 
@@ -1034,17 +1091,14 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     /* Load current design coordinates. */
     FT_Get_Var_Design_Coordinates(glyph_font->face, BLF_VARIATIONS_MAX, &coords[0]);
     /* Update design coordinates with new values. */
-    weight_done = blf_glyph_set_variation_normalized(
-        glyph_font, coords, BLF_VARIATION_AXIS_WEIGHT, weight);
-    slant_done = blf_glyph_set_variation_normalized(
-        glyph_font, coords, BLF_VARIATION_AXIS_SLANT, slant);
-    width_done = blf_glyph_set_variation_normalized(
-        glyph_font, coords, BLF_VARIATION_AXIS_WIDTH, width);
-    spacing_done = blf_glyph_set_variation_normalized(
-        glyph_font, coords, BLF_VARIATION_AXIS_SPACING, spacing);
-    /* Optical size, if available, is set to current font size. */
-    blf_glyph_set_variation_float(
-        glyph_font, coords, BLF_VARIATION_AXIS_OPTSIZE, settings_font->size);
+
+    weight = blf_glyph_set_variation_weight(glyph_font, coords, weight_target);
+    slant = blf_glyph_set_variation_slant(glyph_font, coords, slant_target);
+    width = blf_glyph_set_variation_width(glyph_font, coords, width_target);
+    spacing = blf_glyph_set_variation_spacing(glyph_font, coords, spacing_target);
+
+    blf_glyph_set_variation_optical_size(glyph_font, coords, settings_font->size);
+
     /* Save updated design coordinates. */
     FT_Set_Var_Design_Coordinates(glyph_font->face, BLF_VARIATIONS_MAX, &coords[0]);
   }
@@ -1063,17 +1117,17 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
 
   /* Fallback glyph transforms, but only if required and not yet done. */
 
-  if (weight != 0.0f && !weight_done) {
-    blf_glyph_transform_weight(glyph, weight, FT_IS_FIXED_WIDTH(glyph_font));
+  if (weight != weight_target) {
+    blf_glyph_transform_weight(glyph, weight_target - weight, FT_IS_FIXED_WIDTH(glyph_font));
   }
-  if (slant != 0.0f && !slant_done) {
-    blf_glyph_transform_slant(glyph, slant);
+  if (slant != slant_target) {
+    blf_glyph_transform_slant(glyph, slant_target - slant);
   }
-  if (width != 0.0f && !width_done) {
-    blf_glyph_transform_width(glyph, width);
+  if (width != width_target) {
+    blf_glyph_transform_width(glyph, width_target - width);
   }
-  if (spacing != 0.0f && !spacing_done) {
-    blf_glyph_transform_spacing(glyph, spacing);
+  if (spacing != spacing_target) {
+    blf_glyph_transform_spacing(glyph, spacing_target - spacing);
   }
 
   FT_Outline_Translate(&glyph->outline, (FT_Pos)subpixel, 0);

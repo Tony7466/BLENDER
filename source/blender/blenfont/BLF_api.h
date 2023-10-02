@@ -79,8 +79,8 @@ void BLF_aspect(int fontid, float x, float y, float z);
 void BLF_position(int fontid, float x, float y, float z);
 void BLF_size(int fontid, float size);
 
-void BLF_character_weight(int fontid, float factor);
-void BLF_character_slant(int fontid, float factor);
+void BLF_character_weight(int fontid, int weight);
+void BLF_character_slant(int fontid, float degrees);
 void BLF_character_width(int fontid, float factor);
 void BLF_character_spacing(int fontid, float factor);
 

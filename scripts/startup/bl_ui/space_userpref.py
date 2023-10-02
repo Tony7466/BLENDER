@@ -1078,6 +1078,7 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
         col.prop(font_style, "points")
         col.prop(font_style, "character_weight", text="Weight")
         col.prop(font_style, "character_slant", text="Slant")
+        col.prop(font_style, "character_width", text="Width")
         col.prop(font_style, "character_spacing", text="Spacing")
 
         col = flow.column(align=True)
