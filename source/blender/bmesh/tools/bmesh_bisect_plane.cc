@@ -285,6 +285,7 @@ static void bm_face_bisect_verts(
           if (!equals_v3v3(vert_split_arr[0]->co, vert_split_arr[i]->co)) {
             sub_v3_v3v3(sort_dir, vert_split_arr[0]->co, vert_split_arr[i]->co);
             normalize_v3(sort_dir);
+            break;
           }
         }
         if (UNLIKELY(i == STACK_SIZE(vert_split_arr))) {
