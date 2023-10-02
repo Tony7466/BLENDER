@@ -158,18 +158,25 @@ struct ZstdFrame {
 
 class WriteWrap {
 public:
-  virtual bool open(const char *filepath);
-  virtual bool close();
-  virtual bool write(const void *data, size_t data_len);
+ virtual bool open(const char *filepath) = 0;
+ virtual bool close() = 0;
+ virtual bool write(const void *data, size_t data_len) = 0;
 
-  /* Buffer output (we only want when output isn't already buffered). */
-  bool use_buf = true;
+ /* Buffer output (we only want when output isn't already buffered). */
+ bool use_buf = true;
+};
 
-private:
+class RawWriteWrap : public WriteWrap {
+ public:
+  bool open(const char *filepath) override;
+  bool close() override;
+  bool write(const void *data, size_t data_len) override;
+
+ private:
   int file_handle = 0;
 };
 
-bool WriteWrap::open(const char *filepath)
+bool RawWriteWrap::open(const char *filepath)
 {
   int file;
 
@@ -182,16 +189,18 @@ bool WriteWrap::open(const char *filepath)
 
   return false;
 }
-bool WriteWrap::close()
+bool RawWriteWrap::close()
 {
   return (::close(file_handle) != -1);
 }
-bool WriteWrap::write(const void *buf, size_t buf_len)
+bool RawWriteWrap::write(const void *buf, size_t buf_len)
 {
   return ::write(file_handle, buf, buf_len) == buf_len;
 }
 
 class ZstdWriteWrap : public WriteWrap {
+  WriteWrap &baseWrap;
+
   ListBase threadpool = {};
   ListBase tasks = {};
   ThreadMutex mutex = {};
@@ -205,13 +214,15 @@ class ZstdWriteWrap : public WriteWrap {
   bool write_error = false;
 
 public:
-  bool open(const char *filepath) override;
-  bool close() override;
-  bool write(const void *data, size_t data_len) override;
+ ZstdWriteWrap(WriteWrap &baseWrap) : baseWrap(baseWrap) {}
+
+ bool open(const char *filepath) override;
+ bool close() override;
+ bool write(const void *data, size_t data_len) override;
 
 private:
   struct ZstdWriteBlockTask;
-  static void *write_task(void *userdata);
+  void write_task(ZstdWriteBlockTask *task);
   void write_u32_le(uint32_t val);
   void write_seekable_frames();
 };
@@ -222,13 +233,17 @@ struct ZstdWriteWrap::ZstdWriteBlockTask {
   size_t size;
   int frame_number;
   ZstdWriteWrap *ww;
+
+  static void *write_task(void *userdata)
+  {
+    auto *task = static_cast<ZstdWriteBlockTask *>(userdata);
+    task->ww->write_task(task);
+    return nullptr;
+  }
 };
 
-void *ZstdWriteWrap::write_task(void *userdata)
+void ZstdWriteWrap::write_task(ZstdWriteBlockTask *task)
 {
-  ZstdWriteBlockTask *task = static_cast<ZstdWriteBlockTask *>(userdata);
-  ZstdWriteWrap *ww = task->ww;
-
   size_t out_buf_len = ZSTD_compressBound(task->size);
   void *out_buf = MEM_mallocN(out_buf_len, "Zstd out buffer");
   size_t out_size = ZSTD_compress(
@@ -236,46 +251,45 @@ void *ZstdWriteWrap::write_task(void *userdata)
 
   MEM_freeN(task->data);
 
-  BLI_mutex_lock(&ww->mutex);
+  BLI_mutex_lock(&mutex);
 
-  while (ww->next_frame != task->frame_number) {
-    BLI_condition_wait(&ww->condition, &ww->mutex);
+  while (next_frame != task->frame_number) {
+    BLI_condition_wait(&condition, &mutex);
   }
 
   if (ZSTD_isError(out_size)) {
-    ww->write_error = true;
+    write_error = true;
   }
   else {
-    if (ww->WriteWrap::write(out_buf, out_size)) {
+    if (baseWrap.write(out_buf, out_size)) {
       ZstdFrame *frameinfo = static_cast<ZstdFrame *>(
           MEM_mallocN(sizeof(ZstdFrame), "zstd frameinfo"));
       frameinfo->uncompressed_size = task->size;
       frameinfo->compressed_size = out_size;
-      BLI_addtail(&ww->frames, frameinfo);
+      BLI_addtail(&frames, frameinfo);
     }
     else {
-      ww->write_error = true;
+      write_error = true;
     }
   }
 
-  ww->next_frame++;
+  next_frame++;
 
-  BLI_mutex_unlock(&ww->mutex);
-  BLI_condition_notify_all(&ww->condition);
+  BLI_mutex_unlock(&mutex);
+  BLI_condition_notify_all(&condition);
 
   MEM_freeN(out_buf);
-  return nullptr;
 }
 
 bool ZstdWriteWrap::open(const char *filepath)
 {
-  if (!WriteWrap::open(filepath)) {
+  if (!baseWrap.open(filepath)) {
     return false;
   }
 
   /* Leave one thread open for the main writing logic, unless we only have one HW thread. */
   int num_threads = max_ii(1, BLI_system_thread_count() - 1);
-  BLI_threadpool_init(&threadpool, write_task, num_threads);
+  BLI_threadpool_init(&threadpool, ZstdWriteBlockTask::write_task, num_threads);
   BLI_mutex_init(&mutex);
   BLI_condition_init(&condition);
 
@@ -287,7 +301,7 @@ void ZstdWriteWrap::write_u32_le(uint32_t val)
 #ifdef __BIG_ENDIAN__
   BLI_endian_switch_uint32(&val);
 #endif
-  WriteWrap::write(&val, sizeof(uint32_t));
+  baseWrap.write(&val, sizeof(uint32_t));
 }
 
 /* In order to implement efficient seeking when reading the .blend, we append
@@ -319,7 +333,7 @@ void ZstdWriteWrap::write_seekable_frames()
   /* Write seek table footer (number of frames, option flags and second magic number). */
   write_u32_le(num_frames);
   const char flags = 0; /* We don't store checksums for each frame. */
-  WriteWrap::write(&flags, 1);
+  baseWrap.write(&flags, 1);
   write_u32_le(0x8F92EAB1);
 }
 
@@ -334,7 +348,7 @@ bool ZstdWriteWrap::close()
   write_seekable_frames();
   BLI_freelistN(&frames);
 
-  return WriteWrap::close() && !write_error;
+  return baseWrap.close() && !write_error;
 }
 
 bool ZstdWriteWrap::write(const void *buf, size_t buf_len)
@@ -1440,12 +1454,12 @@ static void write_file_main_validate_post(Main *bmain, ReportList *reports)
   }
 }
 
-static bool BLO_write_file(Main *mainvar,
-                           const char *filepath,
-                           const int write_flags,
-                           const BlendFileWriteParams *params,
-                           ReportList *reports,
-                           WriteWrap &ww)
+static bool BLO_write_file_impl(Main *mainvar,
+                                const char *filepath,
+                                const int write_flags,
+                                const BlendFileWriteParams *params,
+                                ReportList *reports,
+                                WriteWrap &ww)
 {
   BLI_assert(!BLI_path_is_rel(filepath));
   BLI_assert(BLI_path_is_abs_from_cwd(filepath));
@@ -1605,13 +1619,14 @@ bool BLO_write_file(Main *mainvar,
                     const BlendFileWriteParams *params,
                     ReportList *reports)
 {
+  RawWriteWrap raw_wrap;
+
   if (write_flags & G_FILE_COMPRESS) {
-    ZstdWriteWrap ww;
-    return BLO_write_file(mainvar, filepath, write_flags, params, reports, ww);
+    ZstdWriteWrap zstd_wrap(raw_wrap);
+    return BLO_write_file_impl(mainvar, filepath, write_flags, params, reports, zstd_wrap);
   }
 
-  WriteWrap ww;
-  return BLO_write_file(mainvar, filepath, write_flags, params, reports, ww);
+  return BLO_write_file_impl(mainvar, filepath, write_flags, params, reports, raw_wrap);
 }
 
 bool BLO_write_file_mem(Main *mainvar, MemFile *compare, MemFile *current, int write_flags)
