@@ -8801,19 +8801,23 @@ static void rna_def_node_item_array_common_functions(StructRNA *srna,
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
-static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
+struct ItemArrayNewWithSocketAndNameBuffers {
+  char name[128];
+};
+
+static void rna_def_node_item_array_new_with_socket_and_name(
+    StructRNA *srna,
+    const char *item_name,
+    const char *accessor_name,
+    ItemArrayNewWithSocketAndNameBuffers &buffers)
 {
-  StructRNA *srna;
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", nullptr);
-  RNA_def_struct_sdna(srna, "bNode");
-  RNA_def_struct_ui_text(srna, "Items", "Collection of simulation items");
+  SNPRINTF(buffers.name, "rna_Node_ItemArray_new_with_socket_and_name<%s>", accessor_name);
 
-  func = RNA_def_function(
-      srna, "new", "rna_Node_ItemArray_new_with_socket_and_name<SimulationItemsAccessor>");
-  RNA_def_function_ui_description(func, "Add a item to this simulation zone");
+  func = RNA_def_function(srna, "new", buffers.name);
+  RNA_def_function_ui_description(func, "Add a item at the end");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "socket_type",
@@ -8825,12 +8829,28 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
-  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New item");
+  parm = RNA_def_pointer(func, "item", item_name, "Item", "New item");
   RNA_def_function_return(func, parm);
+}
 
-  static ItemArrayCommonFunctionBuffers buffers;
-  rna_def_node_item_array_common_functions(
-      srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
+static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of simulation items");
+
+  {
+    static ItemArrayNewWithSocketAndNameBuffers buffers;
+    rna_def_node_item_array_new_with_socket_and_name(
+        srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
+  }
+  {
+    static ItemArrayCommonFunctionBuffers buffers;
+    rna_def_node_item_array_common_functions(
+        srna, "SimulationStateItem", "SimulationItemsAccessor", buffers);
+  }
 }
 
 static void def_geo_simulation_output(StructRNA *srna)
@@ -8901,32 +8921,20 @@ static void rna_def_repeat_item(BlenderRNA *brna)
 static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
 {
   StructRNA *srna;
-  PropertyRNA *parm;
-  FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "NodeGeometryRepeatOutputItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "Items", "Collection of repeat items");
 
-  func = RNA_def_function(
-      srna, "new", "rna_Node_ItemArray_new_with_socket_and_name<RepeatItemsAccessor>");
-  RNA_def_function_ui_description(func, "Add a item to this repeat zone");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_enum(func,
-                      "socket_type",
-                      rna_enum_node_socket_data_type_items,
-                      SOCK_GEOMETRY,
-                      "Socket Type",
-                      "Socket type of the item");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  /* return value */
-  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
-  RNA_def_function_return(func, parm);
-
-  static ItemArrayCommonFunctionBuffers buffers;
-  rna_def_node_item_array_common_functions(srna, "RepeatItem", "RepeatItemsAccessor", buffers);
+  {
+    static ItemArrayNewWithSocketAndNameBuffers buffers;
+    rna_def_node_item_array_new_with_socket_and_name(
+        srna, "RepeatItem", "RepeatItemsAccessor", buffers);
+  }
+  {
+    static ItemArrayCommonFunctionBuffers buffers;
+    rna_def_node_item_array_common_functions(srna, "RepeatItem", "RepeatItemsAccessor", buffers);
+  }
 }
 
 static void def_geo_repeat_output(StructRNA *srna)
