@@ -12,7 +12,7 @@ shared vec4 cached_marker_colors[CACHE_SIZE];
  * faster.  */
 void populate_cache()
 {
-  if (gl_LocalInvocationIndex < number_of_markers) {
+  if (int(gl_LocalInvocationIndex) < number_of_markers) {
     cached_marker_positions[gl_LocalInvocationIndex] = marker_positions[gl_LocalInvocationIndex];
     cached_marker_colors[gl_LocalInvocationIndex] = marker_colors[gl_LocalInvocationIndex];
   }
@@ -35,12 +35,14 @@ void main()
   float sum_of_weights = 0.0;
   vec4 weighted_sum = vec4(0.0);
   for (int i = 0; i < number_of_markers; i++) {
-    vec2 marker_position = i < CACHE_SIZE ? cached_marker_positions[i] : marker_positions[i];
+    bool use_cache = i < int(CACHE_SIZE);
+
+    vec2 marker_position = use_cache ? cached_marker_positions[i] : marker_positions[i];
     vec2 difference = normalized_pixel_location - marker_position;
     float squared_distance = dot(difference, difference);
     float gaussian = exp(-squared_distance * squared_shape_parameter);
 
-    vec4 marker_color = i < CACHE_SIZE ? cached_marker_colors[i] : marker_colors[i];
+    vec4 marker_color = use_cache ? cached_marker_colors[i] : marker_colors[i];
     weighted_sum += marker_color * gaussian;
     sum_of_weights += gaussian;
   }
