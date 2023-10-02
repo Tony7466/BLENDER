@@ -10760,7 +10760,8 @@ static int ui_handle_menu_event(bContext *C,
         case EVT_WKEY:
         case EVT_XKEY:
         case EVT_YKEY:
-        case EVT_ZKEY: {
+        case EVT_ZKEY:
+        case EVT_SPACEKEY: {
           if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK) &&
               ((event->modifier & (KM_SHIFT | KM_CTRL | KM_OSKEY)) == 0) &&
               /* Only respond to explicit press to avoid the event that opened the menu
