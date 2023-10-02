@@ -265,9 +265,6 @@ static void bm_face_bisect_verts(
         } while ((l_iter = l_iter->next) != l_first_non_center);
       }
 
-      float(*face_verts_proj_2d)[2] = BLI_array_alloca(face_verts_proj_2d, f_len_orig);
-      float axis_mat[3][3];
-
       BMFace **face_split_arr = BLI_array_alloca(face_split_arr, STACK_SIZE(vert_split_arr));
       STACK_DECLARE(face_split_arr);
 
@@ -293,20 +290,6 @@ static void bm_face_bisect_verts(
           goto finally;
         }
       }
-
-      /* ---- */
-      /* Calculate 2d coords to use for intersection checks */
-
-      /* Get the faces 2d coords. */
-      BLI_assert(BM_face_is_normal_valid(f));
-      axis_dominant_v3_to_m3(axis_mat, f->no);
-
-      l_iter = l_first;
-      i = 0;
-      do {
-        mul_v2_m3v3(face_verts_proj_2d[i], axis_mat, l_iter->v->co);
-        i++;
-      } while ((l_iter = l_iter->next) != l_first);
 
       /* ---- */
       /* Sort the verts across the face from one side to another. */
