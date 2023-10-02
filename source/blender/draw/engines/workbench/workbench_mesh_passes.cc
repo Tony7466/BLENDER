@@ -133,7 +133,8 @@ void OpaquePass::sync(const SceneState &scene_state, SceneResources &resources)
   deferred_ps_.shader_set(resources.shader_cache.resolve_shader_get(ePipelineType::OPAQUE,
                                                                     scene_state.lighting_type,
                                                                     scene_state.draw_cavity,
-                                                                    scene_state.draw_curvature));
+                                                                    scene_state.draw_curvature,
+                                                                    scene_state.draw_shadows));
   deferred_ps_.push_constant("forceShadowing", false);
   deferred_ps_.bind_ubo(WB_WORLD_SLOT, resources.world_buf);
   deferred_ps_.bind_texture(WB_MATCAP_SLOT, resources.matcap_tx);

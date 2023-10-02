@@ -56,8 +56,10 @@ void main()
     color.rgb *= final_cavity_factor;
 #endif
 
+#ifdef WORKBENCH_SHADOW
     bool shadow = texture(stencil_tx, uv).r != 0;
     color.rgb *= get_shadow(N, shadow);
+#endif
 
     color.a = 1.0f;
   }
