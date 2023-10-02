@@ -102,8 +102,6 @@ if(WITH_MATERIALX)
 endif()
 add_bundled_libraries(materialx/lib)
 
-set(WITH_VULKAN_BACKEND OFF)
-
 if(WITH_OPENSUBDIV)
   find_package(OpenSubdiv)
 endif()
