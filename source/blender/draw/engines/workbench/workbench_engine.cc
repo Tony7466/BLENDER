@@ -450,16 +450,17 @@ class Instance {
                               GPU_ATTACHMENT_TEXTURE(resources.color_tx),
                               id_attachment);
     resources.clear_fb.bind();
-    float4 clear_colors[2] = {resources.world_buf.background_color, float4(0.0f)};
+    float4 clear_colors[2] = {scene_state.background_color, float4(0.0f)};
     GPU_framebuffer_multi_clear(resources.clear_fb, reinterpret_cast<float(*)[4]>(clear_colors));
     GPU_framebuffer_clear_depth_stencil(resources.clear_fb, 1.0f, 0x00);
 
     bool needs_depth_in_front = !transparent_ps.accumulation_in_front_ps_.is_empty() ||
                                 (!opaque_ps.gbuffer_in_front_ps_.is_empty() &&
-                                 scene_state.overlays_enabled && scene_state.sample == 0 &&
-                                 scene_state.samples_len > 1);
+                                 scene_state.overlays_enabled && scene_state.sample == 0);
     resources.depth_in_front_tx.wrap(needs_depth_in_front ? depth_in_front_tx : nullptr);
-    if (!resources.depth_in_front_tx.is_valid() && scene_state.overlays_enabled) {
+    if ((!needs_depth_in_front && scene_state.overlays_enabled) ||
+        (needs_depth_in_front && opaque_ps.gbuffer_in_front_ps_.is_empty()))
+    {
       resources.clear_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(depth_in_front_tx));
       resources.clear_in_front_fb.bind();
       GPU_framebuffer_clear_depth_stencil(resources.clear_in_front_fb, 1.0f, 0x00);

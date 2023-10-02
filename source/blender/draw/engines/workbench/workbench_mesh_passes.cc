@@ -112,24 +112,25 @@ PassMain::Sub &MeshPass::get_subpass(
 void OpaquePass::sync(const SceneState &scene_state, SceneResources &resources)
 {
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                   scene_state.cull_state;
+                   DRW_STATE_WRITE_STENCIL | scene_state.cull_state;
 
   bool clip = scene_state.clip_planes.size() > 0;
 
-  DRWState in_front_state = state | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+  DRWState in_front_state = state | DRW_STATE_STENCIL_ALWAYS;
   gbuffer_in_front_ps_.init_pass(resources, in_front_state, scene_state.clip_planes.size());
-  gbuffer_in_front_ps_.state_stencil(0xFF, 0xFF, 0x00);
+  gbuffer_in_front_ps_.state_stencil(StencilBits::ObjectInFront, 0xFF, 0x00);
   gbuffer_in_front_ps_.init_subpasses(
       ePipelineType::OPAQUE, scene_state.lighting_type, clip, resources.shader_cache);
 
   state |= DRW_STATE_STENCIL_NEQUAL;
   gbuffer_ps_.init_pass(resources, state, scene_state.clip_planes.size());
-  gbuffer_ps_.state_stencil(0x00, 0xFF, 0xFF);
+  gbuffer_ps_.state_stencil(StencilBits::Object, 0xFF, StencilBits::ObjectInFront);
   gbuffer_ps_.init_subpasses(
       ePipelineType::OPAQUE, scene_state.lighting_type, clip, resources.shader_cache);
 
   deferred_ps_.init();
-  deferred_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  deferred_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL);
+  deferred_ps_.state_stencil(0x00, StencilBits::Background, 0xFF);
   deferred_ps_.shader_set(resources.shader_cache.resolve_shader_get(ePipelineType::OPAQUE,
                                                                     scene_state.lighting_type,
                                                                     scene_state.draw_cavity,
@@ -210,7 +211,8 @@ void OpaquePass::draw(Manager &manager,
     deferred_ps_stencil_tx = nullptr;
   }
 
-  deferred_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
+  deferred_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+                     GPU_ATTACHMENT_TEXTURE(resources.color_tx));
   deferred_fb.bind();
   manager.submit(deferred_ps_, view);
 
@@ -243,7 +245,7 @@ void TransparentPass::sync(const SceneState &scene_state, SceneResources &resour
 
   accumulation_ps_.init_pass(
       resources, state | DRW_STATE_STENCIL_NEQUAL, scene_state.clip_planes.size());
-  accumulation_ps_.state_stencil(0x00, 0xFF, 0xFF);
+  accumulation_ps_.state_stencil(StencilBits::Object, 0xFF, StencilBits::ObjectInFront);
   accumulation_ps_.clear_color(float4(0.0f, 0.0f, 0.0f, 1.0f));
   accumulation_ps_.init_subpasses(
       ePipelineType::TRANSPARENT, scene_state.lighting_type, clip, resources.shader_cache);
@@ -321,13 +323,13 @@ TransparentDepthPass::~TransparentDepthPass()
 void TransparentDepthPass::sync(const SceneState &scene_state, SceneResources &resources)
 {
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                   scene_state.cull_state;
+                   DRW_STATE_WRITE_STENCIL | scene_state.cull_state;
 
   bool clip = scene_state.clip_planes.size() > 0;
 
-  DRWState in_front_state = state | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+  DRWState in_front_state = state | DRW_STATE_STENCIL_ALWAYS;
   in_front_ps_.init_pass(resources, in_front_state, scene_state.clip_planes.size());
-  in_front_ps_.state_stencil(0xFF, 0xFF, 0x00);
+  in_front_ps_.state_stencil(StencilBits::ObjectInFront, 0xFF, 0x00);
   in_front_ps_.init_subpasses(
       ePipelineType::OPAQUE, eLightingType::FLAT, clip, resources.shader_cache);
 
@@ -336,15 +338,15 @@ void TransparentDepthPass::sync(const SceneState &scene_state, SceneResources &r
   }
   merge_ps_.init();
   merge_ps_.shader_set(merge_sh_);
-  merge_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_WRITE_STENCIL |
-                      DRW_STATE_STENCIL_ALWAYS);
-  merge_ps_.state_stencil(0xFF, 0xFF, 0x00);
+  merge_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_STENCIL |
+                      DRW_STATE_STENCIL_EQUAL);
+  merge_ps_.state_stencil(StencilBits::ObjectInFront, 0xFF, StencilBits::ObjectInFront);
   merge_ps_.bind_texture("depth_tx", &resources.depth_in_front_tx);
   merge_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 
   state |= DRW_STATE_STENCIL_NEQUAL;
   main_ps_.init_pass(resources, state, scene_state.clip_planes.size());
-  main_ps_.state_stencil(0x00, 0xFF, 0xFF);
+  main_ps_.state_stencil(StencilBits::Object, 0xFF, StencilBits::ObjectInFront);
   main_ps_.init_subpasses(
       ePipelineType::OPAQUE, eLightingType::FLAT, clip, resources.shader_cache);
 }

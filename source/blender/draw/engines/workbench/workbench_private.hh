@@ -250,6 +250,12 @@ class MeshPass : public PassMain {
                              ImageUser *iuser = nullptr);
 };
 
+struct StencilBits {
+  static const uint8_t Background = 0;
+  static const uint8_t Object = 1u << 0;
+  static const uint8_t ObjectInFront = 1u << 1;
+};
+
 class OpaquePass {
  public:
   TextureFromPool gbuffer_normal_tx = {"gbuffer_normal_tx"};
@@ -522,7 +528,6 @@ class AntiAliasingPass {
 
   Texture sample0_depth_tx_ = {"sample0_depth_tx"};
   Texture sample0_depth_in_front_tx_ = {"sample0_depth_in_front_tx"};
-  GPUTexture *stencil_tx_ = nullptr;
 
   Texture taa_accumulation_tx_ = {"taa_accumulation_tx"};
   Texture smaa_search_tx_ = {"smaa_search_tx"};

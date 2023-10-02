@@ -144,10 +144,10 @@ void AntiAliasingPass::init(const SceneState &scene_state)
 void AntiAliasingPass::sync(const SceneState &scene_state, SceneResources &resources)
 {
   overlay_depth_ps_.init();
-  overlay_depth_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
+  overlay_depth_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
+                              DRW_STATE_STENCIL_EQUAL);
+  overlay_depth_ps_.state_stencil(0x00, 0xFF, StencilBits::ObjectInFront);
   overlay_depth_ps_.shader_set(overlay_depth_sh_);
-  overlay_depth_ps_.bind_texture("depth_tx", &resources.depth_tx);
-  overlay_depth_ps_.bind_texture("stencil_tx", &stencil_tx_);
   overlay_depth_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 
   if (!enabled_) {
@@ -259,8 +259,9 @@ void AntiAliasingPass::draw(Manager &manager,
                             const SceneState &scene_state,
                             SceneResources &resources)
 {
-  if (resources.depth_in_front_tx.is_valid() && scene_state.sample == 0) {
-    stencil_tx_ = resources.stencil_view.extract(manager, resources.depth_in_front_tx);
+  if (resources.depth_in_front_tx.is_valid() && scene_state.sample == 0 &&
+      scene_state.overlays_enabled)
+  {
     overlay_depth_fb_.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
     overlay_depth_fb_.bind();
     manager.submit(overlay_depth_ps_);
@@ -272,7 +273,8 @@ void AntiAliasingPass::draw(Manager &manager,
 
   const bool last_sample = scene_state.sample + 1 == scene_state.samples_len;
 
-  if (scene_state.samples_len > 1) {
+  if (scene_state.samples_len > 1 && (scene_state.overlays_enabled || DRW_state_is_scene_render()))
+  {
     if (scene_state.sample == 0) {
       GPU_texture_copy(sample0_depth_tx_, resources.depth_tx);
       if (resources.depth_in_front_tx.is_valid()) {
