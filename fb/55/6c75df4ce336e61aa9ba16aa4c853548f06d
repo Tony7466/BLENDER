@@ -1,2 +1,3 @@
 Referenced by pull request #107054, WIP: Visualize snapping type by showing different symbols
 Referenced by issue #113130, Snap settings in timeline window do not propagate to new version
+Referenced by commit e7ba91a6f34526adef2e935acdf705b54901cef8, Fix #113130: Versioning error in snap type in animation editors
