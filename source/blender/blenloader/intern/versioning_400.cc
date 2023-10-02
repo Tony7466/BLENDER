@@ -1012,17 +1012,6 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
-static void set_default_keying_screen_smoothness(bNodeTree *ntree)
-{
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type != CMP_NODE_KEYINGSCREEN) {
-      continue;
-    }
-    NodeKeyingScreenData *data = static_cast<NodeKeyingScreenData *>(node->storage);
-    data->smoothness = 0.2f;
-  }
-}
-
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1641,16 +1630,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type == NTREE_COMPOSIT) {
-        set_default_keying_screen_smoothness(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
