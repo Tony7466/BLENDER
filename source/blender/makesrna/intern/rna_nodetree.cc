@@ -8719,30 +8719,59 @@ static void def_geo_repeat_input(StructRNA *srna)
   def_common_zone_input(srna);
 }
 
+static void rna_def_node_item_array_socket_item_common(StructRNA *srna,
+                                                       const char *accessor,
+                                                       blender::LinearAllocator<> &allocator)
+{
+  PropertyRNA *prop;
+
+  char name_set_func[64];
+  SNPRINTF(name_set_func, "rna_Node_ItemArray_item_name_set<%s>", accessor);
+
+  char item_update_func[64];
+  SNPRINTF(item_update_func, "rna_Node_ItemArray_item_update<%s>", accessor);
+  const char *item_update_func_ptr = allocator.copy_string(item_update_func).c_str();
+
+  char socket_type_itemf[64];
+  SNPRINTF(socket_type_itemf, "rna_Node_ItemArray_socket_type_itemf<%s>", accessor);
+
+  char color_get_func[64];
+  SNPRINTF(color_get_func, "rna_Node_ItemArray_item_color_get<%s>", accessor);
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, allocator.copy_string(name_set_func).c_str());
+  RNA_def_property_ui_text(prop, "Name", "");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, item_update_func_ptr);
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, allocator.copy_string(socket_type_itemf).c_str());
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, item_update_func_ptr);
+
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(
+      prop, allocator.copy_string(color_get_func).c_str(), nullptr, nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Color", "Color of the corresponding socket type in the node editor");
+}
+
 static void rna_def_simulation_state_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
+  static blender::LinearAllocator<> allocator;
 
   StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", nullptr);
   RNA_def_struct_ui_text(srna, "Simulation Item", "");
   RNA_def_struct_sdna(srna, "NodeSimulationItem");
 
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(
-      prop, nullptr, nullptr, "rna_Node_ItemArray_item_name_set<SimulationItemsAccessor>");
-  RNA_def_property_ui_text(prop, "Name", "");
-  RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
-
-  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
-  RNA_def_property_enum_funcs(
-      prop, nullptr, nullptr, "rna_Node_ItemArray_socket_type_itemf<SimulationItemsAccessor>");
-  RNA_def_property_ui_text(prop, "Socket Type", "");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
+  rna_def_node_item_array_socket_item_common(srna, "SimulationItemsAccessor", allocator);
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
@@ -8753,14 +8782,6 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(
       prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<SimulationItemsAccessor>");
-
-  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(
-      prop, "rna_Node_ItemArray_item_color_get<SimulationItemsAccessor>", nullptr, nullptr);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
 static void rna_def_node_item_array_common_functions(StructRNA *srna,
@@ -8875,36 +8896,13 @@ static void def_geo_simulation_output(StructRNA *srna)
 
 static void rna_def_repeat_item(BlenderRNA *brna)
 {
-  PropertyRNA *prop;
+  static blender::LinearAllocator<> allocator;
 
   StructRNA *srna = RNA_def_struct(brna, "RepeatItem", nullptr);
   RNA_def_struct_ui_text(srna, "Repeat Item", "");
   RNA_def_struct_sdna(srna, "NodeRepeatItem");
 
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(
-      prop, nullptr, nullptr, "rna_Node_ItemArray_item_name_set<RepeatItemsAccessor>");
-  RNA_def_property_ui_text(prop, "Name", "");
-  RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<RepeatItemsAccessor>");
-
-  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
-  RNA_def_property_enum_funcs(
-      prop, nullptr, nullptr, "rna_Node_ItemArray_socket_type_itemf<RepeatItemsAccessor>");
-  RNA_def_property_ui_text(prop, "Socket Type", "");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<RepeatItemsAccessor>");
-
-  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(
-      prop, "rna_Node_ItemArray_item_color_get<RepeatItemsAccessor>", nullptr, nullptr);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Color", "Color of the corresponding socket type in the node editor");
+  rna_def_node_item_array_socket_item_common(srna, "RepeatItemsAccessor", allocator);
 }
 
 static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
