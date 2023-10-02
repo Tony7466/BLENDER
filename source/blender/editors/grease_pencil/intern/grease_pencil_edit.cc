@@ -817,6 +817,12 @@ static const EnumPropertyItem prop_cyclical_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+/*
+ * Creates points between the first and last points for each curve in `curves_to_close`,
+ * with the distance between points being the average density of the curve.
+ *
+ * Note: this function does not set the curve attribute `cyclic`.
+ */
 static bke::CurvesGeometry close_curves_with_geometry(const bke::CurvesGeometry &curves,
                                                       const IndexMask &curves_to_close)
 {
@@ -837,7 +843,7 @@ static bke::CurvesGeometry close_curves_with_geometry(const bke::CurvesGeometry 
 
   curves.ensure_evaluated_lengths();
 
-  /* Add the extra points to close the curves. */
+  /* Add the extra points to close the curves, calculated to match the average density. */
   curves_to_close.foreach_index([&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
 
@@ -906,6 +912,7 @@ static bke::CurvesGeometry close_curves_with_geometry(const bke::CurvesGeometry 
         const auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
+        /* Go through the extra points and interpolate between the start and end. */
         for (const int i : IndexRange(num_points_added)) {
           const float factor = float(i + 1) / (num_points_added + 1);
           dst_attr[dst_points[points.size() + i]] = bke::attribute_math::mix2(
@@ -930,7 +937,7 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   const CyclicalMode mode = CyclicalMode(RNA_enum_get(op->ptr, "type"));
-  const bool geometry = RNA_boolean_get(op->ptr, "geometry");
+  const bool add_geometry = RNA_boolean_get(op->ptr, "geometry");
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
@@ -967,8 +974,9 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
           }
         });
 
-        if (geometry) {
+        if (add_geometry) {
           IndexMaskMemory memory;
+          /* Determine which curves are now closed. */
           const IndexMask curves_to_close = IndexMask::from_predicate(
               curves.curves_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
                 const bool selected = ed::curves::has_anything_selected(selection,
