@@ -742,7 +742,7 @@ static auto build_periodic(const char *fn_name, const NodeEasingOperation operat
 static auto build_easing_with_count(const char *fn_name, const NodeEasingOperation operation)
 {
   return mf::build::SI6_SO<float, float, int, float, bool, float, float>(
-      "Easing Bounce",
+      fn_name,
       [operation](float t, float strength, int count, float inflection, bool invert, float mirror)
           -> float {
         return node_easing(operation, t, strength, 0.0f, count, inflection, invert, mirror);
