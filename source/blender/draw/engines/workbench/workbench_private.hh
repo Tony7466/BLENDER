@@ -96,6 +96,8 @@ struct SceneState {
   bool reset_taa_next_sample = false;
   bool render_finished = false;
 
+  bool overlays_enabled = false;
+
   /* Used when material_type == eMaterialType::SINGLE */
   Material material_override = Material(float3(1.0f));
   /* When r == -1.0 the shader uses the vertex color */
@@ -196,10 +198,14 @@ struct SceneResources {
   StringRefNull current_matcap = {};
   Texture matcap_tx = "matcap_tx";
 
-  TextureFromPool color_tx = "wb_color_tx";
   TextureFromPool object_id_tx = "wb_object_id_tx";
-  Texture depth_tx = "wb_depth_tx";
-  TextureFromPool depth_in_front_tx = "wb_depth_in_front_tx";
+
+  TextureRef color_tx;
+  TextureRef depth_tx;
+  TextureRef depth_in_front_tx;
+
+  Framebuffer clear_fb = {"Clear Main"};
+  Framebuffer clear_in_front_fb = {"Clear In Front"};
 
   StorageVectorBuffer<Material> material_buf = {"material_buf"};
   UniformBuffer<WorldData> world_buf = {};
@@ -247,7 +253,6 @@ class OpaquePass {
  public:
   TextureFromPool gbuffer_normal_tx = {"gbuffer_normal_tx"};
   TextureFromPool gbuffer_material_tx = {"gbuffer_material_tx"};
-  Framebuffer opaque_fb = {};
 
   Texture shadow_depth_stencil_tx = {"shadow_depth_stencil_tx"};
   GPUTexture *deferred_ps_stencil_tx = nullptr;
@@ -255,6 +260,11 @@ class OpaquePass {
   MeshPass gbuffer_ps_ = {"Opaque.Gbuffer"};
   MeshPass gbuffer_in_front_ps_ = {"Opaque.GbufferInFront"};
   PassSimple deferred_ps_ = {"Opaque.Deferred"};
+
+  Framebuffer gbuffer_fb = {"Opaque.Gbuffer"};
+  Framebuffer gbuffer_in_front_fb = {"Opaque.GbufferInFront"};
+  Framebuffer deferred_fb = {"Opaque.Deferred"};
+  Framebuffer clear_fb = {"Opaque.Clear"};
 
   void sync(const SceneState &scene_state, SceneResources &resources);
   void draw(Manager &manager,
@@ -545,15 +555,12 @@ class AntiAliasingPass {
   ~AntiAliasingPass();
 
   void init(const SceneState &scene_state);
-  void sync(SceneResources &resources, int2 resolution);
-  void setup_view(View &view, int2 resolution);
+  void sync(const SceneState &scene_state, SceneResources &resources);
+  void setup_view(View &view, const SceneState &scene_state);
   void draw(Manager &manager,
             View &view,
-            SceneResources &resources,
-            int2 resolution,
-            GPUTexture *depth_tx,
-            GPUTexture *depth_in_front_tx,
-            GPUTexture *color_tx);
+            const SceneState &scene_state,
+            SceneResources &resources);
 };
 
 }  // namespace blender::workbench

@@ -165,11 +165,11 @@ void OpaquePass::draw(Manager &manager,
   }
 
   if (!gbuffer_in_front_ps_.is_empty()) {
-    opaque_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
-                     GPU_ATTACHMENT_TEXTURE(gbuffer_material_tx),
-                     GPU_ATTACHMENT_TEXTURE(gbuffer_normal_tx),
-                     object_id_attachment);
-    opaque_fb.bind();
+    gbuffer_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+                               GPU_ATTACHMENT_TEXTURE(gbuffer_material_tx),
+                               GPU_ATTACHMENT_TEXTURE(gbuffer_normal_tx),
+                               object_id_attachment);
+    gbuffer_in_front_fb.bind();
 
     manager.submit(gbuffer_in_front_ps_, view);
 
@@ -179,54 +179,39 @@ void OpaquePass::draw(Manager &manager,
   }
 
   if (!gbuffer_ps_.is_empty()) {
-    opaque_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
-                     GPU_ATTACHMENT_TEXTURE(gbuffer_material_tx),
-                     GPU_ATTACHMENT_TEXTURE(gbuffer_normal_tx),
-                     object_id_attachment);
-    opaque_fb.bind();
+    gbuffer_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+                      GPU_ATTACHMENT_TEXTURE(gbuffer_material_tx),
+                      GPU_ATTACHMENT_TEXTURE(gbuffer_normal_tx),
+                      object_id_attachment);
+    gbuffer_fb.bind();
 
     manager.submit(gbuffer_ps_, view);
   }
 
-  bool needs_stencil_copy = shadow_pass && !gbuffer_in_front_ps_.is_empty();
-
-  Texture *depth_stencil_tx = nullptr;
-
-  if (needs_stencil_copy) {
+  if (shadow_pass) {
     shadow_depth_stencil_tx.ensure_2d(GPU_DEPTH24_STENCIL8,
                                       resolution,
                                       GPU_TEXTURE_USAGE_SHADER_READ |
                                           GPU_TEXTURE_USAGE_ATTACHMENT |
                                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW);
+
     GPU_texture_copy(shadow_depth_stencil_tx, resources.depth_tx);
+    clear_fb.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_stencil_tx));
+    clear_fb.bind();
+    GPU_framebuffer_clear_stencil(clear_fb, 0);
 
-    depth_stencil_tx = shadow_depth_stencil_tx.ptr();
-
-    opaque_fb.ensure(GPU_ATTACHMENT_TEXTURE(*depth_stencil_tx));
-    opaque_fb.bind();
-    GPU_framebuffer_clear_stencil(opaque_fb, 0);
+    shadow_pass->draw(
+        manager, view, resources, **&shadow_depth_stencil_tx, !gbuffer_in_front_ps_.is_empty());
+    deferred_ps_stencil_tx = resources.stencil_view.extract(manager, shadow_depth_stencil_tx);
   }
   else {
     shadow_depth_stencil_tx.free();
-    depth_stencil_tx = resources.depth_tx.ptr();
+    deferred_ps_stencil_tx = nullptr;
   }
 
-  if (shadow_pass) {
-    shadow_pass->draw(
-        manager, view, resources, **depth_stencil_tx, !gbuffer_in_front_ps_.is_empty());
-  }
-
-  deferred_ps_stencil_tx = resources.stencil_view.extract(manager, *depth_stencil_tx);
-
-  opaque_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
-  opaque_fb.bind();
+  deferred_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
+  deferred_fb.bind();
   manager.submit(deferred_ps_, view);
-
-  if (shadow_pass && !needs_stencil_copy) {
-    opaque_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
-    opaque_fb.bind();
-    GPU_framebuffer_clear_stencil(opaque_fb, 0);
-  }
 
   gbuffer_normal_tx.release();
   gbuffer_material_tx.release();
