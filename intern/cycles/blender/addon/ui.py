@@ -842,9 +842,7 @@ class CYCLES_RENDER_PT_performance_acceleration_structure(CyclesButtonsPanel, Pa
             # `cpu_only and not (cpu_uses_embree and built_with_embree)`
             cpu_uses_bvh2 = cpu_only
 
-            # `gpu_uses_bvh2` works under the assumption that the CPU will use BVH2
-            # when the GPU is using BVH2 when `use_multi_device(context)` is True
-            gpu_uses_bvh2 = not gpu_uses_custom  # `and not cpu_only` where `not cpu_only = using_gpu`
+            gpu_uses_bvh2 = not gpu_uses_custom and not cpu_only
 
             # `gpu_uses_custom` is only True and relevant here if `use_multi_device(context)` is True,
             # meaning a CPU will be used along side the GPU.
