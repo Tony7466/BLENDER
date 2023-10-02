@@ -270,7 +270,7 @@ DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, 0, "COMBINE_COLOR", CombineColor, "
 DefNode(FunctionNode, FN_NODE_QUATERNION_TO_ROTATION, 0, "QUATERNION_TO_ROTATION", QuaternionToRotation, "Quaternion to Rotation", "")
 DefNode(FunctionNode, FN_NODE_COMPARE, 0, "COMPARE", Compare, "Compare", "")
 DefNode(FunctionNode, FN_NODE_EULER_TO_ROTATION, 0, "EULER_TO_ROTATION", EulerToRotation, "Euler to Rotation", "")
-DefNode(FunctionNode, FN_NODE_EASING, def_fn_easing, "EASING", Easing, "Easing", "")
+DefNode(FunctionNode, FN_NODE_EASING, 0, "EASING", Easing, "Easing", "")
 DefNode(FunctionNode, FN_NODE_FLOAT_TO_INT, def_float_to_int, "FLOAT_TO_INT", FloatToInt, "Float to Integer", "")
 DefNode(FunctionNode, FN_NODE_INPUT_BOOL, def_fn_input_bool, "INPUT_BOOL", InputBool, "Boolean", "")
 DefNode(FunctionNode, FN_NODE_INPUT_COLOR, def_fn_input_color, "INPUT_COLOR", InputColor, "Color", "")

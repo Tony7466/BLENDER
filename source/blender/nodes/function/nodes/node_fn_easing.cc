@@ -7,11 +7,13 @@
 
 #include "node_function_util.hh"
 
+#include "NOD_rna_define.hh"
+
 namespace blender::nodes::node_fn_easing_cc {
 
 NODE_STORAGE_FUNCS(NodeEasing)
 
-static void node_easing_declare(NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.add_input<decl::Float>("Value").min(0.0f).max(1.0f).is_default_link_socket();
@@ -74,12 +76,12 @@ static void node_easing_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Value");
 };
 
-static void node_easing_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
 }
 
-static void node_easing_update(bNodeTree *ntree, bNode *node)
+static void node_update(bNodeTree *ntree, bNode *node)
 {
   const NodeEasing &storage = node_storage(*node);
   const NodeEasingOperation operation = static_cast<NodeEasingOperation>(storage.operation);
@@ -163,7 +165,7 @@ static void node_easing_update(bNodeTree *ntree, bNode *node)
   }
 }
 
-static void node_easing_init(bNodeTree * /*tree*/, bNode *node)
+static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeEasing *data = MEM_cnew<NodeEasing>(__func__);
   data->operation = NODE_EASING_BOUNCE;
@@ -750,7 +752,7 @@ static auto build_easing_with_count(const char *fn_name, const NodeEasingOperati
       mf::build::exec_presets::SomeSpanOrSingle<0>());
 }
 
-static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
+static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   const NodeEasing &storage = node_storage(builder.node());
   const NodeEasingOperation operation = NodeEasingOperation(storage.operation);
@@ -902,17 +904,113 @@ static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBu
   }
 }
 
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem mode_items[] = {
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Easing (by strength)"), nullptr),
+      {NODE_EASING_LINEAR,
+       "LINEAR",
+       ICON_IPO_LINEAR,
+       "Linear",
+       "Straight-line interpolation from 0-1 via point P1"},
+      {NODE_EASING_SINE,
+       "SINE",
+       ICON_IPO_SINE,
+       "Sinusoidal",
+       "Sinusoidal easing (weakest, almost linear but with a slight curvature)"},
+      {NODE_EASING_QUAD, "QUAD", ICON_IPO_QUAD, "Quadratic", "Quadratic easing"},
+      {NODE_EASING_CUBIC, "CUBIC", ICON_IPO_CUBIC, "Cubic", "Cubic easing"},
+      {NODE_EASING_QUART, "QUART", ICON_IPO_QUART, "Quartic", "Quartic easing"},
+      {NODE_EASING_QUINT, "QUINT", ICON_IPO_QUINT, "Quintic", "Quintic easing"},
+      {NODE_EASING_EXPO, "EXPO", ICON_IPO_EXPO, "Exponential", "Exponential easing (dramatic)"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Dynamic Effects"), nullptr),
+      {NODE_EASING_VARIABLE,
+       "VARIABLE",
+       ICON_IPO_EXPO,
+       "Variable",
+       "Easing controlled by variable power curve"},
+      {NODE_EASING_CIRC,
+       "CIRC",
+       ICON_IPO_CIRC,
+       "Circular",
+       "Circular easing with adjustable radius size"},
+      {NODE_EASING_BIAS, "BIAS", ICON_IPO_BEZIER, "Bias/Gain", "Adjustable Bias/Gain curve"},
+      {NODE_EASING_CUBIC_BEZIER,
+       "BEZIER",
+       ICON_IPO_BEZIER,
+       "Cubic Bezier",
+       "Easing controlled by cubic bezier curve with adjustable handle positions"},
+      RNA_ENUM_ITEM_SEPR,
+      {NODE_EASING_BACK, "BACK", ICON_IPO_BACK, "Back", "Cubic easing with overshoot and settle"},
+      {NODE_EASING_ELASTIC,
+       "ELASTIC",
+       ICON_IPO_ELASTIC,
+       "Elastic",
+       "Exponentially decaying wave, like an elastic band"},
+      {NODE_EASING_BOUNCE,
+       "BOUNCE",
+       ICON_IPO_BOUNCE,
+       "Bounce",
+       "Exponentially decaying parabolic bounce, like when objects collide"},
+      {NODE_EASING_SNAKE,
+       "SNAKE",
+       ICON_IPO_ELASTIC,
+       "Snake",
+       "Exponentially decaying parabolic wave, like a snake"},
+      {NODE_EASING_SPRING,
+       "SPRING",
+       ICON_IPO_ELASTIC,
+       "Spring",
+       "Exponentially decaying wave, like a spring"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Periodic Effects"), nullptr),
+      {NODE_EASING_SAWTOOTH,
+       "SAWTOOTH",
+       ICON_IPO_BEZIER,
+       "Sawtooth",
+       "Sawtooth pattern with frequency and width control"},
+      {NODE_EASING_TRIANGLE,
+       "TRIANGLE",
+       ICON_IPO_BEZIER,
+       "Triangle",
+       "Triangle pattern with frequency and width control"},
+      {NODE_EASING_SQUARE,
+       "SQUARE",
+       ICON_IPO_CONSTANT,
+       "Square",
+       "Square wave pattern with frequency and pulse width control"},
+      {NODE_EASING_SINEWAVE,
+       "SINUS",
+       ICON_IPO_SINE,
+       "Sinus",
+       "Sinus pattern with frequency and width control"},
+      {NODE_EASING_STEPS, "STEPS", ICON_IPO_CONSTANT, "Steps", "Stepped easing"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  prop = RNA_def_node_enum(srna,
+                           "operation",
+                           "Operation",
+                           "",
+                           mode_items,
+                           NOD_storage_enum_accessors(operation),
+                           NODE_COMPARE_MODE_ELEMENT);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_EASING, "Easing", NODE_CLASS_CONVERTER);
-  ntype.declare = node_easing_declare;
-  ntype.updatefunc = node_easing_update;
-  ntype.initfunc = node_easing_init;
+  ntype.declare = node_declare;
+  ntype.updatefunc = node_update;
+  ntype.initfunc = node_init;
   node_type_storage(&ntype, "NodeEasing", node_free_standard_storage, node_copy_standard_storage);
-  ntype.build_multi_function = node_easing_build_multi_function;
-  ntype.draw_buttons = node_easing_layout;
+  ntype.build_multi_function = node_build_multi_function;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
