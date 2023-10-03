@@ -257,7 +257,6 @@ void CaptureView::render_probes()
   while (const std::optional<ReflectionProbeUpdateInfo> update_info =
              inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::Probe))
   {
-    GPU_debug_capture_begin();
     GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;
 
@@ -291,7 +290,6 @@ void CaptureView::render_probes()
     inst_.render_buffers.release();
     GPU_debug_group_end();
     inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
-    GPU_debug_capture_end();
   }
 
   if (do_update_mipmap_chain) {
@@ -314,7 +312,6 @@ void CapturePlanarView::render_probes()
   while (const std::optional<std::reference_wrapper<PlanarProbe>> update_info =
              inst_.planar_probes.update_pop())
   {
-    GPU_debug_capture_begin();
     const PlanarProbe &probe = (*update_info).get();
     GPU_debug_group_begin("Planar.Capture");
 
@@ -327,12 +324,12 @@ void CapturePlanarView::render_probes()
 
     /* TODO: calculate the view from the active viewpoint. */
     float4x4 view_m4 = float4x4::identity();
-    float4x4 win_m4 = math::projection::perspective(-probe.clipping_distances.x,
-                                                    probe.clipping_distances.x,
-                                                    -probe.clipping_distances.x,
-                                                    probe.clipping_distances.x,
-                                                    probe.clipping_distances.x,
-                                                    probe.clipping_distances.y);
+    float4x4 win_m4 = math::projection::perspective(-probe.clipping_distance,
+                                                    probe.clipping_distance,
+                                                    -probe.clipping_distance,
+                                                    probe.clipping_distance,
+                                                    probe.clipping_distance,
+                                                    10.0f);
     view.sync(view_m4, win_m4);
 
     capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
@@ -344,7 +341,6 @@ void CapturePlanarView::render_probes()
 
     inst_.render_buffers.release();
     GPU_debug_group_end();
-    GPU_debug_capture_end();
   }
 }
 

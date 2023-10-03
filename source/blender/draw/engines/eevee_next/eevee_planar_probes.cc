@@ -12,12 +12,6 @@
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
-/** \name Planar Probe
- * \{ */
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Planar Probe Module
  * \{ */
 
@@ -48,7 +42,7 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.is_probe_used = true;
   probe.resolution = 1 << light_probe->resolution;
   probe.object_mat = float4x4(ob->object_to_world);
-  probe.clipping_distances = float2(light_probe->clipsta, light_probe->clipend);
+  probe.clipping_distance = light_probe->clipsta;
 
   if (!instance_.do_planar_probe_sync()) {
     update_probes_next_sample_ = true;

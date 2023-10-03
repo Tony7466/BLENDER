@@ -522,6 +522,7 @@ class PipelineModule {
         case MAT_PIPE_DEFERRED:
           return probe.material_add(blender_mat, gpumat);
         default:
+          BLI_assert_unreachable();
           break;
       }
     }
@@ -532,6 +533,7 @@ class PipelineModule {
         case MAT_PIPE_DEFERRED:
           return planar.material_add(blender_mat, gpumat);
         default:
+          BLI_assert_unreachable();
           break;
       }
     }
@@ -567,7 +569,6 @@ class PipelineModule {
       case MAT_PIPE_CAPTURE:
         return capture.surface_material_add(gpumat);
       case MAT_PIPE_PLANAR_PREPASS:
-        /* Planar prepass is only supported during planar probe capture. */
         BLI_assert_unreachable();
         return nullptr;
     }

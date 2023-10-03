@@ -28,7 +28,7 @@ struct ObjectHandle;
 struct PlanarProbe : NonCopyable {
   Texture probes_tx = {"Planar"};
   float4x4 object_mat;
-  float2 clipping_distances;
+  float clipping_distance;
   int resolution;
 
   bool do_render = false;
