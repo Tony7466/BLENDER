@@ -229,9 +229,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   if (!pup->layout) {
     ui_popup_menu_create_block(C, pup, pup->title, __func__);
 
-    if (pup->title && pup->title[0] &&
-        eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH)
-    {
+    if (pup->popup && eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH) {
       pup->block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
       ED_workspace_status_text(C, TIP_("Type to search..."));
     }
@@ -633,7 +631,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 
-  if (eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH) {
+  if (mt->idname[0] && eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH) {
     ED_workspace_status_text(C, TIP_("Type to search..."));
   }
 }
