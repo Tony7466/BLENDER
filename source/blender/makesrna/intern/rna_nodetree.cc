@@ -596,11 +596,11 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "NOD_common.h"
 #  include "NOD_composite.h"
 #  include "NOD_geometry.hh"
-#  include "NOD_item_arrays.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
+#  include "NOD_socket_items.hh"
 #  include "NOD_texture.h"
-#  include "NOD_zone_item_arrays.hh"
+#  include "NOD_zone_socket_items.hh"
 
 #  include "RE_engine.h"
 #  include "RE_pipeline.h"

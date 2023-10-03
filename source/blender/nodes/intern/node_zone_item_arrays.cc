@@ -4,7 +4,7 @@
 
 #include "RNA_prototypes.h"
 
-#include "NOD_zone_item_arrays.hh"
+#include "NOD_zone_socket_items.hh"
 
 #include "BKE_node.hh"
 

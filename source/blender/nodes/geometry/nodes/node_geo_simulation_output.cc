@@ -25,7 +25,7 @@
 #include "NOD_common.h"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
-#include "NOD_zone_item_arrays.hh"
+#include "NOD_zone_socket_items.hh"
 
 #include "FN_field_cpp_type.hh"
 

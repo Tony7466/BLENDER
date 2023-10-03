@@ -102,7 +102,7 @@ set(SRC
   NOD_geometry_nodes_execute.hh
   NOD_geometry_nodes_lazy_function.hh
   NOD_geometry_nodes_log.hh
-  NOD_item_arrays.hh
+  NOD_socket_items.hh
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
@@ -115,7 +115,7 @@ set(SRC
   NOD_socket_search_link.hh
   NOD_static_types.h
   NOD_texture.h
-  NOD_zone_item_arrays.hh
+  NOD_zone_socket_items.hh
   intern/node_common.h
   intern/node_exec.hh
   intern/node_util.hh

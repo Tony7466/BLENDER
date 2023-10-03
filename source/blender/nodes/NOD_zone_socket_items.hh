@@ -6,12 +6,12 @@
 
 #include "DNA_node_types.h"
 
-#include "NOD_item_arrays.hh"
+#include "NOD_socket_items.hh"
 
 namespace blender::nodes {
 
 /**
- * Makes it possible to use various functions (e.g. the ones in `NOD_item_arrays.hh`) with
+ * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) with
  * simulation items.
  */
 struct SimulationItemsAccessor {
@@ -66,7 +66,7 @@ struct SimulationItemsAccessor {
 };
 
 /**
- * Makes it possible to use various functions (e.g. the ones in `NOD_item_arrays.hh`) with
+ * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) with
  * repeat items.
  */
 struct RepeatItemsAccessor {
