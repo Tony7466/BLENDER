@@ -808,8 +808,9 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
     return initial_pos;
   }
 
-  /* Insertion sort for a single item. */
-  int test_pos = clamp_i(initial_pos, 0, items.size() - 1);
+  /* Insertion sort for a single item.
+   * items.size() is a valid position for appending. */
+  int test_pos = clamp_i(initial_pos, 0, items.size());
   /* Move upward until valid position found. */
   while (test_pos > 0 && item_compare(item, *items[test_pos - 1])) {
     --test_pos;
