@@ -91,7 +91,7 @@ set(SRC
   intern/node_socket.cc
   intern/node_socket_declarations.cc
   intern/node_util.cc
-  intern/node_zone_item_arrays.cc
+  intern/node_zone_socket_items.cc
   intern/socket_search_link.cc
 
   NOD_common.h

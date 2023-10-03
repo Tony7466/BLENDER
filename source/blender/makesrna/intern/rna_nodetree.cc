@@ -3181,13 +3181,13 @@ static void rna_Node_ItemArray_remove(ID *id,
                                       ReportList *reports,
                                       typename Accessor::ItemT *item_to_remove)
 {
-  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
     return;
   }
   const int remove_index = item_to_remove - *ref.items;
-  blender::nodes::item_arrays::remove_item(
+  blender::nodes::socket_items::remove_item(
       ref.items, ref.items_num, ref.active_index, remove_index, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -3198,8 +3198,8 @@ static void rna_Node_ItemArray_remove(ID *id,
 
 template<typename Accessor> static void rna_Node_ItemArray_clear(ID *id, bNode *node, Main *bmain)
 {
-  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
-  blender::nodes::item_arrays::clear_items(
+  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+  blender::nodes::socket_items::clear_items(
       ref.items, ref.items_num, ref.active_index, Accessor::destruct_item);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -3212,12 +3212,12 @@ template<typename Accessor>
 static void rna_Node_ItemArray_move(
     ID *id, bNode *node, Main *bmain, const int from_index, const int to_index)
 {
-  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   const int items_num = *ref.items_num;
   if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
     return;
   }
-  blender::nodes::item_arrays::move_item(*ref.items, items_num, from_index, to_index);
+  blender::nodes::socket_items::move_item(*ref.items, items_num, from_index, to_index);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -3228,7 +3228,7 @@ static void rna_Node_ItemArray_move(
 template<typename Accessor> static PointerRNA rna_Node_ItemArray_active_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   typename Accessor::ItemT *active_item = nullptr;
   const int active_index = *ref.active_index;
   const int items_num = *ref.items_num;
@@ -3246,7 +3246,7 @@ static void rna_Node_ItemArray_active_set(PointerRNA *ptr,
   bNode *node = static_cast<bNode *>(ptr->data);
   ItemT *item = static_cast<ItemT *>(value.data);
 
-  blender::nodes::item_arrays::ItemArrayRef ref = Accessor::get_items_from_node(*node);
+  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   if (item >= *ref.items && item < *ref.items + *ref.items_num) {
     *ref.active_index = item - *ref.items;
   }
@@ -3258,7 +3258,7 @@ static void rna_Node_ItemArray_item_update(Main *bmain, Scene * /*scene*/, Point
   using ItemT = typename Accessor::ItemT;
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = blender::nodes::item_arrays::find_node_by_item<Accessor>(ntree, item);
+  bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
   BLI_assert(node != nullptr);
 
   BKE_ntree_update_tag_node_property(&ntree, node);
@@ -3284,9 +3284,9 @@ static void rna_Node_ItemArray_item_name_set(PointerRNA *ptr, const char *value)
   using ItemT = typename Accessor::ItemT;
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = blender::nodes::item_arrays::find_node_by_item<Accessor>(ntree, item);
+  bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
   BLI_assert(node != nullptr);
-  blender::nodes::item_arrays::set_item_name_and_make_unique<Accessor>(*node, item, value);
+  blender::nodes::socket_items::set_item_name_and_make_unique<Accessor>(*node, item, value);
 }
 
 template<typename Accessors>
@@ -3307,7 +3307,7 @@ typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
     BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
     return nullptr;
   }
-  ItemT *new_item = blender::nodes::item_arrays::add_item_with_socket_and_name<Accessor>(
+  ItemT *new_item = blender::nodes::socket_items::add_item_with_socket_and_name<Accessor>(
       *node, eNodeSocketDatatype(socket_type), name);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);

@@ -176,7 +176,7 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  return item_arrays::try_add_item_via_any_extend_socket<RepeatItemsAccessor>(
+  return socket_items::try_add_item_via_any_extend_socket<RepeatItemsAccessor>(
       *ntree, *node, *node, *link);
 }
 

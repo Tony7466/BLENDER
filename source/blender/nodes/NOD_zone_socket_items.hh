@@ -20,7 +20,7 @@ struct SimulationItemsAccessor {
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeSimulationOutput";
 
-  static item_arrays::ItemArrayRef<NodeSimulationItem> get_items_from_node(bNode &node)
+  static socket_items::SocketItemsRef<NodeSimulationItem> get_items_from_node(bNode &node)
   {
     auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
     return {&storage->items, &storage->items_num, &storage->active_index};
@@ -57,7 +57,7 @@ struct SimulationItemsAccessor {
     auto *storage = static_cast<NodeGeometrySimulationOutput *>(node.storage);
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
-    item_arrays::set_item_name_and_make_unique<SimulationItemsAccessor>(node, item, name);
+    socket_items::set_item_name_and_make_unique<SimulationItemsAccessor>(node, item, name);
   }
   static std::string socket_identifier_for_item(const NodeSimulationItem &item)
   {
@@ -75,7 +75,7 @@ struct RepeatItemsAccessor {
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
 
-  static item_arrays::ItemArrayRef<NodeRepeatItem> get_items_from_node(bNode &node)
+  static socket_items::SocketItemsRef<NodeRepeatItem> get_items_from_node(bNode &node)
   {
     auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
     return {&storage->items, &storage->items_num, &storage->active_index};
@@ -116,7 +116,7 @@ struct RepeatItemsAccessor {
     auto *storage = static_cast<NodeGeometryRepeatOutput *>(node.storage);
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
-    item_arrays::set_item_name_and_make_unique<RepeatItemsAccessor>(node, item, name);
+    socket_items::set_item_name_and_make_unique<RepeatItemsAccessor>(node, item, name);
   }
   static std::string socket_identifier_for_item(const NodeRepeatItem &item)
   {

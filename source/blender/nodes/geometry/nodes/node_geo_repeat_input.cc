@@ -50,7 +50,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (!output_node) {
     return true;
   }
-  return item_arrays::try_add_item_via_any_extend_socket<RepeatItemsAccessor>(
+  return socket_items::try_add_item_via_any_extend_socket<RepeatItemsAccessor>(
       *ntree, *node, *output_node, *link);
 }
 

@@ -6,9 +6,10 @@
 
 /**
  * Some nodes have a dynamic number of sockets (e.g. simulation input/output). These nodes store an
- * array of items in their `bNode->storage`. Different nodes have slightly different storage
- * requirements, but a lot of the logic is still the same between nodes. This file implements
- * various shared functionality that can be used by different nodes to deal with these item arrays.
+ * array of items in their `bNode->storage` (e.g. `NodeSimulationItem`). Different nodes have
+ * slightly different storage requirements, but a lot of the logic is still the same between nodes.
+ * This file implements various shared functionality that can be used by different nodes to deal
+ * with these item arrays.
  *
  * In order to use the functions, one has to implement an "accessor" which tells the shared code
  * how to deal with specific item arrays. Different functions have different requirements for the
@@ -24,13 +25,13 @@
 
 #include "NOD_socket.hh"
 
-namespace blender::nodes::item_arrays {
+namespace blender::nodes::socket_items {
 
 /**
  * References a "C-Array" that is stored elsewhere. This is different from a MutableSpan, because
  * one can even resize the array through this reference.
  */
-template<typename T> struct ItemArrayRef {
+template<typename T> struct SocketItemsRef {
   T **items;
   int *items_num;
   int *active_index;
@@ -44,7 +45,7 @@ inline bNode *find_node_by_item(bNodeTree &ntree, const typename Accessor::ItemT
 {
   ntree.ensure_topology_cache();
   for (bNode *node : ntree.nodes_by_type(Accessor::node_idname)) {
-    ItemArrayRef array = Accessor::get_items_from_node(*node);
+    SocketItemsRef array = Accessor::get_items_from_node(*node);
     if (&item >= *array.items && &item < *array.items + *array.items_num) {
       return node;
     }
@@ -146,14 +147,14 @@ inline void set_item_name_and_make_unique(bNode &node,
                                           const char *value)
 {
   using ItemT = typename Accessor::ItemT;
-  ItemArrayRef array = Accessor::get_items_from_node(node);
+  SocketItemsRef array = Accessor::get_items_from_node(node);
   const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
 
   char unique_name[MAX_NAME + 4];
   STRNCPY(unique_name, value);
 
   struct Args {
-    ItemArrayRef<ItemT> array;
+    SocketItemsRef<ItemT> array;
     ItemT *item;
   } args = {array, &item};
   BLI_uniquename_cb(
@@ -189,7 +190,7 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
   using ItemT = typename Accessor::ItemT;
   BLI_assert(Accessor::supports_socket_type(socket_type));
 
-  ItemArrayRef array = Accessor::get_items_from_node(node);
+  SocketItemsRef array = Accessor::get_items_from_node(node);
 
   ItemT *old_items = *array.items;
   const int old_items_num = *array.items_num;
@@ -281,4 +282,4 @@ template<typename Accessor>
       ntree, extend_node, *possible_extend_socket, storage_node, link);
 }
 
-}  // namespace blender::nodes::item_arrays
+}  // namespace blender::nodes::socket_items

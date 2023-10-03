@@ -967,7 +967,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  return item_arrays::try_add_item_via_any_extend_socket<SimulationItemsAccessor>(
+  return socket_items::try_add_item_via_any_extend_socket<SimulationItemsAccessor>(
       *ntree, *node, *node, *link);
 }
 
