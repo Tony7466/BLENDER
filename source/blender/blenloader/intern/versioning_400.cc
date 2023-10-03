@@ -987,17 +987,12 @@ static void version_node_group_split_socket(bNodeTreeInterface &tree_interface,
 
 static void versioning_node_group_sort_sockets_recursive(bNodeTreeInterfacePanel &panel)
 {
-  const bool sockets_above_panels = !(panel.flag &
-                                      NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
-
   /* True if item a should be above item b. */
-  auto item_compare = [sockets_above_panels](const bNodeTreeInterfaceItem *a,
-                                             const bNodeTreeInterfaceItem *b) -> bool {
+  auto item_compare = [](const bNodeTreeInterfaceItem *a,
+                         const bNodeTreeInterfaceItem *b) -> bool {
     if (a->item_type != b->item_type) {
       /* Keep sockets above panels. */
-      if (sockets_above_panels) {
-        return a->item_type == NODE_INTERFACE_SOCKET;
-      }
+      return a->item_type == NODE_INTERFACE_SOCKET;
     }
     else {
       /* Keep outputs above inputs. */
