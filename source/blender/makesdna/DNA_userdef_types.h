@@ -1023,7 +1023,8 @@ typedef struct UserDef {
 
   float collection_instance_empty_size;
   char text_flag;
-  char _pad10[1];
+
+  char menu_key_behavior;
 
   char file_preview_type; /* eUserpref_File_Preview_Type */
   char statusbar_flag;    /* eUserpref_StatusBar_Flag */
@@ -1152,6 +1153,12 @@ typedef enum eViewNavigation_Method {
   VIEW_NAVIGATION_WALK = 0,
   VIEW_NAVIGATION_FLY = 1,
 } eViewNavigation_Method;
+
+/** #UserDef.menu_key_behavior */
+typedef enum eUserpref_MenuKeyBehavior {
+  USER_MENU_KEY_SEARCH = 0,
+  USER_MENU_KEY_ACCELERATOR = 1,
+} eUserpref_MenuKeyBehavior;
 
 /** #UserDef.uiflag */
 typedef enum eUserpref_MiniAxisType {

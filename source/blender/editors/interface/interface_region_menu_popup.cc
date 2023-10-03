@@ -229,6 +229,13 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   if (!pup->layout) {
     ui_popup_menu_create_block(C, pup, pup->title, __func__);
 
+    if (pup->title && pup->title[0] &&
+        eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH)
+    {
+      pup->block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
+      ED_workspace_status_text(C, TIP_("Type to search..."));
+    }
+
     if (pup->menu_func) {
       pup->block->handle = handle;
       pup->menu_func(C, pup->layout);
@@ -404,11 +411,13 @@ static uiPopupBlockHandle *ui_popup_menu_create(
   if (but) {
     pup->slideout = ui_block_is_menu(but->block);
     pup->but = but;
-
-    if (MenuType *mt = UI_but_menutype_get(but)) {
-      if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-        ED_workspace_status_text(C, TIP_("Type to search..."));
+    if (but->type == UI_BTYPE_PULLDOWN &&
+        eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH)
+    {
+      if (but->block) {
+        but->block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
       }
+      ED_workspace_status_text(C, TIP_("Type to search..."));
     }
   }
 
@@ -624,7 +633,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 
-  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+  if (eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH) {
     ED_workspace_status_text(C, TIP_("Type to search..."));
   }
 }

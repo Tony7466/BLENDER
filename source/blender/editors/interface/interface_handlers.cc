@@ -10308,28 +10308,28 @@ static int ui_handle_menu_letter_press(
     bContext *C, ARegion *region, uiPopupBlockHandle *menu, const wmEvent *event, uiBlock *block)
 {
   /* Start menu search on key press if enabled. */
-  if (menu->menu_idname[0]) {
-    MenuType *mt = WM_menutype_find(menu->menu_idname, false);
-    if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-      uiAfterFunc *after = ui_afterfunc_new();
-      wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
-      after->optype = ot;
-      after->opcontext = WM_OP_INVOKE_DEFAULT;
-      after->opptr = MEM_cnew<PointerRNA>(__func__);
-      WM_operator_properties_create_ptr(after->opptr, ot);
-      RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
-      if (event->type != EVT_SPACEKEY) {
-        const int num_bytes = BLI_str_utf8_size_or_error(event->utf8_buf);
-        if (num_bytes != -1) {
-          char buf[sizeof(event->utf8_buf) + 1];
-          memcpy(buf, event->utf8_buf, num_bytes);
-          buf[num_bytes] = '\0';
-          RNA_string_set(after->opptr, "initial_query", buf);
-        }
+  if (menu->menu_idname[0] &&
+      (eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH))
+  {
+    UI_block_flag_enable(block, UI_BLOCK_NO_ACCELERATOR_KEYS);
+    uiAfterFunc *after = ui_afterfunc_new();
+    wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
+    after->optype = ot;
+    after->opcontext = WM_OP_INVOKE_DEFAULT;
+    after->opptr = MEM_cnew<PointerRNA>(__func__);
+    WM_operator_properties_create_ptr(after->opptr, ot);
+    RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+    if (event->type != EVT_SPACEKEY) {
+      const int num_bytes = BLI_str_utf8_size_or_error(event->utf8_buf);
+      if (num_bytes != -1) {
+        char buf[sizeof(event->utf8_buf) + 1];
+        memcpy(buf, event->utf8_buf, num_bytes);
+        buf[num_bytes] = '\0';
+        RNA_string_set(after->opptr, "initial_query", buf);
       }
-      menu->menuretval = UI_RETURN_OK;
-      return WM_UI_HANDLER_BREAK;
     }
+    menu->menuretval = UI_RETURN_OK;
+    return WM_UI_HANDLER_BREAK;
   }
 
   /* Handle accelerator keys that allow "pressing" a menu entry by pressing a single key. */

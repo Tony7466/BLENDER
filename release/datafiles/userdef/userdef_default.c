@@ -168,6 +168,7 @@ const UserDef U_default = {
     .animation_flag = USER_ANIM_HIGH_QUALITY_DRAWING,
     .text_render = 0,
     .navigation_mode = VIEW_NAVIGATION_WALK,
+    .menu_key_behavior = USER_MENU_KEY_SEARCH,
     .view_rotate_sensitivity_turntable = DEG2RAD(0.4),
     .view_rotate_sensitivity_trackball = 1.0f,
 

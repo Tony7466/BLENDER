@@ -4961,6 +4961,23 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_userdef_gizmo_update");
 
   /* menus */
+
+  static const EnumPropertyItem rna_enum_menu_key_behavior_items[] = {
+      {USER_MENU_KEY_SEARCH, "SEARCH", 0, "Type to Search", "Type to immediately start searching"},
+      {USER_MENU_KEY_ACCELERATOR,
+       "ACCELERATOR",
+       0,
+       "Accelerator keys",
+       "Select item by accelerator"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "menu_key_behavior", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "menu_key_behavior");
+  RNA_def_property_enum_items(prop, rna_enum_menu_key_behavior_items);
+  RNA_def_property_ui_text(
+      prop, "Menu Key Behavior", "What happens when you press a key when a menu is open");
+
   prop = RNA_def_property(srna, "use_mouse_over_open", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_MENUOPENAUTO);
   RNA_def_property_ui_text(
