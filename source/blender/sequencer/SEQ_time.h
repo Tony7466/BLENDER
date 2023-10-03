@@ -141,6 +141,11 @@ void SEQ_time_start_frame_set(const struct Scene *scene, struct Sequence *seq, i
  * \note this function is currently only used internally and in versioning code.
  */
 void SEQ_time_update_meta_strip_range(const struct Scene *scene, struct Sequence *seq_meta);
+/**
+ * Update strip `startdisp` and `enddisp` (n-input effects have no length to calculate these).
+ */
+// temp
+void seq_time_update_effects_strip_range(const struct Scene *scene, struct SeqCollection *effects);
 #ifdef __cplusplus
 }
 #endif

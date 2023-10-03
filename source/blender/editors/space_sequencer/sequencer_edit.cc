@@ -609,10 +609,14 @@ static void sequencer_slip_recursively(Scene *scene, SlipData *data, int offset)
       continue;
     }
 
-    seq->start = data->ts[i].start + offset;
-    if (data->trim[i]) {
-      seq->startofs = data->ts[i].startofs - offset;
-      seq->endofs = data->ts[i].endofs + offset;
+    if (seq->seq1 == nullptr && seq->seq2 == nullptr) {
+      seq->start = data->ts[i].start + offset;
+      if (data->trim[i]) {
+        seq->startofs = data->ts[i].startofs - offset;
+        seq->endofs = data->ts[i].endofs + offset;
+      }
+
+      seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
     }
   }
 

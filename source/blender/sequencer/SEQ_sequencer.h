@@ -151,6 +151,19 @@ void SEQ_sequence_lookup_free(const struct Scene *scene);
  * \param tag: tag to set
  */
 void SEQ_sequence_lookup_tag(const struct Scene *scene, eSequenceLookupTag tag);
+/**
+ * Find effect strips, that use strip `seq` as one of inputs.
+ * If lookup hash doesn't exist, it will be created. If hash is tagged as invalid, it will be
+ * rebuilt.
+ *
+ * \param scene: scene that owns lookup hash
+ * \param key: pointer to Sequence inside of meta strip
+ *
+ * \return collection of effect strips
+ */
+// temp
+struct SeqCollection *seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
+                                                         const struct Sequence *key);
 
 #ifdef __cplusplus
 }

@@ -34,18 +34,6 @@ struct StripProxy *seq_strip_proxy_alloc(void);
  */
 struct Sequence *seq_sequence_lookup_meta_by_seq(const struct Scene *scene,
                                                  const struct Sequence *key);
-/**
- * Find effect strips, that use strip `seq` as one of inputs.
- * If lookup hash doesn't exist, it will be created. If hash is tagged as invalid, it will be
- * rebuilt.
- *
- * \param scene: scene that owns lookup hash
- * \param key: pointer to Sequence inside of meta strip
- *
- * \return collection of effect strips
- */
-struct SeqCollection *seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
-                                                         const struct Sequence *key);
 #ifdef __cplusplus
 }
 #endif
