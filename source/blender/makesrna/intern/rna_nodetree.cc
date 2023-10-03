@@ -1903,6 +1903,7 @@ static void rna_GeometryNodeCompare_data_type_update(Main *bmain, Scene *scene, 
 
   rna_Node_socket_update(bmain, scene, ptr);
 }
+
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value,
@@ -4377,6 +4378,7 @@ static void def_hash_value(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Data Type", "Input data type");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
+
 static void def_vector_math(StructRNA *srna)
 {
   PropertyRNA *prop;
