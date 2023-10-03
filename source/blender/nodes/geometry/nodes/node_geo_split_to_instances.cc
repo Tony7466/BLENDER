@@ -23,7 +23,7 @@
 
 #include "BLI_array_utils.hh"
 
-namespace blender::nodes::node_geo_split_geometry_groups_cc {
+namespace blender::nodes::node_geo_split_to_instances_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -374,7 +374,7 @@ static void node_register()
 {
   static bNodeType ntype;
   geo_node_type_base(
-      &ntype, GEO_NODE_SPLIT_GEOMETRY_GROUPS, "Split Geometry Groups", NODE_CLASS_GEOMETRY);
+      &ntype, GEO_NODE_SPLIT_TO_INSTANCES, "Split to Instances", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
@@ -384,4 +384,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_split_geometry_groups_cc
+}  // namespace blender::nodes::node_geo_split_to_instances_cc
