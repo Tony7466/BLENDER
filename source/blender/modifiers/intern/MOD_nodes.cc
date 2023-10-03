@@ -699,30 +699,6 @@ static void find_side_effect_nodes_for_viewer_path(
       *compute_context_builder.current(), parsed_path->viewer_node_id, nmd, r_side_effect_nodes);
 }
 
-static void find_side_effect_nodes_for_gizmos(const NodesModifierData &nmd,
-                                              const ModifierEvalContext & /*ctx*/,
-                                              nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
-{
-  ComputeContextBuilder compute_context_builder;
-  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
-  const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*nmd.node_group);
-  if (lf_graph_info == nullptr) {
-    return;
-  }
-  for (const StringRefNull gizmo_node_idname :
-       {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial", "GeometryNodeGizmoVariable"})
-  {
-    for (const bNode *node : nmd.node_group->nodes_by_type(gizmo_node_idname)) {
-      const lf::FunctionNode *lf_gizmo_node =
-          lf_graph_info->mapping.possible_side_effect_node_map.lookup_default(node, nullptr);
-      if (lf_gizmo_node == nullptr) {
-        continue;
-      }
-      r_side_effect_nodes.nodes_by_context.add(compute_context_builder.hash(), lf_gizmo_node);
-    }
-  }
-}
-
 static void find_side_effect_nodes(const NodesModifierData &nmd,
                                    const ModifierEvalContext &ctx,
                                    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
@@ -749,7 +725,6 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
       }
     }
   }
-  find_side_effect_nodes_for_gizmos(nmd, ctx, r_side_effect_nodes);
 
   std::cout << "active gizmos\n";
   Object *object_orig = DEG_get_original_object(ctx.object);
@@ -760,6 +735,15 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
       nmd_orig,
       *wm,
       [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+        try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
+        for (const bNodeSocket *origin_socket :
+             gizmo_node.input_socket(0).logically_linked_sockets()) {
+          const bNode &origin_node = origin_socket->owner_node();
+          if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
+            try_add_side_effect_node(
+                compute_context, origin_node.identifier, nmd, r_side_effect_nodes);
+          }
+        }
         compute_context.print_stack(std::cout, gizmo_node.name);
       });
 }
