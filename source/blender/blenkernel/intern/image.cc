@@ -4385,13 +4385,13 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
     }
   }
 
-  /* Put an empty image buffer to the cache so that the Image.has_data detects that spme data
-   * has been laoded for this Image data-block.
+  /* Put an empty image buffer to the cache so that the Image.has_data detects that some data
+   * has been loaded for this Image data-block.
    *
    * Surely there are all the design questions about scene-dependent Render Result image datablock,
    * and the behavior of the flag dependent on wheter the Render Result image was ever shown on
    * screen. The purpose of this code is to preserve the Python API behavior to the level prior to
-   * the RenderResult refactor to use ImBug which happened for Blender 4.0. */
+   * the RenderResult refactor to use ImBuf which happened for Blender 4.0. */
   if (ima->cache == nullptr) {
     ImBuf *empty_ibuf = IMB_allocImBuf(0, 0, 0, 0);
     image_assign_ibuf(ima, empty_ibuf, IMA_NO_INDEX, 0);
