@@ -46,10 +46,6 @@ else()
   endif()
 endif()
 
-if (NOT WITH_EXPERIMENTAL_FEATURES)
-  set(WITH_VULKAN_BACKEND OFF)
-endif()
-
 # Support restoring this value once pre-compiled libraries have been handled.
 set(WITH_STATIC_LIBS_INIT ${WITH_STATIC_LIBS})
 

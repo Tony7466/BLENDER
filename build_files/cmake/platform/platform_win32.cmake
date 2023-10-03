@@ -317,10 +317,6 @@ foreach(child ${children})
   endif()
 endforeach()
 
-if (NOT WITH_EXPERIMENTAL_FEATURES)
-  set(WITH_VULKAN_BACKEND OFF)
-endif()
-
 if(WITH_PUGIXML)
   set(PUGIXML_LIBRARIES optimized ${LIBDIR}/pugixml/lib/pugixml.lib debug ${LIBDIR}/pugixml/lib/pugixml_d.lib)
   set(PUGIXML_INCLUDE_DIR ${LIBDIR}/pugixml/include)
