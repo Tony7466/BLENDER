@@ -309,14 +309,13 @@ void CapturePlanarView::render_probes()
 {
   Framebuffer prepass_fb;
   View view = {"Planar.View"};
-  while (const std::optional<std::reference_wrapper<PlanarProbe>> update_info =
-             inst_.planar_probes.update_pop())
-  {
-    const PlanarProbe &probe = (*update_info).get();
+  for (const Map<uint64_t, PlanarProbe>::MutableItem &item : inst_.planar_probes.probes_.items()) {
+    PlanarProbe &probe = item.value;
     GPU_debug_group_begin("Planar.Capture");
 
     int2 extent = int2(probe.resolution);
     inst_.render_buffers.acquire(extent);
+    probe.probes_tx.ensure_2d(GPU_RGBA16F, int2(probe.resolution));
 
     inst_.render_buffers.vector_tx.clear(float4(0.0f));
     prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),

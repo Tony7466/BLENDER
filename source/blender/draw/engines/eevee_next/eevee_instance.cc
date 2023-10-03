@@ -332,7 +332,7 @@ bool Instance::do_reflection_probe_sync() const
 
 bool Instance::do_planar_probe_sync() const
 {
-  if (!planar_probes.update_probes_this_sample_) {
+  if (!planar_probes.update_probes_) {
     return false;
   }
   if (materials.queued_shaders_count > 0) {
@@ -455,7 +455,7 @@ void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
    * are other light probes in the scene. */
   if (DEG_id_type_any_exists(this->depsgraph, ID_LP)) {
     reflection_probes.update_probes_next_sample_ = true;
-    planar_probes.update_probes_next_sample_ = true;
+    planar_probes.update_probes_ = true;
   }
 
   while (!sampling.finished()) {

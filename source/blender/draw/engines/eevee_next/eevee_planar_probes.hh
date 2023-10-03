@@ -30,8 +30,6 @@ struct PlanarProbe : NonCopyable {
   float4x4 object_mat;
   float clipping_distance;
   int resolution;
-
-  bool do_render = false;
   bool is_probe_used = false;
 };
 
@@ -49,8 +47,7 @@ class PlanarProbeModule {
   Instance &instance_;
   Map<uint64_t, PlanarProbe> probes_;
 
-  bool update_probes_next_sample_ = false;
-  bool update_probes_this_sample_ = false;
+  bool update_probes_ = false;
 
  public:
   PlanarProbeModule(Instance &instance) : instance_(instance) {}
@@ -62,13 +59,12 @@ class PlanarProbeModule {
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass) {}
 
-  const std::optional<std::reference_wrapper<PlanarProbe>> update_pop();
-
  private:
   PlanarProbe &find_or_insert(ObjectHandle &ob_handle);
   void remove_unused_probes();
 
   friend class Instance;
+  friend class CapturePlanarView;
 };
 
 /** \} */
