@@ -44,10 +44,10 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
   switch (uch) {
     case ',':
     case '.':
-    case 0xFF0C: /* Chinese full width comma (，) */
-    case 0x3002: /* Chinese full width full stop (。) */
-    case 0xFF61: /* Chinese half width full stop (｡) */
-    case 0x2026: /* Elipsis (…) */
+    case 0x2026: /* Horizontal elipsis. */
+    case 0x3002: /* CJK full width full stop. */
+    case 0xFF0C: /* CJK full width comma. */
+    case 0xFF61: /* CJK half width full stop. */
       return STRCUR_DELIM_PUNCT;
 
     case '{':
@@ -56,10 +56,10 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case ']':
     case '(':
     case ')':
-    case 0xFF08: /* Chinese full width brackets and square brackets (（）) */
-    case 0xFF09:
-    case 0x3010: /* Chinese full width square brackets (【】) */
-    case 0x3011:
+    case 0x3010: /* CJK full width left black lenticular bracket. */
+    case 0x3011: /* CJK full width right black lenticular bracket. */
+    case 0xFF08: /* CJK full width left parenthesis. */
+    case 0xFF09: /* CJK full width right parenthesis. */
       return STRCUR_DELIM_BRACE;
 
     case '+':
@@ -74,19 +74,21 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case '*':
     case '&':
     case '|':
-    case 0xFF0F: /* Chinese full width solidus (／) */
-    case 0x2014: /* Chinese dash (—) */
-    case 0xFF5E: /* Chinese tilde (～) */
-    case 0x300A: /* Chinese double angle brackets (《》) */
-    case 0x300B:
+    case 0x2014: /* Em dash. */
+    case 0x300A: /* CJK full width left double angle bracket. */
+    case 0x300B: /* CJK full width right double angle bracket. */
+    case 0xFF0F: /* CJK full width solidus (forward slash). */
+    case 0xFF5E: /* CJK full width tilde. */
       return STRCUR_DELIM_OPERATOR;
 
     case '\'':
     case '\"':
-    case 0x2018: /* Chinese quotation marks (‘’“”) */
-    case 0x2019:
-    case 0x201C:
-    case 0x201D:
+    case '`':
+    case 0xB4:   /* Acute accent. */
+    case 0x2018: /* Left single quotation mark. */
+    case 0x2019: /* Right single quotation mark. */
+    case 0x201C: /* Left double quotation mark. */
+    case 0x201D: /* Right double quotation mark. */
       return STRCUR_DELIM_QUOTE;
 
     case ' ':
@@ -102,15 +104,15 @@ static eStrCursorDelimType cursor_delim_type_unicode(const uint uch)
     case ';':
     case '?':
     case '!':
-    case 0xA3:        /* pound */
-    case 0x80:        /* euro */
-    case 0x3001:      /* Chinese ideographic comma `、` */
-    case 0xFF64:      /* Chinese half width ideographic comma`､` */
-    case 0xFF65:      /* Chinese/Katakana middle dot (･) */
-    case 0xFF1A:      /* Chinese colon (：) */
-    case 0xFF1B:      /* Chinese semicolon (；) */
-    case 0xFF1F:      /* Chinese question mark (？) */
-    case 0xFF01:      /* Chinese exclamation mark (！) */
+    case 0xA3:        /* Pound sign. */
+    case 0x80:        /* Euro sign. */
+    case 0x3001:      /* CJK ideographic comma. */
+    case 0xFF01:      /* CJK full width exclamation mark. */
+    case 0xFF64:      /* CJK half width ideographic comma. */
+    case 0xFF65:      /* Katakana half width middle dot. */
+    case 0xFF1A:      /* CJK full width colon. */
+    case 0xFF1B:      /* CJK full width semicolon. */
+    case 0xFF1F:      /* CJK full width question mark. */
       /* case '_': */ /* special case, for python */
       return STRCUR_DELIM_OTHER;
 

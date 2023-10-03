@@ -85,7 +85,7 @@
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
@@ -998,10 +998,10 @@ static bool read_file_dna(FileData *fd, const char **r_error_message)
         fd->reconstruct_info = DNA_reconstruct_info_create(
             fd->filesdna, fd->memsdna, fd->compflags);
         /* used to retrieve ID names from (bhead+1) */
-        fd->id_name_offset = DNA_struct_member_offset_by_name_without_alias(
+        fd->id_name_offset = DNA_struct_member_offset_by_name_with_alias(
             fd->filesdna, "ID", "char", "name[]");
         BLI_assert(fd->id_name_offset != -1);
-        fd->id_asset_data_offset = DNA_struct_member_offset_by_name_without_alias(
+        fd->id_asset_data_offset = DNA_struct_member_offset_by_name_with_alias(
             fd->filesdna, "ID", "AssetMetaData", "*asset_data");
 
         return true;
@@ -2270,7 +2270,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
                          lib->filepath_abs);
 
         change_link_placeholder_to_real_ID_pointer(fd->mainlist, fd, lib, newmain->curlib);
-        /*              change_link_placeholder_to_real_ID_pointer_fd(fd, lib, newmain->curlib); */
+        // change_link_placeholder_to_real_ID_pointer_fd(fd, lib, newmain->curlib);
 
         BLI_remlink(&main->libraries, lib);
         MEM_freeN(lib);

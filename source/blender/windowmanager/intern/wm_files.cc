@@ -79,7 +79,7 @@
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
@@ -1025,6 +1025,9 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     if (bfd != nullptr) {
       wm_file_read_pre(use_data, use_userdef);
 
+      /* Close any user-loaded fonts. */
+      BLF_reset_fonts();
+
       /* Put WM into a stable state for post-readfile processes (kill jobs, removes event handlers,
        * message bus, and so on). */
       BlendFileReadWMSetupData *wm_setup_data = wm_file_read_setup_wm_init(C, bmain, false);
@@ -1871,13 +1874,6 @@ static bool wm_file_write_check_with_report_on_failure(Main *bmain,
     return false;
   }
 
-  /* Check if file write permission is ok */
-  if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
-    BKE_reportf(
-        reports, RPT_ERROR, "Cannot save blend file, path \"%s\" is not writable", filepath);
-    return false;
-  }
-
   LISTBASE_FOREACH (Library *, li, &bmain->libraries) {
     if (BLI_path_cmp(li->filepath_abs, filepath) == 0) {
       BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
@@ -1916,6 +1912,16 @@ static bool wm_file_write(bContext *C,
   /* NOTE: either #BKE_CB_EVT_SAVE_POST or #BKE_CB_EVT_SAVE_POST_FAIL must run.
    * Runs at the end of this function, don't return beforehand. */
   BKE_callback_exec_string(bmain, BKE_CB_EVT_SAVE_PRE, filepath);
+
+  /* Check if file write permission is OK. */
+  if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
+    BKE_reportf(
+        reports, RPT_ERROR, "Cannot save blend file, path \"%s\" is not writable", filepath);
+
+    BKE_callback_exec_string(bmain, BKE_CB_EVT_SAVE_POST_FAIL, filepath);
+    return false;
+  }
+
   ED_assets_pre_save(bmain);
 
   /* Enforce full override check/generation on file save. */
@@ -2440,6 +2446,11 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
     U.runtime.is_dirty = true;
   }
 
+  /* Ensure the correct icon textures are loaded. When the current theme didn't had an
+   * #icon_border_intensity, but the loaded theme has, the icon with border intensity needs to be
+   * loaded. */
+  UI_icons_reload_internal_textures();
+
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 
   /* Needed to recalculate UI scaling values (eg, #UserDef.inv_dpi_fac). */
@@ -2549,6 +2560,9 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
       use_userdef = true;
     }
   }
+
+  /* Close any user-loaded fonts. */
+  BLF_reset_fonts();
 
   char app_template_buf[sizeof(U.app_template)];
   const char *app_template;
