@@ -371,7 +371,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
   RNA_def_string(ot->srna,
                  "root_prim_path",
-                 nullptr,
+                 "root",
                  FILE_MAX,
                  "Root Prim",
                  "If set, add a transform primitive with the given path to the stage "
