@@ -10,10 +10,10 @@
 
 namespace blender::nodes {
 
-StructRNA *SimulationItemsAccessor::srna = &RNA_SimulationStateItem;
+StructRNA *SimulationItemsAccessor::item_srna = &RNA_SimulationStateItem;
 int SimulationItemsAccessor::node_type = GEO_NODE_SIMULATION_OUTPUT;
 
-StructRNA *RepeatItemsAccessor::srna = &RNA_RepeatItem;
+StructRNA *RepeatItemsAccessor::item_srna = &RNA_RepeatItem;
 int RepeatItemsAccessor::node_type = GEO_NODE_REPEAT_OUTPUT;
 
 }  // namespace blender::nodes

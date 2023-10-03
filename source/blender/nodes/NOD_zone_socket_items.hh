@@ -16,7 +16,7 @@ namespace blender::nodes {
  */
 struct SimulationItemsAccessor {
   using ItemT = NodeSimulationItem;
-  static StructRNA *srna;
+  static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeSimulationOutput";
 
@@ -71,7 +71,7 @@ struct SimulationItemsAccessor {
  */
 struct RepeatItemsAccessor {
   using ItemT = NodeRepeatItem;
-  static StructRNA *srna;
+  static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
 
