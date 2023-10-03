@@ -202,6 +202,14 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
   }
 }
 
+static void copy_overlapping_hint(const Mesh &src, Mesh &dst)
+{
+  const auto &src_cache = src.runtime->has_overlapping_cache;
+  if (src_cache.is_cached() && !src_cache.data()) {
+    dst.tag_overlapping_none();
+  }
+}
+
 /** Gather vertex group data and array attributes in separate loops. */
 static void gather_vert_attributes(const Mesh &mesh_src,
                                    const bke::AnonymousAttributePropagationInfo &propagation_info,

@@ -342,6 +342,8 @@ typedef struct Mesh {
    */
   const blender::bke::LooseVertCache &verts_no_face() const;
 
+  bool no_overlapping_topology() const;
+
   /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
    * later on, because finding loose edges lazily can be skipped entirely.
@@ -358,6 +360,7 @@ typedef struct Mesh {
    * all vertices are used by faces, so #verts_no_faces() will be tagged empty as well.
    */
   void tag_loose_verts_none() const;
+  void tag_overlapping_none() const;
 
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
