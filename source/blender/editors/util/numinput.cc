@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_string_utf8.h"
@@ -561,7 +562,9 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
       }
     }
 
-    if (!editstr_insert_at_cursor(n, utf8_buf, BLI_str_utf8_size(utf8_buf))) {
+    const int utf8_buf_len = BLI_str_utf8_size_or_error(utf8_buf);
+    BLI_assert(utf8_buf_len != -1);
+    if (!editstr_insert_at_cursor(n, utf8_buf, utf8_buf_len)) {
       return false;
     }
 

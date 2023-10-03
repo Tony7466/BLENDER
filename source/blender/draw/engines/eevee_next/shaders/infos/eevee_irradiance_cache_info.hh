@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@ GPU_SHADER_CREATE_INFO(eevee_debug_surfels)
     .fragment_source("eevee_debug_surfels_frag.glsl")
     .fragment_out(0, Type::VEC4, "out_color")
     .storage_buf(0, Qualifier::READ, "Surfel", "surfels_buf[]")
-    .push_constant(Type::FLOAT, "surfel_radius")
+    .push_constant(Type::FLOAT, "debug_surfel_radius")
     .push_constant(Type::INT, "debug_mode")
     .do_static_compilation(true);
 
@@ -72,6 +72,7 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_common)
     .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ, "CaptureInfoData", "capture_info_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_light)
+    .define("SURFEL_LIGHT")
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "draw_view",
@@ -91,6 +92,7 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_cluster_build)
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_list_build)
     .local_group_size(SURFEL_GROUP_SIZE)
+    .builtins(BuiltinBits::TEXTURE_ATOMIC)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
     .storage_buf(0, Qualifier::READ_WRITE, "int", "list_start_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, "SurfelListInfoData", "list_info_buf")
@@ -176,6 +178,7 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_load)
     .push_constant(Type::FLOAT, "validity_threshold")
     .push_constant(Type::FLOAT, "dilation_threshold")
     .push_constant(Type::FLOAT, "dilation_radius")
+    .push_constant(Type::FLOAT, "grid_intensity_factor")
     .uniform_buf(0, "IrradianceGridData", "grids_infos_buf[IRRADIANCE_GRID_MAX]")
     .storage_buf(0, Qualifier::READ, "uint", "bricks_infos_buf[]")
     .sampler(0, ImageType::FLOAT_3D, "irradiance_a_tx")
@@ -196,8 +199,8 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_data)
     .uniform_buf(IRRADIANCE_GRID_BUF_SLOT,
                  "IrradianceGridData",
                  "grids_infos_buf[IRRADIANCE_GRID_MAX]")
-    /* NOTE: Use uint instead of IrradianceBrickPacked because Metal needs to know the exact
-     * type.*/
+    /* NOTE: Use uint instead of IrradianceBrickPacked because Metal needs to know the exact type.
+     */
     .storage_buf(IRRADIANCE_BRICK_BUF_SLOT, Qualifier::READ, "uint", "bricks_infos_buf[]")
     .sampler(IRRADIANCE_ATLAS_TEX_SLOT, ImageType::FLOAT_3D, "irradiance_atlas_tx");
 

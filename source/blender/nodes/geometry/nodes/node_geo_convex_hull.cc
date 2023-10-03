@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,8 @@
 #include "BKE_curves.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -215,6 +217,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Mesh *mesh = compute_hull(geometry_set);
+    if (mesh) {
+      geometry::debug_randomize_mesh_order(mesh);
+    }
     geometry_set.replace_mesh(mesh);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
   });
@@ -227,16 +232,15 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif /* WITH_BULLET */
 }
 
-}  // namespace blender::nodes::node_geo_convex_hull_cc
-
-void register_node_type_geo_convex_hull()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_convex_hull_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_CONVEX_HULL, "Convex Hull", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_convex_hull_cc

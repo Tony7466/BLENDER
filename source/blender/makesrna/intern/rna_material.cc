@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,14 +13,14 @@
 #include "DNA_mesh_types.h"
 #include "DNA_texture_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_customdata.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -76,8 +76,8 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 #  include "BKE_texture.h"
 #  include "BKE_workspace.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_gpencil_legacy.hh"
 #  include "ED_image.hh"
@@ -884,6 +884,7 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "pr_type");
   RNA_def_property_enum_items(prop, preview_type_items);
   RNA_def_property_ui_text(prop, "Preview Render Type", "Type of preview render");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MATERIAL);
   RNA_def_property_update(prop, 0, "rna_Material_update_previews");
 
   prop = RNA_def_property(srna, "use_preview_world", PROP_BOOLEAN, PROP_NONE);

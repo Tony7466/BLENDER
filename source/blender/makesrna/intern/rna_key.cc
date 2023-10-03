@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,14 +15,14 @@
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -49,7 +49,7 @@ const EnumPropertyItem rna_enum_keyblock_type_items[] = {
 #  include "BKE_key.h"
 #  include "BKE_main.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "WM_api.hh"
 #  include "WM_types.hh"
@@ -217,8 +217,7 @@ static void rna_KeyBlock_normals_vert_calc(ID *id,
     return;
   }
 
-  *normals = static_cast<float *>(
-      MEM_mallocN(sizeof(**normals) * (size_t)(*normals_num), __func__));
+  *normals = static_cast<float *>(MEM_mallocN(sizeof(**normals) * size_t(*normals_num), __func__));
 
   BKE_keyblock_mesh_calc_normals(data, me, (float(*)[3])(*normals), nullptr, nullptr);
 }
@@ -248,8 +247,7 @@ static void rna_KeyBlock_normals_poly_calc(ID *id,
     return;
   }
 
-  *normals = static_cast<float *>(
-      MEM_mallocN(sizeof(**normals) * (size_t)(*normals_num), __func__));
+  *normals = static_cast<float *>(MEM_mallocN(sizeof(**normals) * size_t(*normals_num), __func__));
 
   BKE_keyblock_mesh_calc_normals(data, me, nullptr, (float(*)[3])(*normals), nullptr);
 }
@@ -279,8 +277,7 @@ static void rna_KeyBlock_normals_loop_calc(ID *id,
     return;
   }
 
-  *normals = static_cast<float *>(
-      MEM_mallocN(sizeof(**normals) * (size_t)(*normals_num), __func__));
+  *normals = static_cast<float *>(MEM_mallocN(sizeof(**normals) * size_t(*normals_num), __func__));
 
   BKE_keyblock_mesh_calc_normals(data, me, nullptr, nullptr, (float(*)[3])(*normals));
 }
@@ -289,14 +286,12 @@ PointerRNA rna_object_shapekey_index_get(ID *id, int value)
 {
   Key *key = rna_ShapeKey_find_key(id);
   KeyBlock *kb = nullptr;
-  PointerRNA ptr;
 
   if (key && value < key->totkey) {
     kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, value));
   }
 
-  RNA_pointer_create(id, &RNA_ShapeKey, kb, &ptr);
-
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_ShapeKey, kb);
   return ptr;
 }
 

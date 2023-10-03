@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016 Blender Foundation
+# SPDX-FileCopyrightText: 2016 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -226,7 +226,7 @@ else()
   endif()
 endif()
 
-if(WITH_WINDOWS_PDB)
+if(WITH_WINDOWS_RELEASE_PDB)
   set(PDB_INFO_OVERRIDE_FLAGS "${SYMBOL_FORMAT_RELEASE}")
   set(PDB_INFO_OVERRIDE_LINKER_FLAGS "/DEBUG /OPT:REF /OPT:ICF /INCREMENTAL:NO")
 endif()
@@ -249,7 +249,7 @@ endif()
 
 string(APPEND PLATFORM_LINKFLAGS " /SUBSYSTEM:CONSOLE /STACK:2097152")
 set(PLATFORM_LINKFLAGS_RELEASE "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib")
-string(APPEND PLATFORM_LINKFLAGS_DEBUG " /IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmtd.lib")
+string(APPEND PLATFORM_LINKFLAGS_DEBUG "/debug:fastlink /IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmtd.lib")
 
 # Ignore meaningless for us linker warnings.
 string(APPEND PLATFORM_LINKFLAGS " /ignore:4049 /ignore:4217 /ignore:4221")
@@ -364,9 +364,12 @@ set(FREETYPE_INCLUDE_DIRS
 )
 set(FREETYPE_LIBRARIES
   ${LIBDIR}/freetype/lib/freetype2ST.lib
+)
+set(BROTLI_LIBRARIES
   ${LIBDIR}/brotli/lib/brotlidec-static.lib
   ${LIBDIR}/brotli/lib/brotlicommon-static.lib
 )
+
 windows_find_package(Freetype REQUIRED)
 
 if(WITH_FFTW3)
@@ -385,7 +388,20 @@ endif()
 if(WITH_IMAGE_WEBP)
   set(WEBP_INCLUDE_DIRS ${LIBDIR}/webp/include)
   set(WEBP_ROOT_DIR ${LIBDIR}/webp)
-  set(WEBP_LIBRARIES ${LIBDIR}/webp/lib/webp.lib ${LIBDIR}/webp/lib/webpdemux.lib ${LIBDIR}/webp/lib/webpmux.lib)
+  if(EXISTS ${LIBDIR}/webp/lib/libsharpyuv.lib) # webp 1.3.x+
+    set(WEBP_LIBRARIES
+      ${LIBDIR}/webp/lib/libwebp.lib
+      ${LIBDIR}/webp/lib/libwebpdemux.lib
+      ${LIBDIR}/webp/lib/libwebpmux.lib
+      ${LIBDIR}/webp/lib/libsharpyuv.lib
+    )
+  else()
+    set(WEBP_LIBRARIES
+      ${LIBDIR}/webp/lib/webp.lib
+      ${LIBDIR}/webp/lib/webpdemux.lib
+      ${LIBDIR}/webp/lib/webpmux.lib
+    )
+  endif()
   set(WEBP_FOUND ON)
 endif()
 
@@ -517,25 +533,29 @@ if(WITH_JACK)
   set(JACK_LIBRARIES optimized ${LIBDIR}/jack/lib/libjack.lib debug ${LIBDIR}/jack/lib/libjack_d.lib)
 endif()
 
+set(_PYTHON_VERSION "3.10")
+string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
+# Python executable is needed as part of the build-process,
+# note that building without Python is quite unusual.
+set(PYTHON_EXECUTABLE ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python$<$<CONFIG:Debug>:_d>.exe)
+
 if(WITH_PYTHON)
   # Cache version for make_bpy_wheel.py to detect.
   unset(PYTHON_VERSION CACHE)
-  set(PYTHON_VERSION "3.10" CACHE STRING "Python version")
+  set(PYTHON_VERSION "${_PYTHON_VERSION}" CACHE STRING "Python version")
 
-  string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
   set(PYTHON_LIBRARY ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/libs/python${_PYTHON_VERSION_NO_DOTS}.lib)
   set(PYTHON_LIBRARY_DEBUG ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/libs/python${_PYTHON_VERSION_NO_DOTS}_d.lib)
-
-  set(PYTHON_EXECUTABLE ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python$<$<CONFIG:Debug>:_d>.exe)
 
   set(PYTHON_INCLUDE_DIR ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/include)
   set(PYTHON_NUMPY_INCLUDE_DIRS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/lib/site-packages/numpy/core/include)
   set(NUMPY_FOUND ON)
-  unset(_PYTHON_VERSION_NO_DOTS)
   # uncached vars
   set(PYTHON_INCLUDE_DIRS "${PYTHON_INCLUDE_DIR}")
   set(PYTHON_LIBRARIES debug "${PYTHON_LIBRARY_DEBUG}" optimized "${PYTHON_LIBRARY}" )
 endif()
+unset(_PYTHON_VERSION)
+unset(_PYTHON_VERSION_NO_DOTS)
 
 if(NOT WITH_WINDOWS_FIND_MODULES)
   # even if boost is off, we still need to install the dlls when we use our lib folder since
@@ -857,10 +877,14 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
        REGEX "^[ \t]*#define[ \t]+OSL_LIBRARY_VERSION_MAJOR[ \t]+[0-9]+.*$")
   file(STRINGS "${OSL_INCLUDE_DIR}/OSL/oslversion.h" OSL_LIBRARY_VERSION_MINOR
        REGEX "^[ \t]*#define[ \t]+OSL_LIBRARY_VERSION_MINOR[ \t]+[0-9]+.*$")
+  file(STRINGS "${OSL_INCLUDE_DIR}/OSL/oslversion.h" OSL_LIBRARY_VERSION_PATCH
+       REGEX "^[ \t]*#define[ \t]+OSL_LIBRARY_VERSION_PATCH[ \t]+[0-9]+.*$")
   string(REGEX REPLACE ".*#define[ \t]+OSL_LIBRARY_VERSION_MAJOR[ \t]+([.0-9]+).*"
          "\\1" OSL_LIBRARY_VERSION_MAJOR ${OSL_LIBRARY_VERSION_MAJOR})
   string(REGEX REPLACE ".*#define[ \t]+OSL_LIBRARY_VERSION_MINOR[ \t]+([.0-9]+).*"
          "\\1" OSL_LIBRARY_VERSION_MINOR ${OSL_LIBRARY_VERSION_MINOR})
+  string(REGEX REPLACE ".*#define[ \t]+OSL_LIBRARY_VERSION_PATCH[ \t]+([.0-9]+).*"
+         "\\1" OSL_LIBRARY_VERSION_PATCH ${OSL_LIBRARY_VERSION_PATCH})
 endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_EMBREE)
@@ -967,6 +991,8 @@ endif()
 
 if(WITH_MATERIALX)
   include("${LIBDIR}/MaterialX/lib/cmake/MaterialX/MaterialXTargets.cmake")
+  set_target_properties(MaterialXCore PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE)
+  set_target_properties(MaterialXFormat PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE)
 endif()
 
 if(WINDOWS_PYTHON_DEBUG)

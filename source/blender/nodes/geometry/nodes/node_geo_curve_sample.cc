@@ -1,6 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_math_color.hh"
+#include "BLI_math_quaternion.hh"
+#include "BLI_math_vector.hh"
 
 #include "BLI_generic_array.hh"
 #include "BLI_length_parameterize.hh"
@@ -482,27 +486,27 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 {
   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
     case CD_PROP_FLOAT: {
-      params.set_output("Value_Float", Field<float>(field));
+      params.set_output("Value_Float", field);
       break;
     }
     case CD_PROP_FLOAT3: {
-      params.set_output("Value_Vector", Field<float3>(field));
+      params.set_output("Value_Vector", field);
       break;
     }
     case CD_PROP_COLOR: {
-      params.set_output("Value_Color", Field<ColorGeometry4f>(field));
+      params.set_output("Value_Color", field);
       break;
     }
     case CD_PROP_BOOL: {
-      params.set_output("Value_Bool", Field<bool>(field));
+      params.set_output("Value_Bool", field);
       break;
     }
     case CD_PROP_INT32: {
-      params.set_output("Value_Int", Field<int>(field));
+      params.set_output("Value_Int", field);
       break;
     }
     case CD_PROP_QUATERNION: {
-      params.set_output("Value_Rotation", Field<math::Quaternion>(field));
+      params.set_output("Value_Rotation", field);
       break;
     }
     default:
@@ -570,22 +574,21 @@ static void node_geo_exec(GeoNodeExecParams params)
   output_attribute_field(params, GField(sample_op, 3));
 }
 
-}  // namespace blender::nodes::node_geo_curve_sample_cc
-
-void register_node_type_geo_curve_sample()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_sample_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_CURVE, "Sample Curve", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   node_type_storage(
       &ntype, "NodeGeometryCurveSample", node_free_standard_storage, node_copy_standard_storage);
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  ntype.draw_buttons = node_layout;
+  ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_sample_cc

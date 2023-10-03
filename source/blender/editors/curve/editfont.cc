@@ -15,7 +15,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_utildefines.h"
 
@@ -38,11 +40,11 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -383,7 +385,7 @@ static int insert_into_textbuf(Object *obedit, uintptr_t c)
     ef->textbuf[ef->pos] = c;
     ef->textbufinfo[ef->pos] = cu->curinfo;
     ef->textbufinfo[ef->pos].kern = 0.0f;
-    ef->textbufinfo[ef->pos].mat_nr = obedit->actcol;
+    ef->textbufinfo[ef->pos].mat_nr = obedit->actcol - 1;
 
     ef->pos++;
     ef->len++;
@@ -416,10 +418,7 @@ static void text_update_edited(bContext *C, Object *obedit, const eEditFontMode 
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
   if (obedit->totcol > 0) {
-    obedit->actcol = cu->curinfo.mat_nr;
-
-    /* since this array is calloc'd, it can be 0 even though we try ensure
-     * (mat_nr > 0) almost everywhere */
+    obedit->actcol = cu->curinfo.mat_nr + 1;
     if (obedit->actcol < 1) {
       obedit->actcol = 1;
     }
@@ -476,7 +475,6 @@ static void font_select_update_primary_clipboard(Object *obedit)
 /** \name Generic Paste Functions
  * \{ */
 
-/* text_update_edited(C, scene, obedit, 1, FO_EDIT); */
 static bool font_paste_wchar(Object *obedit,
                              const char32_t *str,
                              const size_t str_len,
@@ -1751,13 +1749,13 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       if (accentcode) {
         if (ef->pos > 0) {
           inserted_text[0] = findaccent(ef->textbuf[ef->pos - 1],
-                                        BLI_str_utf8_as_unicode(event->utf8_buf));
+                                        BLI_str_utf8_as_unicode_or_error(event->utf8_buf));
           ef->textbuf[ef->pos - 1] = inserted_text[0];
         }
         accentcode = false;
       }
       else if (event->utf8_buf[0]) {
-        inserted_text[0] = BLI_str_utf8_as_unicode(event->utf8_buf);
+        inserted_text[0] = BLI_str_utf8_as_unicode_or_error(event->utf8_buf);
         insert_into_textbuf(obedit, inserted_text[0]);
         accentcode = false;
       }
@@ -1850,7 +1848,7 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
   if (ob->totcol > 0) {
-    ob->actcol = cu->curinfo.mat_nr;
+    ob->actcol = cu->curinfo.mat_nr + 1;
     if (ob->actcol < 1) {
       ob->actcol = 1;
     }
@@ -2243,7 +2241,6 @@ static int font_open_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   VFont *font;
   PropertyPointerRNA *pprop;
-  PointerRNA idptr;
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
@@ -2268,7 +2265,7 @@ static int font_open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&font->id);
 
-    RNA_id_pointer_create(&font->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&font->id);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
@@ -2351,7 +2348,6 @@ static int font_unlink_exec(bContext *C, wmOperator *op)
 {
   VFont *builtin_font;
 
-  PointerRNA idptr;
   PropertyPointerRNA pprop;
 
   UI_context_active_but_prop_get_templateID(C, &pprop.ptr, &pprop.prop);
@@ -2363,7 +2359,7 @@ static int font_unlink_exec(bContext *C, wmOperator *op)
 
   builtin_font = BKE_vfont_builtin_get();
 
-  RNA_id_pointer_create(&builtin_font->id, &idptr);
+  PointerRNA idptr = RNA_id_pointer_create(&builtin_font->id);
   RNA_property_pointer_set(&pprop.ptr, pprop.prop, idptr, nullptr);
   RNA_property_update(C, &pprop.ptr, pprop.prop);
 

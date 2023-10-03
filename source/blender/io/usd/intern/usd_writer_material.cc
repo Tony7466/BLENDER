@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,7 @@
 
 #include "usd.h"
 #include "usd_exporter_context.h"
+#include "usd_hook.h"
 
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -18,7 +19,6 @@
 #include "BLI_fileops.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -157,8 +157,18 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
     }
 
     const InputSpec &input_spec = it->second;
+    bNodeLink *input_link = traverse_channel(sock, SH_NODE_TEX_IMAGE);
 
-    if (bNodeLink *input_link = traverse_channel(sock, SH_NODE_TEX_IMAGE)) {
+    if (input_spec.input_name == usdtokens::emissive_color) {
+      /* Don't export emission color if strength is zero. */
+      bNodeSocket *emission_strength_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+      if (!input_link &&
+          ((bNodeSocketValueFloat *)emission_strength_sock->default_value)->value == 0.0f) {
+        continue;
+      }
+    }
+
+    if (input_link) {
       /* Convert the texture image node connected to this input. */
       bNode *input_node = input_link->fromnode;
       pxr::UsdShadeShader usd_shader = create_usd_preview_shader(
@@ -210,15 +220,18 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         case SOCK_FLOAT: {
           create_input<bNodeSocketValueFloat, float>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         case SOCK_VECTOR: {
           create_input<bNodeSocketValueVector, pxr::GfVec3f>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         case SOCK_RGBA: {
           create_input<bNodeSocketValueRGBA, pxr::GfVec3f>(
               preview_surface, input_spec, sock->default_value);
-        } break;
+          break;
+        }
         default:
           break;
       }
@@ -266,9 +279,9 @@ void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &
 }
 
 /* Create USD Shade Material network from Blender viewport display settings. */
-void create_usd_viewport_material(const USDExporterContext &usd_export_context,
-                                  Material *material,
-                                  pxr::UsdShadeMaterial &usd_material)
+static void create_usd_viewport_material(const USDExporterContext &usd_export_context,
+                                         Material *material,
+                                         pxr::UsdShadeMaterial &usd_material)
 {
   /* Construct the shader. */
   pxr::SdfPath shader_path = usd_material.GetPath().AppendChild(usdtokens::preview_shader);
@@ -289,18 +302,17 @@ static InputSpecMap &preview_surface_input_map()
 {
   static InputSpecMap input_map = {
       {"Base Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
-      {"Emission", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Float3, true}},
+      {"Emission Color", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, true}},
-      {"Specular", {usdtokens::specular, pxr::SdfValueTypeNames->Float, true}},
+      {"Specular IOR Level", {usdtokens::specular, pxr::SdfValueTypeNames->Float, true}},
       {"Alpha", {usdtokens::opacity, pxr::SdfValueTypeNames->Float, true}},
       {"IOR", {usdtokens::ior, pxr::SdfValueTypeNames->Float, true}},
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, false}},
-      {"Clearcoat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
-      {"Clearcoat Roughness",
-       {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Weight", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Roughness", {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
   };
 
   return input_map;
@@ -732,7 +744,7 @@ static void copy_tiled_textures(Image *ima,
     /* Copy the file. */
     if (BLI_copy(src_tile_path, dest_tile_path) != 0) {
       WM_reportf(RPT_WARNING,
-                 "USD export:  couldn't copy texture tile from %s to %s",
+                 "USD export: could not copy texture tile from %s to %s",
                  src_tile_path,
                  dest_tile_path);
     }
@@ -766,7 +778,7 @@ static void copy_single_file(Image *ima, const std::string &dest_dir, const bool
   /* Copy the file. */
   if (BLI_copy(source_path, dest_path) != 0) {
     WM_reportf(
-        RPT_WARNING, "USD export:  couldn't copy texture from %s to %s", source_path, dest_path);
+        RPT_WARNING, "USD export: could not copy texture from %s to %s", source_path, dest_path);
   }
 }
 
@@ -840,6 +852,8 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
   else {
     create_usd_viewport_material(usd_export_context, material, usd_material);
   }
+
+  call_material_export_hooks(usd_export_context.stage, material, usd_material);
 
   return usd_material;
 }

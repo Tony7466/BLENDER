@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
+
+#include "RNA_types.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +44,7 @@ struct USDExportParams {
   bool export_hair = true;
   bool export_uvmaps = true;
   bool export_normals = true;
+  bool export_mesh_colors = true;
   bool export_materials = true;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
@@ -69,6 +72,8 @@ struct USDImportParams {
   bool import_meshes;
   bool import_volumes;
   bool import_shapes;
+  bool import_skeletons;
+  bool import_blendshapes;
   char *prim_path_mask;
   bool import_subdiv;
   bool import_instance_proxies;
@@ -149,6 +154,29 @@ struct CacheReader *CacheReader_open_usd_object(struct CacheArchiveHandle *handl
 
 void USD_CacheReader_incref(struct CacheReader *reader);
 void USD_CacheReader_free(struct CacheReader *reader);
+
+/* Data for registering USD IO hooks. */
+typedef struct USDHook {
+
+  /* Identifier used for class name. */
+  char idname[64];
+  /* Identifier used as label. */
+  char name[64];
+  /* Short help/description. */
+  char description[1024]; /* #RNA_DYN_DESCR_MAX */
+
+  /* rna_ext.data points to the USDHook class PyObject. */
+  struct ExtensionRNA rna_ext;
+} USDHook;
+
+void USD_register_hook(struct USDHook *hook);
+/* Remove the given entry from the list of registered hooks.
+ * Note that this does not free the allocated memory for the
+ * hook instance, so a separate call to MEM_freeN(hook) is
+ * required.  */
+void USD_unregister_hook(struct USDHook *hook);
+USDHook *USD_find_hook_name(const char name[]);
+
 #ifdef __cplusplus
 }
 #endif

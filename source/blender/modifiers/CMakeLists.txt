@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -119,7 +119,7 @@ if(WITH_ALEMBIC)
     ../io/alembic
   )
   list(APPEND LIB
-    bf_alembic
+    bf_io_alembic
   )
 endif()
 
@@ -129,7 +129,7 @@ if(WITH_USD)
     ../io/usd
   )
   list(APPEND LIB
-    bf_usd
+    bf_io_usd
   )
 endif()
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,11 @@
 #include "BLI_heap.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
@@ -31,9 +34,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "ED_mesh.hh"
 #include "ED_object.hh"
@@ -52,8 +55,8 @@
 
 #include "bmesh_tools.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_select_buffer.h"
 
@@ -1392,9 +1395,9 @@ static int edbm_select_mode_invoke(bContext *C, wmOperator *op, const wmEvent *e
   return edbm_select_mode_exec(C, op);
 }
 
-static char *edbm_select_mode_get_description(bContext * /*C*/,
-                                              wmOperatorType * /*op*/,
-                                              PointerRNA *values)
+static std::string edbm_select_mode_get_description(bContext * /*C*/,
+                                                    wmOperatorType * /*op*/,
+                                                    PointerRNA *values)
 {
   const int type = RNA_enum_get(values, "type");
 
@@ -1409,19 +1412,18 @@ static char *edbm_select_mode_get_description(bContext * /*C*/,
   {
     switch (type) {
       case SCE_SELECT_VERTEX:
-        return BLI_strdup(TIP_(
-            "Vertex select - Shift-Click for multiple modes, Ctrl-Click contracts selection"));
+        return TIP_(
+            "Vertex select - Shift-Click for multiple modes, Ctrl-Click contracts selection");
       case SCE_SELECT_EDGE:
-        return BLI_strdup(
-            TIP_("Edge select - Shift-Click for multiple modes, "
-                 "Ctrl-Click expands/contracts selection depending on the current mode"));
+        return TIP_(
+            "Edge select - Shift-Click for multiple modes, "
+            "Ctrl-Click expands/contracts selection depending on the current mode");
       case SCE_SELECT_FACE:
-        return BLI_strdup(
-            TIP_("Face select - Shift-Click for multiple modes, Ctrl-Click expands selection"));
+        return TIP_("Face select - Shift-Click for multiple modes, Ctrl-Click expands selection");
     }
   }
 
-  return nullptr;
+  return "";
 }
 
 void MESH_OT_select_mode(wmOperatorType *ot)

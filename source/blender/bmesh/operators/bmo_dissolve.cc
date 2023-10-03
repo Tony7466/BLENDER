@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_stack.h"
 
 #include "bmesh.h"
@@ -264,7 +264,7 @@ void bmo_dissolve_faces_exec(BMesh *bm, BMOperator *op)
 
 void bmo_dissolve_edges_exec(BMesh *bm, BMOperator *op)
 {
-  /* BMOperator fop; */
+  // BMOperator fop;
   BMFace *act_face = bm->act_face;
   BMOIter eiter;
   BMIter iter;

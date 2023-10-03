@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,12 +25,11 @@
 
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_timecode.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 void ED_time_scrub_region_rect_get(const ARegion *region, rcti *rect)
@@ -208,8 +207,7 @@ void ED_time_scrub_channel_search_draw(const bContext *C, ARegion *region, bDope
   immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
   immUnbindProgram();
 
-  PointerRNA ptr;
-  RNA_pointer_create(&CTX_wm_screen(C)->id, &RNA_DopeSheet, dopesheet, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&CTX_wm_screen(C)->id, &RNA_DopeSheet, dopesheet);
 
   const uiStyle *style = UI_style_get_dpi();
   const float padding_x = 2 * UI_SCALE_FAC;

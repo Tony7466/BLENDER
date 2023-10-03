@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,9 @@
 struct AnimData;
 struct CacheFile;
 struct FCurve;
+struct GreasePencil;
 struct GreasePencilLayer;
+struct GreasePencilLayerTreeGroup;
 struct ListBase;
 struct MaskLayer;
 struct Object;
@@ -133,8 +135,10 @@ const ActKeyColumn *ED_keylist_find_any_between(const AnimKeylist *keylist,
 bool ED_keylist_is_empty(const AnimKeylist *keylist);
 const ListBase /* ActKeyColumn */ *ED_keylist_listbase(const AnimKeylist *keylist);
 bool ED_keylist_all_keys_frame_range(const AnimKeylist *keylist, Range2f *r_frame_range);
-/* Return the selected keyframe's range. If none are selected, return False and
- * do not affect the frame range. */
+/**
+ * Return the selected key-frame's range. If none are selected, return False and
+ * do not affect the frame range.
+ */
 bool ED_keylist_selected_keys_frame_range(const AnimKeylist *keylist, Range2f *r_frame_range);
 const ActKeyColumn *ED_keylist_array(const AnimKeylist *keylist);
 int64_t ED_keylist_array_len(const AnimKeylist *keylist);
@@ -144,7 +148,10 @@ int64_t ED_keylist_array_len(const AnimKeylist *keylist);
 /* F-Curve */
 void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag);
 /* Action Group */
-void agroup_to_keylist(AnimData *adt, bActionGroup *agrp, AnimKeylist *keylist, int saction_flag);
+void action_group_to_keylist(AnimData *adt,
+                             bActionGroup *agrp,
+                             AnimKeylist *keylist,
+                             int saction_flag);
 /* Action */
 void action_to_keylist(AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag);
 /* Object */
@@ -158,17 +165,30 @@ void cachefile_to_keylist(bDopeSheet *ads,
 void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag);
 /* DopeSheet Summary */
 void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag);
-/* Grease Pencil datablock summary */
+
+/* Grease Pencil datablock summary (Legacy) */
 void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);
 
-/* Grease Pencil Cels */
+/* Grease Pencil Cels. */
 void grease_pencil_cels_to_keylist(AnimData *adt,
-                                   GreasePencilLayer *layer,
+                                   const GreasePencilLayer *layer,
                                    AnimKeylist *keylist,
                                    int saction_flag);
 
-/* Grease Pencil Layer */
+/* Grease Pencil Layer Group. */
+void grease_pencil_layer_group_to_keylist(AnimData *adt,
+                                          const GreasePencilLayerTreeGroup *layer_group,
+                                          AnimKeylist *keylist,
+                                          const int saction_flag);
+/* Grease Pencil Data-Block. */
+void grease_pencil_data_block_to_keylist(AnimData *adt,
+                                         const GreasePencil *grease_pencil,
+                                         AnimKeylist *keylist,
+                                         const int saction_flag,
+                                         bool active_layer_only);
+/* Grease Pencil Layer (Legacy) */
 void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
+
 /* Mask */
 void mask_to_keylist(bDopeSheet *ads, MaskLayer *masklay, AnimKeylist *keylist);
 

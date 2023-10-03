@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,13 +21,14 @@
 
 #include "BLI_hash.h"
 #include "BLI_link_utils.h"
+#include "BLI_math_color.h"
 #include "BLI_memblock.h"
 
 #include "gpencil_engine.h"
 
 #include "draw_cache_impl.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Object

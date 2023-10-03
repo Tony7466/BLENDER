@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,8 @@
 
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -34,7 +34,7 @@
 #include "ED_sequencer.hh"
 #include "ED_time_scrub_ui.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
@@ -695,7 +695,7 @@ void ED_operatortypes_anim()
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Animation", 0, 0);
+  WM_keymap_ensure(keyconf, "Animation", SPACE_EMPTY, RGN_TYPE_WINDOW);
 }
 
 /** \} */

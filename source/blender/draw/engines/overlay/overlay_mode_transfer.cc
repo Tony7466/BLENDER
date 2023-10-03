@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,7 @@
  */
 
 #include "BKE_paint.hh"
+#include "BLI_math_color.h"
 #include "DRW_render.h"
 
 #include "ED_view3d.hh"

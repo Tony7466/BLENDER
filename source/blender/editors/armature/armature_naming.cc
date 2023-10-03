@@ -38,16 +38,18 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "ED_armature.hh"
 #include "ED_screen.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "armature_intern.h"
 

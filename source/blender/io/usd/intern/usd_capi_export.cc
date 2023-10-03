@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd.h"
 #include "usd.hh"
 #include "usd_hierarchy_iterator.h"
+#include "usd_hook.h"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/pxr.h>
@@ -17,9 +18,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_scene_types.h"
 
@@ -228,6 +229,9 @@ static pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   /* For restoring the current frame after exporting animation is done. */
   const int orig_frame = scene->r.cfra;
 
+  /* Ensure Python types for invoking export hooks are registered. */
+  register_export_hook_converters();
+
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
   ensure_root_prim(usd_stage, params);
 
@@ -274,6 +278,8 @@ static pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
       break;
     }
   }
+
+  call_export_hooks(usd_stage, depsgraph);
 
   /* Finish up by going back to the keyframe that was current before we started. */
   if (scene->r.cfra != orig_frame) {

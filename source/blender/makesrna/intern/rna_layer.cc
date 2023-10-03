@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -33,7 +33,7 @@
 #  include "DNA_collection_types.h"
 #  include "DNA_object_types.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_idprop.h"
 #  include "BKE_layer.h"
@@ -45,8 +45,8 @@
 
 #  include "BLI_listbase.h"
 
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 /***********************************/
 
@@ -399,7 +399,7 @@ static bool rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, Poi
   if (!child) {
     return false;
   }
-  RNA_pointer_create(ptr->owner_id, &RNA_LayerCollection, child, r_ptr);
+  *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_LayerCollection, child);
   return true;
 }
 
@@ -414,7 +414,7 @@ static bool rna_LayerCollection_children_lookupstring(PointerRNA *ptr,
 
   LISTBASE_FOREACH (LayerCollection *, child, &lc->layer_collections) {
     if (STREQ(child->collection->id.name + 2, key)) {
-      RNA_pointer_create(ptr->owner_id, &RNA_LayerCollection, child, r_ptr);
+      *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_LayerCollection, child);
       return true;
     }
   }

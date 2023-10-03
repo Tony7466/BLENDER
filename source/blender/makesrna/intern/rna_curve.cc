@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,13 +13,14 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -151,15 +152,13 @@ static const EnumPropertyItem curve2d_fill_mode_items[] = {
 
 #  include "DNA_object_types.h"
 
-#  include "BLI_math.h"
-
 #  include "BKE_curve.h"
 #  include "BKE_curveprofile.h"
 #  include "BKE_main.h"
 #  include "BKE_vfont.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "WM_api.hh"
 
@@ -319,13 +318,13 @@ static void rna_Curve_material_index_range(
 static int rna_ChariInfo_material_index_get(PointerRNA *ptr)
 {
   CharInfo *info = static_cast<CharInfo *>(ptr->data);
-  return info->mat_nr ? info->mat_nr - 1 : 0;
+  return info->mat_nr ? info->mat_nr : 0;
 }
 
 static void rna_ChariInfo_material_index_set(PointerRNA *ptr, int value)
 {
   CharInfo *info = static_cast<CharInfo *>(ptr->data);
-  info->mat_nr = value + 1;
+  info->mat_nr = value;
 }
 
 static void rna_Curve_active_textbox_index_range(

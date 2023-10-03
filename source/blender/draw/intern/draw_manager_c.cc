@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,7 +37,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_subdiv_modifier.hh"
 #include "BKE_viewer_path.h"
 #include "BKE_volume.h"
@@ -100,8 +100,8 @@
 
 #include "GPU_context.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_select_buffer.h"
 
@@ -1173,11 +1173,6 @@ static void drw_engines_enable_from_engine(const RenderEngineType *engine_type, 
   switch (drawtype) {
     case OB_WIRE:
     case OB_SOLID:
-      if (U.experimental.enable_workbench_next &&
-          STREQ(engine_type->idname, "BLENDER_WORKBENCH_NEXT")) {
-        use_drw_engine(DRW_engine_viewport_workbench_next_type.draw_engine);
-        break;
-      }
       use_drw_engine(DRW_engine_viewport_workbench_type.draw_engine);
       break;
     case OB_MATERIAL:
@@ -2834,7 +2829,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_engines_cache_finish();
 
     drw_task_graph_deinit();
-#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug. (See #69377) */
+#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug (see #69377). */
     DRW_render_instance_buffer_finish();
 #else
     DST.buffer_finish_called = true;
@@ -2918,8 +2913,8 @@ void DRW_draw_depth_object(
 
       GPU_batch_draw(batch);
       GPU_uniformbuf_free(ubo);
-
-    } break;
+      break;
+    }
     case OB_CURVES_LEGACY:
     case OB_SURF:
       break;
@@ -3049,9 +3044,6 @@ void DRW_engines_register_experimental()
 {
   if (U.experimental.enable_eevee_next) {
     RE_engines_register(&DRW_engine_viewport_eevee_next_type);
-  }
-  if (U.experimental.enable_workbench_next) {
-    RE_engines_register(&DRW_engine_viewport_workbench_next_type);
   }
 }
 

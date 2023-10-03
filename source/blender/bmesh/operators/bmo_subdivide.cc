@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_rand.h"
 #include "BLI_stack.h"
@@ -35,8 +36,8 @@ struct SubDParams {
   bool use_fractal;
   int seed;
   BMOperator *op;
-  BMOpSlot *slot_edge_percents;   /* BMO_slot_get(params->op->slots_in, "edge_percents"); */
-  BMOpSlot *slot_custom_patterns; /* BMO_slot_get(params->op->slots_in, "custom_patterns"); */
+  BMOpSlot *slot_edge_percents;   /* `BMO_slot_get(params->op->slots_in, "edge_percents")`. */
+  BMOpSlot *slot_custom_patterns; /* `BMO_slot_get(params->op->slots_in, "custom_patterns")`. */
   float fractal_ofs[3];
 
   /* Runtime storage for shape key. */
@@ -600,9 +601,9 @@ static void quad_2edge_split_fan(BMesh *bm,
                                  const SubDParams *params)
 {
   BMFace *f_new;
-  /* BMVert *v; */                 /* UNUSED */
-  /* BMVert *v_last = verts[2]; */ /* UNUSED */
-  /* BMEdge *e, *e_new; */         /* UNUSED */
+  // BMVert *v;                 /* UNUSED */
+  // BMVert *v_last = verts[2]; /* UNUSED */
+  // BMEdge *e, *e_new;         /* UNUSED */
   int i, numcuts = params->numcuts;
 
   for (i = 0; i < numcuts; i++) {

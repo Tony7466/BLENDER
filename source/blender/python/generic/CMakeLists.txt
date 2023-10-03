@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -36,6 +36,7 @@ set(SRC
   py_capi_utils.h
 
   # header-only
+  python_compat.h
   python_utildefines.h
 )
 

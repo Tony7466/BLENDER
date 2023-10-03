@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,13 +13,15 @@
 
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
-
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
+
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "WM_types.hh"
 
@@ -34,12 +36,12 @@
 
 #include "mesh_intern.h" /* own include */
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities

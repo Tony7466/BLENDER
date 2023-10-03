@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -16,6 +16,7 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../makesrna
+  ../../modifiers
   ../../render
   ../../windowmanager
   ../../../../extern/fmtlib/include
@@ -23,6 +24,8 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
   nodes/node_geo_accumulate_field.cc
@@ -81,6 +84,8 @@ set(SRC
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
+  nodes/node_geo_input_edge_smooth.cc
+  nodes/node_geo_input_face_smooth.cc
   nodes/node_geo_input_id.cc
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
@@ -100,7 +105,6 @@ set(SRC
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc
-  nodes/node_geo_input_shade_smooth.cc
   nodes/node_geo_input_shortest_edge_paths.cc
   nodes/node_geo_input_signed_distance.cc
   nodes/node_geo_input_spline_cyclic.cc
@@ -142,6 +146,7 @@ set(SRC
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
+  nodes/node_geo_points_to_curves.cc
   nodes/node_geo_points_to_sdf_volume.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
@@ -196,11 +201,9 @@ set(SRC
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
-  node_geometry_register.cc
   node_geometry_tree.cc
   node_geometry_util.cc
 
-  node_geometry_register.hh
   node_geometry_util.hh
 )
 
@@ -265,7 +268,19 @@ if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
+add_node_discovery(
+  bf_nodes_geometry_generated
+  "${SRC}"
+  ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
+  register_geometry_nodes
+)
+
+list(APPEND LIB
+  bf_nodes_geometry_generated
+)
+
 blender_add_lib(bf_nodes_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
 
 if(WITH_UNITY_BUILD)
   set_target_properties(bf_nodes_geometry PROPERTIES UNITY_BUILD ON)

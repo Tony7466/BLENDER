@@ -1,8 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstring>
+
+#include "BLI_string.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -17,7 +19,7 @@
 #include "DNA_node_types.h"
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_resources.hh"
@@ -26,8 +28,6 @@
 
 #include "node_common.h"
 
-#include "node_geometry_register.hh"
-
 bNodeTreeType *ntreeType_Geometry;
 
 static void geometry_node_tree_get_from_context(
@@ -35,7 +35,7 @@ static void geometry_node_tree_get_from_context(
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
   if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-    *r_ntree = snode->nodetree;
+    *r_ntree = snode->geometry_nodes_tool_tree;
     return;
   }
 

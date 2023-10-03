@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,12 +41,13 @@
 #include "RE_pipeline.h"
 
 #include "ED_node.hh"
+#include "ED_node_preview.hh"
 #include "ED_paint.hh"
 #include "ED_render.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 
@@ -176,6 +177,11 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       ED_render_engine_area_exit(bmain, area);
     }
+  }
+  /* Invalidate all shader previews. */
+  blender::ed::space_node::stop_preview_job(*static_cast<wmWindowManager *>(bmain->wm.first));
+  LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
+    BKE_material_make_node_previews_dirty(ma);
   }
   RE_FreePersistentData(nullptr);
   /* Inform all render engines and draw managers. */

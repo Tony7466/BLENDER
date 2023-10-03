@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -13,15 +13,15 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_session_uuid.h"
 
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "IMB_imbuf.h"
 
@@ -118,7 +118,7 @@ static void sequence_invalidate_cache(Scene *scene,
   SEQ_prefetch_stop(scene);
 }
 
-/* Find metastrips that contain invalidated_seq and invalidate them. */
+/* Find meta-strips that contain invalidated_seq and invalidate them. */
 static bool seq_relations_find_and_invalidate_metas(Scene *scene,
                                                     Sequence *invalidated_seq,
                                                     Sequence *meta_seq)
@@ -175,7 +175,7 @@ void SEQ_relations_invalidate_cache_preprocessed(Scene *scene, Sequence *seq)
 
 void SEQ_relations_invalidate_cache_composite(Scene *scene, Sequence *seq)
 {
-  if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
     return;
   }
 
@@ -186,7 +186,7 @@ void SEQ_relations_invalidate_cache_composite(Scene *scene, Sequence *seq)
 
 void SEQ_relations_invalidate_dependent(Scene *scene, Sequence *seq)
 {
-  if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
     return;
   }
 

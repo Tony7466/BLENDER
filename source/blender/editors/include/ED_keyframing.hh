@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #pragma once
 
 #include "DNA_anim_types.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 struct ID;
 struct ListBase;
@@ -623,9 +623,9 @@ bool ED_autokeyframe_pchan(
     bContext *C, Scene *scene, Object *ob, bPoseChannel *pchan, KeyingSet *ks);
 
 /**
- * Use for auto-key-framing
+ * Use for auto-key-framing.
  * \param only_if_property_keyed: if true, auto-key-framing only creates keyframes on already keyed
- * properties. This is by design when using buttons. For other callers such as gizmos or VSE
+ * properties. This is by design when using buttons. For other callers such as gizmos or sequencer
  * preview transform, creating new animation/keyframes also on non-keyed properties is desired.
  */
 bool ED_autokeyframe_property(bContext *C,

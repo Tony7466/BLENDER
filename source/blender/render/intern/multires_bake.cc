@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_threads.h"
 
 #include "BKE_DerivedMesh.h"
@@ -31,7 +33,7 @@
 #include "BKE_multires.hh"
 #include "BKE_subsurf.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RE_multires_bake.h"
 #include "RE_pipeline.h"
@@ -1088,9 +1090,12 @@ static void build_permutation_table(ushort permutation[],
    * every entry must appear exactly once
    */
 #  if 0
-  for (i = 0; i < number_of_rays; i++) temp_permutation[i] = 0;
-  for (i = 0; i < number_of_rays; i++) ++temp_permutation[permutation[i]];
-  for (i = 0; i < number_of_rays; i++) BLI_assert(temp_permutation[i] == 1);
+  for (i = 0; i < number_of_rays; i++)
+    temp_permutation[i] = 0;
+  for (i = 0; i < number_of_rays; i++)
+    ++temp_permutation[permutation[i]];
+  for (i = 0; i < number_of_rays; i++)
+    BLI_assert(temp_permutation[i] == 1);
 #  endif
 }
 

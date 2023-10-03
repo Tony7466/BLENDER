@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,7 @@
 #include "BKE_camera.h"
 #include "BKE_duplilist.h"
 #include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
@@ -29,8 +29,8 @@
 
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_batch.h"
 #include "GPU_texture.h"

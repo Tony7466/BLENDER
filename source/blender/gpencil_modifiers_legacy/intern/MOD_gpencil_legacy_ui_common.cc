@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 #include "BKE_context.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_material.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
@@ -27,7 +27,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -212,7 +212,7 @@ PointerRNA *gpencil_modifier_panel_get_property_pointers(Panel *panel, PointerRN
   BLI_assert(RNA_struct_is_a(ptr->type, &RNA_GpencilModifier));
 
   if (r_ob_ptr != nullptr) {
-    RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id, r_ob_ptr);
+    *r_ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   }
 
   uiBlock *block = uiLayoutGetBlock(panel->layout);
@@ -232,9 +232,8 @@ static void gpencil_modifier_ops_extra_draw(bContext *C, uiLayout *layout, void 
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
       GpencilModifierType(md->type));
 
-  PointerRNA ptr;
   Object *ob = ED_object_active_context(C);
-  RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
   uiLayoutSetContextPointer(layout, "modifier", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,8 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -232,10 +232,10 @@ void view3d_operatortypes()
 
 void view3d_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "3D View Generic", SPACE_VIEW3D, 0);
+  WM_keymap_ensure(keyconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   /* only for region 3D window */
-  WM_keymap_ensure(keyconf, "3D View", SPACE_VIEW3D, 0);
+  WM_keymap_ensure(keyconf, "3D View", SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   fly_modal_keymap(keyconf);
   walk_modal_keymap(keyconf);

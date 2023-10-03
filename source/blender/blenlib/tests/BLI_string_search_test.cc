@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -42,10 +42,12 @@ TEST(string_search, extract_normalized_words)
 {
   LinearAllocator<> allocator;
   Vector<StringRef, 64> words;
+  Vector<float, 64> word_weights;
   extract_normalized_words("hello world" UI_MENU_ARROW_SEP "test   another test" UI_MENU_ARROW_SEP
                            " 3",
                            allocator,
-                           words);
+                           words,
+                           word_weights);
   EXPECT_EQ(words.size(), 6);
   EXPECT_EQ(words[0], "hello");
   EXPECT_EQ(words[1], "world");

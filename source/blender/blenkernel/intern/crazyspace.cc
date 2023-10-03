@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,6 +16,8 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_linklist.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.h"
@@ -32,7 +34,7 @@
 #include "BKE_multires.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 BLI_INLINE void tan_calc_quat_v3(float r_quat[4],
                                  const float co_1[3],
@@ -673,11 +675,11 @@ GeometryDeformation get_evaluated_grease_pencil_drawing_deformation(const Object
   BLI_assert(ob_orig.type == OB_GREASE_PENCIL);
   const GreasePencil &grease_pencil_orig = *static_cast<const GreasePencil *>(ob_orig.data);
 
-  GreasePencilDrawingBase *drawing_base = grease_pencil_orig.drawings(drawing_index);
+  const GreasePencilDrawingBase *drawing_base = grease_pencil_orig.drawing(drawing_index);
 
   GeometryDeformation deformation;
   if (drawing_base->type == GP_DRAWING) {
-    GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+    const auto *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
     /* Use the undeformed positions by default. */
     deformation.positions = drawing->wrap().strokes().positions();
   }

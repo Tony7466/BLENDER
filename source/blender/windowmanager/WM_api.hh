@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -109,15 +109,14 @@ void WM_init(bContext *C, int argc, const char **argv);
  *
  * \param C: The context or null, a null context implies `do_user_exit_actions == false` &
  * prevents some editor-exit operations from running.
- * \param do_python: Free all data associated with Blender's Python integration.
- * Also exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
+ * \param do_python_exit: Exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
  * \param do_user_exit_actions: When enabled perform actions associated with a user
  * having been using Blender then exiting. Actions such as writing the auto-save
  * and writing any changes to preferences.
  * Set to false in background mode or when exiting because of failed command line argument parsing.
  * In general automated actions where the user isn't making changes should pass in false too.
  */
-void WM_exit_ex(bContext *C, bool do_python, bool do_user_exit_actions);
+void WM_exit_ex(bContext *C, bool do_python_exit, bool do_user_exit_actions);
 
 /**
  * Main exit function to close Blender ordinarily.
@@ -170,6 +169,8 @@ enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_GPU_FRONT_BUFFER_READ = (1 << 3),
   /** Ability to copy/paste system clipboard images. */
   WM_CAPABILITY_CLIPBOARD_IMAGES = (1 << 4),
+  /** Ability to sample a color outside of Blender windows. */
+  WM_CAPABILITY_DESKTOP_SAMPLE = (1 << 5),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
   WM_CAPABILITY_INITIALIZED = (1 << 31),
 };
@@ -186,13 +187,21 @@ void WM_reinit_gizmomap_all(Main *bmain);
  */
 void WM_script_tag_reload();
 
-wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mval[2]);
+wmWindow *WM_window_find_under_cursor(wmWindow *win,
+                                      const int event_xy[2],
+                                      int r_event_xy_other[2]);
 
 /**
  * Knowing the area, return its screen.
  * \note This should typically be avoided, only use when the context is not available.
  */
 wmWindow *WM_window_find_by_area(wmWindowManager *wm, const ScrArea *area);
+
+/**
+ * Return the color of the pixel at the current mouse cursor position on the desktop, whether in a
+ * Blender window or not. Returns false on failure or if not supported by the platform.
+ */
+bool WM_desktop_cursor_sample_read(float r_col[3]);
 
 /**
  * Read pixels from the front-buffer (fast).
@@ -820,7 +829,7 @@ void WM_operator_properties_create_ptr(PointerRNA *ptr, wmOperatorType *ot);
 void WM_operator_properties_clear(PointerRNA *ptr);
 void WM_operator_properties_free(PointerRNA *ptr);
 
-bool WM_operator_check_ui_empty(wmOperatorType *ot);
+bool WM_operator_ui_poll(wmOperatorType *ot, PointerRNA *ptr);
 /**
  * Return false, if the UI should be disabled.
  */
@@ -1112,12 +1121,14 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
                                              int flag);
 wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char *idname);
 
-const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties);
-char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties);
 /**
  * Use when we want a label, preferring the description.
  */
-char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_description_or_name(bContext *C,
+                                                wmOperatorType *ot,
+                                                PointerRNA *properties);
 
 /* `wm_operator_utils.cc` */
 
@@ -1358,7 +1369,7 @@ bool WM_drag_is_ID_type(const wmDrag *drag, int idcode);
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
 wmDragAsset *WM_drag_create_asset_data(const blender::asset_system::AssetRepresentation *asset,
-                                       int /* #eAssetImportMethod */ import_type);
+                                       int /* #eAssetImportMethod */ import_method);
 
 wmDragAsset *WM_drag_get_asset_data(const wmDrag *drag, int idcode);
 AssetMetaData *WM_drag_get_asset_meta_data(const wmDrag *drag, int idcode);
@@ -1595,9 +1606,19 @@ void WM_progress_clear(wmWindow *win);
 
 void *WM_draw_cb_activate(wmWindow *win, void (*draw)(const wmWindow *, void *), void *customdata);
 void WM_draw_cb_exit(wmWindow *win, void *handle);
+/**
+ * High level function to redraw windows.
+ *
+ * \warning this should be avoided by operators and low-level IO functionality
+ * because drawing relies on the event system & depsgraph preparing data for display.
+ * An explicit call to draw is error prone since it may attempt to show stale data.
+ *
+ * With some rare exceptions which require a redraw (screen-shot & sample screen color for e.g.)
+ * explicitly redrawing should be avoided, see: #92704, #93950, #97627 & #98462.
+ */
 void WM_redraw_windows(bContext *C);
 
-void WM_draw_region_viewport_ensure(ARegion *region, short space_type);
+void WM_draw_region_viewport_ensure(Scene *scene, ARegion *region, short space_type);
 void WM_draw_region_viewport_bind(ARegion *region);
 void WM_draw_region_viewport_unbind(ARegion *region);
 

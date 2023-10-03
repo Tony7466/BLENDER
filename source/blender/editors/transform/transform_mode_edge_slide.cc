@@ -10,7 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
@@ -30,7 +30,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -685,7 +685,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       }
     }
 
-    /* !BM_edge_is_boundary(e); */
+    /* Equivalent to `!BM_edge_is_boundary(e)`. */
     if (l_b != l_a) {
       BMEdge *e_next = get_other_edge(v, e);
       if (e_next) {

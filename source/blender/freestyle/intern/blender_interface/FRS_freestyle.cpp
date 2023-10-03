@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,12 +40,13 @@ using namespace Freestyle;
 #include "BLT_translation.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 #include "BPY_extern.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "IMB_imbuf.h"
 
@@ -279,13 +280,13 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
 {
   // load mesh
   re->i.infostr = TIP_("Freestyle: Mesh loading");
-  re->stats_draw(re->sdh, &re->i);
+  re->stats_draw(&re->i);
   re->i.infostr = nullptr;
   if (controller->LoadMesh(re, view_layer, depsgraph)) {
     /* Returns if scene cannot be loaded or if empty. */
     return;
   }
-  if (re->test_break(re->tbh)) {
+  if (re->test_break()) {
     return;
   }
 
@@ -466,7 +467,7 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
 
   // compute view map
   re->i.infostr = TIP_("Freestyle: View map creation");
-  re->stats_draw(re->sdh, &re->i);
+  re->stats_draw(&re->i);
   re->i.infostr = nullptr;
   controller->ComputeViewMap();
 }
@@ -629,7 +630,7 @@ void FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer)
   //   - compute view map
   prepare(re, view_layer, depsgraph);
 
-  if (re->test_break(re->tbh)) {
+  if (re->test_break()) {
     controller->CloseFile();
     if (G.debug & G_DEBUG_FREESTYLE) {
       cout << "Break" << endl;
@@ -640,7 +641,7 @@ void FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer)
     if (controller->_ViewMap) {
       // render strokes
       re->i.infostr = TIP_("Freestyle: Stroke rendering");
-      re->stats_draw(re->sdh, &re->i);
+      re->stats_draw(&re->i);
       re->i.infostr = nullptr;
       g_freestyle.scene = DEG_get_evaluated_scene(depsgraph);
       int strokeCount = controller->DrawStrokes();

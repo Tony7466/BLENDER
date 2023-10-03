@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,7 +36,7 @@
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 using blender::IndexRange;
 
@@ -255,6 +255,7 @@ static bool unique_name_cb(void *arg, const char *name)
 bool BKE_id_attribute_calc_unique_name(ID *id, const char *name, char *outname)
 {
   AttrUniqueData data{id};
+
   const int name_maxncpy = CustomData_name_maxncpy_calc(name);
 
   /* Set default name if none specified.
@@ -301,6 +302,10 @@ CustomDataLayer *BKE_id_attribute_new(ID *id,
   attributes->add(uniquename, domain, eCustomDataType(type), AttributeInitDefaultValue());
 
   const int index = CustomData_get_named_layer_index(customdata, type, uniquename);
+  if (index == -1) {
+    BKE_reportf(reports, RPT_WARNING, "Layer '%s' could not be created", uniquename);
+  }
+
   return (index == -1) ? nullptr : &(customdata->layers[index]);
 }
 

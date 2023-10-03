@@ -15,7 +15,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -35,12 +36,13 @@
 #include "ED_particle.hh"
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
+#include "ED_sequencer.hh"
 
 #include "UI_view2d.hh"
 
 #include "WM_types.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "transform.hh"
 #include "transform_snap.hh"
@@ -323,7 +325,7 @@ static bool pchan_autoik_adjust(bPoseChannel *pchan, short chainlen)
   bool changed = false;
 
   /* don't bother to search if no valid constraints */
-  if ((pchan->constflag & (PCHAN_HAS_IK | PCHAN_HAS_TARGET)) == 0) {
+  if ((pchan->constflag & (PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET)) == 0) {
     return changed;
   }
 
@@ -485,6 +487,13 @@ TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *b
 
 void clipUVData(TransInfo *t)
 {
+  /* NOTE(@ideasman42): Often used to clip UV's after proportional editing:
+   * In this case the radius of the proportional region can end outside the clipping area,
+   * while not ideal an elegant solution here would likely be computationally expensive
+   * as it would need to calculate the transform value that would meet the UV bounds.
+   * While it would be technically correct to handle this properly,
+   * there isn't a strong use case for it. */
+
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
     for (int a = 0; a < tc->data_len; a++, td++) {
@@ -933,6 +942,9 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
   if (t->spacetype == SPACE_SEQ) {
     if (t->options & CTX_SEQUENCER_IMAGE) {
       return &TransConvertType_SequencerImage;
+    }
+    if (sequencer_retiming_mode_is_active(t->context)) {
+      return &TransConvertType_SequencerRetiming;
     }
     return &TransConvertType_Sequencer;
   }

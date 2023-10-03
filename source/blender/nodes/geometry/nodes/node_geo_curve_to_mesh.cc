@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -37,11 +39,13 @@ static void geometry_set_curve_to_mesh(GeometrySet &geometry_set,
 
   if (profile_curves == nullptr) {
     Mesh *mesh = bke::curve_to_wire_mesh(curves.geometry.wrap(), propagation_info);
+    geometry::debug_randomize_mesh_order(mesh);
     geometry_set.replace_mesh(mesh);
   }
   else {
     Mesh *mesh = bke::curve_to_mesh_sweep(
         curves.geometry.wrap(), profile_curves->geometry.wrap(), fill_caps, propagation_info);
+    geometry::debug_randomize_mesh_order(mesh);
     geometry_set.replace_mesh(mesh);
   }
 }
@@ -63,16 +67,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", std::move(curve_set));
 }
 
-}  // namespace blender::nodes::node_geo_curve_to_mesh_cc
-
-void register_node_type_geo_curve_to_mesh()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_to_mesh_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_CURVE_TO_MESH, "Curve to Mesh", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_to_mesh_cc

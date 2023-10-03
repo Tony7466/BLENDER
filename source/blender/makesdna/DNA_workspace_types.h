@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,10 +13,6 @@
 #include "DNA_ID.h"
 #include "DNA_asset_types.h"
 #include "DNA_viewer_path_types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** #bToolRef_Runtime.flag */
 enum {
@@ -213,7 +209,3 @@ typedef enum eWorkSpaceFlags {
   WORKSPACE_USE_FILTER_BY_ORIGIN = (1 << 1),
   WORKSPACE_USE_PIN_SCENE = (1 << 2),
 } eWorkSpaceFlags;
-
-#ifdef __cplusplus
-}
-#endif
