@@ -30,10 +30,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Geometry")
       .supported_type({GeometryComponent::Type::Mesh,
                        GeometryComponent::Type::PointCloud,
-                       GeometryComponent::Type::Curve});
+                       GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::Instance});
   b.add_input<decl::Bool>("Selection").supports_field().hide_value().default_value(true);
   b.add_input<decl::Int>("Group ID").supports_field().hide_value();
-  b.add_output<decl::Geometry>("Geometry")
+  b.add_output<decl::Geometry>("Instances")
       .propagate_all()
       .description("All geometry groups as separate instances");
   b.add_output<decl::Int>("Group ID")
@@ -288,7 +289,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> group_id_field = params.extract_input<Field<int>>("Group ID");
 
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
-      "Geometry");
+      "Instances");
 
   Map<int, std::unique_ptr<GeometrySet>> geometry_by_group_id;
 
@@ -356,7 +357,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry::debug_randomize_instance_order(dst_instances);
 
-  params.set_output("Geometry", std::move(dst_geometry));
+  params.set_output("Instances", std::move(dst_geometry));
 }
 
 static void node_rna(StructRNA *srna)
