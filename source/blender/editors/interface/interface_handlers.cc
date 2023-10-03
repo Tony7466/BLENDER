@@ -10311,7 +10311,6 @@ static int ui_handle_menu_letter_press(
   if (menu->menu_idname[0] &&
       (eUserpref_MenuKeyBehavior(U.menu_key_behavior) == USER_MENU_KEY_SEARCH))
   {
-    UI_block_flag_enable(block, UI_BLOCK_NO_ACCELERATOR_KEYS);
     uiAfterFunc *after = ui_afterfunc_new();
     wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
     after->optype = ot;
