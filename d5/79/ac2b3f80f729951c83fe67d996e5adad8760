@@ -1,2 +1,3 @@
 Referenced by issue #113186, The Render Result attribute "has_data" is always False
 Referenced by pull request #113199, Fix #113186: The Render Result attribute "has_data" is always False
+Referenced by commit fff74145f175174d1fc5c1c925647781d1e5d29b, Fix #113186: The Render Result attribute "has_data" is always False
