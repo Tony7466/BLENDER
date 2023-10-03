@@ -1683,7 +1683,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 32)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 33)) {
     /* Fix node group socket order by sorting outputs and inputs. */
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       versioning_node_group_sort_sockets_recursive(ntree->tree_interface.root_panel);
