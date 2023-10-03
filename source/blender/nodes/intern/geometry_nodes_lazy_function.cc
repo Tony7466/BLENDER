@@ -3505,7 +3505,7 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
-    mapping_->viewer_node_map.add(&bnode, &lf_viewer_node);
+    mapping_->possible_side_effect_node_map.add(&bnode, &lf_viewer_node);
 
     {
       auto &usage_lazy_function = scope_.construct<LazyFunctionForViewerInputUsage>(
@@ -3533,7 +3533,7 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 
-    mapping_->gizmo_node_map.add(&bnode, &lf_gizmo_node);
+    mapping_->possible_side_effect_node_map.add(&bnode, &lf_gizmo_node);
   }
 
   lf::FunctionNode *insert_simulation_input_node(const bNodeTree &node_tree,
