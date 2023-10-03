@@ -1417,7 +1417,6 @@ rna_custom_property_subtype_vector_items = (
     ('QUATERNION', "Quaternion Rotation", "Quaternion rotation (affects NLA blending)"),
     ('AXISANGLE', "Axis-Angle", "Angle and axis to rotate around"),
     ('XYZ', "XYZ", ""),
-    ('XYZ_LENGTH', "XYZ Length", ""),
 )
 
 rna_id_type_items = tuple((item.identifier, item.name, item.description, item.icon, item.value)
