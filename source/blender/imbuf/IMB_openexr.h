@@ -88,6 +88,13 @@ void IMB_exrtile_write_channels(
     void *handle, int partx, int party, int level, const char *viewname, bool empty);
 void IMB_exr_clear_channels(void *handle);
 
+/**
+ * Free the channel->rect buffers of channels by calling the provided free_ballback, given the
+ * buffer and the channel name.
+ */
+void IMB_exr_free_channels_buffer(void *handle,
+                                  void (*free_callback)(const char *name, float *buffer));
+
 void IMB_exr_multilayer_convert(void *handle,
                                 void *base,
                                 void *(*addview)(void *base, const char *str),

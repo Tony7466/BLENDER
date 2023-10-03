@@ -8,13 +8,22 @@
 
 #include <cstring>
 
+#include "BLI_assert.h"
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_node_types.h"
+#include "DNA_scene_types.h"
+
 #include "BKE_context.h"
+#include "BKE_image.h"
 #include "BKE_image_format.h"
+#include "BKE_main.h"
+#include "BKE_scene.h"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -25,6 +34,9 @@
 #include "WM_api.hh"
 
 #include "IMB_openexr.h"
+
+#include "GPU_state.h"
+#include "GPU_texture.h"
 
 #include "COM_node_operation.hh"
 
@@ -188,6 +200,8 @@ void ntreeCompositOutputFileSetLayer(bNode *node, bNodeSocket *sock, const char 
 }
 
 namespace blender::nodes::node_composite_output_file_cc {
+
+NODE_STORAGE_FUNCS(NodeImageMultiFile)
 
 /* XXX uses initfunc_api callback, regular initfunc does not support context yet */
 static void init_output_file(const bContext *C, PointerRNA *ptr)
@@ -449,9 +463,160 @@ class OutputFileOperation : public NodeOperation {
 
   void execute() override
   {
-    if (context().use_file_output()) {
-      context().set_info_message("Viewport compositor setup not fully supported");
+    const Domain domain = compute_domain();
+    const int width = domain.size.x;
+    const int height = domain.size.y;
+
+    const bool store_views_in_single_file = is_multi_view_exr();
+    const char *view = context().get_view_name().data();
+
+    /* If we are saving all views in a single multi-layer file, we supply an empty view to make
+     * sure the file name does not contain a view suffix. */
+    char image_path[FILE_MAX];
+    get_image_path(image_path, store_views_in_single_file ? "" : view);
+
+    /* This function creates a global EXR image whose lifetime extends outside this operation and
+     * even this compositor evaluation. This is useful for multi-view images, since the compositor
+     * is dispatched multiple times for each of the views, so we need a global resource to add all
+     * views to the same EXR image. The EXR is then only written once the last view was added. */
+    void *exr_handle = IMB_exr_get_handle_name(image_path);
+
+    /* No need to add a view if we are saving each view in its own file. */
+    if (store_views_in_single_file) {
+      IMB_exr_add_view(exr_handle, view);
     }
+
+    for (const bNodeSocket *input : this->node()->input_sockets()) {
+      const Result &input_result = get_input(input->identifier);
+      if (input_result.is_single_value()) {
+        continue;
+      }
+
+      GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
+      const eGPUDataFormat format = GPU_DATA_FLOAT;
+      float *buffer = static_cast<float *>(GPU_texture_read(input_result.texture(), format, 0));
+
+      const char *layer = (static_cast<NodeImageMultiFileSocket *>(input->storage))->layer;
+
+      /* If we are saving views in separate files, we needn't store the view in the channels
+       * themselves, so we supply an empty view name. */
+      const char *channel_view = store_views_in_single_file ? view : "";
+
+      switch (input_result.type()) {
+        case ResultType::Color:
+          add_exr_channels(exr_handle, layer, channel_view, "RGBA", 4, 4, width, buffer);
+          break;
+        case ResultType::Vector:
+          /* The last component of the 4D vector is ignored, hence the stride of 3. */
+          add_exr_channels(exr_handle, layer, channel_view, "XYZ", 3, 4, width, buffer);
+          break;
+        case ResultType::Float:
+          add_exr_channels(exr_handle, layer, channel_view, "V", 1, 1, width, buffer);
+          break;
+        default:
+          /* Other types are internal and needn't be handled by operations. */
+          BLI_assert_unreachable();
+          break;
+      }
+    }
+
+    /* We only write the EXR image if we added all views already, that is, we are in the last view.
+     * Moreover, if we are saving views in separate files, we can write the EXR image directly as
+     * there are not any more views to add. */
+    if (BKE_scene_multiview_is_render_view_last(&context().get_render_data(), view) ||
+        !store_views_in_single_file)
+    {
+      StampData *stamp_data = BKE_stamp_info_from_scene_static(&context().get_scene());
+      IMB_exr_begin_write(exr_handle, image_path, width, height, get_exr_codec(), stamp_data);
+      IMB_exr_write_channels(exr_handle);
+
+      /* We free the buffers allocated by the GPU_texture_read function, however, we note that
+       * multiple channels could share the same buffer, but with a different offset and stride, so
+       * we only free the first channel of each image by inspecting its name, since that would be
+       * the buffer with no offset. 'R' for RGBA, 'X' for XYZ, and 'V' is just V. */
+      IMB_exr_free_channels_buffer(exr_handle, [](const char *name, float *buffer) {
+        if (ELEM(std::string(name).back(), 'R', 'X', 'V')) {
+          MEM_freeN(buffer);
+        }
+      });
+
+      IMB_exr_close(exr_handle);
+      BKE_stamp_data_free(stamp_data);
+    }
+  }
+
+  /* Add the EXR channels representing an image of the given number of channels, width, and pixel
+   * buffer. The name of the EXR channel will encode the given layer, view, and each of the pass
+   * names corresponding to each of the characters in the given channels string. The channels are
+   * assumed to be contagious in the buffer and have the given pixel stride. */
+  void add_exr_channels(void *exr_handle,
+                        const char *layer,
+                        const char *view,
+                        const char *channels,
+                        int channels_count,
+                        int stride,
+                        int width,
+                        float *buffer)
+  {
+    for (int i = 0; i < channels_count; i++) {
+      const std::string pass = std::string(1, channels[i]);
+      IMB_exr_add_channel(exr_handle,
+                          layer,
+                          pass.c_str(),
+                          view,
+                          stride,
+                          width * stride,
+                          buffer + i,
+                          use_half_float());
+    }
+  }
+
+  /* Get the path of the image to be saved and ensure its directory tree exists. If the given view
+   * is not empty, its corresponding file suffix will be appended to the name. */
+  void get_image_path(char *image_path, const char *view)
+  {
+    const char *suffix = BKE_scene_multiview_view_suffix_get(&context().get_render_data(), view);
+    BKE_image_path_from_imtype(image_path,
+                               node_storage(bnode()).base_path,
+                               BKE_main_blendfile_path_from_global(),
+                               context().get_frame_number(),
+                               R_IMF_IMTYPE_MULTILAYER,
+                               use_file_extension(),
+                               true,
+                               suffix);
+    BLI_file_ensure_parent_dir_exists(image_path);
+  }
+
+  bool use_half_float()
+  {
+    return node_storage(bnode()).format.depth == R_IMF_CHAN_DEPTH_16;
+  }
+
+  /* The EXR compression method. */
+  char get_exr_codec()
+  {
+    return node_storage(bnode()).format.exr_codec;
+  }
+
+  /* Add the file format extensions to the rendered file name. */
+  bool use_file_extension()
+  {
+    return context().get_render_data().scemode & R_EXTENSION;
+  }
+
+  /* If true, save views in a multi-view EXR file, otherwise, save each view in its own file. */
+  bool is_multi_view_exr()
+  {
+    if (!is_multi_view_scene()) {
+      return false;
+    }
+
+    return node_storage(bnode()).format.views_format == R_IMF_VIEWS_MULTIVIEW;
+  }
+
+  bool is_multi_view_scene()
+  {
+    return context().get_render_data().scemode & R_MULTIVIEW;
   }
 };
 
@@ -477,8 +642,6 @@ void register_node_type_cmp_output_file()
       &ntype, "NodeImageMultiFile", file_ns::free_output_file, file_ns::copy_output_file);
   ntype.updatefunc = file_ns::update_output_file;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
-  ntype.realtime_compositor_unsupported_message = N_(
-      "Node not supported in the Viewport compositor");
 
   nodeRegisterType(&ntype);
 }
