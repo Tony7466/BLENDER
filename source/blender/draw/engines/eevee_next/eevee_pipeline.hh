@@ -336,6 +336,28 @@ class DeferredProbePipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Deferred Planar Probe Capture.
+ * \{ */
+
+class PlanarProbePipeline {
+ private:
+  DeferredProbeLayer opaque_layer_;
+
+ public:
+  PlanarProbePipeline(Instance &inst) : opaque_layer_(inst){};
+
+  void begin_sync();
+  void end_sync();
+
+  PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
+  PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Capture Pipeline
  *
  * \{ */
@@ -447,6 +469,7 @@ class PipelineModule {
   WorldPipeline world;
   WorldVolumePipeline world_volume;
   DeferredProbePipeline probe;
+  PlanarProbePipeline planar;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
@@ -461,6 +484,7 @@ class PipelineModule {
         world(inst),
         world_volume(inst),
         probe(inst),
+        planar(inst),
         deferred(inst),
         forward(inst),
         shadow(inst),
@@ -470,6 +494,7 @@ class PipelineModule {
   void begin_sync()
   {
     probe.begin_sync();
+    planar.begin_sync();
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
@@ -480,6 +505,7 @@ class PipelineModule {
   void end_sync()
   {
     probe.end_sync();
+    planar.end_sync();
     deferred.end_sync();
   }
 
@@ -487,14 +513,24 @@ class PipelineModule {
                               ::Material *blender_mat,
                               GPUMaterial *gpumat,
                               eMaterialPipeline pipeline_type,
-                              bool probe_capture)
+                              eMaterialProbe probe_capture)
   {
-    if (probe_capture) {
+    if (probe_capture == MAT_PROBE_REFLECTION) {
       switch (pipeline_type) {
         case MAT_PIPE_DEFERRED_PREPASS:
           return probe.prepass_add(blender_mat, gpumat);
         case MAT_PIPE_DEFERRED:
           return probe.material_add(blender_mat, gpumat);
+        default:
+          break;
+      }
+    }
+    if (probe_capture == MAT_PROBE_PLANAR) {
+      switch (pipeline_type) {
+        case MAT_PIPE_PLANAR_PREPASS:
+          return planar.prepass_add(blender_mat, gpumat);
+        case MAT_PIPE_DEFERRED:
+          return planar.material_add(blender_mat, gpumat);
         default:
           break;
       }
@@ -530,6 +566,10 @@ class PipelineModule {
         return shadow.surface_material_add(gpumat);
       case MAT_PIPE_CAPTURE:
         return capture.surface_material_add(gpumat);
+      case MAT_PIPE_PLANAR_PREPASS:
+        /* Planar prepass is only supported during planar probe capture. */
+        BLI_assert_unreachable();
+        return nullptr;
     }
     return nullptr;
   }

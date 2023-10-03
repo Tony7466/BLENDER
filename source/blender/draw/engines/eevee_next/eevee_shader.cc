@@ -563,6 +563,11 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         case MAT_PIPE_FORWARD:
           info.additional_info("eevee_surf_forward");
           break;
+        case MAT_PIPE_PLANAR_PREPASS:
+          /* TODO: fclem mentioned that this prepass should be different than a normal
+           * MAT_PIPE_DEFERRED_PREPASS. */
+          info.additional_info("eevee_surf_depth");
+          break;
         default:
           BLI_assert_unreachable();
           break;

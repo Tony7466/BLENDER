@@ -257,6 +257,7 @@ void CaptureView::render_probes()
   while (const std::optional<ReflectionProbeUpdateInfo> update_info =
              inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::Probe))
   {
+    GPU_debug_capture_begin();
     GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;
 
@@ -290,12 +291,60 @@ void CaptureView::render_probes()
     inst_.render_buffers.release();
     GPU_debug_group_end();
     inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
+    GPU_debug_capture_end();
   }
 
   if (do_update_mipmap_chain) {
     /* TODO: only update the regions that have been updated. */
     /* TODO: Composite world into the probes. */
     inst_.reflection_probes.update_probes_texture_mipmaps();
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture View
+ * \{ */
+
+void CapturePlanarView::render_probes()
+{
+  Framebuffer prepass_fb;
+  View view = {"Planar.View"};
+  while (const std::optional<std::reference_wrapper<PlanarProbe>> update_info =
+             inst_.planar_probes.update_pop())
+  {
+    GPU_debug_capture_begin();
+    const PlanarProbe &probe = (*update_info).get();
+    GPU_debug_group_begin("Planar.Capture");
+
+    int2 extent = int2(probe.resolution);
+    inst_.render_buffers.acquire(extent);
+
+    inst_.render_buffers.vector_tx.clear(float4(0.0f));
+    prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.vector_tx));
+
+    /* TODO: calculate the view from the active viewpoint. */
+    float4x4 view_m4 = float4x4::identity();
+    float4x4 win_m4 = math::projection::perspective(-probe.clipping_distances.x,
+                                                    probe.clipping_distances.x,
+                                                    -probe.clipping_distances.x,
+                                                    probe.clipping_distances.x,
+                                                    probe.clipping_distances.x,
+                                                    probe.clipping_distances.y);
+    view.sync(view_m4, win_m4);
+
+    capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                       GPU_ATTACHMENT_TEXTURE(probe.probes_tx));
+
+    GPU_framebuffer_bind(capture_fb_);
+    GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
+    inst_.pipelines.planar.render(view, prepass_fb, capture_fb_, extent);
+
+    inst_.render_buffers.release();
+    GPU_debug_group_end();
+    GPU_debug_capture_end();
   }
 }
 

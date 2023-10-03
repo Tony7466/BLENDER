@@ -132,7 +132,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.is_probe_used = true;
 
   /* Only update data when rerendering the probes to reduce flickering. */
-  if (!instance_.do_probe_sync()) {
+  if (!instance_.do_reflection_probe_sync()) {
     update_probes_next_sample_ = true;
     return;
   }
@@ -302,7 +302,7 @@ void ReflectionProbeModule::end_sync()
 {
   remove_unused_probes();
 
-  const bool do_update = instance_.do_probe_sync() ||
+  const bool do_update = instance_.do_reflection_probe_sync() ||
                          (has_only_world_probe() && do_world_update_get());
   if (!do_update) {
     return;
@@ -334,22 +334,10 @@ void ReflectionProbeModule::end_sync()
 
 void ReflectionProbeModule::remove_unused_probes()
 {
-  bool found = false;
-  do {
-    found = false;
-    uint64_t key_to_remove = 0;
-    for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-      const ReflectionProbe &probe = item.value;
-      if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
-        key_to_remove = item.key;
-        found = true;
-        break;
-      }
-    }
-    if (found) {
-      probes_.remove(key_to_remove);
-    }
-  } while (found);
+  probes_.remove_if([](const Map<uint64_t, ReflectionProbe>::MutableItem &item) {
+    const ReflectionProbe &probe = item.value;
+    return (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used);
+  });
 }
 
 void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_data_index)
@@ -472,7 +460,7 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
 std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     const ReflectionProbe::Type probe_type)
 {
-  const bool do_probe_sync = instance_.do_probe_sync();
+  const bool do_probe_sync = instance_.do_reflection_probe_sync();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
     if (!item.value.do_render && !item.value.do_world_irradiance_update) {

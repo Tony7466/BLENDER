@@ -907,6 +907,44 @@ void DeferredProbePipeline::render(View &view,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Deferred Planar Probe Pipeline
+ *
+ * Closure data are written to intermediate buffer allowing screen space processing.
+ * \{ */
+
+void PlanarProbePipeline::begin_sync()
+{
+  opaque_layer_.begin_sync();
+}
+
+void PlanarProbePipeline::end_sync()
+{
+  opaque_layer_.end_sync();
+}
+
+PassMain::Sub *PlanarProbePipeline::prepass_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  return opaque_layer_.prepass_add(blender_mat, gpumat);
+}
+
+PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  return opaque_layer_.material_add(blender_mat, gpumat);
+}
+
+void PlanarProbePipeline::render(View &view,
+                                 Framebuffer &prepass_fb,
+                                 Framebuffer &combined_fb,
+                                 int2 extent)
+{
+  GPU_debug_group_begin("PlanarProbe.Render");
+  opaque_layer_.render(view, prepass_fb, combined_fb, extent);
+  GPU_debug_group_end();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Capture Pipeline
  *
  * \{ */
