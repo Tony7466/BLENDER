@@ -468,13 +468,13 @@ static bool ui_but_menu_add_path_operators(uiLayout *layout, PointerRNA *ptr, Pr
   BLI_path_split_dir_file(filepath, dir, sizeof(dir), file, sizeof(file));
 
   uiItemFullO_ptr(layout,
-                    ot,
-                    CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open Location Externally"),
-                    ICON_NONE,
-                    nullptr,
-                    WM_OP_INVOKE_DEFAULT,
-                    UI_ITEM_NONE,
-                    &props_ptr);
+                  ot,
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open Location Externally"),
+                  ICON_NONE,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &props_ptr);
   RNA_string_set(&props_ptr, "filepath", dir);
 
   return true;
