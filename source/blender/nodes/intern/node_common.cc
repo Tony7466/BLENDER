@@ -302,6 +302,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     case SOCK_CUSTOM:
       auto value = std::make_unique<decl::Custom>();
       value->init_socket_fn = get_init_socket_fn(ntree.tree_interface, io_socket);
+      value->idname_ = io_socket.socket_type;
       dst = std::move(value);
       break;
   }
@@ -387,17 +388,13 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
                                                declaration_for_interface_socket(
                                                    *group, socket, SOCK_OUT) :
                                                nullptr;
-        /* Inline with the output socket if using input+output mode. */
-        if (input_decl && output_decl) {
-          input_decl->inline_with_next = true;
+        if (output_decl) {
+          r_declaration.outputs.append(output_decl.get());
+          r_declaration.items.append(std::move(output_decl));
         }
         if (input_decl) {
           r_declaration.inputs.append(input_decl.get());
           r_declaration.items.append(std::move(input_decl));
-        }
-        if (output_decl) {
-          r_declaration.outputs.append(output_decl.get());
-          r_declaration.items.append(std::move(output_decl));
         }
         break;
       }

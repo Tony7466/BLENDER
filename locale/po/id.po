@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'6221ff436fc2')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-11 10:35:14\n"
+"POT-Creation-Date: 2023-10-03 09:29:22\n"
 "PO-Revision-Date: 2021-12-25 23:57-0800\n"
 "Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -907,6 +907,176 @@ msgstr "Tags"
 
 msgid "Custom tags (name tokens) for the asset, used for filtering and general asset management"
 msgstr "Tag kustom (token nama) untuk aset, digunakan untuk pemfilteran dan manajemen aset umum"
+
+
+msgctxt "ID"
+msgid "Action"
+msgstr "Aksi"
+
+
+msgctxt "ID"
+msgid "Armature"
+msgstr "Armatur"
+
+
+msgctxt "ID"
+msgid "Brush"
+msgstr "Kuas"
+
+
+msgctxt "ID"
+msgid "Cache File"
+msgstr "Dokumen Cache"
+
+
+msgctxt "ID"
+msgid "Camera"
+msgstr "Kamera"
+
+
+msgctxt "ID"
+msgid "Collection"
+msgstr "Koleksi"
+
+
+msgctxt "ID"
+msgid "Curve"
+msgstr "Kurva"
+
+
+msgctxt "ID"
+msgid "Font"
+msgstr "Font"
+
+
+msgctxt "ID"
+msgid "Grease Pencil"
+msgstr "Pensil Grease"
+
+
+msgctxt "ID"
+msgid "Image"
+msgstr "Gambar"
+
+
+msgctxt "ID"
+msgid "Key"
+msgstr "Kunci"
+
+
+msgctxt "ID"
+msgid "Library"
+msgstr "Perpustakaan"
+
+
+msgctxt "ID"
+msgid "Light"
+msgstr "Cahaya"
+
+
+msgctxt "ID"
+msgid "Line Style"
+msgstr "Gaya Garis"
+
+
+msgctxt "ID"
+msgid "Mask"
+msgstr "Masker"
+
+
+msgctxt "ID"
+msgid "Material"
+msgstr "Material"
+
+
+msgctxt "ID"
+msgid "Mesh"
+msgstr "Mesh"
+
+
+msgctxt "ID"
+msgid "Metaball"
+msgstr "Metabola"
+
+
+msgctxt "ID"
+msgid "Movie Clip"
+msgstr "Klip Film"
+
+
+msgctxt "ID"
+msgid "Node Tree"
+msgstr "Pohon Node"
+
+
+msgctxt "ID"
+msgid "Object"
+msgstr "Objek"
+
+
+msgctxt "ID"
+msgid "Paint Curve"
+msgstr "Kurva Cat"
+
+
+msgctxt "ID"
+msgid "Palette"
+msgstr "Palet"
+
+
+msgctxt "ID"
+msgid "Particle"
+msgstr "Partikel"
+
+
+msgctxt "ID"
+msgid "Point Cloud"
+msgstr "Titik Awan"
+
+
+msgctxt "ID"
+msgid "Scene"
+msgstr "Adegan"
+
+
+msgctxt "ID"
+msgid "Sound"
+msgstr "Suara"
+
+
+msgctxt "ID"
+msgid "Speaker"
+msgstr "Pengeras Suara"
+
+
+msgctxt "ID"
+msgid "Text"
+msgstr "Teks"
+
+
+msgctxt "ID"
+msgid "Texture"
+msgstr "Tekstur"
+
+
+msgctxt "ID"
+msgid "Volume"
+msgstr "Volume"
+
+
+msgctxt "ID"
+msgid "Window Manager"
+msgstr "Pengelola Jendela"
+
+
+msgctxt "ID"
+msgid "Workspace"
+msgstr "Spasi Kerja"
+
+
+msgctxt "ID"
+msgid "World"
+msgstr "Dunia"
 
 
 msgid "ID Name"
@@ -2535,6 +2705,14 @@ msgstr "Tipe Pegangan Awal B-Tulang"
 
 msgid "Selects how the start handle of the B-Bone is computed"
 msgstr "Pilih bagaimana awal pegangan B-Tulang dihitung"
+
+
+msgid "Straight"
+msgstr "Kanan"
+
+
+msgid "Curved"
+msgstr "Lengkung"
 
 
 msgid "Roll In"
@@ -6383,176 +6561,6 @@ msgid "Type of ID-block that can be used"
 msgstr "Tipe ID-blok yang dapat digunakan"
 
 
-msgctxt "ID"
-msgid "Action"
-msgstr "Aksi"
-
-
-msgctxt "ID"
-msgid "Armature"
-msgstr "Armatur"
-
-
-msgctxt "ID"
-msgid "Brush"
-msgstr "Kuas"
-
-
-msgctxt "ID"
-msgid "Cache File"
-msgstr "Dokumen Cache"
-
-
-msgctxt "ID"
-msgid "Camera"
-msgstr "Kamera"
-
-
-msgctxt "ID"
-msgid "Collection"
-msgstr "Koleksi"
-
-
-msgctxt "ID"
-msgid "Curve"
-msgstr "Kurva"
-
-
-msgctxt "ID"
-msgid "Font"
-msgstr "Font"
-
-
-msgctxt "ID"
-msgid "Grease Pencil"
-msgstr "Pensil Grease"
-
-
-msgctxt "ID"
-msgid "Image"
-msgstr "Gambar"
-
-
-msgctxt "ID"
-msgid "Key"
-msgstr "Kunci"
-
-
-msgctxt "ID"
-msgid "Library"
-msgstr "Perpustakaan"
-
-
-msgctxt "ID"
-msgid "Light"
-msgstr "Cahaya"
-
-
-msgctxt "ID"
-msgid "Line Style"
-msgstr "Gaya Garis"
-
-
-msgctxt "ID"
-msgid "Mask"
-msgstr "Masker"
-
-
-msgctxt "ID"
-msgid "Material"
-msgstr "Material"
-
-
-msgctxt "ID"
-msgid "Mesh"
-msgstr "Mesh"
-
-
-msgctxt "ID"
-msgid "Metaball"
-msgstr "Metabola"
-
-
-msgctxt "ID"
-msgid "Movie Clip"
-msgstr "Klip Film"
-
-
-msgctxt "ID"
-msgid "Node Tree"
-msgstr "Pohon Node"
-
-
-msgctxt "ID"
-msgid "Object"
-msgstr "Objek"
-
-
-msgctxt "ID"
-msgid "Paint Curve"
-msgstr "Kurva Cat"
-
-
-msgctxt "ID"
-msgid "Palette"
-msgstr "Palet"
-
-
-msgctxt "ID"
-msgid "Particle"
-msgstr "Partikel"
-
-
-msgctxt "ID"
-msgid "Point Cloud"
-msgstr "Titik Awan"
-
-
-msgctxt "ID"
-msgid "Scene"
-msgstr "Adegan"
-
-
-msgctxt "ID"
-msgid "Sound"
-msgstr "Suara"
-
-
-msgctxt "ID"
-msgid "Speaker"
-msgstr "Pengeras Suara"
-
-
-msgctxt "ID"
-msgid "Text"
-msgstr "Teks"
-
-
-msgctxt "ID"
-msgid "Texture"
-msgstr "Tekstur"
-
-
-msgctxt "ID"
-msgid "Volume"
-msgstr "Volume"
-
-
-msgctxt "ID"
-msgid "Window Manager"
-msgstr "Pengelola Jendela"
-
-
-msgctxt "ID"
-msgid "Workspace"
-msgstr "Spasi Kerja"
-
-
-msgctxt "ID"
-msgid "World"
-msgstr "Dunia"
-
-
 msgid "Rotation Mode"
 msgstr "Mode Rotasi"
 
@@ -7429,22 +7437,6 @@ msgid "Display Size"
 msgstr "Ukuran Layar"
 
 
-msgid "Change the size of the display (width of columns or thumbnails size)"
-msgstr "Ubah ukuran tampilan (lebar kolom atau ukuran thumbnail)"
-
-
-msgid "Tiny"
-msgstr "Mungil"
-
-
-msgid "Small"
-msgstr "Kecil"
-
-
-msgid "Large"
-msgstr "Besar"
-
-
 msgid "Display Mode"
 msgstr "Mode Layar"
 
@@ -7483,10 +7475,6 @@ msgstr "Filter Ekstensi"
 
 msgid "Filter ID Types"
 msgstr "Tipe ID Filter"
-
-
-msgid "Filter by name, supports '*' wildcard"
-msgstr "Filter oleh nama, mendukung '*' wildcard"
 
 
 msgid "Recursion"
@@ -7983,10 +7971,6 @@ msgstr "Warna asap"
 
 msgid "Surface Emission"
 msgstr "Emisi Permukaan"
-
-
-msgid "Temp. Diff."
-msgstr "Temp. Diff."
 
 
 msgid "Mapping"
@@ -9624,10 +9608,6 @@ msgstr "Hantu ditampilkan di render dan playback animasi. Berguna untuk efek spe
 
 msgid "Stroke Edit Mode"
 msgstr "Mode Edit Garis Luar"
-
-
-msgid "Straight"
-msgstr "Kanan"
 
 
 msgid "Color Space Settings"
@@ -11513,10 +11493,6 @@ msgid "Console"
 msgstr "Konsol"
 
 
-msgid "Console Context Menu"
-msgstr "Menu Konteks Konsol"
-
-
 msgid "Languages..."
 msgstr "Bahasa..."
 
@@ -11535,10 +11511,6 @@ msgstr "Kunci"
 
 msgid "Snap"
 msgstr "Jepret"
-
-
-msgid "Files Context Menu"
-msgstr "Menu Konteks Dokumen"
 
 
 msgid "Grease Pencil Vertex Groups"
@@ -11582,14 +11554,6 @@ msgid "Vertex Group Specials"
 msgstr "Spesial Kelompok Vertex"
 
 
-msgid "NLA Channel Context Menu"
-msgstr "Menu Konteks Saluran NLA"
-
-
-msgid "NLA Context Menu"
-msgstr "Menu Konteks NLA"
-
-
 msgid "Text"
 msgstr "Teks"
 
@@ -11614,20 +11578,12 @@ msgid "Converter"
 msgstr "Pengubah"
 
 
-msgid "Node Context Menu"
-msgstr "Menu Konteks Node"
-
-
 msgid "Node"
 msgstr "Node"
 
 
 msgid "Node Color Specials"
 msgstr "Spesial Warna Node"
-
-
-msgid "Outliner Context Menu"
-msgstr "Menu Konteks Outliner"
 
 
 msgid "Particle Specials"
@@ -11719,10 +11675,6 @@ msgid "File"
 msgstr "Dokumen"
 
 
-msgid "File Context Menu"
-msgstr "Menu Konteks Dokumen"
-
-
 msgid "Export"
 msgstr "Ekspor"
 
@@ -11773,10 +11725,6 @@ msgstr "Modus Sunting"
 
 msgid "Names"
 msgstr "Nama"
-
-
-msgid "Text Context Menu"
-msgstr "Menu Konteks Teks"
 
 
 msgid "Hooks"
@@ -14062,10 +14010,6 @@ msgid "Min Speed"
 msgstr "Kecepatan Min"
 
 
-msgid "Curved"
-msgstr "Lengkung"
-
-
 msgid "Tile Order"
 msgstr "Urutan Ubin"
 
@@ -14464,11 +14408,6 @@ msgstr "Tekstur"
 
 
 msgctxt "Operator"
-msgid "Sample Keyframes"
-msgstr "Tekstur"
-
-
-msgctxt "Operator"
 msgid "Select All"
 msgstr "Seleksi"
 
@@ -14650,6 +14589,11 @@ msgstr "Tambah Tulang"
 
 
 msgctxt "Operator"
+msgid "Show All"
+msgstr "Tampilkan Semua"
+
+
+msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "Hapus Titik"
 
@@ -14667,11 +14611,6 @@ msgstr "Nama"
 msgctxt "Operator"
 msgid "Hide Selected"
 msgstr "Modus Sunting"
-
-
-msgctxt "Operator"
-msgid "Show All Layers"
-msgstr "Nama"
 
 
 msgctxt "Operator"
@@ -15601,6 +15540,11 @@ msgstr "Lapisan"
 msgctxt "Operator"
 msgid "Remove Mask Layer"
 msgstr "Warna Standar"
+
+
+msgctxt "Operator"
+msgid "Show All Layers"
+msgstr "Nama"
 
 
 msgid "Name of the modifier to edit"
@@ -16699,11 +16643,6 @@ msgstr "Tambah Objek Node"
 
 msgid "Add an object info node to the current node editor"
 msgstr "Tambah node info objek ke editor node sekarang"
-
-
-msgctxt "Operator"
-msgid "Search and Add Node"
-msgstr "Cari dan Tambah Node"
 
 
 msgctxt "Operator"
@@ -17870,30 +17809,6 @@ msgstr "Salin"
 
 
 msgctxt "Operator"
-msgid "Add Bone Group"
-msgstr "Grup"
-
-
-msgctxt "Operator"
-msgid "Move Bone Group"
-msgstr "Grup"
-
-
-msgctxt "Operator"
-msgid "Remove Bone Group"
-msgstr "Induk"
-
-
-msgid "Remove the active bone group"
-msgstr "Warna Standar"
-
-
-msgctxt "Operator"
-msgid "Sort Bone Groups"
-msgstr "Warna Standar"
-
-
-msgctxt "Operator"
 msgid "Remove IK"
 msgstr "Induk"
 
@@ -18211,22 +18126,6 @@ msgstr "Ganti saluran biru"
 
 msgid "Data Target"
 msgstr "Target Data"
-
-
-msgid "Keep Previous Mask"
-msgstr "Tetapkan Masker Sebelumnya"
-
-
-msgid "Mask Speed"
-msgstr "Kecepatan Masker"
-
-
-msgid "Use Cursor"
-msgstr "Gunakan Kursor"
-
-
-msgid "Use Normals"
-msgstr "Gunakan Normal"
 
 
 msgctxt "Operator"
@@ -18975,14 +18874,6 @@ msgstr "Balikkan Seleksi"
 
 msgid "Select All"
 msgstr "Pilih Semua"
-
-
-msgid "Check Branches"
-msgstr "Cek Cabang"
-
-
-msgid "Check po files in branches"
-msgstr "Cek dokumen po di cabang"
 
 
 msgctxt "Operator"
@@ -20045,10 +19936,6 @@ msgid "Timeline"
 msgstr "Timeline"
 
 
-msgid "Duplicate Data"
-msgstr "Duplikasi Data"
-
-
 msgid "New Objects"
 msgstr "Objek Baru"
 
@@ -20116,10 +20003,6 @@ msgstr "Jalankan Script Python secara Otomatis"
 
 msgid "Blend Files"
 msgstr "Dokumen Blend"
-
-
-msgid "Auto Save"
-msgstr "Simpan Otomatis"
 
 
 msgid "Editor"
@@ -22143,12 +22026,12 @@ msgid "Add-on '{}' not found!"
 msgstr "Tambahan '{}' tidak ditemukan!"
 
 
-msgid "Info written to {} text datablock!"
-msgstr "Info tertulis ke {} teks datablok!"
-
-
 msgid "Message extraction process failed!"
 msgstr "Proses ekstraksi pesan gagal!"
+
+
+msgid "Info written to {} text datablock!"
+msgstr "Info tertulis ke {} teks datablok!"
 
 
 msgctxt "Operator"
@@ -22159,16 +22042,6 @@ msgstr "Pengaturan Reset"
 msgctxt "Operator"
 msgid "Deselect All"
 msgstr "Tidak Seleksi Semuanya"
-
-
-msgctxt "Operator"
-msgid "Update Branches"
-msgstr "Memperbarui Cabang"
-
-
-msgctxt "Operator"
-msgid "Clean up Branches"
-msgstr "Membersihkan Cabang"
 
 
 msgctxt "Operator"
@@ -22331,23 +22204,8 @@ msgid "Save New Settings"
 msgstr "Simpan Pengaturan Baru"
 
 
-msgctxt "Operator"
-msgid "Next"
-msgstr "Selanjutnya"
-
-
 msgid "Getting Started"
 msgstr "Baru Memulai"
-
-
-msgctxt "Operator"
-msgid "Release Notes"
-msgstr "Catatan Rilis"
-
-
-msgctxt "Operator"
-msgid "Development Fund"
-msgstr "Dana Pengembangan"
 
 
 msgctxt "Operator"
@@ -22361,13 +22219,18 @@ msgstr "Lisensi"
 
 
 msgctxt "Operator"
+msgid "Blender Store"
+msgstr "Toko Blender"
+
+
+msgctxt "Operator"
 msgid "Blender Website"
 msgstr "Website Blender"
 
 
 msgctxt "Operator"
-msgid "Blender Store"
-msgstr "Toko Blender"
+msgid "User Communities"
+msgstr "Komunitas Pengguna"
 
 
 msgid "Characters"
@@ -22380,11 +22243,6 @@ msgstr "Ganti nama %d %s"
 
 msgid "Date: %s %s"
 msgstr "Tanggal: %s %s"
-
-
-msgctxt "Operator"
-msgid "Load %d.%d Settings"
-msgstr "Muat Pengaturan %d.%d"
 
 
 msgid "After"
@@ -22490,11 +22348,6 @@ msgstr "Kustom..."
 
 msgid "Only Axis Aligned"
 msgstr "Hanya Sumbu yang Disejajarkan"
-
-
-msgctxt "Operator"
-msgid "Show All"
-msgstr "Tampilkan Semua"
 
 
 msgctxt "Operator"
@@ -24198,8 +24051,8 @@ msgstr "Render Gambar"
 
 
 msgctxt "Operator"
-msgid "User Communities"
-msgstr "Komunitas Pengguna"
+msgid "Release Notes"
+msgstr "Catatan Rilis"
 
 
 msgid "No active item"
@@ -24938,10 +24791,6 @@ msgstr "Tekstur"
 msgctxt "Operator"
 msgid "Remove Shortcut"
 msgstr "Induk"
-
-
-msgid "(Gamma Corrected)"
-msgstr "lokasi"
 
 
 msgid "Python: %s"
@@ -25689,10 +25538,6 @@ msgid "Operation requires an active keying set"
 msgstr "Tekstur"
 
 
-msgid "Bone Groups"
-msgstr "Kelompok Tulang"
-
-
 msgid "Movie clip not found"
 msgstr "Penyunting Logika"
 
@@ -26092,6 +25937,10 @@ msgid "Random Roughness"
 msgstr "Kekasaran Acak"
 
 
+msgid "Emission Color"
+msgstr "Warna Emisi"
+
+
 msgid "View Vector"
 msgstr "Tampilkan Vektor"
 
@@ -26158,10 +26007,6 @@ msgstr "Atribut Densitas"
 
 msgid "Absorption Color"
 msgstr "Warna Penyerapan"
-
-
-msgid "Emission Color"
-msgstr "Warna Emisi"
 
 
 msgid "Temperature Attribute"
@@ -26481,10 +26326,6 @@ msgstr "Yahudi (תירִבְעִ)"
 
 msgid "Esperanto (Esperanto)"
 msgstr "Esperanto (Esperanto)"
-
-
-msgid "Spanish from Spain (Español de España)"
-msgstr "Spanyol Espana (Español de España)"
 
 
 msgid "Amharic (አማርኛ)"

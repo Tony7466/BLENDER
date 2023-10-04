@@ -44,7 +44,7 @@
 #include "BKE_movieclip.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
 
@@ -56,6 +56,7 @@
 #include "ED_undo.hh"
 
 #include "UI_interface.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "BLF_api.h"
@@ -1252,6 +1253,9 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
   if ((but->func_arg2 == nullptr) && (but->type == UI_BTYPE_SEARCH_MENU)) {
     uiButSearch *search_but = (uiButSearch *)but;
     but->func_arg2 = search_but->item_active;
+    if ((U.flag & USER_FLAG_RECENT_SEARCHES_DISABLE) == 0) {
+      blender::ui::string_search::add_recent_search(search_but->item_active_str);
+    }
   }
 
   ui_apply_but_func(C, but);
@@ -3767,14 +3771,21 @@ static void ui_do_but_textedit(
         inbox = ui_searchbox_inside(data->searchbox, event->xy);
       }
 
-      /* for double click: we do a press again for when you first click on button
-       * (selects all text, no cursor pos) */
+      bool is_press_in_button = false;
       if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK)) {
         float mx = event->xy[0];
         float my = event->xy[1];
         ui_window_to_block_fl(data->region, block, &mx, &my);
 
         if (ui_but_contains_pt(but, mx, my)) {
+          is_press_in_button = true;
+        }
+      }
+
+      /* for double click: we do a press again for when you first click on button
+       * (selects all text, no cursor pos) */
+      if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK)) {
+        if (is_press_in_button) {
           ui_textedit_set_cursor_pos(but, data, event->xy[0]);
           but->selsta = but->selend = but->pos;
           data->sel_pos_init = but->pos;
@@ -3794,13 +3805,22 @@ static void ui_do_but_textedit(
 
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
-        int selsta, selend;
-        BLI_str_cursor_step_bounds_utf8(data->str, strlen(data->str), but->pos, &selsta, &selend);
-        but->pos = short(selend);
-        but->selsta = short(selsta);
-        but->selend = short(selend);
-        retval = WM_UI_HANDLER_BREAK;
-        changed = true;
+        if (is_press_in_button) {
+          const int str_len = strlen(data->str);
+          /* This may not be necessary, additional check to ensure `pos` is never out of range,
+           * since negative values aren't acceptable, see: #113154. */
+          CLAMP(but->pos, 0, str_len);
+
+          int selsta, selend;
+          BLI_str_cursor_step_bounds_utf8(data->str, str_len, but->pos, &selsta, &selend);
+          but->pos = short(selend);
+          but->selsta = short(selsta);
+          but->selend = short(selend);
+          /* Anchor selection to the left side unless the last word. */
+          data->sel_pos_init = ((selend == str_len) && (selsta != 0)) ? selend : selsta;
+          retval = WM_UI_HANDLER_BREAK;
+          changed = true;
+        }
       }
       else if (inbox) {
         /* if we allow activation on key press,
@@ -3983,7 +4003,7 @@ static void ui_do_but_textedit(
       }
 
       if (utf8_buf[0]) {
-        const int utf8_buf_len = BLI_str_utf8_size(utf8_buf);
+        const int utf8_buf_len = BLI_str_utf8_size_or_error(utf8_buf);
         BLI_assert(utf8_buf_len != -1);
         changed = ui_textedit_insert_buf(but, data, utf8_buf, utf8_buf_len);
       }
@@ -4987,8 +5007,8 @@ static float ui_numedit_apply_snapf(
     if (fac != 1.0f) {
       /* snap in unit-space */
       tempf /= fac;
-      /* softmin /= fac; */ /* UNUSED */
-      /* softmax /= fac; */ /* UNUSED */
+      // softmin /= fac; /* UNUSED */
+      // softmax /= fac; /* UNUSED */
       softrange /= fac;
     }
 
@@ -6908,7 +6928,7 @@ static void ui_ndofedit_but_HSVCIRCLE(uiBut *but,
   ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);
   float *hsv = cpicker->hsv_perceptual;
   float rgb[3];
-  float phi, r /*, sqr */ /* UNUSED */, v[2];
+  float phi, r, v[2];
   const float sensitivity = (shift ? 0.06f : 0.3f) * ndof->dt;
 
   ui_but_v3_get(but, rgb);
@@ -6918,7 +6938,7 @@ static void ui_ndofedit_but_HSVCIRCLE(uiBut *but,
   /* Convert current color on hue/sat disc to circular coordinates phi, r */
   phi = fmodf(hsv[0] + 0.25f, 1.0f) * -2.0f * float(M_PI);
   r = hsv[1];
-  /* sqr = r > 0.0f ? sqrtf(r) : 1; */ /* UNUSED */
+  // const float sqr = r > 0.0f ? sqrtf(r) : 1; /* UNUSED */
 
   /* Convert to 2d vectors */
   v[0] = r * cosf(phi);
@@ -10298,7 +10318,15 @@ static int ui_handle_menu_letter_press(
       after->opptr = MEM_cnew<PointerRNA>(__func__);
       WM_operator_properties_create_ptr(after->opptr, ot);
       RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
-      RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
+      if (event->type != EVT_SPACEKEY) {
+        const int num_bytes = BLI_str_utf8_size_or_error(event->utf8_buf);
+        if (num_bytes != -1) {
+          char buf[sizeof(event->utf8_buf) + 1];
+          memcpy(buf, event->utf8_buf, num_bytes);
+          buf[num_bytes] = '\0';
+          RNA_string_set(after->opptr, "initial_query", buf);
+        }
+      }
       menu->menuretval = UI_RETURN_OK;
       return WM_UI_HANDLER_BREAK;
     }
@@ -10748,7 +10776,8 @@ static int ui_handle_menu_event(bContext *C,
         case EVT_WKEY:
         case EVT_XKEY:
         case EVT_YKEY:
-        case EVT_ZKEY: {
+        case EVT_ZKEY:
+        case EVT_SPACEKEY: {
           if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK) &&
               ((event->modifier & (KM_SHIFT | KM_CTRL | KM_OSKEY)) == 0) &&
               /* Only respond to explicit press to avoid the event that opened the menu
