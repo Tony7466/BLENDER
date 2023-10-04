@@ -1010,7 +1010,7 @@ void ARMATURE_OT_move_to_collection(wmOperatorType *ot)
                       "Collection",
                       "The bone collection to move the selected bones to");
   RNA_def_enum_funcs(prop, bone_collection_enum_itemf);
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE);
 
   prop = RNA_def_string(ot->srna,
                         "new_collection_name",
