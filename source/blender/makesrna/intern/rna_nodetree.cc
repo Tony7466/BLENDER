@@ -608,6 +608,8 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
 
+using blender::nodes::ForEachInputItemsAccessor;
+using blender::nodes::ForEachOutputItemsAccessor;
 using blender::nodes::RepeatItemsAccessor;
 using blender::nodes::SimulationItemsAccessor;
 
@@ -8737,17 +8739,17 @@ static void rna_def_node_item_array_socket_item_common(StructRNA *srna, const ch
   static blender::LinearAllocator<> allocator;
   PropertyRNA *prop;
 
-  char name_set_func[64];
+  char name_set_func[128];
   SNPRINTF(name_set_func, "rna_Node_ItemArray_item_name_set<%s>", accessor);
 
-  char item_update_func[64];
+  char item_update_func[128];
   SNPRINTF(item_update_func, "rna_Node_ItemArray_item_update<%s>", accessor);
   const char *item_update_func_ptr = allocator.copy_string(item_update_func).c_str();
 
-  char socket_type_itemf[64];
+  char socket_type_itemf[128];
   SNPRINTF(socket_type_itemf, "rna_Node_ItemArray_socket_type_itemf<%s>", accessor);
 
-  char color_get_func[64];
+  char color_get_func[128];
   SNPRINTF(color_get_func, "rna_Node_ItemArray_item_color_get<%s>", accessor);
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
@@ -8782,11 +8784,11 @@ static void rna_def_node_item_array_common_functions(StructRNA *srna,
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  char remove_call[64];
+  char remove_call[128];
   SNPRINTF(remove_call, "rna_Node_ItemArray_remove<%s>", accessor_name);
-  char clear_call[64];
+  char clear_call[128];
   SNPRINTF(clear_call, "rna_Node_ItemArray_clear<%s>", accessor_name);
-  char move_call[64];
+  char move_call[128];
   SNPRINTF(move_call, "rna_Node_ItemArray_move<%s>", accessor_name);
 
   func = RNA_def_function(srna, "remove", allocator.copy_string(remove_call).c_str());
@@ -8963,11 +8965,64 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void rna_def_foreach_input_item(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "ForEachInputItem", nullptr);
+  RNA_def_struct_ui_text(srna, "For-Each Input Item", "");
+  RNA_def_struct_sdna(srna, "NodeForEachInputItem");
+
+  rna_def_node_item_array_socket_item_common(srna, "ForEachInputItemsAccessor");
+}
+
+static void rna_def_foreach_output_item(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "ForEachOutputItem", nullptr);
+  RNA_def_struct_ui_text(srna, "For-Each Output Item", "");
+  RNA_def_struct_sdna(srna, "NodeForEachOutputItem");
+
+  rna_def_node_item_array_socket_item_common(srna, "ForEachOutputItemsAccessor");
+}
+
+static void rna_def_geo_foreach_input_items(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "NodeGeometryForEachInputItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Input Items", "Collection of for-each input items");
+
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "ForEachInputItem", "ForEachInputItemsAccessor");
+  rna_def_node_item_array_common_functions(srna, "ForEachInputItem", "ForEachInputItemsAccessor");
+}
+
+static void rna_def_geo_foreach_output_items(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "NodeGeometryForEachOutputItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Output Items", "Collection of for-each output items");
+
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "ForEachOutputItem", "ForEachOutputItemsAccessor");
+  rna_def_node_item_array_common_functions(
+      srna, "ForEachOutputItem", "ForEachOutputItemsAccessor");
+}
+
 static void def_geo_foreach_output(StructRNA *srna)
 {
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeGeometryForEachOutput", "storage");
+
+  prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "input_items", "input_items_num");
+  RNA_def_property_struct_type(prop, "ForEachInputItem");
+  RNA_def_property_ui_text(prop, "Input Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryForEachInputItems");
+
+  prop = RNA_def_property(srna, "output_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "output_items", "output_items_num");
+  RNA_def_property_struct_type(prop, "ForEachOutputItem");
+  RNA_def_property_ui_text(prop, "OutputItems", "");
+  RNA_def_property_srna(prop, "NodeGeometryForEachOutputItems");
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
@@ -10292,6 +10347,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
 
   rna_def_simulation_state_item(brna);
   rna_def_repeat_item(brna);
+  rna_def_foreach_input_item(brna);
+  rna_def_foreach_output_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -10344,6 +10401,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_cmp_output_file_slot_layer(brna);
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
+  rna_def_geo_foreach_input_items(brna);
+  rna_def_geo_foreach_output_items(brna);
 
   rna_def_node_instance_hash(brna);
 }

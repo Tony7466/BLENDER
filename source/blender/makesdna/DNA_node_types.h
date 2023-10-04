@@ -1836,13 +1836,66 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct NodeForEachInputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeForEachInputItem;
+
+typedef struct NodeForEachOutputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeForEachOutputItem;
+
 typedef struct NodeGeometryForEachInput {
   /** bNode.identifier of the corresponding output node. */
   int output_node_id;
 } NodeGeometryForEachInput;
 
 typedef struct NodeGeometryForEachOutput {
-  int next_input_identifier;
+  NodeForEachInputItem *input_items;
+  int input_items_num;
+  int input_active_index;
+  int input_next_identifier;
+  char _pad1[4];
+
+  NodeForEachOutputItem *output_items;
+  int output_items_num;
+  int output_active_index;
+  int output_next_identifier;
+  char _pad2[4];
+
+#ifdef __cplusplus
+  blender::Span<NodeForEachInputItem> input_items_span() const
+  {
+    return {this->input_items, this->input_items_num};
+  }
+  blender::MutableSpan<NodeForEachInputItem> input_items_span()
+  {
+    return {this->input_items, this->input_items_num};
+  }
+  blender::Span<NodeForEachOutputItem> output_items_span() const
+  {
+    return {this->output_items, this->output_items_num};
+  }
+  blender::MutableSpan<NodeForEachOutputItem> output_items_span()
+  {
+    return {this->output_items, this->output_items_num};
+  }
+#endif
 } NodeGeometryForEachOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {

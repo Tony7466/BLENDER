@@ -789,7 +789,8 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       blender::nodes::RepeatItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_FOR_EACH_OUTPUT) {
-      /* TODO */
+      blender::nodes::ForEachInputItemsAccessor::blend_write(writer, *node);
+      blender::nodes::ForEachOutputItemsAccessor::blend_write(writer, *node);
     }
   }
 
@@ -989,7 +990,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_FOR_EACH_OUTPUT: {
-          /* TODO */
+          blender::nodes::ForEachInputItemsAccessor::blend_read_data(reader, *node);
+          blender::nodes::ForEachOutputItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 

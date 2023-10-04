@@ -12,6 +12,7 @@
 
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
+#include "NOD_zone_socket_items.hh"
 
 #include "node_geometry_util.hh"
 
@@ -34,6 +35,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
+  socket_items::destruct_array<ForEachInputItemsAccessor>(*node);
+  socket_items::destruct_array<ForEachOutputItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
 
@@ -42,6 +45,9 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   const NodeGeometryForEachOutput &src_storage = node_storage(*src_node);
   auto *dst_storage = MEM_new<NodeGeometryForEachOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  socket_items::copy_array<ForEachInputItemsAccessor>(*src_node, *dst_node);
+  socket_items::copy_array<ForEachOutputItemsAccessor>(*src_node, *dst_node);
 }
 
 static void node_register()
