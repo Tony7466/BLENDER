@@ -129,8 +129,7 @@ void OpaquePass::sync(const SceneState &scene_state, SceneResources &resources)
       ePipelineType::OPAQUE, scene_state.lighting_type, clip, resources.shader_cache);
 
   deferred_ps_.init();
-  deferred_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL);
-  deferred_ps_.state_stencil(0x00, StencilBits::Background, 0xFF);
+  deferred_ps_.state_set(DRW_STATE_WRITE_COLOR);
   deferred_ps_.shader_set(resources.shader_cache.resolve_shader_get(ePipelineType::OPAQUE,
                                                                     scene_state.lighting_type,
                                                                     scene_state.draw_cavity,
@@ -211,8 +210,7 @@ void OpaquePass::draw(Manager &manager,
     deferred_ps_stencil_tx = nullptr;
   }
 
-  deferred_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
-                     GPU_ATTACHMENT_TEXTURE(resources.color_tx));
+  deferred_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
   deferred_fb.bind();
   manager.submit(deferred_ps_, view);
 

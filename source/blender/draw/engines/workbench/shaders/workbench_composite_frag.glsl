@@ -12,6 +12,14 @@
 void main()
 {
   vec2 uv = uvcoordsvar.st;
+
+  float depth = texture(depth_tx, uv).r;
+  if (depth == 1.0) {
+    /* Skip the background. */
+    discard;
+    return;
+  }
+
   /* Normal and Incident vector are in view-space. Lighting is evaluated in view-space. */
   vec3 V = get_view_vector_from_screen_uv(uv);
   vec3 N = workbench_normal_decode(texture(normal_tx, uv));
