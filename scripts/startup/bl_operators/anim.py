@@ -276,10 +276,10 @@ class NLA_OT_bake(Operator):
             do_constraint_clear=self.clear_constraints,
             do_parents_clear=self.clear_parents,
             do_clean=self.clean_curves,
-            do_location = 'LOCATION' in self.channel_types,
-            do_rotation = 'ROTATION' in self.channel_types,
-            do_scale = 'SCALE' in self.channel_types,
-            do_bbone = 'BBONE' in self.channel_types,
+            do_location='LOCATION' in self.channel_types,
+            do_rotation='ROTATION' in self.channel_types,
+            do_scale='SCALE' in self.channel_types,
+            do_bbone='BBONE' in self.channel_types,
         )
 
         if bake_options.do_pose and self.only_selected:
@@ -503,7 +503,7 @@ class ARMATURE_OT_sync_bone_color_to_selected(Operator):
         num_pose_color_overrides = 0
         for index, bone_dest in enumerate(bones_dest):
             bone_dest.color.palette = bone_source.color.palette
-            for custom_field in ('normal', 'select', 'active'):
+            for custom_field in ("normal", "select", "active"):
                 color = getattr(bone_source.color.custom, custom_field)
                 setattr(bone_dest.color.custom, custom_field, color)
 
