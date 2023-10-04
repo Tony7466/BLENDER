@@ -49,7 +49,9 @@ static void node_declare_dynamic(const bNodeTree &tree,
         b.add_input<decl::Geometry>("Geometry");
         b.add_input<decl::Bool>("Selection").supports_field().default_value(true).hide_value(true);
         b.add_output<decl::Int>("Index");
-        b.add_output<decl::Geometry>("Element");
+        if (output_storage.domain != ATTR_DOMAIN_CORNER) {
+          b.add_output<decl::Geometry>("Element");
+        }
         break;
       }
       case GEO_NODE_FOR_EACH_MODE_INSTANCE: {
@@ -127,11 +129,17 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   if (output_node == nullptr) {
     return;
   }
+  const auto &output_storage = *static_cast<const NodeGeometryForEachOutput *>(
+      output_node->storage);
   PointerRNA output_node_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Node, output_node);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, &output_node_ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
+  uiLayout *col = uiLayoutColumn(layout, false);
+  uiItemR(col, &output_node_ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
+  if (output_storage.mode == GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT) {
+    uiItemR(col, &output_node_ptr, "domain", UI_ITEM_NONE, "Domain", ICON_NONE);
+  }
 }
 
 static void node_register()

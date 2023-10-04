@@ -1879,7 +1879,9 @@ typedef struct NodeGeometryForEachOutput {
 
   /** #GeometryNodeForEachMode. */
   uint8_t mode;
-  char _pad2[3];
+  /** #eAttrDomain. */
+  uint8_t domain;
+  char _pad2[2];
 
 #ifdef __cplusplus
   blender::Span<NodeForEachInputItem> input_items_span() const

@@ -9050,6 +9050,11 @@ static void def_geo_foreach_output(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, NC_NODE, "rna_ForEachOutputNode_mode_update");
 
+  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_ui_text(prop, "Domain", "");
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+
   prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "input_items", "input_items_num");
   RNA_def_property_struct_type(prop, "ForEachInputItem");
