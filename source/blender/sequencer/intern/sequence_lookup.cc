@@ -32,7 +32,7 @@ static ThreadMutex lookup_lock = BLI_MUTEX_INITIALIZER;
 struct SequenceLookup {
   GHash *seq_by_name;
   GHash *meta_by_seq;
-  blender::Map<const Sequence *, blender::VectorSet<Sequence *> *> *effects_by_seq;
+  blender::Map<const Sequence *, blender::VectorSet<Sequence *> *> effects_by_seq;
   eSequenceLookupTag tag;
 };
 
@@ -40,7 +40,6 @@ static void seq_sequence_lookup_init(SequenceLookup *lookup)
 {
   lookup->seq_by_name = BLI_ghash_str_new(__func__);
   lookup->meta_by_seq = BLI_ghash_ptr_new(__func__);
-  lookup->effects_by_seq = new blender::Map<const Sequence *, blender::VectorSet<Sequence *> *>;
   lookup->tag |= SEQ_LOOKUP_TAG_INVALID;
 }
 
@@ -52,11 +51,11 @@ static void seq_sequence_lookup_append_effect(const Sequence *input,
     return;
   }
 
-  blender::VectorSet<Sequence *> *effects = lookup->effects_by_seq->lookup_default(input, nullptr);
+  blender::VectorSet<Sequence *> *effects = lookup->effects_by_seq.lookup_default(input, nullptr);
 
   if (effects == nullptr) {
     effects = new blender::VectorSet<Sequence *>;
-    lookup->effects_by_seq->add(input, effects);
+    lookup->effects_by_seq.add(input, effects);
   }
 
   effects->add(effect);
@@ -179,7 +178,7 @@ blender::Span<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
   BLI_mutex_lock(&lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
-  blender::VectorSet<Sequence *> *effects = lookup->effects_by_seq->lookup_default(key, nullptr);
+  blender::VectorSet<Sequence *> *effects = lookup->effects_by_seq.lookup_default(key, nullptr);
 
   if (effects == nullptr) {
     BLI_mutex_unlock(&lookup_lock);
