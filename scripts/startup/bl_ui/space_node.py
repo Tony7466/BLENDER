@@ -1198,25 +1198,25 @@ class NODE_PT_foreach_zone_items(Panel):
             output_node,
             "input_active_index")
 
-        # ops_col = split.column()
+        ops_col = split.column()
 
-        # add_remove_col = ops_col.column(align=True)
-        # add_remove_col.operator("node.repeat_zone_item_add", icon='ADD', text="")
-        # add_remove_col.operator("node.repeat_zone_item_remove", icon='REMOVE', text="")
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.foreach_zone_input_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.foreach_zone_input_item_remove", icon='REMOVE', text="")
 
-        # ops_col.separator()
+        ops_col.separator()
 
-        # up_down_col = ops_col.column(align=True)
-        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_UP', text="")
-        # props.direction = 'UP'
-        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_DOWN', text="")
-        # props.direction = 'DOWN'
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.foreach_zone_input_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.foreach_zone_input_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
 
-        # active_item = output_node.active_item
-        # if active_item is not None:
-        #     layout.use_property_split = True
-        #     layout.use_property_decorate = False
-        #     layout.prop(active_item, "socket_type")
+        active_item = output_node.input_active_item
+        if active_item is not None:
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+            layout.prop(active_item, "socket_type")
 
     def draw_output_items(self, layout, output_node):
         split = layout.row()
@@ -1228,25 +1228,25 @@ class NODE_PT_foreach_zone_items(Panel):
             output_node,
             "output_active_index")
 
-        # ops_col = split.column()
+        ops_col = split.column()
 
-        # add_remove_col = ops_col.column(align=True)
-        # add_remove_col.operator("node.repeat_zone_item_add", icon='ADD', text="")
-        # add_remove_col.operator("node.repeat_zone_item_remove", icon='REMOVE', text="")
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.foreach_zone_output_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.foreach_zone_output_item_remove", icon='REMOVE', text="")
 
-        # ops_col.separator()
+        ops_col.separator()
 
-        # up_down_col = ops_col.column(align=True)
-        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_UP', text="")
-        # props.direction = 'UP'
-        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_DOWN', text="")
-        # props.direction = 'DOWN'
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.foreach_zone_output_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.foreach_zone_output_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
 
-        # active_item = output_node.active_item
-        # if active_item is not None:
-        #     layout.use_property_split = True
-        #     layout.use_property_decorate = False
-        #     layout.prop(active_item, "socket_type")
+        active_item = output_node.output_active_item
+        if active_item is not None:
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+            layout.prop(active_item, "socket_type")
 
 
 

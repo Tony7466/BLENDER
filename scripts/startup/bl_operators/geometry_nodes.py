@@ -457,6 +457,61 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, ZoneMoveItemOperator, Opera
     bl_options = {'REGISTER', 'UNDO'}
 
 
+class ForEachZoneOperator(ZoneOperator):
+    input_node_type = 'GeometryNodeForEachInput'
+    output_node_type = 'GeometryNodeForEachOutput'
+
+
+class ForEachInputOperator(ForEachZoneOperator):
+    items_name = "input_items"
+    active_index_name = "input_active_index"
+
+
+class ForEachInputItemAddOperator(ForEachInputOperator, ZoneItemAddOperator, Operator):
+    """Add an item to the for-each input node"""
+    bl_idname = "node.foreach_zone_input_item_add"
+    bl_label = "Add For-Each Input"
+    bl_options = {'REGISTER', 'UNDO'}
+
+class ForEachInputItemRemoveOperator(ForEachInputOperator, ZoneItemRemoveOperator, Operator):
+    """Remove an item from the for-each input node"""
+    bl_idname = "node.foreach_zone_input_item_remove"
+    bl_label = "Remove For-Each Input"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class ForEachInputItemMoveOperator(ForEachInputOperator, ZoneMoveItemOperator, Operator):
+    """Move an item up or down in the list"""
+    bl_idname = "node.foreach_zone_input_item_move"
+    bl_label = "Move For-Each Input"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class ForEachOutputOperator(ForEachZoneOperator):
+    items_name = "output_items"
+    active_index_name = "output_active_index"
+
+
+class ForEachOutputItemAddOperator(ForEachOutputOperator, ZoneItemAddOperator, Operator):
+    """Add an item to the for-each output node"""
+    bl_idname = "node.foreach_zone_output_item_add"
+    bl_label = "Add For-Each Output"
+    bl_options = {'REGISTER', 'UNDO'}
+
+class ForEachOutputItemRemoveOperator(ForEachOutputOperator, ZoneItemRemoveOperator, Operator):
+    """Remove an item from the for-each output node"""
+    bl_idname = "node.foreach_zone_output_item_remove"
+    bl_label = "Remove For-Each Output"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class ForEachOutputItemMoveOperator(ForEachOutputOperator, ZoneMoveItemOperator, Operator):
+    """Move an item up or down in the list"""
+    bl_idname = "node.foreach_zone_output_item_move"
+    bl_label = "Move For-Each Output"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
@@ -468,4 +523,10 @@ classes = (
     RepeatZoneItemAddOperator,
     RepeatZoneItemRemoveOperator,
     RepeatZoneItemMoveOperator,
+    ForEachInputItemAddOperator,
+    ForEachInputItemRemoveOperator,
+    ForEachInputItemMoveOperator,
+    ForEachOutputItemAddOperator,
+    ForEachOutputItemRemoveOperator,
+    ForEachOutputItemMoveOperator,
 )
