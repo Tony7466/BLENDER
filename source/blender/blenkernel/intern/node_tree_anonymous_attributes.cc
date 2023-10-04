@@ -19,9 +19,9 @@ namespace blender::bke::anonymous_attribute_inferencing {
 namespace aal = nodes::aal;
 using nodes::NodeDeclaration;
 
-static bool is_possible_field_socket(const eNodeSocketDatatype type)
+bool is_possible_field_socket(const eNodeSocketDatatype type)
 {
-  return ELEM(type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT);
+  return ELEM(type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION);
 }
 
 static bool socket_is_field(const bNodeSocket &socket)
