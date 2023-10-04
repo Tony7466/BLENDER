@@ -237,11 +237,9 @@ struct ForEachOutputItemsAccessor {
     auto *storage = static_cast<NodeGeometryForEachOutput *>(node.storage);
     switch (GeometryNodeForEachMode(storage->mode)) {
       case GEO_NODE_FOR_EACH_MODE_INDEX:
-      case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT: {
-        return socket_type == SOCK_GEOMETRY || socket_type_supports_fields(socket_type);
-      }
+      case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT:
       case GEO_NODE_FOR_EACH_MODE_INSTANCE: {
-        return false;
+        return socket_type == SOCK_GEOMETRY || socket_type_supports_fields(socket_type);
       }
     }
     return false;

@@ -68,6 +68,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryForEachOutput *data = MEM_cnew<NodeGeometryForEachOutput>(__func__);
 
+  data->output_items = MEM_cnew_array<NodeForEachOutputItem>(1, __func__);
+  data->output_items_num = 1;
+
+  NodeForEachOutputItem &item = data->output_items[0];
+  item.name = BLI_strdup(DATA_("Geometry"));
+  item.socket_type = SOCK_GEOMETRY;
+  item.identifier = data->output_next_identifier++;
+
   node->storage = data;
 }
 
