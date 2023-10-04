@@ -28,11 +28,12 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   for (const int i : IndexRange(storage.output_items_num)) {
     const NodeForEachOutputItem &item = storage.output_items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const std::string identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
     {
       SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
       BLI_assert(decl);
       decl->name = StringRef(item.name);
-      decl->identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
+      decl->identifier = identifier;
       decl->in_out = SOCK_IN;
       if (socket_type_supports_fields(socket_type)) {
         decl->input_field_type = InputSocketFieldType::IsSupported;
@@ -44,7 +45,7 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
       SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
       BLI_assert(decl);
       decl->name = StringRef(item.name);
-      decl->identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
+      decl->identifier = identifier;
       decl->in_out = SOCK_OUT;
       if (socket_type_supports_fields(socket_type)) {
         decl->output_field_dependency = OutputFieldDependency::ForFieldSource();
