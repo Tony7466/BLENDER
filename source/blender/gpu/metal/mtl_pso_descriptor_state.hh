@@ -119,7 +119,7 @@ struct MTLVertexDescriptor {
   /* WORKAROUND: SSBO Vertex-fetch attributes -- These follow the same structure
    * but have slightly different binding rules, passed in via uniform
    * push constant data block. */
-  bool uses_ssbo_vertex_fetch;
+  bool get_uses_ssbo_vertex_fetch;
   MTLSSBOAttribute ssbo_attributes[GPU_VERT_ATTR_MAX_LEN];
   int num_ssbo_attributes;
 
@@ -295,7 +295,7 @@ struct MTLRenderPipelineStateDescriptor {
     for (int i = 0; i < GPU_VERT_ATTR_MAX_LEN; i++) {
       vertex_descriptor.attributes[i].reset();
     }
-    vertex_descriptor.uses_ssbo_vertex_fetch = false;
+    vertex_descriptor.get_uses_ssbo_vertex_fetch = false;
     vertex_descriptor.num_ssbo_attributes = 0;
   }
 };

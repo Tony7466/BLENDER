@@ -117,7 +117,7 @@ void MTLImmediate::end()
     for (int i = 0; i < desc.vertex_descriptor.total_attributes; i++) {
       desc.vertex_descriptor.attributes[i].format = MTLVertexFormatInvalid;
     }
-    desc.vertex_descriptor.uses_ssbo_vertex_fetch =
+    desc.vertex_descriptor.get_uses_ssbo_vertex_fetch =
         active_mtl_shader->get_uses_ssbo_vertex_fetch();
     desc.vertex_descriptor.num_ssbo_attributes = 0;
 

@@ -652,7 +652,7 @@ void MTLBatch::prepare_vertex_descriptor_and_bindings(MTLVertBuf **buffers, int 
 
     /* Use cached ssbo attribute binding data. */
     if (active_shader_->get_uses_ssbo_vertex_fetch()) {
-      BLI_assert(desc.vertex_descriptor.uses_ssbo_vertex_fetch);
+      BLI_assert(desc.vertex_descriptor.get_uses_ssbo_vertex_fetch);
       for (int attr_id = 0; attr_id < desc.vertex_descriptor.num_ssbo_attributes; attr_id++) {
         active_shader_->ssbo_vertex_fetch_bind_attribute(
             desc.vertex_descriptor.ssbo_attributes[attr_id]);
@@ -707,7 +707,8 @@ void MTLBatch::prepare_vertex_descriptor_and_bindings(MTLVertBuf **buffers, int 
     }
 
     /* Add to VertexDescriptor cache */
-    desc.vertex_descriptor.uses_ssbo_vertex_fetch = active_shader_->get_uses_ssbo_vertex_fetch();
+    desc.vertex_descriptor.get_uses_ssbo_vertex_fetch =
+        active_shader_->get_uses_ssbo_vertex_fetch();
     pair.attr_mask = attr_mask;
     pair.vertex_descriptor = desc.vertex_descriptor;
     pair.num_buffers = num_buffers;
@@ -903,10 +904,30 @@ void MTLBatch::draw_advanced_indirect(GPUStorageBuf *indirect_buf, intptr_t offs
     return;
   }
 
-  /* Render using SSBO Vertex Fetch not supported by Draw Indirect.
-   * NOTE: Add support? */
-  if (active_shader_->get_uses_ssbo_vertex_fetch()) {
-    printf("Draw indirect for SSBO vertex fetch disabled\n");
+  /* Fetch indirect buffer Metal handle. */
+  MTLStorageBuf *mtlssbo = static_cast<MTLStorageBuf *>(unwrap(indirect_buf));
+  id<MTLBuffer> mtl_indirect_buf = mtlssbo->get_metal_buffer();
+  BLI_assert(mtl_indirect_buf != nil);
+  if (mtl_indirect_buf == nil) {
+    MTL_LOG_WARNING("Metal Indirect Draw Storage Buffer is nil.");
+
+    /* End of draw. */
+    this->unbind(rec);
+    return;
+  }
+
+  /* Indirect SSBO vertex fetch calls require the draw command in the buffer to be mutated at
+   * command encoding time. This takes place within the draw manager when a shader supporting
+   * SSBO Vertex-Fetch is used. */
+  if (active_shader_->get_uses_ssbo_vertex_fetch())
+  { /* Set depth stencil state (requires knowledge of primitive type). */
+    ctx->ensure_depth_stencil_state(active_shader_->get_ssbo_vertex_fetch_output_prim_type());
+
+    /* Issue draw call. */
+    [rec drawPrimitives:active_shader_->get_ssbo_vertex_fetch_output_prim_type()
+              indirectBuffer:mtl_indirect_buf
+        indirectBufferOffset:offset];
+    ctx->main_command_buffer.register_draw_counters(1);
 
     /* End of draw. */
     this->unbind(rec);
@@ -923,18 +944,6 @@ void MTLBatch::draw_advanced_indirect(GPUStorageBuf *indirect_buf, intptr_t offs
 
   if (mtl_needs_topology_emulation(this->prim_type)) {
     BLI_assert_msg(false, "Metal Topology emulation unsupported for draw indirect.\n");
-
-    /* End of draw. */
-    this->unbind(rec);
-    return;
-  }
-
-  /* Fetch indirect buffer Metal handle. */
-  MTLStorageBuf *mtlssbo = static_cast<MTLStorageBuf *>(unwrap(indirect_buf));
-  id<MTLBuffer> mtl_indirect_buf = mtlssbo->get_metal_buffer();
-  BLI_assert(mtl_indirect_buf != nil);
-  if (mtl_indirect_buf == nil) {
-    MTL_LOG_WARNING("Metal Indirect Draw Storage Buffer is nil.");
 
     /* End of draw. */
     this->unbind(rec);
