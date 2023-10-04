@@ -103,6 +103,9 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_in
 {
   BLI_assert(gizmo_node_input.is_input());
   Vector<GizmoNodeSource> gizmo_node_sources;
+  if (!gizmo_node_input.is_directly_linked()) {
+    gizmo_node_sources.append({GizmoSource(InputSocketGizmoSource{&gizmo_node_input})});
+  }
   for (const bNodeLink *link : gizmo_node_input.directly_linked_links()) {
     if (link->is_muted()) {
       continue;
