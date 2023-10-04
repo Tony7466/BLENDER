@@ -770,10 +770,6 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
     Material *new_ma = (Material *)BKE_id_copy_ex(
         bmain, &ma->id, nullptr, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS);
     ma = new_ma;
-
-    if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
-      id_fake_user_set(&(ma->id));
-    }
   }
   else {
     const char *name = DATA_("Material");
@@ -785,6 +781,10 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
     }
     ED_node_shader_default(C, &ma->id);
     ma->use_nodes = true;
+  }
+
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(ma->id));
   }
 
   if (prop) {
@@ -846,6 +846,10 @@ static int new_texture_exec(bContext *C, wmOperator * /*op*/)
     tex = BKE_texture_add(bmain, DATA_("Texture"));
   }
 
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(tex->id));
+  }
+
   /* hook into UI */
   UI_context_active_but_prop_get_templateID(C, &ptr, &prop);
 
@@ -901,6 +905,10 @@ static int new_world_exec(bContext *C, wmOperator * /*op*/)
     wo = BKE_world_add(bmain, CTX_DATA_(BLT_I18NCONTEXT_ID_WORLD, "World"));
     ED_node_shader_default(C, &wo->id);
     wo->use_nodes = true;
+  }
+
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(wo->id));
   }
 
   /* hook into UI */
@@ -2263,6 +2271,11 @@ static int freestyle_linestyle_new_exec(bContext *C, wmOperator *op)
   else {
     lineset->linestyle = BKE_linestyle_new(bmain, DATA_("LineStyle"));
   }
+
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(lineset->linestyle->id));
+  }
+
   DEG_id_tag_update(&lineset->linestyle->id, 0);
   WM_event_add_notifier(C, NC_LINESTYLE, lineset->linestyle);
 

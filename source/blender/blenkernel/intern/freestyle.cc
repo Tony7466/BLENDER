@@ -10,6 +10,7 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_freestyle_types.h"
+#include "DNA_userdef_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
@@ -169,6 +170,11 @@ FreestyleLineSet *BKE_freestyle_lineset_add(Main *bmain, FreestyleConfig *config
   BKE_freestyle_lineset_set_active_index(config, lineset_index);
 
   lineset->linestyle = BKE_linestyle_new(bmain, DATA_("LineStyle"));
+
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(lineset->linestyle->id));
+  }
+
   lineset->flags |= FREESTYLE_LINESET_ENABLED;
   lineset->selection = FREESTYLE_SEL_VISIBILITY | FREESTYLE_SEL_EDGE_TYPES |
                        FREESTYLE_SEL_IMAGE_BORDER;
