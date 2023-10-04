@@ -5678,9 +5678,9 @@ def km_edit_mesh(params):
          {"properties": [("use_occlude_geometry", False), ("only_selected", True)]}),
         ("object.vertex_parent_set", {"type": 'P', "value": 'PRESS', "ctrl": True}, None),
         # Menus.
-        op_menu("VIEW3D_MT_edit_mesh_faces", {"type": 'F', "value": 'PRESS', "ctrl": True}),
-        op_menu("VIEW3D_MT_edit_mesh_edges", {"type": 'E', "value": 'PRESS', "ctrl": True}),
-        op_menu("VIEW3D_MT_edit_mesh_vertices", {"type": 'V', "value": 'PRESS', "ctrl": True}),
+        op_menu("VIEW3D_MT_edit_mesh_fill_connect", {"type": 'F', "value": 'PRESS', "ctrl": True}),
+        op_menu("VIEW3D_MT_edit_mesh_attributes", {"type": 'E', "value": 'PRESS', "ctrl": True}),
+        op_menu("VIEW3D_MT_edit_mesh_cut_slide", {"type": 'V', "value": 'PRESS', "ctrl": True}),
         op_menu("VIEW3D_MT_hook", {"type": 'H', "value": 'PRESS', "ctrl": True}),
         op_menu("VIEW3D_MT_uv_map", {"type": 'U', "value": 'PRESS'}),
         op_menu("VIEW3D_MT_vertex_group", {"type": 'G', "value": 'PRESS', "ctrl": True}),

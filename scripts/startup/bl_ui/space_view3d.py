@@ -4246,8 +4246,6 @@ class VIEW3D_MT_edit_mesh(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        with_bullet = bpy.app.build_options.bullet
-
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
         layout.menu("VIEW3D_MT_snap")
@@ -4256,8 +4254,6 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.operator("mesh.duplicate_move", text="Duplicate")
         layout.menu("VIEW3D_MT_edit_mesh_extrude")
-        layout.operator("mesh.inset", text="Inset Faces")
-        layout.operator("mesh.poke", text="Poke Faces")
         layout.menu("VIEW3D_MT_edit_mesh_bevel")
         layout.menu("VIEW3D_MT_edit_mesh_fill_connect")
 
@@ -4265,15 +4261,12 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.menu("VIEW3D_MT_edit_mesh_merge")
         layout.menu("VIEW3D_MT_edit_mesh_cut_slide")
-        layout.menu("VIEW3D_MT_edit_mesh_rip")
         layout.menu("VIEW3D_MT_edit_mesh_split")
         layout.operator_menu_enum("mesh.separate", "type")
 
         layout.menu("VIEW3D_MT_edit_mesh_subdivide")
         layout.menu("VIEW3D_MT_edit_mesh_generate")
         layout.menu("VIEW3D_MT_edit_mesh_convert")
-        if with_bullet:
-            layout.operator("mesh.convex_hull")
 
         layout.separator()
 
@@ -4612,6 +4605,7 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
 
         layout.operator("mesh.extrude_repeat")
         layout.operator("mesh.dupli_extrude_cursor").rotate_source = True
+        layout.operator("mesh.inset", text="Inset Faces")
         layout.operator("mesh.spin").angle = pi * 2
         layout.operator("mesh.screw")
         layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Extrude")
@@ -4623,7 +4617,7 @@ class VIEW3D_MT_edit_mesh_bevel(Menu):
         layout = self.layout
 
         layout.operator("mesh.bevel").affect = 'VERTICES'
-        layout.operator("mesh.bisect").affect = 'EDGES'
+        layout.operator("mesh.bevel").affect = 'EDGES'
 
 
 class VIEW3D_MT_edit_mesh_fill_connect(Menu):
@@ -4663,18 +4657,9 @@ class VIEW3D_MT_edit_mesh_cut_slide(Menu):
         layout.operator("mesh.intersect")
         layout.operator("mesh.intersect_boolean")
 
+        layout.separator()
 
-class VIEW3D_MT_edit_mesh_rip(Menu):
-    bl_label = "Rip"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        props = layout.operator("mesh.rip_move", text="Rip Vertices")
-        props.MESH_OT_rip.use_fill = False
-        props = layout.operator("mesh.rip_move", text="Rip Vertices and Fill")
-        props.MESH_OT_rip.use_fill = True
-        layout.operator("mesh.rip_edge_move", text="Rip Vertices and Extend")
+        layout.operator("mesh.poke", text="Poke Faces")
 
 
 class VIEW3D_MT_edit_mesh_subdivide(Menu):
@@ -4694,8 +4679,12 @@ class VIEW3D_MT_edit_mesh_generate(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        with_bullet = bpy.app.build_options.bullet
+
         layout.operator("mesh.solidify", text="Solidify Faces")
         layout.operator("mesh.wireframe")
+        if with_bullet:
+            layout.operator("mesh.convex_hull")
 
 
 class VIEW3D_MT_edit_mesh_convert(Menu):
@@ -4945,7 +4934,7 @@ class VIEW3D_MT_edit_mesh_merge(Menu):
 
 
 class VIEW3D_MT_edit_mesh_split(Menu):
-    bl_label = "Split"
+    bl_label = "Split/Rip"
 
     def draw(self, _context):
         layout = self.layout
@@ -4956,6 +4945,14 @@ class VIEW3D_MT_edit_mesh_split(Menu):
 
         layout.operator_enum("mesh.edge_split", "type")
         layout.operator("mesh.face_split_by_edges")
+
+        layout.separator()
+
+        props = layout.operator("mesh.rip_move", text="Rip Vertices")
+        props.MESH_OT_rip.use_fill = False
+        props = layout.operator("mesh.rip_move", text="Rip Vertices and Fill")
+        props.MESH_OT_rip.use_fill = True
+        layout.operator("mesh.rip_edge_move", text="Rip Vertices and Extend")
 
         layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Split")
 
@@ -8896,7 +8893,6 @@ classes = (
     VIEW3D_MT_edit_mesh_bevel,
     VIEW3D_MT_edit_mesh_fill_connect,
     VIEW3D_MT_edit_mesh_cut_slide,
-    VIEW3D_MT_edit_mesh_rip,
     VIEW3D_MT_edit_mesh_subdivide,
     VIEW3D_MT_edit_mesh_generate,
     VIEW3D_MT_edit_mesh_convert,
