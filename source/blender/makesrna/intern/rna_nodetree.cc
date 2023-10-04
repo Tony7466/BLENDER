@@ -8816,7 +8816,7 @@ static void rna_def_node_item_array_new_with_socket_and_name(StructRNA *srna,
   SNPRINTF(name, "rna_Node_ItemArray_new_with_socket_and_name<%s>", accessor_name);
 
   func = RNA_def_function(srna, "new", allocator.copy_string(name).c_str());
-  RNA_def_function_ui_description(func, "Add a item at the end");
+  RNA_def_function_ui_description(func, "Add an item at the end");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "socket_type",

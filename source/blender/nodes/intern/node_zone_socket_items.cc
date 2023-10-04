@@ -10,6 +10,8 @@
 
 namespace blender::nodes {
 
+/* Defined here to avoid including the relevant headers in the header. */
+
 StructRNA *SimulationItemsAccessor::item_srna = &RNA_SimulationStateItem;
 int SimulationItemsAccessor::node_type = GEO_NODE_SIMULATION_OUTPUT;
 

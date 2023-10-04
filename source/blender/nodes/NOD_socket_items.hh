@@ -211,7 +211,7 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
 }
 
 /**
- * Check if the links connects to the `extend_socket`. If yes, create a new item for the linked
+ * Check if the link connects to the `extend_socket`. If yes, create a new item for the linked
  * socket, update the node and then change the link to point to the new socket.
  * \return False if the link should be removed.
  */
