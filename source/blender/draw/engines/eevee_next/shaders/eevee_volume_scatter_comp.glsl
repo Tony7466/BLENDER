@@ -26,7 +26,7 @@ vec3 volume_scatter_light_eval(
 {
   LightData light = light_buf[l_idx];
 
-  if (light.volume_power == 0.0) {
+  if (light.power[LIGHT_VOLUME] == 0.0) {
     return vec3(0);
   }
 

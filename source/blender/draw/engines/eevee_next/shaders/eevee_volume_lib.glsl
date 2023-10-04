@@ -77,7 +77,7 @@ vec3 volume_light(LightData ld, vec3 L, float l_dist)
     float light_clamp = uniform_buf.volumes.light_clamp;
     if (light_clamp != 0.0) {
       /* 0.0 light clamp means it's disabled. */
-      float max_power = max_v3(ld.color) * ld.volume_power;
+      float max_power = max_v3(ld.color) * ld.power[LIGHT_VOLUME];
       if (max_power > 0.0) {
         /* The limit of the power attenuation function when the distance to the light goes to 0 is
          * `2 / r^2` where r is the light radius. We need to find the right radius that emits at
@@ -105,7 +105,7 @@ vec3 volume_light(LightData ld, vec3 L, float l_dist)
       power *= saturate(dot(ld._back, L));
     }
   }
-  return ld.color * ld.volume_power * power;
+  return ld.color * ld.power[LIGHT_VOLUME] * power;
 }
 
 #define VOLUMETRIC_SHADOW_MAX_STEP 128.0

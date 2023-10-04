@@ -26,24 +26,26 @@ vec4 closure_to_rgba(Closure cl)
   vec3 refraction_light = vec3(0.0);
   float shadow = 1.0;
 
-  float vP_z = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
+  float vPz = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
+  vec3 V = cameraVec(g_data.P);
 
-  light_eval(g_diffuse_data,
-             g_reflection_data,
-             g_data.P,
-             g_data.Ng,
-             cameraVec(g_data.P),
-             vP_z,
-             0.01 /* TODO(fclem) thickness. */,
-             diffuse_light,
-             reflection_light,
-             shadow);
+  ClosureLight cl_diff;
+  cl_diff.N = g_diffuse_data.N;
+  cl_diff.ltc_mat = LTC_LAMBERT_MAT;
+  cl_diff.type = LIGHT_DIFFUSE;
+
+  ClosureLight cl_refl;
+  cl_refl.N = g_reflection_data.N;
+  cl_refl.ltc_mat = LTC_GGX_MAT(dot(g_reflection_data.N, V), g_reflection_data.roughness);
+  cl_refl.type = LIGHT_SPECULAR;
+
+  float thickness = 0.01; /* TODO(fclem) thickness. */
+  light_eval(cl_diff, cl_refl, g_data.P, g_data.Ng, V, vPz, thickness);
 
   vec4 out_color;
   out_color.rgb = g_emission;
-  out_color.rgb += g_diffuse_data.color * g_diffuse_data.weight * diffuse_light;
-  out_color.rgb += g_reflection_data.color * g_reflection_data.weight * reflection_light;
-  out_color.rgb += g_refraction_data.color * g_refraction_data.weight * refraction_light;
+  out_color.rgb += g_diffuse_data.color * g_diffuse_data.weight * cl_diff.light_shadowed;
+  out_color.rgb += g_reflection_data.color * g_reflection_data.weight * cl_refl.light_shadowed;
 
   out_color.a = saturate(1.0 - avg(g_transmittance));
 
@@ -71,23 +73,24 @@ void main()
 
   float thickness = nodetree_thickness();
 
-  vec3 diffuse_light = vec3(0.0);
-  vec3 reflection_light = vec3(0.0);
+  float vPz = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
+  vec3 V = cameraVec(g_data.P);
+
+  ClosureLight cl_diff;
+  cl_diff.N = g_diffuse_data.N;
+  cl_diff.ltc_mat = LTC_LAMBERT_MAT;
+  cl_diff.type = LIGHT_DIFFUSE;
+
+  ClosureLight cl_refl;
+  cl_refl.N = g_reflection_data.N;
+  cl_refl.ltc_mat = LTC_GGX_MAT(dot(g_reflection_data.N, V), g_reflection_data.roughness);
+  cl_refl.type = LIGHT_SPECULAR;
+
+  light_eval(cl_diff, cl_refl, g_data.P, g_data.Ng, V, vPz, thickness);
+
+  vec3 diffuse_light = cl_diff.light_shadowed;
+  vec3 reflection_light = cl_refl.light_shadowed;
   vec3 refraction_light = vec3(0.0);
-  float shadow = 1.0;
-
-  float vP_z = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
-
-  light_eval(g_diffuse_data,
-             g_reflection_data,
-             g_data.P,
-             g_data.Ng,
-             cameraVec(g_data.P),
-             vP_z,
-             thickness,
-             diffuse_light,
-             reflection_light,
-             shadow);
 
   g_diffuse_data.color *= g_diffuse_data.weight;
   g_reflection_data.color *= g_reflection_data.weight;

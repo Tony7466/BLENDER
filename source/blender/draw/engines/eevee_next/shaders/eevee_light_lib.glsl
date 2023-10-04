@@ -197,49 +197,15 @@ float light_diffuse(sampler2DArray utility_tx,
   }
 }
 
-float light_ltc(sampler2DArray utility_tx,
-                const bool is_directional,
-                LightData ld,
-                vec3 N,
-                vec3 V,
-                vec3 L,
-                float dist,
-                vec4 ltc_mat)
+float light_ltc(
+    sampler2DArray utility_tx, LightData ld, vec3 N, vec3 V, vec3 L, float dist, vec4 ltc_mat)
 {
   if (ld.type == LIGHT_POINT && dist < ld._radius) {
     /* Inside the sphere light, integrate over the hemisphere. */
     return 1.0;
   }
-  else if (is_directional || ld.type != LIGHT_RECT) {
-    vec3 Px = ld._right;
-    vec3 Py = ld._up;
 
-    if (is_directional || !is_area_light(ld.type)) {
-      make_orthonormal_basis(L, Px, Py);
-    }
-
-    vec3 points[3];
-    if (ld.type == LIGHT_POINT) {
-      /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
-       * half-angle spanned by a disk light with the same radius. */
-      float radius = light_sphere_disk_radius(ld._radius, dist);
-
-      points[0] = Px * -radius + Py * -radius;
-      points[1] = Px * radius + Py * -radius;
-    }
-    else {
-      points[0] = Px * -ld._area_size_x + Py * -ld._area_size_y;
-      points[1] = Px * ld._area_size_x + Py * -ld._area_size_y;
-    }
-    points[2] = -points[0];
-
-    points[0] += L * dist;
-    points[1] += L * dist;
-    points[2] += L * dist;
-
-    return ltc_evaluate_disk(utility_tx, N, V, ltc_matrix(ltc_mat), points);
-  }
-  else {
+  if (ld.type == LIGHT_RECT) {
     vec3 corners[4];
     corners[0] = ld._right * ld._area_size_x + ld._up * -ld._area_size_y;
     corners[1] = ld._right * ld._area_size_x + ld._up * ld._area_size_y;
@@ -254,6 +220,31 @@ float light_ltc(sampler2DArray utility_tx,
     ltc_transform_quad(N, V, ltc_matrix(ltc_mat), corners);
 
     return ltc_evaluate_quad(utility_tx, corners, vec3(0.0, 0.0, 1.0));
+  }
+  else {
+    vec3 Px = ld._right;
+    vec3 Py = ld._up;
+
+    if (!is_area_light(ld.type)) {
+      make_orthonormal_basis(L, Px, Py);
+    }
+
+    vec2 size = vec2(ld._area_size_x, ld._area_size_y);
+    if (ld.type == LIGHT_POINT) {
+      /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
+       * half-angle spanned by a disk light with the same radius. */
+      size = vec2(light_sphere_disk_radius(ld._radius, dist));
+    }
+    vec3 points[3];
+    points[0] = Px * -size.x + Py * -size.y;
+    points[1] = Px * size.x + Py * -size.y;
+    points[2] = -points[0];
+
+    points[0] += L * dist;
+    points[1] += L * dist;
+    points[2] += L * dist;
+
+    return ltc_evaluate_disk(utility_tx, N, V, ltc_matrix(ltc_mat), points);
   }
 }
 

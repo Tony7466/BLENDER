@@ -708,6 +708,13 @@ enum eLightType : uint32_t {
   LIGHT_ELLIPSE = 21u
 };
 
+enum LightingType : uint32_t {
+  LIGHT_DIFFUSE = 0u,
+  LIGHT_SPECULAR = 1u,
+  LIGHT_TRANSMIT = 2u,
+  LIGHT_VOLUME = 3u,
+};
+
 static inline bool is_area_light(eLightType type)
 {
   return type >= LIGHT_RECT;
@@ -760,11 +767,8 @@ struct LightData {
   float spot_tan;
   /** Reuse for directional LOD bias. */
 #define _clipmap_lod_bias spot_tan
-  /** Power depending on shader type. */
-  float diffuse_power;
-  float specular_power;
-  float volume_power;
-  float transmit_power;
+  /** Power depending on shader type. Referenced by LightingType. */
+  float4 power;
 
   /** --- Shadow Data --- */
   /** Near clip distances. Float stored as int for atomic operations. */
