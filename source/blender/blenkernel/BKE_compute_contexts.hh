@@ -44,6 +44,7 @@ class NodeGroupComputeContext : public ComputeContext {
   static constexpr const char *s_static_type = "NODE_GROUP";
 
   int32_t node_id_;
+  const bNodeTree *tree_ = nullptr;
 
 #ifdef DEBUG
   std::string debug_node_name_;

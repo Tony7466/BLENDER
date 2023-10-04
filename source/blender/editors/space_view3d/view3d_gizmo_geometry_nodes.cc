@@ -184,17 +184,24 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
     else if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
                  &gizmo_node_source.source))
     {
-      const StringRefNull input_identifier =
-          ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
-      IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                         input_identifier.c_str());
-      if (id_property == nullptr) {
+      if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
+        const StringRefNull input_identifier =
+            ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
+        IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                           input_identifier.c_str());
+        if (id_property == nullptr) {
+          continue;
+        }
+        value_path.owner = RNA_pointer_create(const_cast<ID *>(&object.id),
+                                              &RNA_NodesModifier,
+                                              const_cast<NodesModifierData *>(&nmd));
+        value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
+        value_path.index = gizmo_source->elem_index;
+      }
+      else if (dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context)) {
+        /* TODO. */
         continue;
       }
-      value_path.owner = RNA_pointer_create(
-          const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-      value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
-      value_path.index = gizmo_source->elem_index;
     }
     else {
       BLI_assert_unreachable();
