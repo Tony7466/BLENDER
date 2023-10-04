@@ -9010,7 +9010,26 @@ static void def_geo_foreach_output(StructRNA *srna)
 {
   PropertyRNA *prop;
 
+  static const EnumPropertyItem mode_items[] = {
+      {GEO_NODE_FOR_EACH_MODE_INDEX, "INDEX", 0, "Index", "Do something for each index"},
+      {GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT,
+       "GEOMETRY_ELEMENT",
+       0,
+       "Geometry Element",
+       "Do something for each element in a geometry on a specific domain"},
+      {GEO_NODE_FOR_EACH_MODE_INSTANCE,
+       "INSTANCE",
+       0,
+       "Instance",
+       "Do something for each unique top level instance"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   RNA_def_struct_sdna_from(srna, "NodeGeometryForEachOutput", "storage");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mode_items);
+  /* TODO: Handle update. */
 
   prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "input_items", "input_items_num");

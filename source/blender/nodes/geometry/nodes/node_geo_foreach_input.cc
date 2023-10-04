@@ -14,6 +14,9 @@
 #include "NOD_socket.hh"
 #include "NOD_zone_socket_items.hh"
 
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_foreach_input_cc {
@@ -91,6 +94,22 @@ static bool node_insert_link(bNodeTree *tree, bNode *node, bNodeLink *link)
       *tree, *node, *output_node, *link);
 }
 
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  bNodeTree &tree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode &input_node = *static_cast<bNode *>(ptr->data);
+  const NodeGeometryForEachInput &input_storage = node_storage(input_node);
+  bNode *output_node = tree.node_by_id(input_storage.output_node_id);
+  if (output_node == nullptr) {
+    return;
+  }
+  PointerRNA output_node_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Node, output_node);
+
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, &output_node_ptr, "mode", UI_ITEM_NONE, IFACE_("Iterate over"), ICON_NONE);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -99,6 +118,7 @@ static void node_register()
   ntype.declare_dynamic = node_declare_dynamic;
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons = node_layout;
   node_type_storage(
       &ntype, "NodeGeometryForEachInput", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);

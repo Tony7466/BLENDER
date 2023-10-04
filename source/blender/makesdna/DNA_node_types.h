@@ -1876,7 +1876,10 @@ typedef struct NodeGeometryForEachOutput {
   int output_items_num;
   int output_active_index;
   int output_next_identifier;
-  char _pad2[4];
+
+  /** #GeometryNodeForEachMode. */
+  uint8_t mode;
+  char _pad2[3];
 
 #ifdef __cplusplus
   blender::Span<NodeForEachInputItem> input_items_span() const
@@ -2804,3 +2807,9 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum GeometryNodeForEachMode {
+  GEO_NODE_FOR_EACH_MODE_INDEX = 0,
+  GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT = 1,
+  GEO_NODE_FOR_EACH_MODE_INSTANCE = 2,
+} GeometryNodeForEachMode;
