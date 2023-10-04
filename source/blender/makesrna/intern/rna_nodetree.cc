@@ -1863,47 +1863,6 @@ static const EnumPropertyItem *rna_FunctionNodeHashValue_type_itemf(bContext * /
   return itemf_function_check(rna_enum_attribute_type_items, hash_value_type_supported);
 }
 
-static bool accumulate_field_type_supported(const EnumPropertyItem *item)
-{
-  return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
-}
-
-static const EnumPropertyItem *rna_GeoNodeAccumulateField_type_itemf(bContext * /*C*/,
-                                                                     PointerRNA * /*ptr*/,
-                                                                     PropertyRNA * /*prop*/,
-                                                                     bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(rna_enum_attribute_type_items, accumulate_field_type_supported);
-}
-
-static void rna_GeometryNodeCompare_data_type_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeFunctionCompare *node_storage = static_cast<NodeFunctionCompare *>(node->storage);
-
-  if (node_storage->data_type == SOCK_RGBA && !ELEM(node_storage->operation,
-                                                    NODE_COMPARE_EQUAL,
-                                                    NODE_COMPARE_NOT_EQUAL,
-                                                    NODE_COMPARE_COLOR_BRIGHTER,
-                                                    NODE_COMPARE_COLOR_DARKER))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-  else if (node_storage->data_type == SOCK_STRING &&
-           !ELEM(node_storage->operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-  else if (node_storage->data_type != SOCK_RGBA &&
-           ELEM(node_storage->operation, NODE_COMPARE_COLOR_BRIGHTER, NODE_COMPARE_COLOR_DARKER))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-
-  rna_Node_socket_update(bmain, scene, ptr);
-}
-
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value,
@@ -4364,19 +4323,6 @@ static void def_float_to_int(StructRNA *srna)
       prop, "Rounding Mode", "Method used to convert the float to an integer");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_hash_value(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeHashValue_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_INT32);
-  RNA_def_property_ui_text(prop, "Data Type", "Input data type");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
 static void def_vector_math(StructRNA *srna)

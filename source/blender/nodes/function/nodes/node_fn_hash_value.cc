@@ -8,12 +8,15 @@
 #include "BLI_math_quaternion.hh"
 #include "BLI_noise.hh"
 
-#include "UI_interface.hh"
-#include "UI_resources.hh"
+#include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_function_util.hh"
 
-#include "NOD_socket_search_link.hh"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_fn_hash_value_cc {
 
@@ -166,6 +169,30 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(
+      srna,
+      "data_type",
+      "Data Type",
+      "Type of data stored in attribute",
+      rna_enum_attribute_type_items,
+      NOD_inline_enum_accessors(custom1),
+      CD_PROP_INT32,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
+          return ELEM(item.value,
+                      CD_PROP_FLOAT,
+                      CD_PROP_FLOAT3,
+                      CD_PROP_STRING,
+                      CD_PROP_COLOR,
+                      CD_PROP_INT32,
+                      CD_PROP_QUATERNION);
+        });
+      });
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -178,6 +205,8 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
