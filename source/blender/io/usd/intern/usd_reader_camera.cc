@@ -70,17 +70,18 @@ void USDCameraReader::read_object_data(Main *bmain, const double motionSampleTim
   bcam->sensor_x = horAp.Get<float>() * tenth_unit_to_millimeters;
   bcam->sensor_y = verAp.Get<float>() * tenth_unit_to_millimeters;
 
-  bcam->sensor_fit = bcam->sensor_x >= bcam->sensor_y ? CAMERA_SENSOR_FIT_HOR : CAMERA_SENSOR_FIT_VERT;
+  bcam->sensor_fit = bcam->sensor_x >= bcam->sensor_y ? CAMERA_SENSOR_FIT_HOR :
+                                                        CAMERA_SENSOR_FIT_VERT;
 
   float sensor_size = bcam->sensor_x >= bcam->sensor_y ? bcam->sensor_x : bcam->sensor_y;
-  bcam->shiftx =  (horApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
-  bcam->shifty =  (verApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
+  bcam->shiftx = (horApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
+  bcam->shifty = (verApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
 
   bcam->type = (projectionVal.Get<pxr::TfToken>().GetString() == "perspective") ? CAM_PERSP :
                                                                                   CAM_ORTHO;
 
-  /* Calling UncheckedGet() to silence compiler warnings. */
-  bcam->clip_start = max_ff(1e-6f, clippingRangeVal.UncheckedGet<pxr::GfVec2f>()[0]); // see rna_camera.cc, "clip_start": RNA_def_property_range(prop, 1e-6f, FLT_MAX)
+  /* Call UncheckedGet() to silence compiler warnings.
+   * Clamp to 1e-6 matching range defined in RNA. */
   bcam->clip_end = clippingRangeVal.UncheckedGet<pxr::GfVec2f>()[1];
 
   bcam->dof.focus_distance = focalDistanceVal.Get<float>();

@@ -34,7 +34,8 @@ static void camera_sensor_size_for_render(const Camera *camera,
   float sizey = rd->ysch * rd->yasp;
 
   int sensor_fit = BKE_camera_sensor_fit(camera->sensor_fit, sizex, sizey);
-  float sensor_size = BKE_camera_sensor_size(camera->sensor_fit, camera->sensor_x, camera->sensor_y);
+  float sensor_size = BKE_camera_sensor_size(
+      camera->sensor_fit, camera->sensor_x, camera->sensor_y);
   *r_sensor = sensor_size;
 
   switch (sensor_fit) {
@@ -63,11 +64,14 @@ void USDCameraWriter::do_write(HierarchyContext &context)
 
   usd_camera.CreateProjectionAttr().Set(pxr::UsdGeomTokens->perspective);
 
-   /*
-    * tenth_unit_to_meters  = stage_meters_per_unit / 10
-    * tenth_unit_to_millimeters = 1000 * unit_to_tenth_unit
-    *                           = 100 * stage_meters_per_unit
-    */
+  /*
+   * For USD, these camera properties are in tenths of a world unit.
+   * https://graphics.pixar.com/usd/release/api/class_usd_geom_camera.html#UsdGeom_CameraUnits
+   *
+   * tenth_unit_to_meters  = stage_meters_per_unit / 10
+   * tenth_unit_to_millimeters = 1000 * unit_to_tenth_unit
+   *                           = 100 * stage_meters_per_unit
+   */
   const float tenth_unit_to_mm = 100.0f * scene->unit.scale_length;
 
   float sensor_size, aperture_x, aperture_y;
@@ -76,8 +80,10 @@ void USDCameraWriter::do_write(HierarchyContext &context)
   usd_camera.CreateFocalLengthAttr().Set(camera->lens / tenth_unit_to_mm, timecode);
   usd_camera.CreateHorizontalApertureAttr().Set(aperture_x / tenth_unit_to_mm, timecode);
   usd_camera.CreateVerticalApertureAttr().Set(aperture_y / tenth_unit_to_mm, timecode);
-  usd_camera.CreateHorizontalApertureOffsetAttr().Set(sensor_size * camera->shiftx / tenth_unit_to_mm, timecode);
-  usd_camera.CreateVerticalApertureOffsetAttr().Set(sensor_size * camera->shifty / tenth_unit_to_mm, timecode);
+  usd_camera.CreateHorizontalApertureOffsetAttr().Set(
+      sensor_size * camera->shiftx / tenth_unit_to_mm, timecode);
+  usd_camera.CreateVerticalApertureOffsetAttr().Set(
+      sensor_size * camera->shifty / tenth_unit_to_mm, timecode);
 
   usd_camera.CreateClippingRangeAttr().Set(
       pxr::VtValue(pxr::GfVec2f(camera->clip_start, camera->clip_end)), timecode);
