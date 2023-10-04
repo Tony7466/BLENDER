@@ -135,7 +135,7 @@ void light_eval_single(LightData light,
     return;
   }
   float shadow = 1.0;
-  if (light.tilemap_index == LIGHT_NO_SHADOW) {
+  if (light.tilemap_index != LIGHT_NO_SHADOW) {
 #ifdef SHADOW_DEFERRED
     shadow = shadow_unpack(packed_shadows, ray_count, shift);
     shift += ray_count;
