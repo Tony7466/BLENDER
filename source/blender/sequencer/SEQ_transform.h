@@ -8,13 +8,10 @@
  * \ingroup sequencer
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <BLI_vector_set.hh>
 
 struct ListBase;
 struct Scene;
-struct SeqCollection;
 struct Sequence;
 
 bool SEQ_transform_sequence_can_be_translated(struct Sequence *seq);
@@ -40,8 +37,13 @@ bool SEQ_transform_seqbase_shuffle_ex(struct ListBase *seqbasep,
 bool SEQ_transform_seqbase_shuffle(struct ListBase *seqbasep,
                                    struct Sequence *test,
                                    struct Scene *evil_scene);
-bool SEQ_transform_seqbase_shuffle_time(struct SeqCollection *strips_to_shuffle,
-                                        struct SeqCollection *time_dependent_strips,
+bool SEQ_transform_seqbase_shuffle_time(blender::Span<Sequence *> strips_to_shuffle,
+                                        blender::Span<Sequence *> time_dependent_strips,
+                                        struct ListBase *seqbasep,
+                                        struct Scene *evil_scene,
+                                        struct ListBase *markers,
+                                        bool use_sync_markers);
+bool SEQ_transform_seqbase_shuffle_time(blender::Span<Sequence *> strips_to_shuffle,
                                         struct ListBase *seqbasep,
                                         struct Scene *evil_scene,
                                         struct ListBase *markers,
@@ -49,8 +51,12 @@ bool SEQ_transform_seqbase_shuffle_time(struct SeqCollection *strips_to_shuffle,
 
 void SEQ_transform_handle_overlap(struct Scene *scene,
                                   struct ListBase *seqbasep,
-                                  struct SeqCollection *transformed_strips,
-                                  struct SeqCollection *time_dependent_strips,
+                                  blender::Span<Sequence *> transformed_strips,
+                                  blender::Span<Sequence *> time_dependent_strips,
+                                  bool use_sync_markers);
+void SEQ_transform_handle_overlap(struct Scene *scene,
+                                  struct ListBase *seqbasep,
+                                  blender::Span<Sequence *> transformed_strips,
                                   bool use_sync_markers);
 /**
  * Check if the selected seq's reference unselected seq's.
@@ -131,11 +137,7 @@ void SEQ_image_preview_unit_from_px(const struct Scene *scene,
  * \param r_max: Maximum x and y values
  */
 void SEQ_image_transform_bounding_box_from_collection(struct Scene *scene,
-                                                      struct SeqCollection *strips,
+                                                      blender::Span<Sequence *> strips,
                                                       bool apply_rotation,
                                                       float r_min[2],
                                                       float r_max[2]);
-
-#ifdef __cplusplus
-}
-#endif
