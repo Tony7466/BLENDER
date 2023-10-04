@@ -504,6 +504,12 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
                                                                   elem.iteration);
       return true;
     }
+    case VIEWER_PATH_ELEM_TYPE_FOREACH_ZONE: {
+      const auto &elem = reinterpret_cast<const ForEachZoneViewerPathElem &>(elem_generic);
+      compute_context_builder.push<bke::ForEachZoneComputeContext>(elem.foreach_output_node_id,
+                                                                   elem.index);
+      return true;
+    }
   }
   return false;
 }
