@@ -12,7 +12,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_material_types.h"
 

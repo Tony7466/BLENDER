@@ -21,7 +21,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
@@ -35,13 +35,13 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
+#include "WM_api.hh"
+
 #ifdef GP_VFILL_DEBUG_VERBOSE
 #  include "BLF_api.h"
 #  include "UI_interface.hh"
 #  include "UI_resources.hh"
 #endif
-
-#include "WM_api.hh"
 
 /**
  * Explanation of the used algorithm for vector-based fill:
@@ -1082,7 +1082,7 @@ static int get_next_curve_point(const int point_i,
 /**
  * Add 'end' information to an edge segment:
  * - Does the segment end by curve intersection or curve extension (gap closure)?
- * - Determine the 'right turn' for the segment end
+ * - Determine the turns (intersection angles) for the segment end.
  */
 static void add_segment_ends(const Curves2DSpace *curves_2d,
                              EdgeSegment *segment,
@@ -1096,14 +1096,18 @@ static void add_segment_ends(const Curves2DSpace *curves_2d,
   const float2 segment_vec = segment_point_b - segment_point_a;
 
   for (auto &intersection : intersections) {
-    /* Skip end extensions of cyclic curves. */
-    if (is_end_extension && curves_2d->is_cyclic[intersection.curve_index_2d]) {
-      continue;
-    }
     /* Skip intersections before the start segment distance. */
     if ((segment->flag & vfFlag::CheckStartDistance) == true &&
         intersection.distance[0] < vf->start_distance)
     {
+      continue;
+    }
+    /* Skip end extensions of cyclic curves. */
+    if (is_end_extension && curves_2d->is_cyclic[intersection.curve_index_2d]) {
+      continue;
+    }
+    /* Skip end extensions at distance 0. */
+    if (is_end_extension && intersection.distance[0] < DISTANCE_EPSILON) {
       continue;
     }
 
