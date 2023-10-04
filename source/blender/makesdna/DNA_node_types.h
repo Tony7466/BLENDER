@@ -1348,6 +1348,7 @@ typedef struct TexNodeOutput {
 
 typedef struct NodeKeyingScreenData {
   char tracking_object[64];
+  float smoothness;
 } NodeKeyingScreenData;
 
 typedef struct NodeKeyingData {
