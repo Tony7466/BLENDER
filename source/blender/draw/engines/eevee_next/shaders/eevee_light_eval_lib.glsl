@@ -18,11 +18,13 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
-#define LIGHT_VISIBILITY_THRESHOLD 1e-6
-
 /* If using compute, the shader should define it's own pixel. */
 #if !defined(PIXEL) && defined(GPU_FRAGMENT_SHADER)
 #  define PIXEL gl_FragCoord.xy
+#endif
+
+#if !defined(LIGHT_CLOSURE_EVAL_COUNT)
+#  define LIGHT_CLOSURE_EVAL_COUNT 1
 #endif
 
 uint shadow_pack(float visibility, uint bit_depth, uint shift)
@@ -35,38 +37,46 @@ float shadow_unpack(uint shadow_bits, uint bit_depth, uint shift)
   return float((shadow_bits >> shift) & ~(~0u << bit_depth)) / float((1u << bit_depth) - 1u);
 }
 
-void shadow_mask(vec3 P, vec3 Ng, float vPz, float thickness, out uint shadow_bits)
+void light_shadow_single(LightData light,
+                         const bool is_directional,
+                         vec3 P,
+                         vec3 Ng,
+                         float thickness,
+                         inout uint shadow_bits,
+                         inout uint shift)
 {
-  shadow_bits = 0u;
+  if (light.tilemap_index == LIGHT_NO_SHADOW) {
+    return;
+  }
+
+  LightVector lv = light_vector_get(light, is_directional, P);
+  float attenuation = light_attenuation_surface(light, is_directional, Ng, lv);
+  if (attenuation < LIGHT_ATTENUATION_THRESHOLD) {
+    return;
+  }
+  int ray_count = uniform_buf.shadow.ray_count;
+  int ray_step_count = uniform_buf.shadow.step_count;
+
+  ShadowEvalResult result = shadow_eval(light, is_directional, P, Ng, ray_count, ray_step_count);
+
+  shadow_bits |= shadow_pack(result.surface_light_visibilty, ray_count, shift);
+  shift += ray_count;
+}
+
+void light_shadow_mask(vec3 P, vec3 Ng, float vPz, float thickness, out uint shadow_bits)
+{
+  int ray_count = uniform_buf.shadow.ray_count;
+  int ray_step_count = uniform_buf.shadow.step_count;
+
   uint shift = 0u;
-  uint ray_count = uniform_buf.shadow.ray_count;
-  uint ray_step_count = uniform_buf.shadow.step_count;
-
+  shadow_bits = 0u;
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    LightData light = light_buf[l_idx];
-
-    ShadowEvalResult result = shadow_eval(light, true, P, Ng, ray_count, ray_step_count);
-
-    shadow_bits |= shadow_pack(result.surface_light_visibilty, ray_count, shift);
-    shift += ray_count;
+    light_shadow_single(light_buf[l_idx], true, P, Ng, thickness, shadow_bits, shift);
   }
   LIGHT_FOREACH_END
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
-    LightData light = light_buf[l_idx];
-
-    vec3 L;
-    float dist;
-    light_vector_get(light, P, L, dist);
-
-    if (light_attenuation(light, L, dist) < LIGHT_VISIBILITY_THRESHOLD) {
-      return;
-    }
-
-    ShadowEvalResult result = shadow_eval(light, false, P, Ng, ray_count, ray_step_count);
-
-    shadow_bits |= shadow_pack(result.surface_light_visibilty, ray_count, shift);
-    shift += ray_count;
+    light_shadow_single(light_buf[l_idx], false, P, Ng, thickness, shadow_bits, shift);
   }
   LIGHT_FOREACH_END
 }
@@ -83,101 +93,104 @@ struct ClosureLight {
   vec3 light_unshadowed;
 };
 
-void light_closure_eval(LightData light,
-                        vec3 L,
-                        float dist,
-                        inout ClosureLight cl,
-                        float thickness,
-                        float visibility,
-                        vec3 P,
-                        vec3 V)
+struct ClosureLightStack {
+  /* NOTE: This is wrapped into a struct to avoid array shenanigans on MSL. */
+  ClosureLight cl[LIGHT_CLOSURE_EVAL_COUNT];
+};
+
+void light_eval_single_closure(LightData light,
+                               LightVector lv,
+                               inout ClosureLight cl,
+                               vec3 P,
+                               vec3 V,
+                               float thickness,
+                               float attenuation,
+                               float visibility)
 {
   if (light.power[cl.type] > 0.0) {
-    float ltc_result = light_ltc(utility_tx, light, cl.N, V, L, dist, cl.ltc_mat);
+    float ltc_result = light_ltc(utility_tx, light, cl.N, V, lv, cl.ltc_mat);
     vec3 out_radiance = light.color * light.power[cl.type] * ltc_result;
     cl.light_shadowed += visibility * out_radiance;
-    cl.light_unshadowed += out_radiance;
+    cl.light_unshadowed += attenuation * out_radiance;
   }
 }
 
-void light_eval(ClosureLight cl1,
-#if LIGHT_CLOSURE_EVAL_COUNT > 1
-                ClosureLight cl2,
-#endif
-#if LIGHT_CLOSURE_EVAL_COUNT > 2
-                ClosureLight cl3,
-#endif
+void light_eval_single(LightData light,
+                       const bool is_directional,
+                       inout ClosureLightStack stack,
+                       vec3 P,
+                       vec3 Ng,
+                       vec3 V,
+                       float thickness,
+                       uint packed_shadows,
+                       inout uint shift)
+{
+
+  int ray_count = uniform_buf.shadow.ray_count;
+  int ray_step_count = uniform_buf.shadow.step_count;
+
+  LightVector lv = light_vector_get(light, is_directional, P);
+  float attenuation = light_attenuation_surface(light, is_directional, Ng, lv);
+  if (attenuation < LIGHT_ATTENUATION_THRESHOLD) {
+    return;
+  }
+  float shadow = 1.0;
+  if (light.tilemap_index == LIGHT_NO_SHADOW) {
 #ifdef SHADOW_DEFERRED
-                uint shadow_bits,
+    shadow = shadow_unpack(packed_shadows, ray_count, shift);
+    shift += ray_count;
+#else
+    shadow = shadow_eval(light, is_directional, P, Ng, ray_count, ray_step_count)
+                 .surface_light_visibilty;
 #endif
+  }
+  float visibility = attenuation * shadow;
+
+  /* WATCH(@fclem): Might have to manually unroll for best perf. */
+  for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
+    light_eval_single_closure(light, lv, stack.cl[i], P, V, thickness, attenuation, visibility);
+  }
+}
+
+void light_eval(inout ClosureLightStack stack,
                 vec3 P,
                 vec3 Ng,
                 vec3 V,
                 float vPz,
-                float thickness)
+                float thickness,
+                uint packed_shadows)
 {
-  cl1.light_shadowed = cl1.light_unshadowed = vec3(0.0);
-#if LIGHT_CLOSURE_EVAL_COUNT > 1
-  cl2.light_shadowed = cl2.light_unshadowed = vec3(0.0);
-#endif
-#if LIGHT_CLOSURE_EVAL_COUNT > 2
-  cl3.light_shadowed = cl3.light_unshadowed = vec3(0.0);
-#endif
+  for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
+    stack.cl[i].light_shadowed = vec3(0.0);
+    stack.cl[i].light_unshadowed = vec3(0.0);
+  }
 
-  uint ray_count = uniform_buf.shadow.ray_count;
-  uint ray_step_count = uniform_buf.shadow.step_count;
-#ifdef SHADOW_DEFERRED
   uint shift = 0u;
-#  define shadow_function(light, is_directional, P, Ng, ray_count, ray_step_count) \
-    shadow_unpack(shadow_bits, ray_count, shift); \
-    shift += ray_count
-#else
-#  define shadow_function(light, is_directional, P, Ng, ray_count, ray_step_count) \
-    shadow_eval(light, is_directional, P, Ng, ray_count, ray_step_count).surface_light_visibilty;
-#endif
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    LightData light = light_buf[l_idx];
-
-    vec3 L;
-    float dist;
-    light_vector_get(light, P, L, dist);
-
-    float visibility = shadow_function(light, true, P, Ng, ray_count, ray_step_count);
-
-    light_closure_eval(light, L, dist, cl1, thickness, visibility, P, V);
-#if LIGHT_CLOSURE_EVAL_COUNT > 1
-    light_closure_eval(light, L, dist, cl2, thickness, visibility, P, V);
-#endif
-#if LIGHT_CLOSURE_EVAL_COUNT > 2
-    light_closure_eval(light, L, dist, cl3, thickness, visibility, P, V);
-#endif
+    light_eval_single(light_buf[l_idx], true, stack, P, Ng, V, thickness, packed_shadows, shift);
   }
   LIGHT_FOREACH_END
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
-    LightData light = light_buf[l_idx];
-
-    vec3 L;
-    float dist;
-    light_vector_get(light, P, L, dist);
-
-    float visibility = light_attenuation(light, L, dist);
-    if (visibility < LIGHT_VISIBILITY_THRESHOLD) {
-      return;
-    }
-
-    visibility *= shadow_function(light, false, P, Ng, ray_count, ray_step_count);
-
-    light_closure_eval(light, L, dist, cl1, thickness, visibility, P, V);
-#if LIGHT_CLOSURE_EVAL_COUNT > 1
-    light_closure_eval(light, L, dist, cl2, thickness, visibility, P, V);
-#endif
-#if LIGHT_CLOSURE_EVAL_COUNT > 2
-    light_closure_eval(light, L, dist, cl3, thickness, visibility, P, V);
-#endif
+    light_eval_single(light_buf[l_idx], false, stack, P, Ng, V, thickness, packed_shadows, shift);
   }
   LIGHT_FOREACH_END
-
-#undef shadow_function
 }
+
+/* Variations that have less arguments. */
+
+#if !defined(SHADOW_DEFERRED)
+void light_eval(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, float thickness)
+{
+  light_eval(stack, P, Ng, V, vPz, thickness, 0u);
+}
+
+#  if !defined(SSS_TRANSMITTANCE) && defined(LIGHT_ITER_FORCE_NO_CULLING)
+void light_eval(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V)
+{
+  light_eval(stack, P, Ng, V, 0.0, 0.0, 0u);
+}
+#  endif
+
+#endif

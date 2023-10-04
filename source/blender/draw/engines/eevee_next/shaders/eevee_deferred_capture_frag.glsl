@@ -19,18 +19,18 @@ void main()
 
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
-  ClosureLight cl_diff;
-  cl_diff.N = gbuf.has_diffuse ? gbuf.diffuse.N : gbuf.reflection.N;
-  cl_diff.ltc_mat = LTC_LAMBERT_MAT;
-  cl_diff.type = LIGHT_DIFFUSE;
+  ClosureLightStack stack;
+  stack.cl[0].N = gbuf.has_diffuse ? gbuf.diffuse.N : gbuf.reflection.N;
+  stack.cl[0].ltc_mat = LTC_LAMBERT_MAT;
+  stack.cl[0].type = LIGHT_DIFFUSE;
 
   vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
   vec3 Ng = gbuf.diffuse.N;
   vec3 V = cameraVec(P);
   float vPz = dot(cameraForward, P) - dot(cameraForward, cameraPos);
-  light_eval(cl_diff, P, Ng, V, vPz, gbuf.thickness);
+  light_eval(stack, P, Ng, V, vPz, gbuf.thickness);
 
   vec3 albedo = gbuf.diffuse.color + gbuf.reflection.color + gbuf.refraction.color;
 
-  out_radiance = vec4(cl_diff.light_shadowed * albedo, 0.0);
+  out_radiance = vec4(stack.cl[0].light_shadowed * albedo, 0.0);
 }

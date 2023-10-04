@@ -23,30 +23,35 @@ void main()
   vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
   vec3 V = cameraVec(P);
 
+  ClosureLightStack stack;
+
   ClosureLight cl_diff;
   cl_diff.N = gbuf.diffuse.N;
   cl_diff.ltc_mat = LTC_LAMBERT_MAT;
   cl_diff.type = LIGHT_DIFFUSE;
+  stack.cl[0] = cl_diff;
 
   ClosureLight cl_refl;
   cl_refl.N = gbuf.reflection.N;
   cl_refl.ltc_mat = LTC_GGX_MAT(dot(gbuf.reflection.N, V), gbuf.reflection.roughness);
   cl_refl.type = LIGHT_SPECULAR;
+  stack.cl[1] = cl_refl;
 
   /* Assume reflection closure normal is always somewhat representative of the geometric normal.
    * Ng is only used for shadow biases and subsurface check in this case. */
   vec3 Ng = gbuf.has_reflection ? gbuf.reflection.N : gbuf.diffuse.N;
   float vPz = dot(cameraForward, P) - dot(cameraForward, cameraPos);
 
-  light_eval(cl_diff, cl_refl, P, Ng, V, vPz, gbuf.thickness);
+  light_eval(stack, P, Ng, V, vPz, gbuf.thickness);
 
-  vec3 shadows = cl_diff.light_shadowed / cl_diff.light_unshadowed;
+  vec3 shadows = (stack.cl[0].light_shadowed + stack.cl[1].light_shadowed) /
+                 (stack.cl[0].light_unshadowed + stack.cl[1].light_unshadowed);
 
   /* TODO(fclem): Change shadow pass to be colored. */
   output_renderpass_value(uniform_buf.render_pass.shadow_id, avg(shadows));
 
-  imageStore(direct_diffuse_img, texel, vec4(cl_diff.light_shadowed, 1.0));
-  imageStore(direct_reflect_img, texel, vec4(cl_refl.light_shadowed, 1.0));
+  imageStore(direct_diffuse_img, texel, vec4(stack.cl[0].light_shadowed, 1.0));
+  imageStore(direct_reflect_img, texel, vec4(stack.cl[1].light_shadowed, 1.0));
   /* TODO(fclem): Support LTC for refraction. */
   // imageStore(direct_refract_img, texel, vec4(cl_refr.light_shadowed, 1.0));
 }
