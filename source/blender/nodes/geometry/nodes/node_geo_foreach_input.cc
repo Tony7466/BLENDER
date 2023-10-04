@@ -33,13 +33,37 @@ static void node_declare_dynamic(const bNodeTree &tree,
     r_declaration.skip_updating_sockets = true;
     return;
   }
-  {
-    NodeDeclarationBuilder b{r_declaration};
-    b.add_input<decl::Int>("Amount").min(0).default_value(1);
-    b.add_output<decl::Int>("Index");
-  }
   const auto &output_storage = *static_cast<const NodeGeometryForEachOutput *>(
       output_node->storage);
+  const GeometryNodeForEachMode mode = GeometryNodeForEachMode(output_storage.mode);
+  {
+    /* Add standard inputs. */
+    NodeDeclarationBuilder b{r_declaration};
+    switch (mode) {
+      case GEO_NODE_FOR_EACH_MODE_INDEX: {
+        b.add_input<decl::Int>("Amount").min(0).default_value(1);
+        b.add_output<decl::Int>("Index");
+        break;
+      }
+      case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT: {
+        b.add_input<decl::Geometry>("Geometry");
+        b.add_input<decl::Bool>("Selection").supports_field().default_value(true).hide_value(true);
+        b.add_output<decl::Int>("Index");
+        b.add_output<decl::Geometry>("Element");
+        break;
+      }
+      case GEO_NODE_FOR_EACH_MODE_INSTANCE: {
+        b.add_input<decl::Geometry>("Instances");
+        b.add_output<decl::Geometry>("Geometry");
+        break;
+      }
+    }
+  }
+  if (mode == GEO_NODE_FOR_EACH_MODE_INSTANCE) {
+    /* Other inputs are not allowed in this mode. */
+    return;
+  }
+  /* Add dynamic sockets. */
   for (const int i : IndexRange(output_storage.input_items_num)) {
     const NodeForEachInputItem &item = output_storage.input_items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
@@ -107,7 +131,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, &output_node_ptr, "mode", UI_ITEM_NONE, IFACE_("Iterate over"), ICON_NONE);
+  uiItemR(layout, &output_node_ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_register()
