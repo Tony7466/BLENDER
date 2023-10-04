@@ -566,7 +566,6 @@ class SEQUENCER_MT_select(Menu):
         has_sequencer, _has_preview = _space_view_types(st)
         is_retiming = context.scene.sequence_editor.selected_retiming_keys
 
-
         layout.operator("sequencer.select_all", text="All").action = 'SELECT'
         layout.operator("sequencer.select_all", text="None").action = 'DESELECT'
         layout.operator("sequencer.select_all", text="Invert").action = 'INVERT'
