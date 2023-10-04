@@ -167,7 +167,7 @@ int node_get_resize_cursor(NodeResizeDirection directions);
  */
 void node_socket_color_get(const bNodeSocketType &type, float r_color[4]);
 
-const char *node_socket_get_label(const bNodeSocket *socket);
+const char *node_socket_get_label(const bNodeSocket *socket, const char *panel_label);
 
 void node_draw_space(const bContext &C, ARegion &region);
 
