@@ -198,8 +198,15 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
         value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
         value_path.index = gizmo_source->elem_index;
       }
-      else if (dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context)) {
-        /* TODO. */
+      else if (const auto *group_node_compute_context =
+                   dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
+      {
+        const bNode *caller_node = group_node_compute_context->caller_group_node();
+        const bNodeSocket &gizmo_value_socket = caller_node->input_socket(
+            gizmo_source->interface_input_index);
+        Vector<GizmoFloatVariable> sub_value_paths = find_float_values_paths(
+            gizmo_value_socket, *compute_context.parent(), object, nmd);
+        value_paths.extend(sub_value_paths);
         continue;
       }
     }
@@ -246,8 +253,19 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     return;
   }
 
+  const wmWindowManager *wm = CTX_wm_manager(C);
+  if (wm == nullptr) {
+    return;
+  }
+
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
+
+  std::cout << "Refresh Gizmos: \n";
+  nodes::gizmos::foreach_active_gizmo(
+      *ob, nmd, *wm, [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+        compute_context.print_stack(std::cout, gizmo_node.name);
+      });
 
   bke::ModifierComputeContext compute_context{nullptr, nmd.modifier.name};
   geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());

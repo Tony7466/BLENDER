@@ -13,6 +13,7 @@
 #include "BLI_compute_context.hh"
 
 struct bNode;
+struct bNodeTree;
 
 namespace blender::bke {
 
@@ -44,21 +45,30 @@ class NodeGroupComputeContext : public ComputeContext {
   static constexpr const char *s_static_type = "NODE_GROUP";
 
   int32_t node_id_;
-  const bNodeTree *tree_ = nullptr;
-
-#ifdef DEBUG
-  std::string debug_node_name_;
-#endif
+  const bNodeTree *caller_tree_ = nullptr;
+  const bNode *caller_group_node_ = nullptr;
 
  public:
   NodeGroupComputeContext(const ComputeContext *parent,
                           int32_t node_id,
                           const std::optional<ComputeContextHash> &cached_hash = {});
-  NodeGroupComputeContext(const ComputeContext *parent, const bNode &node);
+  NodeGroupComputeContext(const ComputeContext *parent,
+                          const bNode &node,
+                          const bNodeTree &caller_tree);
 
   int32_t node_id() const
   {
     return node_id_;
+  }
+
+  const bNode *caller_group_node() const
+  {
+    return caller_group_node_;
+  }
+
+  const bNodeTree *caller_tree() const
+  {
+    return caller_tree_;
   }
 
  private:

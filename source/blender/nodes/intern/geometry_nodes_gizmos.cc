@@ -255,7 +255,7 @@ static void foreach_gizmo_for_input(
     const GroupInputGizmoSource group_input_source{gizmo_input.input_socket->index(),
                                                    gizmo_input.elem_index};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
-    compute_context_builder.push<bke::NodeGroupComputeContext>(node);
+    compute_context_builder.push<bke::NodeGroupComputeContext>(node, tree);
     foreach_gizmo_for_source(group_input_source, compute_context_builder, group, fn);
     compute_context_builder.pop();
   }
