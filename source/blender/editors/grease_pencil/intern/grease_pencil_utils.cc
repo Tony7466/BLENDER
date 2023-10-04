@@ -25,7 +25,8 @@ namespace blender::ed::greasepencil {
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
-                                     Vector<int> &drawing_indices)
+                                     Vector<int> &drawing_indices,
+                                     const bool get_stroke_flag)
 {
   /* Get viewport projection matrix and evaluated GP object. */
   float4x4 projection;
@@ -53,6 +54,9 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
   cv2d.point_size = Array<int>(curve_num);
   cv2d.curve_bbox = Array<rctf>(curve_num);
   cv2d.points_2d = Array<float2>(point_num);
+  if (get_stroke_flag) {
+    cv2d.has_stroke = Array<bool>(curve_num);
+  }
 
   /* Loop all drawings. */
   threading::parallel_for(cv2d.drawings.index_range(), 1, [&](const IndexRange range) {
@@ -64,6 +68,13 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
       const bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
               ob_eval, *ob, drawing_indices[drawing_i]);
+
+      /* Get the curve materials. */
+      VArray<int> materials;
+      if (get_stroke_flag) {
+        materials = *curves.attributes().lookup_or_default<int>(
+            "material_index", ATTR_DOMAIN_CURVE, 0);
+      }
 
       /* Get the initial point index in the 2D point array for curves in this drawing. */
       int point_cont = curve_point_offset[drawing_i];
@@ -79,6 +90,13 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
         cv2d.point_offset[cv_cont] = point_cont;
         cv2d.is_cyclic[cv_cont] = cyclic[curve_i];
         cv2d.drawing_index_2d[cv_cont] = drawing_i;
+
+        /* Set stroke flag: true when the stroke property is active in the curve material. */
+        if (get_stroke_flag) {
+          Material *material = BKE_object_material_get(ob, materials[curve_i] + 1);
+          cv2d.has_stroke[cv_cont] = (material &&
+                                      (material->gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
+        }
 
         /* Loop all stroke points. */
         for (const int point_i : points) {
