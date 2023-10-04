@@ -9018,11 +9018,47 @@ static void def_geo_foreach_output(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Input Items", "");
   RNA_def_property_srna(prop, "NodeGeometryForEachInputItems");
 
+  prop = RNA_def_property(srna, "input_active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "input_active_index");
+  RNA_def_property_ui_text(prop, "Active Input Item Index", "Index of the active item");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "input_active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ForEachInputItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_Node_ItemArray_active_get<ForEachInputItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<ForEachInputItemsAccessor>",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NO_DEG_UPDATE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
   prop = RNA_def_property(srna, "output_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "output_items", "output_items_num");
   RNA_def_property_struct_type(prop, "ForEachOutputItem");
   RNA_def_property_ui_text(prop, "OutputItems", "");
   RNA_def_property_srna(prop, "NodeGeometryForEachOutputItems");
+
+  prop = RNA_def_property(srna, "output_active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "output_active_index");
+  RNA_def_property_ui_text(prop, "Active Output Item Index", "Index of the active item");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "output_active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ForEachOutputItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_Node_ItemArray_active_get<ForEachOutputItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<ForEachOutputItemsAccessor>",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NO_DEG_UPDATE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)

@@ -146,7 +146,7 @@ struct ForEachInputItemsAccessor {
   static StructRNA *item_srna;
   /* This refers to the node that stores the item array. */
   static int node_type;
-  static constexpr const char *node_idname = "GeometryNodesForEachOutput";
+  static constexpr const char *node_idname = "GeometryNodeForEachOutput";
 
   static socket_items::SocketItemsRef<NodeForEachInputItem> get_items_from_node(bNode &node)
   {
@@ -197,7 +197,7 @@ struct ForEachOutputItemsAccessor {
   using ItemT = NodeForEachOutputItem;
   static StructRNA *item_srna;
   static int node_type;
-  static constexpr const char *node_idname = "GeometryNodesForEachOutput";
+  static constexpr const char *node_idname = "GeometryNodeForEachOutput";
 
   static socket_items::SocketItemsRef<NodeForEachOutputItem> get_items_from_node(bNode &node)
   {

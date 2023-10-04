@@ -991,16 +991,18 @@ class NODE_PT_node_tree_properties(Panel):
         col.prop(group, "is_tool")
 
 
+def draw_socket_item_in_list(uilist, layout, item, icon):
+    if uilist.layout_type in {'DEFAULT', 'COMPACT'}:
+        row = layout.row(align=True)
+        row.template_node_socket(color=item.color)
+        row.prop(item, "name", text="", emboss=False, icon_value=icon)
+    elif uilist.layout_type == 'GRID':
+        layout.alignment = 'CENTER'
+        layout.template_node_socket(color=item.color)
+
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_simulation_zone_items(Panel):
@@ -1072,13 +1074,7 @@ class NODE_PT_simulation_zone_items(Panel):
 
 class NODE_UL_repeat_zone_items(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_repeat_zone_items(Panel):
@@ -1144,6 +1140,114 @@ class NODE_PT_repeat_zone_items(Panel):
             layout.prop(active_item, "socket_type")
 
         layout.prop(output_node, "inspection_index")
+
+
+class NODE_UL_foreach_zone_input_items(bpy.types.UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        draw_socket_item_in_list(self, layout, item, icon)
+
+
+class NODE_UL_foreach_zone_output_items(bpy.types.UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        draw_socket_item_in_list(self, layout, item, icon)
+
+
+class NODE_PT_foreach_zone_items(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "For-Each"
+
+    input_node_type = 'GeometryNodeForEachInput'
+    output_node_type = 'GeometryNodeForEachOutput'
+
+    @classmethod
+    def get_output_node(cls, context):
+        node = context.active_node
+        if node.bl_idname == cls.input_node_type:
+            return node.paired_output
+        if node.bl_idname == cls.output_node_type:
+            return node
+        return None
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in (cls.input_node_type, cls.output_node_type):
+            return False
+        if cls.get_output_node(context) is None:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        output_node = self.get_output_node(context)
+        self.draw_input_items(layout, output_node)
+        self.draw_output_items(layout, output_node)
+
+    def draw_input_items(self, layout, output_node):
+        split = layout.row()
+        split.template_list(
+            "NODE_UL_foreach_zone_input_items",
+            "",
+            output_node,
+            "input_items",
+            output_node,
+            "input_active_index")
+
+        # ops_col = split.column()
+
+        # add_remove_col = ops_col.column(align=True)
+        # add_remove_col.operator("node.repeat_zone_item_add", icon='ADD', text="")
+        # add_remove_col.operator("node.repeat_zone_item_remove", icon='REMOVE', text="")
+
+        # ops_col.separator()
+
+        # up_down_col = ops_col.column(align=True)
+        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_UP', text="")
+        # props.direction = 'UP'
+        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_DOWN', text="")
+        # props.direction = 'DOWN'
+
+        # active_item = output_node.active_item
+        # if active_item is not None:
+        #     layout.use_property_split = True
+        #     layout.use_property_decorate = False
+        #     layout.prop(active_item, "socket_type")
+
+    def draw_output_items(self, layout, output_node):
+        split = layout.row()
+        split.template_list(
+            "NODE_UL_foreach_zone_output_items",
+            "",
+            output_node,
+            "output_items",
+            output_node,
+            "output_active_index")
+
+        # ops_col = split.column()
+
+        # add_remove_col = ops_col.column(align=True)
+        # add_remove_col.operator("node.repeat_zone_item_add", icon='ADD', text="")
+        # add_remove_col.operator("node.repeat_zone_item_remove", icon='REMOVE', text="")
+
+        # ops_col.separator()
+
+        # up_down_col = ops_col.column(align=True)
+        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_UP', text="")
+        # props.direction = 'UP'
+        # props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_DOWN', text="")
+        # props.direction = 'DOWN'
+
+        # active_item = output_node.active_item
+        # if active_item is not None:
+        #     layout.use_property_split = True
+        #     layout.use_property_decorate = False
+        #     layout.prop(active_item, "socket_type")
+
 
 
 # Grease Pencil properties
@@ -1215,6 +1319,9 @@ classes = (
     NODE_PT_simulation_zone_items,
     NODE_UL_repeat_zone_items,
     NODE_PT_repeat_zone_items,
+    NODE_UL_foreach_zone_input_items,
+    NODE_UL_foreach_zone_output_items,
+    NODE_PT_foreach_zone_items,
     NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
