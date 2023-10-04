@@ -3046,17 +3046,23 @@ void DRW_engines_register_experimental()
   if (!U.experimental.enable_eevee_next) {
     /** Since EEVEE Next is always registered in `DRW_engines_register`,
      * Here we just have to unregister if it's not actually enabled. */
+    for (auto *type = static_cast<RenderEngineType *>(R_engines.first); type; type = type->next) {
+      if (type == &DRW_engine_viewport_eevee_next_type) {
+        BLI_remlink(&R_engines, type);
+        break;
+      }
+    }
+
     for (auto *type = static_cast<DRWRegisteredDrawEngine *>(g_registered_engines.engines.first);
          type != nullptr;
          type = static_cast<DRWRegisteredDrawEngine *>(type->next))
     {
-      if (type->draw_engine->idname == RE_engine_id_BLENDER_EEVEE_NEXT) {
-        BLI_remlink(&R_engines, type);
-        if (type->draw_engine->engine_free) {
-          type->draw_engine->engine_free();
-        }
-        MEM_freeN(type);
+      if (type->draw_engine == DRW_engine_viewport_eevee_next_type.draw_engine) {
+        BLI_remlink(&g_registered_engines.engines, type);
+        type->draw_engine->engine_free();
         g_registered_engines.len--;
+        MEM_freeN(type);
+        break;
       }
     }
   }
