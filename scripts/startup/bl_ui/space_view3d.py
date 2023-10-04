@@ -4344,7 +4344,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         # Extrude & Bevel
         layout.operator("view3d.edit_mesh_extrude_move_normal",
-                         text="Extrude and Move on Normals").alt_navigation = True
+                         text="Extrude along Normals").alt_navigation = True
         layout.menu("VIEW3D_MT_edit_mesh_extrude")
         if selected_faces_len > 0:
             layout.operator("mesh.inset")
@@ -4385,8 +4385,9 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             layout.operator("transform.edge_slide")
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("mesh.vertices_smooth").factor = 0.5
+        layout.operator("transform.vertex_random", text="Randomize Vertices").offset = 0.1
         # This could get a check for a skin modifier
-        layout.operator("mesh.skin_resize")
+        layout.operator("transform.skin_resize")
 
         layout.separator()
 
