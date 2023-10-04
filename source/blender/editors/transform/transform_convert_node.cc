@@ -137,17 +137,21 @@ static void draw_hitzone(const bContext * /*C*/, ARegion *region, void *arg)
   rctf rect;
   BLI_rctf_init_pt_radius(&rect, center, radius);
 
-  float dot_color[4];
+  float color_select[4];
+  UI_GetThemeColor4fv(TH_SELECT, color_select);
 
-  UI_GetThemeColor4fv(TH_SELECT, dot_color);
-  dot_color[3] = 0.6f;
+  float color_active[4];
+  UI_GetThemeColor4fv(TH_ACTIVE, color_active);
+
+  color_select[3] = 0.6f;
+  color_active[3] = 0.6f;
 
   UI_draw_roundbox_4fv_ex(&rect,
-                          td->indicate_frame_joining ? dot_color : nullptr,
+                          color_select,
                           nullptr,
                           1.0f,
-                          dot_color,
-                          1.5f * U.pixelsize,
+                          td->indicate_frame_joining ? color_active : color_select,
+                          U.pixelsize,
                           radius);
 }
 
