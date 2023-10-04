@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
@@ -186,12 +187,30 @@ static void accumululate_material_counts_bm(
 static void accumululate_material_counts_mesh(
     const MeshRenderData &mr, threading::EnumerableThreadSpecific<Array<int>> &all_tri_counts)
 {
+  const OffsetIndices faces = mr.faces;
   if (!mr.material_indices) {
-    all_tri_counts.local().first() = poly_to_tri_count(mr.face_len, mr.loop_len);
+    if (mr.use_hide && mr.hide_poly) {
+      const Span hide_poly(mr.hide_poly, mr.face_len);
+      all_tri_counts.local().first() = threading::parallel_reduce(
+          faces.index_range(),
+          4096,
+          0,
+          [&](const IndexRange range, int count) {
+            for (const int face : range) {
+              if (!hide_poly[face]) {
+                count += bke::mesh::face_triangles_num(faces[face].size());
+              }
+            }
+            return count;
+          },
+          std::plus<int>());
+    }
+    else {
+      all_tri_counts.local().first() = poly_to_tri_count(mr.face_len, mr.loop_len);
+    }
     return;
   }
 
-  const OffsetIndices faces = mr.faces;
   const Span material_indices(mr.material_indices, mr.face_len);
   threading::parallel_for(material_indices.index_range(), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
@@ -200,14 +219,14 @@ static void accumululate_material_counts_mesh(
       for (const int i : range) {
         if (!mr.hide_poly[i]) {
           const int mat = std::clamp(material_indices[i], 0, last_index);
-          tri_counts[mat] += ME_FACE_TRI_TOT(faces[i].size());
+          tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
         }
       }
     }
     else {
       for (const int i : range) {
         const int mat = std::clamp(material_indices[i], 0, last_index);
-        tri_counts[mat] += ME_FACE_TRI_TOT(faces[i].size());
+        tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
       }
     }
   });
@@ -356,7 +375,7 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
                                             mr.faces,
                                             mr.corner_verts,
                                             mr.corner_edges,
-                                            {},
+                                            mr.me->corner_to_face_map(),
                                             mr.vert_normals,
                                             mr.face_normals,
                                             sharp_edges,

@@ -1,8 +1,8 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "IO_types.h"
+#include "IO_types.hh"
 #include "usd.h"
 #include "usd_hierarchy_iterator.h"
 #include "usd_reader_geom.h"
@@ -34,9 +34,9 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
@@ -303,6 +303,10 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
     }
   }
 
+  if (data->params.import_skeletons) {
+    archive->process_armature_modifiers();
+  }
+
   data->import_ok = !data->was_canceled;
 
   *progress = 1.0f;
@@ -474,7 +478,7 @@ bool USD_import(bContext *C,
  * Object parameter, similar to the logic in get_abc_reader() in the
  * Alembic importer code. */
 static USDPrimReader *get_usd_reader(CacheReader *reader,
-                                     const Object * /* ob */,
+                                     const Object * /*ob*/,
                                      const char **err_str)
 {
   USDPrimReader *usd_reader = reinterpret_cast<USDPrimReader *>(reader);

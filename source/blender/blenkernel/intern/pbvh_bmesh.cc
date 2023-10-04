@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include "BLI_buffer.h"
 #include "BLI_ghash.h"
 #include "BLI_heap_simple.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
@@ -1188,7 +1189,7 @@ static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx,
 
     v_tri[0] = v_new;
     v_tri[1] = v2;
-    /* v_tri[2] = v_opp; */ /* unchanged */
+    // v_tri[2] = v_opp; /* Unchanged. */
     e_tri[0] = BM_edge_create(pbvh->header.bm, v_tri[0], v_tri[1], nullptr, BM_CREATE_NO_DOUBLE);
     e_tri[2] = e_tri[1]; /* switched */
     e_tri[1] = BM_edge_create(pbvh->header.bm, v_tri[1], v_tri[2], nullptr, BM_CREATE_NO_DOUBLE);

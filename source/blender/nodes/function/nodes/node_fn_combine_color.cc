@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,10 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "NOD_rna_define.hh"
+
+#include "RNA_enum_types.hh"
 
 namespace blender::nodes::node_fn_combine_color_cc {
 
@@ -79,6 +83,16 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "Mode of color processing",
+                    rna_enum_node_combsep_color_items,
+                    NOD_storage_enum_accessors(mode));
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -93,6 +107,8 @@ static void node_register()
   ntype.draw_buttons = node_layout;
 
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

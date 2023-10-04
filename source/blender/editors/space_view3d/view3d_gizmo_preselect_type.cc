@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,8 +14,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_view3d_types.h"
 
@@ -26,11 +24,14 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

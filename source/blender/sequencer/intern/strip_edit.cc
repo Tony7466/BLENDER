@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -12,7 +12,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
@@ -28,6 +28,7 @@
 
 #include "SEQ_add.h"
 #include "SEQ_animation.h"
+#include "SEQ_channels.h"
 #include "SEQ_edit.h"
 #include "SEQ_effects.h"
 #include "SEQ_iterator.h"
@@ -37,6 +38,8 @@
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
+
+#include <cstring>
 
 bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, const char **error_str)
 {
@@ -386,6 +389,11 @@ static bool seq_edit_split_operation_permitted_check(const Scene *scene,
 {
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
+    ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
+    if (SEQ_transform_is_locked(channels, seq)) {
+      *r_error = "Strip is locked.";
+      return false;
+    }
     if ((seq->type & SEQ_TYPE_EFFECT) == 0) {
       continue;
     }

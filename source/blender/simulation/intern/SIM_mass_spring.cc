@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,18 +16,19 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_collision.h"
 #include "BKE_effect.h"
 
 #include "SIM_mass_spring.h"
 #include "implicit.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 static float I3[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 
@@ -300,7 +301,7 @@ static int UNUSED_FUNCTION(cloth_calc_helper_forces)(
   steps = 55;
   for (i = 0; i < steps; i++) {
     for (node = cloth->springs; node; node = node->next) {
-      /* ClothVertex *cv1, *cv2; */ /* UNUSED */
+      // ClothVertex *cv1, *cv2; /* UNUSED */
       int v1, v2;
       float len, c, l, vec[3];
 
@@ -311,8 +312,8 @@ static int UNUSED_FUNCTION(cloth_calc_helper_forces)(
 
       v1 = spring->ij;
       v2 = spring->kl;
-      /* cv1 = cloth->verts + v1; */ /* UNUSED */
-      /* cv2 = cloth->verts + v2; */ /* UNUSED */
+      // cv1 = cloth->verts + v1; /* UNUSED. */
+      // cv2 = cloth->verts + v2; /* UNUSED. */
       len = len_v3v3(cos[v1], cos[v2]);
 
       sub_v3_v3v3(vec, cos[v1], cos[v2]);

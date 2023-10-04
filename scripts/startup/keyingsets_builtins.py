@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -501,9 +501,11 @@ class WholeCharacterMixin:
     # custom properties
     def doCustomProps(self, ks, bone):
 
-        prop_type_compat = {bpy.types.BoolProperty,
-                            bpy.types.IntProperty,
-                            bpy.types.FloatProperty}
+        prop_type_compat = {
+            bpy.types.BoolProperty,
+            bpy.types.IntProperty,
+            bpy.types.FloatProperty,
+        }
 
         # go over all custom properties for bone
         for prop in bone.keys():

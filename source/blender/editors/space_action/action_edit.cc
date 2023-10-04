@@ -13,12 +13,11 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -27,9 +26,9 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
@@ -179,7 +178,7 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
       if (ale->datatype == ALE_GPFRAME) {
         bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 
-        /* Find gp-frame which is less than or equal to current-frame. */
+        /* Find GP-frame which is less than or equal to current-frame. */
         LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
           if (!onlySel || (gpf->flag & GP_FRAME_SELECT)) {
             const float framenum = float(gpf->framenum);
@@ -196,6 +195,19 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
           const float framenum = float(masklay_shape->frame);
           *min = min_ff(*min, framenum);
           *max = max_ff(*max, framenum);
+          found = true;
+        }
+      }
+      else if (ale->datatype == ALE_GREASE_PENCIL_CEL) {
+        const blender::bke::greasepencil::Layer &layer =
+            static_cast<GreasePencilLayer *>(ale->data)->wrap();
+
+        for (const auto [key, frame] : layer.frames().items()) {
+          if (onlySel && !frame.is_selected()) {
+            continue;
+          }
+          *min = min_ff(*min, float(key));
+          *max = max_ff(*max, float(key));
           found = true;
         }
       }
@@ -683,7 +695,9 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *actkeys_paste_description(bContext * /*C*/, wmOperatorType * /*op*/, PointerRNA *ptr)
+static std::string actkeys_paste_description(bContext * /*C*/,
+                                             wmOperatorType * /*op*/,
+                                             PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
@@ -691,7 +705,7 @@ static char *actkeys_paste_description(bContext * /*C*/, wmOperatorType * /*op*/
   }
 
   /* Use the default description in the other cases. */
-  return nullptr;
+  return "";
 }
 
 void ACTION_OT_paste(wmOperatorType *ot)
@@ -997,7 +1011,9 @@ static bool duplicate_action_keys(bAnimContext *ac)
       changed |= ED_gpencil_layer_frame_select_check((bGPDlayer *)ale->data);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      changed |= blender::ed::greasepencil::duplicate_selected_frames(
+          *reinterpret_cast<GreasePencil *>(ale->id),
+          static_cast<GreasePencilLayer *>(ale->data)->wrap());
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_masklayer_frames_duplicate((MaskLayer *)ale->data);
@@ -1077,9 +1093,13 @@ static bool delete_action_keys(bAnimContext *ac)
       changed = ED_gpencil_layer_frames_delete((bGPDlayer *)ale->data);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
       changed = blender::ed::greasepencil::remove_all_selected_frames(
-          *reinterpret_cast<GreasePencil *>(ale->id),
-          static_cast<GreasePencilLayer *>(ale->data)->wrap());
+          *grease_pencil, static_cast<GreasePencilLayer *>(ale->data)->wrap());
+
+      if (changed) {
+        DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+      }
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       changed = ED_masklayer_frames_delete((MaskLayer *)ale->data);
@@ -1235,7 +1255,7 @@ void ACTION_OT_clean(wmOperatorType *ot)
  * \{ */
 
 /* Evaluates the curves between each selected keyframe on each frame, and keys the value. */
-static void sample_action_keys(bAnimContext *ac)
+static void bake_action_keys(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};
   eAnimFilter_Flags filter;
@@ -1247,7 +1267,7 @@ static void sample_action_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    sample_fcurve((FCurve *)ale->key_data);
+    bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
@@ -1258,7 +1278,7 @@ static void sample_action_keys(bAnimContext *ac)
 
 /* ------------------- */
 
-static int actkeys_sample_exec(bContext *C, wmOperator *op)
+static int actkeys_bake_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1273,7 +1293,7 @@ static int actkeys_sample_exec(bContext *C, wmOperator *op)
   }
 
   /* sample keyframes */
-  sample_action_keys(&ac);
+  bake_action_keys(&ac);
 
   /* set notifier that keyframes have changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
@@ -1281,15 +1301,15 @@ static int actkeys_sample_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void ACTION_OT_sample(wmOperatorType *ot)
+void ACTION_OT_bake_keys(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Sample Keyframes";
-  ot->idname = "ACTION_OT_sample";
+  ot->name = "Bake Keyframes";
+  ot->idname = "ACTION_OT_bake_keys";
   ot->description = "Add keyframes on every frame between the selected keyframes";
 
   /* api callbacks */
-  ot->exec = actkeys_sample_exec;
+  ot->exec = actkeys_bake_exec;
   ot->poll = ED_operator_action_active;
 
   /* flags */
@@ -1661,7 +1681,10 @@ static void setkeytype_action_keys(bAnimContext *ac, short mode)
         break;
 
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        /* GPv3: To be implemented. */
+        blender::ed::greasepencil::set_selected_frames_type(
+            static_cast<GreasePencilLayer *>(ale->data)->wrap(),
+            static_cast<eBezTriple_KeyframeType>(mode));
+        ale->update |= ANIM_UPDATE_DEPS;
         break;
 
       case ANIMTYPE_FCURVE:
@@ -1775,6 +1798,19 @@ static int actkeys_framejump_exec(bContext *C, wmOperator * /*op*/)
           ked.f1 += gpf->framenum;
 
           /* increment number of items */
+          ked.i1++;
+        }
+        break;
+      }
+
+      case ALE_GREASE_PENCIL_CEL: {
+        using namespace blender::bke::greasepencil;
+        const Layer &layer = *static_cast<Layer *>(ale->data);
+        for (auto [frame_number, frame] : layer.frames().items()) {
+          if (!frame.is_selected()) {
+            continue;
+          }
+          ked.f1 += frame_number;
           ked.i1++;
         }
         break;
@@ -1897,7 +1933,15 @@ static void snap_action_keys(bAnimContext *ac, short mode)
       ED_gpencil_layer_snap_frames(static_cast<bGPDlayer *>(ale->data), ac->scene, mode);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+      GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+
+      const bool changed = blender::ed::greasepencil::snap_selected_frames(
+          *grease_pencil, layer->wrap(), *(ac->scene), static_cast<eEditKeyframes_Snap>(mode));
+
+      if (changed) {
+        DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+      }
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_masklayer_snap_frames(static_cast<MaskLayer *>(ale->data), ac->scene, mode);
@@ -2033,7 +2077,15 @@ static void mirror_action_keys(bAnimContext *ac, short mode)
       ED_gpencil_layer_mirror_frames(static_cast<bGPDlayer *>(ale->data), ac->scene, mode);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+      GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+
+      const bool changed = blender::ed::greasepencil::mirror_selected_frames(
+          *grease_pencil, layer->wrap(), *(ac->scene), static_cast<eEditKeyframes_Mirror>(mode));
+
+      if (changed) {
+        DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+      }
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       /* TODO */

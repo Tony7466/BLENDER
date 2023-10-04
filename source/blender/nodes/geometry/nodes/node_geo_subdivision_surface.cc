@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,9 +16,11 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "NOD_rna_define.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -158,6 +160,8 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
   if (mesh_copy) {
     BKE_id_free(nullptr, mesh_copy);
   }
+
+  geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

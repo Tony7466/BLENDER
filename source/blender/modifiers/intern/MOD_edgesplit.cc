@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,9 +11,8 @@
  * or edge angle (can be used to achieve auto-smoothing)
  */
 
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
-
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 
@@ -25,12 +24,12 @@
 #include "BKE_context.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "bmesh.h"
@@ -38,6 +37,8 @@
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
+
+#include "GEO_randomize.hh"
 
 /* For edge split modifier node. */
 Mesh *doEdgeSplit(const Mesh *mesh, EdgeSplitModifierData *emd);
@@ -103,6 +104,8 @@ Mesh *doEdgeSplit(const Mesh *mesh, EdgeSplitModifierData *emd)
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
   BM_mesh_free(bm);
+
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

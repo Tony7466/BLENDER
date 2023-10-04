@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,12 +18,12 @@
 #include "BKE_image_format.h"
 #include "BKE_node_tree_update.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -262,7 +262,7 @@ static void rna_ImageUser_relations_update(Main *bmain, Scene *scene, PointerRNA
 static char *rna_ImageUser_path(const PointerRNA *ptr)
 {
   if (ptr->owner_id) {
-    /* ImageUser *iuser = ptr->data; */
+    // ImageUser *iuser = ptr->data;
 
     switch (GS(ptr->owner_id->name)) {
       case ID_OB:

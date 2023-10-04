@@ -1,8 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_kdtree.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -21,6 +23,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -554,6 +558,8 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   const bool use_legacy_normal = params.node().custom2 != 0;
   compute_attribute_outputs(
       mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs, use_legacy_normal);
+
+  geometry::debug_randomize_point_order(pointcloud);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

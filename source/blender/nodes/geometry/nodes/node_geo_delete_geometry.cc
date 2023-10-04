@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -9,9 +11,12 @@
 
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 
 #include "GEO_mesh_copy_selection.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -104,11 +109,18 @@ static void delete_selected_instances(GeometrySet &geometry_set,
 
 static std::optional<Mesh *> separate_mesh_selection(
     const Mesh &mesh,
-    const Field<bool> &selection,
+    const Field<bool> &selection_field,
     const eAttrDomain selection_domain,
     const GeometryNodeDeleteGeometryMode mode,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const bke::MeshFieldContext context(mesh, selection_domain);
+  fn::FieldEvaluator evaluator(context, attributes.domain_size(selection_domain));
+  evaluator.add(selection_field);
+  evaluator.evaluate();
+  const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+
   switch (mode) {
     case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
       return geometry::mesh_copy_selection(mesh, selection, selection_domain, propagation_info);
@@ -246,6 +258,32 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem mode_items[] = {
+      {GEO_NODE_DELETE_GEOMETRY_MODE_ALL, "ALL", 0, "All", ""},
+      {GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE, "EDGE_FACE", 0, "Only Edges & Faces", ""},
+      {GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE, "ONLY_FACE", 0, "Only Faces", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "Which parts of the mesh component to delete",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_DELETE_GEOMETRY_MODE_ALL);
+
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Which domain to delete in",
+                    rna_enum_attribute_domain_without_corner_items,
+                    NOD_storage_enum_accessors(domain),
+                    ATTR_DOMAIN_POINT);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -262,6 +300,8 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

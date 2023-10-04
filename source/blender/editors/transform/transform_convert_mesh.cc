@@ -14,7 +14,10 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 
 #include "BKE_context.h"
@@ -26,7 +29,7 @@
 
 #include "ED_mesh.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"

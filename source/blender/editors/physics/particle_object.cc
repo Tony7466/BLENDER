@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -36,12 +38,12 @@
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -502,7 +504,6 @@ static int remove_particle_dupliob_exec(bContext *C, wmOperator * /*op*/)
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_system", &RNA_ParticleSystem);
   ParticleSystem *psys = static_cast<ParticleSystem *>(ptr.data);
   ParticleSettings *part;
-  ParticleDupliWeight *dw;
 
   if (!psys) {
     return OPERATOR_CANCELLED;
@@ -516,8 +517,8 @@ static int remove_particle_dupliob_exec(bContext *C, wmOperator * /*op*/)
       break;
     }
   }
-  dw = static_cast<ParticleDupliWeight *>(part->instance_weights.last);
 
+  ParticleDupliWeight *dw = static_cast<ParticleDupliWeight *>(part->instance_weights.last);
   if (dw) {
     dw->flag |= PART_DUPLIW_CURRENT;
   }
@@ -729,7 +730,7 @@ static bool remap_hair_emitter(Depsgraph *depsgraph,
   invert_m4_m4(to_imat, to_mat);
 
   const bool use_dm_final_indices = (target_psys->part->use_modifier_stack &&
-                                     !BKE_mesh_is_deformed_only(target_psmd->mesh_final));
+                                     !target_psmd->mesh_final->runtime->deformed_only);
 
   if (use_dm_final_indices || !target_psmd->mesh_original) {
     mesh = target_psmd->mesh_final;

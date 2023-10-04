@@ -13,7 +13,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_action.h"
@@ -23,17 +25,20 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "BIK_api.h"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "ANIM_bone_collections.h"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -94,7 +99,7 @@ static void autokeyframe_pose(
   ListBase nla_cache = {nullptr, nullptr};
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, float(scene->r.cfra));
+      depsgraph, BKE_scene_frame_get(scene));
   eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* flag is initialized from UserPref keyframing settings
@@ -227,7 +232,7 @@ static bConstraint *add_temporary_ik_constraint(bPoseChannel *pchan,
       nullptr, pchan, "TempConstraint", CONSTRAINT_TYPE_KINEMATIC);
 
   /* for draw, but also for detecting while pose solving */
-  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
   bKinematicConstraint *temp_con_data = static_cast<bKinematicConstraint *>(con->data);
 
@@ -410,7 +415,7 @@ static short pose_grab_with_ik(Main *bmain, Object *ob)
   /* Rule: allow multiple Bones
    * (but they must be selected, and only one ik-solver per chain should get added) */
   LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-    if (BKE_pose_is_layer_visible(arm, pchan)) {
+    if (BKE_pose_is_bonecoll_visible(arm, pchan)) {
       if (pchan->bone->flag & (BONE_SELECTED | BONE_TRANSFORM_MIRROR)) {
         /* Rule: no IK for solitary (unconnected) bones. */
         for (bonec = static_cast<Bone *>(pchan->bone->childbase.first); bonec; bonec = bonec->next)
@@ -817,7 +822,8 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
     const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
     const bool is_mirror_relative = ((pose->flag & POSE_MIRROR_RELATIVE) != 0);
 
-    tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
+    /* We also allow non-active objects to be transformed, in weight-paint. */
+    tc->poseobj = ob;
 
     /* init trans data */
     td = tc->data = static_cast<TransData *>(
@@ -1297,7 +1303,7 @@ static void recalcData_edit_armature(TransInfo *t)
 
 /**
  * if pose bone (partial) selected, copy data.
- * context; posemode armature, with mirror editing enabled.
+ * context; pose-mode armature, with mirror editing enabled.
  */
 static void pose_transform_mirror_update(TransInfo *t, TransDataContainer *tc, Object *ob)
 {
@@ -1435,7 +1441,7 @@ static void recalcData_pose(TransInfo *t)
         }
       }
       else if (ob->mode == OB_MODE_POSE) {
-        /* actually support TFM_BONESIZE in posemode as well */
+        /* Actually support #TFM_BONESIZE in pose-mode as well. */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
         bPose *pose = ob->pose;
         if (arm->flag & ARM_MIRROR_EDIT || pose->flag & POSE_MIRROR_EDIT) {
@@ -1624,9 +1630,9 @@ static short apply_targetless_ik(Object *ob)
             mat3_to_size(parchan->size, smat);
           }
 
-          /* causes problems with some constraints (e.g. childof), so disable this */
-          /* as it is IK shouldn't affect location directly */
-          /* copy_v3_v3(parchan->loc, mat[3]); */
+          /* Causes problems with some constraints (e.g. child-of), so disable this
+           * as it is IK shouldn't affect location directly. */
+          // copy_v3_v3(parchan->loc, mat[3]);
         }
       }
 
@@ -1649,7 +1655,7 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
     /* clear all temporary lock flags */
     pchan->ikflag &= ~(BONE_IK_NO_XDOF_TEMP | BONE_IK_NO_YDOF_TEMP | BONE_IK_NO_ZDOF_TEMP);
 
-    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
     /* remove all temporary IK-constraints added */
     for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = next) {
@@ -1669,7 +1675,7 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
         }
         pchan->constflag |= PCHAN_HAS_IK;
         if (data->tar == nullptr || (data->tar->type == OB_ARMATURE && data->subtarget[0] == 0)) {
-          pchan->constflag |= PCHAN_HAS_TARGET;
+          pchan->constflag |= PCHAN_HAS_NO_TARGET;
         }
       }
     }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,9 +17,9 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -62,8 +62,8 @@
 #  include "BKE_workspace.h"
 #  include "BKE_world.h"
 
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "DNA_armature_types.h"
 #  include "DNA_brush_types.h"
@@ -2041,6 +2041,7 @@ void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop)
       func, "do_ui_user", true, "", "Make sure interface does not reference this grease pencil");
 }
 
+#  ifdef WITH_GREASE_PENCIL_V3
 void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -2050,6 +2051,7 @@ void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "Main");
   RNA_def_struct_ui_text(srna, "Main Grease Pencils", "Collection of grease pencils");
 }
+#  endif
 
 void RNA_def_main_movieclips(BlenderRNA *brna, PropertyRNA *cprop)
 {

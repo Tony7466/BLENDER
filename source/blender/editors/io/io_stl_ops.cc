@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,10 +18,10 @@
 
 #  include "ED_outliner.hh"
 
-#  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_access.hh"
+#  include "RNA_define.hh"
 
-#  include "IO_stl.h"
+#  include "IO_stl.hh"
 #  include "io_stl_ops.hh"
 
 static int wm_stl_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)

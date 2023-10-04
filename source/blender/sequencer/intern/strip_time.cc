@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -14,7 +14,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 
 #include "BKE_fcurve.h"
 #include "BKE_movieclip.h"
@@ -32,7 +32,7 @@
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
-#include "SEQ_retiming.h"
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
@@ -502,10 +502,10 @@ bool SEQ_time_has_still_frames(const Scene *scene, const Sequence *seq)
 int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
   if (SEQ_retiming_is_active(seq)) {
-    SeqRetimingHandle *handle_start = seq->retiming_handles;
-    SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_handles_count(seq) - 1);
-    return handle_end->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq) -
-           (handle_start->strip_frame_index) / seq_time_media_playback_rate_factor_get(scene, seq);
+    const SeqRetimingKey *key_start = seq->retiming_keys;
+    const SeqRetimingKey *key_end = seq->retiming_keys + (SEQ_retiming_keys_count(seq) - 1);
+    return key_end->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq) -
+           (key_start->strip_frame_index) / seq_time_media_playback_rate_factor_get(scene, seq);
   }
 
   return seq->len / seq_time_media_playback_rate_factor_get(scene, seq);

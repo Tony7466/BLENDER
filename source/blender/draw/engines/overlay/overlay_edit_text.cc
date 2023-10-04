@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,9 @@
 #include "DRW_render.h"
 
 #include "UI_resources.hh"
+
+#include "BLI_math_color.h"
+#include "BLI_math_rotation.h"
 
 #include "BKE_vfont.h"
 

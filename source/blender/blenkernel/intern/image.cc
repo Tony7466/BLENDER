@@ -75,6 +75,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_packedFile.h"
+#include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -92,10 +93,10 @@
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* for image user iteration */
 #include "DNA_node_types.h"
@@ -419,9 +420,10 @@ static void image_blend_read_data(BlendDataReader *reader, ID *id)
   image_runtime_reset(ima);
 }
 
-static void image_blend_read_lib(BlendLibReader * /*reader*/, ID *id)
+static void image_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 {
-  Image *ima = (Image *)id;
+  Image *ima = reinterpret_cast<Image *>(id);
+
   /* Images have some kind of 'main' cache, when null we should also clear all others. */
   /* Needs to be done *after* cache pointers are restored (call to
    * `foreach_cache`/`blo_cache_storage_entry_restore_in_new`), easier for now to do it in
@@ -455,8 +457,7 @@ constexpr IDTypeInfo get_type_info()
 
   info.blend_write = image_blend_write;
   info.blend_read_data = image_blend_read_data;
-  info.blend_read_lib = image_blend_read_lib;
-  info.blend_read_expand = nullptr;
+  info.blend_read_after_liblink = image_blend_read_after_liblink;
 
   info.blend_read_undo_preserve = nullptr;
 
@@ -4384,8 +4385,26 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
     }
   }
 
+  /* Put an empty image buffer to the cache so that the Image.has_data detects that some data
+   * has been loaded for this Image data-block.
+   *
+   * Surely there are all the design questions about scene-dependent Render Result image
+   * data-block, and the behavior of the flag dependent on whether the Render Result image was ever
+   * shown on screen. The purpose of this code is to preserve the Python API behavior to the level
+   * prior to the #RenderResult refactor to use #ImBuf which happened for Blender 4.0. */
+  if (ima->cache == nullptr) {
+    ImBuf *empty_ibuf = IMB_allocImBuf(0, 0, 0, 0);
+    image_assign_ibuf(ima, empty_ibuf, IMA_NO_INDEX, 0);
+
+    /* The cache references the image buffer, and the freeing only happens if the buffer has 0
+     * references at the time when the #IMB_freeImBuf() is called. This particular image buffer is
+     * to be freed together with the cache, without any extra reference counting done by any image
+     * pixel accessor. */
+    IMB_freeImBuf(empty_ibuf);
+  }
+
   if (pass_ibuf) {
-    /* TODO(sergey): Perhaps its better to assign dither when ImBuf is allocated for the render
+    /* TODO(@sergey): Perhaps its better to assign dither when #ImBuf is allocated for the render
      * result. It will avoid modification here, and allow comparing render results with different
      * dither applied to them. */
     pass_ibuf->dither = dither;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2002-2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2002-2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
@@ -27,7 +29,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_paint.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_image.hh"
 #include "ED_mesh.hh"
@@ -37,8 +39,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "paint_intern.hh"
 #include "uvedit_intern.h"

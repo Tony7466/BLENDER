@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,6 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_armature_types.h"
@@ -25,7 +24,7 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 /* Only for blend modes. */
 #include "IMB_imbuf.h"

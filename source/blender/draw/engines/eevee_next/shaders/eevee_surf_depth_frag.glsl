@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Depth shader that can stochastically discard transparent pixel.
@@ -36,6 +39,16 @@ void main()
 
   float transparency = avg(g_transmittance);
   if (transparency > random_threshold) {
+    discard;
+    return;
+  }
+#endif
+
+#ifdef MAT_CLIP_PLANE
+  /* Do not use hardware clip planes as they modify the rasterization (some GPUs add vertices).
+   * This would in turn create a discrepency between the prepass depth and the gbuffer depth which
+   * exhibits missing pixels data. */
+  if (clip_interp.clip_distance > 0.0) {
     discard;
     return;
   }

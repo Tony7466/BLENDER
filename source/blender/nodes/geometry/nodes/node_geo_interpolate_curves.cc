@@ -1,15 +1,20 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
+#include "BLI_math_vector.hh"
+
 #include "BLI_kdtree.h"
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
+
+#include "GEO_randomize.hh"
 
 #include "DNA_pointcloud_types.h"
 
@@ -755,6 +760,8 @@ static GeometrySet generate_interpolated_curves(
     child_curves_id->mat = static_cast<Material **>(MEM_dupallocN(guide_curves_id.mat));
     child_curves_id->totcol = guide_curves_id.totcol;
   }
+
+  geometry::debug_randomize_curve_order(&child_curves);
 
   return GeometrySet::from_curves(child_curves_id);
 }

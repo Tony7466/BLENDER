@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,8 @@
 
 #include "draw_cache_impl.hh"
 #include "draw_manager_text.h"
+
+#include "BLI_math_color.h"
 
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
@@ -21,7 +23,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_image.hh"
 

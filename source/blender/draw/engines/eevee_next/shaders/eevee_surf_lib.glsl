@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
@@ -38,41 +41,43 @@ void init_globals_mesh()
 
 void init_globals_curves()
 {
+#if defined(MAT_GEOM_CURVES)
   /* Shade as a cylinder. */
-  float cos_theta = interp.curves_time_width / interp.curves_thickness;
-#if defined(GPU_FRAGMENT_SHADER) && defined(MAT_GEOM_CURVES)
+  float cos_theta = curve_interp.time_width / curve_interp.thickness;
+#  if defined(GPU_FRAGMENT_SHADER)
   if (hairThicknessRes == 1) {
     /* Random cosine normal distribution on the hair surface. */
     float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).x;
-#  ifdef EEVEE_SAMPLING_DATA
+#    ifdef EEVEE_SAMPLING_DATA
     /* Needs to check for SAMPLING_DATA,
      * otherwise Surfel and World (?!?!) shader validation fails. */
     noise = fract(noise + sampling_rng_1D_get(SAMPLING_CURVES_U));
-#  endif
+#    endif
     cos_theta = noise * 2.0 - 1.0;
   }
-#endif
+#  endif
   float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
-  g_data.N = g_data.Ni = normalize(interp.N * sin_theta + interp.curves_binormal * cos_theta);
+  g_data.N = g_data.Ni = normalize(interp.N * sin_theta + curve_interp.binormal * cos_theta);
 
   /* Costly, but follows cycles per pixel tangent space (not following curve shape). */
   vec3 V = cameraVec(g_data.P);
-  g_data.curve_T = -interp.curves_tangent;
+  g_data.curve_T = -curve_interp.tangent;
   g_data.curve_B = cross(V, g_data.curve_T);
   g_data.curve_N = safe_normalize(cross(g_data.curve_T, g_data.curve_B));
 
   g_data.is_strand = true;
-  g_data.hair_time = interp.curves_time;
-  g_data.hair_thickness = interp.curves_thickness;
-  g_data.hair_strand_id = interp.curves_strand_id;
-#if defined(USE_BARYCENTRICS) && defined(GPU_FRAGMENT_SHADER) && defined(MAT_GEOM_CURVES)
-  g_data.barycentric_coords = hair_resolve_barycentric(interp.barycentric_coords);
+  g_data.hair_time = curve_interp.time;
+  g_data.hair_thickness = curve_interp.thickness;
+  g_data.hair_strand_id = curve_interp_flat.strand_id;
+#  if defined(USE_BARYCENTRICS) && defined(GPU_FRAGMENT_SHADER)
+  g_data.barycentric_coords = hair_resolve_barycentric(curve_interp.barycentric_coords);
+#  endif
 #endif
 }
 
 void init_globals_gpencil()
 {
-  /* Undo backface flip as the gpencil normal is already pointing towards the camera. */
+  /* Undo back-face flip as the grease-pencil normal is already pointing towards the camera. */
   g_data.N = g_data.Ni = interp.N;
 }
 
@@ -114,13 +119,24 @@ void init_interface()
 #ifdef GPU_VERTEX_SHADER
   interp.P = vec3(0.0);
   interp.N = vec3(0.0);
-  interp.barycentric_coords = vec2(0.0);
-  interp.curves_tangent = vec3(0.0);
-  interp.curves_binormal = vec3(0.0);
-  interp.curves_time = 0.0;
-  interp.curves_time_width = 0.0;
-  interp.curves_thickness = 0.0;
-  interp.curves_strand_id = 0;
   drw_ResourceID_iface.resource_index = resource_id;
 #endif
 }
+
+#if defined(GPU_VERTEX_SHADER) && defined(MAT_SHADOW)
+void shadow_viewport_layer_set(int view_id, int lod)
+{
+  /* We still render to a layered frame-buffer in the case of Metal + Tile Based Renderer.
+   * Since it needs correct depth buffering, each view needs to not overlap each others.
+   * It doesn't matter much for other platform, so we use that as a way to pass the view id. */
+  gpu_Layer = view_id;
+  gpu_ViewportIndex = lod;
+}
+#endif
+
+#if defined(GPU_FRAGMENT_SHADER) && defined(MAT_SHADOW)
+int shadow_view_id_get()
+{
+  return gpu_Layer;
+}
+#endif

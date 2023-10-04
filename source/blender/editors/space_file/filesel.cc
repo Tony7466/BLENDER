@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -55,7 +55,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -110,7 +110,7 @@ static void fileselect_ensure_updated_asset_params(SpaceFile *sfile)
     asset_params->base_params.details_flags = U_default.file_space_data.details_flags;
     asset_params->asset_library_ref.type = ASSET_LIBRARY_ALL;
     asset_params->asset_library_ref.custom_library_index = -1;
-    asset_params->import_type = FILE_ASSET_IMPORT_FOLLOW_PREFS;
+    asset_params->import_method = FILE_ASSET_IMPORT_FOLLOW_PREFS;
   }
 
   FileSelectParams *base_params = &asset_params->base_params;
@@ -172,7 +172,7 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
     const bool is_relative_path = (RNA_struct_find_property(op->ptr, "relative_path") != nullptr);
 
     BLI_strncpy_utf8(
-        params->title, WM_operatortype_name(op->type, op->ptr), sizeof(params->title));
+        params->title, WM_operatortype_name(op->type, op->ptr).c_str(), sizeof(params->title));
 
     if ((prop = RNA_struct_find_property(op->ptr, "filemode"))) {
       params->type = RNA_property_int_get(op->ptr, prop);
@@ -519,12 +519,12 @@ int ED_fileselect_asset_import_method_get(const SpaceFile *sfile, const FileDirE
 
   const FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
 
-  if (params->import_type == FILE_ASSET_IMPORT_FOLLOW_PREFS) {
+  if (params->import_method == FILE_ASSET_IMPORT_FOLLOW_PREFS) {
     std::optional import_method = file->asset->get_import_method();
     return import_method ? *import_method : -1;
   }
 
-  switch (eFileAssetImportType(params->import_type)) {
+  switch (eFileAssetImportMethod(params->import_method)) {
     case FILE_ASSET_IMPORT_LINK:
       return ASSET_IMPORT_LINK;
     case FILE_ASSET_IMPORT_APPEND:
@@ -974,18 +974,15 @@ float file_font_pointsize()
 static void file_attribute_columns_widths(const FileSelectParams *params, FileLayout *layout)
 {
   FileAttributeColumn *columns = layout->attribute_columns;
-  const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
-  const int pad = small_size ? 0 : ATTRIBUTE_COLUMN_PADDING * 2;
+  const int pad = ATTRIBUTE_COLUMN_PADDING * 2;
 
   for (int i = 0; i < ATTRIBUTE_COLUMN_MAX; i++) {
     layout->attribute_columns[i].width = 0;
   }
 
   /* Biggest possible reasonable values... */
-  columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" :
-                                                                  "23 Dec 6789, 23:59") +
-                                   pad;
-  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "098.7 MiB") + pad;
+  columns[COLUMN_DATETIME].width = file_string_width("23 Dec 6789, 23:59") + pad;
+  columns[COLUMN_SIZE].width = file_string_width("098.7 MiB") + pad;
   if (params->display == FILE_IMGDISPLAY) {
     columns[COLUMN_NAME].width = (float(params->thumbnail_size) / 8.0f) * UI_UNIT_X;
   }

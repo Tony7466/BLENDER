@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #include "BKE_context.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_image.hh"
 #include "ED_screen.hh"
@@ -36,7 +36,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* Own define. */
 #include "ED_util_imbuf.hh"

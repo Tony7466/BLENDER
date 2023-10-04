@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,10 +15,14 @@
 #include "BKE_volume.h"
 #include "BKE_volume_openvdb.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -251,6 +255,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     point_radii.span.fill(0.05f);
     point_radii.finish();
 
+    geometry::debug_randomize_point_order(pointcloud);
+
     geometry_set.replace_pointcloud(pointcloud);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
   });
@@ -262,6 +268,31 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.error_message_add(NodeWarningType::Error,
                            TIP_("Disabled, Blender was compiled without OpenVDB"));
 #endif
+}
+
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem mode_items[] = {
+      {GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM,
+       "DENSITY_RANDOM",
+       0,
+       "Random",
+       "Distribute points randomly inside of the volume"},
+      {GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID,
+       "DENSITY_GRID",
+       0,
+       "Grid",
+       "Distribute the points in a grid pattern inside of the volume"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Distribution Method",
+                    "Method to use for scattering points",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
 }
 
 static void node_register()
@@ -282,6 +313,8 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

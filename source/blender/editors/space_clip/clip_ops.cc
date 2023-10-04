@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_fileops.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -51,16 +51,16 @@
 
 #include "UI_interface.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "UI_view2d.hh"
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "clip_intern.h" /* own include */
 
@@ -183,7 +183,6 @@ static int open_exec(bContext *C, wmOperator *op)
   bScreen *screen = CTX_wm_screen(C);
   Main *bmain = CTX_data_main(C);
   PropertyPointerRNA *pprop;
-  PointerRNA idptr;
   MovieClip *clip = nullptr;
   char filepath[FILE_MAX];
 
@@ -242,7 +241,7 @@ static int open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&clip->id);
 
-    RNA_id_pointer_create(&clip->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&clip->id);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }

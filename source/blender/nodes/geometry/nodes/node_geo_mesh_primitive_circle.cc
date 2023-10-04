@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,16 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_mesh_primitive_uv_sphere.hh"
+
 #include "node_geometry_util.hh"
+
+#include "RNA_enum_types.hh"
 
 namespace blender::nodes::node_geo_mesh_primitive_circle_cc {
 
@@ -103,7 +109,7 @@ static int circle_face_total(const GeometryNodeMeshCircleFillType fill_type, con
 
 static Bounds<float3> calculate_bounds_circle(const float radius, const int verts_num)
 {
-  return calculate_bounds_radial_primitive(0.0f, radius, verts_num, 0.0f);
+  return geometry::calculate_bounds_radial_primitive(0.0f, radius, verts_num, 0.0f);
 }
 
 static Mesh *create_circle_mesh(const float radius,
@@ -198,6 +204,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
 
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "fill_type",
+                    "Fill Type",
+                    "",
+                    rna_enum_node_geometry_mesh_circle_fill_type_items,
+                    NOD_storage_enum_accessors(fill_type),
+                    GEO_NODE_MESH_CIRCLE_FILL_NONE);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -210,6 +227,8 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

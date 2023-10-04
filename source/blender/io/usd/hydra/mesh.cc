@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/base/tf/staticTokens.h>
 #include <pxr/imaging/hd/tokens.h>
+
+#include "BLI_string.h"
 
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -83,7 +85,7 @@ void MeshData::update()
   }
 }
 
-pxr::VtValue MeshData::get_data(pxr::TfToken const & /* key */) const
+pxr::VtValue MeshData::get_data(pxr::TfToken const & /*key*/) const
 {
   return pxr::VtValue();
 }
@@ -203,7 +205,7 @@ void MeshData::write_materials()
 pxr::SdfPath MeshData::submesh_prim_id(int index) const
 {
   char name[16];
-  snprintf(name, sizeof(name), "SM_%04d", index);
+  SNPRINTF(name, "SM_%04d", index);
   return prim_id.AppendElementString(name);
 }
 
@@ -216,14 +218,10 @@ const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
 
 void MeshData::write_submeshes(const Mesh *mesh)
 {
-  submeshes_.clear();
-
-  /* Insert base submeshes */
-  const int mat_count = BKE_object_material_count_eval((const Object *)id);
-  for (int i = 0; i < std::max(mat_count, 1); ++i) {
-    SubMesh sm;
-    sm.mat_index = i;
-    submeshes_.push_back(sm);
+  const int mat_count = BKE_object_material_count_eval(reinterpret_cast<const Object *>(id));
+  submeshes_.reinitialize(mat_count > 0 ? mat_count : 1);
+  for (const int i : submeshes_.index_range()) {
+    submeshes_[i].mat_index = i;
   }
 
   /* Fill submeshes data */
@@ -264,16 +262,8 @@ void MeshData::write_submeshes(const Mesh *mesh)
   }
 
   /* Remove submeshes without faces */
-  for (auto it = submeshes_.begin(); it != submeshes_.end();) {
-    if (it->face_vertex_counts.empty()) {
-      it = submeshes_.erase(it);
-    }
-    else {
-      ++it;
-    }
-  }
-
-  if (submeshes_.empty()) {
+  submeshes_.remove_if([](const SubMesh &submesh) { return submesh.face_vertex_counts.empty(); });
+  if (submeshes_.is_empty()) {
     return;
   }
 

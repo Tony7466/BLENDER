@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,9 +24,9 @@
 
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_types.hh"
 
 #include "UI_interface.hh"
 
@@ -251,7 +251,8 @@ static int preferences_extension_repo_add_exec(bContext *C, wmOperator *op)
 
   BLI_path_split_file_part(directory, name, sizeof(name));
 
-  bUserExtensionRepo *new_repo = BKE_preferences_extension_repo_add(&U, name, directory);
+  const char *module = name;
+  bUserExtensionRepo *new_repo = BKE_preferences_extension_repo_add(&U, name, module, directory);
 
   /* Activate new repository in the UI for further setup. */
   U.active_extension_repo = BLI_findindex(&U.extension_repos, new_repo);
@@ -281,7 +282,7 @@ static void PREFERENCES_OT_extension_repo_add(wmOperatorType *ot)
 {
   ot->name = "Add Extension Repository";
   ot->idname = "PREFERENCES_OT_extension_repo_add";
-  ot->description = "Add a directory to be used as a local extensions repository";
+  ot->description = "Add a directory to be used as a local extension repository";
 
   ot->exec = preferences_extension_repo_add_exec;
   ot->invoke = preferences_extension_repo_add_invoke;
@@ -342,7 +343,7 @@ static void PREFERENCES_OT_extension_repo_remove(wmOperatorType *ot)
 {
   ot->name = "Remove Extension Repository";
   ot->idname = "PREFERENCES_OT_extension_repo_remove";
-  ot->description = "Remove an extensions repository";
+  ot->description = "Remove an extension repository";
 
   ot->exec = preferences_extension_repo_remove_exec;
   ot->poll = preferences_extension_repo_remove_poll;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,11 +7,15 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_enum_types.h"
-
-#include "NOD_socket_search_link.hh"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
 #include "BKE_type_conversions.hh"
+
+#include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -202,6 +206,31 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(
+      srna,
+      "data_type",
+      "Data Type",
+      "Type of data stored in attribute",
+      rna_enum_attribute_type_items,
+      NOD_storage_enum_accessors(data_type),
+      CD_PROP_FLOAT,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_attribute_type_items,
+                                 enums::generic_attribute_type_supported);
+      });
+
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Which domain to store the data in",
+                    rna_enum_attribute_domain_items,
+                    NOD_storage_enum_accessors(domain),
+                    ATTR_DOMAIN_POINT);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -220,6 +249,8 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

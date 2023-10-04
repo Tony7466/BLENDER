@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
@@ -9,7 +12,7 @@ void main()
 {
   DRW_VIEW_FROM_RESOURCE_ID;
 #ifdef MAT_SHADOW
-  shadow_interp.view_id = drw_view_id;
+  shadow_viewport_layer_set(int(drw_view_id), int(viewport_index_buf[drw_view_id]));
 #endif
 
   init_interface();
@@ -31,6 +34,10 @@ void main()
   attrib_load();
 
   interp.P += nodetree_displacement();
+
+#ifdef MAT_CLIP_PLANE
+  clip_interp.clip_distance = dot(clip_plane.plane, vec4(interp.P, 1.0));
+#endif
 
   gl_Position = point_world_to_ndc(interp.P);
 }

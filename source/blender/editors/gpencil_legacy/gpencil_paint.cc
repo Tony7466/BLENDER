@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,8 +16,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_hash.h"
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -47,7 +48,7 @@
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "UI_view2d.hh"
@@ -63,15 +64,15 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -507,7 +508,7 @@ static void gpencil_brush_angle(bGPdata *gpd, Brush *brush, tGPspoint *pt, const
   /* angle vector of the brush with full thickness */
   const float v0[2] = {cos(angle), sin(angle)};
 
-  /* Apply to first point (only if there are 2 points because before no data to do it ) */
+  /* Apply to first point (only if there are 2 points because before no data to do it). */
   if (gpd->runtime.sbuffer_used == 1) {
     sub_v2_v2v2(mvec, mval, (pt - 1)->m_xy);
     normalize_v2(mvec);
@@ -1051,7 +1052,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = brush->size;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = brush->gpencil_settings->hardeness;
+  gps->hardness = brush->gpencil_settings->hardness;
   copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
@@ -3776,13 +3777,13 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   * - LEFTMOUSE  = standard drawing (all) / straight line drawing (all)
-   * - RIGHTMOUSE = eraser (all)
-   *   (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       p->status = GP_STATUS_DONE;
@@ -3831,7 +3832,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides the right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }

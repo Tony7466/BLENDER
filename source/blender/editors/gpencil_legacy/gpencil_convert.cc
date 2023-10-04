@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -51,16 +52,16 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
@@ -500,7 +501,6 @@ static void gpencil_stroke_path_animation(bContext *C,
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   bAction *act;
   FCurve *fcu;
-  PointerRNA ptr;
   PropertyRNA *prop = nullptr;
   int gaps_count = 0;
 
@@ -517,7 +517,7 @@ static void gpencil_stroke_path_animation(bContext *C,
   cu->pathlen = gtd->frame_range;
 
   /* Get RNA pointer to read/write path time values */
-  RNA_id_pointer_create((ID *)cu, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)cu);
   prop = RNA_struct_find_property(&ptr, "eval_time");
 
   /* Ensure we have an F-Curve to add keyframes to */

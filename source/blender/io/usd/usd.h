@@ -1,12 +1,12 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +44,7 @@ struct USDExportParams {
   bool export_hair = true;
   bool export_uvmaps = true;
   bool export_normals = true;
+  bool export_mesh_colors = true;
   bool export_materials = true;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
@@ -71,6 +72,8 @@ struct USDImportParams {
   bool import_meshes;
   bool import_volumes;
   bool import_shapes;
+  bool import_skeletons;
+  bool import_blendshapes;
   char *prim_path_mask;
   bool import_subdiv;
   bool import_instance_proxies;

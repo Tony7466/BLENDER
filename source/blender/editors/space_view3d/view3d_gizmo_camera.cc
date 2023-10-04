@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,8 @@
  */
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_camera.h"
@@ -26,13 +27,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -137,10 +138,9 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
   Camera *ca = static_cast<Camera *>(ob->data);
-  PointerRNA camera_ptr;
   float dir[3];
 
-  RNA_pointer_create(&ca->id, &RNA_Camera, ca, &camera_ptr);
+  PointerRNA camera_ptr = RNA_pointer_create(&ca->id, &RNA_Camera, ca);
 
   negate_v3_v3(dir, ob->object_to_world[2]);
 
@@ -151,8 +151,7 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
     WM_gizmo_set_flag(cagzgroup->dop_dist, WM_GIZMO_HIDDEN, false);
 
     /* Need to set property here for undo. TODO: would prefer to do this in _init. */
-    PointerRNA camera_dof_ptr;
-    RNA_pointer_create(&ca->id, &RNA_CameraDOFSettings, &ca->dof, &camera_dof_ptr);
+    PointerRNA camera_dof_ptr = RNA_pointer_create(&ca->id, &RNA_CameraDOFSettings, &ca->dof);
     WM_gizmo_target_property_def_rna(
         cagzgroup->dop_dist, "offset", &camera_dof_ptr, "focus_distance", -1);
   }
@@ -275,8 +274,7 @@ static void WIDGETGROUP_camera_message_subscribe(const bContext *C,
         &rna_Camera_lens,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&ca->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&ca->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);

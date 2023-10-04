@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,6 +26,7 @@
 #include "ED_armature.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 
 #include "ArmatureExporter.h"
 #include "ControllerExporter.h"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -35,8 +35,8 @@
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -542,11 +542,11 @@ float ANIM_unit_mapping_get_factor(Scene *scene, ID *id, FCurve *fcu, short flag
 
   /* sanity checks */
   if (id && fcu && fcu->rna_path) {
-    PointerRNA ptr, id_ptr;
+    PointerRNA ptr;
     PropertyRNA *prop;
 
     /* get RNA property that F-Curve affects */
-    RNA_id_pointer_create(id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id);
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
       /* rotations: radians <-> degrees? */
       if (RNA_SUBTYPE_UNIT(RNA_property_subtype(prop)) == PROP_UNIT_ROTATION) {

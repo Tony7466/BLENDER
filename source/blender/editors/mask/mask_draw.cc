@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
@@ -37,7 +37,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 static void mask_spline_color_get(MaskLayer *mask_layer,
                                   MaskSpline *spline,
@@ -665,10 +665,10 @@ void ED_mask_draw_region(
   const float width = width_i, height = float(height_i) * (aspy / aspx);
 
   int x, y;
-  /* int w, h; */
+  // int w, h;
   float zoomx, zoomy;
 
-  /* frame image */
+  /* Frame image. */
   float maxdim;
   float xofs, yofs;
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,6 +22,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
@@ -30,7 +31,7 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "GHOST_C-api.h"
 
@@ -1408,6 +1409,11 @@ bool WM_window_pixels_read_sample(bContext *C, wmWindow *win, const int pos[2], 
     return true;
   }
   return WM_window_pixels_read_sample_from_offscreen(C, win, pos, r_col);
+}
+
+bool WM_desktop_cursor_sample_read(float r_col[3])
+{
+  return GHOST_GetPixelAtCursor(r_col);
 }
 
 /** \} */

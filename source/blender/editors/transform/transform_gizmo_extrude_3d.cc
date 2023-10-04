@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,15 +8,16 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -476,8 +477,8 @@ static void gizmo_mesh_extrude_message_subscribe(const bContext *C,
 
   {
     Scene *scene = CTX_data_scene(C);
-    PointerRNA toolsettings_ptr;
-    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+    PointerRNA toolsettings_ptr = RNA_pointer_create(
+        &scene->id, &RNA_ToolSettings, scene->toolsettings);
     const PropertyRNA *props[] = {
         &rna_ToolSettings_workspace_tool_type,
     };

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,7 @@
 
 #include "BLI_sys_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_utildefines.h"
 
@@ -42,7 +42,7 @@
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 

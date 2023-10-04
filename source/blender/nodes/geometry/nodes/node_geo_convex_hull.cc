@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,8 @@
 #include "BKE_curves.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -215,6 +217,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Mesh *mesh = compute_hull(geometry_set);
+    if (mesh) {
+      geometry::debug_randomize_mesh_order(mesh);
+    }
     geometry_set.replace_mesh(mesh);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
   });
