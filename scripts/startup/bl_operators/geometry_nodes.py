@@ -37,6 +37,7 @@ def geometry_node_group_empty_new(name):
 
 def geometry_node_group_empty_modifier_new(name):
     group = geometry_node_group_empty_new(data_("Geometry Nodes"))
+    group.use_fake_user = bpy.context.preferences.edit.node_auto_add_fake_user
     group.is_modifier = True
     return group
 

@@ -770,6 +770,10 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
     Material *new_ma = (Material *)BKE_id_copy_ex(
         bmain, &ma->id, nullptr, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS);
     ma = new_ma;
+
+    if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+      id_fake_user_set(&(ma->id));
+    }
   }
   else {
     const char *name = DATA_("Material");

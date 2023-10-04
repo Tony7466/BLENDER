@@ -5630,6 +5630,11 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Duplicate Node Tree",
                            "Make copies of node groups when duplicating nodes in the node editor");
 
+  prop = RNA_def_property(srna, "node_auto_add_fake_user", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_FAKE_USER);
+  RNA_def_property_ui_text(
+      prop, "Auto Add Fake User", "Automatically add a fake user when creating new node groups");
+
   prop = RNA_def_property(srna, "node_use_insert_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_OFFSET);
   RNA_def_property_ui_text(prop,

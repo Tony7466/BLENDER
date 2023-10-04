@@ -304,6 +304,10 @@ Material *BKE_material_add(Main *bmain, const char *name)
 
   ma = static_cast<Material *>(BKE_id_new(bmain, ID_MA, name));
 
+  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+    id_fake_user_set(&(ma->id));
+  }
+
   return ma;
 }
 

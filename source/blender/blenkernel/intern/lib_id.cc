@@ -70,7 +70,7 @@
 
 #include "lib_intern.h"
 
-//#define DEBUG_TIME
+// #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "PIL_time_utildefines.h"
@@ -947,6 +947,10 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
         /* us is 1 by convention with new IDs, but RNA_property_pointer_set
          * will also increment it, decrement it here. */
         id_us_min(newid);
+
+        if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+          id_fake_user_set(newid);
+        }
 
         /* assign copy */
         PointerRNA idptr = RNA_id_pointer_create(newid);
