@@ -63,52 +63,17 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
   BLI_assert(SimulationItemsAccessor::supports_socket_type(socket_type));
 
-  std::unique_ptr<SocketDeclaration> decl;
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      decl = std::make_unique<decl::Float>();
+  std::unique_ptr<SocketDeclaration> decl = make_declaration_for_socket_type(socket_type);
+  BLI_assert(decl);
+
+  if (socket_type_supports_fields(socket_type)) {
+    if (in_out == SOCK_IN) {
       decl->input_field_type = InputSocketFieldType::IsSupported;
+    }
+    else {
       decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
           {corresponding_input});
-      break;
-    case SOCK_VECTOR:
-      decl = std::make_unique<decl::Vector>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_RGBA:
-      decl = std::make_unique<decl::Color>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_BOOLEAN:
-      decl = std::make_unique<decl::Bool>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_ROTATION:
-      decl = std::make_unique<decl::Rotation>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_INT:
-      decl = std::make_unique<decl::Int>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_STRING:
-      decl = std::make_unique<decl::String>();
-      break;
-    case SOCK_GEOMETRY:
-      decl = std::make_unique<decl::Geometry>();
-      break;
-    default:
-      BLI_assert_unreachable();
+    }
   }
 
   decl->name = item.name ? item.name : "";
@@ -797,36 +762,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
-  if (!node->storage) {
-    return;
-  }
-  NodeGeometrySimulationOutput &storage = node_storage(*node);
-  for (NodeSimulationItem &item : MutableSpan(storage.items, storage.items_num)) {
-    MEM_SAFE_FREE(item.name);
-  }
-  MEM_SAFE_FREE(storage.items);
+  socket_items::destruct_array<SimulationItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometrySimulationOutput &src_storage = node_storage(*src_node);
-  NodeGeometrySimulationOutput *dst_storage = MEM_cnew<NodeGeometrySimulationOutput>(__func__);
-
-  dst_storage->items = MEM_cnew_array<NodeSimulationItem>(src_storage.items_num, __func__);
-  dst_storage->items_num = src_storage.items_num;
-  dst_storage->active_index = src_storage.active_index;
-  dst_storage->next_identifier = src_storage.next_identifier;
-  for (const int i : IndexRange(src_storage.items_num)) {
-    if (char *name = src_storage.items[i].name) {
-      dst_storage->items[i].identifier = src_storage.items[i].identifier;
-      dst_storage->items[i].name = BLI_strdup(name);
-      dst_storage->items[i].socket_type = src_storage.items[i].socket_type;
-      dst_storage->items[i].attribute_domain = src_storage.items[i].attribute_domain;
-    }
-  }
-
+  auto *dst_storage = MEM_new<NodeGeometrySimulationOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  socket_items::copy_array<SimulationItemsAccessor>(*src_node, *dst_node);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
