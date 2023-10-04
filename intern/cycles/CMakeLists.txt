@@ -258,6 +258,7 @@ endif()
 
 if(WITH_CYCLES_DEVICE_HIP)
   add_definitions(-DWITH_HIP)
+  add_definitions(-DHIP_VERSION_MAJOR=${HIP_VERSION_MAJOR})
 
   if(WITH_CYCLES_DEVICE_HIPRT)
     include_directories(

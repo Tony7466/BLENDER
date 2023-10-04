@@ -185,12 +185,23 @@ typedef struct textureReference {
 
 typedef textureReference* hipTexRef;
 
+#if HIP_VERSION_MAJOR >= 6
+typedef enum hipMemoryType {
+  hipMemoryTypeUnregistered = 0x00,
+  hipMemoryTypeHost = 0x01,
+  hipMemoryTypeDevice = 0x02,
+  hipMemoryTypeManaged = 0x03,
+  hipMemoryTypeArray = 0x10,
+  hipMemoryTypeUnified = 0x11,
+} hipMemoryType;
+#else
 typedef enum hipMemoryType {
   hipMemoryTypeHost = 0x00,
   hipMemoryTypeDevice = 0x01,
   hipMemoryTypeArray = 0x02,
   hipMemoryTypeUnified = 0x03,
 } hipMemoryType;
+#endif
 
 /**
  * Pointer attributes
