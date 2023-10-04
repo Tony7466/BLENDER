@@ -1615,6 +1615,9 @@ static int arg_handle_engine_set(int argc, const char **argv, void *data)
     }
     else {
       if (strcmp(argv[1], RE_engine_id_BLENDER_EEVEE_NEXT) == 0) {
+        /** NOTE: Temp workaround to support EEVEE Next tests.
+         * This ensures the engine is not unregistered in `DRW_engines_register_experimental`
+         * when using --factory-startup. */
         U.experimental.enable_eevee_next = true;
       }
       Scene *scene = CTX_data_scene(C);
