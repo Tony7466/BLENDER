@@ -20,10 +20,47 @@ namespace blender::nodes::node_geo_foreach_output_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryForEachOutput);
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclaration &r_declaration)
 {
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Geometry");
+  const NodeGeometryForEachOutput &storage = node_storage(node);
+  for (const int i : IndexRange(storage.output_items_num)) {
+    const NodeForEachOutputItem &item = storage.output_items[i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    {
+      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
+      BLI_assert(decl);
+      decl->name = StringRef(item.name);
+      decl->identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
+      decl->in_out = SOCK_IN;
+      if (socket_type_supports_fields(socket_type)) {
+        decl->input_field_type = InputSocketFieldType::IsSupported;
+      }
+      r_declaration.inputs.append(decl.get());
+      r_declaration.items.append(std::move(decl));
+    }
+    {
+      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
+      BLI_assert(decl);
+      decl->name = StringRef(item.name);
+      decl->identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
+      decl->in_out = SOCK_OUT;
+      if (socket_type_supports_fields(socket_type)) {
+        decl->output_field_dependency = OutputFieldDependency::ForFieldSource();
+      }
+      r_declaration.outputs.append(decl.get());
+      r_declaration.items.append(std::move(decl));
+    }
+  }
+
+  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
+  r_declaration.inputs.append(input_extend_decl.get());
+  r_declaration.items.append(std::move(input_extend_decl));
+
+  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
+  r_declaration.outputs.append(output_extend_decl.get());
+  r_declaration.items.append(std::move(output_extend_decl));
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -50,13 +87,20 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   socket_items::copy_array<ForEachOutputItemsAccessor>(*src_node, *dst_node);
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  return socket_items::try_add_item_via_any_extend_socket<ForEachOutputItemsAccessor>(
+      *ntree, *node, *node, *link);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_FOR_EACH_OUTPUT, "For-Each Output", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.gather_link_search_ops = nullptr;
+  ntype.insert_link = node_insert_link;
   node_type_storage(&ntype, "NodeGeometryForEachOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
