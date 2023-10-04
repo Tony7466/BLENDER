@@ -179,7 +179,7 @@ class GHOST_DeviceVK {
     }
   }
 
-  bool extensions_support(const vector<const char *> &required_extensions)
+  bool support_extensions(const vector<const char *> &required_extensions)
   {
     uint32_t ext_count;
     vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &ext_count, nullptr);
@@ -201,6 +201,13 @@ class GHOST_DeviceVK {
       }
     }
     return true;
+  }
+
+  bool supports_extension(const char *requested_extension)
+  {
+    std::vector<const char *> requested_extensions;
+    requested_extensions.push_back(requested_extension);
+    return support_extensions(requested_extensions);
   }
 
   void ensure_device(vector<const char *> &layers_enabled, vector<const char *> &extensions_device)
@@ -238,18 +245,23 @@ class GHOST_DeviceVK {
 
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance_4 = {};
     maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
-    maintenance_4.pNext = &device_12_features;
     maintenance_4.maintenance4 = VK_TRUE;
+    /* Mainenance4 is core in Vulkan 1.3 so we need to query for availability. */
+    if (supports_extension(VK_KHR_MAINTENANCE_4_EXTENSION_NAME)) {
+      maintenance_4.pNext = device_12_features.pNext;
+      device_12_features.pNext = &maintenance_4;
+    }
 
     /* Enable shader draw parameters on logical device when supported on physical device. */
     VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters = {};
     shader_draw_parameters.sType =
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
     shader_draw_parameters.shaderDrawParameters = features_11.shaderDrawParameters;
-    shader_draw_parameters.pNext = &maintenance_4;
+    shader_draw_parameters.pNext = device_12_features.pNext;
+    device_12_features.pNext = &shader_draw_parameters;
 
     VkDeviceCreateInfo device_create_info = {};
-    device_create_info.pNext = &shader_draw_parameters;
+    device_create_info.pNext = &device_12_features;
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());
     device_create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -320,7 +332,7 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
   for (const auto &physical_device : physical_devices) {
     GHOST_DeviceVK device_vk(vk_instance, physical_device);
 
-    if (!device_vk.extensions_support(required_extensions)) {
+    if (!device_vk.support_extensions(required_extensions)) {
       continue;
     }
 
@@ -1042,7 +1054,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   /* According to the Vulkan specs, when `VK_KHR_portability_subset` is available it should be
    * enabled. See
    * https://vulkan.lunarg.com/doc/view/1.2.198.1/mac/1.2-extensions/vkspec.html#VUID-VkDeviceCreateInfo-pProperties-04451*/
-  if (vulkan_device->extensions_support({VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME})) {
+  if (vulkan_device->support_extensions({VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME})) {
     extensions_device.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
   }
 #endif
