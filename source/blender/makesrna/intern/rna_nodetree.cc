@@ -3326,6 +3326,18 @@ typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
   return new_item;
 }
 
+static void rna_ForEachOutputNode_mode_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode &node = *static_cast<bNode *>(ptr->data);
+
+  blender::nodes::socket_items::remove_unsupported_socket_types<ForEachInputItemsAccessor>(node);
+  blender::nodes::socket_items::remove_unsupported_socket_types<ForEachOutputItemsAccessor>(node);
+
+  BKE_ntree_update_tag_node_property(&ntree, &node);
+  ED_node_tree_propagate_change(nullptr, bmain, &ntree);
+}
+
 /* ******** Node Socket Types ******** */
 
 static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *iter)
@@ -9035,7 +9047,8 @@ static void def_geo_foreach_output(StructRNA *srna)
 
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mode_items);
-  /* TODO: Handle update. */
+  RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_update(prop, NC_NODE, "rna_ForEachOutputNode_mode_update");
 
   prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "input_items", "input_items_num");

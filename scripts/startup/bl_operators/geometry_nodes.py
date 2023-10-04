@@ -473,6 +473,8 @@ class ForEachInputItemAddOperator(ForEachInputOperator, ZoneItemAddOperator, Ope
     bl_label = "Add For-Each Input"
     bl_options = {'REGISTER', 'UNDO'}
 
+    default_socket_type = 'FLOAT'
+
 class ForEachInputItemRemoveOperator(ForEachInputOperator, ZoneItemRemoveOperator, Operator):
     """Remove an item from the for-each input node"""
     bl_idname = "node.foreach_zone_input_item_remove"

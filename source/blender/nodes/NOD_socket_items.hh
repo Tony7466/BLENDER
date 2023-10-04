@@ -138,6 +138,56 @@ inline void move_item(T *items, const int items_num, const int from_index, const
 }
 
 /**
+ * Low level utility to remove all socket items for which the predicate is true.
+ */
+template<typename T>
+inline void remove_if(T **items,
+                      int *items_num,
+                      int *active_index,
+                      void (*destruct_item)(T *),
+                      const FunctionRef<bool(const T &item)> predicate)
+{
+  static_assert(std::is_trivial_v<T>);
+  T *old_items = *items;
+  const int old_items_num = *items_num;
+  Vector<int> indices_to_keep;
+  for (const int i : IndexRange(old_items_num)) {
+    T &item = old_items[i];
+    if (predicate(item)) {
+      destruct_item(&item);
+    }
+    else {
+      indices_to_keep.append(i);
+    }
+  }
+  const int new_items_num = indices_to_keep.size();
+  if (old_items_num == new_items_num) {
+    return;
+  }
+  T *new_items = MEM_cnew_array<T>(new_items_num, __func__);
+  for (const int i : IndexRange(new_items_num)) {
+    new_items[i] = old_items[indices_to_keep[i]];
+  }
+  MEM_SAFE_FREE(old_items);
+
+  *items = new_items;
+  *items_num = new_items_num;
+  *active_index = std::max(0, std::min(*active_index, new_items_num - 1));
+}
+
+template<typename Accessor> inline void remove_unsupported_socket_types(bNode &node)
+{
+  using ItemT = typename Accessor::ItemT;
+  SocketItemsRef ref = Accessor::get_items_from_node(node);
+  remove_if<ItemT>(
+      ref.items, ref.items_num, ref.active_index, Accessor::destruct_item, [&](const ItemT &item) {
+        const eNodeSocketDatatype socket_type = eNodeSocketDatatype(
+            *Accessor::get_socket_type(const_cast<ItemT &>(item)));
+        return !Accessor::supports_socket_type(node, socket_type);
+      });
+}
+
+/**
  * Destruct all the items and the free the array itself.
  */
 template<typename Accessor> inline void destruct_array(bNode &node)

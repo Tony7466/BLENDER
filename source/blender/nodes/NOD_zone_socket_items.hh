@@ -172,11 +172,19 @@ struct ForEachInputItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const bNode & /*node*/,
-                                   const eNodeSocketDatatype /*socket_type*/)
+  static bool supports_socket_type(const bNode &node, const eNodeSocketDatatype socket_type)
   {
-    /* TODO */
-    return true;
+    auto *storage = static_cast<NodeGeometryForEachOutput *>(node.storage);
+    switch (GeometryNodeForEachMode(storage->mode)) {
+      case GEO_NODE_FOR_EACH_MODE_INDEX:
+      case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT: {
+        return socket_type_supports_fields(socket_type);
+      }
+      case GEO_NODE_FOR_EACH_MODE_INSTANCE: {
+        return false;
+      }
+    }
+    return false;
   }
   static void init_with_socket_type_and_name(bNode &node,
                                              NodeForEachInputItem &item,
@@ -224,11 +232,19 @@ struct ForEachOutputItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const bNode & /*node*/,
-                                   const eNodeSocketDatatype /*socket_type*/)
+  static bool supports_socket_type(const bNode &node, const eNodeSocketDatatype socket_type)
   {
-    /* TODO */
-    return true;
+    auto *storage = static_cast<NodeGeometryForEachOutput *>(node.storage);
+    switch (GeometryNodeForEachMode(storage->mode)) {
+      case GEO_NODE_FOR_EACH_MODE_INDEX:
+      case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT: {
+        return socket_type == SOCK_GEOMETRY || socket_type_supports_fields(socket_type);
+      }
+      case GEO_NODE_FOR_EACH_MODE_INSTANCE: {
+        return false;
+      }
+    }
+    return false;
   }
   static void init_with_socket_type_and_name(bNode &node,
                                              NodeForEachOutputItem &item,
