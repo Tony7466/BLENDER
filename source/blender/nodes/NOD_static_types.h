@@ -332,7 +332,7 @@ DefNode(GeometryNode, GEO_NODE_FILL_CURVE, 0, "FILL_CURVE", FillCurve, "Fill Cur
 DefNode(GeometryNode, GEO_NODE_FILLET_CURVE, 0, "FILLET_CURVE", FilletCurve, "Fillet Curve", "Round corners by generating circular arcs on each control point")
 DefNode(GeometryNode, GEO_NODE_FLIP_FACES, 0, "FLIP_FACES", FlipFaces, "Flip Faces", "Reverse the order of the vertices and edges of selected faces, flipping their normal direction")
 DefNode(GeometryNode, GEO_NODE_FOR_EACH_INPUT, def_geo_foreach_input, "FOREACH_INPUT", ForEachInput, "For-Each Input", "")
-DefNode(GeometryNode, GEO_NODE_FOR_EACH_OUTPUT, 0, "FOREACH_OUTPUT", ForEachOutput, "For-Each Output", "")
+DefNode(GeometryNode, GEO_NODE_FOR_EACH_OUTPUT, def_geo_foreach_output, "FOREACH_OUTPUT", ForEachOutput, "For-Each Output", "")
 DefNode(GeometryNode, GEO_NODE_GEOMETRY_TO_INSTANCE, 0, "GEOMETRY_TO_INSTANCE", GeometryToInstance, "Geometry to Instance", "Convert each input geometry into an instance, which can be much faster than the Join Geometry node when the inputs are large")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")

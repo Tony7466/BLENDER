@@ -8963,6 +8963,13 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void def_geo_foreach_output(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryForEachOutput", "storage");
+}
+
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
 {
   PropertyRNA *prop;

@@ -1841,6 +1841,10 @@ typedef struct NodeGeometryForEachInput {
   int output_node_id;
 } NodeGeometryForEachInput;
 
+typedef struct NodeGeometryForEachOutput {
+  int next_input_identifier;
+} NodeGeometryForEachOutput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
