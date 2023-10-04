@@ -282,6 +282,7 @@ TEST(math_matrix, MatrixInit)
   EXPECT_LE(abs(dot(m.z_axis(), m.x_axis())), 0.000001f);
   EXPECT_LE(abs(dot(m.y_axis(), m.x_axis())), 0.000001f);
   EXPECT_LE(abs(dot(m.z_axis(), m.y_axis())), 0.000001f);
+  EXPECT_NEAR(1.0f, determinant(m), 1e-6);
 }
 
 TEST(math_matrix, MatrixModify)
