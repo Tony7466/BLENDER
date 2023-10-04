@@ -23,11 +23,14 @@
 namespace blender::nodes {
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_repeat_item(
-    const NodeRepeatItem &item, const eNodeSocketInOut in_out, const int corresponding_input = -1)
+    const bNode &output_node,
+    const NodeRepeatItem &item,
+    const eNodeSocketInOut in_out,
+    const int corresponding_input = -1)
 {
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-  BLI_assert(RepeatItemsAccessor::supports_socket_type(socket_type));
-  
+  BLI_assert(RepeatItemsAccessor::supports_socket_type(output_node, socket_type));
+
   std::unique_ptr<SocketDeclaration> decl = make_declaration_for_socket_type(socket_type);
   BLI_assert(decl);
 
@@ -47,17 +50,19 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_repeat_item(
   return decl;
 }
 
-void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
+void socket_declarations_for_repeat_items(const bNode &output_node,
+                                          const Span<NodeRepeatItem> items,
                                           NodeDeclaration &r_declaration)
 {
   for (const int i : items.index_range()) {
     const NodeRepeatItem &item = items[i];
-    SocketDeclarationPtr input_decl = socket_declaration_for_repeat_item(item, SOCK_IN);
+    SocketDeclarationPtr input_decl = socket_declaration_for_repeat_item(
+        output_node, item, SOCK_IN);
     r_declaration.inputs.append(input_decl.get());
     r_declaration.items.append(std::move(input_decl));
 
     SocketDeclarationPtr output_decl = socket_declaration_for_repeat_item(
-        item, SOCK_OUT, r_declaration.inputs.size() - 1);
+        output_node, item, SOCK_OUT, r_declaration.inputs.size() - 1);
     r_declaration.outputs.append(output_decl.get());
     r_declaration.items.append(std::move(output_decl));
   }
@@ -79,7 +84,7 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  NodeDeclaration &r_declaration)
 {
   const NodeGeometryRepeatOutput &storage = node_storage(node);
-  socket_declarations_for_repeat_items(storage.items_span(), r_declaration);
+  socket_declarations_for_repeat_items(node, storage.items_span(), r_declaration);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

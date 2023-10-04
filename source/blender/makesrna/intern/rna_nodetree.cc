@@ -3269,14 +3269,20 @@ static void rna_Node_ItemArray_item_update(Main *bmain, Scene * /*scene*/, Point
 
 template<typename Accessor>
 static const EnumPropertyItem *rna_Node_ItemArray_socket_type_itemf(bContext * /*C*/,
-                                                                    PointerRNA * /*ptr*/,
+                                                                    PointerRNA *ptr,
                                                                     PropertyRNA * /*prop*/,
                                                                     bool *r_free)
 {
+  using ItemT = typename Accessor::ItemT;
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ItemT &item = *static_cast<ItemT *>(ptr->data);
+  const bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
+  BLI_assert(node != nullptr);
+
   *r_free = true;
   return itemf_function_check(
-      rna_enum_node_socket_data_type_items, [](const EnumPropertyItem *item) {
-        return Accessor::supports_socket_type(eNodeSocketDatatype(item->value));
+      rna_enum_node_socket_data_type_items, [&](const EnumPropertyItem *item) {
+        return Accessor::supports_socket_type(*node, eNodeSocketDatatype(item->value));
       });
 }
 
@@ -3305,7 +3311,7 @@ typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
   using ItemT = typename Accessor::ItemT;
-  if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
+  if (!Accessor::supports_socket_type(*node, eNodeSocketDatatype(socket_type))) {
     BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
     return nullptr;
   }

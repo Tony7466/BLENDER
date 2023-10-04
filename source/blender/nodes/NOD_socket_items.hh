@@ -217,7 +217,7 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
     bNode &node, const eNodeSocketDatatype socket_type, const char *name)
 {
   using ItemT = typename Accessor::ItemT;
-  BLI_assert(Accessor::supports_socket_type(socket_type));
+  BLI_assert(Accessor::supports_socket_type(node, socket_type));
 
   SocketItemsRef array = Accessor::get_items_from_node(node);
 
@@ -263,7 +263,7 @@ template<typename Accessor>
     return false;
   }
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(src_socket->type);
-  if (!Accessor::supports_socket_type(socket_type)) {
+  if (!Accessor::supports_socket_type(storage_node, socket_type)) {
     return false;
   }
   const ItemT *item = add_item_with_socket_and_name<Accessor>(

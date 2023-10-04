@@ -200,7 +200,8 @@ static void node_declare_dynamic(const bNodeTree &node_tree,
 
   const NodeGeometrySimulationOutput &storage = *static_cast<const NodeGeometrySimulationOutput *>(
       output_node->storage);
-  socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
+  socket_declarations_for_simulation_items(
+      *output_node, {storage.items, storage.items_num}, r_declaration);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

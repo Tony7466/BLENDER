@@ -47,7 +47,7 @@ struct SimulationItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  static bool supports_socket_type(const bNode & /*node*/, const eNodeSocketDatatype socket_type)
   {
     return ELEM(socket_type,
                 SOCK_FLOAT,
@@ -109,7 +109,7 @@ struct RepeatItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  static bool supports_socket_type(const bNode & /*node*/, const eNodeSocketDatatype socket_type)
   {
     return ELEM(socket_type,
                 SOCK_FLOAT,
@@ -172,7 +172,8 @@ struct ForEachInputItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const eNodeSocketDatatype /*socket_type*/)
+  static bool supports_socket_type(const bNode & /*node*/,
+                                   const eNodeSocketDatatype /*socket_type*/)
   {
     /* TODO */
     return true;
@@ -223,7 +224,8 @@ struct ForEachOutputItemsAccessor {
   {
     return &item.name;
   }
-  static bool supports_socket_type(const eNodeSocketDatatype /*socket_type*/)
+  static bool supports_socket_type(const bNode & /*node*/,
+                                   const eNodeSocketDatatype /*socket_type*/)
   {
     /* TODO */
     return true;

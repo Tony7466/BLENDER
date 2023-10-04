@@ -32,7 +32,7 @@ static void node_declare_dynamic(const bNodeTree &tree,
   if (output_node != nullptr) {
     const NodeGeometryRepeatOutput &output_storage =
         *static_cast<const NodeGeometryRepeatOutput *>(output_node->storage);
-    socket_declarations_for_repeat_items(output_storage.items_span(), r_declaration);
+    socket_declarations_for_repeat_items(*output_node, output_storage.items_span(), r_declaration);
   }
 }
 

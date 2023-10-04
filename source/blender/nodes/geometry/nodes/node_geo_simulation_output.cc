@@ -56,12 +56,14 @@ std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item
 }
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
+    const bNode &output_node,
     const NodeSimulationItem &item,
     const eNodeSocketInOut in_out,
     const int corresponding_input = -1)
 {
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-  BLI_assert(SimulationItemsAccessor::supports_socket_type(socket_type));
+  BLI_assert(SimulationItemsAccessor::supports_socket_type(output_node, socket_type));
+  UNUSED_VARS_NDEBUG(output_node);
 
   std::unique_ptr<SocketDeclaration> decl = make_declaration_for_socket_type(socket_type);
   BLI_assert(decl);
@@ -82,15 +84,17 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
   return decl;
 }
 
-void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
+void socket_declarations_for_simulation_items(const bNode &output_node,
+                                              const Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration)
 {
   const int inputs_offset = r_declaration.inputs.size();
   for (const int i : items.index_range()) {
     const NodeSimulationItem &item = items[i];
-    SocketDeclarationPtr input_decl = socket_declaration_for_simulation_item(item, SOCK_IN);
+    SocketDeclarationPtr input_decl = socket_declaration_for_simulation_item(
+        output_node, item, SOCK_IN);
     SocketDeclarationPtr output_decl = socket_declaration_for_simulation_item(
-        item, SOCK_OUT, inputs_offset + i);
+        output_node, item, SOCK_OUT, inputs_offset + i);
     r_declaration.inputs.append(input_decl.get());
     r_declaration.items.append(std::move(input_decl));
     r_declaration.outputs.append(output_decl.get());
@@ -742,7 +746,8 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
     r_declaration.inputs.append(skip_decl.get());
     r_declaration.items.append(std::move(skip_decl));
   }
-  socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
+  socket_declarations_for_simulation_items(
+      node, {storage.items, storage.items_num}, r_declaration);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
