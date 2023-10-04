@@ -12,3 +12,4 @@ Referenced by commit f47de98def3d45b38695244f8e7c1185a3b41200, Fix: Node link dr
 Referenced by pull request #112027, Fix #112014: Crash making node group with multiple input links
 Referenced by commit f9c733dbd68cd5d4b70a4f830b1bf2983f51ad65, Fix #112014: Crash making node group with multiple input links
 Referenced by issue #112992, Regression: Scroll bar and resize widget missing from the Group tab on the Node editor's side panel
+Referenced by issue #113206, Regression: Function unregister() is not called during shutdown of Blender 4.0
