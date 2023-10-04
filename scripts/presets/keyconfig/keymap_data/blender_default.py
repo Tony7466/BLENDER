@@ -4991,17 +4991,13 @@ def _template_node_select(*, type, value, select_passthrough):
     items = [
         ("node.select", {"type": type, "value": value},
          {"properties": [("deselect_all", True), ("select_passthrough", select_passthrough)]}),
-        ("node.select", {"type": type, "value": value, "ctrl": True}, None),
         ("node.select", {"type": type, "value": value, "alt": True}, None),
-        ("node.select", {"type": type, "value": value, "ctrl": True, "alt": True}, None),
+
         ("node.select", {"type": type, "value": value, "shift": True},
-         {"properties": [("toggle", True)]}),
-        ("node.select", {"type": type, "value": value, "shift": True, "ctrl": True},
-         {"properties": [("toggle", True)]}),
-        ("node.select", {"type": type, "value": value, "shift": True, "alt": True},
-         {"properties": [("toggle", True)]}),
-        ("node.select", {"type": type, "value": value, "shift": True, "ctrl": True, "alt": True},
-         {"properties": [("toggle", True)]}),
+         {"properties": [("extend", True)]}),
+
+        ("node.select", {"type": type, "value": value, "ctrl": True},
+         {"properties": [("deselect", True)]}),
     ]
 
     if select_passthrough and (value == 'PRESS'):
