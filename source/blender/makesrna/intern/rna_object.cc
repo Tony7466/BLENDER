@@ -607,8 +607,10 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
       return &RNA_LightProbe;
     case OB_GPENCIL_LEGACY:
       return &RNA_GreasePencil;
+#  ifdef WITH_GREASE_PENCIL_V3
     case OB_GREASE_PENCIL:
       return &RNA_GreasePencilv3;
+#  endif
     case OB_CURVES:
       return &RNA_Curves;
     case OB_POINTCLOUD:
@@ -715,8 +717,8 @@ static bool rna_Object_parent_type_override_apply(Main *bmain,
   /* We need a special handling here because setting parent resets invert parent matrix,
    * which is evil in our case. */
   Object *ob = (Object *)(ptr_dst->data);
-  const int parent_type_dst = RNA_property_int_get(ptr_dst, prop_dst);
-  const int parent_type_src = RNA_property_int_get(ptr_src, prop_src);
+  const int parent_type_dst = RNA_property_enum_get(ptr_dst, prop_dst);
+  const int parent_type_src = RNA_property_enum_get(ptr_src, prop_src);
 
   if (parent_type_dst == parent_type_src) {
     return false;
