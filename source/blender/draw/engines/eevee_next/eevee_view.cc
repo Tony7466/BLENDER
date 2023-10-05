@@ -312,12 +312,12 @@ void CapturePlanarView::render_probes()
   for (const PlanarProbeModule::PlanarProbes::MutableItem &item :
        inst_.planar_probes.probes_.items())
   {
-    PlanarProbe &probe = item.value;
     GPU_debug_group_begin("Planar.Capture");
+    PlanarProbe &probe = item.value;
 
-    int2 extent = int2(probe.resolution);
+    int2 &extent = probe.extent;
     inst_.render_buffers.acquire(extent);
-    Texture &texture = inst_.planar_probes.texture_get(probe);
+    PlanarProbeResources &resources = inst_.planar_probes.resources_get(probe);
 
     inst_.render_buffers.vector_tx.clear(float4(0.0f));
     prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
@@ -333,12 +333,12 @@ void CapturePlanarView::render_probes()
                                                     10.0f);
     view.sync(view_m4, win_m4);
 
-    capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-                       GPU_ATTACHMENT_TEXTURE(texture));
+    resources.framebuffer.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                                 GPU_ATTACHMENT_TEXTURE(resources.color_tx));
 
-    GPU_framebuffer_bind(capture_fb_);
-    GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
-    inst_.pipelines.planar.render(view, prepass_fb, capture_fb_, extent);
+    GPU_framebuffer_bind(resources.framebuffer);
+    GPU_framebuffer_clear_color_depth(resources.framebuffer, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
+    inst_.pipelines.planar.render(view, prepass_fb, resources.framebuffer, extent);
 
     inst_.render_buffers.release();
     GPU_debug_group_end();

@@ -37,7 +37,10 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 
   PlanarProbe &probe = find_or_insert(ob_handle);
   probe.is_probe_used = true;
-  probe.resolution = 1 << light_probe->resolution;
+  int2 render_extent = instance_.film.render_extent_get();
+  render_extent.x = max_ii(render_extent.x >> light_probe->resolution_scale, 1);
+  render_extent.y = max_ii(render_extent.y >> light_probe->resolution_scale, 1);
+  probe.extent = render_extent;
   probe.object_mat = float4x4(ob->object_to_world);
   probe.clipping_offset = light_probe->clipsta;
 }
@@ -45,34 +48,32 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 void PlanarProbeModule::end_sync()
 {
   remove_unused_probes();
-  update_textures();
+  update_resources();
 }
 
-void PlanarProbeModule::update_textures()
+void PlanarProbeModule::update_resources()
 {
   const int64_t num_probes = probes_.size();
-  if (textures_.size() != num_probes) {
-    Texture default_texture("PlanarProbe");
-    textures_ = Array<Texture>(num_probes);
+  if (resources_.size() != num_probes) {
+    resources_.reinitialize(num_probes);
   }
 
-  int64_t texture_index = 0;
+  int64_t resource_index = 0;
   for (PlanarProbe &probe : probes_.values()) {
-    probe.texture_index = texture_index++;
-    Texture &texture = textures_[probe.texture_index];
-    texture.ensure_2d(GPU_RGBA16F,
-                      int2(probe.resolution),
-                      GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ);
+    probe.resource_index = resource_index++;
+    PlanarProbeResources &resources = resources_[probe.resource_index];
+    resources.color_tx.ensure_2d(GPU_R11F_G11F_B10F,
+                                 probe.extent,
+                                 GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ);
+    resources.depth_tx.ensure_2d(GPU_DEPTH_COMPONENT32F,
+                                 probe.extent,
+                                 GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ);
   }
 }
 
 PlanarProbe &PlanarProbeModule::find_or_insert(ObjectHandle &ob_handle)
 {
-  PlanarProbe &planar_probe = probes_.lookup_or_add_cb(ob_handle.object_key.hash(), [this]() {
-    PlanarProbe probe;
-    return probe;
-  });
-
+  PlanarProbe &planar_probe = probes_.lookup_or_add_default(ob_handle.object_key.hash());
   return planar_probe;
 }
 
@@ -82,9 +83,9 @@ void PlanarProbeModule::remove_unused_probes()
       [](const PlanarProbes::MutableItem &item) { return !item.value.is_probe_used; });
 }
 
-Texture &PlanarProbeModule::texture_get(const PlanarProbe &probe)
+PlanarProbeResources &PlanarProbeModule::resources_get(const PlanarProbe &probe)
 {
-  return textures_[probe.texture_index];
+  return resources_[probe.resource_index];
 }
 
 /** \} */

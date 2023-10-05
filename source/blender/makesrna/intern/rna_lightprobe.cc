@@ -67,6 +67,13 @@ static EnumPropertyItem lightprobe_resolution_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static EnumPropertyItem lightprobe_resolution_scale_items[] = {
+    {LIGHT_PROBE_RESOLUTION_SCALE_100, "100", 0, "100%", ""},
+    {LIGHT_PROBE_RESOLUTION_SCALE_50, "50", 0, "50%", ""},
+    {LIGHT_PROBE_RESOLUTION_SCALE_25, "25", 0, "25%", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static void rna_def_lightprobe(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -300,6 +307,13 @@ static void rna_def_lightprobe(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "resolution");
   RNA_def_property_enum_items(prop, lightprobe_resolution_items);
   RNA_def_property_ui_text(prop, "Resolution", "Resolution when baked to a texture");
+  RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
+
+  prop = RNA_def_property(srna, "resolution_scale", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "resolution_scale");
+  RNA_def_property_enum_items(prop, lightprobe_resolution_scale_items);
+  RNA_def_property_ui_text(
+      prop, "Resolution", "Percentage of the render resolution when baked to a texture");
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "intensity", PROP_FLOAT, PROP_NONE);

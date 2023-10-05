@@ -153,7 +153,8 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
         elif probe.type == 'PLANAR':
             col = layout.column()
-            col.prop(probe, "resolution")
+            row = col.row()
+            row.prop(probe, "resolution_scale", expand=True)
             col.prop(probe, "clip_start", text="Clipping Offset")
             pass
         else:
