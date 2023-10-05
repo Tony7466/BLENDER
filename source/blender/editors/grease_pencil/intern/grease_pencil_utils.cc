@@ -45,7 +45,6 @@ static float3 screen_space_to_3d(
 
 float brush_radius_world_space(bContext &C, int x, int y)
 {
-  using namespace blender;
   ARegion *region = CTX_wm_region(&C);
   View3D *v3d = CTX_wm_view3d(&C);
   Scene *scene = CTX_data_scene(&C);

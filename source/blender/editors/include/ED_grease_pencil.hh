@@ -126,14 +126,14 @@ int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
                                        MutableSpan<bool> dst);
 
-Array<float2> fit_curve_polyline_2d(Span<float2> points,
-                                    float error_threshold,
-                                    const IndexMask &corner_mask);
+Array<float2> polyline_fit_curve(Span<float2> points,
+                                 float error_threshold,
+                                 const IndexMask &corner_mask);
 
 IndexMask polyline_detect_corners(Span<float2> points,
                                   float radius_min,
                                   float radius_max,
-                                  int64_t samples_max,
+                                  int samples_max,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 

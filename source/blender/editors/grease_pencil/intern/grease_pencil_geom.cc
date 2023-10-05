@@ -76,14 +76,13 @@ int64_t ramer_douglas_peucker_simplify(
   return total_points_to_remove;
 }
 
-Array<float2> fit_curve_polyline_2d(Span<float2> points,
-                                    const float error_threshold,
-                                    const IndexMask &corner_mask)
+Array<float2> polyline_fit_curve(Span<float2> points,
+                                 const float error_threshold,
+                                 const IndexMask &corner_mask)
 {
   Array<int32_t> indices(corner_mask.size());
   corner_mask.to_indices(indices.as_mutable_span());
-  uint *indicies_ptr = (corner_mask.size() > 0) ? reinterpret_cast<uint *>(indices.data()) :
-                                                  nullptr;
+  uint *indicies_ptr = corner_mask.is_empty() ? nullptr : reinterpret_cast<uint *>(indices.data());
 
   float *r_cubic_array;
   uint r_cubic_array_len;
@@ -115,7 +114,7 @@ Array<float2> fit_curve_polyline_2d(Span<float2> points,
 IndexMask polyline_detect_corners(Span<float2> points,
                                   const float radius_min,
                                   const float radius_max,
-                                  const int64_t samples_max,
+                                  const int samples_max,
                                   const float angle_threshold,
                                   IndexMaskMemory &memory)
 {
@@ -134,9 +133,9 @@ IndexMask polyline_detect_corners(Span<float2> points,
     /* Error occured, return. */
     return IndexMask();
   }
-  BLI_assert(samples_max < std::numeric_limits<int32_t>::max());
-  Span<int32_t> indices(reinterpret_cast<int32_t *>(r_corners), r_corner_len);
-  return IndexMask::from_indices<int32_t>(indices, memory);
+  BLI_assert(samples_max < std::numeric_limits<int>::max());
+  Span<int> indices(reinterpret_cast<int *>(r_corners), r_corner_len);
+  return IndexMask::from_indices<int>(indices, memory);
 }
 
 }  // namespace blender::ed::greasepencil

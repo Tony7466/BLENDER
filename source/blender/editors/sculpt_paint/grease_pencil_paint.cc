@@ -29,19 +29,27 @@ namespace blender::ed::sculpt_paint::greasepencil {
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
 static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
-static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
+template<typename T>
+static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
+{
+  dst.first() = a;
+  const float step = 1.0f / dst.size();
+  for (const int i : dst.index_range().drop_front(1)) {
+    dst[i] = bke::attribute_math::mix2(i * step, a, b);
+  }
+}
 
 /** Sample a bezier curve at a fixed resolution and return the sampled points in an array. */
-static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t resolution)
+static Array<float2> sample_curve_2d(Span<float2> positions, const int64_t resolution)
 {
-  BLI_assert(curve_points.size() % 3 == 0);
-  const int64_t num_handles = curve_points.size() / 3;
+  BLI_assert(positions.size() % 3 == 0);
+  const int64_t num_handles = positions.size() / 3;
   const int64_t num_segments = num_handles - 1;
   const int64_t num_points = num_segments * resolution;
 
   Array<float2> points(num_points);
-  const Span<float2> curve_segments = curve_points.drop_front(1).drop_back(1);
-  threading::parallel_for(IndexRange(num_segments), 512 * resolution, [&](const IndexRange range) {
+  const Span<float2> curve_segments = positions.drop_front(1).drop_back(1);
+  threading::parallel_for(IndexRange(num_segments), 32 * resolution, [&](const IndexRange range) {
     for (const int64_t segment_i : range) {
       IndexRange segment_range(segment_i * resolution, resolution);
       bke::curves::bezier::evaluate_segment(curve_segments[segment_i * 3 + 0],
@@ -77,9 +85,9 @@ static void morph_points_to_curve(Span<float2> src, Span<float2> target, Mutable
 
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
-  Vector<float2> screen_space_positions_;
-  Vector<Vector<float2>> screen_space_curve_fitted_positions_;
-  Vector<float2> screen_space_smoothed_positions_;
+  Vector<float2> screen_space_coords_;
+  Vector<Vector<float2>> screen_space_curve_fitted_coords_;
+  Vector<float2> screen_space_smoothed_coords_;
   int64_t active_smooth_index_ = 0;
 
   friend struct PaintOperationExecutor;
@@ -181,14 +189,14 @@ struct PaintOperationExecutor {
                             const InputSample &start_sample,
                             const int material_index)
   {
-    const float2 start_position = start_sample.mouse_position;
+    const float2 start_coords = start_sample.mouse_position;
     const float start_radius = this->radius_from_input_sample(start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
-    self.screen_space_positions_.append(start_position);
-    self.screen_space_curve_fitted_positions_.append(Vector<float2>({start_position}));
-    self.screen_space_smoothed_positions_.append(start_position);
+    self.screen_space_coords_.append(start_coords);
+    self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
+    self.screen_space_smoothed_coords_.append(start_coords);
 
     /* Resize the curves geometry so there is one more curve with a single point. */
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
@@ -196,7 +204,7 @@ struct PaintOperationExecutor {
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
-    curves.positions_for_write().last() = screen_space_to_object_space(start_position);
+    curves.positions_for_write().last() = screen_space_to_object_space(start_coords);
     drawing_->radii_for_write().last() = start_radius;
     drawing_->opacities_for_write().last() = start_opacity;
     drawing_->vertex_colors_for_write().last() = start_vertex_color;
@@ -217,7 +225,7 @@ struct PaintOperationExecutor {
                         const IndexRange points,
                         const IndexRange smooth_window)
   {
-    Span<float2> screen_space_coords_smooth_slice = self.screen_space_positions_.as_span().slice(
+    Span<float2> screen_space_coords_smooth_slice = self.screen_space_coords_.as_span().slice(
         smooth_window);
 
     /* Detect corners in the current slice of coordinates. */
@@ -247,7 +255,7 @@ struct PaintOperationExecutor {
 
     /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
     const float max_error_threshold_px = 5.0f;
-    Array<float2> curve_points = ed::greasepencil::fit_curve_polyline_2d(
+    Array<float2> curve_points = ed::greasepencil::polyline_fit_curve(
         coords_pre_blur, max_error_threshold_px * settings_->active_smooth, corner_mask);
 
     /* Sampling the curve at a fixed resolution. */
@@ -258,8 +266,8 @@ struct PaintOperationExecutor {
     Array<float2> coords_smoothed(screen_space_coords_smooth_slice.size());
     morph_points_to_curve(screen_space_coords_smooth_slice, sampled_curve_points, coords_smoothed);
 
-    MutableSpan<float2> smoothed_coordinates_slice =
-        self.screen_space_smoothed_positions_.as_mutable_span().slice(smooth_window);
+    MutableSpan<float2> smoothed_coords_slice =
+        self.screen_space_smoothed_coords_.as_mutable_span().slice(smooth_window);
     MutableSpan<float3> positions_slice =
         drawing_->strokes_for_write().positions_for_write().slice(points).slice(smooth_window);
     const float converging_threshold_px = 0.1f;
@@ -267,8 +275,8 @@ struct PaintOperationExecutor {
     int num_converged = 0;
     for (const int64_t i : smooth_window.index_range()) {
       /* Record the curve fitting of this point. */
-      self.screen_space_curve_fitted_positions_[i].append(coords_smoothed[i]);
-      Span<float2> smoothed_coords_point = self.screen_space_curve_fitted_positions_[i];
+      self.screen_space_curve_fitted_coords_[i].append(coords_smoothed[i]);
+      Span<float2> smoothed_coords_point = self.screen_space_curve_fitted_coords_[i];
 
       /* Get the sum of all the curve fittings of this point. */
       float2 sum = smoothed_coords_point[0];
@@ -289,7 +297,7 @@ struct PaintOperationExecutor {
       }
 
       /* Update the positions in the current cache. */
-      smoothed_coordinates_slice[i] = new_pos;
+      smoothed_coords_slice[i] = new_pos;
       positions_slice[i] = screen_space_to_object_space(new_pos);
     }
 
@@ -297,11 +305,11 @@ struct PaintOperationExecutor {
     if (num_converged > 0) {
       self.active_smooth_index_ = math::min(self.active_smooth_index_ + int64_t(num_converged),
                                             int64_t(drawing_->strokes().points_num() - 1));
-      if (self.screen_space_curve_fitted_positions_.size() - num_converged > 0) {
-        self.screen_space_curve_fitted_positions_.remove(0, num_converged);
+      if (self.screen_space_curve_fitted_coords_.size() - num_converged > 0) {
+        self.screen_space_curve_fitted_coords_.remove(0, num_converged);
       }
       else {
-        self.screen_space_curve_fitted_positions_.clear();
+        self.screen_space_curve_fitted_coords_.clear();
       }
     }
   }
@@ -310,21 +318,21 @@ struct PaintOperationExecutor {
                                 const InputSample &extension_sample,
                                 const int curve_index)
   {
-    const float2 position = extension_sample.mouse_position;
+    const float2 coords = extension_sample.mouse_position;
     const float radius = this->radius_from_input_sample(extension_sample);
     const float opacity = this->opacity_from_input_sample(extension_sample);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
 
-    const float2 prev_position = self.screen_space_positions_.last();
+    const float2 prev_coords = self.screen_space_coords_.last();
     const float prev_radius = drawing_->radii().last();
     const float prev_opacity = drawing_->opacities().last();
     const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
-    if (math::distance(position, prev_position) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = screen_space_to_object_space(position);
+    if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
+      curves.positions_for_write().last() = screen_space_to_object_space(coords);
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -332,11 +340,9 @@ struct PaintOperationExecutor {
 
     /* If the next sample is far away, we subdivide the segment to add more points. */
     int new_points_num = 1;
-    const float distance_px = math::distance(position, prev_position);
+    const float distance_px = math::distance(coords, prev_coords);
     if (distance_px > POINT_RESAMPLE_MIN_DISTANCE_PX) {
-      const int subdivisions = static_cast<int>(
-                                   math::floor(distance_px / POINT_RESAMPLE_MIN_DISTANCE_PX)) -
-                               1;
+      const int subdivisions = int(math::floor(distance_px / POINT_RESAMPLE_MIN_DISTANCE_PX)) - 1;
       new_points_num += subdivisions;
     }
 
@@ -347,28 +353,21 @@ struct PaintOperationExecutor {
 
     /* Subdivide stroke in new_range. */
     IndexRange new_range(old_point_num, new_points_num);
-    Array<float2> new_screen_space_coordinates(new_points_num);
+    Array<float2> new_screen_space_coords(new_points_num);
     MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_range);
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_range);
     MutableSpan<ColorGeometry4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
         new_range);
-    const float step = 1.0f / static_cast<float>(new_points_num);
-    float factor = step;
-    for (const int64_t i : new_range.index_range()) {
-      new_screen_space_coordinates[i] = bke::attribute_math::mix2<float2>(
-          factor, prev_position, position);
-      new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, radius);
-      new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, opacity);
-      new_vertex_colors[i] = bke::attribute_math::mix2<ColorGeometry4f>(
-          factor, prev_vertex_color, ColorGeometry4f(vertex_color));
-      factor += step;
-    }
+    linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords);
+    linear_interpolation<float>(prev_radius, radius, new_radii);
+    linear_interpolation<float>(prev_opacity, opacity, new_opacities);
+    linear_interpolation<ColorGeometry4f>(prev_vertex_color, vertex_color, new_vertex_colors);
 
     /* Update screen space buffers with new points. */
-    self.screen_space_positions_.extend(new_screen_space_coordinates);
-    self.screen_space_smoothed_positions_.extend(new_screen_space_coordinates);
-    for (float2 new_position : new_screen_space_coordinates) {
-      self.screen_space_curve_fitted_positions_.append(Vector<float2>({new_position}));
+    self.screen_space_coords_.extend(new_screen_space_coords);
+    self.screen_space_smoothed_coords_.extend(new_screen_space_coords);
+    for (float2 new_position : new_screen_space_coords) {
+      self.screen_space_curve_fitted_coords_.append(Vector<float2>({new_position}));
     }
 
     /* Only start smoothing if there are enough points. */
@@ -376,16 +375,15 @@ struct PaintOperationExecutor {
     const IndexRange points = curves.points_by_curve()[curve_index];
     if (points.size() < min_active_smoothing_points_num) {
       MutableSpan<float3> positions_slice = curves.positions_for_write().slice(new_range);
-      for (const int64_t i : new_screen_space_coordinates.index_range()) {
-        positions_slice[i] = screen_space_to_object_space(new_screen_space_coordinates[i]);
+      for (const int64_t i : new_screen_space_coords.index_range()) {
+        positions_slice[i] = screen_space_to_object_space(new_screen_space_coords[i]);
       }
       return;
     }
 
     /* Active smoothing is done in a window at the end of the new stroke. */
-    const IndexRange smooth_window(self.active_smooth_index_,
-                                   points.size() - self.active_smooth_index_);
-    this->active_smoothing(self, points, smooth_window);
+    this->active_smoothing(
+        self, points, points.index_range().drop_front(self.active_smooth_index_));
   }
 
   void execute(PaintOperation &self, const InputSample &extension_sample)
@@ -446,7 +444,7 @@ static float dist_to_interpolated_2d(
   const float dist2 = math::distance_squared(posB, pos);
 
   if (dist1 + dist2 > 1e-5f) {
-    const float interpolated_val = interpf(valB, valA, dist1 / (dist1 + dist2));
+    const float interpolated_val = math::interpolate(valB, valA, dist1 / (dist1 + dist2));
     return math::distance(interpolated_val, val);
   }
   return 0.0f;
@@ -460,7 +458,7 @@ void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const 
   const VArray<float> radii = drawing.radii();
 
   /* Distance function for `ramer_douglas_peucker_simplify`. */
-  const Span<float2> positions_2d = this->screen_space_smoothed_positions_.as_span();
+  const Span<float2> positions_2d = this->screen_space_smoothed_coords_.as_span();
   const auto dist_function = [&](int64_t first_index, int64_t last_index, int64_t index) {
     /* 2D coordinates are only stored for the current stroke, so offset the indices. */
     const float dist_position_px = dist_to_line_segment_v2(
