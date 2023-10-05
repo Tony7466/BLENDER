@@ -485,7 +485,7 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
           std::max(m_render_extent.height, m_render_extent_min.height)));
 
     if (recreate_swapchain) {
-      /* Swap-chain is out of date. Recreate swap-chain and skip this frame. */
+      /* Swap-chain is out of date. Recreate swap-chain. */
       destroySwapchain();
       createSwapchain();
     }
