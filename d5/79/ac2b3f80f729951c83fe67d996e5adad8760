@@ -2,3 +2,4 @@ Referenced by issue #113186, The Render Result attribute "has_data" is always Fa
 Referenced by pull request #113199, Fix #113186: The Render Result attribute "has_data" is always False
 Referenced by commit fff74145f175174d1fc5c1c925647781d1e5d29b, Fix #113186: The Render Result attribute "has_data" is always False
 Referenced by issue #113280, Incorrect display of Cycles border render while rendering
+Referenced by pull request #113282, Fix #113280: Incorrect display of Cycles border render while rendering
