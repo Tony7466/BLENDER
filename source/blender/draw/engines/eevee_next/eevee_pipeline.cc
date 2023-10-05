@@ -165,6 +165,7 @@ void ShadowPipeline::sync()
   if (shadow_update_tbdr) {
     draw::PassMain::Sub &sub = render_ps_.sub("Shadow.TilePageClear");
     sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));
+    pass.subpass_transition(GPU_ATTACHEMENT_WRITE, {GPU_ATTACHEMENT_WRITE});
     /* Only manually clear depth of the updated tiles.
      * This is because the depth is initialized to near depth using attachments for fast clear and
      * color is cleared to far depth. This way we can save a bit of bandwidth by only clearing
