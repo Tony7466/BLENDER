@@ -2,12 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_bit_vector.hh"
-
-#include "eevee_instance.hh"
 #include "eevee_planar_probes.hh"
-
-#include <iostream>
+#include "eevee_instance.hh"
 
 namespace blender::eevee {
 
@@ -43,12 +39,31 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.is_probe_used = true;
   probe.resolution = 1 << light_probe->resolution;
   probe.object_mat = float4x4(ob->object_to_world);
-  probe.clipping_distance = light_probe->clipsta;
+  probe.clipping_offset = light_probe->clipsta;
 }
 
 void PlanarProbeModule::end_sync()
 {
   remove_unused_probes();
+  update_textures();
+}
+
+void PlanarProbeModule::update_textures()
+{
+  const int64_t num_probes = probes_.size();
+  if (textures_.size() != num_probes) {
+    Texture default_texture("PlanarProbe");
+    textures_ = Array<Texture>(num_probes);
+  }
+
+  int64_t texture_index = 0;
+  for (PlanarProbe &probe : probes_.values()) {
+    probe.texture_index = texture_index++;
+    Texture &texture = textures_[probe.texture_index];
+    texture.ensure_2d(GPU_RGBA16F,
+                      int2(probe.resolution),
+                      GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ);
+  }
 }
 
 PlanarProbe &PlanarProbeModule::find_or_insert(ObjectHandle &ob_handle)
@@ -63,9 +78,13 @@ PlanarProbe &PlanarProbeModule::find_or_insert(ObjectHandle &ob_handle)
 
 void PlanarProbeModule::remove_unused_probes()
 {
-  probes_.remove_if([](const Map<uint64_t, PlanarProbe>::MutableItem &item) {
-    return !item.value.is_probe_used;
-  });
+  probes_.remove_if(
+      [](const PlanarProbes::MutableItem &item) { return !item.value.is_probe_used; });
+}
+
+Texture &PlanarProbeModule::texture_get(const PlanarProbe &probe)
+{
+  return textures_[probe.texture_index];
 }
 
 /** \} */

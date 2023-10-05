@@ -309,13 +309,15 @@ void CapturePlanarView::render_probes()
 {
   Framebuffer prepass_fb;
   View view = {"Planar.View"};
-  for (const Map<uint64_t, PlanarProbe>::MutableItem &item : inst_.planar_probes.probes_.items()) {
+  for (const PlanarProbeModule::PlanarProbes::MutableItem &item :
+       inst_.planar_probes.probes_.items())
+  {
     PlanarProbe &probe = item.value;
     GPU_debug_group_begin("Planar.Capture");
 
     int2 extent = int2(probe.resolution);
     inst_.render_buffers.acquire(extent);
-    probe.probes_tx.ensure_2d(GPU_RGBA16F, int2(probe.resolution));
+    Texture &texture = inst_.planar_probes.texture_get(probe);
 
     inst_.render_buffers.vector_tx.clear(float4(0.0f));
     prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
@@ -323,16 +325,16 @@ void CapturePlanarView::render_probes()
 
     /* TODO: calculate the view from the active viewpoint. */
     float4x4 view_m4 = float4x4::identity();
-    float4x4 win_m4 = math::projection::perspective(-probe.clipping_distance,
-                                                    probe.clipping_distance,
-                                                    -probe.clipping_distance,
-                                                    probe.clipping_distance,
-                                                    probe.clipping_distance,
+    float4x4 win_m4 = math::projection::perspective(-probe.clipping_offset,
+                                                    probe.clipping_offset,
+                                                    -probe.clipping_offset,
+                                                    probe.clipping_offset,
+                                                    probe.clipping_offset,
                                                     10.0f);
     view.sync(view_m4, win_m4);
 
     capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-                       GPU_ATTACHMENT_TEXTURE(probe.probes_tx));
+                       GPU_ATTACHMENT_TEXTURE(texture));
 
     GPU_framebuffer_bind(capture_fb_);
     GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);

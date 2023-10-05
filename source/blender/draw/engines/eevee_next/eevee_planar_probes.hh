@@ -26,11 +26,11 @@ struct ObjectHandle;
  * \{ */
 
 struct PlanarProbe : NonCopyable {
-  Texture probes_tx = {"Planar"};
   float4x4 object_mat;
-  float clipping_distance;
+  float clipping_offset;
   int resolution;
   bool is_probe_used = false;
+  int texture_index;
 };
 
 /** \} */
@@ -40,12 +40,16 @@ struct PlanarProbe : NonCopyable {
  * \{ */
 
 class PlanarProbeModule {
+  using PlanarProbes = Map<uint64_t, PlanarProbe>;
+  using Textures = Array<Texture>;
+
  private:
   /* Max resolution of a texture. */
   static constexpr int max_resolution_ = 2048;
 
   Instance &instance_;
-  Map<uint64_t, PlanarProbe> probes_;
+  PlanarProbes probes_;
+  Textures textures_;
 
   bool update_probes_ = false;
 
@@ -59,9 +63,12 @@ class PlanarProbeModule {
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass) {}
 
+  Texture &texture_get(const PlanarProbe &probe);
+
  private:
   PlanarProbe &find_or_insert(ObjectHandle &ob_handle);
   void remove_unused_probes();
+  void update_textures();
 
   friend class Instance;
   friend class CapturePlanarView;
