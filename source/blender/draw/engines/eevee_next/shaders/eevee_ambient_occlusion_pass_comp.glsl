@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -11,12 +14,12 @@ vec3 view_position_derivative_from_depth(
     sampler2D depth_tx, ivec2 extent, vec2 uv, ivec2 offset, vec3 vP, float depth_center)
 {
   vec4 H;
-  H.x = texelFetch(depth_tx, ivec2(uv * extent) - offset * 2, 0).r;
-  H.y = texelFetch(depth_tx, ivec2(uv * extent) - offset, 0).r;
-  H.z = texelFetch(depth_tx, ivec2(uv * extent) + offset, 0).r;
-  H.w = texelFetch(depth_tx, ivec2(uv * extent) + offset * 2, 0).r;
+  H.x = texelFetch(depth_tx, ivec2(uv * vec2(extent)) - offset * 2, 0).r;
+  H.y = texelFetch(depth_tx, ivec2(uv * vec2(extent)) - offset, 0).r;
+  H.z = texelFetch(depth_tx, ivec2(uv * vec2(extent)) + offset, 0).r;
+  H.w = texelFetch(depth_tx, ivec2(uv * vec2(extent)) + offset * 2, 0).r;
 
-  vec2 uv_offset = vec2(offset) / extent;
+  vec2 uv_offset = vec2(offset) / vec2(extent);
   vec2 uv1 = uv - uv_offset * 2.0;
   vec2 uv2 = uv - uv_offset;
   vec2 uv3 = uv + uv_offset;
@@ -42,7 +45,7 @@ vec3 view_position_derivative_from_depth(
 bool reconstruct_view_position_and_normal_from_depth(
     sampler2D depth_tx, ivec2 extent, vec2 uv, out vec3 vP, out vec3 vNg)
 {
-  float depth_center = texelFetch(depth_tx, ivec2(uv * extent), 0).r;
+  float depth_center = texelFetch(depth_tx, ivec2(uv * vec2(extent)), 0).r;
 
   vP = get_view_space_from_depth(uv, depth_center);
 
@@ -60,7 +63,7 @@ bool reconstruct_view_position_and_normal_from_depth(
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec2 extent = imageSize(in_normal_img);
+  ivec2 extent = imageSize(in_normal_img).xy;
   if (any(greaterThanEqual(texel, extent))) {
     return;
   }
@@ -69,16 +72,17 @@ void main()
   vec3 vP, vNg;
   if (!reconstruct_view_position_and_normal_from_depth(hiz_tx, extent, uv, vP, vNg)) {
     /* Do not trace for background */
-    imageStore(out_ao_img, texel, vec4(0.0));
+    imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(0.0));
     return;
   }
 
   vec3 P = transform_point(ViewMatrixInverse, vP);
   vec3 V = cameraVec(P);
   vec3 Ng = transform_direction(ViewMatrixInverse, vNg);
-  vec3 N = imageLoad(in_normal_img, texel).xyz;
+  vec3 N = imageLoad(in_normal_img, ivec3(texel, in_normal_img_layer_index)).xyz;
 
-  OcclusionData data = ambient_occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
+  OcclusionData data = ambient_occlusion_search(
+      vP, hiz_tx, texel, uniform_buf.ao.distance, 0.0, 8.0);
 
   float visibility;
   float visibility_error_out;
@@ -88,5 +92,5 @@ void main()
   /* Scale by user factor */
   visibility = saturate(visibility);
 
-  imageStore(out_ao_img, texel, vec4(visibility));
+  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(visibility));
 }

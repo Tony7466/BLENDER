@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
@@ -60,7 +63,7 @@ OcclusionData ambient_occlusion_unpack_data(vec4 v)
 
 vec2 ambient_occlusion_get_noise(ivec2 texel)
 {
-  vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).xy;
+  vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).xy;
   return fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
 }
 
@@ -99,10 +102,10 @@ float ambient_ambient_occlusion_search_horizon(vec3 vI,
     /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
     time = 1.0 + iter + sqr((iter + noise) / sample_count) * ssray.max_time;
     float stride = time - prev_time;
-    float lod = (log2(stride) - noise) / (1.0 + ao_buf.quality);
+    float lod = (log2(stride) - noise) / (1.0 + uniform_buf.ao.quality);
 
     vec2 uv = ssray.origin.xy + ssray.direction.xy * time;
-    float depth = textureLod(depth_tx, uv * hiz_buf.uv_scale, floor(lod)).r;
+    float depth = textureLod(depth_tx, uv * uniform_buf.hiz.uv_scale, floor(lod)).r;
 
     if (depth == 1.0 && inverted == 0.0) {
       /* Skip background. Avoids making shadow on the geometry near the far plane. */
@@ -155,17 +158,18 @@ OcclusionData ambient_occlusion_search(vec3 vP,
   for (int i = 0; i < 2; i++) {
     Ray ray;
     ray.origin = vP;
-    ray.direction = vec3(dir * radius, 0.0);
+    ray.direction = vec3(dir, 0.0);
+    ray.max_time = radius;
 
     ScreenSpaceRay ssray;
 
-    ssray = raytrace_screenspace_ray_create(ray, ao_buf.pixel_size);
+    ssray = raytrace_screenspace_ray_create(ray, uniform_buf.ao.pixel_size);
     data.horizons[0 + i * 2] = ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 
     ray.direction = -ray.direction;
 
-    ssray = raytrace_screenspace_ray_create(ray, ao_buf.pixel_size);
+    ssray = raytrace_screenspace_ray_create(ray, uniform_buf.ao.pixel_size);
     data.horizons[1 + i * 2] = -ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 
@@ -289,8 +293,8 @@ void ambient_occlusion_eval(OcclusionData data,
   }
 }
 
-/* Multibounce approximation base on surface albedo.
- * Page 78 in the .pdf version. */
+/* Multi-bounce approximation base on surface albedo.
+ * Page 78 in the PDF version. */
 float ambient_occlusion_multibounce(float visibility, vec3 albedo)
 {
   if (!AO_MULTI_BOUNCE) {

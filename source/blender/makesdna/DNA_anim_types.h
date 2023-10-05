@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,10 +14,6 @@
 #include "DNA_action_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* ************************************************ */
 /* F-Curve DataTypes */
@@ -1024,6 +1020,7 @@ typedef enum eKS_Settings {
   /** Keyingset does not depend on context info (i.e. paths are absolute). */
   KEYINGSET_ABSOLUTE = (1 << 1),
 } eKS_Settings;
+ENUM_OPERATORS(eKS_Settings, KEYINGSET_ABSOLUTE)
 
 /* Flags for use by keyframe creation/deletion calls */
 typedef enum eInsertKeyFlags {
@@ -1100,7 +1097,7 @@ typedef struct AnimOverride {
  *
  * This data-block should be placed immediately after the ID block where it is used, so that
  * the code which retrieves this data can do so in an easier manner.
- * See blenkernel/intern/anim_sys.c for details.
+ * See `blenkernel/intern/anim_sys.cc` for details.
  */
 typedef struct AnimData {
   /**
@@ -1203,7 +1200,3 @@ typedef struct IdAdtTemplate {
 #define SELECT 1
 
 /* ************************************************ */
-
-#ifdef __cplusplus
-};
-#endif

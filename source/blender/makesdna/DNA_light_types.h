@@ -11,10 +11,6 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18
 #endif
@@ -31,42 +27,43 @@ typedef struct Light {
   /** Animation data (must be immediately after id for utilities to use it). */
   struct AnimData *adt;
 
+  /* Type and flags. */
   short type, flag;
   int mode;
 
-  float r, g, b, k;
-  float shdwr, shdwg, shdwb, shdwpad;
+  /* Color and energy. */
+  float r, g, b;
+  float energy;
 
-  float energy, dist, spotsize, spotblend;
-
-  /** Quad1 and Quad2 attenuation. */
-  float att1, att2;
-  float coeff_const, coeff_lin, coeff_quad;
-  char _pad0[4];
-  struct CurveMapping *curfalloff;
-  short falloff_type;
-  char _pad2[2];
-
-  float clipsta, clipend;
-  float bias;
+  /* Point light. */
   float radius;
-  short bufsize, samp, buffers, filtertype;
-  char bufflag, buftype;
 
+  /* Spot Light. */
+  float spotsize;
+  float spotblend;
+
+  /* Area light. */
   short area_shape;
-  float area_size, area_sizey, area_sizez;
+  short _pad1;
+  float area_size;
+  float area_sizey;
+  float area_sizez;
   float area_spread;
 
+  /* Sun light. */
   float sun_angle;
 
-  /* texact is for buttons */
-  short texact, shadhalostep;
+  /* Shadow color. */
+  float shdwr, shdwg, shdwb;
 
-  /** Old animation system, deprecated for 2.5. */
-  struct Ipo *ipo DNA_DEPRECATED;
+  /* Nodes. */
   short pr_texture, use_nodes;
 
   /* Eevee */
+  float bias;
+  float clipsta;
+  float clipend;
+
   float cascade_max_dist;
   float cascade_exponent;
   float cascade_fade;
@@ -78,12 +75,20 @@ typedef struct Light {
 
   float diff_fac, volume_fac;
   float spec_fac, att_dist;
+  float shadow_softness_factor;
+  float shadow_trace_distance;
+  float _pad3;
 
-  /* preview */
+  /* Preview */
   struct PreviewImage *preview;
 
-  /* nodes */
+  /* Nodes */
   struct bNodeTree *nodetree;
+
+  /* Deprecated. */
+  struct Ipo *ipo DNA_DEPRECATED; /* Old animation system. */
+  float energy_deprecated DNA_DEPRECATED;
+  float _pad2;
 } Light;
 
 /* **************** LIGHT ********************* */
@@ -110,7 +115,7 @@ enum {
 /** #Light::mode */
 enum {
   LA_SHADOW = 1 << 0,
-  // LA_HALO = 1 << 1, /* Deprecated. .*/
+  // LA_HALO = 1 << 1, /* Deprecated. */
   // LA_LAYER = 1 << 2, /* Deprecated. */
   // LA_QUAD = 1 << 3, /* Deprecated. */
   // LA_NEG = 1 << 4, /* Deprecated. */
@@ -155,7 +160,3 @@ enum {
   LA_AREA_DISK = 4,
   LA_AREA_ELLIPSE = 5,
 };
-
-#ifdef __cplusplus
-}
-#endif

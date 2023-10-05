@@ -81,10 +81,12 @@ ccl_device_inline float area_light_rect_sample(float3 P,
   }
 
   /* return pdf */
-  if (S != 0.0f)
+  if (S != 0.0f) {
     return 1.0f / S;
-  else
+  }
+  else {
     return 0.0f;
+  }
 }
 
 /* Light spread. */
@@ -290,7 +292,8 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
     ls->D = normalize_len(*light_P - ray_P, &ls->t);
   }
 
-  ls->eval_fac = 0.25f * invarea;
+  /* Convert radiant flux to radiance. */
+  ls->eval_fac = M_1_PI_F * invarea;
 
   if (klight->area.normalize_spread > 0) {
     /* Area Light spread angle attenuation */
