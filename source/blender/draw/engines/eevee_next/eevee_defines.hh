@@ -64,7 +64,7 @@
 #define SHADOW_TILEDATA_PER_TILEMAP \
   (SHADOW_TILEMAP_LOD0_LEN + SHADOW_TILEMAP_LOD1_LEN + SHADOW_TILEMAP_LOD2_LEN + \
    SHADOW_TILEMAP_LOD3_LEN + SHADOW_TILEMAP_LOD4_LEN + SHADOW_TILEMAP_LOD5_LEN)
-#if 1
+#if 0
 /* Useful for debugging the tile-copy version of the shadow rendering without making debugging
  * tools unresponsive. */
 #  define SHADOW_PAGE_CLEAR_GROUP_SIZE 8
