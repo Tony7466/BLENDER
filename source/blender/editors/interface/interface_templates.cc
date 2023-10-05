@@ -5834,6 +5834,13 @@ static void ui_template_palette_menu(bContext * /*C*/, uiLayout *layout, void * 
   uiItemEnumO_value(row, IFACE_("Luminance"), ICON_NONE, "PALETTE_OT_sort", "type", 4);
 }
 
+static void ui_eyedropper_popup_close_cb(bContext * /*C*/, void *bt1, void * /*arg*/)
+{
+    uiBut *but = (uiBut *)bt1;
+    uiPopupBlockHandle *popup = but->block->handle;
+    popup->menuretval = UI_RETURN_OK;
+}
+
 void uiTemplatePalette(uiLayout *layout, PointerRNA *ptr, const char *propname, bool /*colors*/)
 {
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
@@ -5856,7 +5863,7 @@ void uiTemplatePalette(uiLayout *layout, PointerRNA *ptr, const char *propname, 
   Palette *palette = static_cast<Palette *>(cptr.data);
 
   uiLayout *col = uiLayoutColumn(layout, true);
-  uiLayoutRow(col, true);
+  uiLayout *row = uiLayoutRow(col, true);
   uiDefIconButO(block,
                 UI_BTYPE_BUT,
                 "PALETTE_OT_color_add",
@@ -5907,6 +5914,23 @@ void uiTemplatePalette(uiLayout *layout, PointerRNA *ptr, const char *propname, 
     /* Menu. */
     uiDefIconMenuBut(
         block, ui_template_palette_menu, nullptr, ICON_SORTSIZE, 0, 0, UI_UNIT_X, UI_UNIT_Y, "");
+
+    /* Eyedropper. */
+    uiLayout *sub = uiLayoutRow(row, true);
+    uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
+    but = uiDefIconButO(block,
+                          UI_BTYPE_BUT,
+                          "UI_OT_eyedropper_color",
+                          WM_OP_INVOKE_DEFAULT,
+                          ICON_EYEDROPPER,
+                          0,
+                          0,
+                          UI_UNIT_X,
+                          UI_UNIT_Y,
+                          nullptr);
+    UI_but_flag_disable(but, UI_BUT_UNDO);
+    UI_but_drawflag_disable(but, UI_BUT_ICON_LEFT);
+    UI_but_func_set(but, ui_eyedropper_popup_close_cb, but, nullptr);
   }
 
   col = uiLayoutColumn(layout, true);
