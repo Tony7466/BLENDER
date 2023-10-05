@@ -244,7 +244,7 @@ struct PaintOperationExecutor {
                                        coords_pre_blur.as_mutable_span());
 
     /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
-    const float max_error_threshold_px = 10.0f;
+    const float max_error_threshold_px = 5.0f;
     Array<float2> curve_points = ed::greasepencil::fit_curve_polyline_2d(
         coords_pre_blur, max_error_threshold_px * settings_->active_smooth, corner_mask);
 
