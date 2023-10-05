@@ -218,23 +218,22 @@ LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 vec3 lightprobe_spherical_sample_normalized(int probe_index,
                                             vec3 L,
                                             float lod,
-                                            SphericalHarmonicL1 irradiance_at_P)
+                                            SphericalHarmonicL1 shading_sh)
 {
   ReflectionProbeData probe = reflection_probe_buf[probe_index];
-  /* Use the same encoding scheme to remove the uneeded components. */
-  vec4 sh_encoded = reflection_probes_spherical_harmonic_encode(irradiance_at_P);
-  SphericalHarmonicL1 shading_sh = reflection_probes_spherical_harmonic_decode(sh_encoded);
   SphericalHarmonicL1 probe_sh = reflection_probes_spherical_harmonic_decode(probe.irradiance);
 
-  float normalization_factor = spherical_harmonics_evaluate(L, shading_sh).r *
-                               safe_rcp(spherical_harmonics_evaluate(L, probe_sh).r);
+  vec3 normalization_factor = spherical_harmonics_evaluate(-L, shading_sh).rgb *
+                              safe_rcp(spherical_harmonics_evaluate(-L, probe_sh).rgb);
+
+  // float normalization_factor = shading_sh.L0.M0.r * safe_rcp(probe_shL0.M0.r);
 
   return normalization_factor * reflection_probes_sample(L, lod, probe).rgb;
 }
 
 float pdf_to_lod(float pdf)
 {
-  return 8.0; /* TODO */
+  return 1.0; /* TODO */
 }
 
 vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
