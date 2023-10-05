@@ -338,16 +338,23 @@ struct PaintOperationExecutor {
       new_points_num += subdivisions;
     }
 
+    /* Resize the curves geometry. */
+    const int old_point_num = curves.points_num();
+    curves.resize(curves.points_num() + new_points_num, curves.curves_num());
+    curves.offsets_for_write().last() = curves.points_num();
+
     /* Subdivide stroke in new_range. */
-    IndexRange new_range(curves.points_num(), new_points_num);
-    Array<float2> new_coordinates(new_points_num);
-    Array<float> new_radii(new_points_num);
-    Array<float> new_opacities(new_points_num);
-    Array<ColorGeometry4f> new_vertex_colors(new_points_num);
+    IndexRange new_range(old_point_num, new_points_num);
+    Array<float2> new_screen_space_coordinates(new_points_num);
+    MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_range);
+    MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_range);
+    MutableSpan<ColorGeometry4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
+        new_range);
     const float step = 1.0f / static_cast<float>(new_points_num);
     float factor = step;
     for (const int64_t i : new_range.index_range()) {
-      new_coordinates[i] = bke::attribute_math::mix2<float2>(factor, prev_co, point.co);
+      new_screen_space_coordinates[i] = bke::attribute_math::mix2<float2>(
+          factor, prev_co, point.co);
       new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, point.radius);
       new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, point.opacity);
       new_vertex_colors[i] = bke::attribute_math::mix2<ColorGeometry4f>(
@@ -355,28 +362,20 @@ struct PaintOperationExecutor {
       factor += step;
     }
 
-    /* Update buffers with new points. */
-    self.screen_space_coordinates_.extend(new_coordinates);
-    self.screen_space_smoothed_coordinates_.extend(new_coordinates);
-    for (float2 new_co : new_coordinates) {
+    /* Update screen space buffers with new points. */
+    self.screen_space_coordinates_.extend(new_screen_space_coordinates);
+    self.screen_space_smoothed_coordinates_.extend(new_screen_space_coordinates);
+    for (float2 new_co : new_screen_space_coordinates) {
       self.screen_space_curve_fitted_coordinates_.append(Vector<float2>({new_co}));
     }
 
-    /* Resize the stroke cache. */
-    curves.resize(curves.points_num() + new_points_num, curves.curves_num());
-    curves.offsets_for_write().last() = curves.points_num();
-
-    /* Write new data to the attributes. */
-    drawing_->radii_for_write().slice(new_range).copy_from(new_radii);
-    drawing_->opacities_for_write().slice(new_range).copy_from(new_opacities);
-    drawing_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
-
+    /* Only start smoothing if there are enough points. */
     const int64_t min_active_smoothing_points_num = 8;
     const IndexRange points = curves.points_by_curve()[curve_index];
     if (points.size() < min_active_smoothing_points_num) {
       MutableSpan<float3> positions_slice = curves.positions_for_write().slice(new_range);
-      for (const int64_t i : new_coordinates.index_range()) {
-        positions_slice[i] = screen_space_to_object_space(new_coordinates[i]);
+      for (const int64_t i : new_screen_space_coordinates.index_range()) {
+        positions_slice[i] = screen_space_to_object_space(new_screen_space_coordinates[i]);
       }
       return;
     }
@@ -389,7 +388,7 @@ struct PaintOperationExecutor {
 
   void execute(PaintOperation &self, const InputSample &extension_sample)
   {
-    /* New curve was created in process_start_sample.*/
+    /* New curve was created in `process_start_sample`.*/
     const int curve_index = drawing_->strokes().curves_range().last();
     this->process_extension_sample(self, extension_sample, curve_index);
     drawing_->tag_topology_changed();
