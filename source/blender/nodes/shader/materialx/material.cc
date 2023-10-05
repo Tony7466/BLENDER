@@ -10,10 +10,12 @@
 #include "BKE_main.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_text_types.h"
 
 #include "NOD_shader.h"
 
@@ -71,19 +73,34 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
     /* Look for first script node with assigned file.
      * If it's found, we load content and ignore everything other. */
     LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
-      if (node->typeinfo->type == SH_NODE_SCRIPT)
-      {
+      if (node->typeinfo->type == SH_NODE_SCRIPT) {
         NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
-        if (script && script->filepath[0] != '\0' && script->mode & NODE_SCRIPT_EXTERNAL) {
-          char filepath[FILE_MAX];
-          STRNCPY(filepath, script->filepath);
-          BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
-          MaterialX::readFromXmlFile(doc, filepath);
-          return doc;
+        if (script->mode == NODE_SCRIPT_EXTERNAL) {
+          if (script && script->filepath[0] != '\0') {
+            char filepath[FILE_MAX];
+            STRNCPY(filepath, script->filepath);
+            BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+            MaterialX::readFromXmlFile(doc, filepath);
+            return doc;
+          }
+        }
+        else if (script->mode == NODE_SCRIPT_INTERNAL) {
+          Text *text = reinterpret_cast<Text *>(node->id);
+          if (text) {
+            std::string text_content;
+            LISTBASE_FOREACH (TextLine *, line, &text->lines) {
+              text_content.append(line->line);
+            }
+            MaterialX::readFromXmlString(doc, text_content);
+            return doc;
+          }
+        }
+        else {
+          BLI_assert_unreachable();
         }
       }
     }
-    
+
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
     if (output_node) {
       NodeParserData data = {doc.get(),
