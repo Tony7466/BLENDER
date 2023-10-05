@@ -679,7 +679,7 @@ static void timeline_cache_draw_cached_segments(PointCache *cache, uint pos_id)
   int segment_start;
   int segment_end;
   while (timeline_cache_find_next_cached_segment(cache, current, &segment_start, &segment_end)) {
-    immRectf_fast(pos_id, segment_start - 0.5f, 0, segment_end + 0.5f, 1.0f);
+    immRectf_fast(pos_id, segment_start, 0, segment_end + 1.0f, 1.0f);
     current = segment_end + 1;
   }
 
