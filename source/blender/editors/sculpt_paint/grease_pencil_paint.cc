@@ -274,7 +274,7 @@ struct PaintOperationExecutor {
         sum += v;
       }
       /* We compare the previous arithmetic mean to the current. Going from the back to the front,
-       * if a point hasn't moved by a minimum threashold, it counts as converged. */
+       * if a point hasn't moved by a minimum threshold, it counts as converged. */
       float2 new_pos = (sum + smoothed_coords_point.last()) / smoothed_coords_point.size();
       if (!stop_counting_converged) {
         float2 prev_pos = sum / (smoothed_coords_point.size() - 1);
@@ -524,8 +524,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
   bke::greasepencil::Drawing &drawing =
       reinterpret_cast<GreasePencilDrawing *>(grease_pencil.drawing(drawing_index))->wrap();
 
-  const float simplifiy_threashold_px = 0.5f;
-  this->simplify_stroke(drawing, simplifiy_threashold_px);
+  const float simplifiy_threshold_px = 0.5f;
+  this->simplify_stroke(drawing, simplifiy_threshold_px);
   this->process_stroke_end(drawing);
   drawing.tag_topology_changed();
 
