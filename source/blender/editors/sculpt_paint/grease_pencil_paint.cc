@@ -154,10 +154,10 @@ struct PaintOperationExecutor {
         &reinterpret_cast<GreasePencilDrawing *>(grease_pencil_->drawing(drawing_index))->wrap();
   }
 
-  float3 screen_space_to_object_space(float2 co)
+  float3 screen_space_to_object_space(const float2 co)
   {
     /* TODO: Use correct plane/projection. */
-    float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
+    const float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     /* TODO: Use object transform. */
     float3 proj_point;
     ED_view3d_win_to_3d_on_plane(region_, plane, co, false, proj_point);
@@ -193,7 +193,7 @@ struct PaintOperationExecutor {
 
     /* Resize the curves geometry so there is one more curve with a single point. */
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
-    int num_old_points = curves.points_num();
+    const int num_old_points = curves.points_num();
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
@@ -227,7 +227,7 @@ struct PaintOperationExecutor {
     const int64_t corner_max_samples = 64;
     const float corner_angle_threshold = 0.6f;
     IndexMaskMemory memory;
-    IndexMask corner_mask = ed::greasepencil::polyline_detect_corners(
+    const IndexMask corner_mask = ed::greasepencil::polyline_detect_corners(
         screen_space_coords_smooth_slice.drop_front(1).drop_back(1),
         corner_min_radius_px,
         corner_max_radius_px,
@@ -317,10 +317,10 @@ struct PaintOperationExecutor {
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
 
-    float2 prev_co = self.screen_space_coordinates_.last();
-    float prev_radius = drawing_->radii().last();
-    float prev_opacity = drawing_->opacities().last();
-    ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
+    const float2 prev_co = self.screen_space_coordinates_.last();
+    const float prev_radius = drawing_->radii().last();
+    const float prev_opacity = drawing_->opacities().last();
+    const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
     if (math::distance(point.co, prev_co) < POINT_OVERRIDE_THRESHOLD_PX) {
