@@ -896,6 +896,21 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+    LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
+      style->paneltitle.character_weight = 400;
+      style->paneltitle.character_width = 1.0f;
+      style->paneltitle.character_spacing = 1.0f;
+      style->grouplabel.character_weight = 400;
+      style->grouplabel.character_width = 1.0f;
+      style->grouplabel.character_spacing = 1.0f;
+      style->widgetlabel.character_weight = 400;
+      style->widgetlabel.character_width = 1.0f;
+      style->widgetlabel.character_spacing = 1.0f;
+      style->widget.character_weight = 400;
+      style->widget.character_width = 1.0f;
+      style->widget.character_spacing = 1.0f;
+    }
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

@@ -209,6 +209,42 @@ typedef struct FontBufInfoBLF {
 
 } FontBufInfoBLF;
 
+typedef struct FontInfo {
+  // preview?
+  short weight = 400;    // default weight, 100 - 900. get from OS/2 usWeightClass
+  float width = 1.0f;    // default width 1.0. get from OS/2 usWidthClass
+  float slant = 0.0f;    // default slant 0.0. get from Post italicAngle;
+  float spacing = 1.0f;  // default spacing 1.0
+
+  short family_class;
+  char panose_family_type;
+  char panose_serif_style;
+  char panose_weight;
+  char panose_proportion;
+  char panose_contrast;
+  char panose_stroke_variation;
+  char panose_arm_style;
+  char panose_letter_form;
+  char panose_midline;
+  char panose_xheight;
+  short selection_flags;
+  short first_charindex;
+  short last_charindex;
+  short typo_ascender;
+  short typo_descender;
+  short typo_linegap;
+
+  short x_height;
+  short cap_height;
+
+  short lower_optical_point_size;
+  short upper_optical_point_size;
+
+  // move unicode range bits here too
+  // CodePageRangebits
+
+} FontInfo;
+
 typedef struct FontBLF {
   /** Full path to font file or NULL if from memory. */
   char *filepath;
@@ -306,6 +342,8 @@ typedef struct FontBLF {
 
   /** Copy of the font->face->face_flags, in case we don't have a face loaded. */
   FT_Long face_flags;
+
+  FontInfo info;
 
   /** Data for buffer usage (drawing into a texture buffer) */
   FontBufInfoBLF buf_info;
