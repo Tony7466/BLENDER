@@ -1310,6 +1310,12 @@ struct ReflectionProbeData {
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
+struct ClipPlaneData {
+  /** World space clip plane equation. Used to render planar lightprobes. */
+  float4 plane;
+};
+BLI_STATIC_ASSERT_ALIGN(ClipPlaneData, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1443,6 +1449,7 @@ using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
+using ClipPlaneBuf = draw::UniformBuffer<ClipPlaneData>;
 
 }  // namespace blender::eevee
 #endif
