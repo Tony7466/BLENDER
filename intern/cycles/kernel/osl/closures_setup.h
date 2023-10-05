@@ -638,10 +638,14 @@ ccl_device void osl_closure_sheen_setup(KernelGlobals kg,
   bsdf->N = maybe_ensure_valid_specular_reflection(sd, closure->N);
   bsdf->roughness = closure->roughness;
 
-  sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
+  const int sheen_flag = bsdf_sheen_setup(kg, sd, bsdf);
 
-  if (layer_albedo != NULL) {
-    *layer_albedo = bsdf->weight;
+  if (sheen_flag) {
+    sd->flag |= sheen_flag;
+
+    if (layer_albedo != NULL) {
+      *layer_albedo = bsdf->weight;
+    }
   }
 }
 
@@ -826,7 +830,7 @@ ccl_device void osl_closure_bssrdf_setup(KernelGlobals kg,
 
   /* create one closure per color channel */
   bssrdf->albedo = closure->albedo;
-  bssrdf->N = closure->N;
+  bssrdf->N = maybe_ensure_valid_specular_reflection(sd, closure->N);
   bssrdf->alpha = sqr(closure->roughness);
   bssrdf->ior = closure->ior;
   bssrdf->anisotropy = closure->anisotropy;
