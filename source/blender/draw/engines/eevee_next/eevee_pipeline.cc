@@ -163,24 +163,21 @@ void ShadowPipeline::sync()
    * reducing overdraw and additional per-fragment calculations. */
   bool shadow_update_tbdr = (ShadowModule::shadow_technique == ShadowTechnique::TILE_COPY);
   if (shadow_update_tbdr) {
-    draw::PassMain::Sub &sub = render_ps_.sub("Shadow.TilePageClear");
-    sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));
+    draw::PassMain::Sub &pass = render_ps_.sub("Shadow.TilePageClear");
     pass.subpass_transition(GPU_ATTACHEMENT_WRITE, {GPU_ATTACHEMENT_WRITE});
+    pass.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));
     /* Only manually clear depth of the updated tiles.
      * This is because the depth is initialized to near depth using attachments for fast clear and
      * color is cleared to far depth. This way we can save a bit of bandwidth by only clearing
      * the updated tiles depth to far depth and not touch the color attachment. */
-    sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
-    sub.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
-    sub.draw_procedural_indirect(GPU_PRIM_TRIS, inst_.shadows.tile_draw_buf_);
+    pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
+    pass.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
+    pass.draw_procedural_indirect(GPU_PRIM_TRIS, inst_.shadows.tile_draw_buf_);
   }
 
   {
-    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
-    if (shadow_update_tbdr) {
-      /* Metal writes depth value in local tile memory, which is considered a color attachment. */
-      state |= DRW_STATE_WRITE_COLOR;
-    }
+    /* Metal writes depth value in local tile memory, which is considered a color attachment. */
+    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_COLOR;
 
     draw::PassMain::Sub &pass = render_ps_.sub("Shadow.Surface");
     pass.state_set(state);
@@ -205,7 +202,7 @@ void ShadowPipeline::sync()
      * using compute. Experiments showed that it is faster to just copy the whole tiles back.
      *
      * For relative perf, raster-based clear within tile update adds around 0.1ms vs 0.25ms for
-     * compute based clear for a simple testcase. */
+     * compute based clear for a simple test case. */
     pass.state_set(DRW_STATE_DEPTH_ALWAYS);
     /* Metal have implicit sync with Raster Order Groups. Other backend need to have manual
      * sub-pass transition to allow reading the framebuffer. This is a no-op on Metal. */
