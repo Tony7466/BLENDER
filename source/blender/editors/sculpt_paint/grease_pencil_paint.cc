@@ -11,6 +11,7 @@
 #include "BKE_material.h"
 #include "BKE_scene.h"
 
+#include "BLI_length_parameterize.hh"
 #include "BLI_math_geom.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -51,53 +52,25 @@ static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t re
   return points;
 }
 
-/** Interpolate \a dst such that the points in \a dst lie evenly distributed on \a src. */
-static void interp_polyline_to_polyline(Span<float2> src, MutableSpan<float2> dst)
+/** Morph \a src onto \a target such that the points have the same spacing as in \a src and
+ *  write the result to \a dst. */
+static void morph_points_to_curve(Span<float2> src, Span<float2> target, MutableSpan<float2> dst)
 {
-  using ParamIt = double *;
-  BLI_assert(src.size() > 1);
-  Array<double> normalized_parameters_src(src.size(), 0.0f);
-  double total_dist_src = 0.0f;
-  for (const int64_t i : src.index_range().drop_front(1)) {
-    total_dist_src += math::distance(src[i], src[i - 1]);
-    normalized_parameters_src[i] = total_dist_src;
-  }
-  if (total_dist_src < 1e-6f) {
-    normalized_parameters_src.fill(0.0f);
-  }
-  else {
-    for (const int64_t i : src.index_range()) {
-      normalized_parameters_src[i] /= total_dist_src;
-    }
-  }
+  BLI_assert(src.size() == dst.size());
+  Array<float> accumulated_lengths_src(src.size() - 1);
+  length_parameterize::accumulate_lengths<float2>(src, false, accumulated_lengths_src);
 
-  Array<double> accumulated_lengths_dst(dst.size(), 0.0f);
-  double total_dist_dst = 0.0f;
-  for (const int64_t i : dst.index_range().drop_front(1)) {
-    total_dist_dst += math::distance(dst[i], dst[i - 1]);
-    accumulated_lengths_dst[i] = total_dist_dst;
-  }
+  Array<float> accumulated_lengths_target(target.size() - 1);
+  length_parameterize::accumulate_lengths<float2>(target, false, accumulated_lengths_target);
 
-  ParamIt start_it = normalized_parameters_src.begin();
-  for (const int64_t i : dst.index_range().drop_front(1)) {
-    const double target = accumulated_lengths_dst[i] / total_dist_dst;
-    ParamIt it = std::lower_bound(start_it, normalized_parameters_src.end(), target);
-    const int64_t index = std::distance(normalized_parameters_src.begin(), it);
-    start_it = it;
-    if (index + 1 >= normalized_parameters_src.size()) {
-      break;
-    }
-    if (math::distance_squared(src[index], dst[i]) < 1e-6f ||
-        math::abs(normalized_parameters_src[index + 1] - normalized_parameters_src[index]) < 1e-8)
-    {
-      dst[i] = src[index];
-      continue;
-    }
-    const double t = (target - normalized_parameters_src[index]) /
-                     (normalized_parameters_src[index + 1] - normalized_parameters_src[index]);
+  Array<int> segment_indices(accumulated_lengths_src.size());
+  Array<float> segment_factors(accumulated_lengths_src.size());
+  length_parameterize::sample_at_lengths(
+      accumulated_lengths_target, accumulated_lengths_src, segment_indices, segment_factors);
 
-    dst[i] = math::interpolate(src[index], src[index + 1], t);
-  }
+  length_parameterize::interpolate<float2>(
+      target, segment_indices, segment_factors, dst.drop_back(1));
+  dst.last() = src.last();
 }
 
 struct ScreenSpacePoint {
@@ -283,8 +256,8 @@ struct PaintOperationExecutor {
     Array<float2> sampled_curve_points = sample_curve_2d(curve_points, sample_resolution);
 
     /* Morphing the coordinates onto the curve. Result is stored in a temporary array. */
-    Array<float2> coords_smoothed(screen_space_coords_smooth_slice);
-    interp_polyline_to_polyline(sampled_curve_points, coords_smoothed.as_mutable_span());
+    Array<float2> coords_smoothed(screen_space_coords_smooth_slice.size());
+    morph_points_to_curve(screen_space_coords_smooth_slice, sampled_curve_points, coords_smoothed);
 
     MutableSpan<float2> smoothed_coordinates_slice =
         self.screen_space_smoothed_coordinates_.as_mutable_span().slice(smooth_window);
