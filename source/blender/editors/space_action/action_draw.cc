@@ -763,14 +763,14 @@ static void timeline_cache_draw_simulation_nodes(
   GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + *y_offset);
   GPU_matrix_scale_2f(1.0, line_height);
 
-  blender::float4 base_color;
+  blender::ColorTheme4f base_color;
   UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, base_color);
-  blender::float4 invalid_color = base_color;
-  invalid_color.xyz *= 0.5f;
-  invalid_color.w *= 0.7f;
-  blender::float4 valid_color = base_color;
-  valid_color.w *= 0.7f;
-  blender::float4 baked_color = base_color;
+  blender::ColorTheme4f invalid_color = base_color;
+  mul_v3_fl(invalid_color, 0.5f);
+  invalid_color.a *= 0.7f;
+  blender::ColorTheme4f valid_color = base_color;
+  valid_color.a *= 0.7f;
+  blender::ColorTheme4f baked_color = base_color;
 
   float max_used_height = 1.0f;
   for (const int range_i : frame_ranges.index_range()) {
