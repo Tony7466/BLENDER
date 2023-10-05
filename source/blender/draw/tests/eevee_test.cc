@@ -502,7 +502,8 @@ class TestDefrag {
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
-  StorageBuffer<DispatchCommand> clear_draw_buf;
+  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageBuffer<DrawCommand> tile_draw_buf;
   ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
 
  public:
@@ -572,8 +573,9 @@ class TestDefrag {
     pass.bind_ssbo("pages_infos_buf", pages_infos_data);
     pass.bind_ssbo("pages_free_buf", pages_free_data);
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
+    pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+    pass.bind_ssbo("tile_draw_buf", tile_draw_buf);
     pass.bind_ssbo("statistics_buf", statistics_buf);
-    pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
     pass.dispatch(int3(1, 1, 1));
     pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
@@ -844,6 +846,7 @@ static void test_eevee_shadow_finalize()
 
   StorageArrayBuffer<ViewMatrices, DRW_VIEW_MAX> shadow_multi_view_buf = {"ShadowMultiView"};
   StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageBuffer<DrawCommand> tile_draw_buf;
   StorageArrayBuffer<uint, SHADOW_MAX_PAGE> dst_coord_buf = {"dst_coord_buf"};
   StorageArrayBuffer<uint, SHADOW_MAX_PAGE> src_coord_buf = {"src_coord_buf"};
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE> render_map_buf = {"render_map_buf"};
@@ -861,6 +864,7 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("view_infos_buf", shadow_multi_view_buf);
   pass.bind_ssbo("statistics_buf", statistics_buf);
   pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+  pass.bind_ssbo("tile_draw_buf", tile_draw_buf);
   pass.bind_ssbo("dst_coord_buf", dst_coord_buf);
   pass.bind_ssbo("src_coord_buf", src_coord_buf);
   pass.bind_ssbo("render_map_buf", render_map_buf);

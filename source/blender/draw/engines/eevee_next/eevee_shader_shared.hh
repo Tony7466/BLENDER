@@ -974,8 +974,9 @@ static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
 static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 {
   uint data;
-  /* Expect correct page range. */
-  data = shadow_page_pack(tile.page);
+  /* NOTE: Page might be set to invalid values for tracking invalid usages.
+   * So we have to mask the result. */
+  data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
   data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
