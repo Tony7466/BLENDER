@@ -662,7 +662,7 @@ class OutputFileOperation : public NodeOperation {
 
       const NodeImageMultiFileSocket &socket = *static_cast<NodeImageMultiFileSocket *>(
           input->storage);
-      const ImageFormatData &format = get_write_format(
+      ImageFormatData format = get_write_format(
           socket.use_node_format ? node_storage(bnode()).format : socket.format, socket);
 
       char base_path[FILE_MAX];
@@ -684,6 +684,8 @@ class OutputFileOperation : public NodeOperation {
           }
           break;
       }
+
+      BKE_image_format_free(&format);
     }
   }
 
