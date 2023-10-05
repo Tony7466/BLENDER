@@ -1080,8 +1080,9 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
-                                       'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
+        gp_edit = obj and obj.mode in {
+            'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
+        }
         tool_settings = context.tool_settings
 
         layout.menu("VIEW3D_MT_view")
@@ -1211,8 +1212,9 @@ class VIEW3D_MT_transform_base:
         layout.operator("transform.bend", text="Bend")
         layout.operator("transform.push_pull", text="Push/Pull")
 
-        if context.mode in {'EDIT_MESH', 'EDIT_ARMATURE', 'EDIT_SURFACE', 'EDIT_CURVE',
-                            'EDIT_LATTICE', 'EDIT_METABALL'}:
+        if context.mode in {
+                'EDIT_MESH', 'EDIT_ARMATURE', 'EDIT_SURFACE', 'EDIT_CURVE', 'EDIT_LATTICE', 'EDIT_METABALL',
+        }:
             layout.operator("transform.vertex_warp", text="Warp")
             layout.operator_context = 'EXEC_REGION_WIN'
             layout.operator("transform.vertex_random", text="Randomize").offset = 0.1
@@ -2689,7 +2691,7 @@ class VIEW3D_MT_object(Menu):
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_object_liboverride", icon="LIBRARY_DATA_OVERRIDE")
+        layout.menu("VIEW3D_MT_object_liboverride", icon='LIBRARY_DATA_OVERRIDE')
         layout.menu("VIEW3D_MT_object_relations")
         layout.menu("VIEW3D_MT_object_parent")
         layout.menu("VIEW3D_MT_object_constraints")
@@ -3941,6 +3943,7 @@ class VIEW3D_MT_pose(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_pose_motion")
+        layout.operator("armature.move_to_collection", text="Move to Bone Collection")
         layout.menu("VIEW3D_MT_bone_collections")
 
         layout.separator()
@@ -3953,12 +3956,6 @@ class VIEW3D_MT_pose(Menu):
 
         layout.menu("VIEW3D_MT_pose_names")
         layout.operator("pose.quaternions_flip")
-
-        layout.separator()
-
-        layout.operator_context = 'INVOKE_AREA'
-        layout.operator("armature.armature_layers", text="Change Armature Layers...")
-        layout.operator("pose.bone_layers", text="Change Bone Layers...")
 
         layout.separator()
 
@@ -4051,8 +4048,12 @@ class VIEW3D_MT_bone_collections(Menu):
             layout.label(text="- select bones to operate on first -")
             return
 
+        layout.operator("armature.collection_show_all")
+        layout.separator()
+
         arm = context.object.data
         bone = context.active_bone
+
         found_editable_bcoll = False
         for bcoll in arm.collections:
             if not bcoll.is_editable:
@@ -6379,7 +6380,7 @@ class VIEW3D_PT_shading_lighting(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Lighting"
-    bl_parent_id = 'VIEW3D_PT_shading'
+    bl_parent_id = "VIEW3D_PT_shading"
 
     @classmethod
     def poll(cls, context):
@@ -6501,7 +6502,7 @@ class VIEW3D_PT_shading_color(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Wire Color"
-    bl_parent_id = 'VIEW3D_PT_shading'
+    bl_parent_id = "VIEW3D_PT_shading"
 
     def _draw_color_type(self, context):
         layout = self.layout
@@ -6540,7 +6541,7 @@ class VIEW3D_PT_shading_options(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Options"
-    bl_parent_id = 'VIEW3D_PT_shading'
+    bl_parent_id = "VIEW3D_PT_shading"
 
     @classmethod
     def poll(cls, context):
@@ -6664,7 +6665,7 @@ class VIEW3D_PT_shading_render_pass(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Render Pass"
-    bl_parent_id = 'VIEW3D_PT_shading'
+    bl_parent_id = "VIEW3D_PT_shading"
     COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     @classmethod
@@ -6685,7 +6686,7 @@ class VIEW3D_PT_shading_compositor(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Compositor"
-    bl_parent_id = 'VIEW3D_PT_shading'
+    bl_parent_id = "VIEW3D_PT_shading"
     bl_order = 10
 
     @classmethod
@@ -6768,7 +6769,7 @@ class VIEW3D_PT_overlay(Panel):
 class VIEW3D_PT_overlay_guides(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Guides"
 
     def draw(self, context):
@@ -6835,7 +6836,7 @@ class VIEW3D_PT_overlay_guides(Panel):
 class VIEW3D_PT_overlay_object(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Objects"
 
     def draw(self, context):
@@ -6875,7 +6876,7 @@ class VIEW3D_PT_overlay_object(Panel):
 class VIEW3D_PT_overlay_geometry(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Geometry"
 
     def draw(self, context):
@@ -6927,7 +6928,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
 class VIEW3D_PT_overlay_motion_tracking(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Motion Tracking"
 
     def draw_header(self, context):
@@ -7014,7 +7015,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
 class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay_edit_mesh'
+    bl_parent_id = "VIEW3D_PT_overlay_edit_mesh"
     bl_label = "Shading"
 
     @classmethod
@@ -7091,7 +7092,7 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
 class VIEW3D_PT_overlay_edit_mesh_measurement(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay_edit_mesh'
+    bl_parent_id = "VIEW3D_PT_overlay_edit_mesh"
     bl_label = "Measurement"
 
     @classmethod
@@ -7122,7 +7123,7 @@ class VIEW3D_PT_overlay_edit_mesh_measurement(Panel):
 class VIEW3D_PT_overlay_edit_mesh_normals(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay_edit_mesh'
+    bl_parent_id = "VIEW3D_PT_overlay_edit_mesh"
     bl_label = "Normals"
 
     @classmethod
@@ -7157,7 +7158,7 @@ class VIEW3D_PT_overlay_edit_mesh_normals(Panel):
 class VIEW3D_PT_overlay_edit_mesh_freestyle(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay_edit_mesh'
+    bl_parent_id = "VIEW3D_PT_overlay_edit_mesh"
     bl_label = "Freestyle"
 
     @classmethod
@@ -7731,7 +7732,7 @@ class VIEW3D_PT_annotation_onion(AnnotationOnionSkin, Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "View"
-    bl_parent_id = 'VIEW3D_PT_grease_pencil'
+    bl_parent_id = "VIEW3D_PT_grease_pencil"
 
     # NOTE: this is just a wrapper around the generic GP Panel
 
@@ -8497,7 +8498,7 @@ class VIEW3D_PT_curves_sculpt_grow_shrink_scaling(Panel):
 class VIEW3D_PT_viewport_debug(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Viewport Debug"
 
     @classmethod
@@ -8518,7 +8519,7 @@ class VIEW3D_AST_sculpt_brushes(bpy.types.AssetShelf):
     # "Asset Shelf" and the "Extended Asset Browser" experimental features are
     # enabled.
 
-    bl_space_type = "VIEW_3D"
+    bl_space_type = 'VIEW_3D'
 
     @classmethod
     def poll(cls, context):
