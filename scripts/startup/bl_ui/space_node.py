@@ -564,10 +564,6 @@ class NODE_MT_context_menu(Menu):
 
             layout.separator()
 
-            layout.operator("node.find_node", text="Find...", icon='VIEWZOOM')
-
-            layout.separator()
-
             if is_geometrynodes:
                 layout.operator_context = 'INVOKE_DEFAULT'
                 layout.operator("node.select", text="Clear Viewer", icon='HIDE_ON').clear_viewer = True
