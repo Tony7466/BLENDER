@@ -226,7 +226,7 @@ static int retiming_key_add_from_selection(bContext *C,
 {
   bool inserted = false;
 
-  for (Sequence *seq: strips) {
+  for (Sequence *seq : strips) {
     inserted |= retiming_key_add_new_for_seq(C, op, seq, timeline_frame);
   }
 
@@ -540,7 +540,7 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
 
-for (Sequence *seq : strips) {
+  for (Sequence *seq : strips) {
     SEQ_retiming_data_ensure(seq);
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
 

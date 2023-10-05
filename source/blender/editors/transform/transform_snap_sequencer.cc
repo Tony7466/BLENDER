@@ -114,8 +114,9 @@ static void query_strip_effects_fn(const Scene *scene,
   }
 }
 
-static blender::VectorSet<Sequence *> query_snap_targets(
-    Scene *scene, blender::Span<Sequence *> snap_sources, bool exclude_selected)
+static blender::VectorSet<Sequence *> query_snap_targets(Scene *scene,
+                                                         blender::Span<Sequence *> snap_sources,
+                                                         bool exclude_selected)
 {
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);

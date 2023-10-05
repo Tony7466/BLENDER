@@ -338,12 +338,11 @@ static blender::VectorSet<Sequence *> query_right_side_strips(
 
 /* Offset all strips positioned after left edge of transformed strips bound-box by amount equal
  * to overlap of transformed strips. */
-static void seq_transform_handle_expand_to_fit(
-    Scene *scene,
-    ListBase *seqbasep,
-    blender::Span<Sequence *> transformed_strips,
-    blender::Span<Sequence *> time_dependent_strips,
-    bool use_sync_markers)
+static void seq_transform_handle_expand_to_fit(Scene *scene,
+                                               ListBase *seqbasep,
+                                               blender::Span<Sequence *> transformed_strips,
+                                               blender::Span<Sequence *> time_dependent_strips,
+                                               bool use_sync_markers)
 {
   ListBase *markers = &scene->markers;
 
@@ -537,12 +536,11 @@ static void seq_transform_handle_overwrite(Scene *scene,
   }
 }
 
-static void seq_transform_handle_overlap_shuffle(
-    Scene *scene,
-    ListBase *seqbasep,
-    blender::Span<Sequence *> transformed_strips,
-    blender::Span<Sequence *> time_dependent_strips,
-    bool use_sync_markers)
+static void seq_transform_handle_overlap_shuffle(Scene *scene,
+                                                 ListBase *seqbasep,
+                                                 blender::Span<Sequence *> transformed_strips,
+                                                 blender::Span<Sequence *> time_dependent_strips,
+                                                 bool use_sync_markers)
 {
   ListBase *markers = &scene->markers;
 

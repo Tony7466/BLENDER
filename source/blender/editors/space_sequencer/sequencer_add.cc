@@ -366,8 +366,9 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
 }
 
 /* In this alternative version we only check for overlap, but do not do anything about them. */
-static bool seq_load_apply_generic_options_only_test_overlap(
-    bContext *C, wmOperator *op, Sequence *seq)
+static bool seq_load_apply_generic_options_only_test_overlap(bContext *C,
+                                                             wmOperator *op,
+                                                             Sequence *seq)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -856,10 +857,8 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       load_data->start_frame += SEQ_time_right_handle_frame_get(scene, seq_movie) -
                                 SEQ_time_left_handle_frame_get(scene, seq_movie);
       if (overlap_shuffle_override) {
-        has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_sound);
-        has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_movie);
+        has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(C, op, seq_sound);
+        has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(C, op, seq_movie);
       }
       else {
         seq_load_apply_generic_options(C, op, seq_sound);
@@ -917,10 +916,8 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   if (overlap_shuffle_override) {
     bool has_seq_overlap = false;
 
-    has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_sound);
-    has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_movie);
+    has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(C, op, seq_sound);
+    has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(C, op, seq_movie);
 
     if (has_seq_overlap) {
       ScrArea *area = CTX_wm_area(C);
