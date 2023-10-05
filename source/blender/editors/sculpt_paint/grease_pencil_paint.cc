@@ -493,10 +493,12 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
   const int stroke_index = drawing.strokes().curves_range().last();
   const IndexRange points_range = drawing.strokes().points_by_curve()[stroke_index];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const VArray<float> radii = drawing.radii();
+
   /* Remove points at the end that have a radius close to 0. */
   int64_t points_to_remove = 0;
-  for (int64_t index = points_range.last(); index >= points_range.first(); index--) {
-    if (drawing.radii()[index] < 1e-5f) {
+  for (int64_t index = points.last(); index >= points.first(); index--) {
+    if (radii[index] < 1e-5f) {
       points_to_remove++;
     }
     else {
