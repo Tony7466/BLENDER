@@ -2476,10 +2476,7 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
 
         if (retval & (OPERATOR_CANCELLED | OPERATOR_FINISHED)) {
           wm_operator_reports(C, op, retval, false);
-
-          if (op->type->modalkeymap) {
-            WM_window_status_area_tag_redraw(win);
-          }
+          WM_window_status_area_tag_redraw(win);
         }
         else {
           /* Not very common, but modal operators may report before finishing. */
