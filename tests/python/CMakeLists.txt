@@ -161,6 +161,15 @@ add_blender_test(
 )
 
 add_blender_test(
+  blendfile_versioning
+  --log "*blendfile*"
+  --debug-memory
+  --debug
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_versioning.py --
+  --src-test-dir ${TEST_SRC_DIR}/
+)
+
+add_blender_test(
   blendfile_liblink
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_liblink.py --
   --output-dir ${TEST_OUT_DIR}/blendfile_io/
@@ -878,7 +887,7 @@ if(WITH_ALEMBIC)
   get_filename_component(ALEMBIC_ROOT_DIR ${real_include_dir} DIRECTORY)
 
   add_python_test(
-    alembic_export_tests
+    bf_io_alembic_export_tests
     ${CMAKE_CURRENT_LIST_DIR}/alembic_export_tests.py
     --blender "${TEST_BLENDER_EXE}"
     --testdir "${TEST_SRC_DIR}/alembic"
@@ -895,13 +904,13 @@ endif()
 
 if(WITH_USD)
   add_blender_test(
-          usd_export_test
+          bf_io_usd_export_test
           --python ${CMAKE_CURRENT_LIST_DIR}/bl_usd_export_test.py
           --
           --testdir "${TEST_SRC_DIR}/usd"
   )
   add_blender_test(
-    usd_import_test
+    bf_io_usd_import_test
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_usd_import_test.py
     --
     --testdir "${TEST_SRC_DIR}/usd"

@@ -8,15 +8,16 @@
  * This is used by alpha blended materials and materials using Shader to RGB nodes.
  */
 
-#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
+#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 vec4 closure_to_rgba(Closure cl)
 {
@@ -121,7 +122,9 @@ void main()
     imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
   }
   output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(out_normal, 1.0));
-  output_renderpass_color(uniform_buf.render_pass.diffuse_color_id, vec4(g_diffuse_data.color, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.position_id, vec4(g_data.P, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.diffuse_color_id,
+                          vec4(g_diffuse_data.color, 1.0));
   output_renderpass_color(uniform_buf.render_pass.diffuse_light_id, vec4(diffuse_light, 1.0));
   output_renderpass_color(uniform_buf.render_pass.specular_color_id, vec4(specular_color, 1.0));
   output_renderpass_color(uniform_buf.render_pass.specular_light_id, vec4(specular_light, 1.0));

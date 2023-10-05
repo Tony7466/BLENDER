@@ -24,8 +24,8 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_object.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "bmesh.h"
 
@@ -2171,7 +2171,7 @@ PyDoc_STRVAR(bpy_bmvertseq_new_doc,
              "   :type co: float triplet\n"
              "   :arg example: Existing vert to initialize settings.\n"
              "   :type example: :class:`BMVert`\n"
-             "   :return: The newly created edge.\n"
+             "   :return: The newly created vertex.\n"
              "   :rtype: :class:`BMVert`\n");
 static PyObject *bpy_bmvertseq_new(BPy_BMElemSeq *self, PyObject *args)
 {

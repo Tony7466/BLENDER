@@ -12,6 +12,7 @@
 #include <string>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
 #include "BLI_utildefines.h"
@@ -22,7 +23,6 @@
 
 struct ARegion;
 struct AssetFilterSettings;
-struct AssetRepresentation;
 struct AutoComplete;
 struct EnumPropertyItem;
 struct FileSelectParams;
@@ -73,6 +73,7 @@ struct uiBut;
 struct uiButExtraOpIcon;
 struct uiLayout;
 struct uiPopupBlockHandle;
+struct uiTooltipData;
 /* C handle for C++ #ui::AbstractView type. */
 struct uiViewHandle;
 /* C handle for C++ #ui::AbstractViewItem type. */
@@ -452,6 +453,7 @@ enum eButType {
 
 /** Gradient types, for color picker #UI_BTYPE_HSVCUBE etc. */
 enum eButGradientType {
+  UI_GRAD_NONE = -1,
   UI_GRAD_SV = 0,
   UI_GRAD_HV = 1,
   UI_GRAD_HS = 2,
@@ -580,6 +582,8 @@ using uiButSearchListenFn = void (*)(const wmRegionListenerParams *params, void 
 
 /** Must return an allocated string. */
 using uiButToolTipFunc = char *(*)(bContext *C, void *argN, const char *tip);
+
+using uiButToolTipCustomFunc = void (*)(bContext *C, uiTooltipData *data, void *argN);
 
 using uiBlockHandleFunc = void (*)(bContext *C, void *arg, int event);
 
@@ -835,6 +839,25 @@ void UI_block_region_set(uiBlock *block, ARegion *region);
 
 void UI_block_lock_set(uiBlock *block, bool val, const char *lockstr);
 void UI_block_lock_clear(uiBlock *block);
+
+#define UI_BUTTON_SECTION_MERGE_DISTANCE (UI_UNIT_X * 3)
+/* Separator line between regions if the #uiButtonSectionsAlign is not #None. */
+#define UI_BUTTON_SECTION_SEPERATOR_LINE_WITH (U.pixelsize * 2)
+
+enum class uiButtonSectionsAlign : int8_t { None = 1, Top, Bottom };
+/**
+ * Draw a background with rounded corners behind each visual group of buttons. The visual groups
+ * are separated by spacer buttons (#uiItemSpacer()). Button groups that are closer than
+ * #UI_BUTTON_SECTION_MERGE_DISTANCE will be merged into one visual section. If the group is closer
+ * than that to a region edge, it will also be extended to that, and the rounded corners will be
+ * removed on that edge.
+ *
+ * \note This currently only works well for horizontal, header like regions.
+ */
+void UI_region_button_sections_draw(const ARegion *region,
+                                    int /*THemeColorID*/ colorid,
+                                    uiButtonSectionsAlign align);
+bool UI_region_button_sections_is_inside_x(const ARegion *region, const int mval_x);
 
 /**
  * Automatic aligning, horizontal or vertical.
@@ -1382,9 +1405,8 @@ enum uiStringInfoType {
   BUT_GET_RNASTRUCT_IDENTIFIER,
   BUT_GET_RNAENUM_IDENTIFIER,
   BUT_GET_LABEL,
-  /** Sometimes the button doesn't have a label itself, but provides one for the tooltip. This can
-   * be displayed in a quick tooltip, appearing after a smaller timeout and expanding to the full
-   * tooltip after the regular timeout. */
+  /** Query the result of #uiBut::tip_label_func(). Meant to allow overriding the label to be
+   * displayed in the tooltip. */
   BUT_GET_TIP_LABEL,
   BUT_GET_RNA_LABEL,
   BUT_GET_RNAENUM_LABEL,
@@ -1747,7 +1769,54 @@ void UI_but_func_drawextra_set(uiBlock *block,
 void UI_but_func_menu_step_set(uiBut *but, uiMenuStepFunc func);
 
 void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFreeArgFunc free_arg);
+/**
+ * Enable a custom quick tooltip label. That is, a short tooltip that appears faster than the full
+ * one and only shows the label string returned by \a func. After a short delay the full tooltip is
+ * shown, including the same label.
+ */
 void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const uiBut *but)> func);
+
+typedef enum uiTooltipStyle {
+  UI_TIP_STYLE_NORMAL = 0, /* Regular text. */
+  UI_TIP_STYLE_HEADER,     /* Header text. */
+  UI_TIP_STYLE_MONO,       /* Mono-spaced text. */
+  UI_TIP_STYLE_IMAGE,      /* Image field. */
+} uiTooltipStyle;
+
+typedef enum uiTooltipColorID {
+  UI_TIP_LC_MAIN = 0, /* Color of primary text. */
+  UI_TIP_LC_VALUE,    /* Color for the value of buttons (also shortcuts). */
+  UI_TIP_LC_ACTIVE,   /* Color of titles of active enum values. */
+  UI_TIP_LC_NORMAL,   /* Color of regular text. */
+  UI_TIP_LC_PYTHON,   /* Color of python snippets. */
+  UI_TIP_LC_ALERT,    /* Warning text color, eg: why operator can't run. */
+  UI_TIP_LC_MAX
+} uiTooltipColorID;
+
+void UI_but_func_tooltip_custom_set(uiBut *but,
+                                    uiButToolTipCustomFunc func,
+                                    void *arg,
+                                    uiFreeArgFunc free_arg);
+
+/**
+ * \param text: Allocated text (transfer ownership to `data`) or null.
+ * \param suffix: Allocated text (transfer ownership to `data`) or null.
+ */
+void UI_tooltip_text_field_add(struct uiTooltipData *data,
+                               char *text,
+                               char *suffix,
+                               const uiTooltipStyle style,
+                               const uiTooltipColorID color_id,
+                               const bool is_pad = false) ATTR_NONNULL(1);
+
+/**
+ * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
+ * \param image_size: Display size for the image (pixels without UI scale applied).
+ */
+void UI_tooltip_image_field_add(struct uiTooltipData *data,
+                                const struct ImBuf *image,
+                                const short image_size[2]) ATTR_NONNULL(1, 2, 3);
+
 /**
  * Recreate tool-tip (use to update dynamic tips)
  */
@@ -1823,7 +1892,7 @@ void UI_but_drag_attach_image(uiBut *but, const ImBuf *imb, float scale);
  */
 void UI_but_drag_set_asset(uiBut *but,
                            const blender::asset_system::AssetRepresentation *asset,
-                           int import_type, /* eAssetImportType */
+                           int import_method, /* eAssetImportMethod */
                            int icon,
                            const ImBuf *imb,
                            float scale);
@@ -1876,6 +1945,9 @@ void UI_panel_header_buttons_begin(Panel *panel);
  */
 void UI_panel_header_buttons_end(Panel *panel);
 void UI_panel_end(Panel *panel, int width, int height);
+
+/** Set the name that should be drawn in the UI. Should be a translated string. */
+void UI_panel_drawname_set(Panel *panel, blender::StringRef name);
 
 /**
  * Set a context for this entire panel and its current layout. This should be used whenever panel
@@ -2532,7 +2604,6 @@ void uiTemplateNodeLink(
     uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input);
 void uiTemplateNodeView(
     uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input);
-void uiTemplateNodeAssetMenuItems(uiLayout *layout, bContext *C, const char *catalog_path);
 void uiTemplateTextureUser(uiLayout *layout, bContext *C);
 /**
  * Button to quickly show texture in Properties Editor texture tab.
@@ -2586,9 +2657,14 @@ void uiTemplateAssetView(uiLayout *layout,
                          const char *drag_opname,
                          PointerRNA *r_drag_op_properties);
 
-void uiTemplateLightLinkingCollection(uiLayout *layout, PointerRNA *ptr, const char *propname);
+void uiTemplateLightLinkingCollection(uiLayout *layout,
+                                      uiLayout *context_layout,
+                                      PointerRNA *ptr,
+                                      const char *propname);
 
+#ifdef WITH_GREASE_PENCIL_V3
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
+#endif
 
 void uiTemplateNodeTreeInterface(struct uiLayout *layout, struct PointerRNA *ptr);
 

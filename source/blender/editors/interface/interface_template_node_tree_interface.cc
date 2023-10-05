@@ -18,6 +18,7 @@
 #include "DNA_node_tree_interface_types.h"
 
 #include "ED_node.hh"
+#include "ED_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -151,7 +152,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
   bool rename(const bContext &C, StringRefNull new_name) override
   {
     socket_.name = BLI_strdup(new_name.c_str());
-    BKE_ntree_update_tag_interface(&nodetree_);
+    nodetree_.tree_interface.tag_items_changed();
     ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
@@ -208,7 +209,7 @@ class NodePanelViewItem : public BasicTreeViewItem {
   bool rename(const bContext &C, StringRefNull new_name) override
   {
     panel_.name = BLI_strdup(new_name.c_str());
-    BKE_ntree_update_tag_interface(&nodetree_);
+    nodetree_.tree_interface.tag_items_changed();
     ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
@@ -348,9 +349,9 @@ std::string NodeSocketDropTarget::drop_tooltip(const DragInfo &drag_info) const
     case DropLocation::Into:
       return "";
     case DropLocation::Before:
-      return N_("Insert before socket");
+      return TIP_("Insert before socket");
     case DropLocation::After:
-      return N_("Insert after socket");
+      return TIP_("Insert after socket");
   }
   return "";
 }
@@ -389,8 +390,8 @@ bool NodeSocketDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
   interface.move_item_to_parent(*drag_item, parent, index);
 
   /* General update */
-  BKE_ntree_update_tag_interface(&nodetree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), &nodetree);
+  ED_undo_push(C, "Insert node group item");
   return true;
 }
 
@@ -430,11 +431,11 @@ std::string NodePanelDropTarget::drop_tooltip(const DragInfo &drag_info) const
 {
   switch (drag_info.drop_location) {
     case DropLocation::Into:
-      return "Insert into panel";
+      return TIP_("Insert into panel");
     case DropLocation::Before:
-      return N_("Insert before panel");
+      return TIP_("Insert before panel");
     case DropLocation::After:
-      return N_("Insert after panel");
+      return TIP_("Insert after panel");
   }
   return "";
 }
@@ -480,8 +481,8 @@ bool NodePanelDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
   interface.move_item_to_parent(*drag_item, parent, index);
 
   /* General update */
-  BKE_ntree_update_tag_interface(&nodetree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), &nodetree);
+  ED_undo_push(C, "Insert node group item");
   return true;
 }
 
