@@ -29,6 +29,27 @@
 
 #include "../engines/select/select_engine.hh"
 
+bool SELECTID_Context::is_dirty(Depsgraph *depsgraph, RegionView3D *rv3d)
+{
+  /* Check if the viewport has changed. */
+  float(*persmat)[4] = rv3d->persmat;
+  bool is_dirty = !compare_m4m4(this->persmat, persmat, FLT_EPSILON);
+
+  if (!is_dirty) {
+    /* Check if any of the drawn objects have been transformed. */
+    for (Object *obj : this->objects) {
+      Object *obj_eval = DEG_get_evaluated_object(depsgraph, obj);
+      DrawData *data = DRW_drawdata_get(&obj_eval->id, &draw_engine_select_type);
+      if (!data || (data->recalc & ID_RECALC_TRANSFORM)) {
+        is_dirty = true;
+        break;
+      }
+    }
+  }
+
+  return is_dirty;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Buffer of select ID's
  * \{ */
@@ -375,7 +396,7 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
   uint elem_id = 0;
   uint base_index = 0;
 
-  for (; base_index < select_ctx->objects_drawn.size(); base_index++) {
+  for (; base_index < select_ctx->objects.size(); base_index++) {
     ObjectOffsets *base_ofs = &select_ctx->index_offsets[base_index];
 
     if (base_ofs->face > sel_id) {
@@ -395,15 +416,14 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
     }
   }
 
-  if (base_index == select_ctx->objects_drawn.size()) {
+  if (base_index == select_ctx->objects.size()) {
     return false;
   }
 
   *r_elem = elem_id;
 
   if (r_base_index) {
-    Object *obj_orig = DEG_get_original_object(select_ctx->objects_drawn[base_index]);
-    *r_base_index = obj_orig->runtime.select_id;
+    *r_base_index = base_index;
   }
 
   if (r_elem_type) {
@@ -424,7 +444,7 @@ uint DRW_select_buffer_context_offset_for_object_elem(Depsgraph *depsgraph,
   SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
       &ob_eval->id, &draw_engine_select_type);
 
-  if (!sel_data || !sel_data->is_drawn) {
+  if (!sel_data) {
     return 0;
   }
 
@@ -453,20 +473,12 @@ void DRW_select_buffer_context_create(Base **bases, const uint bases_len, short 
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
-  select_ctx->objects.clear();
-  select_ctx->objects_drawn.clear();
-  select_ctx->index_offsets.clear();
-
-  select_ctx->objects.reserve(bases_len);
-  select_ctx->objects_drawn.reserve(bases_len);
-  select_ctx->index_offsets.reserve(bases_len);
+  select_ctx->objects.reinitialize(bases_len);
+  select_ctx->index_offsets.reinitialize(bases_len);
 
   for (uint base_index = 0; base_index < bases_len; base_index++) {
     Object *obj = bases[base_index]->object;
-    select_ctx->objects.append(obj);
-
-    /* Weak but necessary for `DRW_select_buffer_elem_get`. */
-    obj->runtime.select_id = base_index;
+    select_ctx->objects[base_index] = obj;
   }
 
   select_ctx->select_mode = select_mode;

@@ -2759,9 +2759,12 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   if (!viewport) {
     /* Selection engine requires a viewport.
      * TODO(@germano): This should be done internally in the engine. */
-    sel_ctx->is_dirty = true;
-    sel_ctx->objects_drawn.clear();
     sel_ctx->index_drawn_len = 1;
+    return;
+  }
+
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  if (!sel_ctx->is_dirty(depsgraph, rv3d)) {
     return;
   }
 
@@ -2775,7 +2778,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   BKE_view_layer_synced_ensure(scene, view_layer);
   DST.draw_ctx = {};
   DST.draw_ctx.region = region;
-  DST.draw_ctx.rv3d = static_cast<RegionView3D *>(region->regiondata);
+  DST.draw_ctx.rv3d = rv3d;
   DST.draw_ctx.v3d = v3d;
   DST.draw_ctx.scene = scene;
   DST.draw_ctx.view_layer = view_layer;
