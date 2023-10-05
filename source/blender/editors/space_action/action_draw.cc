@@ -692,11 +692,11 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
   GPU_matrix_scale_2f(1.0, height);
 
-  float color[4];
+  blender::ColorTheme4f color;
   timeline_cache_color_get(pid, color);
 
   /* Mix in the background color to tone it down a bit. */
-  float background[4];
+  blender::ColorTheme4f background;
   UI_GetThemeColor4fv(TH_BACK, background);
 
   interp_v3_v3v3(color, color, background, 0.6f);
@@ -707,7 +707,7 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   immRectf(pos_id, float(pid->cache->startframe), 0.0, float(pid->cache->endframe), 1.0);
 
   /* Now show the cached frames on top. */
-  float color_state[4];
+  blender::ColorTheme4f color_state;
   copy_v4_v4(color_state, color);
 
   timeline_cache_modify_color_based_on_state(pid->cache, color, color_state);
