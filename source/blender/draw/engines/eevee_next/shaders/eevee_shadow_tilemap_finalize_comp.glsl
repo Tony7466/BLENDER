@@ -163,7 +163,7 @@ void main()
           /* Add page to clear dispatch. */
           uint page_index = atomicAdd(clear_dispatch_buf.num_groups_z, 1u);
           /* Add page to tile processing. */
-          atomicAdd(tile_draw_buf.instance_len, 1u);
+          atomicAdd(tile_draw_buf.vertex_len, 6u);
           /* Add page mapping for indexing the page position in atlas and in the framebuffer. */
           dst_coord_buf[page_index] = page_packed;
           src_coord_buf[page_index] = shadow_page_pack(

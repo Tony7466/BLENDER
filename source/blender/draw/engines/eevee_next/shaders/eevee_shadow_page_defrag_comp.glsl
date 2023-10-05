@@ -131,8 +131,8 @@ void main()
   clear_dispatch_buf.num_groups_z = 0;
 
   /* Reset TBDR command indirect buffer. */
-  tile_draw_buf.vertex_len = 6u;
-  tile_draw_buf.instance_len = 0u;
+  tile_draw_buf.vertex_len = 0u;
+  tile_draw_buf.instance_len = 1u;
   tile_draw_buf.vertex_first = 0u;
   tile_draw_buf.base_index = 0u;
 }

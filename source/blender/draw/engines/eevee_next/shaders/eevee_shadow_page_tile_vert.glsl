@@ -8,10 +8,11 @@
 
 void main()
 {
-  int tile_id = gl_InstanceID;
+  int tile_id = gl_VertexID / 6;
+  int vertex_id = gl_VertexID % 6;
   /* Generate Quad with 2 triangle with same winding.
    * This way the can be merged on some hardware. */
-  int v = (gl_VertexID > 2) ? (3 - (gl_VertexID - 3)) : gl_VertexID;
+  int v = (vertex_id > 2) ? (3 - (vertex_id - 3)) : vertex_id;
   vec2 tile_corner = vec2(v & 1, v >> 1);
 
 #ifdef PASS_DEPTH_STORE
