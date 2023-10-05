@@ -7,7 +7,11 @@
 #include "material.h"
 #include "node_parser.h"
 
+#include "BKE_main.h"
+#include "BLI_path_util.h"
+#include "BLI_string.h"
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_material_types.h"
 
@@ -63,6 +67,23 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   MaterialX::DocumentPtr doc = MaterialX::createDocument();
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
+    Main *bmain = DEG_get_bmain(depsgraph);
+    /* Look for first script node with assigned file.
+     * If it's found, we load content and ignore everything other. */
+    LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
+      if (node->typeinfo->type == SH_NODE_SCRIPT)
+      {
+        NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
+        if (script && script->filepath[0] != '\0' && script->mode & NODE_SCRIPT_EXTERNAL) {
+          char filepath[FILE_MAX];
+          STRNCPY(filepath, script->filepath);
+          BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+          MaterialX::readFromXmlFile(doc, filepath);
+          return doc;
+        }
+      }
+    }
+    
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
     if (output_node) {
       NodeParserData data = {doc.get(),
@@ -100,7 +121,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
 
   CLOG_INFO(LOG_MATERIALX_SHADER,
             1,
-            "Material: %s\n%s",
+            "Material: %s//n%s",
             material->id.name,
             MaterialX::writeToXmlString(doc).c_str());
   return doc;
