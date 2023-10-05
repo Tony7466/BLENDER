@@ -406,7 +406,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      ED_workspace_status_text(C, TIP_("Type to search..."));
+      ED_workspace_status_text(C, TIP_("Press spacebar to search..."));
     }
   }
 
@@ -623,7 +623,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   handle->can_refresh = true;
 
   if (mt->idname[0]) {
-    ED_workspace_status_text(C, TIP_("Type to search..."));
+    ED_workspace_status_text(C, TIP_("Press spacebar to search..."));
   }
 }
 
