@@ -1,2 +1,3 @@
 Referenced by issue #112978, Command Click on title bar to reveal file path is gone in 4.0
 Referenced by pull request #113227, Fix #112978: MacOS no longer has a path associated with the window
+Referenced by commit bd6b7088bf40c4411c62c7674a8a5eb319389f1e, Fix #112978: MacOS no longer has a path associated with the window
