@@ -215,7 +215,7 @@ struct PaintOperationExecutor {
   }
 
   void active_smoothing(PaintOperation &self,
-                        const IndexRange points_range,
+                        const IndexRange points,
                         const IndexRange smooth_window)
   {
     Span<float2> screen_space_coords_smooth_slice = self.screen_space_coordinates_.as_span().slice(
@@ -261,10 +261,8 @@ struct PaintOperationExecutor {
 
     MutableSpan<float2> smoothed_coordinates_slice =
         self.screen_space_smoothed_coordinates_.as_mutable_span().slice(smooth_window);
-    MutableSpan<float3> positions_slice = drawing_->strokes_for_write()
-                                              .positions_for_write()
-                                              .slice(points_range)
-                                              .slice(smooth_window);
+    MutableSpan<float3> positions_slice =
+        drawing_->strokes_for_write().positions_for_write().slice(points).slice(smooth_window);
     const float converging_threshold_px = 0.1f;
     bool stop_counting_converged = false;
     int num_converged = 0;
@@ -374,8 +372,8 @@ struct PaintOperationExecutor {
     drawing_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
 
     const int64_t min_active_smoothing_points_num = 8;
-    const IndexRange points_range = curves.points_by_curve()[curve_index];
-    if (points_range.size() < min_active_smoothing_points_num) {
+    const IndexRange points = curves.points_by_curve()[curve_index];
+    if (points.size() < min_active_smoothing_points_num) {
       MutableSpan<float3> positions_slice = curves.positions_for_write().slice(new_range);
       for (const int64_t i : new_coordinates.index_range()) {
         positions_slice[i] = screen_space_to_object_space(new_coordinates[i]);
@@ -383,9 +381,10 @@ struct PaintOperationExecutor {
       return;
     }
 
+    /* Active smoothing is done in a window at the end of the new stroke. */
     const IndexRange smooth_window(self.active_smooth_index_,
-                                   points_range.size() - self.active_smooth_index_);
-    this->active_smoothing(self, points_range, smooth_window);
+                                   points.size() - self.active_smooth_index_);
+    this->active_smoothing(self, points, smooth_window);
   }
 
   void execute(PaintOperation &self, const InputSample &extension_sample)
@@ -455,32 +454,30 @@ static float dist_to_interpolated_2d(
 void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const float epsilon_px)
 {
   const int stroke_index = drawing.strokes().curves_range().last();
-  const IndexRange points_range = drawing.strokes().points_by_curve()[stroke_index];
+  const IndexRange points = drawing.strokes().points_by_curve()[stroke_index];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const VArray<float> radii = drawing.radii();
 
   /* Distance function for `ramer_douglas_peucker_simplify`. */
   const Span<float2> positions_2d = this->screen_space_smoothed_coordinates_.as_span();
-  const auto dist_function =
-      [points_range, positions_2d, radii](int64_t first_index, int64_t last_index, int64_t index) {
-        /* 2D coordinates are only stored for the current stroke, so offset the indices. */
-        const float dist_position_px = dist_to_line_segment_v2(
-            positions_2d[index - points_range.first()],
-            positions_2d[first_index - points_range.first()],
-            positions_2d[last_index - points_range.first()]);
-        const float dist_radii_px = dist_to_interpolated_2d(
-            positions_2d[index - points_range.first()],
-            positions_2d[first_index - points_range.first()],
-            positions_2d[last_index - points_range.first()],
-            radii[index],
-            radii[first_index],
-            radii[last_index]);
-        return math::max(dist_position_px, dist_radii_px);
-      };
+  const auto dist_function = [&](int64_t first_index, int64_t last_index, int64_t index) {
+    /* 2D coordinates are only stored for the current stroke, so offset the indices. */
+    const float dist_position_px = dist_to_line_segment_v2(
+        positions_2d[index - points.first()],
+        positions_2d[first_index - points.first()],
+        positions_2d[last_index - points.first()]);
+    const float dist_radii_px = dist_to_interpolated_2d(positions_2d[index - points.first()],
+                                                        positions_2d[first_index - points.first()],
+                                                        positions_2d[last_index - points.first()],
+                                                        radii[index],
+                                                        radii[first_index],
+                                                        radii[last_index]);
+    return math::max(dist_position_px, dist_radii_px);
+  };
 
   Array<bool> points_to_delete(curves.points_num(), false);
   int64_t total_points_to_delete = ed::greasepencil::ramer_douglas_peucker_simplify(
-      points_range, epsilon_px, dist_function, points_to_delete.as_mutable_span());
+      points, epsilon_px, dist_function, points_to_delete.as_mutable_span());
 
   if (total_points_to_delete > 0) {
     IndexMaskMemory memory;
@@ -491,7 +488,7 @@ void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const 
 void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
 {
   const int stroke_index = drawing.strokes().curves_range().last();
-  const IndexRange points_range = drawing.strokes().points_by_curve()[stroke_index];
+  const IndexRange points = drawing.strokes().points_by_curve()[stroke_index];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const VArray<float> radii = drawing.radii();
 
