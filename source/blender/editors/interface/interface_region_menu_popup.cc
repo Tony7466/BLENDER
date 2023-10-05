@@ -248,8 +248,8 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
     /* Skip. */
   }
   else if (pup->but) {
-    /* Minimum width to enforce. */
-    if (pup->but->drawstr[0]) {
+    /* Minimum width to enforce to align with top level button. */
+    if (pup->but->drawstr[0] && !ui_block_is_menu(pup->but->block)) {
       minwidth = BLI_rctf_size_x(&pup->but->rect);
     }
     else {
