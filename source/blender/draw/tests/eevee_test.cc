@@ -807,6 +807,9 @@ static void test_eevee_shadow_finalize()
     tilemap.viewmat = float4x4::identity();
     tilemap.tiles_index = 0;
     tilemap.clip_data_index = 0;
+    tilemap.clip_far = 10.0f;
+    tilemap.clip_near = 1.0f;
+    tilemap.half_size = 1.0f;
     tilemap.projection_type = SHADOW_PROJECTION_CUBEFACE;
     tilemaps_data.append(tilemap);
 
