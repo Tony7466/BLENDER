@@ -250,10 +250,10 @@ class MeshPass : public PassMain {
                              ImageUser *iuser = nullptr);
 };
 
-struct StencilBits {
-  static const uint8_t Background = 0;
-  static const uint8_t Object = 1u << 0;
-  static const uint8_t ObjectInFront = 1u << 1;
+enum class StencilBits : uint8_t {
+  BACKGROUND = 0,
+  OBJECT = 1u << 0,
+  OBJECT_IN_FRONT = 1u << 1,
 };
 
 class OpaquePass {

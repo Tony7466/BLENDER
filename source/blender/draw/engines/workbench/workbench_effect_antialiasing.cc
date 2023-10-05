@@ -146,7 +146,7 @@ void AntiAliasingPass::sync(const SceneState &scene_state, SceneResources &resou
   overlay_depth_ps_.init();
   overlay_depth_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
                               DRW_STATE_STENCIL_EQUAL);
-  overlay_depth_ps_.state_stencil(0x00, 0xFF, StencilBits::ObjectInFront);
+  overlay_depth_ps_.state_stencil(0x00, 0xFF, uint8_t(StencilBits::OBJECT_IN_FRONT));
   overlay_depth_ps_.shader_set(overlay_depth_sh_);
   overlay_depth_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 
