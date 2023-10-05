@@ -971,6 +971,11 @@ struct GWL_Display {
 #endif
   GWL_XDG_Decor_System *xdg_decor = nullptr;
 
+  /**
+   * NOTE(@ideasman42): Handling of outputs must account for this vector to be empty.
+   * While this seems like something which might not ever happen, it can occur when
+   * unplugging monitors (presumably from dodgy cables/connections too).
+   */
   std::vector<GWL_Output *> outputs;
   std::vector<GWL_Seat *> seats;
   /**
@@ -6295,12 +6300,11 @@ void GHOST_SystemWayland::getMainDisplayDimensions(uint32_t &width, uint32_t &he
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
 
-  if (display_->outputs.empty()) {
-    return;
+  if (!display_->outputs.empty()) {
+    /* We assume first output as main. */
+    width = uint32_t(display_->outputs[0]->size_native[0]);
+    height = uint32_t(display_->outputs[0]->size_native[1]);
   }
-  /* We assume first output as main. */
-  width = uint32_t(display_->outputs[0]->size_native[0]);
-  height = uint32_t(display_->outputs[0]->size_native[1]);
 }
 
 void GHOST_SystemWayland::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
@@ -6308,24 +6312,25 @@ void GHOST_SystemWayland::getAllDisplayDimensions(uint32_t &width, uint32_t &hei
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
+  if (!display_->outputs.empty()) {
+    int32_t xy_min[2] = {INT32_MAX, INT32_MAX};
+    int32_t xy_max[2] = {INT32_MIN, INT32_MIN};
 
-  int32_t xy_min[2] = {INT32_MAX, INT32_MAX};
-  int32_t xy_max[2] = {INT32_MIN, INT32_MIN};
-
-  for (const GWL_Output *output : display_->outputs) {
-    int32_t xy[2] = {0, 0};
-    if (output->has_position_logical) {
-      xy[0] = output->position_logical[0];
-      xy[1] = output->position_logical[1];
+    for (const GWL_Output *output : display_->outputs) {
+      int32_t xy[2] = {0, 0};
+      if (output->has_position_logical) {
+        xy[0] = output->position_logical[0];
+        xy[1] = output->position_logical[1];
+      }
+      xy_min[0] = std::min(xy_min[0], xy[0]);
+      xy_min[1] = std::min(xy_min[1], xy[1]);
+      xy_max[0] = std::max(xy_max[0], xy[0] + output->size_native[0]);
+      xy_max[1] = std::max(xy_max[1], xy[1] + output->size_native[1]);
     }
-    xy_min[0] = std::min(xy_min[0], xy[0]);
-    xy_min[1] = std::min(xy_min[1], xy[1]);
-    xy_max[0] = std::max(xy_max[0], xy[0] + output->size_native[0]);
-    xy_max[1] = std::max(xy_max[1], xy[1] + output->size_native[1]);
-  }
 
-  width = xy_max[0] - xy_min[0];
-  height = xy_max[1] - xy_min[1];
+    width = xy_max[0] - xy_min[0];
+    height = xy_max[1] - xy_min[1];
+  }
 }
 
 GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gpuSettings)
@@ -6417,17 +6422,38 @@ GHOST_TSuccess GHOST_SystemWayland::disposeContext(GHOST_IContext *context)
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
+
+  GHOST_TDrawingContextType type = GHOST_kDrawingContextTypeNone;
+#ifdef WITH_OPENGL_BACKEND
+  if (dynamic_cast<GHOST_ContextEGL *>(context)) {
+    type = GHOST_kDrawingContextTypeOpenGL;
+  }
+#endif /* WITH_OPENGL_BACKEND */
+#ifdef WITH_VULKAN_BACKEND
+  if (dynamic_cast<GHOST_ContextVK *>(context)) {
+    type = GHOST_kDrawingContextTypeVulkan;
+  }
+#endif /* WITH_VULKAN_BACKEND */
+
   wl_surface *wl_surface = static_cast<struct wl_surface *>(
       (static_cast<GHOST_Context *>(context))->getUserData());
+
   /* Delete the context before the window so the context is able to release
    * native resources (such as the #EGLSurface) before WAYLAND frees them. */
   delete context;
 
-  wl_egl_window *egl_window = static_cast<wl_egl_window *>(wl_surface_get_user_data(wl_surface));
-  if (egl_window != nullptr) {
-    wl_egl_window_destroy(egl_window);
+#ifdef WITH_OPENGL_BACKEND
+  if (type == GHOST_kDrawingContextTypeOpenGL) {
+    wl_egl_window *egl_window = static_cast<wl_egl_window *>(wl_surface_get_user_data(wl_surface));
+    if (egl_window != nullptr) {
+      wl_egl_window_destroy(egl_window);
+    }
   }
+#endif /* WITH_OPENGL_BACKEND */
+
   wl_surface_destroy(wl_surface);
+
+  (void)type; /* Maybe unused. */
 
   return GHOST_kSuccess;
 }
