@@ -194,11 +194,15 @@ ccl_device
           bsdf->roughness = sheen_roughness;
 
           /* setup bsdf */
-          sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
+          const int sheen_flag = bsdf_sheen_setup(kg, sd, bsdf);
 
-          /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+          if (sheen_flag) {
+            sd->flag |= sheen_flag;
+
+            /* Attenuate lower layers */
+            Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
+            weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+          }
         }
       }
 
@@ -377,7 +381,7 @@ ccl_device
 
         bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
         bssrdf->albedo = rgb_to_spectrum(base_color);
-        bssrdf->N = N;
+        bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->alpha = sqr(roughness);
         bssrdf->ior = ior;
         bssrdf->anisotropy = stack_load_float(stack, data_subsurf.w);
@@ -830,7 +834,7 @@ ccl_device
       if (bssrdf) {
         bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, data_node.z) * param1);
         bssrdf->albedo = closure_weight;
-        bssrdf->N = N;
+        bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->ior = param2;
         bssrdf->alpha = 1.0f;
         bssrdf->anisotropy = stack_load_float(stack, data_node.w);
