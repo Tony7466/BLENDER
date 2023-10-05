@@ -4,6 +4,7 @@
  *
  * See fragment shader for more infos.
  */
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 void main()
@@ -24,7 +25,7 @@ void main()
 #endif
 
   /* Load where the quad should be positioned. */
-  uvec3 src_page_co = shadow_page_unpack(src_coord_buf[tile_id]);
+  uvec3 src_page_co = unpackUvec4x8(src_coord_buf[tile_id]).xyz;
 
   vec2 uv_pos = (tile_corner + vec2(src_page_co.xy)) / float(SHADOW_TILEMAP_RES);
   vec2 ndc_pos = uv_pos * 2.0 - 1.0;

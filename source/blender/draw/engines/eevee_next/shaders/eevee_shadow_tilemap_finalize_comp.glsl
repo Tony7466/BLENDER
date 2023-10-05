@@ -166,8 +166,8 @@ void main()
           atomicAdd(tile_draw_buf.vertex_len, 6u);
           /* Add page mapping for indexing the page position in atlas and in the framebuffer. */
           dst_coord_buf[page_index] = page_packed;
-          src_coord_buf[page_index] = shadow_page_pack(
-              uvec3(viewport_tile_co.x, viewport_tile_co.y, view_index));
+          src_coord_buf[page_index] = packUvec4x8(
+              uvec4(relative_tile_co.x, relative_tile_co.y, view_index, 0));
           /* Statistics. */
           atomicAdd(statistics_buf.page_rendered_count, 1);
         }

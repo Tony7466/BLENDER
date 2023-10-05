@@ -934,30 +934,28 @@ enum eShadowFlag : uint32_t {
   SHADOW_IS_USED = (1u << 31u)
 };
 
-/* NOTE: Trust the input to be in valid range (max is [255,255,65535]).
+/* NOTE: Trust the input to be in valid range (max is [3,3,255]).
+ * If it is in valid range, it should pack to 12bits so that `shadow_tile_pack()` can use it.
  * But sometime this is used to encode invalid pages uint3(-1) and it needs to output uint(-1). */
 static inline uint shadow_page_pack(uint3 page)
 {
-  BLI_STATIC_ASSERT(SHADOW_PAGE_PER_ROW <= 256 && SHADOW_TILEMAP_RES <= 256, "Update page packing")
-  return (page.x << 0u) | (page.y << 8u) | (page.z << 16u);
+  return (page.x << 0u) | (page.y << 2u) | (page.z << 4u);
 }
 static inline uint3 shadow_page_unpack(uint data)
 {
   uint3 page;
-  page.x = (data & 0x000000FFu) >> 0u;
-  page.y = (data & 0x0000FF00u) >> 8u;
-  page.z = (data & 0xFFFF0000u) >> 16u;
+  BLI_STATIC_ASSERT(SHADOW_PAGE_PER_ROW <= 4 && SHADOW_PAGE_PER_COL <= 4, "Update page packing")
+  page.x = (data >> 0u) & 3u;
+  page.y = (data >> 2u) & 3u;
+  BLI_STATIC_ASSERT(SHADOW_MAX_PAGE <= 4096, "Update page packing")
+  page.z = (data >> 4u) & 255u;
   return page;
 }
 
 static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
 {
   ShadowTileData tile;
-  BLI_STATIC_ASSERT(SHADOW_PAGE_PER_ROW == 4 && SHADOW_PAGE_PER_COL == 4, "Update page packing")
-  tile.page.x = (data >> 0u) & 3u;
-  tile.page.y = (data >> 2u) & 3u;
-  BLI_STATIC_ASSERT(SHADOW_MAX_PAGE <= 4096, "Update page packing")
-  tile.page.z = (data >> 4u) & 255u;
+  tile.page = shadow_page_unpack(data);
   /* -- 12 bits -- */
   BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
   tile.lod = (data >> 12u) & 7u;
@@ -977,7 +975,7 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 {
   uint data;
   /* Expect correct page range. */
-  data = (tile.page.x << 0u) | (tile.page.y << 2u) | (tile.page.z << 4u);
+  data = shadow_page_pack(tile.page);
   data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
