@@ -41,14 +41,16 @@ static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t re
 
   Array<float2> points(num_points);
   const Span<float2> curve_segments = curve_points.drop_front(1).drop_back(1);
-  for (const int64_t segment_i : IndexRange(num_segments)) {
-    IndexRange segment_range(segment_i * resolution, resolution);
-    bke::curves::bezier::evaluate_segment(curve_segments[segment_i * 3 + 0],
-                                          curve_segments[segment_i * 3 + 1],
-                                          curve_segments[segment_i * 3 + 2],
-                                          curve_segments[segment_i * 3 + 3],
-                                          points.as_mutable_span().slice(segment_range));
-  }
+  threading::parallel_for(IndexRange(num_segments), 512 * resolution, [&](const IndexRange range) {
+    for (const int64_t segment_i : range) {
+      IndexRange segment_range(segment_i * resolution, resolution);
+      bke::curves::bezier::evaluate_segment(curve_segments[segment_i * 3 + 0],
+                                            curve_segments[segment_i * 3 + 1],
+                                            curve_segments[segment_i * 3 + 2],
+                                            curve_segments[segment_i * 3 + 3],
+                                            points.as_mutable_span().slice(segment_range));
+    }
+  });
   return points;
 }
 
