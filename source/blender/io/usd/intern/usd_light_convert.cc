@@ -272,12 +272,11 @@ void world_material_to_dome_light(const USDExportParams &params,
       stage, env_light_path, params.export_as_overs);
 
   if (res.env_tex_found) {
-
     /* Convert radians to degrees. */
     mul_v3_fl(res.tex_rot, 180.0f / M_PI);
 
     /* Note the negative Z rotation with 180 deg offset, to match Create and Maya. */
-    pxr::GfVec3f rot(-res.tex_rot[0], -res.tex_rot[1], -res.tex_rot[2] - 180.0f);
+    pxr::GfVec3f rot(-res.tex_rot[0], -res.tex_rot[1], -res.tex_rot[2]);
 
     pxr::UsdGeomXformCommonAPI xform_api(dome_light);
 
@@ -600,7 +599,7 @@ void dome_light_to_world_material(const USDImportParams &params,
   NodeTexEnvironment *tex_env = static_cast<NodeTexEnvironment *>(tex->storage);
   tex_env->base.tex_mapping.rot[0] = -static_cast<float>(rot_vec[0]);
   tex_env->base.tex_mapping.rot[1] = -static_cast<float>(rot_vec[1]);
-  tex_env->base.tex_mapping.rot[2] = 180 - static_cast<float>(rot_vec[2]);
+  tex_env->base.tex_mapping.rot[2] = -static_cast<float>(rot_vec[2]);
 
   /* Convert radians to degrees. */
   mul_v3_fl(tex_env->base.tex_mapping.rot, M_PI / 180.0f);
