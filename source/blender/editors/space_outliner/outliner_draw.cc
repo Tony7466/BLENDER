@@ -47,8 +47,8 @@
 
 #include "ANIM_bone_collections.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_armature.hh"
 #include "ED_fileselect.hh"
@@ -1501,6 +1501,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
         }
       }
+#ifdef WITH_GREASE_PENCIL_V3
       else if (tselem->type == TSE_GREASE_PENCIL_NODE) {
         bke::greasepencil::TreeNode &node =
             tree_element_cast<TreeElementGreasePencilNode>(te)->node();
@@ -1538,6 +1539,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           }
         }
       }
+#endif
       else if (outliner_is_collection_tree_element(te)) {
         PointerRNA collection_ptr;
         PointerRNA layer_collection_ptr;

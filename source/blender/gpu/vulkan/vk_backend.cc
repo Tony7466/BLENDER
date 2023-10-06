@@ -50,7 +50,8 @@ void VKBackend::platform_init()
            GPU_BACKEND_VULKAN,
            "",
            "",
-           "");
+           "",
+           GPU_ARCHITECTURE_IMR);
 }
 
 void VKBackend::platform_init(const VKDevice &device)
@@ -72,7 +73,8 @@ void VKBackend::platform_init(const VKDevice &device)
            GPU_BACKEND_VULKAN,
            vendor_name.c_str(),
            properties.deviceName,
-           driver_version.c_str());
+           driver_version.c_str(),
+           GPU_ARCHITECTURE_IMR);
 }
 
 void VKBackend::detect_workarounds(VKDevice &device)
@@ -98,7 +100,10 @@ void VKBackend::platform_exit()
 
 void VKBackend::delete_resources() {}
 
-void VKBackend::samplers_update() {}
+void VKBackend::samplers_update()
+{
+  NOT_YET_IMPLEMENTED
+}
 
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
@@ -222,7 +227,6 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps = {};
   GCaps.compute_shader_support = true;
   GCaps.geometry_shader_support = true;
-  GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
   GCaps.shader_draw_parameters_support =
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;

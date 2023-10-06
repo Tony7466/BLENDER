@@ -34,13 +34,6 @@ void build_node_declaration_dynamic(const bNodeTree &node_tree,
 
 void NodeDeclarationBuilder::finalize()
 {
-  /* Declarations generating both input and output should align these sockets. */
-  for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
-    if (socket_builder->input_declaration() && socket_builder->output_declaration()) {
-      socket_builder->input_declaration()->inline_with_next = true;
-    }
-  }
-
   if (is_function_node_) {
     for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
       if (SocketDeclaration *socket_decl = socket_builder->input_declaration()) {
@@ -207,17 +200,14 @@ bool NodeDeclaration::is_valid() const
         return false;
       }
 
-      /* Check for consistent outputs.., inputs.. blocks.
-       * Ignored for sockets that are inline pairs. */
-      if (!socket_decl->inline_with_next) {
-        if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
-          /* Start of input sockets. */
-          state.socket_in_out = SOCK_IN;
-        }
-        if (socket_decl->in_out != state.socket_in_out) {
-          std::cout << "Output socket added after input socket" << std::endl;
-          return false;
-        }
+      /* Check for consistent outputs.., inputs.. blocks. */
+      if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
+        /* Start of input sockets. */
+        state.socket_in_out = SOCK_IN;
+      }
+      if (socket_decl->in_out != state.socket_in_out) {
+        std::cout << "Output socket added after input socket" << std::endl;
+        return false;
       }
 
       /* Item counting for the panels, but ignore for root items. */
@@ -400,6 +390,39 @@ void PanelDeclaration::update_or_build(const bNodePanelState &old_panel,
   build(new_panel);
   /* Copy existing state to the new panel */
   SET_FLAG_FROM_TEST(new_panel.flag, old_panel.is_collapsed(), NODE_PANEL_COLLAPSED);
+}
+
+std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
+    const eNodeSocketDatatype socket_type)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return std::make_unique<decl::Float>();
+    case SOCK_VECTOR:
+      return std::make_unique<decl::Vector>();
+    case SOCK_RGBA:
+      return std::make_unique<decl::Color>();
+    case SOCK_BOOLEAN:
+      return std::make_unique<decl::Bool>();
+    case SOCK_ROTATION:
+      return std::make_unique<decl::Rotation>();
+    case SOCK_INT:
+      return std::make_unique<decl::Int>();
+    case SOCK_STRING:
+      return std::make_unique<decl::String>();
+    case SOCK_GEOMETRY:
+      return std::make_unique<decl::Geometry>();
+    case SOCK_OBJECT:
+      return std::make_unique<decl::Object>();
+    case SOCK_IMAGE:
+      return std::make_unique<decl::Image>();
+    case SOCK_COLLECTION:
+      return std::make_unique<decl::Collection>();
+    case SOCK_MATERIAL:
+      return std::make_unique<decl::Material>();
+    default:
+      return {};
+  }
 }
 
 namespace implicit_field_inputs {

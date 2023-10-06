@@ -42,7 +42,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -604,7 +604,7 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
 }
 
 static std::string graphkeys_paste_description(bContext * /*C*/,
-                                               wmOperatorType * /*op*/,
+                                               wmOperatorType * /*ot*/,
                                                PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */

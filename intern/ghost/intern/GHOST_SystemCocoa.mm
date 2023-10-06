@@ -376,6 +376,8 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 - (void)applicationWillBecomeActive:(NSNotification *)aNotification;
 - (void)toggleFullScreen:(NSNotification *)notification;
 - (void)windowWillClose:(NSNotification *)notification;
+
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app;
 @end
 
 @implementation CocoaAppDelegate : NSObject
@@ -491,6 +493,19 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
       return;
     }
   }
+}
+
+/* Explicitly opt-in to the secure coding for the restorable state.
+ *
+ * This is something that only has affect on macOS 12+, and is implicitly
+ * enabled on macOS 14.
+ *
+ * For the details see
+ *   https://sector7.computest.nl/post/2022-08-process-injection-breaking-all-macos-security-layers-with-a-single-vulnerability/
+ */
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app
+{
+  return YES;
 }
 
 @end
@@ -818,7 +833,7 @@ GHOST_IWindow *GHOST_SystemCocoa::getWindowUnderCursor(int32_t x, int32_t y)
     return nil;
   }
 
-  return m_windowManager->getWindowAssociatedWithOSWindow((void *)nswindow);
+  return m_windowManager->getWindowAssociatedWithOSWindow((const void *)nswindow);
 }
 
 /**
@@ -1468,7 +1483,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleTabletEvent(void *eventPtr, short eventT
   NSEvent *event = (NSEvent *)eventPtr;
   GHOST_IWindow *window;
 
-  window = m_windowManager->getWindowAssociatedWithOSWindow((void *)[event window]);
+  window = m_windowManager->getWindowAssociatedWithOSWindow((const void *)[event window]);
   if (!window) {
     // printf("\nW failure for event 0x%x",[event type]);
     return GHOST_kFailure;
@@ -1545,7 +1560,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleMouseEvent(void *eventPtr)
    * however, if mouse exits window(s), the windows become inactive, until you click.
    * We then fall back to the active window from ghost. */
   window = (GHOST_WindowCocoa *)m_windowManager->getWindowAssociatedWithOSWindow(
-      (void *)[event window]);
+      (const void *)[event window]);
   if (!window) {
     window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
     if (!window) {
@@ -1853,7 +1868,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
   GHOST_TKey keyCode;
   NSString *charsIgnoringModifiers;
 
-  window = m_windowManager->getWindowAssociatedWithOSWindow((void *)[event window]);
+  window = m_windowManager->getWindowAssociatedWithOSWindow((const void *)[event window]);
   if (!window) {
     // printf("\nW failure for event 0x%x",[event type]);
     return GHOST_kFailure;
