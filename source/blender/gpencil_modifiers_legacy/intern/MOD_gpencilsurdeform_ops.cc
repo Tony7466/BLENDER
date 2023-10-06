@@ -1750,7 +1750,9 @@ static bool surfacedeformBind(bContext *C,
         rollback_lframes_a(smd_orig, smd_orig->layers);
         
 
-        /* If a frame is already bound, skip it.*/
+        /* If a frame is already bound OR EMPTY, skip it.*/
+        if (BLI_listbase_is_empty(&curr_gpf->strokes))
+          continue;
         int f = 0;
         while (f != smd_orig->layers->num_of_frames &&
                 smd_orig->layers->frames[f].frame_number != curr_gpf->framenum)
@@ -2158,10 +2160,11 @@ static int bake_frames(bContext *C, wmOperator *op)
   int frame_start = smd_orig->bake_range_start;
   int frame_end = smd_orig->bake_range_end;
 
-  /*Iterate the frames in the range*/
+  /*Iterate the frames in the range backwards, so each can still be evaluated and baked
+  based on the previous bound frame*/
 
 
-  for (int frame = frame_start; frame <= frame_end; frame++) {
+  for (int frame = frame_end; frame >= frame_start; frame--) {
     smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(depsgraph);
