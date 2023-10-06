@@ -984,13 +984,28 @@ class NodeTreeMainUpdater {
         }
       }
       else {
-        bool all_available_inputs_computed = true;
+        Vector<const bNodeSocket *, 16> src_sockets;
         for (const bNodeSocket *input_socket : node.input_sockets()) {
           if (input_socket->is_available()) {
-            if (!hash_by_socket_id[input_socket->index_in_tree()].has_value()) {
-              sockets_to_check.push(input_socket);
-              all_available_inputs_computed = false;
+            src_sockets.append(input_socket);
+          }
+        }
+        if (all_zone_output_node_types().contains(node.type)) {
+          bool all_zone_inputs_computed = true;
+          const bNodeZoneType &zone_type = *zone_type_by_node_type(node.type);
+          if (const bNode *zone_input_node = zone_type.get_corresponding_input(tree, node)) {
+            for (const bNodeSocket *input_socket : node.input_sockets()) {
+              if (input_socket->is_available()) {
+                src_sockets.append(input_socket);
+              }
             }
+          }
+        }
+        bool all_available_inputs_computed = true;
+        for (const bNodeSocket *socket : src_sockets) {
+          if (!hash_by_socket_id[socket->index_in_tree()].has_value()) {
+            sockets_to_check.push(socket);
+            all_available_inputs_computed = false;
           }
         }
         if (!all_available_inputs_computed) {
@@ -1015,10 +1030,10 @@ class NodeTreeMainUpdater {
         }
         else {
           socket_hash = get_socket_ptr_hash(socket);
-          for (const bNodeSocket *input_socket : node.input_sockets()) {
-            if (input_socket->is_available()) {
-              const uint32_t input_socket_hash = *hash_by_socket_id[input_socket->index_in_tree()];
-              socket_hash = noise::hash(socket_hash, input_socket_hash);
+          for (const bNodeSocket *src_socket : src_sockets) {
+            if (src_socket->is_available()) {
+              const uint32_t src_socket_hash = *hash_by_socket_id[src_socket->index_in_tree()];
+              socket_hash = noise::hash(socket_hash, src_socket_hash);
             }
           }
 
@@ -1093,6 +1108,21 @@ class NodeTreeMainUpdater {
             if (!pushed) {
               sockets_to_check.push(input_socket);
               pushed = true;
+            }
+          }
+        }
+        if (all_zone_output_node_types().contains(node.type)) {
+          const bNodeZoneType &zone_type = *zone_type_by_node_type(node.type);
+          if (const bNode *zone_input_node = zone_type.get_corresponding_input(tree, node)) {
+            if (zone_input_node->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
+              return true;
+            }
+            for (const bNodeSocket *input_socket : zone_input_node->input_sockets()) {
+              bool &pushed = pushed_by_socket_id[input_socket->index_in_tree()];
+              if (!pushed) {
+                sockets_to_check.push(input_socket);
+                pushed = true;
+              }
             }
           }
         }
