@@ -87,6 +87,41 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic()
   {
+    /* For high radii, we accelerate the filter using a summed area table, making the filter
+     * execute in constant time as opposed to the trivial quadratic complexity. */
+    Result &size_input = get_input("Size");
+    if (size_input.is_single_value() && size_input.get_float_value() > 5.0f) {
+      execute_classic_summed_area_table();
+      return;
+    }
+
+    GPUShader *shader = shader_manager().get(get_classic_convolution_shader_name());
+    GPU_shader_bind(shader);
+
+    const Result &input_image = get_input("Image");
+    input_image.bind_as_texture(shader, "input_tx");
+
+    if (size_input.is_single_value()) {
+      GPU_shader_uniform_1i(shader, "size", int(size_input.get_float_value()));
+    }
+    else {
+      size_input.bind_as_texture(shader, "size_tx");
+    }
+
+    const Domain domain = compute_domain();
+    Result &output_image = get_result("Image");
+    output_image.allocate_texture(domain);
+    output_image.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    input_image.unbind_as_texture();
+    output_image.unbind_as_image();
+    GPU_shader_unbind();
+  }
+
+  void execute_classic_summed_area_table()
+  {
     Result table = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
     summed_area_table(context(), get_input("Image"), table);
 
@@ -95,11 +130,16 @@ class ConvertKuwaharaOperation : public NodeOperation {
     summed_area_table(
         context(), get_input("Image"), squared_table, SummedAreaTableOperation::Square);
 
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_classic_summed_area_table");
+    GPUShader *shader = shader_manager().get(get_classic_summed_area_table_shader_name());
     GPU_shader_bind(shader);
 
     Result &size_input = get_input("Size");
-    size_input.bind_as_texture(shader, "size_tx");
+    if (size_input.is_single_value()) {
+      GPU_shader_uniform_1i(shader, "size", int(size_input.get_float_value()));
+    }
+    else {
+      size_input.bind_as_texture(shader, "size_tx");
+    }
 
     table.bind_as_texture(shader, "table_tx");
     squared_table.bind_as_texture(shader, "squared_table_tx");
@@ -135,7 +175,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
                              float2(node_storage(bnode()).uniformity));
     structure_tensor.release();
 
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_anisotropic");
+    GPUShader *shader = shader_manager().get(get_anisotropic_shader_name());
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "eccentricity", get_eccentricity());
@@ -145,7 +185,12 @@ class ConvertKuwaharaOperation : public NodeOperation {
     input.bind_as_texture(shader, "input_tx");
 
     Result &size_input = get_input("Size");
-    size_input.bind_as_texture(shader, "size_tx");
+    if (size_input.is_single_value()) {
+      GPU_shader_uniform_1f(shader, "size", size_input.get_float_value());
+    }
+    else {
+      size_input.bind_as_texture(shader, "size_tx");
+    }
 
     smoothed_structure_tensor.bind_as_texture(shader, "structure_tensor_tx");
 
@@ -187,15 +232,44 @@ class ConvertKuwaharaOperation : public NodeOperation {
     return structure_tensor;
   }
 
-  /* The sharpness controls the sharpness of the transitions between the kuwahara sectors, which is
-   * controlled by the weighting function pow(standard_deviation, -sharpness) as can be seen in the
-   * shader. The transition is completely smooth when the sharpness is zero and completely sharp
-   * when it is infinity. But realistically, the sharpness doesn't change much beyond the value of
-   * 16 due to its exponential nature, so we just assume a maximum sharpness of 16.
+  const char *get_classic_convolution_shader_name()
+  {
+    if (is_constant_size()) {
+      return "compositor_kuwahara_classic_convolution_constant_size";
+    }
+    return "compositor_kuwahara_classic_convolution_variable_size";
+  }
+
+  const char *get_classic_summed_area_table_shader_name()
+  {
+    if (is_constant_size()) {
+      return "compositor_kuwahara_classic_summed_area_table_constant_size";
+    }
+    return "compositor_kuwahara_classic_summed_area_table_variable_size";
+  }
+
+  const char *get_anisotropic_shader_name()
+  {
+    if (is_constant_size()) {
+      return "compositor_kuwahara_anisotropic_constant_size";
+    }
+    return "compositor_kuwahara_anisotropic_variable_size";
+  }
+
+  bool is_constant_size()
+  {
+    return get_input("Size").is_single_value();
+  }
+
+  /* The sharpness controls the sharpness of the transitions between the kuwahara sectors, which
+   * is controlled by the weighting function pow(standard_deviation, -sharpness) as can be seen
+   * in the shader. The transition is completely smooth when the sharpness is zero and completely
+   * sharp when it is infinity. But realistically, the sharpness doesn't change much beyond the
+   * value of 16 due to its exponential nature, so we just assume a maximum sharpness of 16.
    *
    * The stored sharpness is in the range [0, 1], so we multiply by 16 to get it in the range
-   * [0, 16], however, we also square it before multiplication to slow down the rate of change near
-   * zero to counter its exponential nature for more intuitive user control. */
+   * [0, 16], however, we also square it before multiplication to slow down the rate of change
+   * near zero to counter its exponential nature for more intuitive user control. */
   float get_sharpness()
   {
     const float sharpness_factor = node_storage(bnode()).sharpness;
@@ -209,12 +283,12 @@ class ConvertKuwaharaOperation : public NodeOperation {
    *   (eccentricity + anisotropy) / eccentricity
    *
    * Since the anisotropy is in the [0, 1] range, the factor tends to 1 as the eccentricity tends
-   * to infinity and tends to infinity when the eccentricity tends to zero. The stored eccentricity
-   * is in the range [0, 2], we map that to the range [infinity, 0.5] by taking the reciprocal,
-   * satisfying the aforementioned limits. The upper limit doubles the computed default
-   * eccentricity, which users can use to enhance the directionality of the filter. Instead of
-   * actual infinity, we just use an eccentricity of 1 / 0.01 since the result is very similar to
-   * that of infinity. */
+   * to infinity and tends to infinity when the eccentricity tends to zero. The stored
+   * eccentricity is in the range [0, 2], we map that to the range [infinity, 0.5] by taking the
+   * reciprocal, satisfying the aforementioned limits. The upper limit doubles the computed
+   * default eccentricity, which users can use to enhance the directionality of the filter.
+   * Instead of actual infinity, we just use an eccentricity of 1 / 0.01 since the result is very
+   * similar to that of infinity. */
   float get_eccentricity()
   {
     return 1.0f / math::max(0.01f, node_storage(bnode()).eccentricity);
