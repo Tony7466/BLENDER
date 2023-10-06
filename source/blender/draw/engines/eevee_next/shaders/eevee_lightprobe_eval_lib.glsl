@@ -251,22 +251,45 @@ vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
   return radiance_sh;
 }
 
-#  if 0
-vec3 lightprobe_eval_diffuse(LightProbeSample samp, ClosureDiffuse diffuse, vec3 V)
+float lightprobe_roughness_to_cube_sh_mix_fac(float roughness)
 {
-  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
+  /* Temporary. Do something better. */
+  return square(saturate(roughness * 4.0 - 2.0));
+}
+
+float lightprobe_roughness_to_lod(float roughness)
+{
+  /* Temporary. Do something better. */
+  return sqrt(roughness) * 11.0;
+}
+
+vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse diffuse, vec3 V, vec2 noise)
+{
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, samp.volume_irradiance);
   return radiance_sh;
 }
 
-vec3 lightprobe_eval_reflection(LightProbeSample samp, ClosureReflection reflection, vec3 V)
+vec3 lightprobe_specular_dominant_dir(vec3 N, vec3 V, float roughness)
 {
-  float lod = roughness_to_lod(reflection.roughness);
-  vec3 radiance_cube = lightprobe_spherical_sample_normalized(
-      samp.cubemap, L, lod, samp.volume_irradiance);
-  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(reflection.N, samp.irradiance);
-  float fac = roughness_to_cube_sh_mix_fac(reflection.roughness);
-  return mix(radiance_cube, radiance_sh, fac)
+  vec3 R = -reflect(V, N);
+  float smoothness = 1.0 - roughness;
+  float fac = smoothness * (sqrt(smoothness) + roughness);
+  return normalize(mix(N, R, fac));
 }
-#  endif
+
+vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 V, vec2 noise)
+{
+  vec3 L = lightprobe_specular_dominant_dir(reflection.N, V, reflection.roughness);
+  /* TODO: Right now generate a dependency hell. */
+  // vec3 L = ray_generate_direction(noise, reflection, V, pdf);
+
+  float lod = lightprobe_roughness_to_lod(reflection.roughness);
+  vec3 radiance_cube = lightprobe_spherical_sample_normalized(
+      samp.spherical_id, L, lod, samp.volume_irradiance);
+
+  float fac = lightprobe_roughness_to_cube_sh_mix_fac(reflection.roughness);
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
+  return mix(radiance_cube, radiance_sh, fac);
+}
 
 #endif /* REFLECTION_PROBE */
