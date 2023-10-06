@@ -116,6 +116,9 @@ int ED_sculpt_face_sets_active_update_and_get(bContext *C, Object *ob, const flo
 static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender;
+
+  constexpr float MIN_FADE = 0.05f;
+
   SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
 
@@ -133,6 +136,56 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
   SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
   bool changed = false;
+
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+    const int cd_offset = CustomData_get_offset_named(
+        &ss->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+
+    GSET_FOREACH_BEGIN (BMFace *, f, BKE_pbvh_bmesh_node_faces(node)) {
+      if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
+        continue;
+      }
+
+      bool is_face_fully_covered = true;
+
+      const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
+      do {
+        if (!sculpt_brush_test_sq_fn(&test, l_iter->v->co)) {
+          is_face_fully_covered = false;
+          break;
+        }
+
+#if 0
+      const float fade = bstrength * SCULPT_brush_strength_factor(ss,
+                                                                  brush,
+                                                                  face_center,
+                                                                  sqrtf(test.dist),
+                                                                  f->no,
+                                                                  f->no,
+                                                                  0.0f,
+                                                                  vd.vertex,
+                                                                  thread_id,
+                                                                  &automask_data);
+#else
+        const float fade = bstrength;
+#endif
+
+        if (fade <= MIN_FADE) {
+          is_face_fully_covered = false;
+          break;
+        }
+
+      } while ((l_iter = l_iter->next) != f->l_first);
+
+      if (is_face_fully_covered) {
+        int &fset = *static_cast<int *>(POINTER_OFFSET(f->head.data, cd_offset));
+        fset = ss->cache->paint_face_set;
+        changed = true;
+      }
+    }
+    GSET_FOREACH_END();
+  }
+
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
@@ -161,7 +214,7 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
                                                                     thread_id,
                                                                     &automask_data);
 
-        if (fade > 0.05f) {
+        if (fade > MIN_FADE) {
           ss->face_sets[face_i] = ss->cache->paint_face_set;
           changed = true;
         }
@@ -182,7 +235,7 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
                                                                   thread_id,
                                                                   &automask_data);
 
-      if (fade > 0.05f) {
+      if (fade > MIN_FADE) {
         SCULPT_vertex_face_set_set(ss, vd.vertex, ss->cache->paint_face_set);
         changed = true;
       }
