@@ -67,6 +67,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
 
   MaterialX::DocumentPtr doc = MaterialX::createDocument();
+  bool script_found = false;
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     Main *bmain = DEG_get_bmain(depsgraph);
@@ -75,24 +76,46 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
     LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
       if (node->typeinfo->type == SH_NODE_SCRIPT) {
         NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
-        if (script->mode == NODE_SCRIPT_EXTERNAL) {
-          if (script && script->filepath[0] != '\0') {
-            char filepath[FILE_MAX];
-            STRNCPY(filepath, script->filepath);
-            BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+        if (script->mode == NODE_SCRIPT_EXTERNAL && script->filepath[0] != '\0') {
+          script_found = true;
+          char filepath[FILE_MAX];
+          STRNCPY(filepath, script->filepath);
+          BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+          try {
             MaterialX::readFromXmlFile(doc, filepath);
-            return doc;
           }
+          catch (MaterialX::ExceptionParseError) {
+            CLOG_WARN(LOG_MATERIALX_SHADER,
+                      "Material: %s, Node: %s: parsing error",
+                      material->id.name,
+                      node->name);
+          }
+          catch (MaterialX::ExceptionFileMissing) {
+            CLOG_WARN(LOG_MATERIALX_SHADER,
+                      "Material: %s, Node: %s: file not found",
+                      material->id.name,
+                      node->name);
+          }
+          break;
         }
         else if (script->mode == NODE_SCRIPT_INTERNAL) {
           Text *text = reinterpret_cast<Text *>(node->id);
           if (text) {
+            script_found = true;
             std::string text_content;
             LISTBASE_FOREACH (TextLine *, line, &text->lines) {
               text_content.append(line->line);
             }
-            MaterialX::readFromXmlString(doc, text_content);
-            return doc;
+            try {
+              MaterialX::readFromXmlString(doc, text_content);
+            }
+            catch (MaterialX::ExceptionParseError) {
+              CLOG_WARN(LOG_MATERIALX_SHADER,
+                        "Material: %s, Node: %s: parsing error",
+                        material->id.name,
+                        node->name);
+            }
+            break;
           }
         }
         else {
@@ -102,7 +125,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
     }
 
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    if (output_node) {
+    if (output_node && !script_found) {
       NodeParserData data = {doc.get(),
                              depsgraph,
                              material,
@@ -138,7 +161,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
 
   CLOG_INFO(LOG_MATERIALX_SHADER,
             1,
-            "Material: %s//n%s",
+            "Material: %s\n%s",
             material->id.name,
             MaterialX::writeToXmlString(doc).c_str());
   return doc;
