@@ -25,14 +25,14 @@
 #include "DNA_screen_types.h"
 #include "DNA_volume_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GEO_mesh_to_volume.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "MEM_guardedalloc.h"
 

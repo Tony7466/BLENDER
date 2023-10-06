@@ -89,9 +89,9 @@
 #include "BKE_vfont.h"
 #include "BKE_volume.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -118,6 +118,8 @@
 #include "ED_select_utils.hh"
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "UI_resources.hh"
 
@@ -371,7 +373,7 @@ float ED_object_new_primitive_matrix(bContext *C,
     return dia;
   }
 
-  /* return 1.0f; */
+  // return 1.0f;
 }
 
 /** \} */
@@ -1144,6 +1146,11 @@ static int object_armature_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* Give the Armature its default bone collection. */
+  bArmature *armature = static_cast<bArmature *>(obedit->data);
+  BoneCollection *default_bonecoll = ANIM_armature_bonecoll_new(armature, "");
+  ANIM_armature_bonecoll_active_set(armature, default_bonecoll);
+
   dia = RNA_float_get(op->ptr, "radius");
   ED_armature_ebone_add_primitive(obedit, dia, view_aligned);
 
@@ -1903,7 +1910,7 @@ void OBJECT_OT_collection_instance_add(wmOperatorType *ot)
   /* properties */
   RNA_def_string(
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Collection name to add");
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -2020,7 +2027,7 @@ void OBJECT_OT_collection_external_asset_drop(wmOperatorType *ot)
 
   object_add_drop_xy_props(ot);
 
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop,
                         (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE));
@@ -4030,7 +4037,7 @@ void OBJECT_OT_duplicate(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(
-      ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+      ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -4293,7 +4300,7 @@ static bool object_join_poll(bContext *C)
   }
 
   if (ELEM(ob->type, OB_MESH, OB_CURVES_LEGACY, OB_SURF, OB_ARMATURE, OB_GPENCIL_LEGACY)) {
-    return ED_operator_screenactive(C);
+    return true;
   }
   return false;
 }

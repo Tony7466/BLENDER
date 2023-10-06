@@ -190,6 +190,7 @@ static SocketType::Type convert_socket_type(BL::NodeSocket &b_socket)
   switch (b_socket.type()) {
     case BL::NodeSocket::type_VALUE:
       return SocketType::FLOAT;
+    case BL::NodeSocket::type_BOOLEAN:
     case BL::NodeSocket::type_INT:
       return SocketType::INT;
     case BL::NodeSocket::type_VECTOR:
@@ -254,8 +255,9 @@ static void set_default_value(ShaderInput *input,
 
 static void get_tex_mapping(TextureNode *mapping, BL::TexMapping &b_mapping)
 {
-  if (!b_mapping)
+  if (!b_mapping) {
     return;
+  }
 
   mapping->set_tex_mapping_translation(get_float3(b_mapping.translation()));
   mapping->set_tex_mapping_rotation(get_float3(b_mapping.rotation()));
@@ -536,11 +538,11 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeSubsurfaceScattering::falloff_BURLEY:
         subsurface->set_method(CLOSURE_BSSRDF_BURLEY_ID);
         break;
-      case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK_FIXED_RADIUS:
-        subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID);
-        break;
       case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK:
         subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_ID);
+        break;
+      case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK_SKIN:
+        subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);
         break;
     }
 
@@ -624,10 +626,14 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfHairPrincipled)) {
     BL::ShaderNodeBsdfHairPrincipled b_principled_hair_node(b_node);
     PrincipledHairBsdfNode *principled_hair = graph->create_node<PrincipledHairBsdfNode>();
+    principled_hair->set_model((NodePrincipledHairModel)get_enum(b_principled_hair_node.ptr,
+                                                                 "model",
+                                                                 NODE_PRINCIPLED_HAIR_MODEL_NUM,
+                                                                 NODE_PRINCIPLED_HAIR_HUANG));
     principled_hair->set_parametrization(
         (NodePrincipledHairParametrization)get_enum(b_principled_hair_node.ptr,
                                                     "parametrization",
-                                                    NODE_PRINCIPLED_HAIR_NUM,
+                                                    NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
                                                     NODE_PRINCIPLED_HAIR_REFLECTANCE));
     node = principled_hair;
   }
@@ -646,11 +652,11 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeBsdfPrincipled::subsurface_method_BURLEY:
         principled->set_subsurface_method(CLOSURE_BSSRDF_BURLEY_ID);
         break;
-      case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK_FIXED_RADIUS:
-        principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID);
-        break;
       case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK:
         principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_ID);
+        break;
+      case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK_SKIN:
+        principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);
         break;
     }
     node = principled;
@@ -1080,8 +1086,9 @@ static ShaderNode *add_node(Scene *scene,
 
 static bool node_use_modified_socket_name(ShaderNode *node)
 {
-  if (node->special_type == SHADER_SPECIAL_TYPE_OSL)
+  if (node->special_type == SHADER_SPECIAL_TYPE_OSL) {
     return false;
+  }
 
   return true;
 }

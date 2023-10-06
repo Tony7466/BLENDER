@@ -38,6 +38,8 @@ const EnumPropertyItem rna_enum_icon_items[] = {
 #  include "DNA_asset_types.h"
 
 #  include "ED_geometry.hh"
+#  include "ED_node.hh"
+#  include "ED_object.hh"
 
 const char *rna_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, bool translate)
@@ -498,7 +500,7 @@ static void rna_uiItemPopoverPanelFromGroup(uiLayout *layout,
   uiItemPopoverPanelFromGroup(layout, C, space_id, region_id, context, category);
 }
 
-static void rna_uiItemProgress(struct uiLayout *layout,
+static void rna_uiItemProgress(uiLayout *layout,
                                const char *text,
                                const char *text_ctxt,
                                bool translate,
@@ -776,21 +778,33 @@ static uiLayout *rna_uiLayoutColumnWithHeading(
   return uiLayoutColumnWithHeading(layout, align, heading);
 }
 
+static void rna_uiLayout_template_node_asset_menu_items(uiLayout *layout,
+                                                        bContext *C,
+                                                        const char *catalog_path)
+{
+  using namespace blender;
+  ed::space_node::ui_template_node_asset_menu_items(*layout, *C, StringRef(catalog_path));
+}
+
 static void rna_uiLayout_template_node_operator_asset_menu_items(uiLayout *layout,
                                                                  bContext *C,
                                                                  const char *catalog_path)
 {
-  if (U.experimental.use_node_group_operators) {
-    blender::ed::geometry::ui_template_node_operator_asset_menu_items(
-        *layout, *C, blender::StringRef(catalog_path));
-  }
+  using namespace blender;
+  ed::geometry::ui_template_node_operator_asset_menu_items(*layout, *C, StringRef(catalog_path));
+}
+
+static void rna_uiLayout_template_modifier_asset_menu_items(uiLayout *layout,
+                                                            bContext *C,
+                                                            const char *catalog_path)
+{
+  using namespace blender;
+  ed::object::ui_template_modifier_asset_menu_items(*layout, *C, StringRef(catalog_path));
 }
 
 static void rna_uiLayout_template_node_operator_root_items(uiLayout *layout, bContext *C)
 {
-  if (U.experimental.use_node_group_operators) {
-    blender::ed::geometry::ui_template_node_operator_asset_root_items(*layout, *C);
-  }
+  blender::ed::geometry::ui_template_node_operator_asset_root_items(*layout, *C);
 }
 
 static int rna_ui_get_rnaptr_icon(bContext *C, PointerRNA *ptr_icon)
@@ -1889,7 +1903,14 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "template_node_asset_menu_items", "uiTemplateNodeAssetMenuItems");
+  func = RNA_def_function(
+      srna, "template_node_asset_menu_items", "rna_uiLayout_template_node_asset_menu_items");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func, "catalog_path", nullptr, 0, "", "");
+
+  func = RNA_def_function(srna,
+                          "template_modifier_asset_menu_items",
+                          "rna_uiLayout_template_modifier_asset_menu_items");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_string(func, "catalog_path", nullptr, 0, "", "");
 
@@ -2034,7 +2055,7 @@ void RNA_api_ui_layout(StructRNA *srna)
       "Identifier of the integer property in active_data, index of the active item");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_property(func, "filter_id_types", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(parm, DummyRNA_NULL_items);
+  RNA_def_property_enum_items(parm, rna_enum_dummy_NULL_items);
   RNA_def_property_enum_funcs(
       parm, nullptr, nullptr, "rna_uiTemplateAssetView_filter_id_types_itemf");
   RNA_def_property_flag(parm, PROP_ENUM_FLAG);
@@ -2079,12 +2100,29 @@ void RNA_api_ui_layout(StructRNA *srna)
       srna, "template_light_linking_collection", "uiTemplateLightLinkingCollection");
   RNA_def_function_ui_description(func,
                                   "Visualization of a content of a light linking collection");
+  parm = RNA_def_pointer(func,
+                         "context_layout",
+                         "UILayout",
+                         "",
+                         "Layout to set active list element as context properties");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   api_ui_item_rna_common(func);
 
+#  ifdef WITH_GREASE_PENCIL_V3
   func = RNA_def_function(
       srna, "template_grease_pencil_layer_tree", "uiTemplateGreasePencilLayerTree");
   RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+#  endif
+
+  func = RNA_def_function(srna, "template_node_tree_interface", "uiTemplateNodeTreeInterface");
+  RNA_def_function_ui_description(func, "Show a node tree interface");
+  parm = RNA_def_pointer(func,
+                         "interface",
+                         "NodeTreeInterface",
+                         "Node Tree Interface",
+                         "Interface of a node tree to display");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 #endif

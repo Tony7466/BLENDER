@@ -26,7 +26,7 @@
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -37,12 +37,14 @@
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
+
+#include "GEO_randomize.hh"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 static void init_data(ModifierData *md)
 {
@@ -229,6 +231,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
              bm->ftoolflagpool == nullptr);
 
   BM_mesh_free(bm);
+
+  blender::geometry::debug_randomize_mesh_order(result);
 
   return result;
 }

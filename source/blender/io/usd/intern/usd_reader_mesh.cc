@@ -7,6 +7,7 @@
 
 #include "usd_reader_mesh.h"
 #include "usd_reader_material.h"
+#include "usd_skel_convert.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
@@ -43,6 +44,7 @@
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
+#include <pxr/usd/usdSkel/bindingAPI.h>
 
 #include <iostream>
 
@@ -226,7 +228,7 @@ static const std::optional<eAttrDomain> convert_usd_varying_to_blender(
   return *value;
 }
 
-void USDMeshReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDMeshReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   Mesh *mesh = BKE_mesh_add(bmain, name_.c_str());
 
@@ -266,6 +268,14 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
     if (subdivScheme == pxr::UsdGeomTokens->catmullClark) {
       add_subdiv_modifier();
     }
+  }
+
+  if (import_params_.import_blendshapes) {
+    import_blendshapes(bmain, object_, prim_);
+  }
+
+  if (import_params_.import_skeletons) {
+    import_mesh_skel_bindings(bmain, object_, prim_);
   }
 
   USDXformReader::read_object_data(bmain, motionSampleTime);
@@ -419,70 +429,58 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     color_data.span.fill(
         ColorGeometry4f(usd_colors[0][0], usd_colors[0][1], usd_colors[0][2], 1.0f));
   }
-  else {
-    /* Check for situations that allow for a straight-forward copy by index. */
-    if (ELEM(interp, pxr::UsdGeomTokens->vertex) ||
-        (color_domain == ATTR_DOMAIN_CORNER && !is_left_handed_))
-    {
-      for (int i = 0; i < usd_colors.size(); i++) {
-        ColorGeometry4f color = ColorGeometry4f(
-            usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
-        color_data.span[i] = color;
-      }
+  /* Check for situations that allow for a straight-forward copy by index. */
+  else if (interp == pxr::UsdGeomTokens->vertex ||
+           (interp == pxr::UsdGeomTokens->faceVarying && !is_left_handed_))
+  {
+    for (int i = 0; i < usd_colors.size(); i++) {
+      ColorGeometry4f color = ColorGeometry4f(
+          usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
+      color_data.span[i] = color;
     }
+  }
+  else {
+    /* Catch all for the remaining cases. */
 
-    /* Special case: expand uniform color into corner color.
+    /* Special case: we will expand uniform color into corner color.
      * Uniforms in USD come through as single colors, face-varying. Since Blender does not
      * support this particular combination for paintable color attributes, we convert the type
      * here to make sure that the user gets the same visual result.
-     * */
-    else if (ELEM(interp, pxr::UsdGeomTokens->uniform)) {
-      for (int i = 0; i < usd_colors.size(); i++) {
-        const ColorGeometry4f color = ColorGeometry4f(
-            usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
-        color_data.span[i * 4] = color;
-        color_data.span[i * 4 + 1] = color;
-        color_data.span[i * 4 + 2] = color;
-        color_data.span[i * 4 + 3] = color;
-      }
-    }
+     */
+    const OffsetIndices faces = mesh->faces();
+    const Span<int> corner_verts = mesh->corner_verts();
+    for (const int i : faces.index_range()) {
+      const IndexRange &face = faces[i];
+      for (int j = 0; j < face.size(); ++j) {
+        int loop_index = face[j];
 
-    else {
-      const OffsetIndices faces = mesh->faces();
-      const Span<int> corner_verts = mesh->corner_verts();
-      for (const int i : faces.index_range()) {
-        const IndexRange &face = faces[i];
-        for (int j = 0; j < face.size(); ++j) {
-          int loop_index = face[j];
+        /* Default for constant interpolation. */
+        int usd_index = 0;
 
-          /* Default for constant varying interpolation. */
-          int usd_index = 0;
-
-          if (interp == pxr::UsdGeomTokens->vertex) {
-            usd_index = corner_verts[loop_index];
-          }
-          else if (interp == pxr::UsdGeomTokens->faceVarying) {
-            usd_index = face.start();
-            if (is_left_handed_) {
-              usd_index += face.size() - 1 - j;
-            }
-            else {
-              usd_index += j;
-            }
-          }
-          else if (interp == pxr::UsdGeomTokens->uniform) {
-            /* Uniform varying uses the face index. */
-            usd_index = i;
-          }
-
-          if (usd_index >= usd_colors.size()) {
-            continue;
-          }
-
-          ColorGeometry4f color = ColorGeometry4f(
-              usd_colors[usd_index][0], usd_colors[usd_index][1], usd_colors[usd_index][2], 1.0f);
-          color_data.span[usd_index] = color;
+        if (interp == pxr::UsdGeomTokens->vertex) {
+          usd_index = corner_verts[loop_index];
         }
+        else if (interp == pxr::UsdGeomTokens->faceVarying) {
+          usd_index = face.start();
+          if (is_left_handed_) {
+            usd_index += face.size() - 1 - j;
+          }
+          else {
+            usd_index += j;
+          }
+        }
+        else if (interp == pxr::UsdGeomTokens->uniform) {
+          /* Uniform varying uses the face index. */
+          usd_index = i;
+        }
+
+        if (usd_index >= usd_colors.size()) {
+          continue;
+        }
+
+        ColorGeometry4f color = ColorGeometry4f(
+            usd_colors[usd_index][0], usd_colors[usd_index][1], usd_colors[usd_index][2], 1.0f);
+        color_data.span[loop_index] = color;
       }
     }
   }
@@ -1052,7 +1050,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
                                const USDMeshReadParams params,
-                               const char ** /* err_str */)
+                               const char ** /*err_str*/)
 {
   if (!mesh_prim_) {
     return existing_mesh;
@@ -1097,6 +1095,59 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
   }
 
   return active_mesh;
+}
+
+std::string USDMeshReader::get_skeleton_path() const
+{
+  /* Make sure we can apply UsdSkelBindingAPI to the prim.
+   * Attempting to apply the API to instance proxies generates
+   * a USD error. */
+  if (!prim_ || prim_.IsInstanceProxy()) {
+    return "";
+  }
+
+  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim_);
+
+  if (!skel_api) {
+    return "";
+  }
+
+  if (pxr::UsdSkelSkeleton skel = skel_api.GetInheritedSkeleton()) {
+    return skel.GetPath().GetAsString();
+  }
+
+  return "";
+}
+
+std::optional<XformResult> USDMeshReader::get_local_usd_xform(const float time) const
+{
+  if (!import_params_.import_skeletons || prim_.IsInstanceProxy()) {
+    /* Use the standard transform computation, since we are ignoring
+     * skinning data. Note that applying the UsdSkelBinding API to an
+     * instance proxy generates a USD error. */
+    return USDXformReader::get_local_usd_xform(time);
+  }
+
+  if (pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim_)) {
+    if (skel_api.GetGeomBindTransformAttr().HasAuthoredValue()) {
+      pxr::GfMatrix4d bind_xf;
+      if (skel_api.GetGeomBindTransformAttr().Get(&bind_xf)) {
+        /* The USD bind transform is a matrix of doubles,
+         * but we cast it to GfMatrix4f because Blender expects
+         * a matrix of floats. Also, we assume the transform
+         * is constant over time. */
+        return XformResult(pxr::GfMatrix4f(bind_xf), true);
+      }
+      else {
+        WM_reportf(RPT_WARNING,
+                   "%s: Couldn't compute geom bind transform for %s",
+                   __func__,
+                   prim_.GetPath().GetAsString().c_str());
+      }
+    }
+  }
+
+  return USDXformReader::get_local_usd_xform(time);
 }
 
 }  // namespace blender::io::usd

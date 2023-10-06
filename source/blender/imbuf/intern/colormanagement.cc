@@ -737,14 +737,47 @@ void colormanagement_exit()
 /** \name Internal functions
  * \{ */
 
-static bool colormanage_compatible_look(ColorManagedLook *look, const char *view_name)
+static bool has_explicit_look_for_view(const char *view_name)
+{
+  if (!view_name) {
+    return false;
+  }
+
+  LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
+    if (STREQ(look->view, view_name)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool colormanage_compatible_look(const ColorManagedLook *look,
+                                        const char *view_name,
+                                        const bool has_explicit_look)
 {
   if (look->is_noop) {
     return true;
   }
 
-  /* Skip looks only relevant to specific view transforms. */
-  return (look->view[0] == 0 || (view_name && STREQ(look->view, view_name)));
+  /* Skip looks only relevant to specific view transforms.
+   * If the view transform has view-specific look ignore non-specific looks. */
+
+  if (view_name && STREQ(look->view, view_name)) {
+    return true;
+  }
+
+  if (has_explicit_look) {
+    return false;
+  }
+
+  return look->view[0] == '\0';
+}
+
+static bool colormanage_compatible_look(const ColorManagedLook *look, const char *view_name)
+{
+  const bool has_explicit_look = has_explicit_look_for_view(view_name);
+  return colormanage_compatible_look(look, view_name, has_explicit_look);
 }
 
 static bool colormanage_use_look(const char *look, const char *view_name)
@@ -3343,8 +3376,19 @@ const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
     return look_name;
   }
 
+  /* Keep same look if compatible. */
   if (colormanage_compatible_look(look_descr, view_name)) {
     return look_name;
+  }
+
+  /* Try to find another compatible look with the same UI name, in case
+   * of looks specialized for view transform, */
+  LISTBASE_FOREACH (ColorManagedLook *, other_look, &global_looks) {
+    if (STREQ(look_descr->ui_name, other_look->ui_name) &&
+        colormanage_compatible_look(other_look, view_name))
+    {
+      return other_look->name;
+    }
   }
 
   return IMB_colormanagement_look_get_default_name();
@@ -3405,8 +3449,10 @@ void IMB_colormanagement_look_items_add(EnumPropertyItem **items,
                                         int *totitem,
                                         const char *view_name)
 {
+  const bool has_explicit_look = has_explicit_look_for_view(view_name);
+
   LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
-    if (!colormanage_compatible_look(look, view_name)) {
+    if (!colormanage_compatible_look(look, view_name, has_explicit_look)) {
       continue;
     }
 

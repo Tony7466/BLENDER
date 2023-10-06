@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl) /* TODO rename to curve. */
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -11,7 +14,7 @@ void main()
 {
   DRW_VIEW_FROM_RESOURCE_ID;
 #ifdef MAT_SHADOW
-  shadow_interp.view_id = drw_view_id;
+  shadow_viewport_layer_set(int(drw_view_id), int(viewport_index_buf[drw_view_id]));
 #endif
 
   init_interface();
@@ -22,15 +25,15 @@ void main()
                               ViewMatrixInverse[3].xyz,
                               ViewMatrixInverse[2].xyz,
                               interp.P,
-                              interp.curves_tangent,
-                              interp.curves_binormal,
-                              interp.curves_time,
-                              interp.curves_thickness,
-                              interp.curves_time_width);
+                              curve_interp.tangent,
+                              curve_interp.binormal,
+                              curve_interp.time,
+                              curve_interp.thickness,
+                              curve_interp.time_width);
 
-  interp.N = cross(interp.curves_tangent, interp.curves_binormal);
-  interp.curves_strand_id = hair_get_strand_id();
-  interp.barycentric_coords = hair_get_barycentric();
+  interp.N = cross(curve_interp.tangent, curve_interp.binormal);
+  curve_interp_flat.strand_id = hair_get_strand_id();
+  curve_interp.barycentric_coords = hair_get_barycentric();
 #ifdef MAT_VELOCITY
   /* Due to the screen space nature of the vertex positioning, we compute only the motion of curve
    * strand, not its cylinder. Otherwise we would add the rotation velocity. */
@@ -50,6 +53,10 @@ void main()
   attrib_load();
 
   interp.P += nodetree_displacement();
+
+#ifdef MAT_CLIP_PLANE
+  clip_interp.clip_distance = dot(clip_plane.plane, vec4(interp.P, 1.0));
+#endif
 
   gl_Position = point_world_to_ndc(interp.P);
 }

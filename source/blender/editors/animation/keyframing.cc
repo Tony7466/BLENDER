@@ -48,10 +48,11 @@
 #include "BKE_material.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
@@ -221,17 +222,8 @@ FCurve *ED_action_fcurve_ensure(Main *bmain,
 
         /* sync bone group colors if applicable */
         if (ptr && (ptr->type == &RNA_PoseBone)) {
-          Object *ob = (Object *)ptr->owner_id;
           bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
-          bPose *pose = ob->pose;
-          bActionGroup *grp;
-
-          /* find bone group (if present), and use the color from that */
-          grp = (bActionGroup *)BLI_findlink(&pose->agroups, (pchan->agrp_index - 1));
-          if (grp) {
-            agrp->customCol = grp->customCol;
-            action_group_colors_sync(agrp, grp);
-          }
+          action_group_colors_set_from_posebone(agrp, pchan);
         }
       }
 
@@ -867,10 +859,8 @@ enum {
 static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
 {
   bConstraint *con = nullptr;
-  short searchtype = VISUALKEY_NONE;
   bool has_rigidbody = false;
   bool has_parent = false;
-  const char *identifier = nullptr;
 
   /* validate data */
   if (ELEM(nullptr, ptr, ptr->data, prop)) {
@@ -888,7 +878,6 @@ static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     RigidBodyOb *rbo = ob->rigidbody_object;
 
     con = static_cast<bConstraint *>(ob->constraints.first);
-    identifier = RNA_property_identifier(prop);
     has_parent = (ob->parent != nullptr);
 
     /* active rigidbody objects only, as only those are affected by sim */
@@ -898,22 +887,34 @@ static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     /* Pose Channel */
     bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
 
+    if (pchan->constflag & (PCHAN_HAS_IK | PCHAN_INFLUENCED_BY_IK)) {
+      /* Spline IK cannot generally be keyed visually, because (at least with the default
+       * constraint settings) it requires non-uniform scaling that causes shearing in child bones,
+       * which cannot be represented by the bone's loc/rot/scale properties. */
+      return true;
+    }
+
     con = static_cast<bConstraint *>(pchan->constraints.first);
-    identifier = RNA_property_identifier(prop);
     has_parent = (pchan->parent != nullptr);
   }
-
-  /* check if any data to search using */
-  if (ELEM(nullptr, con, identifier) && (has_parent == false) && (has_rigidbody == false)) {
+  else {
+    BLI_assert(!"visualkey_can_use called for data-block that is not an Object or PoseBone.");
     return false;
   }
 
-  /* location or rotation identifiers only... */
+  /* Parent or rigidbody are always matching, no need to check further. */
+  if (has_parent || has_rigidbody) {
+    return true;
+  }
+
+  /* Only do visual keying on transforms. */
+  const char *identifier = RNA_property_identifier(prop);
   if (identifier == nullptr) {
     printf("%s failed: nullptr identifier\n", __func__);
     return false;
   }
 
+  short searchtype = VISUALKEY_NONE;
   if (strstr(identifier, "location")) {
     searchtype = VISUALKEY_LOC;
   }
@@ -928,101 +929,92 @@ static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     return false;
   }
 
-  /* only search if a searchtype and initial constraint are available */
-  if (searchtype) {
-    /* parent or rigidbody are always matching */
-    if (has_parent || has_rigidbody) {
-      return true;
+  /* Check constraints. */
+  for (; con; con = con->next) {
+    /* only consider constraint if it is not disabled, and has influence */
+    if (con->flag & CONSTRAINT_DISABLE) {
+      continue;
+    }
+    if (con->enforce == 0.0f) {
+      continue;
     }
 
-    /* constraints */
-    for (; con; con = con->next) {
-      /* only consider constraint if it is not disabled, and has influence */
-      if (con->flag & CONSTRAINT_DISABLE) {
-        continue;
-      }
-      if (con->enforce == 0.0f) {
-        continue;
-      }
+    /* some constraints may alter these transforms */
+    switch (con->type) {
+      /* multi-transform constraints */
+      case CONSTRAINT_TYPE_CHILDOF:
+      case CONSTRAINT_TYPE_ARMATURE:
+        return true;
+      case CONSTRAINT_TYPE_TRANSFORM:
+      case CONSTRAINT_TYPE_TRANSLIKE:
+        return true;
+      case CONSTRAINT_TYPE_FOLLOWPATH:
+        return true;
+      case CONSTRAINT_TYPE_KINEMATIC:
+        return true;
 
-      /* some constraints may alter these transforms */
-      switch (con->type) {
-        /* multi-transform constraints */
-        case CONSTRAINT_TYPE_CHILDOF:
-        case CONSTRAINT_TYPE_ARMATURE:
+      /* Single-transform constraints. */
+      case CONSTRAINT_TYPE_TRACKTO:
+        if (searchtype == VISUALKEY_ROT) {
           return true;
-        case CONSTRAINT_TYPE_TRANSFORM:
-        case CONSTRAINT_TYPE_TRANSLIKE:
+        }
+        break;
+      case CONSTRAINT_TYPE_DAMPTRACK:
+        if (searchtype == VISUALKEY_ROT) {
           return true;
-        case CONSTRAINT_TYPE_FOLLOWPATH:
+        }
+        break;
+      case CONSTRAINT_TYPE_ROTLIMIT:
+        if (searchtype == VISUALKEY_ROT) {
           return true;
-        case CONSTRAINT_TYPE_KINEMATIC:
+        }
+        break;
+      case CONSTRAINT_TYPE_LOCLIMIT:
+        if (searchtype == VISUALKEY_LOC) {
           return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_SIZELIMIT:
+        if (searchtype == VISUALKEY_SCA) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_DISTLIMIT:
+        if (searchtype == VISUALKEY_LOC) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_ROTLIKE:
+        if (searchtype == VISUALKEY_ROT) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_LOCLIKE:
+        if (searchtype == VISUALKEY_LOC) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_SIZELIKE:
+        if (searchtype == VISUALKEY_SCA) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_LOCKTRACK:
+        if (searchtype == VISUALKEY_ROT) {
+          return true;
+        }
+        break;
+      case CONSTRAINT_TYPE_MINMAX:
+        if (searchtype == VISUALKEY_LOC) {
+          return true;
+        }
+        break;
 
-        /* Single-transform constraints. */
-        case CONSTRAINT_TYPE_TRACKTO:
-          if (searchtype == VISUALKEY_ROT) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_DAMPTRACK:
-          if (searchtype == VISUALKEY_ROT) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_ROTLIMIT:
-          if (searchtype == VISUALKEY_ROT) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_LOCLIMIT:
-          if (searchtype == VISUALKEY_LOC) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_SIZELIMIT:
-          if (searchtype == VISUALKEY_SCA) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_DISTLIMIT:
-          if (searchtype == VISUALKEY_LOC) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_ROTLIKE:
-          if (searchtype == VISUALKEY_ROT) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_LOCLIKE:
-          if (searchtype == VISUALKEY_LOC) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_SIZELIKE:
-          if (searchtype == VISUALKEY_SCA) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_LOCKTRACK:
-          if (searchtype == VISUALKEY_ROT) {
-            return true;
-          }
-          break;
-        case CONSTRAINT_TYPE_MINMAX:
-          if (searchtype == VISUALKEY_LOC) {
-            return true;
-          }
-          break;
-
-        default:
-          break;
-      }
+      default:
+        break;
     }
   }
 
-  /* when some condition is met, this function returns, so that means we've got nothing */
   return false;
 }
 
@@ -1488,7 +1480,7 @@ int insert_keyframe(Main *bmain,
                     ListBase *nla_cache,
                     eInsertKeyFlags flag)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop = nullptr;
   AnimData *adt;
   ListBase tmp_nla_cache = {nullptr, nullptr};
@@ -1506,7 +1498,7 @@ int insert_keyframe(Main *bmain,
     return 0;
   }
 
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1758,7 +1750,7 @@ int delete_keyframe(Main *bmain,
                     float cfra)
 {
   AnimData *adt = BKE_animdata_from_id(id);
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   int array_index_max = array_index + 1;
   int ret = 0;
@@ -1770,7 +1762,7 @@ int delete_keyframe(Main *bmain,
   }
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1865,7 +1857,7 @@ static int clear_keyframe(Main *bmain,
                           eInsertKeyFlags /*flag*/)
 {
   AnimData *adt = BKE_animdata_from_id(id);
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   int array_index_max = array_index + 1;
   int ret = 0;
@@ -1877,7 +1869,7 @@ static int clear_keyframe(Main *bmain,
   }
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -1986,8 +1978,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
-  const float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  const float cfra = BKE_scene_frame_get(scene);
   int num_channels;
   const bool confirm = op->flag & OP_IS_INVOKE;
 
@@ -2066,7 +2057,7 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2180,7 +2171,7 @@ void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2209,8 +2200,7 @@ static int delete_key_exec(bContext *C, wmOperator *op)
 static int delete_key_using_keying_set(bContext *C, wmOperator *op, KeyingSet *ks)
 {
   Scene *scene = CTX_data_scene(C);
-  float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  float cfra = BKE_scene_frame_get(scene);
   int num_channels;
   const bool confirm = op->flag & OP_IS_INVOKE;
 
@@ -2265,7 +2255,7 @@ void ANIM_OT_keyframe_delete(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN);
   ot->prop = prop;
@@ -2387,7 +2377,7 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  float cfra = float(scene->r.cfra);
+  const float cfra = BKE_scene_frame_get(scene);
 
   int selected_objects_len = 0;
   int selected_objects_success_len = 0;
@@ -2538,7 +2528,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   char *path;
   uiBut *but;
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      CTX_data_depsgraph_pointer(C), float(scene->r.cfra));
+      CTX_data_depsgraph_pointer(C), BKE_scene_frame_get(scene));
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -2714,8 +2704,7 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop = nullptr;
   Main *bmain = CTX_data_main(C);
   char *path;
-  float cfra = float(
-      scene->r.cfra); /* XXX for now, don't bother about all the yucky offset crap */
+  const float cfra = BKE_scene_frame_get(scene);
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -2889,7 +2878,7 @@ void ANIM_OT_keyframe_clear_button(wmOperatorType *ot)
 
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 {
-  float cfra = float(scene->r.cfra); /* XXX for now, this will do */
+  const float cfra = BKE_scene_frame_get(scene);
 
   /* only filter if auto-key mode requires this */
   if (IS_AUTOKEY_ON(scene) == 0) {
@@ -3074,7 +3063,8 @@ bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks
      * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, nullptr, nullptr);
-    ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+    ANIM_apply_keyingset(
+        C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, BKE_scene_frame_get(scene));
     BLI_freelistN(&dsources);
 
     return true;
@@ -3094,7 +3084,8 @@ bool ED_autokeyframe_pchan(
      * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, &RNA_PoseBone, pchan);
-    ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+    ANIM_apply_keyingset(
+        C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, BKE_scene_frame_get(scene));
     BLI_freelistN(&dsources);
 
     return true;

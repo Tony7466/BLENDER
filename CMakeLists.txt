@@ -761,6 +761,7 @@ endif()
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
 option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
 option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
+option(WITH_COMPOSITOR_REALTIME_TESTS "Enable regression testing for realtime compositor" OFF)
 # NOTE: All callers of this must add `TEST_PYTHON_EXE_EXTRA_ARGS` before any other arguments.
 set(TEST_PYTHON_EXE "" CACHE PATH "Python executable to run unit tests")
 mark_as_advanced(TEST_PYTHON_EXE)
@@ -792,15 +793,20 @@ else()
 endif()
 
 # Vulkan
-option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (only for development)" OFF)
-option(WITH_VULKAN_GUARDEDALLOC "\
-Use guardedalloc for host allocations done inside Vulkan (development option)"
-  OFF
-)
-mark_as_advanced(
-  WITH_VULKAN_BACKEND
-  WITH_VULKAN_GUARDEDALLOC
-)
+if(NOT APPLE)
+  option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (experimental)" ON)
+  option(WITH_VULKAN_GUARDEDALLOC "\
+  Use guardedalloc for host allocations done inside Vulkan (development option)"
+    OFF
+  )
+  mark_as_advanced(
+    WITH_VULKAN_BACKEND
+    WITH_VULKAN_GUARDEDALLOC
+  )
+  if (NOT WITH_EXPERIMENTAL_FEATURES)
+    set(WITH_VULKAN_BACKEND OFF)
+  endif()
+endif()
 
 # Metal
 if(APPLE)
@@ -944,11 +950,11 @@ Include the files needed for debugging python scripts with visual studio 2017+."
   option(WITH_WINDOWS_SCCACHE "Use sccache to speed up builds (Ninja builder only)" OFF)
   mark_as_advanced(WITH_WINDOWS_SCCACHE)
 
-  option(WITH_WINDOWS_PDB "Generate a pdb file for client side stacktraces" ON)
-  mark_as_advanced(WITH_WINDOWS_PDB)
+  option(WITH_WINDOWS_RELEASE_PDB "Generate a pdb file for client side stacktraces for release builds" ON)
+  mark_as_advanced(WITH_WINDOWS_RELEASE_PDB)
 
-  option(WITH_WINDOWS_STRIPPED_PDB "Use a stripped PDB file" ON)
-  mark_as_advanced(WITH_WINDOWS_STRIPPED_PDB)
+  option(WITH_WINDOWS_RELEASE_STRIPPED_PDB "Use a stripped PDB file for release builds" ON)
+  mark_as_advanced(WITH_WINDOWS_RELEASE_STRIPPED_PDB)
 
 endif()
 
@@ -1890,6 +1896,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     C_WARN_NO_STRICT_PROTOTYPES -Wno-strict-prototypes
     C_WARN_NO_BITWISE_INSTEAD_OF_LOGICAL -Wno-bitwise-instead-of-logical
     C_WARN_NO_IMPLICIT_CONST_INT_FLOAT_CONVERSION -Wno-implicit-const-int-float-conversion
+    C_WARN_NO_SINGLE_BIT_BITFIELD_CONSTANT_CONVERSION -Wno-single-bit-bitfield-constant-conversion
   )
 
   add_check_cxx_compiler_flags(
@@ -1971,6 +1978,12 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
   set(C_WARNINGS "${_WARNINGS}")
   set(CXX_WARNINGS "${_WARNINGS}")
   unset(_WARNINGS)
+endif()
+
+# Xcode enables additional warning flags by default. Disable some to match
+# command line build and other platforms more closely.
+if(XCODE)
+  set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_64_TO_32_BIT_CONVERSION NO)
 endif()
 
 # ensure python header is found since detection can fail, this could happen

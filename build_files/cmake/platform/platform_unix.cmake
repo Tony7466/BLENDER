@@ -46,7 +46,6 @@ else()
   endif()
 endif()
 
-
 # Support restoring this value once pre-compiled libraries have been handled.
 set(WITH_STATIC_LIBS_INIT ${WITH_STATIC_LIBS})
 
@@ -118,17 +117,24 @@ if(WITH_VULKAN_BACKEND)
   find_package_wrapper(Vulkan REQUIRED)
   find_package_wrapper(ShaderC REQUIRED)
 endif()
+add_bundled_libraries(vulkan/lib)
 
 function(check_freetype_for_brotli)
-  include(CheckSymbolExists)
-  set(CMAKE_REQUIRED_INCLUDES ${FREETYPE_INCLUDE_DIRS})
-  check_symbol_exists(FT_CONFIG_OPTION_USE_BROTLI "freetype/config/ftconfig.h" HAVE_BROTLI)
-  unset(CMAKE_REQUIRED_INCLUDES)
-  if(NOT HAVE_BROTLI)
+  if((DEFINED HAVE_BROTLI AND HAVE_BROTLI) AND
+     (DEFINED HAVE_BROTLI_INC AND ("${HAVE_BROTLI_INC}" STREQUAL "${FREETYPE_INCLUDE_DIRS}")))
+    # Pass, the includes didn't change, use the cached value.
+  else()
     unset(HAVE_BROTLI CACHE)
-    message(FATAL_ERROR "Freetype needs to be compiled with brotli support!")
+    include(CheckSymbolExists)
+    set(CMAKE_REQUIRED_INCLUDES ${FREETYPE_INCLUDE_DIRS})
+    check_symbol_exists(FT_CONFIG_OPTION_USE_BROTLI "freetype/config/ftconfig.h" HAVE_BROTLI)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    if(NOT HAVE_BROTLI)
+      unset(HAVE_BROTLI CACHE)
+      message(FATAL_ERROR "Freetype needs to be compiled with brotli support!")
+    endif()
+    set(HAVE_BROTLI_INC "${FREETYPE_INCLUDE_DIRS}" CACHE INTERNAL "")
   endif()
-  unset(HAVE_BROTLI CACHE)
 endfunction()
 
 if(NOT WITH_SYSTEM_FREETYPE)
@@ -379,6 +385,7 @@ endif()
 if(WITH_USD)
   find_package_wrapper(USD)
   set_and_warn_library_found("USD" USD_FOUND WITH_USD)
+  set_and_warn_library_found("Hydra" USD_FOUND WITH_HYDRA)
 endif()
 add_bundled_libraries(usd/lib)
 
@@ -783,8 +790,11 @@ if(WITH_GHOST_X11)
 
   if(WITH_X11_XINPUT)
     if(NOT X11_Xinput_LIB)
-      message(FATAL_ERROR "LibXi not found. Disable WITH_X11_XINPUT if you
-      want to build without tablet support")
+      message(
+        FATAL_ERROR
+        "LibXi not found. "
+        "Disable WITH_X11_XINPUT if you want to build without tablet support"
+      )
     endif()
   endif()
 
@@ -793,15 +803,21 @@ if(WITH_GHOST_X11)
     find_library(X11_Xxf86vmode_LIB Xxf86vm   ${X11_LIB_SEARCH_PATH})
     mark_as_advanced(X11_Xxf86vmode_LIB)
     if(NOT X11_Xxf86vmode_LIB)
-      message(FATAL_ERROR "libXxf86vm not found. Disable WITH_X11_XF86VMODE if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXxf86vm not found. "
+        "Disable WITH_X11_XF86VMODE if you want to build without"
+      )
     endif()
   endif()
 
   if(WITH_X11_XFIXES)
     if(NOT X11_Xfixes_LIB)
-      message(FATAL_ERROR "libXfixes not found. Disable WITH_X11_XFIXES if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXfixes not found. "
+        "Disable WITH_X11_XFIXES if you want to build without"
+      )
     endif()
   endif()
 
@@ -809,8 +825,11 @@ if(WITH_GHOST_X11)
     find_library(X11_Xrender_LIB Xrender ${X11_LIB_SEARCH_PATH})
     mark_as_advanced(X11_Xrender_LIB)
     if(NOT X11_Xrender_LIB)
-      message(FATAL_ERROR "libXrender not found. Disable WITH_X11_ALPHA if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXrender not found. "
+        "Disable WITH_X11_ALPHA if you want to build without"
+      )
     endif()
   endif()
 
@@ -1054,11 +1073,7 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  if(DEFINED LD_LIBRARY_PATH)
-    set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:${LD_LIBRARY_PATH}\"")
-  else()
-    set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}\"")
-  endif()
+  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\"")
   set(PLATFORM_ENV_INSTALL "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH")
   unset(_library_paths)
 endif()
