@@ -1,1 +1,2 @@
 Referenced by issue #113319, The program crashes when driving point cloud positions with curve coefficients.
+Referenced by commit 271f634a84ab502fa96e88d3010a193a0682409c, Fix #113319: crash with out of bounds index in curve sample node
