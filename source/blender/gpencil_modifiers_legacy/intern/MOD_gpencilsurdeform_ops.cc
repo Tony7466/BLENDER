@@ -2145,7 +2145,8 @@ static int bake_frames(bContext *C, wmOperator *op)
   GpencilModifierData *md_eval;
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
       static_cast<GpencilModifierType>(md->type));
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Scene *scene_orig = DEG_get_input_scene(depsgraph);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
   bGPdata *gpd_eval = static_cast<bGPdata *>(object_eval->data);
   bGPDlayer *gpl_eval;
@@ -2165,10 +2166,8 @@ static int bake_frames(bContext *C, wmOperator *op)
 
 
   for (int frame = frame_end; frame >= frame_start; frame--) {
-    smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
-    BKE_scene_frame_set(scene, frame);
+    BKE_scene_frame_set(scene_orig, frame);
     BKE_scene_graph_update_for_newframe(depsgraph);
-    smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
     /*Iterate all the layers*/
     int l = 0;
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
