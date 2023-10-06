@@ -400,6 +400,16 @@ struct GeometrySet {
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
+  uint64_t hash() const
+  {
+    return get_default_hash(Span(components_));
+  }
+
+  friend bool operator==(const GeometrySet &a, const GeometrySet &b)
+  {
+    return Span(a.components_) == Span(b.components_);
+  }
+
  private:
   /**
    * Retrieve the pointer to a component without creating it if it does not exist,

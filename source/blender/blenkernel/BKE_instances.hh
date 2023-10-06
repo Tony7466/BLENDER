@@ -259,15 +259,6 @@ inline const CustomDataAttributes &Instances::custom_data_attributes() const
   return attributes_;
 }
 
-inline uint64_t InstanceReference::hash() const
-{
-  return blender::get_default_hash_2(data_, geometry_set_.get());
-}
-
-inline bool operator==(const InstanceReference &a, const InstanceReference &b)
-{
-  return a.data_ == b.data_ && a.geometry_set_.get() == b.geometry_set_.get();
-}
 
 /** \} */
 

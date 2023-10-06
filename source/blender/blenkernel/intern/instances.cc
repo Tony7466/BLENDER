@@ -35,6 +35,22 @@ bool InstanceReference::owns_direct_data() const
   return geometry_set_->owns_direct_data();
 }
 
+uint64_t InstanceReference::hash() const
+{
+  if (geometry_set_) {
+    return get_default_hash(*geometry_set_);
+  }
+  return get_default_hash(data_);
+}
+
+bool operator==(const InstanceReference &a, const InstanceReference &b)
+{
+  if (a.geometry_set_ && b.geometry_set_) {
+    return *a.geometry_set_ == *b.geometry_set_;
+  }
+  return a.type_ == b.type_ && a.data_ == b.data_;
+}
+
 Instances::Instances(const Instances &other)
     : references_(other.references_),
       reference_handles_(other.reference_handles_),
