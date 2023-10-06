@@ -33,7 +33,6 @@ class Layer;
 class LayerRuntime;
 class LayerGroup;
 class LayerGroupRuntime;
-struct StrokePoint;
 }  // namespace greasepencil
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
