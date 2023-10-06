@@ -1885,10 +1885,30 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 };
 
+class LazyFunctionForIndexInput : public lf::LazyFunction {
+ private:
+  const int amount_;
+
+ public:
+  LazyFunctionForIndexInput(const int amount) : amount_(amount)
+  {
+    const CPPType &type = CPPType::get<ValueOrField<int>>();
+    outputs_.resize(amount, lf::Output("Index", type));
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    for (const int i : IndexRange(amount_)) {
+      params.set_output(i, ValueOrField<int>(i));
+    }
+  }
+};
+
 struct ForEachEvalStorage {
   LinearAllocator<> allocator;
   lf::Graph graph;
   std::optional<lf::GraphExecutor> graph_executor;
+  std::optional<LazyFunctionForIndexInput> index_input_fn;
 };
 
 class LazyFunctionForForeachZone : public LazyFunction {
@@ -1949,9 +1969,29 @@ class LazyFunctionForForeachZone : public LazyFunction {
 
     lf::Graph &lf_graph = eval_storage.graph;
 
+    Vector<lf::GraphInputSocket *> lf_graph_inputs;
+    Vector<lf::GraphOutputSocket *> lf_graph_outputs;
+
+    for (const int i : inputs_.index_range()) {
+      const lf::Input &input = inputs_[i];
+      lf_graph_inputs.append(&lf_graph.add_input(*input.type, input.debug_name));
+    }
+    for (const int i : outputs_.index_range()) {
+      const lf::Output &output = outputs_[i];
+      lf_graph_outputs.append(&lf_graph.add_output(*output.type, output.debug_name));
+    }
+
+    VectorSet<lf::FunctionNode *> lf_body_nodes;
     for ([[maybe_unused]] const int i : IndexRange(amount)) {
       lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
-      UNUSED_VARS(lf_node);
+      lf_body_nodes.add_new(&lf_node);
+    }
+
+    eval_storage.index_input_fn.emplace(amount);
+    lf::FunctionNode &lf_index_input_node = lf_graph.add_function(*eval_storage.index_input_fn);
+
+    for (const int i : IndexRange(amount)) {
+      lf_graph.add_link(lf_index_input_node.output(i), lf_body_nodes[i]->input(0));
     }
 
     std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
