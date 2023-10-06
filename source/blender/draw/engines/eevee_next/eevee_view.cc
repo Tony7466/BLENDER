@@ -107,6 +107,8 @@ void ShadingView::render()
   DRW_stats_group_start(name_);
   DRW_view_set_active(render_view_);
 
+  inst_.planar_probes.set_view(render_view_new_, extent_);
+
   /* If camera has any motion, compute motion vector in the film pass. Otherwise, we avoid float
    * precision issue by setting the motion of all static geometry to 0. */
   float4 clear_velocity = float4(inst_.velocity.camera_has_motion() ? VELOCITY_INVALID : 0.0f);
@@ -296,52 +298,6 @@ void CaptureView::render_probes()
     /* TODO: only update the regions that have been updated. */
     /* TODO: Composite world into the probes. */
     inst_.reflection_probes.update_probes_texture_mipmaps();
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Capture View
- * \{ */
-
-void CapturePlanarView::render_probes()
-{
-  Framebuffer prepass_fb;
-  View view = {"Planar.View"};
-  for (const PlanarProbeModule::PlanarProbes::MutableItem &item :
-       inst_.planar_probes.probes_.items())
-  {
-    GPU_debug_group_begin("Planar.Capture");
-    PlanarProbe &probe = item.value;
-
-    int2 &extent = probe.extent;
-    inst_.render_buffers.acquire(extent);
-    PlanarProbeResources &resources = inst_.planar_probes.resources_get(probe);
-
-    inst_.render_buffers.vector_tx.clear(float4(0.0f));
-    prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.vector_tx));
-
-    /* TODO: calculate the view from the active viewpoint. */
-    float4x4 view_m4 = float4x4::identity();
-    float4x4 win_m4 = math::projection::perspective(-probe.clipping_offset,
-                                                    probe.clipping_offset,
-                                                    -probe.clipping_offset,
-                                                    probe.clipping_offset,
-                                                    probe.clipping_offset,
-                                                    10.0f);
-    view.sync(view_m4, win_m4);
-
-    resources.framebuffer.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-                                 GPU_ATTACHMENT_TEXTURE(resources.color_tx));
-
-    GPU_framebuffer_bind(resources.framebuffer);
-    GPU_framebuffer_clear_color_depth(resources.framebuffer, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
-    inst_.pipelines.planar.render(view, prepass_fb, resources.framebuffer, extent);
-
-    inst_.render_buffers.release();
-    GPU_debug_group_end();
   }
 }
 

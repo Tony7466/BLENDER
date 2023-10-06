@@ -367,7 +367,6 @@ void Instance::render_sample()
 
   capture_view.render_world();
   capture_view.render_probes();
-  planar_view.render_probes();
 
   main_view.render();
 

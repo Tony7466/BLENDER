@@ -78,7 +78,6 @@ class Instance {
   RenderBuffers render_buffers;
   MainView main_view;
   CaptureView capture_view;
-  CapturePlanarView planar_view;
   World world;
   LookdevModule lookdev;
   LightProbeModule light_probes;
@@ -136,7 +135,6 @@ class Instance {
         render_buffers(*this, global_ubo_.render_pass),
         main_view(*this),
         capture_view(*this),
-        planar_view(*this),
         world(*this),
         lookdev(*this),
         light_probes(*this),

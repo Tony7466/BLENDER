@@ -26,17 +26,24 @@ struct ObjectHandle;
  * \{ */
 
 struct PlanarProbe {
-  float4x4 object_mat;
+  /* Copy of object matrices. */
+  float4x4 plane_to_world;
+  float4x4 world_to_plane;
+  /* Offset to the clipping plane in the normal direction. */
   float clipping_offset;
-  int2 extent;
-  bool is_probe_used = false;
+  /* Percentage of the main resolution to render this planar probe at. */
+  float resolution_percentage;
+  /* Index in the resource array. */
   int resource_index;
+  /* Pruning flag. */
+  bool is_probe_used = false;
 };
 
 struct PlanarProbeResources : NonCopyable {
-  Texture color_tx = {"PlanarColor"};
-  Texture depth_tx = {"PlanarDepth"};
-  Framebuffer framebuffer = {"Planar"};
+  Texture color_tx = {"planar.color_tx"};
+  Texture depth_tx = {"planar.depth_tx"};
+  Framebuffer combined_fb = {"planar.combined_fb"};
+  draw::View view = {"planar.view"};
 };
 
 /** \} */
@@ -50,12 +57,12 @@ class PlanarProbeModule {
   using Resources = Array<PlanarProbeResources>;
 
  private:
-  /* Max resolution of a texture. */
-  static constexpr int max_resolution_ = 2048;
-
   Instance &instance_;
+
   PlanarProbes probes_;
   Resources resources_;
+
+  ClipPlaneBuf world_clip_buf_ = {"world_clip_buf"};
 
   bool update_probes_ = false;
 
@@ -67,17 +74,29 @@ class PlanarProbeModule {
   void sync_object(Object *ob, ObjectHandle &ob_handle);
   void end_sync();
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass) {}
+  void set_view(const draw::View &main_view, int2 main_view_extent);
 
-  PlanarProbeResources &resources_get(const PlanarProbe &probe);
+  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass) {}
 
  private:
   PlanarProbe &find_or_insert(ObjectHandle &ob_handle);
   void remove_unused_probes();
-  void update_resources();
+
+  /**
+   * Create the reflection matrix that reflect along the XY plane of the given transform.
+   * The transform does not need to be normalized but is expected to be orthogonal.
+   */
+  float4x4 reflection_matrix_get(const float4x4 &plane_to_world, const float4x4 &world_to_plane);
+
+  /**
+   * Create the reflection clip plane equation that clips along the XY plane of the given
+   * transform. The `clip_offset` will push the clip plane a bit further to avoid missing pixels in
+   * reflections. The transform does not need to be normalized but is expected to be orthogonal.
+   */
+  float4 reflection_clip_plane_get(const float4x4 &plane_to_world, float clip_offset);
 
   friend class Instance;
-  friend class CapturePlanarView;
+  friend class PlanarProbePipeline;
 };
 
 /** \} */
