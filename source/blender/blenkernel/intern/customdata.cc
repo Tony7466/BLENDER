@@ -2439,7 +2439,6 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
         memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
       }
     }
-
     /* Remove ownership of old array. */
     if (layer->sharing_info) {
       layer->sharing_info->remove_user_and_delete_if_last();
