@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <sstream>
+
 #include <MaterialXFormat/XmlIo.h>
 
 #include "material.h"
@@ -60,23 +62,17 @@ class DefaultMaterialNodeParser : public NodeParser {
   }
 };
 
-MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
-                                           Material *material,
-                                           ExportImageFunction export_image_fn)
+static bool export_script_node(MaterialX::DocumentPtr doc,
+                               Depsgraph *depsgraph,
+                               Material *material)
 {
-  CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
-
-  MaterialX::DocumentPtr doc = MaterialX::createDocument();
   bool script_found = false;
-  if (material->use_nodes) {
-    material->nodetree->ensure_topology_cache();
-    Main *bmain = DEG_get_bmain(depsgraph);
-    /* Look for first script node with assigned file.
-     * If it's found, we load content and ignore everything other. */
-    LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
-      if (node->typeinfo->type == SH_NODE_SCRIPT) {
-        NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
-        if (script->mode == NODE_SCRIPT_EXTERNAL && script->filepath[0] != '\0') {
+  Main *bmain = DEG_get_bmain(depsgraph);
+  LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
+    if (node->typeinfo->type == SH_NODE_SCRIPT) {
+      NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
+      if (script->mode == NODE_SCRIPT_EXTERNAL) {
+        if (script->filepath[0] != '\0') {
           script_found = true;
           char filepath[FILE_MAX];
           STRNCPY(filepath, script->filepath);
@@ -98,53 +94,73 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
           }
           break;
         }
-        else if (script->mode == NODE_SCRIPT_INTERNAL) {
-          Text *text = reinterpret_cast<Text *>(node->id);
-          if (text) {
-            script_found = true;
-            std::string text_content;
-            LISTBASE_FOREACH (TextLine *, line, &text->lines) {
-              text_content.append(line->line);
-            }
-            try {
-              MaterialX::readFromXmlString(doc, text_content);
-            }
-            catch (MaterialX::ExceptionParseError) {
-              CLOG_WARN(LOG_MATERIALX_SHADER,
-                        "Material: %s, Node: %s: parsing error",
-                        material->id.name,
-                        node->name);
-            }
-            break;
+      }
+      else if (script->mode == NODE_SCRIPT_INTERNAL) {
+        Text *text = reinterpret_cast<Text *>(node->id);
+        if (text) {
+          script_found = true;
+          std::stringstream text_content;
+          LISTBASE_FOREACH (TextLine *, line, &text->lines) {
+            text_content << line->line;
           }
-        }
-        else {
-          BLI_assert_unreachable();
+          try {
+            MaterialX::readFromXmlStream(doc, text_content);
+          }
+          catch (MaterialX::ExceptionParseError) {
+            CLOG_WARN(LOG_MATERIALX_SHADER,
+                      "Material: %s, Node: %s: parsing error",
+                      material->id.name,
+                      node->name);
+          }
+          break;
         }
       }
+      else {
+        BLI_assert_unreachable();
+      }
     }
+  }
+  return script_found;
+}
 
-    bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    if (output_node && !script_found) {
-      NodeParserData data = {doc.get(),
-                             depsgraph,
-                             material,
-                             NodeItem::Type::Material,
-                             nullptr,
-                             NodeItem(doc.get()),
-                             export_image_fn};
-      output_node->typeinfo->materialx_fn(&data, output_node, nullptr);
-    }
-    else {
-      DefaultMaterialNodeParser(doc.get(),
-                                depsgraph,
-                                material,
-                                nullptr,
-                                nullptr,
-                                NodeItem::Type::Material,
-                                nullptr,
-                                export_image_fn)
-          .compute_error();
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
+                                           Material *material,
+                                           ExportImageFunction export_image_fn)
+{
+  CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
+
+  MaterialX::DocumentPtr doc = MaterialX::createDocument();
+  bool script_found = false;
+  if (material->use_nodes) {
+    material->nodetree->ensure_topology_cache();
+
+    /* Look for first script node with assigned file.
+     * If it's found, we load content and ignore everything other. */
+    script_found = export_script_node(doc, depsgraph, material);
+
+    if (!script_found) {
+      bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
+      if (output_node) {
+        NodeParserData data = {doc.get(),
+                               depsgraph,
+                               material,
+                               NodeItem::Type::Material,
+                               nullptr,
+                               NodeItem(doc.get()),
+                               export_image_fn};
+        output_node->typeinfo->materialx_fn(&data, output_node, nullptr);
+      }
+      else {
+        DefaultMaterialNodeParser(doc.get(),
+                                  depsgraph,
+                                  material,
+                                  nullptr,
+                                  nullptr,
+                                  NodeItem::Type::Material,
+                                  nullptr,
+                                  export_image_fn)
+            .compute_error();
+      }
     }
   }
   else {
