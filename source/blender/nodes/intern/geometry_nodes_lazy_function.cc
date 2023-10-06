@@ -1909,6 +1909,7 @@ struct ForEachEvalStorage {
   lf::Graph graph;
   std::optional<lf::GraphExecutor> graph_executor;
   std::optional<LazyFunctionForIndexInput> index_input_fn;
+  std::optional<LazyFunctionForLogicalOr> or_fn;
 };
 
 class LazyFunctionForForeachZone : public LazyFunction {
@@ -1990,8 +1991,14 @@ class LazyFunctionForForeachZone : public LazyFunction {
     eval_storage.index_input_fn.emplace(amount);
     lf::FunctionNode &lf_index_input_node = lf_graph.add_function(*eval_storage.index_input_fn);
 
+    eval_storage.or_fn.emplace(amount);
+    lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_fn);
+
     for (const int i : IndexRange(amount)) {
-      lf_graph.add_link(lf_index_input_node.output(i), lf_body_nodes[i]->input(0));
+      lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
+      lf_graph.add_link(lf_index_input_node.output(i), lf_body_node.input(0));
+      lf_graph.add_link(*lf_graph_inputs[1], lf_body_node.input(1));
+      lf_graph.add_link(lf_body_node.output(0), lf_or_node.input(i));
     }
 
     std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
