@@ -9,8 +9,10 @@
 
 #include "DNA_pointcloud_types.h"
 
+#include "BKE_grease_pencil.hh"
 #include "BKE_pointcloud.h"
 
+#include "GEO_join_geometries.hh"
 #include "GEO_resample_curves.hh"
 
 #include "NOD_rna_define.hh"
@@ -26,7 +28,8 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveToPoints)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Curve").supported_type(
+      {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Int>("Count")
       .default_value(10)
       .min(2)
@@ -150,11 +153,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry::ResampleCurvesOutputAttributeIDs resample_attributes;
   resample_attributes.tangent_id = tangent_anonymous_id.get();
   resample_attributes.normal_id = normal_anonymous_id.get();
+  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
+      "Points");
 
   switch (mode) {
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
       Field<int> count = params.extract_input<Field<int>>("Count");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+        Vector<GeometrySet> pointcloud_geometry_sets;
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
@@ -169,6 +175,40 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
+          pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+        }
+        if (geometry_set.has_grease_pencil()) {
+          using namespace blender::bke::greasepencil;
+          const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+          for (const int layer_index : grease_pencil.layers().index_range()) {
+            const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil,
+                                                                          layer_index);
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            bke::GreasePencilLayerFieldContext field_context(
+                grease_pencil, ATTR_DOMAIN_CURVE, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_count(
+                src_curves,
+                field_context,
+                fn::make_constant_field<bool>(true),
+                count,
+                resample_attributes);
+            /* TODO: Need to propagate layer attributes to the point cloud points. */
+            PointCloud *pointcloud = pointcloud_from_curves(std::move(dst_curves),
+                                                            resample_attributes.tangent_id,
+                                                            resample_attributes.normal_id,
+                                                            rotation_anonymous_id.get());
+            pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+          }
+        }
+
+        if (!pointcloud_geometry_sets.is_empty()) {
+          GeometrySet all_geometry = geometry::join_geometries(pointcloud_geometry_sets,
+                                                               propagation_info);
+          PointCloud *pointcloud =
+              all_geometry.get_component_for_write<PointCloudComponent>().release();
           geometry.remove_geometry_during_modify();
           geometry.replace_pointcloud(pointcloud);
         }
@@ -178,6 +218,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GEO_NODE_CURVE_RESAMPLE_LENGTH: {
       Field<float> length = params.extract_input<Field<float>>("Length");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+        Vector<GeometrySet> pointcloud_geometry_sets;
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
@@ -191,6 +232,40 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
+          pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+        }
+        if (geometry_set.has_grease_pencil()) {
+          using namespace blender::bke::greasepencil;
+          const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+          for (const int layer_index : grease_pencil.layers().index_range()) {
+            const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil,
+                                                                          layer_index);
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            bke::GreasePencilLayerFieldContext field_context(
+                grease_pencil, ATTR_DOMAIN_CURVE, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_length(
+                src_curves,
+                field_context,
+                fn::make_constant_field<bool>(true),
+                length,
+                resample_attributes);
+            /* TODO: Need to propagate layer attributes to the point cloud points. */
+            PointCloud *pointcloud = pointcloud_from_curves(std::move(dst_curves),
+                                                            resample_attributes.tangent_id,
+                                                            resample_attributes.normal_id,
+                                                            rotation_anonymous_id.get());
+            pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+          }
+        }
+
+        if (!pointcloud_geometry_sets.is_empty()) {
+          GeometrySet all_geometry = geometry::join_geometries(pointcloud_geometry_sets,
+                                                               propagation_info);
+          PointCloud *pointcloud =
+              all_geometry.get_component_for_write<PointCloudComponent>().release();
           geometry.remove_geometry_during_modify();
           geometry.replace_pointcloud(pointcloud);
         }
@@ -199,6 +274,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     case GEO_NODE_CURVE_RESAMPLE_EVALUATED:
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+        Vector<GeometrySet> pointcloud_geometry_sets;
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
@@ -208,6 +284,39 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
+          pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+        }
+        if (geometry_set.has_grease_pencil()) {
+          using namespace blender::bke::greasepencil;
+          const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+          for (const int layer_index : grease_pencil.layers().index_range()) {
+            const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil,
+                                                                          layer_index);
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            bke::GreasePencilLayerFieldContext field_context(
+                grease_pencil, ATTR_DOMAIN_CURVE, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(
+                src_curves,
+                field_context,
+                fn::make_constant_field<bool>(true),
+                resample_attributes);
+            /* TODO: Need to propagate layer attributes to the point cloud points. */
+            PointCloud *pointcloud = pointcloud_from_curves(std::move(dst_curves),
+                                                            resample_attributes.tangent_id,
+                                                            resample_attributes.normal_id,
+                                                            rotation_anonymous_id.get());
+            pointcloud_geometry_sets.append(GeometrySet::from_pointcloud(pointcloud));
+          }
+        }
+
+        if (!pointcloud_geometry_sets.is_empty()) {
+          GeometrySet all_geometry = geometry::join_geometries(pointcloud_geometry_sets,
+                                                               propagation_info);
+          PointCloud *pointcloud =
+              all_geometry.get_component_for_write<PointCloudComponent>().release();
           geometry.remove_geometry_during_modify();
           geometry.replace_pointcloud(pointcloud);
         }
