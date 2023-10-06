@@ -210,13 +210,26 @@ typedef struct FontBufInfoBLF {
 } FontBufInfoBLF;
 
 typedef struct FontInfo {
-  // preview?
-  short weight = 400;    // default weight, 100 - 900. get from OS/2 usWeightClass
-  float width = 1.0f;    // default width 1.0. get from OS/2 usWidthClass
-  float slant = 0.0f;    // default slant 0.0. get from Post italicAngle;
-  float spacing = 1.0f;  // default spacing 1.0
+  short weight;
+  float width;
+  float slant;
+  float spacing;
+
+  short units_per_EM;
+  short ascender;
+  short descender;
+  short height;
+  short max_advance_width;
+  short max_advance_height;
+  short underline_position;
+  short underline_height;
+
+  int num_glyphs;
+
+  rcti bounding_box;
 
   short family_class;
+
   char panose_family_type;
   char panose_serif_style;
   char panose_weight;
@@ -227,6 +240,7 @@ typedef struct FontInfo {
   char panose_letter_form;
   char panose_midline;
   char panose_xheight;
+
   short selection_flags;
   short first_charindex;
   short last_charindex;

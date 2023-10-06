@@ -1342,6 +1342,10 @@ static void blf_font_fill(FontBLF *font)
   font->buf_info.col_init[1] = 0;
   font->buf_info.col_init[2] = 0;
   font->buf_info.col_init[3] = 0;
+
+  font->info.weight = 400;
+  font->info.width = 1.0f;
+  font->info.spacing = 1.0f;
 }
 
 bool blf_ensure_face(FontBLF *font)
@@ -1438,7 +1442,96 @@ bool blf_ensure_face(FontBLF *font)
     font->unicode_ranges[1] = uint(os2_table->ulUnicodeRange2);
     font->unicode_ranges[2] = uint(os2_table->ulUnicodeRange3);
     font->unicode_ranges[3] = uint(os2_table->ulUnicodeRange4);
+
+    if (os2_table->usWeightClass >= 1 && os2_table->usWeightClass <= 1000) {
+      font->info.weight = short(os2_table->usWeightClass);
+    }
+
+    if (os2_table->usWidthClass >= 1 && os2_table->usWidthClass <= 9) {
+      switch (os2_table->usWidthClass) {
+        case 1:
+          font->info.width = 0.5f;
+          break;
+        case 2:
+          font->info.width = 0.625f;
+          break;
+        case 3:
+          font->info.width = 0.75f;
+          break;
+        case 4:
+          font->info.width = 0.875f;
+          break;
+        case 5:
+          font->info.width = 1.0f;
+          break;
+        case 6:
+          font->info.width = 1.125f;
+          break;
+        case 7:
+          font->info.width = 1.25f;
+          break;
+        case 8:
+          font->info.width = 1.5f;
+          break;
+        case 9:
+          font->info.width = 2.0f;
+          break;
+      }
+    }
+
+    font->info.family_class = short(os2_table->sFamilyClass);
+
+    font->info.panose_family_type = char(os2_table->panose[0]);
+    font->info.panose_serif_style = char(os2_table->panose[1]);
+    font->info.panose_weight = char(os2_table->panose[2]);
+    font->info.panose_proportion = char(os2_table->panose[3]);
+    font->info.panose_contrast = char(os2_table->panose[4]);
+    font->info.panose_stroke_variation = char(os2_table->panose[5]);
+    font->info.panose_arm_style = char(os2_table->panose[6]);
+    font->info.panose_letter_form = char(os2_table->panose[7]);
+    font->info.panose_midline = char(os2_table->panose[7]);
+    font->info.panose_xheight = char(os2_table->panose[9]);
+
+    font->info.selection_flags = short(os2_table->fsSelection);
+    font->info.first_charindex = short(os2_table->usFirstCharIndex);
+    font->info.last_charindex = short(os2_table->usLastCharIndex);
+    font->info.typo_ascender = short(os2_table->sTypoAscender);
+    font->info.typo_descender = short(os2_table->sTypoDescender);
+    font->info.typo_linegap = short(os2_table->sTypoLineGap);
+
+    if (os2_table->version > 1) {
+      font->info.cap_height = short(os2_table->sCapHeight);
+      font->info.x_height = short(os2_table->sxHeight);
+    }
+
+    if (os2_table->version > 4) {
+      font->info.lower_optical_point_size = short(os2_table->usLowerOpticalPointSize);
+      font->info.upper_optical_point_size = short(os2_table->usUpperOpticalPointSize);
+    }
+
   }
+
+  TT_Postscript *post_table = (TT_Postscript *)FT_Get_Sfnt_Table(font->face, FT_SFNT_POST);
+  if (post_table) {
+    if (post_table->italicAngle != 0) {
+      font->info.slant = -float(post_table->italicAngle) / -65536.0f;
+    }
+  }
+
+  font->info.units_per_EM = short(font->face->units_per_EM);
+  font->info.ascender = short(font->face->ascender);
+  font->info.descender = short(font->face->descender);
+  font->info.height = short(font->face->height);
+  font->info.max_advance_width = short(font->face->max_advance_width);
+  font->info.max_advance_height = short(font->face->max_advance_height);
+  font->info.underline_position = short(font->face->underline_position);
+  font->info.underline_height = short(font->face->underline_thickness);
+  font->info.num_glyphs = int(font->face->num_glyphs);
+
+  font->info.bounding_box.xmin = int(font->face->bbox.xMin);
+  font->info.bounding_box.xmax = int(font->face->bbox.xMax);
+  font->info.bounding_box.ymin = int(font->face->bbox.yMin);
+  font->info.bounding_box.ymax = int(font->face->bbox.yMax);
 
   if (FT_IS_FIXED_WIDTH(font)) {
     font->flags |= BLF_MONOSPACED;
