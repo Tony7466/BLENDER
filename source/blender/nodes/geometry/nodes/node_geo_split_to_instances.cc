@@ -62,8 +62,9 @@ struct SplitGroups {
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
 
-  MultiValueMap<int, int> indices_by_group;
-  Vector<int> group_ids;
+  VectorSet<int> group_ids;
+  IndexMaskMemory memory;
+  Array<IndexMask> group_masks;
 };
 
 /**
@@ -100,10 +101,16 @@ struct SplitGroups {
   }
 
   const VArraySpan<int> group_ids = group_ids_varray;
+  selection.foreach_index_optimized<int>(
+      [&](const int i) { r_groups.group_ids.add(group_ids[i]); });
 
-  selection.foreach_index([&](const int i) { r_groups.indices_by_group.add(group_ids[i], i); });
-  r_groups.group_ids.extend(r_groups.indices_by_group.keys().begin(),
-                            r_groups.indices_by_group.keys().end());
+  r_groups.group_masks.reinitialize(r_groups.group_ids.size());
+  IndexMask::from_groups<int>(
+      IndexRange(domain_size),
+      r_groups.memory,
+      [&](const int i) { return r_groups.group_ids.index_of(group_ids[i]); },
+      r_groups.group_masks);
+
   ensure_group_geometries(geometry_by_group_id, r_groups.group_ids);
   return false;
 }
@@ -127,16 +134,14 @@ static void split_mesh_groups(const MeshComponent &component,
   threading::EnumerableThreadSpecific<Array<bool>> group_selection_per_thread{
       [&]() { return Array<bool>(domain_size, false); }};
 
-  threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
+  threading::parallel_for(split_groups.group_masks.index_range(), 16, [&](const IndexRange range) {
     /* Need task isolation because of the thread local variable. */
     threading::isolate_task([&]() {
       MutableSpan<bool> group_selection = group_selection_per_thread.local();
       const VArray<bool> group_selection_varray = VArray<bool>::ForSpan(group_selection);
-      for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
-        const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
-        for (int i : elements) {
-          group_selection[i] = true;
-        }
+      for (const int group_index : range) {
+        const IndexMask &mask = split_groups.group_masks[group_index];
+        index_mask::masked_fill(group_selection, true, mask);
 
         /* Using #mesh_copy_selection here is not ideal, because it can lead to O(n^2) behavior
          * when there are many groups. */
@@ -155,9 +160,7 @@ static void split_mesh_groups(const MeshComponent &component,
           group_geometry.add(component);
         }
 
-        for (int i : elements) {
-          group_selection[i] = false;
-        }
+        index_mask::masked_fill(group_selection, false, mask);
       }
     });
   });
