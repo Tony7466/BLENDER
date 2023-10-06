@@ -991,10 +991,9 @@ class NodeTreeMainUpdater {
           }
         }
         if (all_zone_output_node_types().contains(node.type)) {
-          bool all_zone_inputs_computed = true;
           const bNodeZoneType &zone_type = *zone_type_by_node_type(node.type);
           if (const bNode *zone_input_node = zone_type.get_corresponding_input(tree, node)) {
-            for (const bNodeSocket *input_socket : node.input_sockets()) {
+            for (const bNodeSocket *input_socket : zone_input_node->input_sockets()) {
               if (input_socket->is_available()) {
                 src_sockets.append(input_socket);
               }
