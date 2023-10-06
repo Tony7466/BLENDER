@@ -251,6 +251,11 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
     if (!include_instances && domain_item->value == ATTR_DOMAIN_INSTANCE) {
       continue;
     }
+    if (!U.experimental.use_grease_pencil_version3 &&
+        domain_item->value == ATTR_DOMAIN_GREASE_PENCIL_LAYER)
+    {
+      continue;
+    }
 
     if (domain_item->value == ATTR_DOMAIN_POINT && id_type == ID_ME) {
       RNA_enum_item_add(&item, &totitem, &mesh_vertex_domain_item);
