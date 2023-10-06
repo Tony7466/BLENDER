@@ -1593,7 +1593,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     RepeatEvalStorage &eval_storage = *static_cast<RepeatEvalStorage *>(context.storage);
 
     const int iterations_usage_index = zone_info_.indices.outputs.input_usages[0];
-    if (params.output_was_set(iterations_usage_index)) {
+    if (!params.output_was_set(iterations_usage_index)) {
       /* The iterations input is always used. */
       params.set_output(iterations_usage_index, true);
     }
@@ -1878,6 +1878,10 @@ struct ForEachEvalStorage {
   std::optional<LazyFunctionForIndexInput> index_input_fn;
   std::optional<LazyFunctionForLogicalOr> or_fn;
   std::optional<LazyFunctionForReduce> reduce_fn;
+  void *graph_executor_storage = nullptr;
+  Vector<int> input_index_map;
+  Vector<int> output_index_map;
+  bool multi_threading_enabled = false;
 };
 
 class LazyFunctionForForeachZone : public LazyFunction {
@@ -1905,6 +1909,9 @@ class LazyFunctionForForeachZone : public LazyFunction {
   void destruct_storage(void *storage) const override
   {
     ForEachEvalStorage *s = static_cast<ForEachEvalStorage *>(storage);
+    if (s->graph_executor_storage) {
+      s->graph_executor->destruct_storage(s->graph_executor_storage);
+    }
     std::destroy_at(s);
   }
 
@@ -1917,12 +1924,24 @@ class LazyFunctionForForeachZone : public LazyFunction {
         zone_.output_node->storage);
     ForEachEvalStorage &eval_storage = *static_cast<ForEachEvalStorage *>(context.storage);
 
+    const int iteration_usage_index = zone_info_.indices.outputs.input_usages[0];
+    if (!params.output_was_set(iteration_usage_index)) {
+      params.set_output(iteration_usage_index, true);
+    }
+
     if (!eval_storage.graph_executor) {
       this->initialize_execution_graph(
           params, eval_storage, node_storage, user_data, local_user_data);
     }
 
-    params.set_default_remaining_outputs();
+    lf::RemappedParams eval_graph_params{*eval_storage.graph_executor,
+                                         params,
+                                         eval_storage.input_index_map,
+                                         eval_storage.output_index_map,
+                                         eval_storage.multi_threading_enabled};
+    lf::Context eval_graph_context{
+        eval_storage.graph_executor_storage, context.user_data, context.local_user_data};
+    eval_storage.graph_executor->execute(eval_graph_params, eval_graph_context);
   }
 
   void initialize_execution_graph(lf::Params &params,
@@ -1934,20 +1953,16 @@ class LazyFunctionForForeachZone : public LazyFunction {
     UNUSED_VARS(params, eval_storage, node_storage, user_data, local_user_data);
 
     const int amount = params.get_input<ValueOrField<int>>(0).as_value();
-    std::cout << amount << "\n";
 
     lf::Graph &lf_graph = eval_storage.graph;
 
-    Vector<lf::GraphInputSocket *> lf_graph_inputs;
-    Vector<lf::GraphOutputSocket *> lf_graph_outputs;
-
     for (const int i : inputs_.index_range()) {
       const lf::Input &input = inputs_[i];
-      lf_graph_inputs.append(&lf_graph.add_input(*input.type, input.debug_name));
+      lf_graph.add_input(*input.type, input.debug_name);
     }
     for (const int i : outputs_.index_range()) {
       const lf::Output &output = outputs_[i];
-      lf_graph_outputs.append(&lf_graph.add_output(*output.type, output.debug_name));
+      lf_graph.add_output(*output.type, output.debug_name);
     }
 
     VectorSet<lf::FunctionNode *> lf_body_nodes;
@@ -1968,15 +1983,42 @@ class LazyFunctionForForeachZone : public LazyFunction {
     for (const int i : IndexRange(amount)) {
       lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
       lf_graph.add_link(lf_index_input_node.output(i), lf_body_node.input(0));
-      lf_graph.add_link(*lf_graph_inputs[1], lf_body_node.input(1));
+      lf_graph.add_link(*lf_graph.graph_inputs()[1], lf_body_node.input(1));
       lf_graph.add_link(lf_body_node.output(0), lf_or_node.input(i));
       lf_graph.add_link(lf_body_node.output(1), lf_reduce_node.input(i));
     }
 
-    lf_graph.add_link(lf_reduce_node.output(0), *lf_graph_outputs[0]);
-    lf_graph.add_link(lf_or_node.output(0), *lf_graph_outputs[1]);
+    lf_graph.add_link(lf_reduce_node.output(0), *lf_graph.graph_outputs()[0]);
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    eval_storage.input_index_map.reinitialize(inputs_.size());
+    array_utils::fill_index_range<int>(eval_storage.input_index_map);
+    eval_storage.output_index_map.reinitialize(outputs_.size());
+    array_utils::fill_index_range<int>(eval_storage.output_index_map);
+
+    eval_storage.input_index_map.remove(zone_info_.indices.inputs.main[0]);
+    eval_storage.output_index_map.remove(zone_info_.indices.outputs.input_usages[0]);
+
+    Vector<const lf::GraphInputSocket *> lf_graph_inputs;
+    Vector<const lf::GraphOutputSocket *> lf_graph_outputs;
+    for (const int i : eval_storage.input_index_map) {
+      lf_graph_inputs.append(lf_graph.graph_inputs()[i]);
+    }
+    for (const int i : eval_storage.output_index_map) {
+      lf_graph_outputs.append(lf_graph.graph_outputs()[i]);
+    }
+
+    lf_graph.update_node_indices();
+
+    eval_storage.graph_executor.emplace(lf_graph,
+                                        std::move(lf_graph_inputs),
+                                        std::move(lf_graph_outputs),
+                                        nullptr,
+                                        nullptr,
+                                        nullptr);
+    eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
+        eval_storage.allocator);
+
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   std::string input_name(const int i) const override
