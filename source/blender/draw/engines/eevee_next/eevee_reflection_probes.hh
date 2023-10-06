@@ -127,7 +127,7 @@ class ReflectionProbeModule {
   /** Get the number of layers that is needed to store probes. */
   int needed_layers_get() const;
 
-  void remove_unused_probes();
+  bool remove_unused_probes();
   void recalc_lod_factors();
 
   /* TODO: also add _len() which is a max + 1. */

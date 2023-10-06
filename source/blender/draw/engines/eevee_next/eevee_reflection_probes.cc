@@ -315,9 +315,10 @@ ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(int 
 
 void ReflectionProbeModule::end_sync()
 {
-  remove_unused_probes();
+  const bool probes_removed = remove_unused_probes();
 
   const bool world_updated = do_world_update_get();
+  const bool only_world = has_only_world_probe();
   const int number_layers_needed = needed_layers_get();
   const int current_layers = probes_tx_.depth();
   const bool resize_layers = current_layers < number_layers_needed;
@@ -329,10 +330,14 @@ void ReflectionProbeModule::end_sync()
     }
   }
 
-  const bool do_update = instance_.do_probe_sync() || (has_only_world_probe() && world_updated);
+  const bool do_update = instance_.do_probe_sync() || (only_world && world_updated);
   if (!do_update) {
     if (update_probes_next_sample_ && !update_probes_this_sample_) {
       DRW_viewport_request_redraw();
+    }
+
+    if (!update_probes_next_sample_ && probes_removed) {
+      data_buf_.push_update();
     }
     return;
   }
@@ -352,8 +357,13 @@ void ReflectionProbeModule::end_sync()
   data_buf_.push_update();
 }
 
-void ReflectionProbeModule::remove_unused_probes()
+bool ReflectionProbeModule::remove_unused_probes()
 {
+  ReflectionProbeData init_probe_data = {};
+  init_probe_data.layer = -1;
+
+  Vector<int> removed_indexes;
+
   bool found = false;
   do {
     found = false;
@@ -362,7 +372,9 @@ void ReflectionProbeModule::remove_unused_probes()
       const ReflectionProbe &probe = item.value;
       if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
         key_to_remove = item.key;
+        data_buf_[probe.index] = init_probe_data;
         found = true;
+        removed_indexes.append(probe.index);
         break;
       }
     }
@@ -370,6 +382,35 @@ void ReflectionProbeModule::remove_unused_probes()
       probes_.remove(key_to_remove);
     }
   } while (found);
+
+  const bool probes_removed = !removed_indexes.is_empty();
+
+  /* Reorganize data_buf_ to be sequentially filled from the start. */
+  while (!removed_indexes.is_empty()) {
+    int index = removed_indexes.pop_last();
+    int highest_index = 0;
+    ReflectionProbe *highest_probe = nullptr;
+    for (ReflectionProbe &probe : probes_.values()) {
+      if (probe.type != ReflectionProbe::Type::Probe) {
+        continue;
+      }
+      if (assign_if_different(highest_index, max_ii(highest_index, probe.index))) {
+        highest_probe = &probe;
+      }
+    }
+
+    if (highest_probe == nullptr) {
+      break;
+    }
+    if (index > highest_index) {
+      continue;
+    }
+
+    data_buf_[index] = data_buf_[highest_index];
+    data_buf_[highest_index] = init_probe_data;
+  }
+
+  return probes_removed;
 }
 
 void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_data_index)
@@ -492,18 +533,19 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     const ReflectionProbe::Type probe_type)
 {
   const bool do_probe_sync = instance_.do_probe_sync();
+  const bool only_world = has_only_world_probe();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
     if (!item.value.do_render && !item.value.do_world_irradiance_update) {
       continue;
     }
-    if (probe_type == ReflectionProbe::Type::World && item.value.type != probe_type) {
-      return std::nullopt;
-    }
-    if (probe_type == ReflectionProbe::Type::Probe && item.value.type != probe_type) {
+    if (item.value.type != probe_type) {
       continue;
     }
     /* Do not update this probe during this sample. */
+    if (item.value.type == ReflectionProbe::Type::World && !only_world && !do_probe_sync) {
+      continue;
+    }
     if (item.value.type == ReflectionProbe::Type::Probe && !do_probe_sync) {
       continue;
     }
