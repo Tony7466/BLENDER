@@ -159,19 +159,18 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
     const bke::CurvesGeometry &src_curves = src_curves_id.geometry.wrap();
 
     bke::CurvesGeometry dst_curves;
-    if (!set_curve_trim(src_curves,
-                        mode,
-                        selection_field,
-                        start_field,
-                        end_field,
-                        propagation_info,
-                        dst_curves))
+    if (set_curve_trim(src_curves,
+                       mode,
+                       selection_field,
+                       start_field,
+                       end_field,
+                       propagation_info,
+                       dst_curves))
     {
-      return;
+      Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
+      bke::curves_copy_parameters(src_curves_id, *dst_curves_id);
+      geometry_set.replace_curves(dst_curves_id);
     }
-    Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
-    bke::curves_copy_parameters(src_curves_id, *dst_curves_id);
-    geometry_set.replace_curves(dst_curves_id);
   }
   if (geometry_set.has_grease_pencil()) {
     using namespace bke::greasepencil;
