@@ -4,3 +4,4 @@ Referenced by issue #74425, Can't texture paint an images sequence anymore
 Referenced by issue #72474, Box mapping is broken in Cycles
 Referenced by issue #72445, Instant crash with Cycle, Displacement and open shading language
 Referenced by issue #72440, Crash when drag & drop Color in the Image Editor
+Referenced by pull request #113334, Fix #113323: Paint Secondary color not working in the Image Editor
