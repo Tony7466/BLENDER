@@ -122,9 +122,7 @@ bool LookdevModule::sync_world()
   LookdevParameters new_parameters(inst_.v3d);
   bool parameters_changed = parameters_ != new_parameters;
   if (parameters_changed) {
-    printf("parameters changed\n");
     if (parameters_.gpu_parameters_changed(new_parameters)) {
-      printf("gpu parameters changed\n");
       GPU_material_free(&gpu_materials_);
       gpu_material_ = nullptr;
     }

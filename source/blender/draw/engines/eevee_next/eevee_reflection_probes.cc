@@ -82,6 +82,7 @@ void ReflectionProbeModule::begin_sync()
   update_probes_this_sample_ = false;
   if (update_probes_next_sample_) {
     update_probes_this_sample_ = true;
+    instance_.sampling.reset();
   }
 }
 
@@ -125,7 +126,6 @@ void ReflectionProbeModule::sync_world_lookdev()
 
   if (!update_probes_this_sample_) {
     update_probes_next_sample_ = true;
-    instance_.sampling.reset();
   }
 }
 
@@ -317,19 +317,25 @@ void ReflectionProbeModule::end_sync()
 {
   remove_unused_probes();
 
-  if (update_probes_next_sample_ && !update_probes_this_sample_) {
-    instance_.sampling.reset();
+  const bool world_updated = do_world_update_get();
+  const int number_layers_needed = needed_layers_get();
+  const int current_layers = probes_tx_.depth();
+  const bool resize_layers = current_layers < number_layers_needed;
+
+  const bool rerender_all_probes = resize_layers || world_updated;
+  if (rerender_all_probes) {
+    for (ReflectionProbe &probe : probes_.values()) {
+      probe.do_render = true;
+    }
   }
 
-  const bool world_updated = do_world_update_get();
   const bool do_update = instance_.do_probe_sync() || (has_only_world_probe() && world_updated);
   if (!do_update) {
+    if (update_probes_next_sample_ && !update_probes_this_sample_) {
+      DRW_viewport_request_redraw();
+    }
     return;
   }
-
-  int number_layers_needed = needed_layers_get();
-  int current_layers = probes_tx_.depth();
-  bool resize_layers = current_layers < number_layers_needed;
 
   if (resize_layers) {
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
@@ -340,13 +346,6 @@ void ReflectionProbeModule::end_sync()
                                9999);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
     probes_tx_.clear(float4(0.0f));
-  }
-
-  bool rerender_all_probes = resize_layers || world_updated;
-  if (rerender_all_probes) {
-    for (ReflectionProbe &probe : probes_.values()) {
-      probe.do_render = true;
-    }
   }
 
   recalc_lod_factors();
