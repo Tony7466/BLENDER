@@ -1896,11 +1896,37 @@ class LazyFunctionForIndexInput : public lf::LazyFunction {
     outputs_.resize(amount, lf::Output("Index", type));
   }
 
-  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
     for (const int i : IndexRange(amount_)) {
       params.set_output(i, ValueOrField<int>(i));
     }
+  }
+};
+
+class LazyFunctionForReduce : public lf::LazyFunction {
+ private:
+  const int amount_;
+
+ public:
+  LazyFunctionForReduce(const int amount) : amount_(amount)
+  {
+    debug_name_ = "Reduce";
+    const CPPType &geo_cpp_type = CPPType::get<GeometrySet>();
+    for ([[maybe_unused]] const int i : IndexRange(amount)) {
+      inputs_.append_as("Geometry", geo_cpp_type);
+    }
+    outputs_.append_as("Geometry", geo_cpp_type);
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    Vector<GeometrySet> geometries(amount_);
+    for (const int i : IndexRange(amount_)) {
+      geometries[i] = params.extract_input<GeometrySet>(i);
+    }
+    GeometrySet joined_geometries = geometry::join_geometries(geometries, {});
+    params.set_output(0, std::move(joined_geometries));
   }
 };
 
@@ -1910,6 +1936,7 @@ struct ForEachEvalStorage {
   std::optional<lf::GraphExecutor> graph_executor;
   std::optional<LazyFunctionForIndexInput> index_input_fn;
   std::optional<LazyFunctionForLogicalOr> or_fn;
+  std::optional<LazyFunctionForReduce> reduce_fn;
 };
 
 class LazyFunctionForForeachZone : public LazyFunction {
@@ -1994,12 +2021,19 @@ class LazyFunctionForForeachZone : public LazyFunction {
     eval_storage.or_fn.emplace(amount);
     lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_fn);
 
+    eval_storage.reduce_fn.emplace(amount);
+    lf::FunctionNode &lf_reduce_node = lf_graph.add_function(*eval_storage.reduce_fn);
+
     for (const int i : IndexRange(amount)) {
       lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
       lf_graph.add_link(lf_index_input_node.output(i), lf_body_node.input(0));
       lf_graph.add_link(*lf_graph_inputs[1], lf_body_node.input(1));
       lf_graph.add_link(lf_body_node.output(0), lf_or_node.input(i));
+      lf_graph.add_link(lf_body_node.output(1), lf_reduce_node.input(i));
     }
+
+    lf_graph.add_link(lf_reduce_node.output(0), *lf_graph_outputs[0]);
+    lf_graph.add_link(lf_or_node.output(0), *lf_graph_outputs[1]);
 
     std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
