@@ -363,7 +363,7 @@ void WM_init(bContext *C, int argc, const char **argv)
     blender::ui::string_search::read_recent_searches_file();
   }
 
-  STRNCPY(G.lib, BKE_main_blendfile_path_from_global());
+  STRNCPY(G.filepath_last_library, BKE_main_blendfile_path_from_global());
 
   CTX_py_init_set(C, true);
   WM_keyconfig_init(C);
@@ -433,8 +433,12 @@ void WM_init_splash(bContext *C)
 /** Load add-ons & app-templates once on startup. */
 static void wm_init_scripts_extensions_once(bContext *C)
 {
+#ifdef WITH_PYTHON
   const char *imports[] = {"bpy", nullptr};
   BPY_run_string_eval(C, imports, "bpy.utils.load_scripts_extensions()");
+#else
+  UNUSED_VARS(C);
+#endif
 }
 
 /* free strings of open recent files */

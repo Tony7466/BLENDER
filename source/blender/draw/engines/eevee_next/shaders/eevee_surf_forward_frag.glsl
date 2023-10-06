@@ -9,6 +9,7 @@
  */
 
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
@@ -45,6 +46,12 @@ vec4 closure_to_rgba(Closure cl)
 
   float thickness = 0.01; /* TODO(fclem) thickness. */
   light_eval(stack, g_data.P, g_data.Ng, V, vPz, thickness);
+
+  vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
+  LightProbeSample samp = lightprobe_load(g_data.P, g_data.Ng, V);
+
+  diffuse_light += lightprobe_eval(samp, g_diffuse_data, V, noise_probe);
+  reflection_light += lightprobe_eval(samp, g_reflection_data, V, noise_probe);
 
   vec4 out_color;
   out_color.rgb = g_emission;
@@ -99,6 +106,12 @@ void main()
   vec3 diffuse_light = stack.cl[0].light_shadowed;
   vec3 reflection_light = stack.cl[1].light_shadowed;
   vec3 refraction_light = vec3(0.0);
+
+  vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
+  LightProbeSample samp = lightprobe_load(g_data.P, g_data.Ng, V);
+
+  diffuse_light += lightprobe_eval(samp, g_diffuse_data, V, noise_probe);
+  reflection_light += lightprobe_eval(samp, g_reflection_data, V, noise_probe);
 
   g_diffuse_data.color *= g_diffuse_data.weight;
   g_reflection_data.color *= g_reflection_data.weight;
