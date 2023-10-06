@@ -3431,8 +3431,6 @@ static void tablet_tool_handle_proximity_in(void *data,
 
   GHOST_WindowWayland *win = ghost_wl_surface_user_data(seat->tablet.wl.surface_window);
 
-  win->activate();
-
   seat->system->cursor_shape_set(win->getCursorShape());
 }
 static void tablet_tool_handle_proximity_out(void *data,
@@ -6339,9 +6337,7 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gp
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
 
-#ifdef WITH_VULKAN_BACKEND
   const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
-#endif
 
   switch (gpuSettings.context_type) {
 
@@ -6356,6 +6352,7 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gp
                                                    nullptr,
                                                    wl_surface,
                                                    display_->wl.display,
+                                                   nullptr,
                                                    1,
                                                    2,
                                                    debug_context);
@@ -6381,16 +6378,18 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gp
 
       for (int minor = 6; minor >= 3; --minor) {
         /* Caller must lock `system->server_mutex`. */
-        GHOST_Context *context = new GHOST_ContextEGL(this,
-                                                      false,
-                                                      EGLNativeWindowType(egl_window),
-                                                      EGLNativeDisplayType(display_->wl.display),
-                                                      EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                                                      4,
-                                                      minor,
-                                                      GHOST_OPENGL_EGL_CONTEXT_FLAGS,
-                                                      GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
-                                                      EGL_OPENGL_API);
+        GHOST_Context *context = new GHOST_ContextEGL(
+            this,
+            false,
+            EGLNativeWindowType(egl_window),
+            EGLNativeDisplayType(display_->wl.display),
+            EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+            4,
+            minor,
+            GHOST_OPENGL_EGL_CONTEXT_FLAGS |
+                (debug_context ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
+            GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
+            EGL_OPENGL_API);
 
         if (context->initializeDrawingContext()) {
           wl_surface_set_user_data(wl_surface, egl_window);
@@ -6422,17 +6421,38 @@ GHOST_TSuccess GHOST_SystemWayland::disposeContext(GHOST_IContext *context)
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
+
+  GHOST_TDrawingContextType type = GHOST_kDrawingContextTypeNone;
+#ifdef WITH_OPENGL_BACKEND
+  if (dynamic_cast<GHOST_ContextEGL *>(context)) {
+    type = GHOST_kDrawingContextTypeOpenGL;
+  }
+#endif /* WITH_OPENGL_BACKEND */
+#ifdef WITH_VULKAN_BACKEND
+  if (dynamic_cast<GHOST_ContextVK *>(context)) {
+    type = GHOST_kDrawingContextTypeVulkan;
+  }
+#endif /* WITH_VULKAN_BACKEND */
+
   wl_surface *wl_surface = static_cast<struct wl_surface *>(
       (static_cast<GHOST_Context *>(context))->getUserData());
+
   /* Delete the context before the window so the context is able to release
    * native resources (such as the #EGLSurface) before WAYLAND frees them. */
   delete context;
 
-  wl_egl_window *egl_window = static_cast<wl_egl_window *>(wl_surface_get_user_data(wl_surface));
-  if (egl_window != nullptr) {
-    wl_egl_window_destroy(egl_window);
+#ifdef WITH_OPENGL_BACKEND
+  if (type == GHOST_kDrawingContextTypeOpenGL) {
+    wl_egl_window *egl_window = static_cast<wl_egl_window *>(wl_surface_get_user_data(wl_surface));
+    if (egl_window != nullptr) {
+      wl_egl_window_destroy(egl_window);
+    }
   }
+#endif /* WITH_OPENGL_BACKEND */
+
   wl_surface_destroy(wl_surface);
+
+  (void)type; /* Maybe unused. */
 
   return GHOST_kSuccess;
 }
@@ -6461,7 +6481,8 @@ GHOST_IWindow *GHOST_SystemWayland::createWindow(const char *title,
       gpuSettings.context_type,
       is_dialog,
       ((gpuSettings.flags & GHOST_gpuStereoVisual) != 0),
-      exclusive);
+      exclusive,
+      (gpuSettings.flags & GHOST_gpuDebugContext) != 0);
 
   if (window) {
     if (window->getValid()) {
