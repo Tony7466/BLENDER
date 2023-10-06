@@ -10780,8 +10780,10 @@ static int ui_handle_menu_event(bContext *C,
         }
         case EVT_SPACEKEY: {
           /* Press spacebar to start menu search. */
-          if (!ui_menu_pass_event_to_parent_if_nonactive(menu, but, level, is_parent_menu, retval))
-          {
+          if ((level != 0) && (but == nullptr || !menu->menu_idname[0])) {
+            menu->menuretval = UI_RETURN_OUT | UI_RETURN_OUT_PARENT;
+          }
+          else {
             retval = ui_handle_menu_letter_press(menu);
           }
         }
