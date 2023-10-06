@@ -1,3 +1,4 @@
 Referenced by commit 7fe1f1411636dabb1065a6d85f29159b2325ac04, BLI_linklist_stack: restore type safety without needing explicit casts
 Referenced by pull request #110420, I18n: restore unit messages after c++ migration broke extraction
 Referenced by commit 39a94e370cd168bc0e14adb4854a3cd0afbc5f7b, I18n: restore unit messages after c++ migration broke extraction
+Referenced by commit 2b77cd726db4305ed12e1567c06ff7d77b72cf2d, Cleanup: wrap definitions across multiple lines, add struct identifiers
