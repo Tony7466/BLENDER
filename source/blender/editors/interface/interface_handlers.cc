@@ -10781,6 +10781,7 @@ static int ui_handle_menu_event(bContext *C,
         case EVT_SPACEKEY: {
           /* Press spacebar to start menu search. */
           if ((level != 0) && (but == nullptr || !menu->menu_idname[0])) {
+            /* Search parent if the child is open but not activated or not searchable. */
             menu->menuretval = UI_RETURN_OUT | UI_RETURN_OUT_PARENT;
           }
           else {
