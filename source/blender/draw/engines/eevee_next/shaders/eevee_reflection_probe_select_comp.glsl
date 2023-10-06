@@ -16,7 +16,13 @@ void main()
     return;
   }
 
-  SphericalHarmonicL1 sh = lightprobe_irradiance_sample(reflection_probe_buf[idx].pos.xyz);
+  SphericalHarmonicL1 sh;
+  if (idx == 0) {
+    sh = lightprobe_irradiance_world();
+  }
+  else {
+    sh = lightprobe_irradiance_sample(reflection_probe_buf[idx].pos.xyz);
+  }
 
-  reflection_probe_buf[idx].irradiance = reflection_probes_spherical_harmonic_encode(sh);
+  reflection_probe_buf[idx].low_freq_light = reflection_probes_extract_low_freq(sh);
 }

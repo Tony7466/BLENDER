@@ -23,23 +23,28 @@ vec3 reflection_probes_world_sample(vec3 L, float lod)
 }
 #endif
 
-float3x4 reflection_probes_spherical_harmonic_encode(SphericalHarmonicL1 sh)
+ReflectionProbeLowFreqLight reflection_probes_extract_low_freq(SphericalHarmonicL1 sh)
 {
-  /* To avoid color shift, only store the sum of coeficient.
-   * Do not use average to avoid another division in the evaluation shader. */
-  float3x4 sh_encoded;
-  sh_encoded[0] = vec4(sh.L0.M0.rgb, sh.L1.Mp1.r);
-  sh_encoded[1] = vec4(sh.L1.Mn1.rgb, sh.L1.Mp1.g);
-  sh_encoded[2] = vec4(sh.L1.M0.rgb, sh.L1.Mp1.b);
-  return sh_encoded;
+  /* To avoid color shift and negative values, we reduce saturation and directionnality. */
+  ReflectionProbeLowFreqLight result;
+  result.ambient = sh.L0.M0.r + sh.L0.M0.g + sh.L0.M0.b;
+
+  mat3x4 L1_per_band;
+  L1_per_band[0] = sh.L1.Mn1;
+  L1_per_band[1] = sh.L1.M0;
+  L1_per_band[2] = sh.L1.Mp1;
+
+  mat4x3 L1_per_comp = transpose(L1_per_band);
+  result.direction = L1_per_comp[0] + L1_per_comp[1] + L1_per_comp[2];
+
+  return result;
 }
 
-SphericalHarmonicL1 reflection_probes_spherical_harmonic_decode(float3x4 sh)
+vec3 reflection_probes_normalization_eval(vec3 L,
+                                          ReflectionProbeLowFreqLight numerator,
+                                          ReflectionProbeLowFreqLight denominator)
 {
-  SphericalHarmonicL1 sh_decoded;
-  sh_decoded.L0.M0 = vec4(sh[0].xyz, 0.0);
-  sh_decoded.L1.Mn1 = vec4(sh[1].xyz, 0.0);
-  sh_decoded.L1.M0 = vec4(sh[2].xyz, 0.0);
-  sh_decoded.L1.Mp1 = vec4(sh[0].w, sh[1].w, sh[2].w, 0.0);
-  return sh_decoded;
+  /* TODO(fclem): Adjusting directionnality is tricky.
+   * Needs to be revisited later on. For now only use the ambient term. */
+  return vec3(numerator.ambient * safe_rcp(denominator.ambient));
 }

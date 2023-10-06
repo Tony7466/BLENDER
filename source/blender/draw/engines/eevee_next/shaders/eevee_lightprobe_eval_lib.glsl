@@ -106,6 +106,21 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   return 0.5 + cell_start + trilinear_coord;
 }
 
+SphericalHarmonicL1 lightprobe_irradiance_sample_atlas(sampler3D atlas_tx, vec3 atlas_coord)
+{
+  vec4 texture_coord = vec4(atlas_coord, float(IRRADIANCE_GRID_BRICK_SIZE)) /
+                       vec3(textureSize(atlas_tx, 0)).xyzz;
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.Mn1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.Mp1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  return sh;
+}
+
 SphericalHarmonicL1 lightprobe_irradiance_sample(
     sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
 {
@@ -155,25 +170,22 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
 
   vec3 atlas_coord = vec3(vec2(brick.atlas_coord), 0.0) + brick_lP;
 
-  vec4 texture_coord = vec4(atlas_coord, float(IRRADIANCE_GRID_BRICK_SIZE)) /
-                       vec3(textureSize(atlas_tx, 0)).xyzz;
-  SphericalHarmonicL1 sh;
-  sh.L0.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.Mn1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.Mp1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  return sh;
+  return lightprobe_irradiance_sample_atlas(atlas_tx, atlas_coord);
 }
 
-/**
- * Shorter version without bias.
- */
+SphericalHarmonicL1 lightprobe_irradiance_world()
+{
+  return lightprobe_irradiance_sample_atlas(irradiance_atlas_tx, vec3(0.0));
+}
+
 SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P)
 {
   return lightprobe_irradiance_sample(irradiance_atlas_tx, P, vec3(0), vec3(0), false);
+}
+
+SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P, vec3 V, vec3 Ng)
+{
+  return lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
 }
 
 void lightprobe_eval(ClosureDiffuse diffuse,
@@ -186,8 +198,7 @@ void lightprobe_eval(ClosureDiffuse diffuse,
 {
   /* NOTE: Use the diffuse normal for biasing the probe sampling location since it is smoother than
    * geometric normal. Could also try to use `interp.N`. */
-  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
-      irradiance_atlas_tx, P, V, diffuse.N, true);
+  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(P, V, diffuse.N);
 
   out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
 }
@@ -206,7 +217,7 @@ struct LightProbeSample {
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
   LightProbeSample result;
-  result.volume_irradiance = lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
+  result.volume_irradiance = lightprobe_irradiance_sample(P, V, Ng);
   result.spherical_id = reflection_probes_find_closest(P);
   return result;
 }
@@ -218,16 +229,12 @@ LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 vec3 lightprobe_spherical_sample_normalized(int probe_index,
                                             vec3 L,
                                             float lod,
-                                            SphericalHarmonicL1 shading_sh)
+                                            SphericalHarmonicL1 P_sh)
 {
   ReflectionProbeData probe = reflection_probe_buf[probe_index];
-  SphericalHarmonicL1 probe_sh = reflection_probes_spherical_harmonic_decode(probe.irradiance);
-
-  vec3 normalization_factor = spherical_harmonics_evaluate(-L, shading_sh).rgb *
-                              safe_rcp(spherical_harmonics_evaluate(-L, probe_sh).rgb);
-
-  // float normalization_factor = shading_sh.L0.M0.r * safe_rcp(probe_shL0.M0.r);
-
+  ReflectionProbeLowFreqLight shading_sh = reflection_probes_extract_low_freq(P_sh);
+  vec3 normalization_factor = reflection_probes_normalization_eval(
+      L, shading_sh, probe.low_freq_light);
   return normalization_factor * reflection_probes_sample(L, lod, probe).rgb;
 }
 

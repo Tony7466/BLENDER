@@ -1276,6 +1276,12 @@ static inline float3 burley_eval(float3 d, float r)
 /** \name Reflection Probes
  * \{ */
 
+struct ReflectionProbeLowFreqLight {
+  packed_float3 direction;
+  float ambient;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeLowFreqLight, 16)
+
 /** Mapping data to locate a reflection probe in texture. */
 struct ReflectionProbeData {
   /**
@@ -1311,7 +1317,7 @@ struct ReflectionProbeData {
    * Irradiance at the probe location encoded as spherical harmonics.
    * Only contain the average luminance. Used for cubemap normalization.
    */
-  float3x4 irradiance;
+  ReflectionProbeLowFreqLight low_freq_light;
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
