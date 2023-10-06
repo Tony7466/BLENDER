@@ -1212,14 +1212,24 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
     return;
   }
 
+  char blender_folder[MAX_PATH]{0};
+  strncpy(blender_folder, blender_path, strlen(blender_path) - strlen(blender_app));
+
   /* Set the launcher as the shell command so the console window will not flash.
    * when people pin blender to the taskbar. */
   strcpy(blender_app, "blender-launcher.exe");
   wsprintfW(shell_command, L"\"%S\"", blender_path);
-  UTF16_ENCODE(BLENDER_WIN_APPID);
+
+  size_t blender_folder_hash = std::hash<std::string>{}(blender_folder);
+
+  /* Generate a unique #PKEY_AppUserModel_ID for each Blender instalation. */
+  char unique_blender_win_appid[256];
+  sprintf(unique_blender_win_appid, "%zd.%s", blender_folder_hash, BLENDER_WIN_APPID);
+
+  UTF16_ENCODE(unique_blender_win_appid);
   UTF16_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
   PROPVARIANT propvar;
-  hr = InitPropVariantFromString(BLENDER_WIN_APPID_16, &propvar);
+  hr = InitPropVariantFromString(unique_blender_win_appid_16, &propvar);
   hr = pstore->SetValue(PKEY_AppUserModel_ID, propvar);
   hr = InitPropVariantFromString(shell_command, &propvar);
   hr = pstore->SetValue(PKEY_AppUserModel_RelaunchCommand, propvar);
@@ -1227,7 +1237,7 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
   hr = pstore->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, propvar);
   pstore->Release();
   UTF16_UN_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
-  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
+  UTF16_UN_ENCODE(unique_blender_win_appid);
 }
 
 /* as per MSDN: Any property not cleared before closing the window, will be leaked and NOT be
