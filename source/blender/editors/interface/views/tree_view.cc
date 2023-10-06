@@ -290,7 +290,26 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
   return DropLocation::Into;
 }
 
-void TreeViewItemDropTarget::on_drag_over(const ARegion &region, const wmEvent &event) const {}
+void TreeViewItemDropTarget::on_drag_over(const ARegion & /*region*/, const DragInfo &drag) const
+{
+  uiButViewItem *item_but = view_item_.view_item_button();
+  if (!item_but) {
+    BLI_assert_unreachable();
+    return;
+  }
+
+  switch (drag.drop_location) {
+    case DropLocation::Before:
+      item_but->drop_hint = uiButViewItem::DROP_HINT_LINE_TOP;
+      break;
+    case DropLocation::After:
+      item_but->drop_hint = uiButViewItem::DROP_HINT_LINE_BOTTOM;
+      break;
+    case DropLocation::Into:
+      item_but->drop_hint = uiButViewItem::DROP_HINT_BACKGROUND;
+      break;
+  }
+}
 
 /* ---------------------------------------------------------------------- */
 

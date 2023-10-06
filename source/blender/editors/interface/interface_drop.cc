@@ -23,7 +23,7 @@ std::optional<DropLocation> DropTargetInterface::choose_drop_location(
   return DropLocation::Into;
 }
 
-void DropTargetInterface::on_drag_over(const ARegion & /*region*/, const wmEvent & /*event*/) const
+void DropTargetInterface::on_drag_over(const ARegion & /*region*/, const DragInfo & /*drag*/) const
 {
 }
 
@@ -82,7 +82,15 @@ void drop_target_on_drag_over(const ARegion &region,
   if (!drop_target.can_drop(drag, &disabled_hint_dummy)) {
     return;
   }
-  drop_target.on_drag_over(region, event);
+
+  const std::optional<DropLocation> drop_location = drop_target.choose_drop_location(region,
+                                                                                     event);
+  if (!drop_location) {
+    return;
+  }
+
+  const DragInfo drag_info{drag, event, *drop_location};
+  drop_target.on_drag_over(region, drag_info);
 }
 
 }  // namespace blender::ui

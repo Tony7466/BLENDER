@@ -332,7 +332,7 @@ class TreeViewItemDropTarget : public DropTargetInterface {
 
   std::optional<DropLocation> choose_drop_location(const ARegion &region,
                                                    const wmEvent &event) const override;
-  void on_drag_over(const ARegion &region, const wmEvent &event) const override;
+  void on_drag_over(const ARegion &region, const DragInfo &drag) const override;
 
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */

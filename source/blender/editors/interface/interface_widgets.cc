@@ -4180,32 +4180,19 @@ static void widget_menu_radial_itembut(uiBut *but,
   widgetbase_draw(&wtb, wcol);
 }
 
-static void widget_list_itembut(uiBut *but,
-                                uiWidgetColors *wcol,
+static void widget_list_itembut(uiWidgetColors *wcol,
                                 rcti *rect,
                                 const uiWidgetStateInfo *state,
                                 int /*roundboxalign*/,
                                 const float zoom)
 {
-  rcti draw_rect = *rect;
-
-  if (but->type == UI_BTYPE_VIEW_ITEM) {
-    uiButViewItem *item_but = static_cast<uiButViewItem *>(but);
-    if (item_but->draw_width > 0) {
-      BLI_rcti_resize_x(&draw_rect, item_but->draw_width);
-    }
-    if (item_but->draw_height > 0) {
-      BLI_rcti_resize_y(&draw_rect, item_but->draw_height);
-    }
-  }
-
   uiWidgetBase wtb;
   widget_init(&wtb);
 
   /* no outline */
   wtb.draw_outline = false;
   const float rad = widget_radius_from_zoom(zoom, wcol);
-  round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
+  round_box_edges(&wtb, UI_CNR_ALL, rect, rad);
 
   if (state->but_flag & UI_ACTIVE && !(state->but_flag & UI_SELECT)) {
     copy_v3_v3_uchar(wcol->inner, wcol->text);
@@ -4213,6 +4200,79 @@ static void widget_list_itembut(uiBut *but,
   }
 
   widgetbase_draw(&wtb, wcol);
+}
+
+static void view_item_drop_hint_draw(const uiButViewItem::DropDrawHint drop_hint, const rcti &rect)
+{
+  if (drop_hint == uiButViewItem::DROP_HINT_NONE) {
+    return;
+  }
+
+  /* Using immediate mode drawing isn't great. But this is only done while dragging so it's not a
+   * big deal. */
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  UI_widgetbase_draw_cache_flush();
+
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+  immUniformColor4fv(blender::float4{0, 0, 0, 0.40f});
+
+  switch (drop_hint) {
+    case uiButViewItem::DROP_HINT_BACKGROUND:
+      immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
+      break;
+
+      /* Top and bottom lines are moved towards each other, so that dragging over the top of one
+       * item to the bottom of another will keep the line exactly in the same position. */
+    case uiButViewItem::DROP_HINT_LINE_TOP:
+      immRectf(pos, rect.xmin, rect.ymax, rect.xmax, rect.ymax + 2 * U.pixelsize);
+      break;
+    case uiButViewItem::DROP_HINT_LINE_BOTTOM:
+      immRectf(pos, rect.xmin, rect.ymin - 2 * U.pixelsize, rect.xmax, rect.ymin);
+      break;
+    case uiButViewItem::DROP_HINT_NONE:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  immUnbindProgram();
+
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+/**
+ * Wrapper with view-item specific stuff for #widget_list_itembut(). They are supposed to behave
+ * the same, in a sense, view-item buttons are a new version of list-item buttons.
+ */
+static void widget_view_item(uiBut *but,
+                             uiWidgetColors *wcol,
+                             rcti *rect,
+                             const uiWidgetStateInfo *state,
+                             int roundboxalign,
+                             const float zoom)
+{
+  BLI_assert(but->type == UI_BTYPE_VIEW_ITEM);
+  const uiButViewItem *item_but = static_cast<uiButViewItem *>(but);
+
+  uiWidgetStateInfo overridden_state = *state;
+  rcti draw_rect = *rect;
+
+  if (item_but->draw_width > 0) {
+    BLI_rcti_resize_x(&draw_rect, item_but->draw_width);
+  }
+  if (item_but->draw_height > 0) {
+    BLI_rcti_resize_y(&draw_rect, item_but->draw_height);
+  }
+
+  if (item_but->drop_hint != uiButViewItem::DROP_HINT_NONE) {
+    /* Skip hover background drawing while dragging over this item. */
+    overridden_state.but_flag &= ~UI_ACTIVE;
+  }
+
+  widget_list_itembut(wcol, &draw_rect, &overridden_state, roundboxalign, zoom);
+  view_item_drop_hint_draw(item_but->drop_hint, draw_rect);
 }
 
 static void widget_preview_tile(uiBut *but,
@@ -4223,7 +4283,7 @@ static void widget_preview_tile(uiBut *but,
                                 const float zoom)
 {
   if (!ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS)) {
-    widget_list_itembut(but, wcol, rect, state, roundboxalign, zoom);
+    widget_list_itembut(wcol, rect, state, roundboxalign, zoom);
   }
 
   /* When the button is not tagged as having a preview icon, do regular icon drawing with the
@@ -4679,9 +4739,12 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       break;
 
     case UI_WTYPE_LISTITEM:
+      wt.wcol_theme = &btheme->tui.wcol_list_item;
+      wt.draw = widget_list_itembut;
+      break;
     case UI_WTYPE_VIEW_ITEM:
       wt.wcol_theme = &btheme->tui.wcol_list_item;
-      wt.custom = widget_list_itembut;
+      wt.custom = widget_view_item;
       break;
 
     case UI_WTYPE_PROGRESS:

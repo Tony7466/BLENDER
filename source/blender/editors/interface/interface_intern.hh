@@ -375,6 +375,14 @@ struct uiButViewItem : public uiBut {
    * (e.g. so highlights are drawn smaller). */
   int draw_width = 0;
   int draw_height = 0;
+
+  enum DropDrawHint {
+    DROP_HINT_NONE = 0,
+    DROP_HINT_BACKGROUND,
+    DROP_HINT_LINE_TOP,
+    DROP_HINT_LINE_BOTTOM,
+  };
+  DropDrawHint drop_hint = DROP_HINT_NONE;
 };
 
 /** Derived struct for #UI_BTYPE_HSVCUBE. */

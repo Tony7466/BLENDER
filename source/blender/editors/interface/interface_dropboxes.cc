@@ -11,6 +11,8 @@
 #include "BLI_string.h"
 #include "BLT_translation.h"
 
+#include "ED_screen.hh"
+
 #include "DNA_material_types.h"
 #include "DNA_space_types.h"
 
@@ -66,6 +68,7 @@ static void ui_view_drop_on_drag_over(const bContext *C,
                                                                                       event->xy);
   if (drop_target) {
     drop_target_on_drag_over(*region, *drop_target, *drag, *event);
+    ED_region_tag_redraw(const_cast<ARegion *>(region));
   }
 }
 

@@ -9810,8 +9810,16 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
 }
 
 /* Handle mouse hover for Views and UiList rows. */
-static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *region)
+static int ui_handle_viewlist_items_hover(const wmWindowManager *wm,
+                                          const wmEvent *event,
+                                          const ARegion *region)
 {
+  /* Don't show any view item mouse hover highlights while dragging over the view. Feedback for
+   * that is handled by drag & drop just fine. */
+  if (wm->drags.first) {
+    return WM_UI_HANDLER_CONTINUE;
+  }
+
   bool has_item = false;
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
@@ -11446,7 +11454,7 @@ static int ui_handle_menus_recursive(bContext *C,
   }
 
   if (!menu->retvalue) {
-    ui_handle_viewlist_items_hover(event, menu->region);
+    ui_handle_viewlist_items_hover(CTX_wm_manager(C), event, menu->region);
   }
 
   if (do_towards_reinit) {
@@ -11515,7 +11523,7 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
 
   /* Always do this, to reliably update view and UI-list item highlighting, even if
    * the mouse hovers a button nested in the item (it's an overlapping layout). */
-  ui_handle_viewlist_items_hover(event, region);
+  ui_handle_viewlist_items_hover(CTX_wm_manager(C), event, region);
   if (retval == WM_UI_HANDLER_CONTINUE) {
     retval = ui_handle_view_item_event(C, event, but, region);
   }

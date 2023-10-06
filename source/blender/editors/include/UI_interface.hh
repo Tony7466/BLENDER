@@ -162,7 +162,7 @@ class DropTargetInterface {
 
   /** Called while dragging over this drop-target. This is part of event handling, so don't use it
    * for drawing (drawing context might not be available). */
-  virtual void on_drag_over(const ARegion &region, const wmEvent &event) const;
+  virtual void on_drag_over(const ARegion &region, const DragInfo &drag) const;
 
   /**
    * Execute the logic to apply a drop of the data dragged with \a drag onto/into the UI element

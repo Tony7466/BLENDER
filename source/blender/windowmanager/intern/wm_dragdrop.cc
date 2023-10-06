@@ -459,7 +459,7 @@ static void wm_drop_update_active(bContext *C, wmDrag *drag, const wmEvent *even
     drag->drop_state.region_from = drop ? CTX_wm_region(C) : nullptr;
   }
 
-  if (drop && drop->on_drag_over) {
+  if (drop && drop->on_drag_over && (event->type == MOUSEMOVE)) {
     drop->on_drag_over(C, drop, drag, event);
   }
 
