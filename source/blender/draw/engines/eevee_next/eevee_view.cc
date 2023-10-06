@@ -217,8 +217,6 @@ void CaptureView::render_world()
     return;
   }
 
-  GPU_debug_capture_begin();
-
   View view = {"Capture.View"};
   GPU_debug_group_begin("World.Capture");
 
@@ -249,7 +247,6 @@ void CaptureView::render_world()
   }
 
   GPU_debug_group_end();
-  GPU_debug_capture_end();
 }
 
 void CaptureView::render_probes()
@@ -260,7 +257,6 @@ void CaptureView::render_probes()
   while (const std::optional<ReflectionProbeUpdateInfo> update_info =
              inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::Probe))
   {
-    GPU_debug_capture_begin();
     GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;
 
@@ -294,12 +290,10 @@ void CaptureView::render_probes()
     inst_.render_buffers.release();
     GPU_debug_group_end();
     inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
-    GPU_debug_capture_end();
   }
 
   if (do_update_mipmap_chain) {
     /* TODO: only update the regions that have been updated. */
-    /* TODO: Composite world into the probes. */
     inst_.reflection_probes.update_probes_texture_mipmaps();
   }
 }

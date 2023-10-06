@@ -410,6 +410,10 @@ bool ReflectionProbeModule::remove_unused_probes()
     data_buf_[highest_index] = init_probe_data;
   }
 
+  if (probes_removed) {
+    instance_.sampling.reset();
+  }
+
   return probes_removed;
 }
 
