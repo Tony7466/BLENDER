@@ -1885,6 +1885,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 };
 
+struct ForEachEvalStorage {
+  LinearAllocator<> allocator;
+  lf::Graph graph;
+  std::optional<lf::GraphExecutor> graph_executor;
+};
+
 class LazyFunctionForForeachZone : public LazyFunction {
  private:
   const bNodeTreeZone &zone_;
@@ -1903,15 +1909,52 @@ class LazyFunctionForForeachZone : public LazyFunction {
     inputs_[zone_info.indices.inputs.main[0]].usage = lf::ValueUsage::Used;
   }
 
+  void *init_storage(LinearAllocator<> &allocator) const override
+  {
+    return allocator.construct<ForEachEvalStorage>().release();
+  }
+  void destruct_storage(void *storage) const override
+  {
+    ForEachEvalStorage *s = static_cast<ForEachEvalStorage *>(storage);
+    std::destroy_at(s);
+  }
+
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    // auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+
+    const auto &node_storage = *static_cast<const NodeGeometryForEachOutput *>(
+        zone_.output_node->storage);
+    ForEachEvalStorage &eval_storage = *static_cast<ForEachEvalStorage *>(context.storage);
+
+    if (!eval_storage.graph_executor) {
+      this->initialize_execution_graph(
+          params, eval_storage, node_storage, user_data, local_user_data);
+    }
+
+    params.set_default_remaining_outputs();
+  }
+
+  void initialize_execution_graph(lf::Params &params,
+                                  ForEachEvalStorage &eval_storage,
+                                  const NodeGeometryForEachOutput &node_storage,
+                                  GeoNodesLFUserData &user_data,
+                                  GeoNodesLFLocalUserData &local_user_data) const
+  {
+    UNUSED_VARS(params, eval_storage, node_storage, user_data, local_user_data);
 
     const int amount = params.get_input<ValueOrField<int>>(0).as_value();
     std::cout << amount << "\n";
 
-    params.set_default_remaining_outputs();
+    lf::Graph &lf_graph = eval_storage.graph;
+
+    for ([[maybe_unused]] const int i : IndexRange(amount)) {
+      lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
+      UNUSED_VARS(lf_node);
+    }
+
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   std::string input_name(const int i) const override
