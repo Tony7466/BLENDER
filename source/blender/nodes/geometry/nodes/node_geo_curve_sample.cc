@@ -406,6 +406,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       }
     }
     else {
+      Vector<int> valid_indices;
       Vector<int> invalid_indices;
       VectorSet<int> used_curves;
       devirtualize_varray(curve_indices, [&](const auto curve_indices) {
@@ -413,6 +414,7 @@ class SampleCurveFunction : public mf::MultiFunction {
           const int curve_i = curve_indices[i];
           if (curves.curves_range().contains(curve_i)) {
             used_curves.add(curve_i);
+            valid_indices.append(i);
           }
           else {
             invalid_indices.append(i);
@@ -421,9 +423,13 @@ class SampleCurveFunction : public mf::MultiFunction {
       });
 
       IndexMaskMemory memory;
+      const IndexMask valid_indices_mask = valid_indices.size() == mask.size() ?
+                                               mask :
+                                               IndexMask::from_indices(valid_indices.as_span(),
+                                                                       memory);
       Array<IndexMask> mask_by_curve(used_curves.size());
       IndexMask::from_groups<int>(
-          mask,
+          valid_indices_mask,
           memory,
           [&](const int i) { return used_curves.index_of(curve_indices[i]); },
           mask_by_curve);
@@ -486,27 +492,27 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 {
   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
     case CD_PROP_FLOAT: {
-      params.set_output("Value_Float", Field<float>(field));
+      params.set_output("Value_Float", field);
       break;
     }
     case CD_PROP_FLOAT3: {
-      params.set_output("Value_Vector", Field<float3>(field));
+      params.set_output("Value_Vector", field);
       break;
     }
     case CD_PROP_COLOR: {
-      params.set_output("Value_Color", Field<ColorGeometry4f>(field));
+      params.set_output("Value_Color", field);
       break;
     }
     case CD_PROP_BOOL: {
-      params.set_output("Value_Bool", Field<bool>(field));
+      params.set_output("Value_Bool", field);
       break;
     }
     case CD_PROP_INT32: {
-      params.set_output("Value_Int", Field<int>(field));
+      params.set_output("Value_Int", field);
       break;
     }
     case CD_PROP_QUATERNION: {
-      params.set_output("Value_Rotation", Field<math::Quaternion>(field));
+      params.set_output("Value_Rotation", field);
       break;
     }
     default:

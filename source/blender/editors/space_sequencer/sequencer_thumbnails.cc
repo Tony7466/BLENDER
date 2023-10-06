@@ -31,7 +31,7 @@
 #include "MEM_guardedalloc.h"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct ThumbnailDrawJob {
   SeqRenderData context;
@@ -304,7 +304,7 @@ static void sequencer_thumbnail_start_job_if_necessary(
   if (v2d->cur.xmax != sseq->runtime.last_thumbnail_area.xmax ||
       v2d->cur.ymax != sseq->runtime.last_thumbnail_area.ymax)
   {
-    WM_jobs_stop(CTX_wm_manager(C), nullptr, reinterpret_cast<void *>(thumbnail_start_job));
+    WM_jobs_stop(CTX_wm_manager(C), nullptr, thumbnail_start_job);
   }
 
   sequencer_thumbnail_init_job(C, v2d, ed, thumb_height);
@@ -435,6 +435,14 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               float pixelx,
                               float pixely)
 {
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  if ((sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
+      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_THUMBNAILS) == 0 ||
+      !ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE))
+  {
+    return;
+  }
+
   bool clipped = false;
   float image_height, image_width, thumb_width;
   rcti crop;

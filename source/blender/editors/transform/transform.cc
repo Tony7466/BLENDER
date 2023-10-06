@@ -601,6 +601,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
     case TFM_MODAL_PLANE_X:
     case TFM_MODAL_PLANE_Y:
     case TFM_MODAL_PLANE_Z:
+    case TFM_MODAL_AUTOCONSTRAINT:
     case TFM_MODAL_AUTOCONSTRAINTPLANE: {
       if (t->flag & T_NO_CONSTRAINT) {
         return false;
@@ -1717,7 +1718,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
           short *snap_flag_ptr;
 
           wmMsgParams_RNA msg_key_params = {{nullptr}};
-          RNA_pointer_create(&t->scene->id, &RNA_ToolSettings, ts, &msg_key_params.ptr);
+          msg_key_params.ptr = RNA_pointer_create(&t->scene->id, &RNA_ToolSettings, ts);
 
           if (t->spacetype == SPACE_NODE) {
             snap_flag_ptr = &ts->snap_flag_node;
@@ -2032,7 +2033,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   initSnapSpatial(t, t->snap_spatial, &t->snap_spatial_precision);
 
-  /* EVIL! posemode code can switch translation to rotate when 1 bone is selected.
+  /* EVIL! pose-mode code can switch translation to rotate when 1 bone is selected.
    * will be removed (ton) */
 
   /* EVIL2: we gave as argument also texture space context bit... was cleared */

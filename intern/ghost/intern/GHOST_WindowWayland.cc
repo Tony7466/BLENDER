@@ -24,10 +24,12 @@
 
 #include <wayland-client-protocol.h>
 
-#ifdef WITH_GHOST_WAYLAND_DYNLOAD
-#  include <wayland_dynload_egl.h>
+#ifdef WITH_OPENGL_BACKEND
+#  ifdef WITH_GHOST_WAYLAND_DYNLOAD
+#    include <wayland_dynload_egl.h>
+#  endif
+#  include <wayland-egl.h>
 #endif
-#include <wayland-egl.h>
 
 #include <algorithm> /* For `std::find`. */
 
@@ -62,7 +64,9 @@ static constexpr size_t base_dpi = 96;
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
 struct WGL_LibDecor_Window {
   libdecor_frame *frame = nullptr;
-  bool configured = false;
+
+  /** The window has been configured (see #xdg_surface_ack_configure). */
+  bool initial_configure_seen = false;
 };
 
 static void gwl_libdecor_window_destroy(WGL_LibDecor_Window *decor)
@@ -88,6 +92,9 @@ struct WGL_XDG_Decor_Window {
     /** The serial to pass to ACK configure. */
     uint32_t ack_configure_serial = 0;
   } pending;
+
+  /** The window has been configured (see #xdg_surface_ack_configure). */
+  bool initial_configure_seen = false;
 };
 
 static void gwl_xdg_decor_window_destroy(WGL_XDG_Decor_Window *decor)
@@ -216,8 +223,6 @@ struct GWL_Window {
   /** Wayland core types. */
   struct {
     wl_surface *surface = nullptr;
-
-    wl_egl_window *egl_window = nullptr;
   } wl;
 
   /** Wayland native types. */
@@ -237,8 +242,19 @@ struct GWL_Window {
     xdg_activation_token_v1 *activation_token = nullptr;
   } xdg;
 
+  struct {
+#ifdef WITH_OPENGL_BACKEND
+    wl_egl_window *egl_window = nullptr;
+#endif
+#ifdef WITH_VULKAN_BACKEND
+    GHOST_ContextVK_WindowInfo *vulkan_window_info = nullptr;
+#endif
+  } backend;
+
   GHOST_WindowWayland *ghost_window = nullptr;
   GHOST_SystemWayland *ghost_system = nullptr;
+  GHOST_TDrawingContextType ghost_context_type = GHOST_kDrawingContextTypeNone;
+
   /**
    * Outputs on which the window is currently shown on.
    *
@@ -282,6 +298,21 @@ struct GWL_Window {
   std::atomic<bool> pending_actions[PENDING_NUM];
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 };
+
+static void gwl_window_resize_for_backend(GWL_Window *win, const int32_t size[2])
+{
+#ifdef WITH_OPENGL_BACKEND
+  if (win->ghost_context_type == GHOST_kDrawingContextTypeOpenGL) {
+    wl_egl_window_resize(win->backend.egl_window, UNPACK2(size), 0, 0);
+  }
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (win->ghost_context_type == GHOST_kDrawingContextTypeVulkan) {
+    win->backend.vulkan_window_info->size[0] = size[0];
+    win->backend.vulkan_window_info->size[1] = size[1];
+  }
+#endif
+}
 
 static void gwl_window_title_set(GWL_Window *win, const char *title)
 {
@@ -425,7 +456,7 @@ static bool gwl_window_state_set(GWL_Window *win, const GHOST_TWindowState state
  */
 static int gwl_window_fractional_to_viewport(const GWL_WindowFrame &frame, int value)
 {
-  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initiazlized!");
+  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initialized!");
   return (value * frame.fractional_scale) / FRACTIONAL_DENOMINATOR;
 }
 
@@ -435,7 +466,7 @@ static int gwl_window_fractional_to_viewport(const GWL_WindowFrame &frame, int v
  */
 static int gwl_window_fractional_from_viewport(const GWL_WindowFrame &frame, int value)
 {
-  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initiazlized!");
+  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initialized!");
   return (value * FRACTIONAL_DENOMINATOR) / frame.fractional_scale;
 }
 
@@ -445,13 +476,13 @@ static int gwl_window_fractional_from_viewport(const GWL_WindowFrame &frame, int
 
 static int gwl_window_fractional_to_viewport_round(const GWL_WindowFrame &frame, int value)
 {
-  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initiazlized!");
+  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initialized!");
   return lroundf(double(value * frame.fractional_scale) / double(FRACTIONAL_DENOMINATOR));
 }
 
 static int gwl_window_fractional_from_viewport_round(const GWL_WindowFrame &frame, int value)
 {
-  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initiazlized!");
+  GHOST_ASSERT(frame.fractional_scale != 0, "Not fractional or called before initialized!");
   return lroundf(double(value * FRACTIONAL_DENOMINATOR) / double(frame.fractional_scale));
 }
 
@@ -643,7 +674,7 @@ static void gwl_window_frame_pending_fractional_scale_set(GWL_Window *win,
 
 static void gwl_window_frame_pending_size_set(GWL_Window *win,
                                               bool *r_surface_needs_commit,
-                                              bool *r_surface_needs_egl_resize,
+                                              bool *r_surface_needs_resize_for_backend,
                                               bool *r_surface_needs_buffer_scale)
 {
   if (win->frame_pending.size[0] == 0 || win->frame_pending.size[1] == 0) {
@@ -663,11 +694,11 @@ static void gwl_window_frame_pending_size_set(GWL_Window *win,
     gwl_window_viewport_size_update(win);
   }
 
-  if (r_surface_needs_egl_resize) {
-    *r_surface_needs_egl_resize = true;
+  if (r_surface_needs_resize_for_backend) {
+    *r_surface_needs_resize_for_backend = true;
   }
   else {
-    wl_egl_window_resize(win->wl.egl_window, UNPACK2(win->frame.size), 0, 0);
+    gwl_window_resize_for_backend(win, win->frame.size);
   }
 
   win->ghost_window->notify_size();
@@ -736,15 +767,17 @@ static void gwl_window_frame_update_from_pending_no_lock(GWL_Window *win)
 
   const bool dpi_changed = win->frame_pending.fractional_scale != win->frame.fractional_scale;
   bool surface_needs_commit = false;
-  bool surface_needs_egl_resize = false;
+  bool surface_needs_resize_for_backend = false;
   bool surface_needs_buffer_scale = false;
 
   if (win->frame_pending.size[0] != 0 && win->frame_pending.size[1] != 0) {
     if ((win->frame.size[0] != win->frame_pending.size[0]) ||
         (win->frame.size[1] != win->frame_pending.size[1]))
     {
-      gwl_window_frame_pending_size_set(
-          win, &surface_needs_commit, &surface_needs_egl_resize, &surface_needs_buffer_scale);
+      gwl_window_frame_pending_size_set(win,
+                                        &surface_needs_commit,
+                                        &surface_needs_resize_for_backend,
+                                        &surface_needs_buffer_scale);
     }
   }
 
@@ -759,8 +792,8 @@ static void gwl_window_frame_update_from_pending_no_lock(GWL_Window *win)
     }
   }
 
-  if (surface_needs_egl_resize) {
-    wl_egl_window_resize(win->wl.egl_window, UNPACK2(win->frame.size), 0, 0);
+  if (surface_needs_resize_for_backend) {
+    gwl_window_resize_for_backend(win, win->frame.size);
   }
 
   if (surface_needs_buffer_scale) {
@@ -776,6 +809,8 @@ static void gwl_window_frame_update_from_pending_no_lock(GWL_Window *win)
 
       decor.pending.ack_configure = false;
       decor.pending.ack_configure_serial = 0;
+
+      decor.initial_configure_seen = true;
     }
   }
 
@@ -794,11 +829,19 @@ static void gwl_window_frame_update_from_pending_no_lock(GWL_Window *win)
         system->getMilliSeconds(), GHOST_kEventWindowDPIHintChanged, win->ghost_window));
   }
 
-  if (win->frame_pending.is_active) {
-    win->ghost_window->activate();
+  if (win->frame.is_active != win->frame_pending.is_active) {
+    if (win->frame_pending.is_active) {
+      win->ghost_window->activate();
+    }
+    else {
+      win->ghost_window->deactivate();
+    }
   }
   else {
-    win->ghost_window->deactivate();
+    GHOST_ASSERT(
+        win->frame.is_active ==
+            (win->ghost_system->getWindowManager()->getActiveWindow() == win->ghost_window),
+        "GHOST internal active state does not match WAYLAND!");
   }
 
   win->frame_pending.size[0] = win->frame.size[0];
@@ -932,13 +975,15 @@ static void xdg_toplevel_handle_configure(void *data,
   std::lock_guard lock_frame_guard{win->frame_pending_mutex};
 #endif
 
-  if (win->frame.fractional_scale) {
-    win->frame_pending.size[0] = gwl_window_fractional_to_viewport_round(win->frame, width);
-    win->frame_pending.size[1] = gwl_window_fractional_to_viewport_round(win->frame, height);
-  }
-  else {
-    win->frame_pending.size[0] = width * win->frame.buffer_scale;
-    win->frame_pending.size[1] = height * win->frame.buffer_scale;
+  const int32_t size[2] = {width, height};
+  for (int i = 0; i < 2; i++) {
+    if (size[i] == 0) {
+      /* Values may be zero, in this case the client should choose. */
+      continue;
+    }
+    win->frame_pending.size[i] = win->frame.fractional_scale ?
+                                     gwl_window_fractional_to_viewport_round(win->frame, size[i]) :
+                                     (size[i] * win->frame.buffer_scale);
   }
 
   win->frame_pending.is_maximised = false;
@@ -1059,14 +1104,19 @@ static const wp_fractional_scale_v1_listener wp_fractional_scale_listener = {
 static CLG_LogRef LOG_WL_LIBDECOR_FRAME = {"ghost.wl.handle.libdecor_frame"};
 #  define LOG (&LOG_WL_LIBDECOR_FRAME)
 
-static void frame_handle_configure(libdecor_frame *frame,
-                                   libdecor_configuration *configuration,
-                                   void *data)
+static void libdecor_frame_handle_configure(libdecor_frame *frame,
+                                            libdecor_configuration *configuration,
+                                            void *data)
 {
   CLOG_INFO(LOG, 2, "configure");
 
 #  ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_frame_guard{static_cast<GWL_Window *>(data)->frame_pending_mutex};
+  const bool is_main_thread = [data] {
+    GWL_Window *win = static_cast<GWL_Window *>(data);
+    const GHOST_SystemWayland *system = win->ghost_system;
+    return system->main_thread_id == std::this_thread::get_id();
+  }();
 #  endif
 
   GWL_WindowFrame *frame_pending = &static_cast<GWL_Window *>(data)->frame_pending;
@@ -1092,36 +1142,33 @@ static void frame_handle_configure(libdecor_frame *frame,
       frame_pending->size[0] = size_next[0] * scale;
       frame_pending->size[1] = size_next[1] * scale;
     }
+
+#  ifdef USE_EVENT_BACKGROUND_THREAD
+    /* NOTE(@ideasman42): when running from the event handling thread,
+     * don't apply the new window size back to LIBDECOR, otherwise the window content
+     * (which uses a deferred update) and the window get noticeably out of sync.
+     * Rely on the new `frame_pending->size` to resize the window later. */
+    if (is_main_thread == false) {
+      size_next[0] = win->frame.size[0] / scale;
+      size_next[1] = win->frame.size[1] / scale;
+    }
+#  endif
   }
 
   /* Set the state. */
   {
     enum libdecor_window_state window_state;
-    if (!libdecor_configuration_get_window_state(configuration, &window_state)) {
-      window_state = LIBDECOR_WINDOW_STATE_NONE;
+    if (libdecor_configuration_get_window_state(configuration, &window_state)) {
+      frame_pending->is_maximised = window_state & LIBDECOR_WINDOW_STATE_MAXIMIZED;
+      frame_pending->is_fullscreen = window_state & LIBDECOR_WINDOW_STATE_FULLSCREEN;
+      frame_pending->is_active = window_state & LIBDECOR_WINDOW_STATE_ACTIVE;
     }
-
-    frame_pending->is_maximised = window_state & LIBDECOR_WINDOW_STATE_MAXIMIZED;
-    frame_pending->is_fullscreen = window_state & LIBDECOR_WINDOW_STATE_FULLSCREEN;
-    frame_pending->is_active = window_state & LIBDECOR_WINDOW_STATE_ACTIVE;
-  }
-
-  /* Commit the changes. */
-  {
-    GWL_Window *win = static_cast<GWL_Window *>(data);
-    libdecor_state *state = libdecor_state_new(UNPACK2(size_next));
-    libdecor_frame_commit(frame, state, configuration);
-    libdecor_state_free(state);
-
-    win->libdecor->configured = true;
   }
 
   /* Apply the changes. */
   {
     GWL_Window *win = static_cast<GWL_Window *>(data);
 #  ifdef USE_EVENT_BACKGROUND_THREAD
-    GHOST_SystemWayland *system = win->ghost_system;
-    const bool is_main_thread = system->main_thread_id == std::this_thread::get_id();
     if (!is_main_thread) {
       gwl_window_pending_actions_tag(win, PENDING_WINDOW_FRAME_CONFIGURE);
     }
@@ -1131,9 +1178,19 @@ static void frame_handle_configure(libdecor_frame *frame,
       gwl_window_frame_update_from_pending_no_lock(win);
     }
   }
+
+  /* Commit the changes. */
+  {
+    GWL_Window *win = static_cast<GWL_Window *>(data);
+    WGL_LibDecor_Window &decor = *win->libdecor;
+    libdecor_state *state = libdecor_state_new(UNPACK2(size_next));
+    libdecor_frame_commit(frame, state, configuration);
+    libdecor_state_free(state);
+    decor.initial_configure_seen = true;
+  }
 }
 
-static void frame_handle_close(libdecor_frame * /*frame*/, void *data)
+static void libdecor_frame_handle_close(libdecor_frame * /*frame*/, void *data)
 {
   CLOG_INFO(LOG, 2, "close");
 
@@ -1142,7 +1199,7 @@ static void frame_handle_close(libdecor_frame * /*frame*/, void *data)
   win->ghost_window->close();
 }
 
-static void frame_handle_commit(libdecor_frame * /*frame*/, void *data)
+static void libdecor_frame_handle_commit(libdecor_frame * /*frame*/, void *data)
 {
   CLOG_INFO(LOG, 2, "commit");
 
@@ -1156,9 +1213,9 @@ static void frame_handle_commit(libdecor_frame * /*frame*/, void *data)
 
 /* NOTE: cannot be `const` because of the LIBDECOR API. */
 static libdecor_frame_interface libdecor_frame_iface = {
-    frame_handle_configure,
-    frame_handle_close,
-    frame_handle_commit,
+    libdecor_frame_handle_configure,
+    libdecor_frame_handle_close,
+    libdecor_frame_handle_commit,
 };
 
 #  undef LOG
@@ -1218,7 +1275,7 @@ static void xdg_surface_handle_configure(void *data,
   win->xdg_decor->pending.ack_configure_serial = serial;
 
 #ifdef USE_EVENT_BACKGROUND_THREAD
-  GHOST_SystemWayland *system = win->ghost_system;
+  const GHOST_SystemWayland *system = win->ghost_system;
   const bool is_main_thread = system->main_thread_id == std::this_thread::get_id();
   if (!is_main_thread) {
     /* NOTE(@ideasman42): this only gets one redraw,
@@ -1308,10 +1365,12 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
                                          const GHOST_TDrawingContextType type,
                                          const bool is_dialog,
                                          const bool stereoVisual,
-                                         const bool exclusive)
+                                         const bool exclusive,
+                                         const bool is_debug)
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       system_(system),
-      window_(new GWL_Window)
+      window_(new GWL_Window),
+      is_debug_context_(is_debug)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*system->server_mutex};
@@ -1319,6 +1378,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   window_->ghost_window = this;
   window_->ghost_system = system;
+  window_->ghost_context_type = type;
 
   /* NOTE(@ideasman42): The scale set here to avoid flickering on startup.
    * When all monitors use the same scale (which is quite common) there aren't any problems.
@@ -1358,8 +1418,19 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   wl_surface_add_listener(window_->wl.surface, &wl_surface_listener, window_);
 
-  window_->wl.egl_window = wl_egl_window_create(
-      window_->wl.surface, int(window_->frame.size[0]), int(window_->frame.size[1]));
+#ifdef WITH_OPENGL_BACKEND
+  if (type == GHOST_kDrawingContextTypeOpenGL) {
+    window_->backend.egl_window = wl_egl_window_create(
+        window_->wl.surface, int(window_->frame.size[0]), int(window_->frame.size[1]));
+  }
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (type == GHOST_kDrawingContextTypeVulkan) {
+    window_->backend.vulkan_window_info = new GHOST_ContextVK_WindowInfo;
+    window_->backend.vulkan_window_info->size[0] = window_->frame.size[0];
+    window_->backend.vulkan_window_info->size[1] = window_->frame.size[1];
+  }
+#endif
 
   wp_fractional_scale_manager_v1 *fractional_scale_manager =
       system->wp_fractional_scale_manager_get();
@@ -1409,15 +1480,6 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     xdg_toplevel_set_min_size(decor.toplevel, UNPACK2(size_min));
     xdg_toplevel_set_app_id(decor.toplevel, xdg_app_id);
 
-    if (system_->xdg_decor_manager_get()) {
-      decor.toplevel_decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
-          system_->xdg_decor_manager_get(), decor.toplevel);
-      zxdg_toplevel_decoration_v1_add_listener(
-          decor.toplevel_decor, &xdg_toplevel_decoration_v1_listener, window_);
-      zxdg_toplevel_decoration_v1_set_mode(decor.toplevel_decor,
-                                           ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    }
-
     xdg_surface_add_listener(decor.surface, &xdg_surface_listener, window_);
     xdg_toplevel_add_listener(decor.toplevel, &xdg_toplevel_listener, window_);
 
@@ -1434,11 +1496,13 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   /* Call top-level callbacks. */
   wl_surface_commit(window_->wl.surface);
-  wl_display_roundtrip(system_->wl_display_get());
 
 #ifdef GHOST_OPENGL_ALPHA
   setOpaque();
 #endif
+
+  /* NOTE: the method used for XDG & LIBDECOR initialization (using `initial_configure_seen`)
+   * follows the method used in SDL 3.16. */
 
   /* Causes a glitch with `libdecor` for some reason. */
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
@@ -1449,18 +1513,39 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     /* NOTE: LIBDECOR requires the window to be created & configured before the state can be set.
      * Workaround this by using the underlying `xdg_toplevel` */
     WGL_LibDecor_Window &decor = *window_->libdecor;
+    while (!decor.initial_configure_seen) {
+      wl_display_flush(system->wl_display_get());
+      wl_display_dispatch(system->wl_display_get());
+    }
+
     xdg_toplevel *toplevel = libdecor_frame_get_xdg_toplevel(decor.frame);
     gwl_window_state_set_for_xdg(toplevel, state, GHOST_kWindowStateNormal);
   }
   else
-#endif
+#endif /* WITH_GHOST_WAYLAND_LIBDECOR */
   {
+    /* Call top-level callbacks. */
+    WGL_XDG_Decor_Window &decor = *window_->xdg_decor;
+    while (!decor.initial_configure_seen) {
+      wl_display_flush(system->wl_display_get());
+      wl_display_dispatch(system->wl_display_get());
+    }
+
+    if (system_->xdg_decor_manager_get()) {
+      decor.toplevel_decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
+          system_->xdg_decor_manager_get(), decor.toplevel);
+      zxdg_toplevel_decoration_v1_add_listener(
+          decor.toplevel_decor, &xdg_toplevel_decoration_v1_listener, window_);
+      zxdg_toplevel_decoration_v1_set_mode(decor.toplevel_decor,
+                                           ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    }
+
     gwl_window_state_set(window_, state);
   }
 
-  /* EGL context. */
+  /* Drawing context. */
   if (setDrawingContextType(type) == GHOST_kFailure) {
-    GHOST_PRINT("Failed to create EGL context" << std::endl);
+    GHOST_PRINT("Failed to create drawing context" << std::endl);
   }
 
   /* Set swap interval to 0 to prevent blocking. */
@@ -1510,6 +1595,11 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCursorShape(GHOST_TStandardCursor s
 #endif
   const GHOST_TSuccess ok = system_->cursor_shape_set(shape);
   m_cursorShape = (ok == GHOST_kSuccess) ? shape : GHOST_kStandardCursorDefault;
+
+  if (ok == GHOST_kSuccess) {
+    /* For the cursor to display when the event queue isn't being handled. */
+    wl_display_flush(system_->wl_display_get());
+  }
   return ok;
 }
 
@@ -1527,7 +1617,14 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCustomCursorShape(
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*system_->server_mutex};
 #endif
-  return system_->cursor_shape_custom_set(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor);
+  const GHOST_TSuccess ok = system_->cursor_shape_custom_set(
+      bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor);
+
+  if (ok == GHOST_kSuccess) {
+    /* For the cursor to display when the event queue isn't being handled. */
+    wl_display_flush(system_->wl_display_get());
+  }
+  return ok;
 }
 
 GHOST_TSuccess GHOST_WindowWayland::getCursorBitmap(GHOST_CursorBitmapRef *bitmap)
@@ -1614,7 +1711,16 @@ GHOST_WindowWayland::~GHOST_WindowWayland()
 
   releaseNativeHandles();
 
-  wl_egl_window_destroy(window_->wl.egl_window);
+#ifdef WITH_OPENGL_BACKEND
+  if (window_->ghost_context_type == GHOST_kDrawingContextTypeOpenGL) {
+    wl_egl_window_destroy(window_->backend.egl_window);
+  }
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (window_->ghost_context_type == GHOST_kDrawingContextTypeVulkan) {
+    delete window_->backend.vulkan_window_info;
+  }
+#endif
 
   if (window_->xdg.activation_token) {
     xdg_activation_token_v1_destroy(window_->xdg.activation_token);
@@ -1672,7 +1778,12 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCursorVisibility(bool visible)
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*system_->server_mutex};
 #endif
-  return system_->cursor_visibility_set(visible);
+  const GHOST_TSuccess ok = system_->cursor_visibility_set(visible);
+  if (ok == GHOST_kSuccess) {
+    /* For the cursor to display when the event queue isn't being handled. */
+    wl_display_flush(system_->wl_display_get());
+  }
+  return ok;
 }
 
 GHOST_TSuccess GHOST_WindowWayland::setState(GHOST_TWindowState state)
@@ -1774,15 +1885,16 @@ GHOST_Context *GHOST_WindowWayland::newDrawingContext(GHOST_TDrawingContextType 
 
 #ifdef WITH_VULKAN_BACKEND
     case GHOST_kDrawingContextTypeVulkan: {
-      GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual,
-                                                   GHOST_kVulkanPlatformWayland,
-                                                   0,
-                                                   nullptr,
-                                                   window_->wl.surface,
-                                                   system_->wl_display_get(),
-                                                   1,
-                                                   2,
-                                                   true);
+      GHOST_ContextVK *context = new GHOST_ContextVK(m_wantStereoVisual,
+                                                     GHOST_kVulkanPlatformWayland,
+                                                     0,
+                                                     nullptr,
+                                                     window_->wl.surface,
+                                                     system_->wl_display_get(),
+                                                     window_->backend.vulkan_window_info,
+                                                     1,
+                                                     2,
+                                                     is_debug_context_);
       if (context->initializeDrawingContext()) {
         return context;
       }
@@ -1797,12 +1909,13 @@ GHOST_Context *GHOST_WindowWayland::newDrawingContext(GHOST_TDrawingContextType 
         GHOST_Context *context = new GHOST_ContextEGL(
             system_,
             m_wantStereoVisual,
-            EGLNativeWindowType(window_->wl.egl_window),
+            EGLNativeWindowType(window_->backend.egl_window),
             EGLNativeDisplayType(system_->wl_display_get()),
             EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
             4,
             minor,
-            GHOST_OPENGL_EGL_CONTEXT_FLAGS,
+            GHOST_OPENGL_EGL_CONTEXT_FLAGS |
+                (is_debug_context_ ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
             GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
             EGL_OPENGL_API);
 

@@ -20,7 +20,7 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "COM_context.hh"
 #include "COM_evaluator.hh"
@@ -231,8 +231,7 @@ class Context : public realtime_compositor::Context {
       if (view_layer) {
         RenderLayer *rl = RE_GetRenderLayer(rr, view_layer->name);
         if (rl) {
-          RenderPass *rpass = (RenderPass *)BLI_findstring(
-              &rl->passes, pass_name, offsetof(RenderPass, name));
+          RenderPass *rpass = RE_pass_find_by_name(rl, pass_name, get_view_name().data());
 
           if (rpass && rpass->ibuf && rpass->ibuf->float_buffer.data) {
             input_texture = RE_pass_ensure_gpu_texture_cache(re, rpass);
@@ -260,7 +259,7 @@ class Context : public realtime_compositor::Context {
     return input_data_.view_name;
   }
 
-  void set_info_message(StringRef /* message */) const override
+  void set_info_message(StringRef /*message*/) const override
   {
     /* TODO: ignored for now. Currently only used to communicate incomplete node support
      * which is already shown on the node itself.
@@ -269,7 +268,7 @@ class Context : public realtime_compositor::Context {
      * incomplete support, and leave more specific message to individual nodes? */
   }
 
-  IDRecalcFlag query_id_recalc_flag(ID * /* id */) const override
+  IDRecalcFlag query_id_recalc_flag(ID * /*id*/) const override
   {
     /* TODO: implement? */
     return IDRecalcFlag(0);

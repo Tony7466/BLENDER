@@ -1980,6 +1980,12 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
     return;
   }
 
+  /* If result would be no blurring, early out. */
+  halfWidth = ((quality + 1) * blur);
+  if (halfWidth == 0) {
+    return;
+  }
+
   /* Allocate memory for the temp-map and the blur filter matrix. */
   temp = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * width * height, "blurbitmaptemp"));
   if (!temp) {
@@ -1987,7 +1993,6 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
   }
 
   /* Allocate memory for the filter elements */
-  halfWidth = ((quality + 1) * blur);
   filter = (float *)MEM_mallocN(sizeof(float) * halfWidth * 2, "blurbitmapfilter");
   if (!filter) {
     MEM_freeN(temp);
@@ -2104,7 +2109,8 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
 
   /* Swap buffers */
   swap = temp;
-  temp = map; /* map = swap; */ /* UNUSED */
+  temp = map;
+  // map = swap; /* UNUSED. */
 
   /* Tidy up. */
   MEM_freeN(filter);

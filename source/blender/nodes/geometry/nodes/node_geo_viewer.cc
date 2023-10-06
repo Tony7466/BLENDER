@@ -124,7 +124,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
       /* If the source node has a geometry socket, connect it to the new viewer node as well. */
       LISTBASE_FOREACH (bNodeSocket *, socket, &params.node.outputs) {
-        if (socket->type == SOCK_GEOMETRY && !(socket->flag & (SOCK_UNAVAIL | SOCK_HIDDEN))) {
+        if (socket->type == SOCK_GEOMETRY && socket->is_visible()) {
           nodeAddLink(&params.node_tree,
                       &params.node,
                       socket,
@@ -142,7 +142,8 @@ static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
                     "data_type",
-                    "Data Type", "",
+                    "Data Type",
+                    "",
                     rna_enum_attribute_type_items,
                     NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT,
@@ -150,7 +151,8 @@ static void node_rna(StructRNA *srna)
 
   RNA_def_node_enum(srna,
                     "domain",
-                    "Domain", "Domain to evaluate the field on",
+                    "Domain",
+                    "Domain to evaluate the field on",
                     rna_enum_attribute_domain_with_auto_items,
                     NOD_storage_enum_accessors(domain),
                     ATTR_DOMAIN_POINT);

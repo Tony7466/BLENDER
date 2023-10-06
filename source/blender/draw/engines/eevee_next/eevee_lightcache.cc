@@ -19,8 +19,8 @@
 
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "PIL_time.h"
 
@@ -297,7 +297,7 @@ wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
   }
 
   /* Stop existing baking job. */
-  WM_jobs_stop(wm, nullptr, (void *)EEVEE_NEXT_lightbake_job);
+  WM_jobs_stop(wm, nullptr, EEVEE_NEXT_lightbake_job);
 
   wmJob *wm_job = WM_jobs_get(wm,
                               win,

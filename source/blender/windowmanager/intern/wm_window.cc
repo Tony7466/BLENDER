@@ -8,10 +8,12 @@
  * Window management, wrap GHOST.
  */
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
@@ -28,13 +30,14 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.hh"
@@ -160,39 +163,42 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timers_process(const bContext *C, int *sleep_ms);
+static bool wm_window_timers_process(const bContext *C, int *sleep_us);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
-void wm_get_screensize(int *r_width, int *r_height)
+bool wm_get_screensize(int *r_width, int *r_height)
 {
-  uint uiwidth;
-  uint uiheight;
-
-  GHOST_GetMainDisplayDimensions(g_system, &uiwidth, &uiheight);
+  uint32_t uiwidth, uiheight;
+  if (GHOST_GetMainDisplayDimensions(g_system, &uiwidth, &uiheight) == GHOST_kFailure) {
+    return false;
+  }
   *r_width = uiwidth;
   *r_height = uiheight;
+  return true;
 }
 
-void wm_get_desktopsize(int *r_width, int *r_height)
+bool wm_get_desktopsize(int *r_width, int *r_height)
 {
-  uint uiwidth;
-  uint uiheight;
-
-  GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight);
+  uint32_t uiwidth, uiheight;
+  if (GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight) == GHOST_kFailure) {
+    return false;
+  }
   *r_width = uiwidth;
   *r_height = uiheight;
+  return true;
 }
 
 /* keeps size within monitor bounds */
 static void wm_window_check_size(rcti *rect)
 {
   int width, height;
-  wm_get_screensize(&width, &height);
-  if (BLI_rcti_size_x(rect) > width) {
-    BLI_rcti_resize_x(rect, width);
-  }
-  if (BLI_rcti_size_y(rect) > height) {
-    BLI_rcti_resize_y(rect, height);
+  if (wm_get_screensize(&width, &height)) {
+    if (BLI_rcti_size_x(rect) > width) {
+      BLI_rcti_resize_x(rect, width);
+    }
+    if (BLI_rcti_size_y(rect) > height) {
+      BLI_rcti_resize_y(rect, height);
+    }
   }
 }
 
@@ -479,26 +485,34 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
      * because #WM_window_open always sets window title. */
   }
   else if (win->ghostwin) {
-    /* this is set to 1 if you don't have startup.blend open */
-    const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] != '\0') {
-      char str[sizeof(Main::filepath) + 24];
-      SNPRINTF(str,
-               "Blender%s [%s%s]",
-               wm->file_saved ? "" : "*",
-               blendfile_path,
-               G_MAIN->recovered ? " (Recovered)" : "");
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
-    }
-    else {
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), "Blender");
+    GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
+
+    std::string filepath = BKE_main_blendfile_path_from_global();
+    std::string filename = BLI_path_basename(filepath.c_str());
+    bool has_filepath = !filepath.empty();
+    bool include_directory = has_filepath && (filepath != filename) &&
+                             GHOST_SetPath(handle, filepath.c_str()) == GHOST_kFailure;
+
+    std::string str;
+    str += wm->file_saved ? " " : "* ";
+    str += has_filepath ? filename : IFACE_("(Unsaved)");
+    if (G_MAIN->recovered) {
+      str += IFACE_(" (Recovered)");
     }
 
-    /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
-     * and to give hint of unsaved changes for a user warning mechanism in case of OS application
-     * terminate request (e.g. OS Shortcut Alt+F4, Command+Q, (...), or session end). */
-    GHOST_SetWindowModifiedState(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                                 bool(!wm->file_saved));
+    if (include_directory) {
+      str += " [" + filepath.substr(0, filepath.length() - filename.length()) + "]";
+    }
+
+    str += " - Blender ";
+    str += BKE_blender_version_string_compact();
+
+    GHOST_SetTitle(handle, str.c_str());
+
+    /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
+     * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
+     * terminate request (e.g., OS Shortcut Alt+F4, Command+Q, (...) or session end). */
+    GHOST_SetWindowModifiedState(handle, static_cast<bool>(!wm->file_saved));
   }
 }
 
@@ -649,7 +663,10 @@ static void wm_window_update_eventstate_modifiers_clear(wmWindowManager *wm, wmW
 static void wm_window_update_eventstate(wmWindow *win)
 {
   /* Update mouse position when a window is activated. */
-  wm_cursor_position_get(win, &win->eventstate->xy[0], &win->eventstate->xy[1]);
+  int xy[2];
+  if (wm_cursor_position_get(win, &xy[0], &xy[1])) {
+    copy_v2_v2_int(win->eventstate->xy, xy);
+  }
 }
 
 static void wm_window_ensure_eventstate(wmWindow *win)
@@ -681,9 +698,16 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
-  int scr_w, scr_h;
-  wm_get_desktopsize(&scr_w, &scr_h);
-  int posy = (scr_h - win->posy - win->sizey);
+  int posx = 0;
+  int posy = 0;
+
+  if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
+    int scr_w, scr_h;
+    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+      posx = win->posx;
+      posy = (scr_h - win->posy - win->sizey);
+    }
+  }
 
   /* Clear drawable so we can set the new window. */
   wmWindow *prev_windrawable = wm->windrawable;
@@ -693,7 +717,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       g_system,
       static_cast<GHOST_WindowHandle>((win->parent) ? win->parent->ghostwin : nullptr),
       title,
-      win->posx,
+      posx,
       posy,
       win->sizex,
       win->sizey,
@@ -796,18 +820,18 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
   }
 
   /* add keymap handlers (1 handler for all keys in map!) */
-  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Window", 0, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Screen", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->modalhandlers, keymap);
 
   /* Add drop boxes. */
   {
-    ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+    ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_event_add_dropbox_handler(&win->handlers, lb);
   }
   wm_window_title(wm, win);
@@ -825,7 +849,11 @@ void wm_window_ghostwindows_ensure(wmWindowManager *wm)
    * when there is no startup.blend yet.
    */
   if (wm_init_state.size_x == 0) {
-    wm_get_screensize(&wm_init_state.size_x, &wm_init_state.size_y);
+    if (UNLIKELY(!wm_get_screensize(&wm_init_state.size_x, &wm_init_state.size_y))) {
+      /* Use fallback values. */
+      wm_init_state.size_x = 0;
+      wm_init_state.size_y = 0;
+    }
 
     /* NOTE: this isn't quite correct, active screen maybe offset 1000s if PX,
      * we'd need a #wm_get_screensize like function that gives offset,
@@ -860,12 +888,19 @@ static bool wm_window_update_size_position(wmWindow *win)
 
   GHOST_DisposeRectangle(client_rect);
 
-  int scr_w, scr_h;
-  wm_get_desktopsize(&scr_w, &scr_h);
   int sizex = r - l;
   int sizey = b - t;
-  int posx = l;
-  int posy = scr_h - t - win->sizey;
+
+  int posx = 0;
+  int posy = 0;
+
+  if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
+    int scr_w, scr_h;
+    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+      posx = l;
+      posy = scr_h - t - win->sizey;
+    }
+  }
 
   if (win->sizex != sizex || win->sizey != sizey || win->posx != posx || win->posy != posy) {
     win->sizex = sizex;
@@ -1149,15 +1184,22 @@ void wm_cursor_position_to_ghost_screen_coords(wmWindow *win, int *x, int *y)
   GHOST_ClientToScreen(static_cast<GHOST_WindowHandle>(win->ghostwin), *x, *y, x, y);
 }
 
-void wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
+bool wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
 {
   if (UNLIKELY(G.f & G_FLAG_EVENT_SIMULATE)) {
     *r_x = win->eventstate->xy[0];
     *r_y = win->eventstate->xy[1];
-    return;
+    return true;
   }
-  GHOST_GetCursorPosition(g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y);
-  wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+
+  if (GHOST_GetCursorPosition(
+          g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y) == GHOST_kSuccess)
+  {
+    wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+    return true;
+  }
+
+  return false;
 }
 
 /** Check if specified modifier key type is pressed. */
@@ -1588,17 +1630,17 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
  * - Timer handlers should check for delta to decide if they just update, or follow real time.
  * - Timer handlers can also set duration to match frames passed.
  *
- * \param sleep_ms_p: The number of milliseconds to sleep which may be reduced by this function
+ * \param sleep_us_p: The number of microseconds to sleep which may be reduced by this function
  * to account for timers that would run during the anticipated sleep period.
  */
-static bool wm_window_timers_process(const bContext *C, int *sleep_ms_p)
+static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   const double time = PIL_check_seconds_timer();
   bool has_event = false;
 
-  const int sleep_ms = *sleep_ms_p;
+  const int sleep_us = *sleep_us_p;
   /* The nearest time an active timer is scheduled to run.  */
   double ntime_min = DBL_MAX;
 
@@ -1607,66 +1649,66 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_ms_p)
     if (wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
       continue;
     }
-    wmWindow *win = wt->win;
-
-    if (wt->sleep != 0) {
+    if (wt->sleep == true) {
       continue;
     }
 
-    if (time > wt->ntime) {
-      wt->delta = time - wt->ltime;
-      wt->duration += wt->delta;
-      wt->ltime = time;
-
-      wt->ntime = wt->stime;
-      if (wt->timestep != 0.0f) {
-        wt->ntime += wt->timestep * ceil(wt->duration / wt->timestep);
-      }
-
-      if (wt->event_type == TIMERJOBS) {
-        wm_jobs_timer(wm, wt);
-      }
-      else if (wt->event_type == TIMERAUTOSAVE) {
-        wm_autosave_timer(bmain, wm, wt);
-      }
-      else if (wt->event_type == TIMERNOTIFIER) {
-        WM_main_add_notifier(POINTER_AS_UINT(wt->customdata), nullptr);
-      }
-      else if (win) {
-        wmEvent event;
-        wm_event_init_from_window(win, &event);
-
-        event.type = wt->event_type;
-        event.val = KM_NOTHING;
-        event.keymodifier = 0;
-        event.flag = eWM_EventFlag(0);
-        event.custom = EVT_DATA_TIMER;
-        event.customdata = wt;
-        wm_event_add(win, &event);
-
-        has_event = true;
-      }
-    }
-    else {
-      if ((has_event == false) && (sleep_ms != 0)) {
+    /* Future timer, update nearest time & skip. */
+    if (wt->time_next >= time) {
+      if ((has_event == false) && (sleep_us != 0)) {
         /* The timer is not ready to run but may run shortly. */
-        if (wt->ntime < ntime_min) {
-          ntime_min = wt->ntime;
+        if (wt->time_next < ntime_min) {
+          ntime_min = wt->time_next;
         }
       }
+      continue;
+    }
+
+    wt->time_delta = time - wt->time_last;
+    wt->time_duration += wt->time_delta;
+    wt->time_last = time;
+
+    wt->time_next = wt->time_start;
+    if (wt->time_step != 0.0f) {
+      wt->time_next += wt->time_step * ceil(wt->time_duration / wt->time_step);
+    }
+
+    if (wt->event_type == TIMERJOBS) {
+      wm_jobs_timer(wm, wt);
+    }
+    else if (wt->event_type == TIMERAUTOSAVE) {
+      wm_autosave_timer(bmain, wm, wt);
+    }
+    else if (wt->event_type == TIMERNOTIFIER) {
+      WM_main_add_notifier(POINTER_AS_UINT(wt->customdata), nullptr);
+    }
+    else if (wmWindow *win = wt->win) {
+      wmEvent event;
+      wm_event_init_from_window(win, &event);
+
+      event.type = wt->event_type;
+      event.val = KM_NOTHING;
+      event.keymodifier = 0;
+      event.flag = eWM_EventFlag(0);
+      event.custom = EVT_DATA_TIMER;
+      event.customdata = wt;
+      wm_event_add(win, &event);
+
+      has_event = true;
     }
   }
 
-  if ((has_event == false) && (sleep_ms != 0) && (ntime_min != DBL_MAX)) {
+  if ((has_event == false) && (sleep_us != 0) && (ntime_min != DBL_MAX)) {
     /* Clamp the sleep time so next execution runs earlier (if necessary).
      * Use `ceil` so the timer is guarantee to be ready to run (not always the case with rounding).
      * Even though using `floor` or `round` is more responsive,
      * it causes CPU intensive loops that may run until the timer is reached, see: #111579. */
-    const double sleep_sec = (double(sleep_ms) / 1000.0);
+    const double microseconds = 1000000.0;
+    const double sleep_sec = (double(sleep_us) / microseconds);
     const double sleep_sec_next = ntime_min - time;
 
     if (sleep_sec_next < sleep_sec) {
-      *sleep_ms_p = int(std::ceil(sleep_sec_next * 1000.0f));
+      *sleep_us_p = int(std::ceil(sleep_sec_next * microseconds));
     }
   }
 
@@ -1688,8 +1730,9 @@ void wm_window_events_process(const bContext *C)
   }
 
   /* When there is no event, sleep 5 milliseconds not to use too much CPU when idle. */
-  int sleep_ms = has_event ? 0 : 5;
-  has_event |= wm_window_timers_process(C, &sleep_ms);
+  const int sleep_us_default = 5000;
+  int sleep_us = has_event ? 0 : sleep_us_default;
+  has_event |= wm_window_timers_process(C, &sleep_us);
 #ifdef WITH_XR_OPENXR
   /* XR events don't use the regular window queues. So here we don't only trigger
    * processing/dispatching but also handling. */
@@ -1699,8 +1742,22 @@ void wm_window_events_process(const bContext *C)
 
   /* Skip sleeping when simulating events so tests don't idle unnecessarily as simulated
    * events are typically generated from a timer that runs in the main loop. */
-  if ((has_event == false) && (sleep_ms != 0) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
-    PIL_sleep_ms(sleep_ms);
+  if ((has_event == false) && (sleep_us != 0) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
+    if (sleep_us == sleep_us_default) {
+      /* NOTE(@ideasman42): prefer #PIL_sleep_ms over `sleep_for(..)` in the common case
+       * because this function uses lower resolution (millisecond) resolution sleep timers
+       * which are tried & true for the idle loop. We could move to C++ `sleep_for(..)`
+       * if this works well on all platforms but this needs further testing. */
+      PIL_sleep_ms(sleep_us_default / 1000);
+    }
+    else {
+      /* The time was shortened to resume for the upcoming timer, use a high resolution sleep.
+       * Mainly happens during animation playback but could happen immediately before any timer.
+       *
+       * NOTE(@ideasman42): At time of writing Windows-10-22H2 doesn't give higher precision sleep.
+       * Keep the functionality as it doesn't have noticeable down sides either. */
+      std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
+    }
   }
 }
 
@@ -1932,27 +1989,28 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
 
 void WM_event_timer_sleep(wmWindowManager *wm, wmWindow * /*win*/, wmTimer *timer, bool do_sleep)
 {
-  LISTBASE_FOREACH (wmTimer *, wt, &wm->timers) {
-    if (wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
-      continue;
-    }
-    if (wt == timer) {
-      wt->sleep = do_sleep;
-      break;
-    }
+  /* Extra security check. */
+  if (BLI_findindex(&wm->timers, timer) == -1) {
+    return;
   }
+  /* It's disputable if this is needed, when tagged for removal,
+   * the sleep value won't be used anyway. */
+  if (timer->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
+    return;
+  }
+  timer->sleep = do_sleep;
 }
 
-wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
+wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double time_step)
 {
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
-  BLI_assert(timestep >= 0.0f);
+  BLI_assert(time_step >= 0.0f);
 
   wt->event_type = event_type;
-  wt->ltime = PIL_check_seconds_timer();
-  wt->ntime = wt->ltime + timestep;
-  wt->stime = wt->ltime;
-  wt->timestep = timestep;
+  wt->time_last = PIL_check_seconds_timer();
+  wt->time_next = wt->time_last + time_step;
+  wt->time_start = wt->time_last;
+  wt->time_step = time_step;
   wt->win = win;
 
   BLI_addtail(&wm->timers, wt);
@@ -1963,16 +2021,16 @@ wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, 
 wmTimer *WM_event_timer_add_notifier(wmWindowManager *wm,
                                      wmWindow *win,
                                      uint type,
-                                     double timestep)
+                                     double time_step)
 {
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
-  BLI_assert(timestep >= 0.0f);
+  BLI_assert(time_step >= 0.0f);
 
   wt->event_type = TIMERNOTIFIER;
-  wt->ltime = PIL_check_seconds_timer();
-  wt->ntime = wt->ltime + timestep;
-  wt->stime = wt->ltime;
-  wt->timestep = timestep;
+  wt->time_last = PIL_check_seconds_timer();
+  wt->time_next = wt->time_last + time_step;
+  wt->time_start = wt->time_last;
+  wt->time_step = time_step;
   wt->win = win;
   wt->customdata = POINTER_FROM_UINT(type);
   wt->flags |= WM_TIMER_NO_FREE_CUSTOM_DATA;

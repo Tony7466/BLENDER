@@ -37,7 +37,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_subdiv_modifier.hh"
 #include "BKE_viewer_path.h"
 #include "BKE_volume.h"
@@ -95,15 +95,15 @@
 #include "engines/gpencil/gpencil_engine.h"
 #include "engines/image/image_engine.h"
 #include "engines/overlay/overlay_engine.h"
-#include "engines/select/select_engine.h"
+#include "engines/select/select_engine.hh"
 #include "engines/workbench/workbench_engine.h"
 
 #include "GPU_context.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 /** Render State: No persistent data between draw calls. */
 DRWManager DST = {nullptr};
@@ -839,6 +839,7 @@ static bool id_type_can_have_drawdata(const short id_type)
     case ID_SCE:
     case ID_TE:
     case ID_MSK:
+    case ID_MC:
       return true;
 
     /* no DrawData */
@@ -1173,7 +1174,7 @@ static void drw_engines_enable_from_engine(const RenderEngineType *engine_type, 
   switch (drawtype) {
     case OB_WIRE:
     case OB_SOLID:
-      use_drw_engine(DRW_engine_viewport_workbench_next_type.draw_engine);
+      use_drw_engine(DRW_engine_viewport_workbench_type.draw_engine);
       break;
     case OB_MATERIAL:
     case OB_RENDER:
@@ -2759,7 +2760,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     /* Selection engine requires a viewport.
      * TODO(@germano): This should be done internally in the engine. */
     sel_ctx->is_dirty = true;
-    sel_ctx->objects_drawn_len = 0;
+    sel_ctx->objects_drawn.clear();
     sel_ctx->index_drawn_len = 1;
     return;
   }
@@ -2798,9 +2799,8 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   {
     drw_engines_cache_init();
 
-    Object **obj = &sel_ctx->objects[0];
-    for (uint remaining = sel_ctx->objects_len; remaining--; obj++) {
-      Object *obj_eval = DEG_get_evaluated_object(depsgraph, *obj);
+    for (Object *obj : sel_ctx->objects) {
+      Object *obj_eval = DEG_get_evaluated_object(depsgraph, obj);
       drw_engines_cache_populate(obj_eval);
     }
 
@@ -2913,8 +2913,8 @@ void DRW_draw_depth_object(
 
       GPU_batch_draw(batch);
       GPU_uniformbuf_free(ubo);
-
-    } break;
+      break;
+    }
     case OB_CURVES_LEGACY:
     case OB_SURF:
       break;
@@ -3042,15 +3042,39 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
 
 void DRW_engines_register_experimental()
 {
-  if (U.experimental.enable_eevee_next) {
-    RE_engines_register(&DRW_engine_viewport_eevee_next_type);
+  if (!U.experimental.enable_eevee_next) {
+    /** Since EEVEE Next is always registered in `DRW_engines_register`,
+     * Here we just have to unregister if it's not actually enabled. */
+    for (auto *type = static_cast<RenderEngineType *>(R_engines.first); type; type = type->next) {
+      if (type == &DRW_engine_viewport_eevee_next_type) {
+        BLI_remlink(&R_engines, type);
+        break;
+      }
+    }
+
+    for (auto *type = static_cast<DRWRegisteredDrawEngine *>(g_registered_engines.engines.first);
+         type != nullptr;
+         type = static_cast<DRWRegisteredDrawEngine *>(type->next))
+    {
+      if (type->draw_engine == DRW_engine_viewport_eevee_next_type.draw_engine) {
+        BLI_remlink(&g_registered_engines.engines, type);
+        type->draw_engine->engine_free();
+        g_registered_engines.len--;
+        MEM_freeN(type);
+        break;
+      }
+    }
   }
 }
 
 void DRW_engines_register()
 {
   RE_engines_register(&DRW_engine_viewport_eevee_type);
-  RE_engines_register(&DRW_engine_viewport_workbench_next_type);
+  /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
+   * (Needed for tests). */
+  RE_engines_register(&DRW_engine_viewport_eevee_next_type);
+
+  RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
   DRW_engine_register(&draw_engine_gpencil_next_type);
