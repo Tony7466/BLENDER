@@ -63,6 +63,7 @@ struct SplitGroups {
   std::optional<FieldEvaluator> field_evaluator;
 
   VectorSet<int> group_ids;
+
   IndexMaskMemory memory;
   Array<IndexMask> group_masks;
 };
@@ -106,7 +107,7 @@ struct SplitGroups {
 
   r_groups.group_masks.reinitialize(r_groups.group_ids.size());
   IndexMask::from_groups<int>(
-      IndexRange(domain_size),
+      selection,
       r_groups.memory,
       [&](const int i) { return r_groups.group_ids.index_of(group_ids[i]); },
       r_groups.group_masks);
@@ -142,6 +143,7 @@ static void split_mesh_groups(const MeshComponent &component,
       for (const int group_index : range) {
         const IndexMask &mask = split_groups.group_masks[group_index];
         index_mask::masked_fill(group_selection, true, mask);
+        const int group_id = split_groups.group_ids[group_index];
 
         /* Using #mesh_copy_selection here is not ideal, because it can lead to O(n^2) behavior
          * when there are many groups. */
@@ -184,15 +186,16 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
   }
   const PointCloud &src_pointcloud = *component.get();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
-    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
-      const Span<int> point_indices = split_groups.indices_by_group.lookup(group_id);
-      const int group_points_num = point_indices.size();
-      PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(group_points_num);
+    for (const int group_index : range) {
+      const IndexMask &mask = split_groups.group_masks[group_index];
+      const int group_id = split_groups.group_ids[group_index];
+
+      PointCloud *group_pointcloud = BKE_pointcloud_new_nomain(mask.size());
 
       const AttributeAccessor src_attributes = src_pointcloud.attributes();
       MutableAttributeAccessor dst_attributes = group_pointcloud->attributes_for_write();
       bke::gather_attributes(
-          src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, point_indices, dst_attributes);
+          src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, mask, dst_attributes);
 
       GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
       group_geometry.replace_pointcloud(group_pointcloud);
@@ -215,18 +218,16 @@ static void split_curve_groups(const bke::CurveComponent &component,
   }
   const bke::CurvesGeometry &src_curves = component.get()->geometry.wrap();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
-    IndexMaskMemory memory;
-    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
-      const Span<int> elements = split_groups.indices_by_group.lookup(group_id);
-      const IndexMask elements_mask = IndexMask::from_indices(elements, memory);
+    for (const int group_index : range) {
+      const IndexMask &mask = split_groups.group_masks[group_index];
+      const int group_id = split_groups.group_ids[group_index];
+
       std::optional<bke::CurvesGeometry> group_curves;
       if (domain == ATTR_DOMAIN_POINT) {
-        group_curves = bke::curves_copy_point_selection(
-            src_curves, elements_mask, propagation_info);
+        group_curves = bke::curves_copy_point_selection(src_curves, mask, propagation_info);
       }
       else {
-        group_curves = bke::curves_copy_curve_selection(
-            src_curves, elements_mask, propagation_info);
+        group_curves = bke::curves_copy_curve_selection(src_curves, mask, propagation_info);
       }
       Curves *group_curves_id = bke::curves_new_nomain(std::move(*group_curves));
       GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
@@ -253,26 +254,25 @@ static void split_instance_groups(const InstancesComponent &component,
   }
   const bke::Instances &src_instances = *component.get();
   threading::parallel_for(split_groups.group_ids.index_range(), 16, [&](const IndexRange range) {
-    for (const int group_id : split_groups.group_ids.as_span().slice(range)) {
-      const Span<int> instance_indices = split_groups.indices_by_group.lookup(group_id);
+    for (const int group_index : range) {
+      const IndexMask &mask = split_groups.group_masks[group_index];
+      const int group_id = split_groups.group_ids[group_index];
 
       bke::Instances *group_instances = new bke::Instances();
-      group_instances->resize(instance_indices.size());
+      group_instances->resize(mask.size());
 
       for (const bke::InstanceReference &reference : src_instances.references()) {
         group_instances->add_reference(reference);
       }
 
+      array_utils::gather(src_instances.transforms(), mask, group_instances->transforms());
       array_utils::gather(
-          src_instances.transforms(), instance_indices, group_instances->transforms());
-      array_utils::gather(src_instances.reference_handles(),
-                          instance_indices,
-                          group_instances->reference_handles());
+          src_instances.reference_handles(), mask, group_instances->reference_handles());
       bke::gather_attributes(src_instances.attributes(),
                              ATTR_DOMAIN_INSTANCE,
                              propagation_info,
                              {},
-                             instance_indices,
+                             mask,
                              group_instances->attributes_for_write());
       group_instances->remove_unused_references();
 
