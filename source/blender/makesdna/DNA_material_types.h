@@ -342,6 +342,7 @@ enum {
   MA_BL_SS_REFRACTION = (1 << 1),
   MA_BL_CULL_BACKFACE = (1 << 2),
   MA_BL_TRANSLUCENCY = (1 << 3),
+  MA_BL_DOUBLE_SIDED_GI = (1 << 4),
 };
 
 /** #Material::blend_shadow */

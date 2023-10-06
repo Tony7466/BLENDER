@@ -256,16 +256,20 @@ class EEVEE_NEXT_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
 
         mat = context.material
 
-        layout.prop(mat, "use_backface_culling")
+        col = layout.column(heading="Double Sided")
+        col.prop(mat, "use_backface_culling", text="Camera", invert_checkbox=True)
+        if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
+            col.prop(mat, "show_transparent_back", text="Transparency")
+        col.prop(mat, "double_sided_gi", text="GI")
+
+        layout.separator()
+
         layout.prop(mat, "blend_method")
         layout.prop(mat, "shadow_method")
 
         row = layout.row()
         row.active = ((mat.blend_method == 'CLIP') or (mat.shadow_method == 'CLIP'))
         row.prop(mat, "alpha_threshold")
-
-        if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
-            layout.prop(mat, "show_transparent_back")
 
         layout.prop(mat, "use_screen_refraction")
         layout.prop(mat, "pass_index")
