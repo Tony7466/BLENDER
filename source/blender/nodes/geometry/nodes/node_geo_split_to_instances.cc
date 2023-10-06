@@ -337,25 +337,19 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (dst_group_id_attribute_id) {
     dst_group_id = dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
         *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
+    std::copy(geometry_by_group_id.keys().begin(),
+              geometry_by_group_id.keys().end(),
+              dst_group_id.span.begin());
+    dst_group_id.finish();
   }
 
   dst_instances->transforms().fill(float4x4::identity());
   MutableSpan<int> dst_instance_handles = dst_instances->reference_handles();
   std::iota(dst_instance_handles.begin(), dst_instance_handles.end(), 0);
 
-  int index = 0;
   for (auto item : geometry_by_group_id.items()) {
-    const int group_id = item.key;
     std::unique_ptr<GeometrySet> &group_geometry = item.value;
     dst_instances->add_reference(std::move(group_geometry));
-    if (dst_group_id) {
-      dst_group_id.span[index] = group_id;
-    }
-    index++;
-  }
-
-  if (dst_group_id) {
-    dst_group_id.finish();
   }
 
   geometry::debug_randomize_instance_order(dst_instances);
