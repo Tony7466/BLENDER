@@ -571,6 +571,13 @@ void *BLI_findlinkfrom(Link *start, int number)
       link = link->next;
     }
   }
+  else {
+    link = start;
+    while (link != nullptr && number != 0) {
+      number++;
+      link = link->prev;
+    }
+  }
 
   return link;
 }

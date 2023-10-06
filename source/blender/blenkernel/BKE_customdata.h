@@ -200,12 +200,6 @@ bool CustomData_merge_layout(const struct CustomData *source,
 void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
 
 /**
- * Grow the custom data by \a grow_size and shift the elements after \a index to the end.
- * After being resized, the #CustomData does not contain any referenced layers.
- */
-void CustomData_grow_and_shift(CustomData *data, int old_size, int grow_size, int index);
-
-/**
  * BMesh version of CustomData_merge_layout; merges the layouts of source and `dest`,
  * then goes through the mesh and makes sure all the custom-data blocks are
  * consistent with the new layout.
@@ -388,13 +382,6 @@ void CustomData_copy_layer_type_data(const struct CustomData *source,
  * Frees data in a #CustomData object.
  */
 void CustomData_free_elem(struct CustomData *data, int index, int count);
-
-/**
- * Frees \a count elems starting at \a index and shifts the all the elements after to fill the gap.
- * This is done in all the layers in \a data.
- * Note: This does not realloc the #CustomData, the last \a count elems will be freed.
- */
-void CustomData_free_elem_and_shift(CustomData *data, int index, int count, int totelem);
 
 /**
  * Interpolate given custom data source items into a single destination one.

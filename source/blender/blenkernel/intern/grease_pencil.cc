@@ -1871,6 +1871,29 @@ static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
   return unique_node_name(grease_pencil, "GP_Group", name);
 }
 
+static void grow_customdata(CustomData &data, const int insertion_index, const int size)
+{
+  using namespace blender;
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
+  CustomData_realloc(&new_data, size, size + 1);
+
+  IndexRange range_before(insertion_index + 1);
+  IndexRange range_after(insertion_index + 1, size - insertion_index - 1);
+
+  if (range_before.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_before.start(), range_before.start(), range_before.size());
+  }
+  if (range_after.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_after.start(), range_after.start() + 1, range_after.size());
+  }
+
+  CustomData_free(&data, size);
+  data = new_data;
+}
+
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
 {
@@ -1879,11 +1902,11 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 
   const Span<const bke::greasepencil::Layer *> layers = this->layers();
   if (layers.size() == 0) {
-    CustomData_realloc(&this->layers_data, layers.size(), layers.size() + 1);
+    CustomData_realloc(&this->layers_data, 0, 1);
     return parent_group.add_layer(unique_name);
   }
-  int insertion_index = layers.first_index(parent_group.layers().last());
-  CustomData_grow_and_shift(&this->layers_data, layers.size(), 1, insertion_index);
+  const int insertion_index = layers.first_index(parent_group.layers().last());
+  grow_customdata(this->layers_data, insertion_index, layers.size());
 
   return parent_group.add_layer(unique_name);
 }
@@ -1896,55 +1919,253 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(
   return parent_group.add_group(unique_name);
 }
 
+static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
+{
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
+
+  for (const int old_i : new_by_old_map.index_range()) {
+    const int new_i = new_by_old_map[old_i];
+    CustomData_copy_data(&data, &new_data, old_i, new_i, 1);
+  }
+  CustomData_free(&data, new_by_old_map.size());
+  data = new_data;
+}
+
+static void fill_reorder_indices_array(const int reorder_from,
+                                       const int reorder_to,
+                                       const int size,
+                                       blender::MutableSpan<int> reorder_indices)
+{
+  using namespace blender;
+  BLI_assert(reorder_from >= 0 && reorder_from < size);
+  BLI_assert(reorder_to >= 0 && reorder_to < size);
+
+  const int start = math::min(reorder_from, reorder_to);
+  const int end = math::max(reorder_from, reorder_to);
+
+  const int dist = math::abs(reorder_to - reorder_from);
+
+  for (const int i : IndexRange(start)) {
+    reorder_indices[i] = i;
+  }
+
+  reorder_indices[reorder_from] = reorder_to;
+
+  if (reorder_from < reorder_to) {
+    for (const int i : IndexRange(reorder_from + 1, dist)) {
+      reorder_indices[i] = i - 1;
+    }
+  }
+  else {
+    for (const int i : IndexRange(reorder_to, dist)) {
+      reorder_indices[i] = i + 1;
+    }
+  }
+
+  for (const int i : IndexRange(end + 1, size - end - 1)) {
+    reorder_indices[i] = i;
+  }
+}
+
+static void reorder_layer_data(GreasePencil &grease_pencil,
+                               const int reorder_from,
+                               const int reorder_to)
+{
+  using namespace blender;
+  if (reorder_from != reorder_to) {
+    Array<int> indices(grease_pencil.layers().size());
+    fill_reorder_indices_array(reorder_from, reorder_to, grease_pencil.layers().size(), indices);
+    reorder_customdata(grease_pencil.layers_data, indices);
+  }
+}
+
 void GreasePencil::move_node_up(blender::bke::greasepencil::TreeNode &node, const int step)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_up(node, step);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    if (&node.as_layer() != node.parent_group()->layers().last()) {
+      const bke::greasepencil::TreeNode &target_node =
+          reinterpret_cast<GreasePencilLayerTreeNode *>(
+              BLI_findlinkfrom(reinterpret_cast<Link *>(&node), step))
+              ->wrap();
+      const int from_index = layers.first_index(&node.as_layer());
+      int to_index = -1;
+      if (target_node.is_layer()) {
+        to_index = layers.first_index(&target_node.as_layer());
+      }
+      else if (target_node.is_group()) {
+        const bke::greasepencil::LayerGroup &group = target_node.as_group();
+        to_index = layers.first_index(group.layers().last());
+      }
+
+      reorder_layer_data(*this, from_index, to_index);
+    }
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_up(node, step);
 }
 void GreasePencil::move_node_down(blender::bke::greasepencil::TreeNode &node, const int step)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_down(node, step);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    if (&node.as_layer() != node.parent_group()->layers().first()) {
+      const bke::greasepencil::TreeNode &target_node =
+          reinterpret_cast<GreasePencilLayerTreeNode *>(
+              BLI_findlinkfrom(reinterpret_cast<Link *>(&node), -step))
+              ->wrap();
+      const int from_index = layers.first_index(&node.as_layer());
+      int to_index = -1;
+      if (target_node.is_layer()) {
+        to_index = layers.first_index(&target_node.as_layer());
+      }
+      else if (target_node.is_group()) {
+        const bke::greasepencil::LayerGroup &group = target_node.as_group();
+        to_index = layers.first_index(group.layers().first());
+      }
+
+      reorder_layer_data(*this, from_index, to_index);
+    }
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_down(node, step);
 }
 void GreasePencil::move_node_top(blender::bke::greasepencil::TreeNode &node)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_top(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
+    const int from_index = layers.first_index(&node.as_layer());
+    const int to_index = layers.first_index(group.layers().last());
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_top(node);
 }
 void GreasePencil::move_node_bottom(blender::bke::greasepencil::TreeNode &node)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_bottom(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
+    const int from_index = layers.first_index(&node.as_layer());
+    const int to_index = layers.first_index(group.layers().first());
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_bottom(node);
 }
 
 void GreasePencil::move_node_after(blender::bke::greasepencil::TreeNode &node,
                                    blender::bke::greasepencil::TreeNode &target_node)
 {
+  using namespace blender;
   if (!target_node.parent_group() || !node.parent_group()) {
     return;
+  }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = -1;
+    if (target_node.is_layer()) {
+      to_index = layers.first_index(&target_node.as_layer());
+    }
+    else if (target_node.is_group()) {
+      const bke::greasepencil::LayerGroup &group = target_node.as_group();
+      to_index = layers.first_index(group.layers().last());
+    }
+    if (from_index > to_index) {
+      to_index++;
+    }
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group() && node.as_group().num_nodes_total() > 0) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
   }
   node.parent_group()->unlink_node(node);
   target_node.parent_group()->add_node_after(node, target_node);
 }
+
 void GreasePencil::move_node_before(blender::bke::greasepencil::TreeNode &node,
                                     blender::bke::greasepencil::TreeNode &target_node)
 {
+  using namespace blender;
   if (!target_node.parent_group() || !node.parent_group()) {
     return;
+  }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = -1;
+    if (target_node.is_layer()) {
+      to_index = layers.first_index(&target_node.as_layer());
+    }
+    else if (target_node.is_group()) {
+      const bke::greasepencil::LayerGroup &group = target_node.as_group();
+      to_index = layers.first_index(group.layers().first());
+    }
+    if (to_index > from_index) {
+      to_index--;
+    }
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
   }
   node.parent_group()->unlink_node(node);
   target_node.parent_group()->add_node_before(node, target_node);
 }
+
 void GreasePencil::move_node_into(blender::bke::greasepencil::TreeNode &node,
                                   blender::bke::greasepencil::LayerGroup &parent_group)
 {
-  if (node.parent_group()) {
-    node.parent_group()->unlink_node(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = layers.first_index(parent_group.layers().last());
+    if (from_index > to_index) {
+      to_index++;
+    }
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->unlink_node(node);
   parent_group.add_node(node);
 }
 
@@ -1983,6 +2204,29 @@ void GreasePencil::rename_node(blender::bke::greasepencil::TreeNode &node,
                                   unique_layer_group_name(*this, new_name));
 }
 
+static void shrink_customdata(CustomData &data, const int index_to_remove, const int size)
+{
+  using namespace blender;
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
+  CustomData_realloc(&new_data, size, size - 1);
+
+  IndexRange range_before(index_to_remove);
+  IndexRange range_after(index_to_remove + 1, size - index_to_remove - 1);
+
+  if (range_before.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_before.start(), range_before.start(), range_before.size());
+  }
+  if (range_after.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_after.start(), range_after.start() - 1, range_after.size());
+  }
+
+  CustomData_free(&data, size);
+  data = new_data;
+}
+
 void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
@@ -2008,8 +2252,7 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
 
   /* Remove all the layer attributes and shrink the `CustomData`. */
   const int64_t layer_index = this->layers().first_index(&layer);
-  CustomData_free_elem_and_shift(&this->layers_data, layer_index, 1, this->layers().size());
-  CustomData_realloc(&this->layers_data, this->layers().size(), this->layers().size() - 1);
+  shrink_customdata(this->layers_data, layer_index, this->layers().size());
 
   /* Unlink the layer from the parent group. */
   layer.parent_group().unlink_node(layer.as_node());

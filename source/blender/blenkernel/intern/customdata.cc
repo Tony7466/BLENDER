@@ -2469,46 +2469,6 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
   }
 }
 
-void CustomData_grow_and_shift(CustomData *data,
-                               const int old_size,
-                               const int grow_size,
-                               const int index)
-{
-  BLI_assert(grow_size > 0);
-  BLI_assert(index < old_size);
-  const int new_size = old_size + grow_size;
-  for (int i = 0; i < data->totlayer; i++) {
-    CustomDataLayer *layer = &data->layers[i];
-    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer->type));
-    const int64_t new_size_in_bytes = int64_t(new_size) * typeInfo->size;
-
-    void *new_layer_data = MEM_mallocN(new_size_in_bytes, __func__);
-    if (typeInfo->copy) {
-      if (index > 0) {
-        typeInfo->copy(layer->data, new_layer_data, index);
-      }
-      typeInfo->copy(POINTER_OFFSET(layer->data, index * typeInfo->size),
-                     POINTER_OFFSET(new_layer_data, (index + grow_size) * typeInfo->size),
-                     old_size - index);
-    }
-    else {
-      BLI_assert(layer->data != nullptr);
-      if (index > 0) {
-        memcpy(new_layer_data, layer->data, index * typeInfo->size);
-      }
-      memcpy(POINTER_OFFSET(new_layer_data, (index + grow_size) * typeInfo->size),
-             POINTER_OFFSET(layer->data, index * typeInfo->size),
-             (old_size - index) * typeInfo->size);
-    }
-
-    CustomData_replace_layer_data(layer, new_size, new_layer_data);
-
-    if (typeInfo->construct) {
-      typeInfo->construct(POINTER_OFFSET(layer->data, index * typeInfo->size), grow_size);
-    }
-  }
-}
-
 void CustomData_copy(const CustomData *source, CustomData *dest, eCustomDataMask mask, int totelem)
 {
   CustomData_reset(dest);
@@ -3457,36 +3417,6 @@ void CustomData_free_elem(CustomData *data, const int index, const int count)
       size_t offset = size_t(index) * typeInfo->size;
 
       typeInfo->free(POINTER_OFFSET(data->layers[i].data, offset), count, typeInfo->size);
-    }
-  }
-}
-
-void CustomData_free_elem_and_shift(CustomData *data,
-                                    const int index,
-                                    const int count,
-                                    const int totelem)
-{
-  for (int i = 0; i < data->totlayer; i++) {
-    CustomDataLayer *layer = &data->layers[i];
-    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer->type));
-
-    if (typeInfo->free) {
-      size_t offset = size_t(index) * typeInfo->size;
-      typeInfo->free(POINTER_OFFSET(layer->data, offset), 1, typeInfo->size);
-      for (int j = index + 1 + count; j < totelem; j++) {
-        size_t src_offset = size_t(j) * typeInfo->size;
-        size_t dst_offset = size_t(j - count) * typeInfo->size;
-        if (typeInfo->copy) {
-          typeInfo->copy(
-              POINTER_OFFSET(layer->data, src_offset), POINTER_OFFSET(layer->data, dst_offset), 1);
-        }
-        else {
-          memcpy(POINTER_OFFSET(layer->data, dst_offset),
-                 POINTER_OFFSET(layer->data, src_offset),
-                 typeInfo->size);
-        }
-        typeInfo->free(POINTER_OFFSET(layer->data, src_offset), 1, typeInfo->size);
-      }
     }
   }
 }
