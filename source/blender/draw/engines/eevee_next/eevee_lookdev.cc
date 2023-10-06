@@ -120,15 +120,17 @@ bool LookdevModule::sync_world()
 {
   /* Check based on the v3d if the world is overridden. */
   LookdevParameters new_parameters(inst_.v3d);
-  if (parameters_ != new_parameters) {
+  bool parameters_changed = parameters_ != new_parameters;
+  if (parameters_changed) {
+    printf("parameters changed\n");
     if (parameters_.gpu_parameters_changed(new_parameters)) {
+      printf("gpu parameters changed\n");
       GPU_material_free(&gpu_materials_);
       gpu_material_ = nullptr;
     }
 
     parameters_ = new_parameters;
-    inst_.reflection_probes.do_world_update_set(true);
-    inst_.sampling.reset();
+    inst_.reflection_probes.sync_world_lookdev();
   }
 
   if (parameters_.show_scene_world) {
