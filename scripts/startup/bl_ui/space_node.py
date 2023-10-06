@@ -565,6 +565,7 @@ class NODE_MT_context_menu(Menu):
             layout.separator()
 
             layout.operator("node.find_node", text="Find...", icon='VIEWZOOM')
+
             layout.separator()
 
             if is_geometrynodes:
