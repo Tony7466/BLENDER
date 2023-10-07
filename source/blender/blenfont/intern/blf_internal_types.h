@@ -209,7 +209,7 @@ typedef struct FontBufInfoBLF {
 
 } FontBufInfoBLF;
 
-typedef struct FontInfo {
+typedef struct FontMetrics {
   short weight;
   float width;
   float slant;
@@ -221,8 +221,18 @@ typedef struct FontInfo {
   short height;
   short max_advance_width;
   short max_advance_height;
+
   short underline_position;
-  short underline_height;
+  short underline_thickness;
+  short strikeout_position;
+  short strikeout_thickness;
+
+  short subscript_size;
+  short subscript_xoffset;
+  short subscript_yoffset;
+  short superscript_size;
+  short superscript_xoffset;
+  short superscript_yoffset;
 
   int num_glyphs;
 
@@ -248,14 +258,7 @@ typedef struct FontInfo {
 
   short x_height;
   short cap_height;
-
-  short lower_optical_point_size;
-  short upper_optical_point_size;
-
-  // move unicode range bits here too
-  // CodePageRangebits
-
-} FontInfo;
+} FontMetrics;
 
 typedef struct FontBLF {
   /** Full path to font file or NULL if from memory. */
@@ -355,7 +358,7 @@ typedef struct FontBLF {
   /** Copy of the font->face->face_flags, in case we don't have a face loaded. */
   FT_Long face_flags;
 
-  FontInfo info;
+  FontMetrics metrics;
 
   /** Data for buffer usage (drawing into a texture buffer) */
   FontBufInfoBLF buf_info;
