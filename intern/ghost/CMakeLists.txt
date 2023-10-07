@@ -9,7 +9,6 @@ set(INC
 )
 
 set(INC_SYS
-  ${Epoxy_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -72,16 +71,32 @@ set(SRC
 )
 
 set(LIB
-  ${Epoxy_LIBRARIES}
   PRIVATE bf::blenlib
   PRIVATE bf::dna
 )
 
 if(WITH_OPENGL_BACKEND)
+  list(APPEND INC_SYS
+    ${Epoxy_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${Epoxy_LIBRARIES}
+  )
   add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_VULKAN_BACKEND)
+
+  if(APPLE)
+    list(APPEND INC_SYS
+      PUBLIC ${MOLTENVK_INCLUDE_DIRS}
+    )
+
+    list(APPEND LIB
+      ${MOLTENVK_LIBRARIES}
+    )
+  endif()
+
   list(APPEND SRC
     intern/GHOST_ContextVK.cc
 
@@ -90,12 +105,10 @@ if(WITH_VULKAN_BACKEND)
 
   list(APPEND INC_SYS
     PUBLIC ${VULKAN_INCLUDE_DIRS}
-    PUBLIC ${MOLTENVK_INCLUDE_DIRS}
   )
 
   list(APPEND LIB
     ${VULKAN_LIBRARIES}
-    ${MOLTENVK_LIBRARIES}
   )
 
   add_definitions(-DWITH_VULKAN_BACKEND)
@@ -512,11 +525,13 @@ elseif(WIN32)
 endif()
 
 if(UNIX AND NOT APPLE)
-  list(APPEND SRC
-    intern/GHOST_ContextEGL.cc
+  if(WITH_OPENGL_BACKEND)
+    list(APPEND SRC
+      intern/GHOST_ContextEGL.cc
 
-    intern/GHOST_ContextEGL.hh
-  )
+      intern/GHOST_ContextEGL.hh
+    )
+  endif()
 endif()
 
 if(APPLE)
