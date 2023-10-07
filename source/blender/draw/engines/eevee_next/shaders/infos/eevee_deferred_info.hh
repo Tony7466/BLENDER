@@ -11,9 +11,9 @@
   image(slot, format, Qualifier::READ, ImageType::FLOAT_2D, name, Frequency::PASS)
 
 GPU_SHADER_CREATE_INFO(eevee_gbuffer_data)
-    .sampler(7, ImageType::UINT_2D, "gbuf_header_tx")
-    .sampler(8, ImageType::FLOAT_2D_ARRAY, "gbuf_closure_tx")
-    .sampler(9, ImageType::FLOAT_2D_ARRAY, "gbuf_color_tx");
+    .sampler(8, ImageType::UINT_2D, "gbuf_header_tx")
+    .sampler(9, ImageType::FLOAT_2D_ARRAY, "gbuf_closure_tx")
+    .sampler(10, ImageType::FLOAT_2D_ARRAY, "gbuf_color_tx");
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
@@ -66,7 +66,6 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_light_data",
-                     "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_hiz_data",
                      "draw_view",
