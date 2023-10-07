@@ -1495,8 +1495,6 @@ bool blf_ensure_face(FontBLF *font)
     font->info.selection_flags = short(os2_table->fsSelection);
     font->info.first_charindex = short(os2_table->usFirstCharIndex);
     font->info.last_charindex = short(os2_table->usLastCharIndex);
-    font->info.typo_ascender = short(os2_table->sTypoAscender);
-    font->info.typo_descender = short(os2_table->sTypoDescender);
     font->info.typo_linegap = short(os2_table->sTypoLineGap);
 
     if (os2_table->version > 1) {
@@ -1532,6 +1530,34 @@ bool blf_ensure_face(FontBLF *font)
   font->info.bounding_box.xmax = int(font->face->bbox.xMax);
   font->info.bounding_box.ymin = int(font->face->bbox.yMin);
   font->info.bounding_box.ymax = int(font->face->bbox.yMax);
+
+  if (font->info.ascender == 0) {
+    font->info.ascender = short(float(font->info.units_per_EM) * 0.8f);
+  }
+
+  if (font->info.descender == 0) {
+    font->info.descender = font->info.ascender - font->info.units_per_EM;
+  }
+
+  if (font->info.cap_height == 0) {
+    FT_UInt gi = FT_Get_Char_Index(font->face, (FT_ULong)'H');
+    if (gi && FT_Load_Glyph(font->face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
+      font->info.cap_height = short(font->face->glyph->metrics.height);
+    }
+    else {
+      font->info.cap_height = short(float(font->info.units_per_EM) * 0.7f);
+    }
+  }
+
+  if (font->info.x_height == 0) {
+    FT_UInt gi = FT_Get_Char_Index(font->face, (FT_ULong)'x');
+    if (gi && FT_Load_Glyph(font->face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
+      font->info.x_height = short(font->face->glyph->metrics.height);
+    }
+    else {
+      font->info.x_height = short(float(font->info.units_per_EM) * 0.5f);
+    }
+  }
 
   if (FT_IS_FIXED_WIDTH(font)) {
     font->flags |= BLF_MONOSPACED;

@@ -244,8 +244,6 @@ typedef struct FontInfo {
   short selection_flags;
   short first_charindex;
   short last_charindex;
-  short typo_ascender;
-  short typo_descender;
   short typo_linegap;
 
   short x_height;
