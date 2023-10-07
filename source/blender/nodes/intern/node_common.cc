@@ -471,110 +471,40 @@ void register_node_type_reroute()
   nodeRegisterType(ntype);
 }
 
-static const char *reroute_propagated_label(const bNode *reroute)
-{
-  if (reroute->label[0] != '\0') {
-    return reroute->label;
-  }
-
-  bNodeSocket *output = static_cast<bNodeSocket *>(reroute->outputs.first);
-  return output->label;
-}
-
-static void propagate_reroute_auto_label(bNode *source_node,
-                                         const MultiValueMap<bNode *, bNodeLink *> &links_map)
-{
-  for (bNodeLink *link : links_map.lookup(source_node)) {
-    const char *propagated_label = source_node->is_reroute() ?
-                                       reroute_propagated_label(source_node) :
-                                       blender::bke::nodeSocketLabel(link->fromsock);
-    bNodeSocket *receiving_nodesocket = static_cast<bNodeSocket *>(link->tonode->outputs.first);
-    char *receiving_label = receiving_nodesocket->label;
-
-    BLI_strncpy(receiving_label, propagated_label, MAX_NAME);
-
-    /* Recursively walk through all the connected reroutes. */
-    propagate_reroute_auto_label(link->tonode, links_map);
-  }
-}
-
-static bool reroute_has_no_input(const bNode *reroute)
-{
-  const bNodeSocket *input = static_cast<bNodeSocket *>(reroute->inputs.first);
-  return input->link == nullptr;
-}
-
-static bool reroute_is_label_source(const bNode *reroute)
-{
-  return reroute->label[0] != '\0';
-}
-
-static void reroute_clear_socket_label(const bNode *reroute)
-{
-  bNodeSocket *output = static_cast<bNodeSocket *>(reroute->outputs.first);
-  node_sock_label_clear(output);
-}
-
 static void update_reroute_node_auto_labels(bNodeTree *ntree)
 {
-  /* Clear auto-labels. Necessary to not miss unconnected reroute nodes. */
-  LISTBASE_FOREACH (bNode *, reroute, &ntree->nodes) {
-    if (reroute->is_reroute()) {
-      if (reroute_has_no_input(reroute)) {
-        reroute_clear_socket_label(reroute);
+  ntree->ensure_topology_cache();
+  const blender::Span<bNode *> nodes = ntree->toposort_left_to_right();
+
+  for (bNode *reroute : nodes) {
+    if (!reroute->is_reroute()) {
+      continue;
+    }
+
+    bNodeSocket *output = reroute->output_sockets().first();
+    const bNodeSocket *input = reroute->input_sockets().first();
+    const blender::Span<const bNodeSocket *> linked_sockets = input->directly_linked_sockets();
+
+    if (linked_sockets.is_empty()) {
+      /* Clear auto-label. */
+      node_sock_label_clear(output);
+      continue;
+    }
+
+    const bNodeSocket *from_sock = linked_sockets.first();
+    const bNode &from_node = from_sock->owner_node();
+
+    if (from_node.is_reroute()) {
+      if (from_node.label[0] != '\0') {
+        node_sock_label(output, from_node.label);
+        continue;
       }
-    }
-  }
-
-  /* Contains nodes which propagate their label. */
-  Set<bNode *> label_source_nodes;
-  /* Contains all links that link _to_ a reroute node, that uses an auto label. */
-  MultiValueMap<bNode *, bNodeLink *> links_to_label_recievers;
-
-  /* Build acceleration data structure to propagate the auto label. */
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    if (link->fromsock == nullptr || link->tosock == nullptr) {
+      /* Use the socket label directly to also propagate an empty label. */
+      node_sock_label(output, from_sock->label);
       continue;
     }
 
-    bNode *from_node = link->fromnode;
-    const bool from_node_is_reroute = from_node->type == NODE_REROUTE;
-    const bool to_node_is_reroute = link->tonode->type == NODE_REROUTE;
-
-    if (!to_node_is_reroute) {
-      continue;
-    }
-
-    links_to_label_recievers.add(from_node, link);
-
-    if (!from_node_is_reroute) {
-      /* Sockets from regular nodes always act as label source. */
-      label_source_nodes.add(link->fromnode);
-      continue;
-    }
-
-    const bool node_has_label = from_node->label[0] != '\0';
-    if (node_has_label) {
-      /* If reroute nodes are explicitly labeled, their label is propagated, too. */
-      label_source_nodes.add(from_node);
-
-      /* Copy the reroute's label to the output socket so it can be propagated from there. */
-      bNodeSocket *output = static_cast<bNodeSocket *>(from_node->outputs.first);
-      node_sock_label(output, from_node->label);
-      continue;
-    }
-
-    if (reroute_has_no_input(from_node)) {
-      label_source_nodes.add(from_node);
-
-      /* Propagate an empty label, if the reroute does not have an input link. */
-      reroute_clear_socket_label(from_node);
-    }
-  }
-
-  /* Propagate labels from label sources. */
-  for (bNode *source_node : label_source_nodes) {
-    propagate_reroute_auto_label(source_node, links_to_label_recievers);
+    node_sock_label(output, blender::bke::nodeSocketLabel(from_sock));
   }
 }
 
