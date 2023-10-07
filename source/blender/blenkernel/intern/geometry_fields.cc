@@ -215,6 +215,16 @@ const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing()
                                                   grease_pencil_layer_index_) :
              nullptr;
 }
+const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
+{
+  if (const CurvesGeometry *curves = this->curves()) {
+    return curves;
+  }
+  if (const greasepencil::Drawing *drawing = this->grease_pencil_layer_drawing()) {
+    return &drawing->strokes();
+  }
+  return nullptr;
+}
 const Instances *GeometryFieldContext::instances() const
 {
   return this->type() == GeometryComponent::Type::Instance ?

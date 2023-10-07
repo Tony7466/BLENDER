@@ -178,6 +178,7 @@ class GeometryFieldContext : public fn::FieldContext {
   const GreasePencil *grease_pencil() const;
   const greasepencil::Drawing *grease_pencil_layer_drawing() const;
   const Instances *instances() const;
+  const CurvesGeometry *curves_or_strokes() const;
 };
 
 class GeometryFieldInput : public fn::FieldInput {
