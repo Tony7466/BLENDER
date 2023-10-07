@@ -1443,10 +1443,12 @@ bool blf_ensure_face(FontBLF *font)
     font->unicode_ranges[2] = uint(os2_table->ulUnicodeRange3);
     font->unicode_ranges[3] = uint(os2_table->ulUnicodeRange4);
 
+    /* The default weight. */
     if (os2_table->usWeightClass >= 1 && os2_table->usWeightClass <= 1000) {
       font->info.weight = short(os2_table->usWeightClass);
     }
 
+    /* Width value is just integers 1-9 with known values. */
     if (os2_table->usWidthClass >= 1 && os2_table->usWidthClass <= 9) {
       switch (os2_table->usWidthClass) {
         case 1:
@@ -1479,8 +1481,8 @@ bool blf_ensure_face(FontBLF *font)
       }
     }
 
+    /* This table contains most of the font metrics. */
     font->info.family_class = short(os2_table->sFamilyClass);
-
     font->info.panose_family_type = char(os2_table->panose[0]);
     font->info.panose_serif_style = char(os2_table->panose[1]);
     font->info.panose_weight = char(os2_table->panose[2]);
@@ -1491,24 +1493,21 @@ bool blf_ensure_face(FontBLF *font)
     font->info.panose_letter_form = char(os2_table->panose[7]);
     font->info.panose_midline = char(os2_table->panose[7]);
     font->info.panose_xheight = char(os2_table->panose[9]);
-
     font->info.selection_flags = short(os2_table->fsSelection);
     font->info.first_charindex = short(os2_table->usFirstCharIndex);
     font->info.last_charindex = short(os2_table->usLastCharIndex);
     font->info.typo_linegap = short(os2_table->sTypoLineGap);
-
     if (os2_table->version > 1) {
       font->info.cap_height = short(os2_table->sCapHeight);
       font->info.x_height = short(os2_table->sxHeight);
     }
-
     if (os2_table->version > 4) {
       font->info.lower_optical_point_size = short(os2_table->usLowerOpticalPointSize);
       font->info.upper_optical_point_size = short(os2_table->usUpperOpticalPointSize);
     }
-
   }
 
+  /* The Post table usually contains the slant value, though in counter-clockwise degrees. */
   TT_Postscript *post_table = (TT_Postscript *)FT_Get_Sfnt_Table(font->face, FT_SFNT_POST);
   if (post_table) {
     if (post_table->italicAngle != 0) {
@@ -1516,6 +1515,7 @@ bool blf_ensure_face(FontBLF *font)
     }
   }
 
+  /* Copy the metrics in case we need them when we don't have the face loaded. */
   font->info.units_per_EM = short(font->face->units_per_EM);
   font->info.ascender = short(font->face->ascender);
   font->info.descender = short(font->face->descender);
@@ -1525,22 +1525,24 @@ bool blf_ensure_face(FontBLF *font)
   font->info.underline_position = short(font->face->underline_position);
   font->info.underline_height = short(font->face->underline_thickness);
   font->info.num_glyphs = int(font->face->num_glyphs);
-
   font->info.bounding_box.xmin = int(font->face->bbox.xMin);
   font->info.bounding_box.xmax = int(font->face->bbox.xMax);
   font->info.bounding_box.ymin = int(font->face->bbox.yMin);
   font->info.bounding_box.ymax = int(font->face->bbox.yMax);
 
   if (font->info.ascender == 0) {
+    /* Set a sane value for ascender if not set in the font. */
     font->info.ascender = short(float(font->info.units_per_EM) * 0.8f);
   }
 
   if (font->info.descender == 0) {
+    /* Set a sane value for descender if not set in the font. */
     font->info.descender = font->info.ascender - font->info.units_per_EM;
   }
 
   if (font->info.cap_height == 0) {
-    FT_UInt gi = FT_Get_Char_Index(font->face, (FT_ULong)'H');
+    /* Calculate or guess cap height if it is not set in the font. */
+    FT_UInt gi = blf_get_char_index(font, uint('H'));
     if (gi && FT_Load_Glyph(font->face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
       font->info.cap_height = short(font->face->glyph->metrics.height);
     }
@@ -1550,13 +1552,24 @@ bool blf_ensure_face(FontBLF *font)
   }
 
   if (font->info.x_height == 0) {
-    FT_UInt gi = FT_Get_Char_Index(font->face, (FT_ULong)'x');
+    /* Calculate or guess x-height if it is not set in the font. */
+    FT_UInt gi = blf_get_char_index(font, uint('x'));
     if (gi && FT_Load_Glyph(font->face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
       font->info.x_height = short(font->face->glyph->metrics.height);
     }
     else {
       font->info.x_height = short(float(font->info.units_per_EM) * 0.5f);
     }
+  }
+
+  if (font->info.weight == 400 && font->face->style_flags & FT_STYLE_FLAG_BOLD) {
+    /* Normal weight yet this is an bold font, so set a sane weight value. */
+    font->info.weight = 700;
+  }
+
+  if (font->info.slant == 0.0f && font->face->style_flags & FT_STYLE_FLAG_ITALIC) {
+    /* No known slant yet this is an italic font, so set a sane slant value. */
+    font->info.slant = 8.0f;
   }
 
   if (FT_IS_FIXED_WIDTH(font)) {
