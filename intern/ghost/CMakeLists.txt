@@ -229,11 +229,13 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       intern/GHOST_WindowX11.hh
     )
 
-    list(APPEND SRC
-      intern/GHOST_ContextGLX.cc
+    if(WITH_OPENGL_BACKEND)
+      list(APPEND SRC
+        intern/GHOST_ContextGLX.cc
 
-      intern/GHOST_ContextGLX.hh
-    )
+        intern/GHOST_ContextGLX.hh
+      )
+    endif()
 
     if(WITH_GHOST_XDND)
       add_definitions(-DWITH_XDND)
@@ -320,15 +322,6 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       )
     endif()
 
-    if(WITH_GHOST_WAYLAND_DBUS)
-      list(APPEND INC_SYS
-        ${dbus_INCLUDE_DIRS}
-      )
-      list(APPEND LIB
-        ${dbus_LINK_LIBRARIES}
-      )
-    endif()
-
     if(WITH_GHOST_WAYLAND_LIBDECOR)
       list(APPEND INC_SYS
         ${libdecor_INCLUDE_DIRS}
@@ -358,7 +351,6 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       intern/GHOST_WindowWayland.cc
 
       intern/GHOST_SystemWayland.hh
-      intern/GHOST_WaylandCursorSettings.hh
       intern/GHOST_WaylandUtils.hh
       intern/GHOST_WindowWayland.hh
     )

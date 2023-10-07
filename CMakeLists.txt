@@ -335,13 +335,6 @@ if(UNIX AND NOT (APPLE OR HAIKU))
     option(WITH_GHOST_WAYLAND_LIBDECOR "Optionally build with LibDecor window decorations" ON)
     mark_as_advanced(WITH_GHOST_WAYLAND_LIBDECOR)
 
-    option(WITH_GHOST_WAYLAND_DBUS "\
-Optionally build with DBUS support (used for Cursor themes). \
-May hang on startup systems where DBUS is not used."
-      OFF
-    )
-    mark_as_advanced(WITH_GHOST_WAYLAND_DBUS)
-
     option(WITH_GHOST_WAYLAND_DYNLOAD "Enable runtime dynamic WAYLAND libraries loading" ON)
     mark_as_advanced(WITH_GHOST_WAYLAND_DYNLOAD)
 
@@ -1142,10 +1135,13 @@ if(UNIX AND NOT (APPLE OR HAIKU))
   set_and_warn_incompatible(WITH_HEADLESS WITH_GHOST_X11 OFF)
 endif()
 set_and_warn_incompatible(WITH_HEADLESS WITH_GHOST_SDL OFF)
-set_and_warn_incompatible(WITH_HEADLESS WITH_INPUT_IME OFF)
-set_and_warn_incompatible(WITH_HEADLESS WITH_XR_OPENXR OFF)
 
-set_and_warn_incompatible(WITH_GHOST_SDL WITH_INPUT_IME OFF)
+if(WIN32 OR APPLE)
+  set_and_warn_incompatible(WITH_HEADLESS WITH_INPUT_IME OFF)
+  set_and_warn_incompatible(WITH_GHOST_SDL WITH_INPUT_IME OFF)
+endif()
+
+set_and_warn_incompatible(WITH_HEADLESS WITH_XR_OPENXR OFF)
 set_and_warn_incompatible(WITH_GHOST_SDL WITH_XR_OPENXR OFF)
 
 if(WITH_BUILDINFO)
@@ -2280,7 +2276,6 @@ if(FIRST_RUN)
     if(WITH_GHOST_WAYLAND)
       info_cfg_option(WITH_GHOST_WAYLAND_DYNLOAD)
       info_cfg_option(WITH_GHOST_WAYLAND_LIBDECOR)
-      info_cfg_option(WITH_GHOST_WAYLAND_DBUS)
     endif()
   endif()
 
