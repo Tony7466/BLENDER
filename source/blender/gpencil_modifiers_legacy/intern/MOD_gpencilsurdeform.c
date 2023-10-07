@@ -317,7 +317,7 @@ static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgra
   }
 }
 
-/*Set the binding combinations flags.*/
+/*Set the binding combinations flags. DEPRECATED*/
 static void check_bind_situation(SurDeformGpencilModifierData *smd,
                                 Depsgraph *depsgraph,
                                 Scene *scene,
@@ -661,7 +661,8 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
       BKE_gpencil_modifier_set_error(
           md, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
       //TODO: free_frame
-      //return;
+      free_frame_b(smd_orig, smd, smd->layers, gpf->framenum);
+      return;
     } 
   }
 
