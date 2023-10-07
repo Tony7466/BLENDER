@@ -400,13 +400,9 @@ struct GeometrySet {
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
-  uint64_t hash() const
-  {
-    return get_default_hash(Span(components_));
-  }
-
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {
+    /* This compares only the component pointers, not the actual geometry data. */
     return Span(a.components_) == Span(b.components_);
   }
 
