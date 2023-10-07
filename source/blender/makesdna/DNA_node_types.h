@@ -1627,10 +1627,10 @@ typedef struct NodeMenuSwitch {
 
   /** #eNodeSocketDatatype. */
   uint8_t input_type;
-  char _pad[3];
+  char _pad[7];
 } NodeMenuSwitch;
 
-  typedef struct NodeGeometryCurveSplineType {
+typedef struct NodeGeometryCurveSplineType {
   /** #GeometryNodeSplineType. */
   uint8_t spline_type;
 } NodeGeometryCurveSplineType;
