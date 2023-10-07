@@ -29,7 +29,7 @@
 
 #include "../engines/select/select_engine.hh"
 
-bool SELECTID_Context::is_dirty(Depsgraph *depsgraph, RegionView3D *rv3d)
+bool SELECTID_Context::is_dirty(RegionView3D *rv3d)
 {
   /* Check if the viewport has changed. */
   float(*persmat)[4] = rv3d->persmat;
@@ -37,8 +37,7 @@ bool SELECTID_Context::is_dirty(Depsgraph *depsgraph, RegionView3D *rv3d)
 
   if (!is_dirty) {
     /* Check if any of the drawn objects have been transformed. */
-    for (Object *obj : this->objects) {
-      Object *obj_eval = DEG_get_evaluated_object(depsgraph, obj);
+    for (Object *obj_eval : this->objects) {
       DrawData *data = DRW_drawdata_get(&obj_eval->id, &draw_engine_select_type);
       if (!data || (data->recalc & ID_RECALC_TRANSFORM)) {
         is_dirty = true;
@@ -469,7 +468,10 @@ uint DRW_select_buffer_context_offset_for_object_elem(Depsgraph *depsgraph,
 /** \name Context
  * \{ */
 
-void DRW_select_buffer_context_create(Base **bases, const uint bases_len, short select_mode)
+void DRW_select_buffer_context_create(Depsgraph *depsgraph,
+                                      Base **bases,
+                                      const uint bases_len,
+                                      short select_mode)
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
@@ -478,7 +480,7 @@ void DRW_select_buffer_context_create(Base **bases, const uint bases_len, short 
 
   for (uint base_index = 0; base_index < bases_len; base_index++) {
     Object *obj = bases[base_index]->object;
-    select_ctx->objects[base_index] = obj;
+    select_ctx->objects[base_index] = DEG_get_evaluated_object(depsgraph, obj);
   }
 
   select_ctx->select_mode = select_mode;

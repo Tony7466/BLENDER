@@ -174,12 +174,13 @@ static void select_cache_init(void *vedata)
 
   /* Create selection data. */
   for (uint sel_id : e_data.context.objects.index_range()) {
-    Object *obj = e_data.context.objects[sel_id];
-    Object *obj_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, obj);
+    Object *obj_eval = e_data.context.objects[sel_id];
     DrawData *data = DRW_drawdata_ensure(
         &obj_eval->id, &draw_engine_select_type, sizeof(SELECTID_ObjectData), nullptr, nullptr);
     SELECTID_ObjectData *sel_data = reinterpret_cast<SELECTID_ObjectData *>(data);
     sel_data->drawn_index = sel_id;
+    sel_data->in_pass = false;
+    sel_data->is_draw = false;
   }
 
   /* Remove all tags from drawn or culled objects. */
@@ -196,14 +197,20 @@ static void select_cache_populate(void *vedata, Object *ob)
   SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
       &ob->id, &draw_engine_select_type);
 
-  if (!sel_data) {
+  if (!sel_data || sel_data->is_draw) {
+    if (sel_data) {
+      /* Remove. It shouldn't be here. */
+      DrawDataList *drawdata = DRW_drawdatalist_from_id(&ob->id);
+      BLI_freelinkN((ListBase *)drawdata, sel_data);
+    }
+
     /* This object is not in the array. It is here to participate in the depth buffer. */
     if (ob->dt >= OB_SOLID) {
       GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(static_cast<Mesh *>(ob->data));
       DRW_shgroup_call_obmat(stl->g_data->shgrp_occlude, geom_faces, ob->object_to_world);
     }
   }
-  else {
+  else if (!sel_data->in_pass) {
     const DRWContextState *draw_ctx = DRW_context_state_get();
     ObjectOffsets *ob_offsets = &e_data.context.index_offsets[sel_data->drawn_index];
     uint offset = e_data.context.index_drawn_len;
@@ -217,6 +224,7 @@ static void select_cache_populate(void *vedata, Object *ob)
                           &ob_offsets->face);
 
     ob_offsets->offset = offset;
+    sel_data->in_pass = true;
     e_data.context.index_drawn_len = ob_offsets->vert;
   }
 }
@@ -248,6 +256,13 @@ static void select_draw_scene(void *vedata)
   if (e_data.context.select_mode & SCE_SELECT_VERTEX) {
     DRW_view_set_active(stl->g_data->view_verts);
     DRW_draw_pass(psl->select_id_vert_pass);
+  }
+
+  /* Mark objects from the array to remove later. */
+  for (Object *obj_eval : e_data.context.objects) {
+    SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
+        &obj_eval->id, &draw_engine_select_type);
+    sel_data->is_draw = true;
   }
 }
 

@@ -2764,7 +2764,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   }
 
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-  if (!sel_ctx->is_dirty(depsgraph, rv3d)) {
+  if (!sel_ctx->is_dirty(rv3d)) {
     return;
   }
 
@@ -2802,8 +2802,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   {
     drw_engines_cache_init();
 
-    for (Object *obj : sel_ctx->objects) {
-      Object *obj_eval = DEG_get_evaluated_object(depsgraph, obj);
+    for (Object *obj_eval : sel_ctx->objects) {
       drw_engines_cache_populate(obj_eval);
     }
 
