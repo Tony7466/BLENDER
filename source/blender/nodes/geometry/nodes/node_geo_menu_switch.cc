@@ -58,74 +58,67 @@ static void node_declare_dynamic(const bNodeTree &tree,
     }
   }
 
-  for (const NodeMenuSwitchEnumItem *enum_item : storage.items()) {
+  for (const NodeEnumItem *enum_item : storage.enum_definition.items()) {
     StringRef name = enum_item->name;
 
     switch (input_type) {
       case SOCK_CUSTOM:
         break;
       case SOCK_FLOAT:
-        b.add_input_output<decl::Float>(name)
-            .supports_field()
-            .dependent_field()
-            .reference_pass_all();
+        b.add_input<decl::Float>(name).supports_field();
+        b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
         break;
       case SOCK_VECTOR:
-        b.add_input_output<decl::Vector>(name)
-            .supports_field()
-            .dependent_field()
-            .reference_pass_all();
+        b.add_input<decl::Float>(name).supports_field();
+        b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
         break;
       case SOCK_RGBA:
-        b.add_input_output<decl::Color>(name)
-            .default_value({0.8f, 0.8f, 0.8f, 1.0f})
-            .supports_field();
+        b.add_input<decl::Color>(name).default_value({0.8f, 0.8f, 0.8f, 1.0f}).supports_field();
+        b.add_output<decl::Color>(name);
         break;
       case SOCK_SHADER:
-        b.add_input_output<decl::Shader>(name);
+        b.add_input<decl::Shader>(name);
+        b.add_output<decl::Shader>(name);
         break;
       case SOCK_BOOLEAN:
-        b.add_input_output<decl::Bool>(name)
-            .default_value(false)
-            .hide_value()
-            .supports_field()
-            .dependent_field()
-            .reference_pass_all();
+        b.add_input<decl::Bool>(name).default_value(false).hide_value().supports_field();
+        b.add_output<decl::Bool>(name).dependent_field().reference_pass_all();
         break;
       case SOCK_INT:
-        b.add_input_output<decl::Int>(name)
-            .min(-100000)
-            .max(100000)
-            .supports_field()
-            .dependent_field()
-            .reference_pass_all();
+        b.add_input<decl::Int>(name).min(-100000).max(100000).supports_field();
+        b.add_output<decl::Int>(name).dependent_field().reference_pass_all();
         break;
       case SOCK_STRING:
-        b.add_input_output<decl::String>(name)
-            .supports_field()
-            .dependent_field()
-            .reference_pass_all();
+        b.add_input<decl::String>(name).supports_field();
+        b.add_output<decl::String>(name).dependent_field().reference_pass_all();
         break;
       case SOCK_OBJECT:
-        b.add_input_output<decl::Object>(name);
+        b.add_input<decl::Object>(name);
+        b.add_output<decl::Object>(name);
         break;
       case SOCK_IMAGE:
-        b.add_input_output<decl::Image>(name);
+        b.add_input<decl::Image>(name);
+        b.add_output<decl::Image>(name);
         break;
       case SOCK_GEOMETRY:
-        b.add_input_output<decl::Geometry>(name).propagate_all();
+        b.add_input<decl::Geometry>(name);
+        b.add_output<decl::Geometry>(name).propagate_all();
         break;
       case SOCK_COLLECTION:
-        b.add_input_output<decl::Collection>(name);
+        b.add_input<decl::Collection>(name);
+        b.add_output<decl::Collection>(name);
         break;
       case SOCK_TEXTURE:
-        b.add_input_output<decl::Texture>(name);
+        b.add_input<decl::Texture>(name);
+        b.add_output<decl::Texture>(name);
         break;
       case SOCK_MATERIAL:
-        b.add_input_output<decl::Material>(name);
+        b.add_input<decl::Material>(name);
+        b.add_output<decl::Material>(name);
         break;
       case SOCK_ROTATION:
-        b.add_input_output<decl::Rotation>(name).dependent_field().reference_pass_all();
+        b.add_input<decl::Rotation>(name);
+        b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
         break;
     }
   }
@@ -305,7 +298,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   }
 };
 
-//static NodeMenuSwitchEnumItem *rna_enum_items_new(
+// static NodeMenuSwitchEnumItem *rna_enum_items_new(
 //    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 //{
 //  NodeMenuSwitch &storage = node_storage(*node);
@@ -323,7 +316,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 //  return item;
 //}
 //
-//static void rna_enum_items_remove(
+// static void rna_enum_items_remove(
 //    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeMenuSwitchEnumItem *item)
 //{
 //  NodeMenuSwitch &storage = node_storage(*node);
@@ -338,7 +331,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 //  }
 //}
 //
-//static void rna_enum_items_clear(ID *id, bNode *node, Main *bmain)
+// static void rna_enum_items_clear(ID *id, bNode *node, Main *bmain)
 //{
 //  NodeMenuSwitch &storage = node_storage(*node);
 //  storage.clear_items();
@@ -349,14 +342,15 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 //  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 //}
 //
-//static void rna_enum_items_move(
+// static void rna_enum_items_move(
 //    ID *id, bNode *node, Main *bmain, ReportList *reports, int from_index, int to_index)
 //{
 //  NodeMenuSwitch &storage = node_storage(*node);
 //
 //  if (!storage.move_item(from_index, to_index)) {
 //    BKE_reportf(
-//        reports, RPT_ERROR, "Unable to move item from index %d to index %d", from_index, to_index);
+//        reports, RPT_ERROR, "Unable to move item from index %d to index %d", from_index,
+//        to_index);
 //    return;
 //  }
 //
@@ -366,16 +360,16 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 //  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 //}
 //
-//static PointerRNA rna_active_item_get(PointerRNA *ptr)
+// static PointerRNA rna_active_item_get(PointerRNA *ptr)
 //{
 //  bNode *node = static_cast<bNode *>(ptr->data);
 //  const NodeMenuSwitch &storage = node_storage(*node);
 //  NodeMenuSwitchEnumItem *item = storage.items().get(storage.active_index, nullptr);
-//  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryMenuSwitchEnumItem, item);
-//  return r_ptr;
+//  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryMenuSwitchEnumItem,
+//  item); return r_ptr;
 //}
 //
-//static void rna_active_item_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
+// static void rna_active_item_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 //{
 //  bNode *node = static_cast<bNode *>(ptr->data);
 //  NodeMenuSwitch &storage = node_storage(*node);
@@ -383,7 +377,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 //  storage.active_index = storage.items().first_index_try(item);
 //}
 //
-//static void rna_enum_items_api(StructRNA *srna)
+// static void rna_enum_items_api(StructRNA *srna)
 //{
 //  PropertyRNA *prop;
 //  PropertyRNA *parm;
@@ -441,7 +435,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
 static void node_rna(StructRNA *srna)
 {
-  //PropertyRNA *prop;
+  // PropertyRNA *prop;
 
   // prop = RNA_def_property(srna, "enum_items", PROP_COLLECTION, PROP_NONE);
   // RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
@@ -449,7 +443,7 @@ static void node_rna(StructRNA *srna)
   // RNA_def_property_struct_type(prop, "NodeMenuSwitchEnumItem");
   // RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   // RNA_def_property_ui_text(prop, "Enum Items", "Declaration of enum values");
-  //rna_enum_items_api(srna);
+  // rna_enum_items_api(srna);
 
   RNA_def_node_enum(
       srna,
