@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 #include "BLI_blenlib.h"
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -44,14 +46,14 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "gpencil_intern.h"
 
@@ -1473,9 +1475,8 @@ static void gpencil_interpolate_seq_ui(bContext *C, wmOperator *op)
     /* Get an RNA pointer to ToolSettings to give to the custom curve. */
     Scene *scene = CTX_data_scene(C);
     ToolSettings *ts = scene->toolsettings;
-    PointerRNA gpsettings_ptr;
-    RNA_pointer_create(
-        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate, &gpsettings_ptr);
+    PointerRNA gpsettings_ptr = RNA_pointer_create(
+        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate);
     uiTemplateCurveMapping(
         layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }

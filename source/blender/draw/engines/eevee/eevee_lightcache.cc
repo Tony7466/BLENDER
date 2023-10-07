@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,8 +15,8 @@
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BKE_object.h"
 
@@ -34,7 +34,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "wm_window.hh"
 
@@ -787,7 +787,7 @@ wmJob *EEVEE_lightbake_job_create(wmWindowManager *wm,
         MEM_callocN(sizeof(EEVEE_LightBake), "EEVEE_LightBake"));
     /* Cannot reuse depsgraph for now because we cannot get the update from the
      * main database directly. TODO: reuse depsgraph and only update positions. */
-    /* lbake->depsgraph = old_lbake->depsgraph; */
+    // lbake->depsgraph = old_lbake->depsgraph;
     lbake->depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
 
     lbake->mutex = BLI_mutex_alloc();

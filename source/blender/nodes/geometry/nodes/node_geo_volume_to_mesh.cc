@@ -1,8 +1,8 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/GridTransformer.h>
 #  include <openvdb/tools/VolumeToMesh.h>
@@ -21,8 +21,12 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 namespace blender::nodes::node_geo_volume_to_mesh_cc {
 
@@ -149,6 +153,8 @@ static Mesh *create_mesh_from_volume_grids(Span<openvdb::GridBase::ConstPtr> gri
   BKE_mesh_calc_edges(mesh, false, false);
   BKE_mesh_smooth_flag_set(mesh, false);
 
+  geometry::debug_randomize_mesh_order(mesh);
+
   return mesh;
 }
 
@@ -211,22 +217,52 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
-}  // namespace blender::nodes::node_geo_volume_to_mesh_cc
-
-void register_node_type_geo_volume_to_mesh()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_volume_to_mesh_cc;
+  static EnumPropertyItem resolution_mode_items[] = {
+      {VOLUME_TO_MESH_RESOLUTION_MODE_GRID,
+       "GRID",
+       0,
+       "Grid",
+       "Use resolution of the volume grid"},
+      {VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_AMOUNT,
+       "VOXEL_AMOUNT",
+       0,
+       "Amount",
+       "Desired number of voxels along one axis"},
+      {VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_SIZE,
+       "VOXEL_SIZE",
+       0,
+       "Size",
+       "Desired voxel side length"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
+  RNA_def_node_enum(srna,
+                    "resolution_mode",
+                    "Resolution Mode",
+                    "How the voxel size is specified",
+                    resolution_mode_items,
+                    NOD_storage_enum_accessors(resolution_mode));
+}
+
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_VOLUME_TO_MESH, "Volume to Mesh", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
+  ntype.declare = node_declare;
   node_type_storage(
       &ntype, "NodeGeometryVolumeToMesh", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(&ntype, 170, 120, 700);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_volume_to_mesh_cc

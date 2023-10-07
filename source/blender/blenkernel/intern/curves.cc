@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,6 +29,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_curves.hh"
 #include "BKE_customdata.h"
+#include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
@@ -41,9 +42,9 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 using blender::float3;
 using blender::IndexRange;
@@ -105,26 +106,24 @@ static void curves_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Curves *curves = (Curves *)id;
 
+  blender::bke::CurvesGeometry::BlendWriteData write_data =
+      curves->geometry.wrap().blend_write_prepare();
+
   /* Write LibData */
   BLO_write_id_struct(writer, Curves, id_address, &curves->id);
   BKE_id_blend_write(writer, &curves->id);
 
   /* Direct data */
-  curves->geometry.wrap().blend_write(*writer, curves->id);
+  curves->geometry.wrap().blend_write(*writer, curves->id, write_data);
 
   BLO_write_string(writer, curves->surface_uv_map);
 
   BLO_write_pointer_array(writer, curves->totcol, curves->mat);
-  if (curves->adt) {
-    BKE_animdata_blend_write(writer, curves->adt);
-  }
 }
 
 static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
-  BLO_read_data_address(reader, &curves->adt);
-  BKE_animdata_blend_read_data(reader, curves->adt);
 
   /* Geometry */
   curves->geometry.wrap().blend_read(*reader);
@@ -133,24 +132,6 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* Materials */
   BLO_read_pointer_array(reader, (void **)&curves->mat);
-}
-
-static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Curves *curves = (Curves *)id;
-  for (int a = 0; a < curves->totcol; a++) {
-    BLO_read_id_address(reader, id, &curves->mat[a]);
-  }
-  BLO_read_id_address(reader, id, &curves->surface);
-}
-
-static void curves_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Curves *curves = (Curves *)id;
-  for (int a = 0; a < curves->totcol; a++) {
-    BLO_expand(expander, curves->mat[a]);
-  }
-  BLO_expand(expander, curves->surface);
 }
 
 IDTypeInfo IDType_ID_CV = {
@@ -175,8 +156,7 @@ IDTypeInfo IDType_ID_CV = {
 
     /*blend_write*/ curves_blend_write,
     /*blend_read_data*/ curves_blend_read_data,
-    /*blend_read_lib*/ curves_blend_read_lib,
-    /*blend_read_expand*/ curves_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -386,6 +366,15 @@ bool CurvesEditHints::is_valid() const
     }
   }
   return true;
+}
+
+void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals)
+{
+  const bke::CurvesFieldContext context(curves, ATTR_DOMAIN_POINT);
+  fn::FieldEvaluator evaluator(context, curves.points_num());
+  fn::Field<float3> field(std::make_shared<bke::NormalFieldInput>());
+  evaluator.add_with_destination(std::move(field), normals);
+  evaluator.evaluate();
 }
 
 }  // namespace blender::bke

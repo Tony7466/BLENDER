@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,14 +26,13 @@
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
 #include "BLI_fileops.h"
-#include "BLI_math.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLO_readfile.h"
 
 #include "BKE_node_runtime.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 
@@ -51,7 +50,7 @@ static const bNode *find_node_for_type_in_graph(const bNodeTree *nodetree,
 
 class UsdExportTest : public BlendfileLoadingBaseTest {
  protected:
-  struct bContext *context = nullptr;
+  bContext *context = nullptr;
 
  public:
   bool load_file_and_depsgraph(const StringRefNull &filepath,

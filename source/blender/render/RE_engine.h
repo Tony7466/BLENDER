@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "RE_bake.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_threads.h"
 
@@ -55,6 +55,7 @@ enum RenderEngineTypeFlag {
   RE_USE_CUSTOM_FREESTYLE = (1 << 8),
   RE_USE_NO_IMAGE_SAVE = (1 << 9),
   RE_USE_ALEMBIC_PROCEDURAL = (1 << 10),
+  RE_USE_MATERIALX = (1 << 11),
 };
 
 /** #RenderEngine.flag */

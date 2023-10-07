@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,6 +22,8 @@
  *  - `BKE_lib_override_library_main_` should be used for function affecting the whole collection
  *    of IDs in a given Main data-base.
  */
+
+#include <optional>
 
 struct BlendFileReadReport;
 struct Collection;
@@ -233,6 +235,11 @@ void BKE_lib_override_library_main_hierarchy_root_ensure(Main *bmain);
  * \param view_layer: the active view layer to search instantiated collections in, can be NULL (in
  *                    which case \a scene's master collection children hierarchy is used instead).
  * \param id_root: The root liboverride ID to resync from.
+ * \param do_hierarchy_enforce: If `true`, enforce the liboverride hierarchy of dependencies to
+ *                              match the one from the reference linked data (i.e. if some manually
+ *                              override were applied to some ID pointers, they will be reset to
+ *                              the default reference value).
+ *
  * \return true if override was successfully resynced.
  */
 bool BKE_lib_override_library_resync(Main *bmain,
@@ -338,11 +345,17 @@ bool BKE_lib_override_rna_property_find(PointerRNA *idpoin,
 
 /**
  * Find override property operation from given sub-item(s), if it exists.
+ *
+ * \param subitem_refid:
+ * \param subitem_locid: Only for RNA collections of ID pointers, the ID pointers
+ * referenced by the given names. Note that both must be set, or left unset.
  */
 IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_find(
     IDOverrideLibraryProperty *liboverride_property,
     const char *subitem_refname,
     const char *subitem_locname,
+    const std::optional<const ID *> &subitem_refid,
+    const std::optional<const ID *> &subitem_locid,
     int subitem_refindex,
     int subitem_locindex,
     bool strict,
@@ -355,6 +368,8 @@ IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_
     short operation,
     const char *subitem_refname,
     const char *subitem_locname,
+    const std::optional<ID *> &subitem_refid,
+    const std::optional<ID *> &subitem_locid,
     int subitem_refindex,
     int subitem_locindex,
     bool strict,

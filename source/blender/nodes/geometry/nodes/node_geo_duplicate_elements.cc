@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,6 +20,8 @@
 #include "BKE_pointcloud.h"
 
 #include "node_geometry_util.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -534,8 +536,8 @@ static void duplicate_faces(GeometrySet &geometry_set,
       face_index++;
     }
   });
-  std::iota(new_corner_verts.begin(), new_corner_verts.end(), 0);
-  std::iota(new_corner_edges.begin(), new_corner_edges.end(), 0);
+  array_utils::fill_index_range<int>(new_corner_verts);
+  array_utils::fill_index_range<int>(new_corner_edges);
 
   new_mesh->tag_loose_verts_none();
   new_mesh->tag_loose_edges_none();
@@ -760,7 +762,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
   bke::curves_copy_parameters(src_curves_id, *new_curves_id);
   bke::CurvesGeometry &new_curves = new_curves_id->geometry.wrap();
   MutableSpan<int> new_curve_offsets = new_curves.offsets_for_write();
-  std::iota(new_curve_offsets.begin(), new_curve_offsets.end(), 0);
+  array_utils::fill_index_range(new_curve_offsets);
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(src_curves.attributes(),
                                                                new_curves.attributes_for_write(),
@@ -1078,11 +1080,28 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 /** \} */
 
-}  // namespace blender::nodes::node_geo_duplicate_elements_cc
-
-void register_node_type_geo_duplicate_elements()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_duplicate_elements_cc;
+  static const EnumPropertyItem domain_items[] = {
+      {ATTR_DOMAIN_POINT, "POINT", 0, "Point", ""},
+      {ATTR_DOMAIN_EDGE, "EDGE", 0, "Edge", ""},
+      {ATTR_DOMAIN_FACE, "FACE", 0, "Face", ""},
+      {ATTR_DOMAIN_CURVE, "SPLINE", 0, "Spline", ""},
+      {ATTR_DOMAIN_INSTANCE, "INSTANCE", 0, "Instance", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Which domain to duplicate",
+                    domain_items,
+                    NOD_storage_enum_accessors(domain),
+                    ATTR_DOMAIN_POINT);
+}
+
+static void node_register()
+{
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_DUPLICATE_ELEMENTS, "Duplicate Elements", NODE_CLASS_GEOMETRY);
@@ -1092,9 +1111,14 @@ void register_node_type_geo_duplicate_elements()
                     node_free_standard_storage,
                     node_copy_standard_storage);
 
-  ntype.initfunc = file_ns::node_init;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.initfunc = node_init;
+  ntype.draw_buttons = node_layout;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_duplicate_elements_cc

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,6 +25,16 @@
 #include "UI_tree_view.hh"
 
 namespace blender::ui {
+
+static int unpadded_item_height()
+{
+  return UI_UNIT_Y;
+}
+static int padded_item_height()
+{
+  const uiStyle *style = UI_style_get_dpi();
+  return unpadded_item_height() + style->buttonspacey;
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -300,6 +310,7 @@ void AbstractTreeViewItem::add_treerow_button(uiBlock &block)
       &block, UI_BTYPE_VIEW_ITEM, 0, "", 0, 0, UI_UNIT_X * 10, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
 
   view_item_but_->view_item = reinterpret_cast<uiViewItemHandle *>(this);
+  view_item_but_->draw_height = unpadded_item_height();
   UI_but_func_set(view_item_but_, tree_row_click_fn, view_item_but_, nullptr);
 }
 
@@ -410,7 +421,7 @@ StringRef AbstractTreeViewItem::get_rename_string() const
   return label_;
 }
 
-bool AbstractTreeViewItem::rename(StringRefNull new_name)
+bool AbstractTreeViewItem::rename(const bContext & /*C*/, StringRefNull new_name)
 {
   /* It is important to update the label after renaming, so #AbstractTreeViewItem::matches_single()
    * recognizes the item. (It only compares labels by default.) */
@@ -579,7 +590,7 @@ void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
   uiLayout &parent_layout = current_layout();
 
   uiLayout *box = uiLayoutBox(&parent_layout);
-  uiLayoutColumn(box, false);
+  uiLayoutColumn(box, true);
 
   tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
                          AbstractTreeView::IterOptions::SkipCollapsed |
@@ -616,6 +627,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   if (!item.is_interactive_) {
     uiLayoutSetActive(overlap, false);
   }
+  /* Scale the layout for the padded height. Widgets will be vertically centered then. */
+  uiLayoutSetScaleY(overlap, float(padded_item_height()) / UI_UNIT_Y);
 
   uiLayout *row = uiLayoutRow(overlap, false);
   /* Enable emboss for mouse hover highlight. */

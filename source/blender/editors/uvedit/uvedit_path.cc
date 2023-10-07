@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,6 @@
 
 #include "BLI_ghash.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -37,16 +36,16 @@
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_transform.hh"
 #include "ED_uvedit.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

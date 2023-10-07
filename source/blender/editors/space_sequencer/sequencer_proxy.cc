@@ -26,13 +26,13 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 /* For menu, popup, icons, etc. */
 #include "ED_screen.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Rebuild Proxy and Timecode Indices Operator

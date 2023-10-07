@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,7 +40,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -50,7 +50,6 @@
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -58,9 +57,10 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h" /* BKE_ST_MAXNAME */
+#include "BKE_screen.hh" /* BKE_ST_MAXNAME */
 #include "BKE_unit.h"
 
 #include "BKE_idtype.h"
@@ -76,15 +76,16 @@
 
 #include "ED_fileselect.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 #include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
@@ -682,7 +683,7 @@ char *WM_prop_pystring_assign(bContext *C, PointerRNA *ptr, PropertyRNA *prop, i
 void WM_operator_properties_create_ptr(PointerRNA *ptr, wmOperatorType *ot)
 {
   /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr);
 }
 
 void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
@@ -694,7 +695,8 @@ void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
   }
   else {
     /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-    RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr, ptr);
+    *ptr = RNA_pointer_create(
+        static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr);
   }
 }
 
@@ -1048,7 +1050,8 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opconte
     return retval;
   }
   else {
-    uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+    uiPopupMenu *pup = UI_popup_menu_begin(
+        C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
     uiLayout *layout = UI_popup_menu_layout(pup);
     /* set this so the default execution context is the same as submenus */
     uiLayoutSetOperatorContext(layout, opcontext);
@@ -1194,7 +1197,7 @@ int WM_operator_confirm_message_ex(bContext *C,
   uiPopupMenu *pup = UI_popup_menu_begin(C, title, icon);
   uiLayout *layout = UI_popup_menu_layout(pup);
   uiItemFullO_ptr(
-      layout, op->type, message, ICON_NONE, properties, opcontext, UI_ITEM_NONE, nullptr);
+      layout, op->type, message, ICON_NONE, properties, opcontext, UI_ITEM_O_DEPRESS, nullptr);
   UI_popup_menu_end(C, pup);
 
   return OPERATOR_INTERFACE;
@@ -1286,7 +1289,7 @@ IDProperty *WM_operator_last_properties_ensure_idprops(wmOperatorType *ot)
 void WM_operator_last_properties_ensure(wmOperatorType *ot, PointerRNA *ptr)
 {
   IDProperty *props = WM_operator_last_properties_ensure_idprops(ot);
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props);
 }
 
 ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
@@ -1739,27 +1742,30 @@ static void WM_OT_operator_defaults(wmOperatorType *ot)
 enum SearchType {
   SEARCH_TYPE_OPERATOR = 0,
   SEARCH_TYPE_MENU = 1,
+  SEARCH_TYPE_SINGLE_MENU = 2,
 };
 
 struct SearchPopupInit_Data {
   SearchType search_type;
   int size[2];
+  std::string single_menu_idname;
 };
+
+static char g_search_text[256] = "";
 
 static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdata)
 {
   const SearchPopupInit_Data *init_data = static_cast<const SearchPopupInit_Data *>(userdata);
-  static char search[256] = "";
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   uiBut *but = uiDefSearchBut(block,
-                              search,
+                              g_search_text,
                               0,
                               ICON_VIEWZOOM,
-                              sizeof(search),
+                              sizeof(g_search_text),
                               10,
                               10,
                               init_data->size[0],
@@ -1773,6 +1779,10 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
   }
   else if (init_data->search_type == SEARCH_TYPE_MENU) {
     UI_but_func_menu_search(but);
+  }
+  else if (init_data->search_type == SEARCH_TYPE_SINGLE_MENU) {
+    UI_but_func_menu_search(but, init_data->single_menu_idname.c_str());
+    UI_but_flag2_enable(but, UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT);
   }
   else {
     BLI_assert_unreachable();
@@ -1835,20 +1845,43 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     }
   }
 
-  int search_type;
+  SearchType search_type;
   if (STREQ(op->type->idname, "WM_OT_search_menu")) {
     search_type = SEARCH_TYPE_MENU;
+  }
+  else if (STREQ(op->type->idname, "WM_OT_search_single_menu")) {
+    search_type = SEARCH_TYPE_SINGLE_MENU;
   }
   else {
     search_type = SEARCH_TYPE_OPERATOR;
   }
 
   static SearchPopupInit_Data data{};
-  data.search_type = SearchType(search_type);
+  char temp_buffer[256] = "";
+  STRNCPY(temp_buffer, g_search_text);
+
+  if (search_type == SEARCH_TYPE_SINGLE_MENU) {
+    {
+      char *buffer = RNA_string_get_alloc(op->ptr, "menu_idname", nullptr, 0, nullptr);
+      data.single_menu_idname = buffer;
+      MEM_SAFE_FREE(buffer);
+    }
+    {
+      char *buffer = RNA_string_get_alloc(op->ptr, "initial_query", nullptr, 0, nullptr);
+      STRNCPY(g_search_text, buffer);
+      MEM_SAFE_FREE(buffer);
+    }
+  }
+
+  data.search_type = search_type;
   data.size[0] = UI_searchbox_size_x() * 2;
   data.size[1] = UI_searchbox_size_y();
 
   UI_popup_block_invoke_ex(C, wm_block_search_menu, &data, nullptr, false);
+
+  /* g_search_text contains pressed letter here, copy previous searched
+   * value back to it, this will retain last searched result. see: #112896 */
+  STRNCPY(g_search_text, temp_buffer);
 
   return OPERATOR_INTERFACE;
 }
@@ -1875,6 +1908,25 @@ static void WM_OT_search_operator(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
 }
 
+static void WM_OT_search_single_menu(wmOperatorType *ot)
+{
+  ot->name = "Search Single Menu";
+  ot->idname = "WM_OT_search_single_menu";
+  ot->description = "Pop-up a search for a menu in current context";
+
+  ot->invoke = wm_search_menu_invoke;
+  ot->exec = wm_search_menu_exec;
+  ot->poll = WM_operator_winactive;
+
+  RNA_def_string(ot->srna, "menu_idname", nullptr, 0, "Menu Name", "Menu to search in");
+  RNA_def_string(ot->srna,
+                 "initial_query",
+                 nullptr,
+                 0,
+                 "Initial Query",
+                 "Query to insert into the search box");
+}
+
 static int wm_call_menu_exec(bContext *C, wmOperator *op)
 {
   char idname[BKE_ST_MAXNAME];
@@ -1883,7 +1935,7 @@ static int wm_call_menu_exec(bContext *C, wmOperator *op)
   return UI_popup_menu_invoke(C, idname, op->reports);
 }
 
-static const char *wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -1962,7 +2014,7 @@ static int wm_call_panel_exec(bContext *C, wmOperator *op)
   return UI_popover_panel_invoke(C, idname, keep_open, op->reports);
 }
 
-static const char *wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -2022,6 +2074,24 @@ static bool wm_operator_winactive_normal(bContext *C)
   return true;
 }
 
+static bool wm_operator_winactive_not_full(bContext *C)
+{
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen;
+
+  if (win == nullptr) {
+    return false;
+  }
+  if (!((screen = WM_window_get_active_screen(win)) && (screen->state != SCREENFULL))) {
+    return false;
+  }
+  if (G.background) {
+    return false;
+  }
+
+  return true;
+}
+
 /* included for script-access */
 static void WM_OT_window_close(wmOperatorType *ot)
 {
@@ -2040,7 +2110,7 @@ static void WM_OT_window_new(wmOperatorType *ot)
   ot->description = "Create a new window";
 
   ot->exec = wm_window_new_exec;
-  ot->poll = wm_operator_winactive_normal;
+  ot->poll = wm_operator_winactive_not_full;
 }
 
 static void WM_OT_window_new_main(wmOperatorType *ot)
@@ -2287,14 +2357,24 @@ static void radial_control_set_initial_mouse(bContext *C, RadialControl *rc, con
     d[0] *= zoom[0];
     d[1] *= zoom[1];
   }
+  rc->scale_fac = 1.0f;
   /* Grease pencil draw tool needs to rescale the cursor size. If we don't do that
-   * the size of the radial is not equals to the actual stroke size. */
-  if (rc->ptr.owner_id && GS(rc->ptr.owner_id->name) == ID_BR && rc->prop == &rna_Brush_size) {
-    rc->scale_fac = ED_gpencil_radial_control_scale(
-        C, (Brush *)rc->ptr.owner_id, rc->initial_value, event->mval);
+   * the size of the radial is not equal to the actual stroke size. */
+  Object *object = CTX_data_active_object(C);
+  if (object->type == OB_GREASE_PENCIL && rc->prop == &rna_UnifiedPaintSettings_size) {
+    ToolSettings *ts = CTX_data_tool_settings(C);
+    const Brush &brush = *BKE_paint_brush_for_read(&ts->gp_paint->paint);
+    /* Only the draw brush needs the rescaling. */
+    if (brush.gpencil_tool == GPAINT_TOOL_DRAW) {
+      float cursor_radius = blender::ed::greasepencil::brush_radius_world_space(
+          *C, event->mval[0], event->mval[1]);
+      rc->scale_fac = max_ff(cursor_radius, 1.0f) / max_ff(rc->initial_value, 1.0f);
+    }
   }
-  else {
-    rc->scale_fac = 1.0f;
+  else if (rc->ptr.owner_id && GS(rc->ptr.owner_id->name) == ID_BR && rc->prop == &rna_Brush_size)
+  {
+    Brush *brush = reinterpret_cast<Brush *>(rc->ptr.owner_id);
+    rc->scale_fac = ED_gpencil_radial_control_scale(C, brush, rc->initial_value, event->mval);
   }
 
   rc->initial_mouse[0] -= d[0];
@@ -2670,8 +2750,7 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
 {
   RadialControl *rc = static_cast<RadialControl *>(op->customdata);
 
-  PointerRNA ctx_ptr;
-  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
 
   /* check if we use primary or secondary path */
   PointerRNA use_secondary_ptr;
@@ -3832,6 +3911,7 @@ void wm_operatortypes_register()
   WM_operatortype_append(WM_OT_splash_about);
   WM_operatortype_append(WM_OT_search_menu);
   WM_operatortype_append(WM_OT_search_operator);
+  WM_operatortype_append(WM_OT_search_single_menu);
   WM_operatortype_append(WM_OT_call_menu);
   WM_operatortype_append(WM_OT_call_menu_pie);
   WM_operatortype_append(WM_OT_call_panel);
@@ -4038,7 +4118,7 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 
 void wm_window_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Window", 0, 0);
+  WM_keymap_ensure(keyconf, "Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   wm_gizmos_keymap(keyconf);
   gesture_circle_modal_keymap(keyconf);

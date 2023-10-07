@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -24,10 +25,10 @@
 
 #include "BKE_context.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -66,14 +67,13 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks,
     /* make new linkage data */
     tPChanFCurveLink *pfl = static_cast<tPChanFCurveLink *>(
         MEM_callocN(sizeof(tPChanFCurveLink), "tPChanFCurveLink"));
-    PointerRNA ptr;
 
     pfl->ob = ob;
     pfl->fcurves = curves;
     pfl->pchan = pchan;
 
     /* get the RNA path to this pchan - this needs to be freed! */
-    RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan);
     pfl->pchan_path = RNA_path_from_ID_to_struct(&ptr);
 
     /* add linkage data to operator data */

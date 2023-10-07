@@ -47,7 +47,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
@@ -71,7 +72,7 @@
 
 #include "BLO_readfile.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 #include "PIL_time.h"
 
@@ -1385,7 +1386,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
     for (ob = static_cast<Object *>(bmain->objects.first); ob;
          ob = static_cast<Object *>(ob->id.next)) {
-      ModifierData *md;
       PartEff *paf;
 
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
@@ -1399,7 +1399,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       if ((ob->softflag & OB_SB_ENABLE) && !BKE_modifiers_findby_type(ob, eModifierType_Softbody))
       {
         if (ob->softflag & OB_SB_POSTDEF) {
-          md = static_cast<ModifierData *>(ob->modifiers.first);
+          ModifierData *md = static_cast<ModifierData *>(ob->modifiers.first);
 
           while (md && BKE_modifier_get_info(ModifierType(md->type))->type ==
                            eModifierTypeType_OnlyDeform) {

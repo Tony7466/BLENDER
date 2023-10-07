@@ -12,7 +12,7 @@
 
 #include "DNA_anim_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_context.h"
@@ -133,7 +133,7 @@ static void applyTimeSlide(TransInfo *t)
 
   /* t->values_final[0] stores cval[0], which is the current mouse-pointer location (in frames) */
   /* XXX Need to be able to repeat this. */
-  /* t->values_final[0] = cval[0]; */ /* UNUSED (reset again later). */
+  // t->values_final[0] = cval[0]; /* UNUSED (reset again later). */
 
   /* handle numeric-input stuff */
   t->vec[0] = 2.0f * (cval[0] - sval[0]) / (maxx - minx);

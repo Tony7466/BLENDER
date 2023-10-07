@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -51,9 +53,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_keyframing.hh"
@@ -62,8 +64,8 @@
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -320,7 +322,7 @@ static void gpencil_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   bGPDstroke *gps = static_cast<bGPDstroke *>(MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke"));
   gps->thickness = 2.0f;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
@@ -1347,7 +1349,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
   gps = static_cast<bGPDstroke *>(tgpi->gpf->strokes.first);
   if (gps) {
     gps->thickness = brush->size;
-    gps->hardeness = brush_settings->hardeness;
+    gps->hardness = brush_settings->hardness;
     copy_v2_v2(gps->aspect_ratio, brush_settings->aspect_ratio);
 
     /* Calc geometry data. */

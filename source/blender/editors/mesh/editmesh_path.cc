@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 #endif
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_customdata.h"
@@ -34,8 +34,8 @@
 #include "ED_uvedit.hh"
 #include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -43,7 +43,7 @@
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "mesh_intern.h" /* own include */
 

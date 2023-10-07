@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,9 @@
 
 #include "BLI_fileops.h"
 #include "BLI_hash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -64,8 +66,8 @@
 #  include "BKE_scene.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "RE_texture.h"
 
@@ -3264,7 +3266,7 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds,
   madd_v3fl_v3fl_v3fl_v3i(max, fds->p0, cell_size_scaled, fds->res_max);
   sub_v3_v3v3(size, max, min);
 
-  /* Biggest dimension will be used for upscaling. */
+  /* Biggest dimension will be used for up-scaling. */
   float max_size = MAX3(size[0], size[1], size[2]);
 
   float co_scale[3];

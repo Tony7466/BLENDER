@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2019 Blender Foundation
+# SPDX-FileCopyrightText: 2019 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -68,8 +68,8 @@ set(INC
   ../../nodes
   ../../python/intern
   ../../windowmanager
-  ../../../../intern/utfconv
   ../../../../intern/clog
+  ../../../../intern/utfconv
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -107,15 +107,18 @@ set(SRC
   intern/usd_reader_nurbs.cc
   intern/usd_reader_prim.cc
   intern/usd_reader_shape.cc
+  intern/usd_reader_skeleton.cc
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
+  intern/usd_skel_convert.cc
 
-  usd.hh
   usd.h
+  usd.hh
 
   intern/usd_asset_utils.h
   intern/usd_exporter_context.h
+  intern/usd_hash_types.h
   intern/usd_hierarchy_iterator.h
   intern/usd_hook.h
   intern/usd_writer_abstract.h
@@ -138,9 +141,11 @@ set(SRC
   intern/usd_reader_nurbs.h
   intern/usd_reader_prim.h
   intern/usd_reader_shape.h
+  intern/usd_reader_skeleton.h
   intern/usd_reader_stage.h
   intern/usd_reader_volume.h
   intern/usd_reader_xform.h
+  intern/usd_skel_convert.h
 )
 
 if(WITH_HYDRA)
@@ -204,13 +209,18 @@ if(WITH_OPENVDB)
   )
 endif()
 
-blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+endif()
+
+blender_add_lib(bf_io_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 # RNA_prototypes.h
-add_dependencies(bf_usd bf_rna)
+add_dependencies(bf_io_usd bf_rna)
 
 if(COMMAND target_precompile_headers)
-  target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
+  target_precompile_headers(bf_io_usd PRIVATE intern/usd_precomp.h)
 endif()
 
 if(WITH_GTESTS)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,11 +13,11 @@
 
 #include "GPU_index_buffer.h"
 
-#include "BLI_math.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
+#include "../generic/python_utildefines.h"
 
 #include "gpu_py.h"
 #include "gpu_py_element.h" /* own include */
@@ -40,6 +40,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject * /*type*/, PyObject *args,
 
   static const char *_keywords[] = {"type", "seq", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "$O" /* `type` */
       "&O" /* `seq` */
       ":IndexBuf.__new__",

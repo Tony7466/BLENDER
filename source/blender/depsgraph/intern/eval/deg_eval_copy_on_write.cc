@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,8 +34,8 @@
 #include "BKE_lib_id.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -82,10 +82,10 @@
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_nodes.h"
-#include "intern/depsgraph.h"
+#include "intern/depsgraph.hh"
 #include "intern/eval/deg_eval_runtime_backup.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 

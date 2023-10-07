@@ -24,7 +24,7 @@
 #include "BKE_image_format.h"
 #include "BKE_node.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RE_pipeline.h"
 
@@ -36,7 +36,7 @@
 #include "ED_image.hh"
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

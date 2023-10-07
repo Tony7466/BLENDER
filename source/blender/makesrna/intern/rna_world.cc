@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #include <cfloat>
 #include <cstdlib>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -29,8 +29,8 @@
 #  include "BKE_main.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_node.hh"
 

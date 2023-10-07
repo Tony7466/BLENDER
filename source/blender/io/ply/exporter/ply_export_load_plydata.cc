@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  */
 
 #include "ply_export_load_plydata.hh"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 #include "ply_data.hh"
 
 #include "BKE_attribute.hh"
@@ -15,9 +15,12 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BLI_hash.hh"
-#include "BLI_math.h"
+#include "BLI_math_color.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_vector.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_layer_types.h"
 
 #include "bmesh.h"
@@ -134,8 +137,9 @@ static void generate_vertex_map(const Mesh *mesh,
 
   /* Add zero UVs for any loose vertices. */
   for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
-    if (r_vertex_to_ply[vertex_index] != -1)
+    if (r_vertex_to_ply[vertex_index] != -1) {
       continue;
+    }
     int ply_index = int(r_uvs.size());
     r_vertex_to_ply[vertex_index] = ply_index;
     r_uvs.append({0, 0});
@@ -170,7 +174,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
     bool force_triangulation = false;
-    const OffsetIndices faces = mesh->faces();
+    OffsetIndices faces = mesh->faces();
     for (const int i : faces.index_range()) {
       if (faces[i].size() > 255) {
         force_triangulation = true;
@@ -182,6 +186,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
     bool manually_free_mesh = false;
     if (export_params.export_triangulated_mesh || force_triangulation) {
       mesh = do_triangulation(mesh, export_params.export_triangulated_mesh);
+      faces = mesh->faces();
       manually_free_mesh = true;
     }
 

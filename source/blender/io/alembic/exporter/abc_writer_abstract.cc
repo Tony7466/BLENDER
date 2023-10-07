@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "abc_writer_abstract.h"
@@ -10,7 +10,7 @@
 
 #include "DNA_modifier_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include <Alembic/AbcGeom/Visibility.h>
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,8 @@
 
 #include "BLI_jitter_2d.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -47,11 +48,12 @@
 #include "DNA_windowmanager_types.h"
 
 #include "DRW_engine.h"
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_info.hh"
 #include "ED_keyframing.hh"
+#include "ED_scene.hh"
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 #include "ED_transform.hh"
@@ -60,7 +62,7 @@
 
 #include "ANIM_bone_collections.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
@@ -83,7 +85,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -94,7 +96,7 @@ using blender::float4;
 
 #define M_GOLDEN_RATIO_CONJUGATE 0.618033988749895f
 
-#define VIEW3D_OVERLAY_LINEHEIGHT (0.9f * U.widget_unit)
+#define VIEW3D_OVERLAY_LINEHEIGHT (UI_style_get()->widgetlabel.points * UI_SCALE_FAC * 1.6f)
 
 /* -------------------------------------------------------------------- */
 /** \name General Functions
@@ -1445,6 +1447,8 @@ static void draw_selected_name(
 
   BLI_assert(i < int(ARRAY_SIZE(info_array)));
   char info[300];
+  /* It's expected there will be enough room for the buffer (if not, increase it). */
+  BLI_assert(BLI_string_len_array(info_array, i) < sizeof(info));
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
   BLF_enable(font_id, BLF_SHADOW);
@@ -1527,35 +1531,43 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
     }
   }
 
-  int xoffset = rect->xmin + (0.5f * U.widget_unit);
-  int yoffset = rect->ymax - (0.1f * U.widget_unit);
+  if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
+    int xoffset = rect->xmin + (0.5f * U.widget_unit);
+    int yoffset = rect->ymax - (0.1f * U.widget_unit);
+    BLF_default_size(UI_style_get()->widgetlabel.points);
 
-  if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0 && (v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
-    if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {
-      ED_scene_draw_fps(scene, xoffset, &yoffset);
+    if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
+      if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {
+        ED_scene_draw_fps(scene, xoffset, &yoffset);
+      }
+      else if (U.uiflag & USER_SHOW_VIEWPORTNAME) {
+        draw_viewport_name(region, v3d, xoffset, &yoffset);
+      }
+
+      if (U.uiflag & USER_DRAWVIEWINFO) {
+        BKE_view_layer_synced_ensure(scene, view_layer);
+        Object *ob = BKE_view_layer_active_object_get(view_layer);
+        draw_selected_name(v3d, scene, view_layer, ob, xoffset, &yoffset);
+      }
+
+      if (v3d->gridflag & (V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_Z)) {
+        /* draw below the viewport name */
+        draw_grid_unit_name(scene, region, v3d, xoffset, &yoffset);
+      }
+
+      DRW_draw_region_engine_info(xoffset, &yoffset, VIEW3D_OVERLAY_LINEHEIGHT);
     }
-    else if (U.uiflag & USER_SHOW_VIEWPORTNAME) {
-      draw_viewport_name(region, v3d, xoffset, &yoffset);
+
+    if (v3d->overlay.flag & V3D_OVERLAY_STATS) {
+      View3D *v3d_local = v3d->localvd ? v3d : nullptr;
+      ED_info_draw_stats(
+          bmain, scene, view_layer, v3d_local, xoffset, &yoffset, VIEW3D_OVERLAY_LINEHEIGHT);
     }
 
-    if (U.uiflag & USER_DRAWVIEWINFO) {
-      BKE_view_layer_synced_ensure(scene, view_layer);
-      Object *ob = BKE_view_layer_active_object_get(view_layer);
-      draw_selected_name(v3d, scene, view_layer, ob, xoffset, &yoffset);
-    }
-
-    if (v3d->gridflag & (V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_Z)) {
-      /* draw below the viewport name */
-      draw_grid_unit_name(scene, region, v3d, xoffset, &yoffset);
-    }
-
-    DRW_draw_region_engine_info(xoffset, &yoffset, VIEW3D_OVERLAY_LINEHEIGHT);
-  }
-
-  if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0 && (v3d->overlay.flag & V3D_OVERLAY_STATS)) {
-    View3D *v3d_local = v3d->localvd ? v3d : nullptr;
-    ED_info_draw_stats(
-        bmain, scene, view_layer, v3d_local, xoffset, &yoffset, VIEW3D_OVERLAY_LINEHEIGHT);
+    /* Set the size back to the default hard-coded size. Otherwise anyone drawing after this,
+     * without setting explicit size, will draw with widgetlabel size. That is probably ideal,
+     * but size should be set at the calling site not just carried over from here. */
+    BLF_default_size(UI_DEFAULT_TEXT_POINTS);
   }
 
   BLF_batch_draw_end();
@@ -2573,43 +2585,34 @@ void ED_view3d_mats_rv3d_restore(RegionView3D *rv3d, RV3DMatrixStore *rv3dmat_pt
 
 void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
 {
-  ScreenFrameRateInfo *fpsi = static_cast<ScreenFrameRateInfo *>(scene->fps_info);
-  /* 8 4-bytes chars (complex writing systems like Devanagari in UTF8 encoding) */
-  char printable[32];
-
-  if (!fpsi || !fpsi->lredrawtime || !fpsi->redrawtime) {
+  SceneFPS_State state;
+  if (!ED_scene_fps_average_calc(scene, &state)) {
     return;
   }
 
+  /* 8 4-bytes chars (complex writing systems like Devanagari in UTF8 encoding) */
+  char printable[32];
   printable[0] = '\0';
 
-  /* Doing an average for a more robust calculation. */
-  fpsi->redrawtimes_fps[fpsi->redrawtime_index] = float(1.0 /
-                                                        (fpsi->lredrawtime - fpsi->redrawtime));
-
-  float fps = 0.0f;
-  int tot = 0;
-  for (int i = 0; i < REDRAW_FRAME_AVERAGE; i++) {
-    if (fpsi->redrawtimes_fps[i]) {
-      fps += fpsi->redrawtimes_fps[i];
-      tot++;
-    }
-  }
-  if (tot) {
-    fpsi->redrawtime_index = (fpsi->redrawtime_index + 1) % REDRAW_FRAME_AVERAGE;
-    fps = fps / tot;
-  }
+  bool show_fractional = state.fps_target_is_fractional;
 
   const int font_id = BLF_default();
 
   /* Is this more than half a frame behind? */
-  if (fps + 0.5f < float(FPS)) {
+  if (state.fps_average + 0.5f < state.fps_target) {
+    /* Always show fractional when under performing. */
+    show_fractional = true;
     UI_FontThemeColor(font_id, TH_REDALERT);
-    SNPRINTF(printable, IFACE_("fps: %.2f"), fps);
   }
   else {
     UI_FontThemeColor(font_id, TH_TEXT_HI);
-    SNPRINTF(printable, IFACE_("fps: %i"), int(fps + 0.5f));
+  }
+
+  if (show_fractional) {
+    SNPRINTF(printable, IFACE_("fps: %.2f"), state.fps_average);
+  }
+  else {
+    SNPRINTF(printable, IFACE_("fps: %i"), int(state.fps_average + 0.5f));
   }
 
   BLF_enable(font_id, BLF_SHADOW);

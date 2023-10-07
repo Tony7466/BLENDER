@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,7 +39,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -359,7 +359,7 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                        &factor_string_pixel_size[1]);
 
   BLF_position(fontid,
-               main_line_rect.xmin - 24.0 * U.pixelsize - factor_string_pixel_size[0] / 2,
+               main_line_rect.xmin - 12.0 * U.pixelsize - factor_string_pixel_size[0],
                (region->winy / 2) - factor_string_pixel_size[1] / 2,
                0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
@@ -543,7 +543,7 @@ void ED_slider_factor_set(tSlider *slider, const float factor)
   slider->raw_factor = factor;
   slider->factor = factor;
   if (!slider->overshoot) {
-    slider->factor = clamp_f(slider->factor, 0, 1);
+    slider->factor = clamp_f(slider->factor, slider->factor_bounds[0], slider->factor_bounds[1]);
   }
 }
 
@@ -574,6 +574,11 @@ void ED_slider_factor_bounds_set(tSlider *slider,
 void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 {
   slider->slider_mode = mode;
+}
+
+SliderMode ED_slider_mode_get(tSlider *slider)
+{
+  return slider->slider_mode;
 }
 
 void ED_slider_unit_set(tSlider *slider, const char *unit)
@@ -864,6 +869,7 @@ void ED_region_image_metadata_draw(
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    GPU_blend(GPU_BLEND_ALPHA);
     immUniformThemeColor(TH_METADATA_BG);
     immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     immUnbindProgram();
@@ -875,6 +881,7 @@ void ED_region_image_metadata_draw(
     metadata_draw_imbuf(ibuf, &rect, blf_mono_font, true);
 
     BLF_disable(blf_mono_font, BLF_CLIPPING);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   /* *** lower box*** */
@@ -889,6 +896,7 @@ void ED_region_image_metadata_draw(
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    GPU_blend(GPU_BLEND_ALPHA);
     immUniformThemeColor(TH_METADATA_BG);
     immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     immUnbindProgram();
@@ -900,6 +908,7 @@ void ED_region_image_metadata_draw(
     metadata_draw_imbuf(ibuf, &rect, blf_mono_font, false);
 
     BLF_disable(blf_mono_font, BLF_CLIPPING);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   GPU_matrix_pop();

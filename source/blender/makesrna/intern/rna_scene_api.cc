@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,8 +13,8 @@
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -34,7 +34,7 @@
 #  include "BKE_scene.h"
 #  include "BKE_writeavi.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "ED_transform.hh"
 #  include "ED_transform_snap_object_context.hh"

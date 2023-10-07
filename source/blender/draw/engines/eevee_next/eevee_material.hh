@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -234,6 +234,7 @@ class MaterialModule {
   ::Material *glossy_mat;
 
   int64_t queued_shaders_count = 0;
+  int64_t queued_optimize_shaders_count = 0;
 
  private:
   Instance &inst_;

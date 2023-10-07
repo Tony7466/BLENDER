@@ -18,7 +18,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
@@ -40,7 +40,7 @@
 
 #include "CCGSubSurf.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 
@@ -469,10 +469,6 @@ void multires_force_sculpt_rebuild(Object *object)
     BKE_pbvh_free(ss->pbvh);
     object->sculpt->pbvh = nullptr;
   }
-
-  ss->vert_to_face_indices = {};
-  ss->vert_to_face_offsets = {};
-  ss->pmap = {};
 }
 
 void multires_force_external_reload(Object *object)

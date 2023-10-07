@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -59,16 +61,16 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -920,7 +922,7 @@ static bool gpencil_frame_is_equal(const bGPDframe *gpf_a, const bGPDframe *gpf_
     if (gps_a->caps[1] != gps_b->caps[1]) {
       return false;
     }
-    if (gps_a->hardeness != gps_b->hardeness) {
+    if (gps_a->hardness != gps_b->hardness) {
       return false;
     }
     if (!equals_v2v2(gps_a->aspect_ratio, gps_b->aspect_ratio)) {
@@ -1530,7 +1532,8 @@ void GPENCIL_OT_layer_change(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* gp layer to use (dynamic enum) */
-  ot->prop = RNA_def_enum(ot->srna, "layer", DummyRNA_DEFAULT_items, 0, "Grease Pencil Layer", "");
+  ot->prop = RNA_def_enum(
+      ot->srna, "layer", rna_enum_dummy_DEFAULT_items, 0, "Grease Pencil Layer", "");
   RNA_def_enum_funcs(ot->prop, ED_gpencil_layers_with_new_enum_itemf);
 }
 
@@ -3616,7 +3619,7 @@ void GPENCIL_OT_material_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Material to use (dynamic enum) */
-  ot->prop = RNA_def_enum(ot->srna, "slot", DummyRNA_DEFAULT_items, 0, "Material Slot", "");
+  ot->prop = RNA_def_enum(ot->srna, "slot", rna_enum_dummy_DEFAULT_items, 0, "Material Slot", "");
   RNA_def_enum_funcs(ot->prop, ED_gpencil_material_enum_itemf);
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,6 +47,7 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
     grid.validity_threshold = lightprobe->grid_validity_threshold;
     grid.dilation_threshold = lightprobe->grid_dilation_threshold;
     grid.dilation_radius = lightprobe->grid_dilation_radius;
+    grid.intensity = lightprobe->intensity;
     /* Force reupload. */
     inst_.irradiance_cache.bricks_free(grid.bricks);
   }

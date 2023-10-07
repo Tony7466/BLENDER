@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -301,7 +301,8 @@ enum eV3DSnapCursor {
 ENUM_OPERATORS(eV3DSnapCursor, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE)
 
 struct V3DSnapCursorData {
-  eSnapMode snap_elem;
+  eSnapMode type_source;
+  eSnapMode type_target;
   float loc[3];
   float nor[3];
   float obmat[4][4];
@@ -342,10 +343,10 @@ SnapObjectContext *ED_view3d_cursor_snap_context_ensure(Scene *scene);
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
-                                     const float target_normal[3],
+                                     const eSnapMode source_type,
+                                     const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4],
-                                     const eSnapMode target_type);
+                                     const uchar target_color[4]);
 
 /* view3d_iterators.cc */
 
@@ -1242,7 +1243,7 @@ float ED_view3d_grid_view_scale(Scene *scene,
                                 const char **r_grid_unit);
 
 /**
- * \note The info that this uses is updated in #ED_refresh_viewport_fps,
+ * \note The info that this uses is updated in #ED_scene_fps_average_accumulate,
  * which currently gets called during #SCREEN_OT_animation_step.
  */
 void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset);

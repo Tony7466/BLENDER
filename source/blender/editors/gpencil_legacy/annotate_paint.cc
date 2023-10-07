@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -29,7 +30,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -48,14 +49,14 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "gpencil_intern.h"
 
@@ -855,7 +856,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
@@ -1293,8 +1294,8 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   switch (curarea->spacetype) {
     /* supported views first */
     case SPACE_VIEW3D: {
-      /* View3D *v3d = curarea->spacedata.first; */
-      /* RegionView3D *rv3d = region->regiondata; */
+      // View3D *v3d = curarea->spacedata.first;
+      // RegionView3D *rv3d = region->regiondata;
 
       /* set current area
        * - must verify that region data is 3D-view (and not something else)
@@ -1311,7 +1312,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_NODE: {
-      /* SpaceNode *snode = curarea->spacedata.first; */
+      // SpaceNode *snode = curarea->spacedata.first;
 
       /* set current area */
       p->area = curarea;
@@ -1337,7 +1338,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_IMAGE: {
-      /* SpaceImage *sima = curarea->spacedata.first; */
+      // SpaceImage *sima = curarea->spacedata.first;
 
       /* set the current area */
       p->area = curarea;
@@ -2538,14 +2539,13 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   *  - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
-   * only)
-   *  - RIGHTMOUSE = polyline (hotkey) / eraser (all)
-   *    (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       int sketch = 0;
@@ -2634,7 +2634,7 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }

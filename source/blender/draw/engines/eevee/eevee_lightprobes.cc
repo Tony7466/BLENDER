@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,7 +27,7 @@
 #include "GPU_texture.h"
 #include "GPU_uniform_buffer.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
@@ -1036,15 +1036,15 @@ void EEVEE_lightbake_filter_glossy(EEVEE_ViewLayerData *sldata,
         break;
       case 2:
         pinfo->samples_len = 40.0f;
-        bias = 2.0f;
+        bias = 1.0f;
         break;
       case 3:
         pinfo->samples_len = 64.0f;
-        bias = 2.0f;
+        bias = 1.0f;
         break;
       default:
         pinfo->samples_len = 128.0f;
-        bias = 2.0f;
+        bias = 1.0f;
         break;
     }
 #else /* Constant Sample count (slow) */

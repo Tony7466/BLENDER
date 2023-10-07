@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * The resources expected to be defined are:
@@ -9,6 +12,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
 
 /**
  * Return the brick coordinate inside the grid.
@@ -21,7 +25,7 @@ ivec3 lightprobe_irradiance_grid_brick_coord(vec3 lP)
 }
 
 /**
- * Return the local coordinated of the shading point inside the brick in unormalized coordinate.
+ * Return the local coordinated of the shading point inside the brick in unnormalized coordinate.
  */
 vec3 lightprobe_irradiance_grid_brick_local_coord(IrradianceGridData grid_data,
                                                   vec3 lP,
@@ -50,7 +54,8 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   /* NOTE(fclem): Use uint to avoid signed int modulo. */
   uint vis_comp = uint(cell_start.z) % 4u;
   /* Visibility is stored after the irradiance. */
-  ivec3 vis_coord = ivec3(brick_atlas_coord, IRRADIANCE_GRID_BRICK_SIZE * 4) + ivec3(cell_start);
+  ivec3 vis_coord = ivec3(ivec2(brick_atlas_coord), IRRADIANCE_GRID_BRICK_SIZE * 4) +
+                    ivec3(cell_start);
   /* Visibility is stored packed 1 cell per channel. */
   vis_coord.z -= int(vis_comp);
   float cell_visibility = texelFetch(irradiance_atlas_tx, vis_coord, 0)[vis_comp];
@@ -85,7 +90,7 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
 
     /* Biases. See McGuire's presentation. */
     positional_weight += 0.001;
-    geometry_weight = square_f(geometry_weight) + 0.2 + grid_data.facing_bias;
+    geometry_weight = square(geometry_weight) + 0.2 + grid_data.facing_bias;
 
     trilinear_weights[i] = saturate(positional_weight * geometry_weight * validity_weight);
     total_weight += trilinear_weights[i];
@@ -99,6 +104,21 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   }
   /* Replace sampling coordinates with manually weighted trilinear coordinates. */
   return 0.5 + cell_start + trilinear_coord;
+}
+
+SphericalHarmonicL1 lightprobe_irradiance_sample_atlas(sampler3D atlas_tx, vec3 atlas_coord)
+{
+  vec4 texture_coord = vec4(atlas_coord, float(IRRADIANCE_GRID_BRICK_SIZE)) /
+                       vec3(textureSize(atlas_tx, 0)).xyzz;
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.Mn1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  texture_coord.z += texture_coord.w;
+  sh.L1.Mp1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
+  return sh;
 }
 
 SphericalHarmonicL1 lightprobe_irradiance_sample(
@@ -150,25 +170,22 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
 
   vec3 atlas_coord = vec3(vec2(brick.atlas_coord), 0.0) + brick_lP;
 
-  vec4 texture_coord = vec4(atlas_coord, float(IRRADIANCE_GRID_BRICK_SIZE)) /
-                       vec3(textureSize(atlas_tx, 0)).xyzz;
-  SphericalHarmonicL1 sh;
-  sh.L0.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.Mn1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.M0 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  texture_coord.z += texture_coord.w;
-  sh.L1.Mp1 = textureLod(atlas_tx, texture_coord.xyz, 0.0);
-  return sh;
+  return lightprobe_irradiance_sample_atlas(atlas_tx, atlas_coord);
 }
 
-/**
- * Shorter version without bias.
- */
+SphericalHarmonicL1 lightprobe_irradiance_world()
+{
+  return lightprobe_irradiance_sample_atlas(irradiance_atlas_tx, vec3(0.0));
+}
+
 SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P)
 {
   return lightprobe_irradiance_sample(irradiance_atlas_tx, P, vec3(0), vec3(0), false);
+}
+
+SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P, vec3 V, vec3 Ng)
+{
+  return lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
 }
 
 void lightprobe_eval(ClosureDiffuse diffuse,
@@ -180,9 +197,99 @@ void lightprobe_eval(ClosureDiffuse diffuse,
                      inout vec3 out_specular)
 {
   /* NOTE: Use the diffuse normal for biasing the probe sampling location since it is smoother than
-   * geometric normal. Could also try to use interp.N. */
-  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
-      irradiance_atlas_tx, P, V, diffuse.N, true);
+   * geometric normal. Could also try to use `interp.N`. */
+  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(P, V, diffuse.N);
 
   out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
 }
+
+#ifdef REFLECTION_PROBE
+
+struct LightProbeSample {
+  SphericalHarmonicL1 volume_irradiance;
+  int spherical_id;
+};
+
+/**
+ * Return cached lightprobe data at P.
+ * Ng and V are use for biases.
+ */
+LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
+{
+  LightProbeSample result;
+  result.volume_irradiance = lightprobe_irradiance_sample(P, V, Ng);
+  result.spherical_id = reflection_probes_find_closest(P);
+  return result;
+}
+
+/**
+ * Return spherical sample normalized by irradianced at sample position.
+ * This avoid most of light leaking and reduce the need for many local probes.
+ */
+vec3 lightprobe_spherical_sample_normalized(int probe_index,
+                                            vec3 L,
+                                            float lod,
+                                            SphericalHarmonicL1 P_sh)
+{
+  ReflectionProbeData probe = reflection_probe_buf[probe_index];
+  ReflectionProbeLowFreqLight shading_sh = reflection_probes_extract_low_freq(P_sh);
+  vec3 normalization_factor = reflection_probes_normalization_eval(
+      L, shading_sh, probe.low_freq_light);
+  return normalization_factor * reflection_probes_sample(L, lod, probe).rgb;
+}
+
+float pdf_to_lod(float pdf)
+{
+  return 1.0; /* TODO */
+}
+
+vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 L, float pdf)
+{
+  vec3 radiance_sh = lightprobe_spherical_sample_normalized(
+      samp.spherical_id, L, pdf_to_lod(pdf), samp.volume_irradiance);
+
+  return radiance_sh;
+}
+
+float lightprobe_roughness_to_cube_sh_mix_fac(float roughness)
+{
+  /* Temporary. Do something better. */
+  return square(saturate(roughness * 4.0 - 2.0));
+}
+
+float lightprobe_roughness_to_lod(float roughness)
+{
+  /* Temporary. Do something better. */
+  return sqrt(roughness) * 11.0;
+}
+
+vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse diffuse, vec3 V, vec2 noise)
+{
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(diffuse.N, samp.volume_irradiance);
+  return radiance_sh;
+}
+
+vec3 lightprobe_specular_dominant_dir(vec3 N, vec3 V, float roughness)
+{
+  vec3 R = -reflect(V, N);
+  float smoothness = 1.0 - roughness;
+  float fac = smoothness * (sqrt(smoothness) + roughness);
+  return normalize(mix(N, R, fac));
+}
+
+vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 V, vec2 noise)
+{
+  vec3 L = lightprobe_specular_dominant_dir(reflection.N, V, reflection.roughness);
+  /* TODO: Right now generate a dependency hell. */
+  // vec3 L = ray_generate_direction(noise, reflection, V, pdf);
+
+  float lod = lightprobe_roughness_to_lod(reflection.roughness);
+  vec3 radiance_cube = lightprobe_spherical_sample_normalized(
+      samp.spherical_id, L, lod, samp.volume_irradiance);
+
+  float fac = lightprobe_roughness_to_cube_sh_mix_fac(reflection.roughness);
+  vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
+  return mix(radiance_cube, radiance_sh, fac);
+}
+
+#endif /* REFLECTION_PROBE */

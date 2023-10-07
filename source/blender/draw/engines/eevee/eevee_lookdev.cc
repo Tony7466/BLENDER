@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,13 +10,14 @@
 #include "BKE_camera.h"
 #include "BKE_studiolight.h"
 
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 #include "BLI_rect.h"
 
 #include "DNA_screen_types.h"
 #include "DNA_world_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_screen.hh"
 

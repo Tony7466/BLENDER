@@ -8,8 +8,9 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_armature.h"
@@ -148,7 +149,7 @@ static void ElementMirror(TransInfo *t, TransDataContainer *tc, TransData *td, i
       add_v3_v3v3(td->loc, td->iloc, vec);
     }
 
-    constraintTransLim(t, td);
+    constraintTransLim(t, tc, td);
   }
 }
 

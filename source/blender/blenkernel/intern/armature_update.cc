@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -28,7 +30,7 @@
 
 #include "BIK_api.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ********************** SPLINE IK SOLVER ******************* */
 
@@ -940,6 +942,7 @@ static void pose_channel_flush_to_orig_if_needed(Depsgraph *depsgraph,
   copy_v3_v3(pchan_orig->pose_head, pchan->pose_mat[3]);
   copy_m4_m4(pchan_orig->constinv, pchan->constinv);
   copy_v3_v3(pchan_orig->pose_tail, pchan->pose_tail);
+  pchan_orig->constflag = pchan->constflag;
 }
 
 void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)

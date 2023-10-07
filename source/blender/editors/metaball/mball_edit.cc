@@ -13,7 +13,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_kdtree.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -22,15 +24,15 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_mball.h"
 #include "BKE_object.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_select.h"
 
@@ -238,7 +240,7 @@ static void mball_select_similar_type_get(
         case SIMMBALL_STIFFNESS: {
           tree_entry[0] = ml->s;
           break;
-        } break;
+        }
         case SIMMBALL_ROTATION: {
           float dir[3] = {1.0f, 0.0f, 0.0f};
           float rmat[3][3];

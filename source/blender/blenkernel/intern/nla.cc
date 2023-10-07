@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,9 +39,9 @@
 #include "BKE_nla.h"
 #include "BKE_sound.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "nla_private.h"
@@ -446,6 +446,21 @@ NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
   return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
+float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip)
+{
+  if (strip->actend <= strip->actstart) {
+    return 1.0f;
+  }
+  return strip->actend - strip->actstart;
+}
+
+void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
+{
+  if (*r_actend <= *actstart) {
+    *r_actend = *actstart + 1.0f;
+  }
+}
+
 NlaStrip *BKE_nlastrip_new(bAction *act)
 {
   NlaStrip *strip;
@@ -478,13 +493,11 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
   strip->act = act;
   id_us_plus(&act->id);
 
-  /* determine initial range
-   * - strip length cannot be 0... ever...
-   */
+  /* determine initial range */
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
-
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
   strip->start = strip->actstart;
-  strip->end = IS_EQF(strip->actstart, strip->actend) ? (strip->actstart + 1.0f) : strip->actend;
+  strip->end = strip->actend;
 
   /* strip should be referenced as-is */
   strip->scale = 1.0f;
@@ -574,6 +587,9 @@ void BKE_nla_strip_foreach_id(NlaStrip *strip, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
   }
 
+  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data,
+                                          BKE_fmodifiers_foreach_id(&strip->modifiers, data));
+
   LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_nla_strip_foreach_id(substrip, data));
   }
@@ -603,7 +619,7 @@ void BKE_nlatrack_remove_and_free(ListBase *tracks, NlaTrack *nlt, bool do_id_us
  */
 static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short mode)
 {
-  float actlength, scale;
+  float scale;
   // float repeat; // UNUSED
 
   /* get number of repeats */
@@ -621,10 +637,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
   scale = fabsf(strip->scale);
 
   /* length of referenced action */
-  actlength = strip->actend - strip->actstart;
-  if (IS_EQF(actlength, 0.0f)) {
-    actlength = 1.0f;
-  }
+  const float actlength = BKE_nla_clip_length_get_nonzero(strip);
 
   /* reversed = play strip backwards */
   if (strip->flag & NLASTRIP_FLAG_REVERSE) {
@@ -1087,10 +1100,8 @@ void BKE_nlameta_flush_transforms(NlaStrip *mstrip)
   LISTBASE_FOREACH (NlaStrip *, strip, &mstrip->strips) {
     /* only if scale changed, need to perform RNA updates */
     if (scaleChanged) {
-      PointerRNA ptr;
-
       /* use RNA updates to compute scale properly */
-      RNA_pointer_create(nullptr, &RNA_NlaStrip, strip, &ptr);
+      PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NlaStrip, strip);
 
       RNA_float_set(&ptr, "frame_start", strip->start);
       RNA_float_set(&ptr, "frame_end", strip->end);
@@ -1218,6 +1229,24 @@ bool BKE_nlatrack_has_space(NlaTrack *nlt, float start, float end)
 
   /* check if there's any space left in the track for a strip of the given length */
   return BKE_nlastrips_has_space(&nlt->strips, start, end);
+}
+
+bool BKE_nlatrack_has_strips(ListBase *tracks)
+{
+  /* sanity checks */
+  if (BLI_listbase_is_empty(tracks)) {
+    return false;
+  }
+
+  /* Check each track for NLA strips. */
+  LISTBASE_FOREACH (NlaTrack *, track, tracks) {
+    if (BLI_listbase_count(&track->strips) > 0) {
+      return true;
+    }
+  }
+
+  /* none found */
+  return false;
 }
 
 void BKE_nlatrack_sort_strips(NlaTrack *nlt)
@@ -1568,6 +1597,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
   prev_actstart = strip->actstart;
 
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
   strip->start += (strip->actstart - prev_actstart) * strip->scale;
@@ -1576,7 +1606,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
 }
 void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
 {
-  float actlen, mapping;
+  float mapping;
 
   /* sanity checks
    * - must have a strip
@@ -1587,10 +1617,7 @@ void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
   }
 
   /* calculate new length factors */
-  actlen = strip->actend - strip->actstart;
-  if (IS_EQF(actlen, 0.0f)) {
-    actlen = 1.0f;
-  }
+  const float actlen = BKE_nla_clip_length_get_nonzero(strip);
 
   mapping = strip->scale * strip->repeat;
 
@@ -2301,7 +2328,7 @@ void BKE_nla_tweakmode_exit(AnimData *adt)
         BKE_nlastrip_recalculate_bounds_sync_action(strip);
       }
 
-      /* clear tweakuser flag */
+      /* Clear tweak-user flag. */
       strip->flag &= ~NLASTRIP_FLAG_TWEAKUSER;
     }
   }
@@ -2354,37 +2381,6 @@ static void blend_data_read_nla_strips(BlendDataReader *reader, ListBase *strips
   }
 }
 
-static void blend_lib_read_nla_strips(BlendLibReader *reader, ID *id, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check strip's children */
-    blend_lib_read_nla_strips(reader, id, &strip->strips);
-
-    /* check strip's F-Curves */
-    BKE_fcurve_blend_read_lib(reader, id, &strip->fcurves);
-
-    /* reassign the counted-reference to action */
-    BLO_read_id_address(reader, id, &strip->act);
-  }
-}
-
-static void blend_read_expand_nla_strips(BlendExpander *expander, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check child strips */
-    blend_read_expand_nla_strips(expander, &strip->strips);
-
-    /* check F-Curves */
-    BKE_fcurve_blend_read_expand(expander, &strip->fcurves);
-
-    /* check F-Modifiers */
-    BKE_fmodifiers_blend_read_expand(expander, &strip->modifiers);
-
-    /* relink referenced action */
-    BLO_expand(expander, strip->act);
-  }
-}
-
 void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
 {
   /* write all the tracks */
@@ -2397,34 +2393,18 @@ void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
   }
 }
 
-void BKE_nla_blend_read_data(BlendDataReader *reader, ListBase *tracks)
+void BKE_nla_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *tracks)
 {
   LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(id_owner)) {
+      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
+    }
+
     /* relink list of strips */
     BLO_read_list(reader, &nlt->strips);
 
     /* relink strip data */
     blend_data_read_nla_strips(reader, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *tracks)
-{
-  /* we only care about the NLA strips inside the tracks */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    /* If linking from a library, clear 'local' library override flag. */
-    if (ID_IS_LINKED(id)) {
-      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
-    }
-
-    blend_lib_read_nla_strips(reader, id, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_expand(BlendExpander *expander, ListBase *tracks)
-{
-  /* nla-data - referenced actions */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    blend_read_expand_nla_strips(expander, &nlt->strips);
   }
 }

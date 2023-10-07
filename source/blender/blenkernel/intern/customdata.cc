@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,6 @@
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.hh"
@@ -53,7 +52,7 @@
 #include "BKE_multires.hh"
 #include "BKE_subsurf.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "bmesh.h"
 
@@ -1758,7 +1757,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
     {sizeof(MRecast), "MRecast", 1, N_("Recast"), nullptr, nullptr, nullptr, nullptr},
     /* 25: CD_MPOLY */ /* DEPRECATED */
     {sizeof(MPoly), "MPoly", 1, N_("NGon Face"), nullptr, nullptr, nullptr, nullptr, nullptr},
-    /* 26: CD_MLOOP */ /* DEPRECATED*/
+    /* 26: CD_MLOOP */ /* DEPRECATED */
     {sizeof(MLoop),
      "MLoop",
      1,
@@ -2231,7 +2230,9 @@ static bool customdata_merge_internal(const CustomData *source,
     const int src_layer_flag = src_layer.flag;
 
     if (type != last_type) {
-      current_type_layer_count = 0;
+      /* Don't exceed layer count on destination. */
+      const int layernum_dst = CustomData_number_of_layers(dest, type);
+      current_type_layer_count = layernum_dst;
       max_current_type_layer_count = CustomData_layertype_layers_max(type);
       last_active = src_layer.active;
       last_render = src_layer.active_rnd;
@@ -2411,6 +2412,11 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
   }
+}
+
+void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem)
+{
+  ensure_layer_data_is_mutable(*layer, totelem);
 }
 
 void CustomData_realloc(CustomData *data, const int old_size, const int new_size)

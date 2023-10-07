@@ -9,7 +9,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_animsys.h"
 #include "BKE_context.h"
@@ -25,7 +27,7 @@
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -752,7 +754,7 @@ static void autokeyframe_object(
     ListBase dsources = {nullptr, nullptr};
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-        depsgraph, float(scene->r.cfra));
+        depsgraph, BKE_scene_frame_get(scene));
     eInsertKeyFlags flag = eInsertKeyFlags(0);
 
     /* Get flags used for inserting keyframes. */

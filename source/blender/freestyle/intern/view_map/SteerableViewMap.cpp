@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 #include "../image/Image.h"
 #include "../image/ImagePyramid.h"
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_sys_types.h"
 
 #include "BKE_global.h"

@@ -13,7 +13,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -21,9 +22,9 @@
 #include "BKE_curve.h"
 #include "BKE_layer.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

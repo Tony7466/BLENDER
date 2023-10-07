@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,9 @@
 #include "BLI_array.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_smallhash.h"
@@ -57,11 +59,11 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "mesh_intern.h" /* Own include. */
 
@@ -1502,7 +1504,6 @@ static void knife_input_ray_segment(KnifeTool_OpData *kcd,
   /* Unproject to find view ray. */
   ED_view3d_win_to_segment_clipped(
       kcd->vc.depsgraph, kcd->region, kcd->vc.v3d, mval, r_origin, r_end, false);
-  add_v3_v3(r_end, r_origin);
 }
 
 /* No longer used, but may be useful in the future. */
@@ -3848,7 +3849,7 @@ static void knife_constrain_axis(KnifeTool_OpData *kcd)
   mul_m3_m3_pre(co, mat);
   for (int i = 0; i <= 2; i++) {
     if ((kcd->constrain_axis - 1) != i) {
-      /* kcd->curr_cage_adjusted[i] = prev_cage_adjusted[i]; */
+      // kcd->curr_cage_adjusted[i] = prev_cage_adjusted[i];
       co[2][i] = co[0][i];
     }
   }

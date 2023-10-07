@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,8 @@
  */
 
 #include "BLI_function_ref.hh"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -45,8 +47,10 @@
 
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
+#include "ANIM_bone_collections.h"
 
 /* local module include */
 #include "transform.hh"
@@ -1176,12 +1180,11 @@ void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
   }
   TransformOrientationSlot *orient_slot = BKE_scene_orientation_slot_get_from_flag(scene,
                                                                                    orient_flag);
-  PointerRNA orient_ref_ptr;
-  RNA_pointer_create(&scene->id, &RNA_TransformOrientationSlot, orient_slot, &orient_ref_ptr);
+  PointerRNA orient_ref_ptr = RNA_pointer_create(
+      &scene->id, &RNA_TransformOrientationSlot, orient_slot);
   const ToolSettings *ts = scene->toolsettings;
 
-  PointerRNA scene_ptr;
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   {
     const PropertyRNA *props[] = {
         &rna_Scene_transform_orientation_slots,
@@ -1194,8 +1197,7 @@ void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
   if ((ts->transform_pivot_point == V3D_AROUND_CURSOR) || (orient_slot->type == V3D_ORIENT_CURSOR))
   {
     /* We could be more specific here, for now subscribe to any cursor change. */
-    PointerRNA cursor_ptr;
-    RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &cursor_ptr);
+    PointerRNA cursor_ptr = RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor);
     WM_msg_subscribe_rna(mbus, &cursor_ptr, nullptr, &msg_sub_value_gz_tag_refresh, __func__);
   }
 
@@ -1212,8 +1214,8 @@ void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
     }
   }
 
-  PointerRNA toolsettings_ptr;
-  RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+  PointerRNA toolsettings_ptr = RNA_pointer_create(
+      &scene->id, &RNA_ToolSettings, scene->toolsettings);
 
   if (ELEM(type_fn, VIEW3D_GGT_xform_gizmo, VIEW3D_GGT_xform_shear)) {
     const PropertyRNA *props[] = {
@@ -1235,8 +1237,7 @@ void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
     }
   }
 
-  PointerRNA view3d_ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceView3D, area->spacedata.first, &view3d_ptr);
+  PointerRNA view3d_ptr = RNA_pointer_create(&screen->id, &RNA_SpaceView3D, area->spacedata.first);
 
   if (type_fn == VIEW3D_GGT_xform_gizmo) {
     GizmoGroup *ggd = static_cast<GizmoGroup *>(gzgroup->customdata);

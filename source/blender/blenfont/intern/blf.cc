@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
@@ -79,6 +79,21 @@ void BLF_exit()
   }
 
   blf_font_exit();
+}
+
+void BLF_reset_fonts()
+{
+  const int def_font = BLF_default();
+  for (int i = 0; i < BLF_MAX_FONT; i++) {
+    FontBLF *font = global_font[i];
+    if (font && !ELEM(i, def_font, blf_mono_font, blf_mono_font_render) &&
+        !(font->flags & BLF_DEFAULT))
+    {
+      /* Remove fonts that are not used in the UI or part of the stack. */
+      blf_font_free(font);
+      global_font[i] = nullptr;
+    }
+  }
 }
 
 void BLF_cache_clear()
@@ -570,7 +585,7 @@ void BLF_draw(int fontid, const char *str, const size_t str_len)
   BLF_draw_ex(fontid, str, str_len, nullptr);
 }
 
-int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth)
+int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth, int tab_columns)
 {
   if (str_len == 0 || str[0] == '\0') {
     return 0;
@@ -581,7 +596,7 @@ int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth)
 
   if (font) {
     blf_draw_gl__start(font);
-    columns = blf_font_draw_mono(font, str, str_len, cwidth);
+    columns = blf_font_draw_mono(font, str, str_len, cwidth, tab_columns);
     blf_draw_gl__end(font);
   }
 

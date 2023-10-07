@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,10 +10,13 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_sample.hh"
 
+#include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "NOD_socket_search_link.hh"
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -180,27 +183,27 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 {
   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
     case CD_PROP_FLOAT: {
-      params.set_output("Value_Float", Field<float>(field));
+      params.set_output("Value_Float", field);
       break;
     }
     case CD_PROP_FLOAT3: {
-      params.set_output("Value_Vector", Field<float3>(field));
+      params.set_output("Value_Vector", field);
       break;
     }
     case CD_PROP_COLOR: {
-      params.set_output("Value_Color", Field<ColorGeometry4f>(field));
+      params.set_output("Value_Color", field);
       break;
     }
     case CD_PROP_BOOL: {
-      params.set_output("Value_Bool", Field<bool>(field));
+      params.set_output("Value_Bool", field);
       break;
     }
     case CD_PROP_INT32: {
-      params.set_output("Value_Int", Field<int>(field));
+      params.set_output("Value_Int", field);
       break;
     }
     case CD_PROP_QUATERNION: {
-      params.set_output("Value_Rotation", Field<math::Quaternion>(field));
+      params.set_output("Value_Rotation", field);
       break;
     }
     default:
@@ -245,22 +248,35 @@ static void node_geo_exec(GeoNodeExecParams params)
   output_attribute_field(params, GField(sample_op));
 }
 
-}  // namespace blender::nodes::node_geo_sample_nearest_surface_cc
-
-void register_node_type_geo_sample_nearest_surface()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_sample_nearest_surface_cc;
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "",
+                    rna_enum_attribute_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    CD_PROP_FLOAT,
+                    enums::attribute_type_type_with_socket_fn);
+}
 
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SAMPLE_NEAREST_SURFACE, "Sample Nearest Surface", NODE_CLASS_GEOMETRY);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.declare = file_ns::node_declare;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  ntype.declare = node_declare;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_sample_nearest_surface_cc

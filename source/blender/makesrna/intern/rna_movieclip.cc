@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,8 +14,8 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -30,7 +30,7 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_clip.hh"
 
@@ -115,15 +115,14 @@ static PointerRNA rna_MovieClip_metadata_get(MovieClip *clip)
     return PointerRNA_NULL;
   }
 
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_IDPropertyWrapPtr, metadata, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_IDPropertyWrapPtr, metadata);
   return ptr;
 }
 
 static char *rna_MovieClipUser_path(const PointerRNA *ptr)
 {
   if (ptr->owner_id) {
-    /* MovieClipUser *mc_user = ptr->data; */
+    // MovieClipUser *mc_user = ptr->data;
 
     switch (GS(ptr->owner_id->name)) {
       case ID_CA:

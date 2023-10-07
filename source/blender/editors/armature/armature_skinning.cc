@@ -16,7 +16,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
 #include "BKE_action.h"
@@ -31,8 +32,8 @@
 #include "BKE_report.h"
 #include "BKE_subsurf.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_armature.hh"
 #include "ED_mesh.hh"

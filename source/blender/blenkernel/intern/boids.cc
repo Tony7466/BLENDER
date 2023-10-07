@@ -16,7 +16,8 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_kdtree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -30,7 +31,7 @@
 
 #include "BKE_modifier.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 static float len_squared_v3v3_with_normal_bias(const float co_search[3],
                                                const float co_test[3],
@@ -484,8 +485,10 @@ static bool rule_follow_leader(BoidRule *rule,
   BoidRuleFollowLeader *flbr = (BoidRuleFollowLeader *)rule;
   float vec[3] = {0.0f, 0.0f, 0.0f}, loc[3] = {0.0f, 0.0f, 0.0f};
   float mul, len;
-  int n = (flbr->queue_size <= 1) ? bbd->sim->psys->totpart : flbr->queue_size;
-  int i, p = pa - bbd->sim->psys->particles;
+  const int n = (flbr->queue_size <= 1) ? bbd->sim->psys->totpart : flbr->queue_size;
+  BLI_assert(ARRAY_HAS_ITEM(pa, bbd->sim->psys->particles, bbd->sim->psys->totpart));
+  const int p = int(pa - bbd->sim->psys->particles);
+  int i;
   bool ret = false;
 
   if (flbr->ob) {

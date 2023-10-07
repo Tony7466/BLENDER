@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -347,6 +347,8 @@ void OBJECT_OT_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot);
 
 /* `object_random.cc` */
 
@@ -368,4 +370,14 @@ void OBJECT_OT_datalayout_transfer(struct wmOperatorType *ot);
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+
+namespace blender::ed::object {
+
+void object_modifier_add_asset_register();
+
+}
+
 #endif

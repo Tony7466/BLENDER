@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,11 +14,12 @@
 #include "BKE_object.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_rotation.h"
 
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_view3d.hh"
 

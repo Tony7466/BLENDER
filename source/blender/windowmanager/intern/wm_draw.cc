@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,6 +22,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
@@ -30,7 +31,7 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "GHOST_C-api.h"
 
@@ -139,16 +140,16 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
        * cursor coordinates so limit reading the cursor location to when the cursor is grabbed and
        * wrapping in a region since this is the case when it would otherwise attempt to draw the
        * cursor outside the view/window. See: #102792. */
+      const int *xy = win->eventstate->xy;
+      int xy_buf[2];
       if ((WM_capabilities_flag() & WM_CAPABILITY_CURSOR_WARP) &&
-          wm_window_grab_warp_region_is_set(win)) {
-        int x = 0, y = 0;
-        wm_cursor_position_get(win, &x, &y);
-        pc->draw(C, x, y, pc->customdata);
-      }
-      else {
-        pc->draw(C, win->eventstate->xy[0], win->eventstate->xy[1], pc->customdata);
+          wm_window_grab_warp_region_is_set(win) &&
+          wm_cursor_position_get(win, &xy_buf[0], &xy_buf[1]))
+      {
+        xy = xy_buf;
       }
 
+      pc->draw(C, xy[0], xy[1], pc->customdata);
       GPU_scissor_test(false);
     }
   }
@@ -1408,6 +1409,11 @@ bool WM_window_pixels_read_sample(bContext *C, wmWindow *win, const int pos[2], 
     return true;
   }
   return WM_window_pixels_read_sample_from_offscreen(C, win, pos, r_col);
+}
+
+bool WM_desktop_cursor_sample_read(float r_col[3])
+{
+  return GHOST_GetPixelAtCursor(r_col);
 }
 
 /** \} */
