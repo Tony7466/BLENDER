@@ -395,14 +395,22 @@ static void subdiv_foreach_every_corner_vertices(SubdivForeachTaskContext *ctx, 
     return;
   }
   const Mesh *coarse_mesh = ctx->coarse_mesh;
-  for (int face_index = 0; face_index < coarse_mesh->faces_num; face_index++) {
-    if (ctx->coarse_faces[face_index].size() == 4) {
-      subdiv_foreach_every_corner_vertices_regular(ctx, tls, face_index);
-    }
-    else {
-      subdiv_foreach_every_corner_vertices_special(ctx, tls, face_index);
-    }
-  }
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.userdata_chunk = tls;
+  parallel_range_settings.userdata_chunk_size = ctx->foreach_context->user_data_tls_size;
+  BLI_task_parallel_range(
+      0, coarse_mesh->faces_num, ctx,
+      [](void* _ctx, int face_index, const TaskParallelTLS* _tls) {
+        SubdivForeachTaskContext *ctx = (SubdivForeachTaskContext*) _ctx;
+        void* tls = const_cast<TaskParallelTLS*>(_tls)->userdata_chunk;
+        if (ctx->coarse_faces[face_index].size() == 4) {
+          subdiv_foreach_every_corner_vertices_regular(ctx, tls, face_index);
+        }
+        else {
+          subdiv_foreach_every_corner_vertices_special(ctx, tls, face_index);
+        }
+      }, &parallel_range_settings);
 }
 
 /* Traverse of edge vertices. They are coming from coarse edges. */
@@ -574,14 +582,24 @@ static void subdiv_foreach_every_edge_vertices(SubdivForeachTaskContext *ctx, vo
     return;
   }
   const Mesh *coarse_mesh = ctx->coarse_mesh;
-  for (int face_index = 0; face_index < coarse_mesh->faces_num; face_index++) {
-    if (ctx->coarse_faces[face_index].size() == 4) {
-      subdiv_foreach_every_edge_vertices_regular(ctx, tls, face_index);
-    }
-    else {
-      subdiv_foreach_every_edge_vertices_special(ctx, tls, face_index);
-    }
-  }
+
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.userdata_chunk = tls;
+  parallel_range_settings.userdata_chunk_size = ctx->foreach_context->user_data_tls_size;
+  BLI_task_parallel_range(
+      0, coarse_mesh->faces_num, ctx,
+      [](void* _ctx, int face_index, const TaskParallelTLS* _tls) {
+        SubdivForeachTaskContext *ctx = (SubdivForeachTaskContext*) _ctx;
+        void* tls = const_cast<TaskParallelTLS*>(_tls)->userdata_chunk;
+        if (ctx->coarse_faces[face_index].size() == 4) {
+          subdiv_foreach_every_edge_vertices_regular(ctx, tls, face_index);
+        }
+        else {
+          subdiv_foreach_every_edge_vertices_special(ctx, tls, face_index);
+        }
+      },
+      &parallel_range_settings);
 }
 
 /* Traversal of inner vertices, they are coming from ptex patches. */
@@ -1725,10 +1743,20 @@ static void subdiv_foreach_single_geometry_vertices(SubdivForeachTaskContext *ct
     return;
   }
   const Mesh *coarse_mesh = ctx->coarse_mesh;
-  for (int face_index = 0; face_index < coarse_mesh->faces_num; face_index++) {
-    subdiv_foreach_corner_vertices(ctx, tls, face_index);
-    subdiv_foreach_edge_vertices(ctx, tls, face_index);
-  }
+
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.userdata_chunk = tls;
+  parallel_range_settings.userdata_chunk_size = ctx->foreach_context->user_data_tls_size;
+  BLI_task_parallel_range(
+      0, coarse_mesh->faces_num, ctx,
+      [](void* _ctx, int face_index, const TaskParallelTLS* _tls) {
+        SubdivForeachTaskContext *ctx = (SubdivForeachTaskContext*) _ctx;
+        void* tls = const_cast<TaskParallelTLS*>(_tls)->userdata_chunk;
+        subdiv_foreach_corner_vertices(ctx, tls, face_index);
+        subdiv_foreach_edge_vertices(ctx, tls, face_index);
+      },
+      &parallel_range_settings);
 }
 
 static void subdiv_foreach_mark_non_loose_geometry(SubdivForeachTaskContext *ctx)
@@ -1746,14 +1774,13 @@ static void subdiv_foreach_single_thread_tasks(SubdivForeachTaskContext *ctx)
   /* NOTE: In theory, we can try to skip allocation of TLS here, but in
    * practice if the callbacks used here are not specified then TLS will not
    * be requested anyway. */
-  void *tls = subdiv_foreach_tls_alloc(ctx);
+  void *tls = ctx->foreach_context->user_data_tls;
   /* Passes to average displacement on the corner vertices
    * and boundary edges. */
   subdiv_foreach_every_corner_vertices(ctx, tls);
   subdiv_foreach_every_edge_vertices(ctx, tls);
   /* Run callbacks which are supposed to be run once per shared geometry. */
   subdiv_foreach_single_geometry_vertices(ctx, tls);
-  subdiv_foreach_tls_free(ctx, tls);
 
   const SubdivForeachContext *foreach_context = ctx->foreach_context;
   const bool is_loose_geometry_tagged = (foreach_context->vertex_every_edge != nullptr &&

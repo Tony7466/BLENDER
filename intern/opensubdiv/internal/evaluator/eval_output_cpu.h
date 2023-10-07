@@ -9,12 +9,12 @@
 
 #include "internal/evaluator/eval_output.h"
 
-#include <opensubdiv/osd/cpuEvaluator.h>
+#include <opensubdiv/osd/tbbEvaluator.h>
 #include <opensubdiv/osd/cpuPatchTable.h>
 #include <opensubdiv/osd/cpuVertexBuffer.h>
 
 using OpenSubdiv::Far::StencilTable;
-using OpenSubdiv::Osd::CpuEvaluator;
+using CpuEvaluator = OpenSubdiv::Osd::TbbEvaluator;
 using OpenSubdiv::Osd::CpuVertexBuffer;
 
 namespace blender {
