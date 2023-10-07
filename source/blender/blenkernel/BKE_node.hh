@@ -47,8 +47,6 @@ void ntreeUpdateAllNew(Main *main);
 /** Update asset meta-data cache of data-block properties. */
 void node_update_asset_metadata(bNodeTree &node_tree);
 
-void ntree_update_auto_labels(bNodeTree *ntree);
-
 void ntreeNodeFlagSet(const bNodeTree *ntree, int flag, bool enable);
 
 /**
