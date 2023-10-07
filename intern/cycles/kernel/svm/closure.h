@@ -545,13 +545,12 @@ ccl_device
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:
+    case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID: {
 #ifdef __CAUSTICS_TRICKS__
       if (!kernel_data.integrator.caustics_reflective &&
           !kernel_data.integrator.caustics_refractive && (path_flag & PATH_RAY_DIFFUSE))
-      {
         break;
-      }
 #endif
       ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
           sd, sizeof(MicrofacetBsdf), make_spectrum(mix_weight));
@@ -576,39 +575,14 @@ ccl_device
         fresnel->transmission_tint = color;
 
         /* setup bsdf */
-        sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
+        if (type == CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID) {
+          sd->flag |= bsdf_microfacet_beckmann_glass_setup(bsdf);
+        }
+        else {
+          sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
+        }
         const bool is_multiggx = (type == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
         bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, is_multiggx);
-      }
-      break;
-    }
-    case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID: {
-#ifdef __CAUSTICS_TRICKS__
-      if (!kernel_data.integrator.caustics_reflective &&
-          !kernel_data.integrator.caustics_refractive && (path_flag & PATH_RAY_DIFFUSE))
-      {
-        break;
-      }
-#endif
-      Spectrum weight = closure_weight * mix_weight;
-      ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-          sd, sizeof(MicrofacetBsdf), weight);
-
-      if (bsdf) {
-        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
-        bsdf->T = zero_float3();
-        bsdf->fresnel = NULL;
-
-        float eta = fmaxf(param2, 1e-5f);
-        eta = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
-
-        /* setup bsdf */
-        float roughness = sqr(param1);
-        bsdf->alpha_x = roughness;
-        /* alpha_y is set inside `bsdf_microfacet_beckmann_glass_setup()` */
-        bsdf->ior = eta;
-
-        sd->flag |= bsdf_microfacet_beckmann_glass_setup(bsdf);
       }
       break;
     }
