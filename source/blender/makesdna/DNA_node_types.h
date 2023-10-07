@@ -1605,8 +1605,8 @@ typedef struct NodeEnumItem {
 typedef struct NodeEnumDefinition {
   /* User-defined enum items owned and managed by this node. */
   NodeEnumItem **items_array;
-  uint16_t items_num;
-  uint16_t active_index;
+  int16_t items_num;
+  int16_t active_index;
   char _pad[4];
 
 #ifdef __cplusplus
