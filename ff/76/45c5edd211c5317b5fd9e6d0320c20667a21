@@ -1,3 +1,4 @@
 Referenced by issue #102419, Regression: Geometry nodes Missing Mesh overlays in edit mode
 Referenced by issue #102419, Regression: Geometry nodes Missing Mesh overlays in edit mode
 Referenced by issue #102404, Reading+Writing edge bevel weights with python api only working correctly on last element
+Referenced by issue #113377, Regression: Geometry Nodes: Access Violation Exception when copying from Mesh with GPU Subdivision Surface Modifier
