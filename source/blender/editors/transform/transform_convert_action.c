@@ -89,6 +89,8 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
 
   /* only include points that occur on the right side of cfra */
   for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+    if (gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND)
+      continue;
     if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
       if (gpf->flag & GP_FRAME_SELECT) {
         count++;
@@ -233,6 +235,8 @@ static int GPLayerToTransData(TransData *td,
 
   /* check for select frames on right side of current frame */
   for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+    if (gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND)
+      continue;
     const bool is_selected = (gpf->flag & GP_FRAME_SELECT) != 0;
     if (is_prop_edit || is_selected) {
       if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
@@ -467,6 +471,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
         bGPDframe *gpf;
 
         for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+          if (gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND)
+            continue;
           if (gpf->flag & GP_FRAME_SELECT) {
             td->dist = td->rdist = 0.0f;
           }
@@ -733,6 +739,13 @@ static void posttrans_gpd_clean(bGPdata *gpd)
     }
 #endif
   }
+  /*Great place for GP SurDef callback!
+  Actually I need to make this a callback to some other file
+  officially, but for now that it's a side project let's leve it
+  here, it works after all*/
+
+
+
   /* set cache flag to dirty */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
