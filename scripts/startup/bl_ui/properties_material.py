@@ -68,7 +68,8 @@ class MATERIAL_PT_custom_props(MaterialButtonsPanel, PropertyPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
     _context_path = "material"
     _property_type = bpy.types.Material
 
@@ -266,6 +267,7 @@ class EEVEE_NEXT_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
         if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
             layout.prop(mat, "show_transparent_back")
 
+        layout.prop(mat, "use_screen_refraction")
         layout.prop(mat, "pass_index")
 
 
