@@ -3925,6 +3925,20 @@ static bNode *find_node_by_enum_item(PointerRNA *ptr)
   return nullptr;
 }
 
+static NodeEnumDefinition *find_enum_definition_by_item(PointerRNA *ptr)
+{
+  const NodeEnumItem *item = static_cast<const NodeEnumItem *>(ptr->data);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ntree->ensure_topology_cache();
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
+    NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
+    if (storage->enum_definition.items().contains_ptr(item)) {
+      return &storage->enum_definition;
+    }
+  }
+  return nullptr;
+}
+
 static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
@@ -3932,6 +3946,80 @@ static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
+}
+
+static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
+{
+  NodeEnumDefinition *enum_def = find_enum_definition_by_item(ptr);
+  NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
+  enum_def->set_item_name(*item, value);
+}
+
+static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id,
+                                                NodeEnumDefinition *enum_def,
+                                                Main *bmain,
+                                                ReportList *reports,
+                                                const char *name)
+{
+  NodeEnumItem *item = enum_def->add_item(name);
+  if (item == nullptr) {
+    BKE_report(reports, RPT_ERROR, "Unable to create enum item");
+  }
+  else {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+  return item;
+}
+
+static void rna_NodeEnumDefinition_remove(ID *id,
+                                          NodeEnumDefinition *enum_def,
+                                          Main *bmain,
+                                          ReportList *reports,
+                                          NodeEnumItem *item)
+{
+  if (!enum_def->remove_item(item)) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from enum definition", item->name);
+  }
+  else {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+}
+
+static void rna_NodeEnumDefinition_clear(ID *id, NodeEnumDefinition *enum_def, Main *bmain)
+{
+  enum_def->clear();
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static void rna_NodeEnumDefinition_move(
+    ID *id, NodeEnumDefinition *enum_def, Main *bmain, int from_index, int to_index)
+{
+  enum_def->move_item(from_index, to_index);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static PointerRNA rna_NodeEnumDefinition_active_item_get(PointerRNA *ptr)
+{
+  NodeEnumDefinition *enum_def = static_cast<NodeEnumDefinition *>(ptr->data);
+  NodeEnumItem *item = enum_def->active_item();
+  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeEnumItem, item);
+  return r_ptr;
+}
+
+static void rna_NodeEnumDefinition_active_item_set(
+  PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
+{
+  NodeEnumDefinition *enum_def = static_cast<NodeEnumDefinition *>(ptr->data);
+  NodeEnumItem *item = static_cast<NodeEnumItem *>(value.data);
+  enum_def->active_item_set(item);
 }
 
 #else
@@ -9401,7 +9489,6 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
   prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "description");
   RNA_def_property_ui_text(prop, "Description", "");
-  RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeEnumItem_update");
 }
 
@@ -9459,7 +9546,7 @@ static void rna_def_node_enum_definition(BlenderRNA *brna)
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_ui_text(prop, "Active Item", "Active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
@@ -9469,11 +9556,11 @@ static void def_geo_menu_switch(StructRNA *srna)
 
   RNA_def_struct_sdna_from(srna, "NodeMenuSwitch", "storage");
 
-  prop = RNA_def_property(srna, "interface", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "tree_interface");
-  RNA_def_property_struct_type(prop, "NodeTreeInterface");
+  prop = RNA_def_property(srna, "enum_definition", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "enum_definition");
+  RNA_def_property_struct_type(prop, "NodeEnumDefinition");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Interface", "Interface declaration for this node tree");
+  RNA_def_property_ui_text(prop, "Enum Definition", "Definition of enum items");
 }
 
 static void rna_def_shader_node(BlenderRNA *brna)

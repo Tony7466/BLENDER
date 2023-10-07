@@ -1618,6 +1618,9 @@ typedef struct NodeEnumDefinition {
   void clear_items();
   bool move_item(uint16_t from_index, uint16_t to_index);
 
+  NodeEnumItem *active_item() const;
+  void active_item_set(NodeEnumItem *item);
+
   void set_item_name(NodeEnumItem &item, const char *name);
 #endif
 } NodeEnumDefinition;
@@ -1629,6 +1632,13 @@ typedef struct NodeMenuSwitch {
   uint8_t input_type;
   char _pad[7];
 } NodeMenuSwitch;
+
+/* Weak reference to a node that defines enum items. */
+typedef struct NodeEnumDefinitionRef {
+  bNodeTree *node_tree;
+  int32_t node_identifier;
+  char _pad[4];
+} NodeEnumRef;
 
 typedef struct NodeGeometryCurveSplineType {
   /** #GeometryNodeSplineType. */
