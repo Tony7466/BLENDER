@@ -9492,16 +9492,17 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeEnumItem_update");
 }
 
-static void rna_def_node_enum_definition(BlenderRNA *brna)
+static void rna_def_node_enum_definition_items(BlenderRNA * brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  srna = RNA_def_struct(brna, "NodeEnumDefinition", nullptr);
+  srna = RNA_def_struct(brna, "NodeEnumDefinitionItems", nullptr);
   RNA_def_struct_sdna(srna, "NodeEnumDefinition");
-  RNA_def_struct_ui_text(srna, "Enum Definition", "Collection of items that make up an enum");
+  RNA_def_struct_ui_text(
+      srna, "Enum Definition Items", "Collection of items that make up an enum");
 
   func = RNA_def_function(srna, "new", "rna_NodeEnumDefinition_new");
   RNA_def_function_ui_description(func, "Add an a new enum item");
@@ -9531,6 +9532,22 @@ static void rna_def_node_enum_definition(BlenderRNA *brna)
   parm = RNA_def_int(
       func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
+static void rna_def_node_enum_definition(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodeEnumDefinition", nullptr);
+  RNA_def_struct_sdna(srna, "NodeEnumDefinition");
+  RNA_def_struct_ui_text(srna, "Enum Definition", "Definition of an enumeration for nodes");
+
+  prop = RNA_def_property(srna, "enum_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
+  RNA_def_property_struct_type(prop, "NodeEnumItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeEnumDefinitionItems");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, nullptr, "active_index");
@@ -10671,6 +10688,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
   rna_def_node_enum_item(brna);
+  rna_def_node_enum_definition_items(brna);
   rna_def_node_enum_definition(brna);
 
   rna_def_node_instance_hash(brna);

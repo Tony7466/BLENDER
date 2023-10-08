@@ -367,6 +367,20 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_enum_definition_item_add(Operator):
+    '''Add an enum item to the definition'''
+    bl_idname = "node.enum_definition_item_add"
+    bl_label = "Add Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        item = enum_def.enum_items.new("Item")
+        enum_def.active_index = enum_def.enum_items[:].index(item)
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -378,4 +392,5 @@ classes = (
     NODE_OT_interface_item_duplicate,
     NODE_OT_interface_item_remove,
     NODE_OT_tree_path_parent,
+    NODE_OT_enum_definition_item_add,
 )
