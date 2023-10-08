@@ -233,7 +233,7 @@ typedef struct FontMetrics {
   short last_charindex;
 
   /**
-   * Bounds that can contain every glyph in the font when in default positions. Can used for
+   * Bounds that can contain every glyph in the font when in default positions. Can be used for
    * maximum ascender, minimum descender. Can be out by a pixel when hinting. Does not change with
    * variation axis changes. */
   rcti bounding_box;
@@ -249,12 +249,12 @@ typedef struct FontMetrics {
   short x_height;
   /** Font units from baseline to top of capital letters, specifically "H". */
   short cap_height;
-  /** Font unit maximal horizontal advance for all glyphs in font. Can help with wrapping. */
+  /** Font unit maximum horizontal advance for all glyphs in font. Can help with wrapping. */
   short max_advance_width;
   /** As above but only for vertical layout fonts, otherwise is set to line_height value. */
   short max_advance_height;
 
-  /** Negative (!) number of font units below baseline to center (!) of unlining stem. */
+  /** Negative (!) number of font units below baseline to center (!) of underlining stem. */
   short underline_position;
   /** thickness of the underline in font units. */
   short underline_thickness;
