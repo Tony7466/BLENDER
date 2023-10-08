@@ -336,6 +336,7 @@ DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image In
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
 DefNode(GeometryNode, GEO_NODE_INDEX_OF_NEAREST, 0, "INDEX_OF_NEAREST", IndexOfNearest, "Index of Nearest", "Find the nearest element in a group. Similar to the \"Sample Nearest\" node")
 DefNode(GeometryNode, GEO_NODE_IMAGE, def_geo_image, "IMAGE", InputImage, "Image", "Input image")
+DefNode(GeometryNode, GEO_NODE_INPUT_ACTIVE_CAMERA, 0, "INPUT_ACTIVE_CAMERA", InputActiveCamera, "Active Camera", "Retrieve the scene's active camera")
 DefNode(GeometryNode, GEO_NODE_INPUT_CURVE_HANDLES, 0, "INPUT_CURVE_HANDLES", InputCurveHandlePositions, "Curve Handle Positions", "Retrieve the position of each Bézier control point's handles")
 DefNode(GeometryNode, GEO_NODE_INPUT_CURVE_TILT, 0, "INPUT_CURVE_TILT", InputCurveTilt, "Curve Tilt", "Retrieve the angle at each control point used to twist the curve's normal around its tangent")
 DefNode(GeometryNode, GEO_NODE_INPUT_ID, 0, "INPUT_ID", InputID, "ID", "Retrieve a stable random identifier value from the \"id\" attribute on the point domain, or the index if the attribute does not exist")
