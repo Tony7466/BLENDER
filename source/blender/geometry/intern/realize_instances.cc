@@ -181,6 +181,11 @@ struct RealizeCurveTask {
   uint32_t id = 0;
 };
 
+struct RealizeEditDataTask {
+  const bke::GeometryComponentEditData *edit_data;
+  float4x4 transform;
+};
+
 struct AllPointCloudsInfo {
   /** Ordering of all attributes that are propagated to the output point cloud generically. */
   OrderedAttributes attributes;
@@ -228,11 +233,11 @@ struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
+  Vector<RealizeEditDataTask> edit_data_tasks;
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
   ImplicitSharingPtr<const bke::VolumeComponent> first_volume;
-  ImplicitSharingPtr<const bke::GeometryComponentEditData> first_edit_data;
 };
 
 /** Current offsets while during the gather operation. */
@@ -622,9 +627,8 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case bke::GeometryComponent::Type::Edit: {
         const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
             component);
-        if (!gather_info.r_tasks.first_edit_data) {
-          edit_component->add_user();
-          gather_info.r_tasks.first_edit_data = edit_component;
+        if (!edit_component->gizmo_transforms_.is_empty() || edit_component->curves_edit_hints_) {
+          gather_info.r_tasks.edit_data_tasks.append({edit_component, base_transform});
         }
         break;
       }
@@ -1559,8 +1563,20 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);
   }
-  if (gather_info.r_tasks.first_edit_data) {
-    new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
+
+  if (!gather_info.r_tasks.edit_data_tasks.is_empty()) {
+    auto &component = new_geometry_set.get_component_for_write<bke::GeometryComponentEditData>();
+    for (const RealizeEditDataTask &task : gather_info.r_tasks.edit_data_tasks) {
+      if (!component.curves_edit_hints_) {
+        if (task.edit_data->curves_edit_hints_) {
+          component.curves_edit_hints_ = std::make_unique<bke::CurvesEditHints>(
+              *task.edit_data->curves_edit_hints_);
+        }
+      }
+      for (auto item : task.edit_data->gizmo_transforms_.items()) {
+        component.gizmo_transforms_.add(item.key, task.transform * item.value);
+      }
+    }
   }
 
   return new_geometry_set;
