@@ -1421,7 +1421,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
   metrics->units_per_EM = short(face->units_per_EM);
   metrics->ascender = short(face->ascender);
   metrics->descender = short(face->descender);
-  metrics->height = short(face->height);
+  metrics->line_height = short(face->height);
   metrics->max_advance_width = short(face->max_advance_width);
   metrics->max_advance_height = short(face->max_advance_height);
   metrics->underline_position = short(face->underline_position);

@@ -210,36 +210,69 @@ typedef struct FontBufInfoBLF {
 } FontBufInfoBLF;
 
 typedef struct FontMetrics {
+  /** This font's default weight, 100-900, 400 is normal. */
   short weight;
+  /** This font's default width, 1 is normal, 2 is twice as wide. */
   float width;
+  /** This font's slant in clockwise degrees, 0 being upright. */
   float slant;
+  /** This font's default spacing, 1 is normal. */
   float spacing;
 
-  short units_per_EM;
+  /** Number of font units in an EM square. 2048, 1024, 1000 are typical. */
+  short units_per_EM; /* */
+  /** Design classification from OS/2 sFamilyClass. */
   short family_class;
+  /** Style classification from OS/2 fsSelection. */
   short selection_flags;
+  /** Total number of glyphs in the font. */
   int num_glyphs;
+  /** Minimum Unicode index, typically 0x0020. */
   short first_charindex;
+  /** Maximum Unicode index, or 0xFFFF if greater than. */
   short last_charindex;
 
+  /**
+   * Bounds that can contain every glyph in the font when in default positions. Can used for
+   * maximum ascender, minimum descender. Can be out by a pixel when hinting. Does not change with
+   * variation axis changes. */
   rcti bounding_box;
+  /**
+   * Positive number of font units from baseline to top of typical capitals. Can be slightly more
+   * than cap height when head serifs, terminals, or apexes extend above cap line. */
   short ascender;
+  /** Negative (!) number of font units from baseline to bottom of letters like "gjpqy". */
   short descender;
-  short height;
+  /** Positive number of font units between consecutive baselines. */
+  short line_height;
+  /** Font units from baseline to lowercase mean line, typically to top of "x". */
   short x_height;
+  /** Font units from baseline to top of capital letters, specifically "H". */
   short cap_height;
+  /** Font unit maximal horizontal advance for all glyphs in font. Can help with wrapping. */
   short max_advance_width;
+  /** As above but only for vertical layout fonts, otherwise is set to line_height value. */
   short max_advance_height;
 
+  /** Negative (!) number of font units below baseline to center (!) of unlining stem. */
   short underline_position;
+  /** thickness of the underline in font units. */
   short underline_thickness;
+  /** Positive number of font units above baseline to the top (!) of strikeout stroke. */
   short strikeout_position;
+  /** thickness of the strikeout line in font units. */
   short strikeout_thickness;
+  /** EM size font units of recommended subscript letters. */
   short subscript_size;
+  /** Horizontal offset before first subscript character, typically 0. */
   short subscript_xoffset;
+  /** Postive number of font units above baseline for subscript characters. */
   short subscript_yoffset;
+  /** EM size font units of recommended superscript letters. */
   short superscript_size;
+  /** Horizontal offset before first superscript character, typically 0. */
   short superscript_xoffset;
+  /** Postive (!) number of font units below baseline for subscript characters. */
   short superscript_yoffset;
 } FontMetrics;
 
