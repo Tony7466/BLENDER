@@ -1148,13 +1148,7 @@ class NODE_PT_repeat_zone_items(Panel):
 
 class NODE_UL_enum_definition_items(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        layout.prop(item, "name", text="", emboss=False, icon_value=icon)
 
 
 class NODE_PT_menu_switch_items(Panel):
