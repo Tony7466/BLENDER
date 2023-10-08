@@ -3619,11 +3619,11 @@ static void frame_node_draw(const bContext &C,
 
 static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, uiBlock &block)
 {
-  const bool node_has_label = node.label[0] != '\0';
-  const bool use_auto_label = !node_has_label && (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+  const bool has_label = node.label[0] != '\0';
+  const bool use_auto_label = !has_label && (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
                               (snode.overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS);
 
-  if (!node_has_label && !use_auto_label) {
+  if (!has_label && !use_auto_label) {
     return;
   }
 
