@@ -2693,9 +2693,6 @@ static void node_draw_extra_info_panel(const Scene *scene,
   const rctf &rct = node.runtime->totr;
   rctf extra_info_rect;
 
-  const float padding = 3.0f * UI_SCALE_FAC;
-  const float width = BLI_rctf_size_x(&rct) - 2.0f * padding;
-
   if (node.is_frame()) {
     extra_info_rect.xmin = rct.xmin;
     extra_info_rect.xmax = rct.xmin + 95.0f * UI_SCALE_FAC;
@@ -2703,34 +2700,35 @@ static void node_draw_extra_info_panel(const Scene *scene,
     extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
-    float preview_height = 0;
-    rctf preview_rect;
+    const float padding = 3.0f * UI_SCALE_FAC;
 
-    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = extra_info_rect.xmin + width;
+    extra_info_rect.xmin = rct.xmin + padding;
+    extra_info_rect.xmax = rct.xmax - padding;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+
+    float preview_height = 0.0f;
+    rctf preview_rect;
     if (preview) {
+      const float width = BLI_rctf_size_x(&extra_info_rect);
       if (preview->x > preview->y) {
-        const float preview_padding = 3.0f * UI_SCALE_FAC;
-        preview_height = (width - 2.0 * preview_padding) * float(preview->y) / float(preview->x) +
-                         2.0 * preview_padding;
-        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
-        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
-        preview_rect.xmin = extra_info_rect.xmin + preview_padding;
-        preview_rect.xmax = extra_info_rect.xmax - preview_padding;
+        preview_height = (width - 2.0f * padding) * float(preview->y) / float(preview->x) +
+                         2.0f * padding;
+        preview_rect.ymin = extra_info_rect.ymin + padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - padding;
+        preview_rect.xmin = extra_info_rect.xmin + padding;
+        preview_rect.xmax = extra_info_rect.xmax - padding;
         extra_info_rect.ymax += preview_height;
       }
       else {
-        const float preview_padding = 3.0f * UI_SCALE_FAC;
         preview_height = width;
-        const float preview_width = (width - 2.0 * preview_padding) * float(preview->x) /
+        const float preview_width = (width - 2.0f * padding) * float(preview->x) /
                                         float(preview->y) +
-                                    2.0 * preview_padding;
-        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
-        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
-        preview_rect.xmin = extra_info_rect.xmin + preview_padding + (width - preview_width) / 2;
-        preview_rect.xmax = extra_info_rect.xmax - preview_padding - (width - preview_width) / 2;
+                                    2.0f * padding;
+        preview_rect.ymin = extra_info_rect.ymin + padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - padding;
+        preview_rect.xmin = extra_info_rect.xmin + padding + (width - preview_width) / 2;
+        preview_rect.xmax = extra_info_rect.xmax - padding - (width - preview_width) / 2;
         extra_info_rect.ymax += preview_height;
       }
     }
