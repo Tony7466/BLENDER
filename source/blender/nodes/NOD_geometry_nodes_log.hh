@@ -139,8 +139,9 @@ class GeometryInfoLog : public ValueLog {
     int instances_num;
   };
   struct EditDataInfo {
-    bool has_deformed_positions;
-    bool has_deform_matrices;
+    bool has_deformed_positions = false;
+    bool has_deform_matrices = false;
+    int gizmo_transforms_num = 0;
   };
 
   std::optional<MeshInfo> mesh_info;

@@ -122,6 +122,13 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions.has_value();
         }
+        if (!edit_component.gizmo_transforms_.is_empty()) {
+          if (!this->edit_data_info) {
+            this->edit_data_info.emplace();
+          }
+          EditDataInfo &info = this->edit_data_info.emplace();
+          info.gizmo_transforms_num = edit_component.gizmo_transforms_.size();
+        }
         break;
       }
       case bke::GeometryComponent::Type::Volume: {

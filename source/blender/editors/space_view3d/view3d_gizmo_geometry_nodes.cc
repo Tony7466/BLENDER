@@ -16,6 +16,8 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
+#include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_idprop.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
@@ -39,6 +41,7 @@
 #include "ED_gizmo_library.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -249,9 +252,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 {
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
 
-  Object *ob = CTX_data_active_object(C);
+  Object *ob_orig = CTX_data_active_object(C);
   const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(
-      BKE_object_active_modifier(ob));
+      BKE_object_active_modifier(ob_orig));
   if (!nmd.runtime->eval_log) {
     return;
   }
@@ -260,6 +263,14 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   if (wm == nullptr) {
     return;
   }
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_orig);
+  if (ob_eval == nullptr) {
+    return;
+  }
+
+  const bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*ob_eval);
+  const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>();
 
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
@@ -268,7 +279,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
   std::cout << "Refresh Gizmos: \n";
   nodes::gizmos::foreach_active_gizmo(
-      *ob, nmd, *wm, [&](const ComputeContext &compute_context, const bNode &gizmo_node_const) {
+      *ob_orig,
+      nmd,
+      *wm,
+      [&](const ComputeContext &compute_context, const bNode &gizmo_node_const) {
         if (new_gizmo_by_node.contains({compute_context.hash(), gizmo_node_const.identifier})) {
           /* Already handled. */
           return;
@@ -291,7 +305,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         if (ELEM(nullptr, position_value_log, direction_value_log)) {
           /* TODO: Add some safety measure to make sure that this does not needlessly cause updates
            * all the time. */
-          DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+          DEG_id_tag_update(&ob_orig->id, ID_RECALC_GEOMETRY);
           WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
           return;
         }
@@ -304,7 +318,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         bNodeSocket &value_input = gizmo_node.input_socket(0);
         Vector<GizmoFloatVariable> variables = find_float_values_paths(
-            value_input, std::nullopt, compute_context, *ob, nmd);
+            value_input, std::nullopt, compute_context, *ob_orig, nmd);
         if (variables.is_empty()) {
           return;
         }
@@ -357,6 +371,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           }
         }
         else {
+          float4x4 crazy_space_transform = float4x4::identity();
+          if (edit_data_component) {
+            if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(
+                    {compute_context.hash(), gizmo_node.identifier}))
+            {
+              crazy_space_transform = *m;
+            }
+          }
+
           const math::Quaternion rotation = math::from_vector(
               math::normalize(direction),
               gz->type->idname == StringRef("GIZMO_GT_arrow_3d") ? math::AxisSigned::Z_NEG :
@@ -364,7 +387,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               math::Axis::X);
           float4x4 mat = math::from_rotation<float4x4>(rotation);
           mat.location() = position;
-          mat = float4x4(ob->object_to_world) * mat;
+          mat = float4x4(ob_orig->object_to_world) * crazy_space_transform * mat;
           copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
 
           UserData *user_data = MEM_new<UserData>(__func__);

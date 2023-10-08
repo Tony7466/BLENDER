@@ -881,6 +881,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       r_lf_index_by_bsocket[socket->index_in_tree()] = inputs_.append_and_get_index_as(
           socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
     }
+    outputs_.append_as("Gizmo", CPPType::get<GeometrySet>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
@@ -889,6 +890,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
     const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
     geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data);
     if (tree_logger == nullptr) {
+      params.set_default_remaining_outputs();
       return;
     }
 
@@ -898,6 +900,13 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       void *value = params.try_get_input_data_ptr(i);
       tree_logger->log_value(bnode_, socket, GPointer{type, value});
     }
+
+    GeometrySet geometry;
+    GeometryComponentEditData &edit_data =
+        geometry.get_component_for_write<GeometryComponentEditData>();
+    edit_data.gizmo_transforms_.add({user_data.compute_context->hash(), bnode_.identifier},
+                                    float4x4::identity());
+    params.set_output(0, std::move(geometry));
   }
 };
 
@@ -3470,6 +3479,12 @@ struct GeometryNodesLazyFunctionBuilder {
       lf::InputSocket &lf_socket = lf_gizmo_node.input(i - 1);
       const bNodeSocket &bsocket = bnode.input_socket(i);
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+    for (const int i : bnode.output_sockets().index_range()) {
+      lf::OutputSocket &lf_socket = lf_gizmo_node.output(i);
+      const bNodeSocket &bsocket = bnode.output_socket(i);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 

@@ -225,6 +225,12 @@ static void translate_geometry_set(GeoNodeExecParams &params,
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     translate_curve_edit_hints(*curve_edit_hints, translation);
   }
+  if (geometry.get_component<GeometryComponentEditData>()) {
+    auto &component = geometry.get_component_for_write<GeometryComponentEditData>();
+    for (float4x4 &m : component.gizmo_transforms_.values()) {
+      m.location() += translation;
+    }
+  }
 }
 
 void transform_geometry_set(GeoNodeExecParams &params,
@@ -249,6 +255,12 @@ void transform_geometry_set(GeoNodeExecParams &params,
   }
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     transform_curve_edit_hints(*curve_edit_hints, transform);
+  }
+  if (geometry.get_component<GeometryComponentEditData>()) {
+    auto &component = geometry.get_component_for_write<GeometryComponentEditData>();
+    for (float4x4 &m : component.gizmo_transforms_.values()) {
+      m = transform * m;
+    }
   }
 }
 

@@ -11,9 +11,12 @@
 #include <iosfwd>
 #include <mutex>
 
+#include "BLI_compute_context.hh"
+
 #include "BLI_bounds_types.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_attribute.hh"
@@ -668,6 +671,7 @@ class GeometryComponentEditData final : public GeometryComponent {
    * example, when the curves have been converted to a mesh.
    */
   std::unique_ptr<CurvesEditHints> curves_edit_hints_;
+  Map<std::pair<ComputeContextHash, int>, float4x4> gizmo_transforms_;
 
   GeometryComponentEditData();
 

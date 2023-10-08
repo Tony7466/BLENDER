@@ -1375,9 +1375,10 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
           const geo_log::GeometryInfoLog::EditDataInfo &edit_info = *value_log.edit_data_info;
           char line[256];
           SNPRINTF(line,
-                   TIP_("\u2022 Edit Curves: %s, %s"),
+                   TIP_("\u2022 Edit: %s, %s, %s"),
                    edit_info.has_deformed_positions ? TIP_("positions") : TIP_("no positions"),
-                   edit_info.has_deform_matrices ? TIP_("matrices") : TIP_("no matrices"));
+                   edit_info.has_deform_matrices ? TIP_("matrices") : TIP_("no matrices"),
+                   edit_info.gizmo_transforms_num > 0 ? TIP_("gizmos") : TIP_("no gizmos"));
           ss << line;
         }
         break;

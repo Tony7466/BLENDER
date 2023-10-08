@@ -14,6 +14,7 @@ GeometryComponent *GeometryComponentEditData::copy() const
   GeometryComponentEditData *new_component = new GeometryComponentEditData();
   if (curves_edit_hints_) {
     new_component->curves_edit_hints_ = std::make_unique<CurvesEditHints>(*curves_edit_hints_);
+    new_component->gizmo_transforms_ = gizmo_transforms_;
   }
   return new_component;
 }
@@ -32,6 +33,7 @@ void GeometryComponentEditData::clear()
 {
   BLI_assert(this->is_mutable() || this->is_expired());
   curves_edit_hints_.reset();
+  gizmo_transforms_.clear();
 }
 
 void GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(
