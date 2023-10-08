@@ -981,6 +981,11 @@ void PlanarProbePipeline::begin_sync()
     inst_.bind_uniform_data(&gbuffer_ps_);
     inst_.sampling.bind_resources(&gbuffer_ps_);
     inst_.hiz_buffer.bind_resources(&gbuffer_ps_);
+    /* Cryptomatte. */
+    gbuffer_ps_.bind_image(RBUFS_CRYPTOMATTE_SLOT, &inst_.render_buffers.cryptomatte_tx);
+    /* RenderPasses & AOVs. */
+    gbuffer_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
+    gbuffer_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
     inst_.cryptomatte.bind_resources(&gbuffer_ps_);
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_DEPTH_EQUAL;
@@ -994,7 +999,9 @@ void PlanarProbePipeline::begin_sync()
   {
     PassSimple &pass = eval_light_ps_;
     pass.init();
+    pass.state_set(DRW_STATE_WRITE_COLOR);
     pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_CAPTURE_EVAL));
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     inst_.bind_uniform_data(&pass);
     inst_.gbuffer.bind_resources(&pass);
     inst_.lights.bind_resources(&pass);

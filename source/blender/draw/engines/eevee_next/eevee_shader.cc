@@ -182,6 +182,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_ray_generate_refract";
     case RAY_TRACE_FALLBACK:
       return "eevee_ray_trace_fallback";
+    case RAY_TRACE_PLANAR:
+      return "eevee_ray_trace_planar";
     case RAY_TRACE_SCREEN_DIFFUSE:
       return "eevee_ray_trace_screen_diffuse";
     case RAY_TRACE_SCREEN_REFLECT:

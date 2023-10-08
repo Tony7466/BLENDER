@@ -11,6 +11,41 @@ namespace blender::eevee {
 /** \name Planar Probe Module
  * \{ */
 
+void PlanarProbe::sync(const float4x4 &world_to_object,
+                       const float4x4 &object_to_world,
+                       float clipping_offset)
+{
+  this->plane_to_world = float4x4(world_to_object);
+  this->world_to_plane = float4x4(object_to_world);
+  this->clipping_offset = clipping_offset;
+}
+
+void PlanarProbe::set_view(const draw::View &view, int layer_id)
+{
+  this->viewmat = view.viewmat() * reflection_matrix_get();
+  this->winmat = view.winmat();
+  this->world_to_object_transposed = float3x4(math::transpose(world_to_plane));
+  this->normal = math::normalize(plane_to_world.z_axis());
+  this->layer_id = layer_id;
+}
+
+float4x4 PlanarProbe::reflection_matrix_get()
+{
+  return plane_to_world * math::from_scale<float4x4>(float3(1, 1, -1)) * world_to_plane;
+}
+
+float4 PlanarProbe::reflection_clip_plane_get()
+{
+  float3 normal = math::normalize(plane_to_world.z_axis());
+  return float4(-normal, -math::dot(normal, plane_to_world.location()) - clipping_offset);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Planar Probe Module
+ * \{ */
+
 void PlanarProbeModule::init()
 {
   update_probes_ = !probes_.is_empty();
@@ -18,8 +53,8 @@ void PlanarProbeModule::init()
 
 void PlanarProbeModule::begin_sync()
 {
-  for (PlanarProbe &planar_probe : probes_.values()) {
-    planar_probe.is_probe_used = false;
+  for (PlanarProbe &probe : probes_.values()) {
+    probe.is_probe_used = false;
   }
 }
 
@@ -30,86 +65,74 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
-  /* TODO Cull out of view planars. */
-
   PlanarProbe &probe = find_or_insert(ob_handle);
-  probe.plane_to_world = float4x4(ob->object_to_world);
-  probe.world_to_plane = float4x4(ob->world_to_object);
-  probe.clipping_offset = light_probe->clipsta;
+  probe.sync(float4x4(ob->object_to_world), float4x4(ob->world_to_object), light_probe->clipsta);
   probe.is_probe_used = true;
 }
 
 void PlanarProbeModule::end_sync()
 {
-  remove_unused_probes();
-
-  // if (probes_.is_empty()) {
-  //   update_probes_ = true;
-  //   instance_.sampling.reset();
-  // }
-}
-
-float4x4 PlanarProbeModule::reflection_matrix_get(const float4x4 &plane_to_world,
-                                                  const float4x4 &world_to_plane)
-{
-  return math::normalize(plane_to_world) * math::from_scale<float4x4>(float3(1, 1, -1)) *
-         math::normalize(world_to_plane);
-}
-
-float4 PlanarProbeModule::reflection_clip_plane_get(const float4x4 &plane_to_world,
-                                                    float clip_offset)
-{
-  /* Compute clip plane equation / normal. */
-  float4 plane_equation = float4(-math::normalize(plane_to_world.z_axis()));
-  plane_equation.w = -math::dot(plane_equation.xyz(), plane_to_world.location());
-  plane_equation.w -= clip_offset;
-  return plane_equation;
+  probes_.remove_if(
+      [](const PlanarProbes::MutableItem &item) { return !item.value.is_probe_used; });
 }
 
 void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
 {
   const int64_t num_probes = probes_.size();
-  if (resources_.size() != num_probes) {
-    resources_.reinitialize(num_probes);
-  }
 
   /* TODO resolution percentage. */
   int2 extent = main_view_extent;
+  int layer_count = num_probes;
+
+  if (num_probes == 0) {
+    /* Create valid dummy texture. */
+    extent = int2(1);
+    layer_count = 1;
+  }
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-  color_tx_.ensure_2d_array(GPU_R11F_G11F_B10F, extent, num_probes, usage);
-  depth_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, extent, num_probes, usage);
+  radiance_tx_.ensure_2d_array(GPU_R11F_G11F_B10F, extent, layer_count, usage);
+  depth_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, extent, layer_count, usage);
 
   int resource_index = 0;
   for (PlanarProbe &probe : probes_.values()) {
+    if (resource_index == PLANAR_PROBES_MAX) {
+      break;
+    }
+
     PlanarProbeResources &res = resources_[resource_index];
 
-    float4x4 winmat = main_view.winmat();
-    float4x4 viewmat = main_view.viewmat();
-    viewmat = viewmat * reflection_matrix_get(probe.plane_to_world, probe.world_to_plane);
-    res.view.sync(viewmat, winmat);
+    /* TODO Cull out of view planars. */
+
+    probe.set_view(main_view, resource_index);
+    probe_planar_buf_[resource_index] = probe;
+
+    res.view.sync(probe.viewmat, probe.winmat);
+    /* FIXME: Huge performance issue. Visibility should still work with inverted matrices. */
     res.view.visibility_test(false);
 
-    world_clip_buf_.plane = reflection_clip_plane_get(probe.plane_to_world, probe.clipping_offset);
+    world_clip_buf_.plane = probe.reflection_clip_plane_get();
     world_clip_buf_.push_update();
 
     res.combined_fb.ensure(GPU_ATTACHMENT_TEXTURE_LAYER(depth_tx_, resource_index),
-                           GPU_ATTACHMENT_TEXTURE_LAYER(color_tx_, resource_index));
+                           GPU_ATTACHMENT_TEXTURE_LAYER(radiance_tx_, resource_index));
 
-    instance_.pipelines.planar.render(res.view, res.combined_fb, main_view_extent);
+    instance_.pipelines.planar.render(res.view, res.combined_fb, extent);
+
+    resource_index++;
   }
+
+  if (resource_index < PLANAR_PROBES_MAX) {
+    /* Tag the end of the array. */
+    probe_planar_buf_[resource_index].layer_id = -1;
+  }
+  probe_planar_buf_.push_update();
 }
 
 PlanarProbe &PlanarProbeModule::find_or_insert(ObjectHandle &ob_handle)
 {
   PlanarProbe &planar_probe = probes_.lookup_or_add_default(ob_handle.object_key.hash());
   return planar_probe;
-}
-
-void PlanarProbeModule::remove_unused_probes()
-{
-  probes_.remove_if(
-      [](const PlanarProbes::MutableItem &item) { return !item.value.is_probe_used; });
 }
 
 /** \} */
