@@ -266,10 +266,15 @@ class BaseSocketDeclarationBuilder {
  public:
   virtual ~BaseSocketDeclarationBuilder() = default;
 
+  /** The input socket allows passing in a field. */
   BaseSocketDeclarationBuilder &supports_field();
 
+  /**
+   * For outputs that combine a subset of input fields into a new field.
+   */
   BaseSocketDeclarationBuilder &reference_pass(Span<int> input_indices);
 
+  /** The output is a field if any of the inputs with indices in the given list is a field. */
   BaseSocketDeclarationBuilder &dependent_field(Vector<int> input_dependencies);
 
   BaseSocketDeclarationBuilder &hide_label(bool value = true);
@@ -284,38 +289,78 @@ class BaseSocketDeclarationBuilder {
 
   BaseSocketDeclarationBuilder &no_muted_links(bool value = true);
 
+  /**
+   * Used for sockets that are always unavailable and should not be seen by the user.
+   * Ideally, no new calls to this method should be added over time.
+   */
   BaseSocketDeclarationBuilder &unavailable(bool value = true);
 
   BaseSocketDeclarationBuilder &is_attribute_name(bool value = true);
 
   BaseSocketDeclarationBuilder &is_default_link_socket(bool value = true);
 
+  /**
+   * For inputs this means that the input field is evaluated on all geometry inputs. For outputs
+   * it means that this contains an anonymous attribute reference that is available on all geometry
+   * outputs. This sockets value does not have to be output manually in the node. It's done
+   * automatically by #LazyFunctionForGeometryNode. This allows outputting this field even if the
+   * geometry output does not have to be computed.
+   */
   BaseSocketDeclarationBuilder &field_on_all();
 
+  /** The output is always a field, regardless of any inputs. */
   BaseSocketDeclarationBuilder &field_source();
 
+  /** The input supports a field and is a field by default when nothing is connected. */
   BaseSocketDeclarationBuilder &implicit_field(ImplicitInputValueFn fn);
 
+  /** The input is an implicit field that is evaluated on all geometry inputs. */
   BaseSocketDeclarationBuilder &implicit_field_on_all(ImplicitInputValueFn fn);
 
+  /** The input is evaluated on a subset of the geometry inputs. */
   BaseSocketDeclarationBuilder &implicit_field_on(ImplicitInputValueFn fn,
                                                   const Span<int> input_indices);
 
+  /** For inputs that are evaluated or available on a subset of the geometry sockets. */
   BaseSocketDeclarationBuilder &field_on(Span<int> indices);
 
+  /** The output is a field if any of the inputs are a field. */
   BaseSocketDeclarationBuilder &dependent_field();
 
+  /**
+   * For outputs that combine all input fields into a new field. The output is a field even if none
+   * of the inputs is a field.
+   */
   BaseSocketDeclarationBuilder &field_source_reference_all();
+  /**
+   * For outputs that combine all input fields into a new field.
+   */
   BaseSocketDeclarationBuilder &reference_pass_all();
 
+  /** Attributes from the all geometry inputs can be propagated. */
   BaseSocketDeclarationBuilder &propagate_all();
 
   BaseSocketDeclarationBuilder &compositor_realization_options(
       CompositorInputRealizationOptions value);
 
+  /**
+   * The priority of the input for determining the domain of the node. See
+   * realtime_compositor::InputDescriptor for more information.
+   */
   BaseSocketDeclarationBuilder &compositor_domain_priority(int priority);
+
+  /**
+   * This input expects a single value and can't operate on non-single values. See
+   * realtime_compositor::InputDescriptor for more information.
+   */
   BaseSocketDeclarationBuilder &compositor_expects_single_value(bool value = true);
 
+  /**
+   * Pass a function that sets properties on the node required to make the corresponding socket
+   * available, if it is not available on the default state of the node. The function is allowed to
+   * make other sockets unavailable, since it is meant to be called when the node is first added.
+   * The node type's update function is called afterwards.
+   */
   BaseSocketDeclarationBuilder &make_available(std::function<void(bNode &)> fn);
 
  protected:
@@ -375,10 +420,6 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
         static_cast<BaseSocketDeclarationBuilder *>(this)->no_muted_links(value));
   }
 
-  /**
-   * Used for sockets that are always unavailable and should not be seen by the user.
-   * Ideally, no new calls to this method should be added over time.
-   */
   Self &unavailable(bool value = true)
   {
     return static_cast<Self &>(
@@ -397,47 +438,35 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
         static_cast<BaseSocketDeclarationBuilder *>(this)->is_attribute_name(value));
   }
 
-  /** The input socket allows passing in a field. */
   Self &supports_field()
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->supports_field());
   }
 
-  /**
-   * For inputs this means that the input field is evaluated on all geometry inputs. For outputs
-   * it means that this contains an anonymous attribute reference that is available on all geometry
-   * outputs. This sockets value does not have to be output manually in the node. It's done
-   * automatically by #LazyFunctionForGeometryNode. This allows outputting this field even if the
-   * geometry output does not have to be computed.
-   */
   Self &field_on_all()
   {
     return static_cast<Self &>(static_cast<BaseSocketDeclarationBuilder *>(this)->field_on_all());
   }
 
-  /** For inputs that are evaluated or available on a subset of the geometry sockets. */
   Self &field_on(Span<int> indices)
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->field_on(indices));
   }
 
-  /** The input supports a field and is a field by default when nothing is connected. */
   Self &implicit_field(ImplicitInputValueFn fn)
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->implicit_field(std::move(fn)));
   }
 
-  /** The input is an implicit field that is evaluated on all geometry inputs. */
   Self &implicit_field_on_all(ImplicitInputValueFn fn)
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->implicit_field_on_all(std::move(fn)));
   }
 
-  /** The input is evaluated on a subset of the geometry inputs. */
   Self &implicit_field_on(ImplicitInputValueFn fn, const Span<int> input_indices)
   {
     return static_cast<Self &>(
@@ -445,55 +474,41 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
                                                                              input_indices));
   }
 
-  /** The output is always a field, regardless of any inputs. */
   Self &field_source()
   {
     return static_cast<Self &>(static_cast<BaseSocketDeclarationBuilder *>(this)->field_source());
   }
 
-  /** The output is a field if any of the inputs are a field. */
   Self &dependent_field()
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->dependent_field());
   }
 
-  /** The output is a field if any of the inputs with indices in the given list is a field. */
   Self &dependent_field(Vector<int> input_dependencies)
   {
     return static_cast<Self &>(static_cast<BaseSocketDeclarationBuilder *>(this)->dependent_field(
         std::move(input_dependencies)));
   }
 
-  /**
-   * For outputs that combine all input fields into a new field. The output is a field even if none
-   * of the inputs is a field.
-   */
   Self &field_source_reference_all()
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->field_source_reference_all());
   }
 
-  /**
-   * For outputs that combine a subset of input fields into a new field.
-   */
   Self &reference_pass(Span<int> input_indices)
   {
     return static_cast<Self &>(static_cast<BaseSocketDeclarationBuilder *>(this)->reference_pass(
         std::move(input_indices)));
   }
 
-  /**
-   * For outputs that combine all input fields into a new field.
-   */
   Self &reference_pass_all()
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->reference_pass_all());
   }
 
-  /** Attributes from the all geometry inputs can be propagated. */
   Self &propagate_all()
   {
     return static_cast<Self &>(static_cast<BaseSocketDeclarationBuilder *>(this)->propagate_all());
@@ -505,28 +520,18 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
         static_cast<BaseSocketDeclarationBuilder *>(this)->compositor_realization_options(value));
   }
 
-  /** The priority of the input for determining the domain of the node. See
-   * realtime_compositor::InputDescriptor for more information. */
   Self &compositor_domain_priority(int priority)
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->compositor_domain_priority(priority));
   }
 
-  /** This input expects a single value and can't operate on non-single values. See
-   * realtime_compositor::InputDescriptor for more information. */
   Self &compositor_expects_single_value(bool value = true)
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->compositor_expects_single_value(value));
   }
 
-  /**
-   * Pass a function that sets properties on the node required to make the corresponding socket
-   * available, if it is not available on the default state of the node. The function is allowed to
-   * make other sockets unavailable, since it is meant to be called when the node is first added.
-   * The node type's update function is called afterwards.
-   */
   Self &make_available(std::function<void(bNode &)> fn)
   {
     return static_cast<Self &>(
