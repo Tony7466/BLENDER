@@ -1021,6 +1021,35 @@ static void versioning_node_group_sort_sockets_recursive(bNodeTreeInterfacePanel
   }
 }
 
+static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
+                                                                 const char *separator)
+{
+  LISTBASE_FOREACH (bNodeSocket *, socket, &sockets) {
+    if (socket->is_available()) {
+      if (char *pos = strstr(socket->identifier, separator)) {
+        /* End the identifier at the separator so that the old suffix is ignored. */
+        *pos = '\0';
+      }
+    }
+    else {
+      /* Rename existing identifiers so that they don't conflict with the renamed one. Those will
+       * be removed after versioning code. */
+      BLI_strncat(socket->identifier, "_deprecated", sizeof(socket->identifier));
+    }
+  }
+}
+
+static void versioning_switch_node_dynamic_socket(bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    if (node->type != GEO_NODE_SWITCH) {
+      continue;
+    }
+    version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
+    version_socket_identifier_suffixes_for_dynamic_types(node->outputs, "_");
+  }
+}
+
 static void enable_geometry_nodes_is_modifier(Main &bmain)
 {
   /* Any node group with a first socket geometry output can potentially be a modifier. Previously
@@ -1697,5 +1726,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        versioning_switch_node_dynamic_socket(*ntree);
+      }
+    }
   }
 }
