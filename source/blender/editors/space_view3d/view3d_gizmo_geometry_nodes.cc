@@ -373,6 +373,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         else {
           float4x4 crazy_space_transform = float4x4::identity();
           if (edit_data_component) {
+            /* TODO: Not only lookup in top level edit data component but also in instances. */
             if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(
                     {compute_context.hash(), gizmo_node.identifier}))
             {
