@@ -399,7 +399,7 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
   EnumPropertyItem *items = nullptr;
   int items_count = 0;
 
-  const EnumPropertyItem none{GEO_NODE_DEFAULT_FIELD_INPUT_NONE, "NONE", 0, "NONE", ""};
+  const EnumPropertyItem none{GEO_NODE_DEFAULT_FIELD_INPUT_NONE, "NONE", 0, "None", ""};
   RNA_enum_item_add(&items, &items_count, &none);
 
   if (ntree->type == NTREE_GEOMETRY) {

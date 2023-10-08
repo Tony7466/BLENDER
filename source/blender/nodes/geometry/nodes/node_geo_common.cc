@@ -61,9 +61,10 @@ static void node_group_declare(const bNodeTree &node_tree,
     return;
   }
 
-  const Span<const bNodeTreeInterfaceSocket *> inputs = node_tree.interface_inputs();
+  group->ensure_interface_cache();
+  const Span<const bNodeTreeInterfaceSocket *> inputs = group->interface_inputs();
   const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;
-  for (const int i : r_declaration.inputs.index_range()) {
+  for (const int i : inputs.index_range()) {
     SocketDeclaration &decl = *r_declaration.inputs[i];
     decl.input_field_type = field_interface.inputs[i];
     if (decl.input_field_type != InputSocketFieldType::None) {
