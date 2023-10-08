@@ -81,14 +81,6 @@ typedef struct LightProbe {
    */
   int resolution;
 
-  /**
-   * Resolution scalar of planar light probes when baked to a texture.
-   * Contains `eLightProbeResolutionScale`.
-   */
-  int resolution_scale;
-
-  char _pad2[4];
-
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
 } LightProbe;
@@ -102,13 +94,6 @@ typedef enum eLightProbeResolution {
   LIGHT_PROBE_RESOLUTION_1024 = 10,
   LIGHT_PROBE_RESOLUTION_2048 = 11,
 } eLightProbeResolution;
-
-/* LightProbe->resolution_scale. */
-typedef enum eLightProbeResolutionScale {
-  LIGHT_PROBE_RESOLUTION_SCALE_100 = 0,
-  LIGHT_PROBE_RESOLUTION_SCALE_50 = 1,
-  LIGHT_PROBE_RESOLUTION_SCALE_25 = 2,
-} eLightProbeResolutionScale;
 
 /* Probe->type */
 enum {
