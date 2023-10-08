@@ -17,8 +17,7 @@ namespace blender::nodes {
 
 static void set_default_input_field(const bNodeTreeInterfaceSocket &input, SocketDeclaration &decl)
 {
-
-  if (dynamic_cast<decl::Float *>(&decl)) {
+  if (dynamic_cast<decl::Vector *>(&decl)) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL) {
       decl.input_field_type = InputSocketFieldType::Implicit;
       decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
