@@ -310,7 +310,7 @@ void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 /** \name Node Generic Functions
  * \{ */
 
-void ntree_update_auto_labels(bNodeTree *ntree);
+void ntree_update_auto_labels(bNodeTree &ntree);
 
 bool node_is_connected_to_output(const bNodeTree *ntree, const bNode *node);
 

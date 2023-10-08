@@ -2063,10 +2063,10 @@ static void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr
 
 static void rna_Node_update_node_labels(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  const bNode &node = *static_cast<bNode *>(ptr->data);
 
-  if (node->is_reroute()) {
+  if (node.is_reroute()) {
     blender::bke::ntree_update_auto_labels(ntree);
   }
 }

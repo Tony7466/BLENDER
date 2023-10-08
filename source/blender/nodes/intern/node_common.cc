@@ -474,16 +474,15 @@ void register_node_type_reroute()
 static void update_reroute_node_auto_labels(bNodeTree *ntree)
 {
   ntree->ensure_topology_cache();
-  const blender::Span<bNode *> nodes = ntree->toposort_left_to_right();
 
-  for (bNode *reroute : nodes) {
+  for (bNode *reroute : ntree->toposort_left_to_right()) {
     if (!reroute->is_reroute()) {
       continue;
     }
 
     bNodeSocket *output = reroute->output_sockets().first();
-    const bNodeSocket *input = reroute->input_sockets().first();
-    const blender::Span<const bNodeSocket *> linked_sockets = input->directly_linked_sockets();
+    const bNodeSocket &input = *reroute->input_sockets().first();
+    const blender::Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
 
     if (linked_sockets.is_empty()) {
       /* Clear auto-label. */
@@ -491,8 +490,8 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
       continue;
     }
 
-    const bNodeSocket *from_sock = linked_sockets.first();
-    const bNode &from_node = from_sock->owner_node();
+    const bNodeSocket &from_sock = *linked_sockets.first();
+    const bNode &from_node = from_sock.owner_node();
 
     if (from_node.is_reroute()) {
       if (from_node.label[0] != '\0') {
@@ -500,11 +499,11 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
         continue;
       }
       /* Use the socket label directly to also propagate an empty label. */
-      node_sock_label(output, from_sock->label);
+      node_sock_label(output, from_sock.label);
       continue;
     }
 
-    node_sock_label(output, blender::bke::nodeSocketLabel(from_sock));
+    node_sock_label(output, blender::bke::nodeSocketLabel(&from_sock));
   }
 }
 
@@ -605,9 +604,9 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
   update_reroute_node_auto_labels(ntree);
 }
 
-void blender::bke::ntree_update_auto_labels(bNodeTree *ntree)
+void blender::bke::ntree_update_auto_labels(bNodeTree &ntree)
 {
-  update_reroute_node_auto_labels(ntree);
+  update_reroute_node_auto_labels(&ntree);
 }
 
 bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
