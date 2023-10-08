@@ -310,7 +310,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     const VArray<float> radii = drawing.radii();
     const VArray<float> opacities = drawing.opacities();
     const VArray<ColorGeometry4f> vertex_colors = *attributes.lookup_or_default<ColorGeometry4f>(
-        "vertex_color", ATTR_DOMAIN_POINT, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
+        "vertex_color", ATTR_DOMAIN_POINT, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<float> rotations = *attributes.lookup_or_default<float>(
         "rotation", ATTR_DOMAIN_POINT, 0.0f);
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
@@ -326,7 +326,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         "point_aspect_ratio", ATTR_DOMAIN_CURVE, 1.0f);
     const VArray<ColorGeometry4f> stroke_fill_colors =
         *attributes.lookup_or_default<ColorGeometry4f>(
-            "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
+            "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
     const Span<uint3> triangles = drawing.triangles();
