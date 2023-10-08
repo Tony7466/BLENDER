@@ -1615,6 +1615,12 @@ static bool surfacedeformBind(bContext *C,
   Object *ob_target_eval;
   Mesh *mesh_target;
   Depsgraph *dg =CTX_data_depsgraph_pointer(C);
+  GpencilModifierData *md_orig = (GpencilModifierData *)smd_orig;
+
+  if (md_orig->error) {
+    MEM_freeN(md_orig->error);
+    md_orig->error = nullptr;
+  }
 
   /*If unbind mode: unbind and exit */
   if (smd_orig->bind_modes & GP_MOD_SDEF_UNBIND_MODE) 

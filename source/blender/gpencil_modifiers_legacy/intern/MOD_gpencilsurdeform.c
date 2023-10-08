@@ -531,8 +531,16 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   uint verts_num = gps->totpoints;
   uint strokes_num = BLI_listbase_count(&gpf->strokes);
   SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
+  GpencilModifierData *md_orig = (GpencilModifierData *)smd_orig;
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
   bGPdata *gpd_orig = ob_orig->data;
+
+  /* if (md_orig->error)
+  {
+    MEM_freeN(md_orig->error);
+    md_orig->error = NULL;
+  }*/
+
   if (smd->layers == NULL)
   {
     smd_orig->flags = 0;
@@ -589,7 +597,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
               /*Free this frame*/
               for (int l = 0; strcmp(smd->layers->layer_info, smd_orig->layers->layer_info); l++) {
                 if (l > smd->num_of_layers) {
-                  BKE_gpencil_modifier_set_error(md,
+                  BKE_gpencil_modifier_set_error(md_orig,
                                                  "Layers mismatch between original and evaluated "
                                                  "modifier. Deleting all data");
                   freeData(md);
@@ -622,7 +630,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   
 
   if (!target) {
-    BKE_gpencil_modifier_set_error(md,  "No valid target mesh");
+    BKE_gpencil_modifier_set_error(md_orig,  "No valid target mesh");
     return;
   }
   target_verts_num = BKE_mesh_wrapper_vert_len(target);
@@ -649,7 +657,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     uint tot_strokes_num = BLI_listbase_count(&gpf->strokes);
     if (smd->layers->frames->strokes_num != tot_strokes_num) {
       BKE_gpencil_modifier_set_error(
-          md, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
+          md_orig, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
       bGPDstroke *gps_ptr_copy = gps;
       int i = 0;
       while (gps_ptr_copy->prev != NULL) {
@@ -666,7 +674,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   /* Points count on the deforming Stroke. */
   if (smd->layers->frames->strokes->stroke_verts_num != gps->totpoints) {
     BKE_gpencil_modifier_set_error(
-        md, "Stroke %u: Points changed from %i to %i", smd->layers->frames->strokes->stroke_idx, smd->layers->frames->strokes->stroke_verts_num, gps->totpoints);
+        md_orig, "Stroke %u: Points changed from %i to %i", smd->layers->frames->strokes->stroke_idx, smd->layers->frames->strokes->stroke_verts_num, gps->totpoints);
     //return;
   } 
 
@@ -676,14 +684,13 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
      * this is how the modifier worked before the vertex count was known. Follow the legacy
      * logic without requirement to re-bind the mesh. */
     BKE_gpencil_modifier_set_error(
-        md, "Target polygons changed from %u to %u", smd->target_polys_num, target_polys_num);
+        md_orig, "Target polygons changed from %u to %u", smd->target_polys_num, target_polys_num);
     return;
   }
   if (smd->target_verts_num != 0 && smd->target_verts_num != target_verts_num) {
     if (smd->target_verts_num > target_verts_num) {
       /* Number of vertices on the target did reduce. There is no usable recovery from this. */
-      BKE_gpencil_modifier_set_error(
-                             md,
+      BKE_gpencil_modifier_set_error(md_orig,
                              "Target vertices changed from %u to %u",
                              smd->target_verts_num,
                              target_verts_num);
@@ -1047,7 +1054,7 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
   row = uiLayoutRow(col, true);
   uiItemL(row, "Note that baked frames are unbound. Please bind the freshly baked frame if desired", ICON_INFO);
 
-  gpencil_modifier_panel_end(layout, ptr);
+  //gpencil_modifier_panel_end(layout, ptr);
 
   /*gpencil_modifier_masking_panel_draw(panel, true, true);*/
 }
