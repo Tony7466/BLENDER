@@ -33,52 +33,55 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
                                     const eNodeSocketDatatype type,
                                     const NodeEnumItem &enum_item)
 {
-  StringRef name = enum_item.name;
+  const StringRef name = enum_item.name;
+  const std::string identifier = "Item" + std::to_string(enum_item.identifier);
 
   switch (type) {
     case SOCK_CUSTOM:
       break;
     case SOCK_FLOAT:
-      b.add_input<decl::Float>(name).supports_field();
+      b.add_input<decl::Float>(name, identifier).supports_field();
       break;
     case SOCK_VECTOR:
-      b.add_input<decl::Float>(name).supports_field();
+      b.add_input<decl::Float>(name, identifier).supports_field();
       break;
     case SOCK_RGBA:
-      b.add_input<decl::Color>(name).default_value({0.8f, 0.8f, 0.8f, 1.0f}).supports_field();
+      b.add_input<decl::Color>(name, identifier)
+          .default_value({0.8f, 0.8f, 0.8f, 1.0f})
+          .supports_field();
       break;
     case SOCK_SHADER:
-      b.add_input<decl::Shader>(name);
+      b.add_input<decl::Shader>(name, identifier);
       break;
     case SOCK_BOOLEAN:
-      b.add_input<decl::Bool>(name).default_value(false).hide_value().supports_field();
+      b.add_input<decl::Bool>(name, identifier).default_value(false).hide_value().supports_field();
       break;
     case SOCK_INT:
-      b.add_input<decl::Int>(name).min(-100000).max(100000).supports_field();
+      b.add_input<decl::Int>(name, identifier).min(-100000).max(100000).supports_field();
       break;
     case SOCK_STRING:
-      b.add_input<decl::String>(name).supports_field();
+      b.add_input<decl::String>(name, identifier).supports_field();
       break;
     case SOCK_OBJECT:
-      b.add_input<decl::Object>(name);
+      b.add_input<decl::Object>(name, identifier);
       break;
     case SOCK_IMAGE:
-      b.add_input<decl::Image>(name);
+      b.add_input<decl::Image>(name, identifier);
       break;
     case SOCK_GEOMETRY:
-      b.add_input<decl::Geometry>(name);
+      b.add_input<decl::Geometry>(name, identifier);
       break;
     case SOCK_COLLECTION:
-      b.add_input<decl::Collection>(name);
+      b.add_input<decl::Collection>(name, identifier);
       break;
     case SOCK_TEXTURE:
-      b.add_input<decl::Texture>(name);
+      b.add_input<decl::Texture>(name, identifier);
       break;
     case SOCK_MATERIAL:
-      b.add_input<decl::Material>(name);
+      b.add_input<decl::Material>(name, identifier);
       break;
     case SOCK_ROTATION:
-      b.add_input<decl::Rotation>(name);
+      b.add_input<decl::Rotation>(name, identifier);
       break;
   }
 }
