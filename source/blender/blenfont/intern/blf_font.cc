@@ -1414,7 +1414,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
   TT_Postscript *post_table = (TT_Postscript *)FT_Get_Sfnt_Table(face, FT_SFNT_POST);
   if (post_table) {
     if (post_table->italicAngle != 0) {
-      metrics->slant = -float(post_table->italicAngle) / -65536.0f;
+      metrics->slant = float(post_table->italicAngle) / -65536.0f;
     }
   }
 
