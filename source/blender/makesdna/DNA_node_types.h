@@ -1625,7 +1625,8 @@ typedef struct NodeEnumDefinition {
   void clear();
   bool move_item(uint16_t from_index, uint16_t to_index);
 
-  NodeEnumItem *active_item() const;
+  const NodeEnumItem *active_item() const;
+  NodeEnumItem *active_item();
   void active_item_set(NodeEnumItem *item);
 
   void set_item_name(NodeEnumItem &item, blender::StringRef name);

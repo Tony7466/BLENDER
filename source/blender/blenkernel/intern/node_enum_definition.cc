@@ -97,12 +97,25 @@ bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
   return true;
 }
 
-NodeEnumItem *NodeEnumDefinition::active_item() const
+const NodeEnumItem *NodeEnumDefinition::active_item() const
 {
+  if (blender::IndexRange(this->items_num).contains(this->active_index)) {
+    return &this->items()[this->active_index];
+  }
   return nullptr;
 }
 
-void NodeEnumDefinition::active_item_set(NodeEnumItem *item) {}
+NodeEnumItem *NodeEnumDefinition::active_item()
+{
+  if (blender::IndexRange(this->items_num).contains(this->active_index)) {
+    return &this->items_for_write()[this->active_index];
+  }
+  return nullptr;
+}
+
+void NodeEnumDefinition::active_item_set(NodeEnumItem *item) {
+  this->active_index = this->items().contains_ptr(item) ? item - this->items_array : -1;
+}
 
 void NodeEnumDefinition::set_item_name(NodeEnumItem &item, blender::StringRef name)
 {
