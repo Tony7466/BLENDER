@@ -1826,12 +1826,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 };
 
-class LazyFunctionForIndexInput : public lf::LazyFunction {
+class LazyFunctionForForEachSplit : public lf::LazyFunction {
  private:
   const int amount_;
 
  public:
-  LazyFunctionForIndexInput(const int amount) : amount_(amount)
+  LazyFunctionForForEachSplit(const int amount) : amount_(amount)
   {
     const CPPType &type = CPPType::get<ValueOrField<int>>();
     outputs_.resize(amount, lf::Output("Index", type));
@@ -1845,12 +1845,12 @@ class LazyFunctionForIndexInput : public lf::LazyFunction {
   }
 };
 
-class LazyFunctionForReduce : public lf::LazyFunction {
+class LazyFunctionForForEachReduce : public lf::LazyFunction {
  private:
   const int amount_;
 
  public:
-  LazyFunctionForReduce(const int amount) : amount_(amount)
+  LazyFunctionForForEachReduce(const int amount) : amount_(amount)
   {
     debug_name_ = "Reduce";
     const CPPType &geo_cpp_type = CPPType::get<GeometrySet>();
@@ -1875,9 +1875,9 @@ struct ForEachEvalStorage {
   LinearAllocator<> allocator;
   lf::Graph graph;
   std::optional<lf::GraphExecutor> graph_executor;
-  std::optional<LazyFunctionForIndexInput> index_input_fn;
+  std::optional<LazyFunctionForForEachSplit> split_fn;
+  std::optional<LazyFunctionForForEachReduce> reduce_fn;
   std::optional<LazyFunctionForLogicalOr> or_fn;
-  std::optional<LazyFunctionForReduce> reduce_fn;
   void *graph_executor_storage = nullptr;
   Vector<int> input_index_map;
   Vector<int> output_index_map;
@@ -1971,18 +1971,18 @@ class LazyFunctionForForeachZone : public LazyFunction {
       lf_body_nodes.add_new(&lf_node);
     }
 
-    eval_storage.index_input_fn.emplace(amount);
-    lf::FunctionNode &lf_index_input_node = lf_graph.add_function(*eval_storage.index_input_fn);
-
-    eval_storage.or_fn.emplace(amount);
-    lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_fn);
+    eval_storage.split_fn.emplace(amount);
+    lf::FunctionNode &lf_split_node = lf_graph.add_function(*eval_storage.split_fn);
 
     eval_storage.reduce_fn.emplace(amount);
     lf::FunctionNode &lf_reduce_node = lf_graph.add_function(*eval_storage.reduce_fn);
 
+    eval_storage.or_fn.emplace(amount);
+    lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_fn);
+
     for (const int i : IndexRange(amount)) {
       lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
-      lf_graph.add_link(lf_index_input_node.output(i), lf_body_node.input(0));
+      lf_graph.add_link(lf_split_node.output(i), lf_body_node.input(0));
       lf_graph.add_link(*lf_graph.graph_inputs()[1], lf_body_node.input(1));
       lf_graph.add_link(lf_body_node.output(0), lf_or_node.input(i));
       lf_graph.add_link(lf_body_node.output(1), lf_reduce_node.input(i));
