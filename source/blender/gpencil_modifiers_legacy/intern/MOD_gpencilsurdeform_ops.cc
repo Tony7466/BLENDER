@@ -1778,13 +1778,13 @@ static bool surfacedeformBind(bContext *C,
         ob_target_eval = DEG_get_evaluated_object(dg, ob_target_orig);
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
         positions = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.6 +
-        edges = target->edges();
-        polys = target->polys();
-        corner_verts = target->corner_verts();
-        corner_edges = target->corner_edges();
+        edges = mesh_target->edges();
+        polys = mesh_target->polys();
+        corner_verts = mesh_target->corner_verts();
+        corner_edges = mesh_target->corner_edges();
         tedges_num = mesh_target->totedge;
         if (!makeTreeData(&treeData,
-                          target,
+                          mesh_target,
                           smd_eval,
                           vert_edges,
                           adj_array,
@@ -1847,7 +1847,7 @@ static bool surfacedeformBind(bContext *C,
       BKE_scene_graph_update_for_newframe(dg);
     }
     else {
-      positions = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
+      positions = BKE_mesh_vert_positions(target);  //  FOR 3.6 +
       edges = target->edges();
       polys = target->polys();
       corner_verts = target->corner_verts();
