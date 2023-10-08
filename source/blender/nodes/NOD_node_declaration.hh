@@ -266,17 +266,6 @@ class BaseSocketDeclarationBuilder {
  public:
   virtual ~BaseSocketDeclarationBuilder() = default;
 
-  /** The input socket allows passing in a field. */
-  BaseSocketDeclarationBuilder &supports_field();
-
-  /**
-   * For outputs that combine a subset of input fields into a new field.
-   */
-  BaseSocketDeclarationBuilder &reference_pass(Span<int> input_indices);
-
-  /** The output is a field if any of the inputs with indices in the given list is a field. */
-  BaseSocketDeclarationBuilder &dependent_field(Vector<int> input_dependencies);
-
   BaseSocketDeclarationBuilder &hide_label(bool value = true);
 
   BaseSocketDeclarationBuilder &hide_value(bool value = true);
@@ -298,6 +287,9 @@ class BaseSocketDeclarationBuilder {
   BaseSocketDeclarationBuilder &is_attribute_name(bool value = true);
 
   BaseSocketDeclarationBuilder &is_default_link_socket(bool value = true);
+
+  /** The input socket allows passing in a field. */
+  BaseSocketDeclarationBuilder &supports_field();
 
   /**
    * For inputs this means that the input field is evaluated on all geometry inputs. For outputs
@@ -327,11 +319,20 @@ class BaseSocketDeclarationBuilder {
   /** The output is a field if any of the inputs are a field. */
   BaseSocketDeclarationBuilder &dependent_field();
 
+  /** The output is a field if any of the inputs with indices in the given list is a field. */
+  BaseSocketDeclarationBuilder &dependent_field(Vector<int> input_dependencies);
+
   /**
    * For outputs that combine all input fields into a new field. The output is a field even if none
    * of the inputs is a field.
    */
   BaseSocketDeclarationBuilder &field_source_reference_all();
+
+  /**
+   * For outputs that combine a subset of input fields into a new field.
+   */
+  BaseSocketDeclarationBuilder &reference_pass(Span<int> input_indices);
+
   /**
    * For outputs that combine all input fields into a new field.
    */
