@@ -30,11 +30,12 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
+  /* TODO Cull out of view planars. */
+
   PlanarProbe &probe = find_or_insert(ob_handle);
   probe.plane_to_world = float4x4(ob->object_to_world);
   probe.world_to_plane = float4x4(ob->world_to_object);
   probe.clipping_offset = light_probe->clipsta;
-  probe.resolution_percentage = 1.0f / float(1 << light_probe->resolution_scale);
   probe.is_probe_used = true;
 }
 
@@ -72,13 +73,15 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
     resources_.reinitialize(num_probes);
   }
 
-  int64_t resource_index = 0;
+  /* TODO resolution percentage. */
+  int2 extent = main_view_extent;
+
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
+  color_tx_.ensure_2d_array(GPU_R11F_G11F_B10F, extent, num_probes, usage);
+  depth_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, extent, num_probes, usage);
+
+  int resource_index = 0;
   for (PlanarProbe &probe : probes_.values()) {
-    /* TODO Cull out of view planars. */
-
-    /* TODO resolution percentage. */
-    int2 extent = main_view_extent;
-
     PlanarProbeResources &res = resources_[resource_index];
 
     float4x4 winmat = main_view.winmat();
@@ -90,11 +93,8 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
     world_clip_buf_.plane = reflection_clip_plane_get(probe.plane_to_world, probe.clipping_offset);
     world_clip_buf_.push_update();
 
-    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-    res.color_tx.ensure_2d(GPU_R11F_G11F_B10F, extent, usage);
-    res.depth_tx.ensure_2d(GPU_DEPTH_COMPONENT32F, extent, usage);
-    res.combined_fb.ensure(GPU_ATTACHMENT_TEXTURE(res.depth_tx),
-                           GPU_ATTACHMENT_TEXTURE(res.color_tx));
+    res.combined_fb.ensure(GPU_ATTACHMENT_TEXTURE_LAYER(depth_tx_, resource_index),
+                           GPU_ATTACHMENT_TEXTURE_LAYER(color_tx_, resource_index));
 
     instance_.pipelines.planar.render(res.view, res.combined_fb, main_view_extent);
   }

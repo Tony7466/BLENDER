@@ -31,8 +31,6 @@ struct PlanarProbe {
   float4x4 world_to_plane;
   /* Offset to the clipping plane in the normal direction. */
   float clipping_offset;
-  /* Percentage of the main resolution to render this planar probe at. */
-  float resolution_percentage;
   /* Index in the resource array. */
   int resource_index;
   /* Pruning flag. */
@@ -40,8 +38,6 @@ struct PlanarProbe {
 };
 
 struct PlanarProbeResources : NonCopyable {
-  Texture color_tx = {"planar.color_tx"};
-  Texture depth_tx = {"planar.depth_tx"};
   Framebuffer combined_fb = {"planar.combined_fb"};
   draw::View view = {"planar.view"};
 };
@@ -62,6 +58,9 @@ class PlanarProbeModule {
   PlanarProbes probes_;
   Resources resources_;
 
+  Texture color_tx_ = {"planar.color_tx"};
+  Texture depth_tx_ = {"planar.depth_tx"};
+
   ClipPlaneBuf world_clip_buf_ = {"world_clip_buf"};
 
   bool update_probes_ = false;
@@ -76,7 +75,7 @@ class PlanarProbeModule {
 
   void set_view(const draw::View &main_view, int2 main_view_extent);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass) {}
+  template<typename T> void bind_resources(draw::detail::PassBase<T> * /*pass*/) {}
 
  private:
   PlanarProbe &find_or_insert(ObjectHandle &ob_handle);
