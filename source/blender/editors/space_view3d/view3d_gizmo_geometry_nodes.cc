@@ -38,6 +38,8 @@
 
 #include "ED_gizmo_library.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "view3d_intern.h" /* own include */
 
 namespace blender::ed::view3d {
@@ -272,12 +274,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         compute_context.print_stack(std::cout, gizmo_node_const.name);
         bNode &gizmo_node = const_cast<bNode &>(gizmo_node_const);
-        bNodeSocket &value_input = gizmo_node.input_socket(0);
-        Vector<GizmoFloatVariable> variables = find_float_values_paths(
-            value_input, compute_context, *ob, nmd);
-        if (variables.is_empty()) {
-          return;
-        }
 
         geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
             compute_context.hash());
@@ -291,11 +287,23 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
             tree_log.find_socket_value_log(direction_input));
         if (ELEM(nullptr, position_value_log, direction_value_log)) {
+          /* TODO: Add some safety measure to make sure that this does not needlessly cause updates
+           * all the time. */
+          DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+          WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
           return;
         }
+
         const float3 position = *position_value_log->value.get<float3>();
         const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
         if (math::is_zero(direction)) {
+          return;
+        }
+
+        bNodeSocket &value_input = gizmo_node.input_socket(0);
+        Vector<GizmoFloatVariable> variables = find_float_values_paths(
+            value_input, compute_context, *ob, nmd);
+        if (variables.is_empty()) {
           return;
         }
 
