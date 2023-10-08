@@ -1602,26 +1602,33 @@ typedef struct NodeEnumItem {
   char _pad[4];
 } NodeEnumItem;
 
+typedef enum NodeEnumDefinitionFlag {
+  NODE_ENUM_DEFINITION_CHANGED = (1 << 0),
+} NodeEnumDefinitionFlag;
+
 typedef struct NodeEnumDefinition {
   /* User-defined enum items owned and managed by this node. */
-  NodeEnumItem **items_array;
+  NodeEnumItem *items_array;
   int16_t items_num;
   int16_t active_index;
-  char _pad[4];
+  uint32_t next_identifier;
+  /* #NodeEnumDefinitionFlag */
+  int16_t flag;
+  char _pad[6];
 
 #ifdef __cplusplus
-  blender::Span<NodeEnumItem *> items() const;
-  blender::MutableSpan<NodeEnumItem *> items_for_write();
+  blender::Span<NodeEnumItem> items() const;
+  blender::MutableSpan<NodeEnumItem> items_for_write();
 
   NodeEnumItem *add_item(blender::StringRef name);
   bool remove_item(NodeEnumItem &item);
-  void clear_items();
+  void clear();
   bool move_item(uint16_t from_index, uint16_t to_index);
 
   NodeEnumItem *active_item() const;
   void active_item_set(NodeEnumItem *item);
 
-  void set_item_name(NodeEnumItem &item, const char *name);
+  void set_item_name(NodeEnumItem &item, blender::StringRef name);
 #endif
 } NodeEnumDefinition;
 

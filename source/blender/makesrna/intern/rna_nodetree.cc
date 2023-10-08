@@ -3913,7 +3913,7 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bCont
 
 static bNode *find_node_by_enum_item(PointerRNA *ptr)
 {
-  const NodeEnumItem *item = static_cast<const NodeEnumItem *>(ptr->data);
+  const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ntree->ensure_topology_cache();
   for (bNode *node : ntree->nodes_by_type("NodeMenuSwitch")) {
@@ -3927,7 +3927,7 @@ static bNode *find_node_by_enum_item(PointerRNA *ptr)
 
 static NodeEnumDefinition *find_enum_definition_by_item(PointerRNA *ptr)
 {
-  const NodeEnumItem *item = static_cast<const NodeEnumItem *>(ptr->data);
+  const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ntree->ensure_topology_cache();
   for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
@@ -3979,7 +3979,7 @@ static void rna_NodeEnumDefinition_remove(ID *id,
                                           ReportList *reports,
                                           NodeEnumItem *item)
 {
-  if (!enum_def->remove_item(item)) {
+  if (!enum_def->remove_item(*item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from enum definition", item->name);
   }
   else {
@@ -9515,7 +9515,7 @@ static void rna_def_node_enum_definition(BlenderRNA *brna)
   func = RNA_def_function(srna, "remove", "rna_NodeEnumDefinition_remove");
   RNA_def_function_ui_description(func, "Remove an item from this enum");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
+  parm = RNA_def_pointer(func, "item", "NodeEnumItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "clear", "rna_NodeEnumDefinition_clear");

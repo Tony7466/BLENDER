@@ -4,6 +4,8 @@
 
 #include "node_geometry_util.hh"
 
+#include "DNA_node_types.h"
+
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 
@@ -505,46 +507,3 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &no
 }
 
 }  // namespace blender::nodes
-
-blender::Span<NodeEnumItem *> NodeEnumDefinition::items() const
-{
-  return {this->items_array, this->items_num};
-}
-
-blender::MutableSpan<NodeEnumItem *> NodeEnumDefinition::items_for_write()
-{
-  return {this->items_array, this->items_num};
-}
-
-void NodeEnumDefinition::set_item_name(NodeEnumItem &item, const char *name)
-{
-  char unique_name[MAX_NAME + 4];
-  STRNCPY(unique_name, name);
-
-  struct Args {
-    NodeEnumDefinition *storage;
-    const NodeEnumItem *item;
-  } args = {this, &item};
-
-  const char *default_name = items().is_empty() ? "Item" : items().last()->name;
-  BLI_uniquename_cb(
-      [](void *arg, const char *name) {
-        const Args &args = *static_cast<Args *>(arg);
-        for (const NodeEnumItem *item : args.storage->items()) {
-          if (item != args.item) {
-            if (STREQ(item->name, name)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      },
-      &args,
-      default_name,
-      '.',
-      unique_name,
-      ARRAY_SIZE(unique_name));
-
-  MEM_SAFE_FREE(item.name);
-  item.name = BLI_strdup(unique_name);
-}

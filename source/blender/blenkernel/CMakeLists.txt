@@ -233,6 +233,7 @@ set(SRC
   intern/multires_versioning.cc
   intern/nla.cc
   intern/node.cc
+  intern/node_enum_definition.cc
   intern/node_runtime.cc
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
