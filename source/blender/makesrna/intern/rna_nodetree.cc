@@ -3944,8 +3944,6 @@ static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = find_node_by_enum_item(ptr);
   BLI_assert(node != nullptr);
-
-  BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 

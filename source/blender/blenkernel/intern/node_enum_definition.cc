@@ -148,4 +148,6 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, blender::StringRef na
 
   MEM_SAFE_FREE(item.name);
   item.name = BLI_strdup(unique_name);
+
+  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
 }

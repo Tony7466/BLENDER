@@ -309,11 +309,34 @@ class NodeTreeMainUpdater {
     this->update_rooted(changed_ntrees);
   }
 
+  void propagate_internal_flags()
+  {
+    FOREACH_NODETREE_BEGIN (bmain_, ntree, id) {
+      ntree->ensure_topology_cache();
+      for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
+        NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+        if (storage.enum_definition.flag & NODE_ENUM_DEFINITION_CHANGED) {
+          storage.enum_definition.flag &= ~NODE_ENUM_DEFINITION_CHANGED;
+          BKE_ntree_update_tag_node_property(ntree, node);
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   void update_rooted(Span<bNodeTree *> root_ntrees)
   {
     if (root_ntrees.is_empty()) {
       return;
     }
+
+    /* XXX This isn't great yet, it's fast but could be avoided if
+     * setting the NODE_ENUM_DEFINITION_CHANGED flag would also
+     * mark the ntree itself as changed. This will require passing
+     * along the bNodeTree to every API function. Without tagging
+     * the ntree the update will exit early even if nodes with enum
+     * definitions have been tagged. */
+    propagate_internal_flags();
 
     bool is_single_tree_update = false;
 
