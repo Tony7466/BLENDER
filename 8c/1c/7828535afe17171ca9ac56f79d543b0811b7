@@ -1,1 +1,1 @@
-Referenced by issue #113400, A crash once this file is opened
+Referenced by issue #113400, Opening a blend file that has objects previously imported from a USD will crash if the object name in the USD is changed afterwards
