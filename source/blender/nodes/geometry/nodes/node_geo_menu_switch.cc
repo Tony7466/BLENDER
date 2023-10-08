@@ -131,11 +131,61 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
+static void node_enum_definition_init(NodeEnumDefinition &enum_def) {
+  enum_def.next_identifier = 0;
+  enum_def.items_array = nullptr;
+  enum_def.items_num = 0;
+}
+
+static void node_enum_definition_free(NodeEnumDefinition &enum_def) {
+  for (NodeEnumItem &item : enum_def.items_for_write()) {
+    MEM_SAFE_FREE(item.name);
+    MEM_SAFE_FREE(item.description);
+  }
+  MEM_SAFE_FREE(enum_def.items_array);
+}
+
+static void node_enum_definition_copy(NodeEnumDefinition dst_enum_def,
+                                      const NodeEnumDefinition &src_enum_def)
+{
+  dst_enum_def.items_array = MEM_cnew_array<NodeEnumItem>(src_enum_def.items_num, __func__);
+  dst_enum_def.items_num = src_enum_def.items_num;
+  dst_enum_def.active_index = src_enum_def.active_index;
+  dst_enum_def.next_identifier = src_enum_def.next_identifier;
+  for (const int i : IndexRange(src_enum_def.items_num)) {
+    dst_enum_def.items_array[i].identifier = src_enum_def.items_array[i].identifier;
+    if (char *name = src_enum_def.items_array[i].name) {
+      dst_enum_def.items_array[i].name = BLI_strdup(name);
+    }
+    if (char *desc = src_enum_def.items_array[i].description) {
+      dst_enum_def.items_array[i].description = BLI_strdup(desc);
+    }
+  }
+}
+
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeMenuSwitch *data = MEM_cnew<NodeMenuSwitch>(__func__);
+  node_enum_definition_init(data->enum_definition);
   data->input_type = SOCK_GEOMETRY;
   node->storage = data;
+}
+
+static void node_free_storage(bNode *node)
+{
+  NodeMenuSwitch &storage = node_storage(*node);
+  node_enum_definition_free(storage.enum_definition);
+  MEM_freeN(node->storage);
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeMenuSwitch &src_storage = node_storage(*src_node);
+  NodeMenuSwitch *dst_storage = MEM_cnew<NodeMenuSwitch>(__func__);
+
+  node_enum_definition_copy(dst_storage->enum_definition, src_storage.enum_definition);
+
+  dst_node->storage = dst_storage;
 }
 
 static void node_update(bNodeTree *ntree, bNode *node) {}
@@ -485,8 +535,7 @@ static void register_node()
   ntype.declare_dynamic = node_declare_dynamic;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  node_type_storage(
-      &ntype, "NodeMenuSwitch", node_free_standard_storage, node_copy_standard_storage);
+  node_type_storage(&ntype, "NodeMenuSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
