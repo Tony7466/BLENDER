@@ -6,6 +6,7 @@
 #include <pxr/base/tf/staticTokens.h>
 #include <pxr/imaging/hd/tokens.h>
 
+#include "BLI_array_utils.hh"
 #include "BLI_string.h"
 
 #include "BKE_material.h"
@@ -216,6 +217,65 @@ const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
   return submeshes_[index];
 }
 
+static void copy_submesh(const Span<float3> vert_positions,
+                         const Span<int> corner_verts,
+                         const Span<MLoopTri> looptris,
+                         const Span<float3> corner_normals,
+                         const Span<float2> uv_map,
+                         const IndexMask &triangles,
+                         MeshData::SubMesh &sm)
+{
+
+  sm.face_vertex_indices.resize(triangles.size() * 3);
+  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+    const MLoopTri &tri = looptris[src];
+    sm.face_vertex_indices[dst * 3 + 0] = corner_verts[tri.tri[0]];
+    sm.face_vertex_indices[dst * 3 + 1] = corner_verts[tri.tri[1]];
+    sm.face_vertex_indices[dst * 3 + 2] = corner_verts[tri.tri[2]];
+  });
+
+  sm.vertices.resize(vert_count);
+  array_utils::gather(vert_positions,
+                      {sm.face_vertex_indices.data(), sm.face_vertex_indices.size()},
+                      Span<pxr::GfVec3f>(sm.vertices.data(), sm.vertices.size()).cast<float3>());
+
+  {
+    /* Compress vertex indices to be contiguous so it's only necessary to copy used vertices. */
+    Array<int> index_map(vert_positions.size(), 0);
+    int vert_count = 0;
+    const auto remap_vert = [&](const int vert) {
+      if (index_map[vert] != 0) {
+        index_map[vert] = vert_count;
+      }
+      return index_map[vert];
+    };
+    for (int &index : sm.face_vertex_indices) {
+      index = remap_vert(index);
+    }
+  }
+
+  sm.face_vertex_counts.resize(triangles.size());
+  std::fill(sm.face_vertex_counts.begin(), sm.face_vertex_counts.end(), 3);
+
+  sm.normals.resize(triangles.size() * 3);
+  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+    const MLoopTri &tri = looptris[src];
+    sm.normals[dst * 3 + 0] = pxr::GfVec3f(&corner_normals[tri.tri[0]].x);
+    sm.normals[dst * 3 + 1] = pxr::GfVec3f(&corner_normals[tri.tri[1]].x);
+    sm.normals[dst * 3 + 2] = pxr::GfVec3f(&corner_normals[tri.tri[2]].x);
+  });
+
+  if (!uv_map.is_empty()) {
+    sm.uvs.resize(triangles.size() * 3);
+    triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+      const MLoopTri &tri = looptris[src];
+      sm.uvs[dst * 3 + 0] = pxr::GfVec2f(&uv_map[tri.tri[0]].x);
+      sm.uvs[dst * 3 + 1] = pxr::GfVec2f(&uv_map[tri.tri[1]].x);
+      sm.uvs[dst * 3 + 2] = pxr::GfVec2f(&uv_map[tri.tri[2]].x);
+    });
+  }
+}
+
 void MeshData::write_submeshes(const Mesh *mesh)
 {
   const int mat_count = BKE_object_material_count_eval(reinterpret_cast<const Object *>(id));
@@ -224,10 +284,7 @@ void MeshData::write_submeshes(const Mesh *mesh)
     submeshes_[i].mat_index = i;
   }
 
-  /* Fill submeshes data */
-  const int *material_indices = BKE_mesh_material_indices(mesh);
-
-  const Span<int> looptri_faces = mesh->looptri_faces();
+  const Span<float3> vert_positions = mesh->vert_positions();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<MLoopTri> looptris = mesh->looptris();
 
@@ -238,56 +295,40 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const float2 *uv_map = static_cast<const float2 *>(
       CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2));
 
-  for (const int i : looptris.index_range()) {
-    int mat_ind = material_indices ? material_indices[looptri_faces[i]] : 0;
-    const MLoopTri &lt = looptris[i];
-    SubMesh &sm = submeshes_[mat_ind];
-
-    sm.face_vertex_counts.push_back(3);
-    sm.face_vertex_indices.push_back(corner_verts[lt.tri[0]]);
-    sm.face_vertex_indices.push_back(corner_verts[lt.tri[1]]);
-    sm.face_vertex_indices.push_back(corner_verts[lt.tri[2]]);
-
-    if (!corner_normals.is_empty()) {
-      sm.normals.push_back(pxr::GfVec3f(&corner_normals[lt.tri[0]].x));
-      sm.normals.push_back(pxr::GfVec3f(&corner_normals[lt.tri[1]].x));
-      sm.normals.push_back(pxr::GfVec3f(&corner_normals[lt.tri[2]].x));
-    }
-
-    if (uv_map) {
-      sm.uvs.push_back(pxr::GfVec2f(&uv_map[lt.tri[0]].x));
-      sm.uvs.push_back(pxr::GfVec2f(&uv_map[lt.tri[1]].x));
-      sm.uvs.push_back(pxr::GfVec2f(&uv_map[lt.tri[2]].x));
-    }
+  const int *material_indices = BKE_mesh_material_indices(mesh);
+  if (!material_indices) {
+    copy_submesh(vert_positions,
+                 corner_verts,
+                 looptris,
+                 corner_normals,
+                 uv_map ? Span<float2>(uv_map, mesh->totloop) : Span<float2>(),
+                 looptris.index_range(),
+                 submeshes_.first()) return;
   }
+
+  const Span<int> looptri_faces = mesh->looptri_faces();
+
+  IndexMaskMemory memory;
+  Array<IndexMask> triangles_by_material(submeshes_.size());
+  IndexMask::from_groups(
+      looptris.index_range(),
+      memory,
+      [&](const int i) { return material_indices[looptri_faces[i]]; },
+      triangles_by_material);
+
+  threading::parallel_for(submeshes_.index_range(), 1, [&](const IndexRange range) {
+    for (const int i : range) {
+      copy_submesh(mesh,
+                   corner_verts,
+                   corner_normals,
+                   uv_map ? Span<float2>(uv_map, mesh->totloop) : Span<float2>(),
+                   triangles_by_material[i],
+                   submeshes_[i]);
+    }
+  });
 
   /* Remove submeshes without faces */
   submeshes_.remove_if([](const SubMesh &submesh) { return submesh.face_vertex_counts.empty(); });
-  if (submeshes_.is_empty()) {
-    return;
-  }
-
-  pxr::VtVec3fArray vertices(mesh->totvert);
-  const Span<float3> positions = mesh->vert_positions();
-  MutableSpan(vertices.data(), vertices.size()).copy_from(positions.cast<pxr::GfVec3f>());
-
-  if (submeshes_.size() == 1) {
-    submeshes_[0].vertices = std::move(vertices);
-  }
-  else {
-    /* Optimizing submeshes: getting only used vertices, rearranged indices */
-    for (SubMesh &sm : submeshes_) {
-      Vector<int> index_map(vertices.size(), 0);
-      for (int &face_vertex_index : sm.face_vertex_indices) {
-        const int v = face_vertex_index;
-        if (index_map[v] == 0) {
-          sm.vertices.push_back(vertices[v]);
-          index_map[v] = sm.vertices.size();
-        }
-        face_vertex_index = index_map[v] - 1;
-      }
-    }
-  }
 }
 
 void MeshData::update_prims()
