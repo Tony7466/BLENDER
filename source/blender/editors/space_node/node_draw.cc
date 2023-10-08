@@ -134,7 +134,7 @@ float ED_node_grid_size()
   const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
 
   if (align_to_grid) {
-    return NODE_DY + NODE_SOCKDY;
+    return NODE_DY + NODE_ITEM_SPACING_Y;
   }
 
   return NODE_GRID_STEP_SIZE;
@@ -386,7 +386,11 @@ static bool node_update_basis_buttons(const bContext &C,
   loc.x = round(loc.x);
   loc.y = round(loc.y);
 
-  dy -= NODE_DYS / 4;
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
+  if (!align_to_grid) {
+    dy -= NODE_DYS / 4;
+  }
 
   uiLayout *layout = UI_block_layout(&block,
                                      UI_LAYOUT_VERTICAL,
@@ -410,7 +414,11 @@ static bool node_update_basis_buttons(const bContext &C,
   int buty;
   UI_block_layout_resolve(&block, nullptr, &buty);
 
-  dy = buty - NODE_DYS / 4;
+  dy = buty;
+  if (!align_to_grid) {
+    dy -= NODE_DYS / 4;
+  }
+
   return true;
 }
 
@@ -450,16 +458,30 @@ static bool node_update_basis_socket(const bContext &C,
     return false;
   }
 
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
   const int topy = locy;
 
   /* Add the half the height of a multi-input socket to cursor Y
    * to account for the increased height of the taller sockets. */
   const bool is_multi_input = (input_socket ? input_socket->flag & SOCK_MULTI_INPUT : false);
-  const float multi_input_socket_offset = is_multi_input ?
-                                              std::max(input_socket->runtime->total_inputs - 2,
-                                                       0) *
-                                                  NODE_MULTI_INPUT_LINK_GAP :
-                                              0.0f;
+  float multi_input_socket_offset = 0.0f;
+
+  if (is_multi_input) {
+    if (align_to_grid) {
+      if (input_socket->runtime->total_inputs > 1) {
+        multi_input_socket_offset = (input_socket->runtime->total_inputs - 1) *
+                                    ED_node_grid_size();
+      }
+    }
+    else {
+      if (input_socket->runtime->total_inputs > 2) {
+        multi_input_socket_offset = (input_socket->runtime->total_inputs - 2) *
+                                    NODE_MULTI_INPUT_LINK_GAP;
+      }
+    }
+  }
+
   locy -= multi_input_socket_offset * 0.5f;
 
   uiLayout *layout = UI_block_layout(&block,
@@ -718,11 +740,14 @@ static void add_panel_items_recursive(const bContext &C,
                                       const int locx,
                                       int &locy,
                                       int num_items,
+                                      const int topy,
                                       const bool is_parent_collapsed,
                                       const char *parent_label,
                                       bke::bNodePanelRuntime *parent_runtime,
                                       LocationUpdateState &state)
 {
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
   while (state.item_iter != state.item_end) {
     /* Stop after adding the expected number of items.
      * Root panel consumes all remaining items (num_items == -1). */
@@ -759,9 +784,14 @@ static void add_panel_items_recursive(const bContext &C,
           item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
         }
         else {
-          locy -= NODE_ITEM_SPACING_Y / 2; /* Space at bottom of panel header. */
+          if (!align_to_grid) {
+            locy -= NODE_ITEM_SPACING_Y / 2; /* Space at bottom of panel header. */
+          }
+
           item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
-          locy -= NODE_ITEM_SPACING_Y; /* Space at top of panel contents. */
+          if (!align_to_grid) {
+            locy -= NODE_ITEM_SPACING_Y; /* Space at top of panel contents. */
+          }
 
           node_update_basis_buttons(C, ntree, node, item.panel_decl->draw_buttons, block, locy);
         }
@@ -773,6 +803,7 @@ static void add_panel_items_recursive(const bContext &C,
                                   locx,
                                   locy,
                                   item.panel_decl->num_child_decls,
+                                  topy,
                                   is_collapsed,
                                   item.panel_decl->name.c_str(),
                                   item.runtime,
@@ -811,6 +842,10 @@ static void add_panel_items_recursive(const bContext &C,
         }
       }
 
+      if (align_to_grid) {
+        locy = grid_snap_floor(locy, topy + NODE_DYS);
+      }
+
       if (!is_parent_collapsed &&
           node_update_basis_socket(
               C, ntree, node, parent_label, item.input, item.output, block, locx, locy))
@@ -828,10 +863,15 @@ static void add_panel_items_recursive(const bContext &C,
   /* Finalize the vertical extent of the content. */
   if (!is_parent_collapsed) {
     if (parent_runtime) {
-      locy -= 2 * NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
+      locy -= NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
+      if (!align_to_grid) {
+        locy -= NODE_ITEM_SPACING_Y; /* Space at bottom of panel contents. */
+      }
       parent_runtime->min_content_y = round(locy);
     }
-    locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
+    if (!align_to_grid) {
+      locy -= NODE_ITEM_SPACING_Y / 2; /* Space at top of next panel header. */
+    }
   }
 }
 
@@ -840,6 +880,7 @@ static void node_update_basis_from_declaration(
     const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, const int locx, int &locy)
 {
   namespace nodes = blender::nodes;
+  const int topy = locy;
 
   BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
@@ -852,13 +893,17 @@ static void node_update_basis_from_declaration(
   bNodePanelState root_panel_state;
   node_update_panel_items_visibility_recursive(-1, false, root_panel_state, visibility_state);
 
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
   /* Space at the top. */
-  locy -= NODE_DYS / 2;
+  if (!align_to_grid) {
+    locy -= NODE_DYS / 2;
+  }
 
   /* Start by adding root panel items. */
   LocationUpdateState location_state(item_data);
   add_panel_items_recursive(
-      C, ntree, node, block, locx, locy, -1, false, "", nullptr, location_state);
+      C, ntree, node, block, locx, locy, -1, topy, false, "", nullptr, location_state);
 
   /* Draw buttons at the bottom if no inputs exist. */
   if (!location_state.buttons_drawn) {
@@ -866,8 +911,12 @@ static void node_update_basis_from_declaration(
         C, ntree, node, node.typeinfo->draw_buttons, block, locy);
   }
 
-  if (location_state.need_spacer_after_item) {
+  if (!align_to_grid && location_state.need_spacer_after_item) {
     locy -= NODE_DYS / 2;
+  }
+
+  if (align_to_grid) {
+    locy = grid_snap_floor(locy, topy);
   }
 }
 
@@ -878,9 +927,17 @@ static void node_update_basis_from_socket_lists(
   const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
   const bool inputs_first = node.inputs.first && !(node.outputs.first || node_options);
 
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
+  const int topy = locy;
+
   /* Add a little bit of padding above the top socket. */
   if (node.outputs.first || inputs_first) {
     locy -= NODE_DYS / 2;
+  }
+
+  if (align_to_grid) {
+    locy = grid_snap_floor(locy, topy + NODE_DYS);
   }
 
   /* Output sockets. */
@@ -890,6 +947,10 @@ static void node_update_basis_from_socket_lists(
     /* Clear flag, conventional drawing does not support panels. */
     socket->flag &= ~SOCK_PANEL_COLLAPSED;
 
+    if (align_to_grid) {
+      locy = grid_snap_floor(locy, topy + NODE_DYS);
+    }
+
     if (node_update_basis_socket(C, ntree, node, nullptr, nullptr, socket, block, locx, locy)) {
       if (socket->next) {
         locy -= NODE_ITEM_SPACING_Y;
@@ -898,7 +959,7 @@ static void node_update_basis_from_socket_lists(
     }
   }
 
-  if (add_output_space) {
+  if (add_output_space && !align_to_grid) {
     locy -= NODE_DY / 4;
   }
 
@@ -909,6 +970,10 @@ static void node_update_basis_from_socket_lists(
     /* Clear flag, conventional drawing does not support panels. */
     socket->flag &= ~SOCK_PANEL_COLLAPSED;
 
+    if (align_to_grid) {
+      locy = grid_snap_floor(locy, topy + NODE_DYS);
+    }
+
     if (node_update_basis_socket(C, ntree, node, nullptr, socket, nullptr, block, locx, locy)) {
       if (socket->next) {
         locy -= NODE_ITEM_SPACING_Y;
@@ -917,8 +982,12 @@ static void node_update_basis_from_socket_lists(
   }
 
   /* Little bit of space in end. */
-  if (node.inputs.first || (node.flag & NODE_OPTIONS) == 0) {
+  if (node.inputs.first || (node.flag & NODE_OPTIONS) == 0 && !align_to_grid) {
     locy -= NODE_DYS / 2;
+  }
+
+  if (align_to_grid) {
+    locy = grid_snap_floor(locy, topy);
   }
 }
 
@@ -941,6 +1010,12 @@ static void node_update_basis(const bContext &C,
 
   /* Header. */
   dy -= NODE_DY;
+
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
+  if (align_to_grid) {
+    dy -= NODE_ITEM_SPACING_Y;
+  }
 
   if (is_node_panels_supported(node)) {
     node_update_basis_from_declaration(C, ntree, node, block, loc.x, dy);
