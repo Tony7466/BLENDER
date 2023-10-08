@@ -1,0 +1,282 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include <iostream>
+#include <sstream>
+
+#include "BLI_array_utils.hh"
+#include "BLI_virtual_array.hh"
+#include "BLI_offset_indices.hh"
+#include "BLI_index_range.hh"
+#include "BLI_span.hh"
+#include "BLI_array.hh"
+#include "BLI_index_mask.hh"
+#include "BLI_task.hh"
+
+#include "BKE_attribute.hh"
+#include "BKE_mesh.hh"
+
+#include "node_geometry_util.hh"
+
+namespace blender::nodes::node_geo_resample_edges_cc {
+
+static void node_declare(NodeDeclarationBuilder &b)
+{
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Int>("Count").hide_value().field_on_all();
+  b.add_output<decl::Geometry>("Mesh").propagate_all();
+}
+
+template<typename T>
+static void interpolate_point_values(const VArray<T> &src, const Span<int2> edges, const OffsetIndices<int> edge_offset, MutableSpan<T> dst)
+{
+  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range){
+    for (const int index : range) {
+      const int2 verties = edges[index];
+      /* Conversion of range of new edges to range of new points. */
+      const IndexRange dst_range = edge_offset[index].shift(-index).drop_back(1);
+
+      const T a_value = src[verties[0]];
+      const T b_value = src[verties[1]];
+
+      const float total_factor = dst_range.size() + 1;
+      for (const int i : dst_range.index_range()) {
+        const float factor = float(i + 1) / total_factor;
+        dst[dst_range[i]] = bke::attribute_math::mix2(factor, a_value, b_value);
+      }
+    }
+  });
+}
+
+static void interpolate_point_attributes(const AttributeAccessor src_attributes,
+                                        const AnonymousAttributePropagationInfo &propagation_info,
+                                        const Span<int2> edges,
+                                        const int start_vert,
+                                        const OffsetIndices<int> edge_offset,
+                                        MutableAttributeAccessor dst_attributes)
+{
+  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+    if (meta_data.domain != ATTR_DOMAIN_POINT) {
+      return true;
+    }
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      return true;
+    }
+    const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_POINT);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, ATTR_DOMAIN_POINT, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
+    bke::attribute_math::convert_to_static_type(src.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArray<T> src_typed = src.varray.typed<T>();
+      MutableSpan<T> dst_typed = dst.span.typed<T>();
+      array_utils::copy(src_typed, dst_typed.take_front(start_vert));
+      interpolate_point_values<T>(src_typed, edges, edge_offset, dst_typed.drop_front(start_vert));
+    });
+    dst.finish();
+    return true;
+  });
+}
+
+static void group_copy_attributes(const AttributeAccessor src_attributes,
+                                  const AnonymousAttributePropagationInfo &propagation_info,
+                                  const OffsetIndices<int> edge_offset,
+                                  const eAttrDomain domain,
+                                  const Set<std::string> &skip,
+                                  MutableAttributeAccessor dst_attributes)
+{
+  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+    if (meta_data.domain != domain) {
+      return true;
+    }
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      return true;
+    }
+    if (skip.contains(id.name())) {
+      return true;
+    }
+    const bke::GAttributeReader src = src_attributes.lookup(id, domain);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
+    bke::attribute_math::convert_to_static_type(src.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArray<T> src_typed = src.varray.typed<T>();
+      MutableSpan<T> dst_typed = dst.span.typed<T>();
+      for (const int index : edge_offset.index_range()) {
+        dst_typed.slice(edge_offset[index]).fill(src_typed[index]);
+      }
+    });
+    dst.finish();
+    return true;
+  });
+}
+
+static void build_edges(const Span<int2> src_edges, const OffsetIndices<int> edge_offset, const int start_vert, MutableSpan<int2> dst_edges)
+{
+  threading::parallel_for(src_edges.index_range(), 1024, [&](const IndexRange range){
+    for (const int edge_index : range) {
+      const int2 src_edge = src_edges[edge_index];
+      MutableSpan<int2> edges = dst_edges.slice(edge_offset[edge_index]);
+      BLI_assert(!edges.is_empty());
+
+      if (edges.size() == 1) {
+        edges.first() = src_edge;
+        continue;
+      }
+
+      const IndexRange verts_on_edge = edge_offset[edge_index].shift(-edge_index).drop_back(1);
+      const IndexRange dst_left_verts = verts_on_edge.drop_back(1);
+      const IndexRange dst_right_verts = verts_on_edge.drop_front(1);
+
+      edges.first()[0] = src_edge[0];
+      edges.first()[1] = start_vert + verts_on_edge.first();
+
+      const IndexRange edges_to_fill = edges.index_range().drop_front(1).drop_back(1);
+      for (const int i : edges_to_fill.index_range()) {
+        const int index = edges_to_fill[i];
+        edges[index][0] = start_vert + dst_left_verts[i];
+        edges[index][1] = start_vert + dst_right_verts[i];
+      }
+
+      edges.last()[0] = start_vert + verts_on_edge.last();
+      edges.last()[1] = src_edge[1];
+    }
+  });
+}
+
+void build_faces(const Span<int> src_corner_verts,
+                 const Span<int> src_corner_edges,
+                 const Span<int2> src_edges,
+                 const Span<int2> dst_edges,
+                 const OffsetIndices<int> dst_corner_offsets,
+                 const OffsetIndices<int> dst_edge_offsets,
+                 MutableSpan<int> r_corner_verts,
+                 MutableSpan<int> r_corner_edges)
+{
+  threading::parallel_for(dst_corner_offsets.index_range(), 1024, [&](const IndexRange range) {
+    for (const int corner_index : range) {
+      const int src_corner_vert = src_corner_verts[corner_index];
+      const int src_corner_edge = src_corner_edges[corner_index];
+      const int2 src_edge = src_edges[src_corner_edge];
+      const IndexRange edges_range = dst_edge_offsets[src_corner_edge];
+      const bool left_right = src_edge[0] == src_corner_vert;
+
+      const Span<int2> edges_of_corner = dst_edges.slice(edges_range);
+      MutableSpan<int> corner_verts = r_corner_verts.slice(dst_corner_offsets[corner_index]);
+      MutableSpan<int> corner_edges = r_corner_edges.slice(dst_corner_offsets[corner_index]);
+
+      if (left_right) {
+        for (const int index : IndexRange(edges_range.size())) {
+          corner_verts[index] = edges_of_corner[index][0];
+          corner_edges[index] = edges_range[index];
+        }
+      }
+      else {
+        for (const int i : IndexRange(edges_range.size())) {
+          const int index = edges_range.size() - 1 - i;
+          corner_verts[index] = edges_of_corner[i][1];
+          corner_edges[index] = edges_range[i];
+        }
+      }
+    }
+  });
+}
+
+static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets, const OffsetIndices<int> corner_offsets, MutableSpan<int> dst_face_offsets)
+{
+  threading::parallel_for(src_face_offsets.index_range(), 2048, [&](const IndexRange range) {
+    for (const int index : range) {
+      dst_face_offsets[index] = corner_offsets[src_face_offsets[index]].size();
+    }
+  });
+  offset_indices::accumulate_counts_to_offsets(dst_face_offsets);
+}
+
+static Mesh *resample_edges(const Mesh &src_mesh, const VArray<int> &count_varray, const AnonymousAttributePropagationInfo &propagation_info)
+{
+  /* To avoid allocation of array to accumulate new verts, use edge offset[index] - index. */
+  Array<int> accumulate_edges(src_mesh.totedge + 1);
+  {
+    MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
+    count_varray.materialize(accumulate_span);
+    std::transform(accumulate_span.begin(), accumulate_span.end(), accumulate_span.begin(), [](const int value) { return value + 1; });
+  }
+  const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(accumulate_edges);
+
+  Array<int> accumulate_corners(src_mesh.totloop + 1);
+  {
+    MutableSpan<int> accumulate_span = accumulate_corners.as_mutable_span().drop_back(1);
+    array_utils::copy(src_mesh.corner_edges(), accumulate_span);
+    devirtualize_varray(count_varray, [&](auto count_varray) {
+      std::transform(accumulate_span.begin(), accumulate_span.end(), accumulate_span.begin(), [&](const int edge_index) { return count_varray[edge_index] + 1; });
+    });
+  }
+  const OffsetIndices<int> corner_offset = offset_indices::accumulate_counts_to_offsets(accumulate_corners);
+
+  const int total_vert = edge_offset.total_size() - src_mesh.totedge + src_mesh.totvert;
+  Mesh *dst_mesh = BKE_mesh_new_nomain(total_vert, edge_offset.total_size(), src_mesh.faces_num, corner_offset.total_size());
+  BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
+
+  const AttributeAccessor src_attributes = src_mesh.attributes();
+  MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
+
+  interpolate_point_attributes(src_attributes, propagation_info, src_mesh.edges(), src_mesh.totvert, edge_offset, dst_attributes);
+  group_copy_attributes(src_attributes, propagation_info, edge_offset, ATTR_DOMAIN_EDGE, {".edge_verts"}, dst_attributes);
+  build_edges(src_mesh.edges(), edge_offset, src_mesh.totvert, dst_mesh->edges_for_write());
+  accumulate_face_offsets(src_mesh.faces(), corner_offset, dst_mesh->face_offsets_for_write());
+  build_faces(src_mesh.corner_verts(),
+              src_mesh.corner_edges(),
+              src_mesh.edges(),
+              dst_mesh->edges(),
+              corner_offset,
+              edge_offset,
+              dst_mesh->corner_verts_for_write(),
+              dst_mesh->corner_edges_for_write());
+  bke::copy_attributes(src_attributes, ATTR_DOMAIN_FACE, propagation_info, {}, dst_attributes);
+  group_copy_attributes(src_attributes, propagation_info, corner_offset, ATTR_DOMAIN_CORNER, {".corner_vert", ".corner_edge"}, dst_attributes);
+  return dst_mesh;
+}
+
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
+
+  static const auto clamp_fn = mf::build::SI1_SO<int, int>("Hard Min", [](const int value) { return math::max(0, value); }, mf::build::exec_presets::AllSpanOrSingle());
+  const Field<int> count_field(FieldOperation::Create(clamp_fn, {params.extract_input<Field<int>>("Count")}));
+
+  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info("Mesh");
+  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    const Mesh *mesh = geometry_set.get_mesh();
+    if (mesh == nullptr) {
+      return;
+    }
+    const bke::AttributeAccessor attributes = mesh->attributes();
+    const bke::MeshFieldContext context(*mesh, ATTR_DOMAIN_EDGE);
+    fn::FieldEvaluator evaluator(context, attributes.domain_size(ATTR_DOMAIN_EDGE));
+    evaluator.add(count_field);
+    evaluator.evaluate();
+    const VArray<int> count_varray = evaluator.get_evaluated<int>(0);
+    if (std::optional<int> count = count_varray.get_if_single(); count.has_value() && *count == 0) {
+      return;
+    }
+    geometry_set.replace_mesh(resample_edges(*mesh, count_varray, propagation_info));
+  });
+  params.set_output("Mesh", std::move(geometry_set));
+}
+
+static void node_register()
+{
+  static bNodeType ntype;
+  geo_node_type_base(
+      &ntype, GEO_NODE_RESAMPLE_EDGES, "Resample Edges", NODE_CLASS_GEOMETRY);
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  nodeRegisterType(&ntype);
+}
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_resample_edges_cc

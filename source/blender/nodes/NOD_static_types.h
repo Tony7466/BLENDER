@@ -413,6 +413,7 @@ DefNode(GeometryNode, GEO_NODE_REPEAT_INPUT, def_geo_repeat_input, "REPEAT_INPUT
 DefNode(GeometryNode, GEO_NODE_REPEAT_OUTPUT, def_geo_repeat_output, "REPEAT_OUTPUT", RepeatOutput, "Repeat Output", "")
 DefNode(GeometryNode, GEO_NODE_REPLACE_MATERIAL, 0, "REPLACE_MATERIAL", ReplaceMaterial, "Replace Material", "Swap one material with another")
 DefNode(GeometryNode, GEO_NODE_RESAMPLE_CURVE, 0, "RESAMPLE_CURVE", ResampleCurve, "Resample Curve", "Generate a poly spline for each input spline")
+DefNode(GeometryNode, GEO_NODE_RESAMPLE_EDGES, 0, "RESAMPLE_EDGES", ResampleEdges, "Resample Edges", "")
 DefNode(GeometryNode, GEO_NODE_REVERSE_CURVE, 0, "REVERSE_CURVE", ReverseCurve, "Reverse Curve", "Change the direction of curves by swapping their start and end data")
 DefNode(GeometryNode, GEO_NODE_ROTATE_INSTANCES, 0, "ROTATE_INSTANCES", RotateInstances, "Rotate Instances", "Rotate geometry instances in local or global space")
 DefNode(GeometryNode, GEO_NODE_SAMPLE_CURVE, def_geo_curve_sample, "SAMPLE_CURVE", SampleCurve, "Sample Curve", "Retrieve data from a point on a curve at a certain distance from its start")

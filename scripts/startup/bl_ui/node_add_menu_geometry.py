@@ -407,6 +407,7 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeMeshToSDFVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
+        node_add_menu.add_node_type(layout, "GeometryNodeResampleEdges")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleElements")
         node_add_menu.add_node_type(layout, "GeometryNodeSplitEdges")
         node_add_menu.add_node_type(layout, "GeometryNodeSubdivideMesh")
