@@ -1833,6 +1833,7 @@ class LazyFunctionForForEachSplit : public lf::LazyFunction {
  public:
   LazyFunctionForForEachSplit(const int amount) : amount_(amount)
   {
+    debug_name_ = "For-Each Split";
     const CPPType &type = CPPType::get<ValueOrField<int>>();
     outputs_.resize(amount, lf::Output("Index", type));
   }
@@ -1852,7 +1853,7 @@ class LazyFunctionForForEachReduce : public lf::LazyFunction {
  public:
   LazyFunctionForForEachReduce(const int amount) : amount_(amount)
   {
-    debug_name_ = "Reduce";
+    debug_name_ = "For-Each Reduce";
     const CPPType &geo_cpp_type = CPPType::get<GeometrySet>();
     for ([[maybe_unused]] const int i : IndexRange(amount)) {
       inputs_.append_as("Geometry", geo_cpp_type);
@@ -1953,6 +1954,8 @@ class LazyFunctionForForeachZone : public LazyFunction {
     UNUSED_VARS(params, eval_storage, node_storage, user_data, local_user_data);
 
     const int amount = params.get_input<ValueOrField<int>>(0).as_value();
+    const int main_outputs_num = node_storage.output_items_num;
+    const int border_links_num = zone_.border_links.size();
 
     lf::Graph &lf_graph = eval_storage.graph;
 
@@ -1977,15 +1980,31 @@ class LazyFunctionForForeachZone : public LazyFunction {
     eval_storage.reduce_fn.emplace(amount);
     lf::FunctionNode &lf_reduce_node = lf_graph.add_function(*eval_storage.reduce_fn);
 
-    eval_storage.or_fn.emplace(amount);
-    lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_fn);
+    for (const int node_i : IndexRange(amount)) {
+      lf::FunctionNode &lf_body_node = *lf_body_nodes[node_i];
+      lf_graph.add_link(lf_split_node.output(node_i),
+                        lf_body_node.input(body_fn_.indices.inputs.main[0]));
+      lf_graph.add_link(lf_body_node.output(body_fn_.indices.outputs.main[0]),
+                        lf_reduce_node.input(node_i));
 
-    for (const int i : IndexRange(amount)) {
-      lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
-      lf_graph.add_link(lf_split_node.output(i), lf_body_node.input(0));
-      lf_graph.add_link(*lf_graph.graph_inputs()[1], lf_body_node.input(1));
-      lf_graph.add_link(lf_body_node.output(0), lf_or_node.input(i));
-      lf_graph.add_link(lf_body_node.output(1), lf_reduce_node.input(i));
+      for (const int main_output_i : IndexRange(main_outputs_num)) {
+        lf_graph.add_link(
+            *lf_graph.graph_inputs()[zone_info_.indices.inputs.output_usages[main_output_i]],
+            lf_body_node.input(body_fn_.indices.inputs.output_usages[main_output_i]));
+      }
+      for (const int border_link_i : IndexRange(border_links_num)) {
+        lf_graph.add_link(
+            *lf_graph.graph_inputs()[zone_info_.indices.inputs.border_links[border_link_i]],
+            lf_body_node.input(body_fn_.indices.inputs.border_links[border_link_i]));
+      }
+    }
+
+    static bool static_true = true;
+    for (const int i : zone_info_.indices.outputs.border_link_usages) {
+      lf_graph.graph_outputs()[i]->set_default_value(&static_true);
+    }
+    for (const int i : zone_info_.indices.outputs.input_usages) {
+      lf_graph.graph_outputs()[i]->set_default_value(&static_true);
     }
 
     lf_graph.add_link(lf_reduce_node.output(0), *lf_graph.graph_outputs()[0]);
@@ -2018,7 +2037,7 @@ class LazyFunctionForForeachZone : public LazyFunction {
     eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
         eval_storage.allocator);
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   std::string input_name(const int i) const override
