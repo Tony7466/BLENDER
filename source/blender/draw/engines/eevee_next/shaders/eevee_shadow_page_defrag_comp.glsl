@@ -14,7 +14,7 @@
  *     `[--xxxxx---------]`
  *   After page free step: 2 cached pages were removed (r), 3 pages were inserted in the cache (i).
  *     `[--xrxrxiii------]`
- *   After page defrag step: The buffer is compressed into only 6 pages.
+ *   After page defragment step: The buffer is compressed into only 6 pages.
  *     `[----xxxxxx------]`
  */
 
@@ -77,11 +77,11 @@ void main()
     find_first_valid(src, end);
   }
 
-  /* Defrag page in "old" range. */
+  /* Defragment page in "old" range. */
   bool is_empty = (src == end);
   if (!is_empty) {
     /* `page_cached_end` refers to the next empty slot.
-     * Decrement by one to refer to the first slot we can defrag. */
+     * Decrement by one to refer to the first slot we can defragment. */
     for (uint dst = end - 1; dst > src; dst--) {
       /* Find hole. */
       if (pages_cached_buf[dst % max_page].x != uint(-1)) {
@@ -129,4 +129,10 @@ void main()
   clear_dispatch_buf.num_groups_x = SHADOW_PAGE_RES / SHADOW_PAGE_CLEAR_GROUP_SIZE;
   clear_dispatch_buf.num_groups_y = SHADOW_PAGE_RES / SHADOW_PAGE_CLEAR_GROUP_SIZE;
   clear_dispatch_buf.num_groups_z = 0;
+
+  /* Reset TBDR command indirect buffer. */
+  tile_draw_buf.vertex_len = 0u;
+  tile_draw_buf.instance_len = 1u;
+  tile_draw_buf.vertex_first = 0u;
+  tile_draw_buf.base_index = 0u;
 }

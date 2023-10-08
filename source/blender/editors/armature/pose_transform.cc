@@ -33,8 +33,8 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -471,9 +471,8 @@ static void apply_armature_pose2bones_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   wmWindowManager *wm = CTX_wm_manager(C);
-  PointerRNA ptr;
 
-  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
   uiItemR(layout, &ptr, "selected", UI_ITEM_NONE, nullptr, ICON_NONE);
 }

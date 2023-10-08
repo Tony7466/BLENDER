@@ -223,11 +223,12 @@ const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
 #  include "BKE_lib_remap.h"
 #  include "BKE_library.h"
 #  include "BKE_material.h"
+#  include "BKE_preview_image.hh"
 #  include "BKE_vfont.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "ED_asset.hh"
 
@@ -483,7 +484,9 @@ StructRNA *ID_code_to_RNA_type(short idcode)
     case ID_GD_LEGACY:
       return &RNA_GreasePencil;
     case ID_GP:
+#  ifdef WITH_GREASE_PENCIL_V3
       return &RNA_GreasePencilv3;
+#  endif
       break;
     case ID_GR:
       return &RNA_Collection;
@@ -641,10 +644,8 @@ StructRNA *rna_PropertyGroup_register(Main * /*bmain*/,
                                       StructCallbackFunc /*call*/,
                                       StructFreeFunc /*free*/)
 {
-  PointerRNA dummy_ptr;
-
   /* create dummy pointer */
-  RNA_pointer_create(nullptr, &RNA_PropertyGroup, nullptr, &dummy_ptr);
+  PointerRNA dummy_ptr = RNA_pointer_create(nullptr, &RNA_PropertyGroup, nullptr);
 
   /* validate the python class */
   if (validate(&dummy_ptr, data, nullptr) != 0) {
@@ -2493,6 +2494,14 @@ static void rna_def_library(BlenderRNA *brna)
   RNA_def_property_int_funcs(prop, "rna_Library_version_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_flag(prop, PROP_THICK_WRAP);
+
+  prop = RNA_def_property(srna, "needs_liboverride_resync", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "tag", LIBRARY_TAG_RESYNC_REQUIRED);
+  RNA_def_property_ui_text(prop,
+                           "Library Overrides Need resync",
+                           "True if this library contains library overrides that are linked in "
+                           "current blendfile, and that had to be recursively resynced on load "
+                           "(it is recommended to open and re-save that library blendfile then)");
 
   func = RNA_def_function(srna, "reload", "rna_Library_reload");
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_CONTEXT);

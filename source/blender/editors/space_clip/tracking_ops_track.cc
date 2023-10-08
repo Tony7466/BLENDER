@@ -30,7 +30,7 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "clip_intern.h" /* own include */
 #include "tracking_ops_intern.h"
@@ -390,7 +390,7 @@ static int track_markers_modal(bContext *C, wmOperator * /*op*/, const wmEvent *
   return OPERATOR_PASS_THROUGH;
 }
 
-static std::string track_markers_desc(bContext * /*C*/, wmOperatorType * /*op*/, PointerRNA *ptr)
+static std::string track_markers_desc(bContext * /*C*/, wmOperatorType * /*ot*/, PointerRNA *ptr)
 {
   const bool backwards = RNA_boolean_get(ptr, "backwards");
   const bool sequence = RNA_boolean_get(ptr, "sequence");

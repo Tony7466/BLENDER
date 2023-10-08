@@ -25,7 +25,7 @@
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_layer.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_outliner.hh"
 
@@ -76,7 +76,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "DNA_scene_types.h"
 #  include "DNA_view3d_types.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "MEM_guardedalloc.h"
 
@@ -466,9 +466,7 @@ static PointerRNA rna_Object_shape_key_add(
   KeyBlock *kb = nullptr;
 
   if ((kb = BKE_object_shapekey_insert(bmain, ob, name, from_mix))) {
-    PointerRNA keyptr;
-
-    RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb, &keyptr);
+    PointerRNA keyptr = RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

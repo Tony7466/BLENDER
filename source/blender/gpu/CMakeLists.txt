@@ -43,7 +43,6 @@ if(WITH_RENDERDOC)
 endif()
 
 set(INC_SYS
-  ${Epoxy_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -325,14 +324,20 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
-  ${Epoxy_LIBRARIES}
   PRIVATE bf::intern::guardedalloc
 )
 
 # Select Backend source based on availability
 if(WITH_OPENGL_BACKEND)
-  list(APPEND SRC ${OPENGL_SRC})
-
+  list(APPEND INC_SYS
+    ${Epoxy_INCLUDE_DIRS}
+  )
+  list(APPEND SRC
+    ${OPENGL_SRC}
+  )
+  list(APPEND LIB
+    ${Epoxy_LIBRARIES}
+  )
   add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
@@ -342,12 +347,25 @@ endif()
 
 
 if(WITH_VULKAN_BACKEND)
+
+  if(APPLE)
+    list(APPEND INC_SYS
+      ${MOLTENVK_INCLUDE_DIRS}
+    )
+
+    list(APPEND LIB
+      ${MOLTENVK_LIBRARIES}
+    )
+  endif()
+
   list(APPEND INC
     ../../../extern/vulkan_memory_allocator
   )
   list(APPEND INC_SYS
     ${VULKAN_INCLUDE_DIRS}
-    ${MOLTENVK_INCLUDE_DIRS}
+  )
+
+  list(APPEND INC_SYS
     ${SHADERC_INCLUDE_DIRS}
   )
   list(APPEND SRC
@@ -357,7 +375,6 @@ if(WITH_VULKAN_BACKEND)
   list(APPEND LIB
     ${VULKAN_LIBRARIES}
     ${SHADERC_LIBRARIES}
-    ${MOLTENVK_LIBRARIES}
     extern_vulkan_memory_allocator
   )
 
@@ -579,6 +596,7 @@ set(GLSL_SRC_TEST
   tests/shaders/gpu_compute_vbo_test.glsl
   tests/shaders/gpu_compute_dummy_test.glsl
   tests/shaders/gpu_framebuffer_layer_viewport_test.glsl
+  tests/shaders/gpu_framebuffer_subpass_input_test.glsl
   tests/shaders/gpu_push_constants_test.glsl
 )
 
@@ -679,12 +697,10 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/overlay/shaders/infos/overlay_wireframe_info.hh
   ../draw/engines/select/shaders/infos/select_id_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_composite_info.hh
+  ../draw/engines/workbench/shaders/infos/workbench_depth_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_effect_antialiasing_info.hh
-  ../draw/engines/workbench/shaders/infos/workbench_effect_cavity_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_effect_dof_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_effect_outline_info.hh
-  ../draw/engines/workbench/shaders/infos/workbench_merge_infront_info.hh
-  ../draw/engines/workbench/shaders/infos/workbench_overlay_depth_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_prepass_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_shadow_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_transparent_resolve_info.hh

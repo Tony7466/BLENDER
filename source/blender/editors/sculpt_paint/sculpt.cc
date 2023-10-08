@@ -25,7 +25,6 @@
 #include "BLI_set.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -63,7 +62,7 @@
 
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -112,6 +111,25 @@ static float sculpt_calc_radius(ViewContext *vc,
  * different index for each grid.
  * \{ */
 
+SculptMaskWriteInfo SCULPT_mask_get_for_write(SculptSession *ss)
+{
+  SculptMaskWriteInfo info;
+  switch (BKE_pbvh_type(ss->pbvh)) {
+    case PBVH_FACES: {
+      Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
+      info.layer = static_cast<float *>(
+          CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+      break;
+    }
+    case PBVH_BMESH:
+      info.bm_offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(ss->pbvh)->vdata, CD_PAINT_MASK);
+      break;
+    case PBVH_GRIDS:
+      break;
+  }
+  return info;
+}
+
 void SCULPT_vertex_random_access_ensure(SculptSession *ss)
 {
   if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
@@ -120,7 +138,7 @@ void SCULPT_vertex_random_access_ensure(SculptSession *ss)
   }
 }
 
-int SCULPT_vertex_count_get(SculptSession *ss)
+int SCULPT_vertex_count_get(const SculptSession *ss)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -134,7 +152,7 @@ int SCULPT_vertex_count_get(SculptSession *ss)
   return 0;
 }
 
-const float *SCULPT_vertex_co_get(SculptSession *ss, PBVHVertRef vertex)
+const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -190,7 +208,7 @@ void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float 
   BKE_pbvh_vertex_color_set(ss->pbvh, vertex, color);
 }
 
-void SCULPT_vertex_normal_get(SculptSession *ss, PBVHVertRef vertex, float no[3])
+void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float no[3])
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -377,7 +395,7 @@ int SCULPT_active_face_set_get(SculptSession *ss)
   return SCULPT_FACE_SET_NONE;
 }
 
-bool SCULPT_vertex_visible_get(SculptSession *ss, PBVHVertRef vertex)
+bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -1464,7 +1482,10 @@ bool SCULPT_stroke_is_dynamic_topology(const SculptSession *ss, const Brush *bru
 /** \name Sculpt Paint Mesh
  * \{ */
 
-static void paint_mesh_restore_node(Object *ob, const SculptUndoType type, PBVHNode *node)
+static void paint_mesh_restore_node(Object *ob,
+                                    const SculptUndoType type,
+                                    const SculptMaskWriteInfo mask_write,
+                                    PBVHNode *node)
 {
   SculptSession *ss = ob->sculpt;
 
@@ -1482,14 +1503,34 @@ static void paint_mesh_restore_node(Object *ob, const SculptUndoType type, PBVHN
 
   switch (type) {
     case SCULPT_UNDO_MASK: {
-      SculptOrigVertData orig_vert_data;
-      SCULPT_orig_vert_data_unode_init(&orig_vert_data, ob, unode);
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-        SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
-        *vd.mask = orig_vert_data.mask;
+      switch (BKE_pbvh_type(ss->pbvh)) {
+        case PBVH_FACES: {
+          PBVHVertexIter vd;
+          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+            mask_write.layer[vd.index] = unode->mask[vd.i];
+          }
+          BKE_pbvh_vertex_iter_end;
+          break;
+        }
+        case PBVH_BMESH: {
+          PBVHVertexIter vd;
+          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+            const float orig_mask = BM_log_original_mask(ss->bm_log, vd.bm_vert);
+            BM_ELEM_CD_SET_FLOAT(vd.bm_vert, mask_write.bm_offset, orig_mask);
+          }
+          BKE_pbvh_vertex_iter_end;
+          break;
+        }
+        case PBVH_GRIDS: {
+          PBVHVertexIter vd;
+          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+            *CCG_elem_mask(&vd.key, vd.grid) = unode->mask[vd.i];
+            break;
+          }
+          BKE_pbvh_vertex_iter_end;
+          break;
+        }
       }
-      BKE_pbvh_vertex_iter_end;
       BKE_pbvh_node_mark_update_mask(node);
       break;
     }
@@ -1564,18 +1605,23 @@ static void paint_mesh_restore_co(Sculpt *sd, Object *ob)
       break;
   }
 
+  SculptMaskWriteInfo mask_write;
+  if (type == SCULPT_UNDO_MASK) {
+    mask_write = SCULPT_mask_get_for_write(ss);
+  }
+
   if (ss->bm) {
     /* Disable multi-threading when dynamic-topology is enabled. Otherwise,
      * new entries might be inserted by #SCULPT_undo_push_node() into the #GHash
      * used internally by #BM_log_original_vert_co() by a different thread. See #33787. */
     for (const int i : nodes.index_range()) {
-      paint_mesh_restore_node(ob, type, nodes[i]);
+      paint_mesh_restore_node(ob, type, mask_write, nodes[i]);
     }
   }
   else {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
-        paint_mesh_restore_node(ob, type, nodes[i]);
+        paint_mesh_restore_node(ob, type, mask_write, nodes[i]);
       }
     });
   }
@@ -3270,16 +3316,8 @@ static void do_gravity_task(SculptSession *ss,
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    const float fade = SCULPT_brush_strength_factor(ss,
-                                                    brush,
-                                                    vd.co,
-                                                    sqrtf(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask ? *vd.mask : 0.0f,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    nullptr);
+    const float fade = SCULPT_brush_strength_factor(
+        ss, brush, vd.co, sqrtf(test.dist), vd.no, vd.fno, vd.mask, vd.vertex, thread_id, nullptr);
 
     mul_v3_v3fl(proxy[vd.i], offset, fade);
 
@@ -3872,25 +3910,17 @@ void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob)
 static void sculpt_update_keyblock(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
-  float(*vertCos)[3];
 
   /* Key-block update happens after handling deformation caused by modifiers,
    * so ss->orig_cos would be updated with new stroke. */
   if (ss->orig_cos) {
-    vertCos = ss->orig_cos;
+    SCULPT_vertcos_to_key(ob, ss->shapekey_active, ss->orig_cos);
   }
   else {
-    vertCos = BKE_pbvh_vert_coords_alloc(ss->pbvh);
-  }
-
-  if (!vertCos) {
-    return;
-  }
-
-  SCULPT_vertcos_to_key(ob, ss->shapekey_active, vertCos);
-
-  if (vertCos != ss->orig_cos) {
-    MEM_freeN(vertCos);
+    const float(*positions)[3] = BKE_pbvh_get_vert_positions(ss->pbvh);
+    if (positions != nullptr) {
+      SCULPT_vertcos_to_key(ob, ss->shapekey_active, positions);
+    }
   }
 }
 
@@ -4308,12 +4338,14 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
   if (cur_brush->sculpt_tool == SCULPT_TOOL_MASK) {
     cache->saved_mask_brush_tool = cur_brush->mask_tool;
     cur_brush->mask_tool = BRUSH_MASK_SMOOTH;
+    return;
   }
-  else if (ELEM(cur_brush->sculpt_tool,
-                SCULPT_TOOL_SLIDE_RELAX,
-                SCULPT_TOOL_DRAW_FACE_SETS,
-                SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR))
+
+  if (ELEM(cur_brush->sculpt_tool,
+           SCULPT_TOOL_SLIDE_RELAX,
+           SCULPT_TOOL_DRAW_FACE_SETS,
+           SCULPT_TOOL_PAINT,
+           SCULPT_TOOL_SMEAR))
   {
     /* Do nothing, this tool has its own smooth mode. */
     return;
@@ -4344,14 +4376,17 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
 
   if (brush->sculpt_tool == SCULPT_TOOL_MASK) {
     brush->mask_tool = cache->saved_mask_brush_tool;
+    return;
   }
-  else if (ELEM(brush->sculpt_tool,
-                SCULPT_TOOL_SLIDE_RELAX,
-                SCULPT_TOOL_DRAW_FACE_SETS,
-                SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR))
+
+  if (ELEM(brush->sculpt_tool,
+           SCULPT_TOOL_SLIDE_RELAX,
+           SCULPT_TOOL_DRAW_FACE_SETS,
+           SCULPT_TOOL_PAINT,
+           SCULPT_TOOL_SMEAR))
   {
     /* Do nothing. */
+    return;
   }
 
   /* If saved_active_brush_name is not set, brush was not switched/affected in
@@ -5503,7 +5538,7 @@ void SCULPT_flush_update_done(const bContext *C, Object *ob, SculptUpdateType up
   }
 
   if (update_flags & SCULPT_UPDATE_MASK) {
-    BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateMask);
+    BKE_pbvh_update_mask(ss->pbvh);
   }
 
   if (update_flags & SCULPT_UPDATE_COLOR) {
@@ -6265,7 +6300,7 @@ void SCULPT_face_set_set(SculptSession *ss, PBVHFaceRef face, int fset)
   }
 }
 
-int SCULPT_vertex_island_get(SculptSession *ss, PBVHVertRef vertex)
+int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   if (ss->attrs.topology_island_key) {
     return *static_cast<uint8_t *>(SCULPT_vertex_attr_get(vertex, ss->attrs.topology_island_key));

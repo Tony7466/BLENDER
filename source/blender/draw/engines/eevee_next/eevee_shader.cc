@@ -15,6 +15,10 @@
 
 #include "eevee_shader.hh"
 
+#include "eevee_shadow.hh"
+
+#include "BLI_assert.h"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -88,10 +92,12 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_film_comp";
     case FILM_CRYPTOMATTE_POST:
       return "eevee_film_cryptomatte_post";
+    case DEFERRED_COMBINE:
+      return "eevee_deferred_combine";
     case DEFERRED_LIGHT:
       return "eevee_deferred_light";
-    case DEFERRED_LIGHT_DIFFUSE_ONLY:
-      return "eevee_deferred_light_diffuse";
+    case DEFERRED_CAPTURE_EVAL:
+      return "eevee_deferred_capture_eval";
     case HIZ_DEBUG:
       return "eevee_hiz_debug";
     case HIZ_UPDATE:
@@ -154,20 +160,30 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case RAY_DENOISE_SPATIAL_DIFFUSE:
+      return "eevee_ray_denoise_spatial_diffuse";
     case RAY_DENOISE_SPATIAL_REFLECT:
       return "eevee_ray_denoise_spatial_reflect";
     case RAY_DENOISE_SPATIAL_REFRACT:
       return "eevee_ray_denoise_spatial_refract";
     case RAY_DENOISE_TEMPORAL:
       return "eevee_ray_denoise_temporal";
+    case RAY_DENOISE_BILATERAL_DIFFUSE:
+      return "eevee_ray_denoise_bilateral_diffuse";
     case RAY_DENOISE_BILATERAL_REFLECT:
       return "eevee_ray_denoise_bilateral_reflect";
     case RAY_DENOISE_BILATERAL_REFRACT:
       return "eevee_ray_denoise_bilateral_refract";
+    case RAY_GENERATE_DIFFUSE:
+      return "eevee_ray_generate_diffuse";
     case RAY_GENERATE_REFLECT:
       return "eevee_ray_generate_reflect";
     case RAY_GENERATE_REFRACT:
       return "eevee_ray_generate_refract";
+    case RAY_TRACE_FALLBACK:
+      return "eevee_ray_trace_fallback";
+    case RAY_TRACE_SCREEN_DIFFUSE:
+      return "eevee_ray_trace_screen_diffuse";
     case RAY_TRACE_SCREEN_REFLECT:
       return "eevee_ray_trace_screen_reflect";
     case RAY_TRACE_SCREEN_REFRACT:
@@ -188,6 +204,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_reflection_probe_remap";
     case REFLECTION_PROBE_UPDATE_IRRADIANCE:
       return "eevee_reflection_probe_update_irradiance";
+    case REFLECTION_PROBE_SELECT:
+      return "eevee_reflection_probe_select";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
@@ -216,8 +234,16 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_surfels";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
-    case SUBSURFACE_EVAL:
-      return "eevee_subsurface_eval";
+    case SHADOW_PAGE_TILE_CLEAR:
+      return "eevee_shadow_page_tile_clear";
+    case SHADOW_PAGE_TILE_STORE:
+      return "eevee_shadow_page_tile_store";
+    case SHADOW_TILEMAP_TAG_USAGE_VOLUME:
+      return "eevee_shadow_tag_usage_volume";
+    case SUBSURFACE_CONVOLVE:
+      return "eevee_subsurface_convolve";
+    case SUBSURFACE_SETUP:
+      return "eevee_subsurface_setup";
     case SURFEL_CLUSTER_BUILD:
       return "eevee_surfel_cluster_build";
     case SURFEL_LIGHT:
@@ -536,7 +562,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           info.additional_info("eevee_surf_depth");
           break;
         case MAT_PIPE_SHADOW:
-          info.additional_info("eevee_surf_shadow");
+          /* Determine surface shadow shader depending on used update technique. */
+          switch (ShadowModule::shadow_technique) {
+            case ShadowTechnique::ATOMIC_RASTER: {
+              info.additional_info("eevee_surf_shadow_atomic");
+            } break;
+            case ShadowTechnique::TILE_COPY: {
+              info.additional_info("eevee_surf_shadow_tbdr");
+            } break;
+            default: {
+              BLI_assert_unreachable();
+            } break;
+          }
           break;
         case MAT_PIPE_CAPTURE:
           info.additional_info("eevee_surf_capture");

@@ -43,7 +43,7 @@ set(SRC_KERNEL_DEVICE_OPTIX
 if(WITH_CYCLES_OSL)
   math(EXPR OSL_LIBRARY_VERSION_CODE "${OSL_LIBRARY_VERSION_MAJOR} * 10000 + ${OSL_LIBRARY_VERSION_MINOR} * 100 + ${OSL_LIBRARY_VERSION_PATCH}")
 
-  if (OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
+  if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
     set(SRC_KERNEL_DEVICE_OPTIX
       ${SRC_KERNEL_DEVICE_OPTIX}
       osl/services_optix.cu
@@ -1000,6 +1000,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
                 -L"${WINDOWS_KIT_DIR}/ucrt/x64")
   else() # Add Linux specific compiler flags.
     list(APPEND sycl_compiler_flags -fPIC)
+    list(APPEND sycl_compiler_flags -fvisibility=hidden)
 
     # We avoid getting __FAST_MATH__ to be defined when building on CentOS-7 and Rocky-8
     # until the compilation issues it triggers at either AoT or JIT stages gets fixed.

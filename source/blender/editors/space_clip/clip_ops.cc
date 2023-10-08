@@ -59,8 +59,8 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "clip_intern.h" /* own include */
 
@@ -183,7 +183,6 @@ static int open_exec(bContext *C, wmOperator *op)
   bScreen *screen = CTX_wm_screen(C);
   Main *bmain = CTX_data_main(C);
   PropertyPointerRNA *pprop;
-  PointerRNA idptr;
   MovieClip *clip = nullptr;
   char filepath[FILE_MAX];
 
@@ -242,7 +241,7 @@ static int open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&clip->id);
 
-    RNA_id_pointer_create(&clip->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&clip->id);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }

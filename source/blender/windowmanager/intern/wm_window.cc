@@ -30,13 +30,14 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.hh"
@@ -165,36 +166,39 @@ static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool acti
 static bool wm_window_timers_process(const bContext *C, int *sleep_us);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
-void wm_get_screensize(int *r_width, int *r_height)
+bool wm_get_screensize(int *r_width, int *r_height)
 {
-  uint uiwidth;
-  uint uiheight;
-
-  GHOST_GetMainDisplayDimensions(g_system, &uiwidth, &uiheight);
+  uint32_t uiwidth, uiheight;
+  if (GHOST_GetMainDisplayDimensions(g_system, &uiwidth, &uiheight) == GHOST_kFailure) {
+    return false;
+  }
   *r_width = uiwidth;
   *r_height = uiheight;
+  return true;
 }
 
-void wm_get_desktopsize(int *r_width, int *r_height)
+bool wm_get_desktopsize(int *r_width, int *r_height)
 {
-  uint uiwidth;
-  uint uiheight;
-
-  GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight);
+  uint32_t uiwidth, uiheight;
+  if (GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight) == GHOST_kFailure) {
+    return false;
+  }
   *r_width = uiwidth;
   *r_height = uiheight;
+  return true;
 }
 
 /* keeps size within monitor bounds */
 static void wm_window_check_size(rcti *rect)
 {
   int width, height;
-  wm_get_screensize(&width, &height);
-  if (BLI_rcti_size_x(rect) > width) {
-    BLI_rcti_resize_x(rect, width);
-  }
-  if (BLI_rcti_size_y(rect) > height) {
-    BLI_rcti_resize_y(rect, height);
+  if (wm_get_screensize(&width, &height)) {
+    if (BLI_rcti_size_x(rect) > width) {
+      BLI_rcti_resize_x(rect, width);
+    }
+    if (BLI_rcti_size_y(rect) > height) {
+      BLI_rcti_resize_y(rect, height);
+    }
   }
 }
 
@@ -481,26 +485,34 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
      * because #WM_window_open always sets window title. */
   }
   else if (win->ghostwin) {
-    /* this is set to 1 if you don't have startup.blend open */
-    const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] != '\0') {
-      char str[sizeof(Main::filepath) + 24];
-      SNPRINTF(str,
-               "Blender%s [%s%s]",
-               wm->file_saved ? "" : "*",
-               blendfile_path,
-               G_MAIN->recovered ? " (Recovered)" : "");
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
-    }
-    else {
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), "Blender");
+    GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
+
+    std::string filepath = BKE_main_blendfile_path_from_global();
+    std::string filename = BLI_path_basename(filepath.c_str());
+    bool has_filepath = !filepath.empty();
+    bool include_directory = has_filepath && (filepath != filename) &&
+                             GHOST_SetPath(handle, filepath.c_str()) == GHOST_kFailure;
+
+    std::string str;
+    str += wm->file_saved ? " " : "* ";
+    str += has_filepath ? filename : IFACE_("(Unsaved)");
+    if (G_MAIN->recovered) {
+      str += IFACE_(" (Recovered)");
     }
 
-    /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
-     * and to give hint of unsaved changes for a user warning mechanism in case of OS application
-     * terminate request (e.g. OS Shortcut Alt+F4, Command+Q, (...), or session end). */
-    GHOST_SetWindowModifiedState(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                                 bool(!wm->file_saved));
+    if (include_directory) {
+      str += " [" + filepath.substr(0, filepath.length() - filename.length()) + "]";
+    }
+
+    str += " - Blender ";
+    str += BKE_blender_version_string_compact();
+
+    GHOST_SetTitle(handle, str.c_str());
+
+    /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
+     * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
+     * terminate request (e.g., OS Shortcut Alt+F4, Command+Q, (...) or session end). */
+    GHOST_SetWindowModifiedState(handle, bool(!wm->file_saved));
   }
 }
 
@@ -651,7 +663,10 @@ static void wm_window_update_eventstate_modifiers_clear(wmWindowManager *wm, wmW
 static void wm_window_update_eventstate(wmWindow *win)
 {
   /* Update mouse position when a window is activated. */
-  wm_cursor_position_get(win, &win->eventstate->xy[0], &win->eventstate->xy[1]);
+  int xy[2];
+  if (wm_cursor_position_get(win, &xy[0], &xy[1])) {
+    copy_v2_v2_int(win->eventstate->xy, xy);
+  }
 }
 
 static void wm_window_ensure_eventstate(wmWindow *win)
@@ -683,9 +698,16 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
-  int scr_w, scr_h;
-  wm_get_desktopsize(&scr_w, &scr_h);
-  int posy = (scr_h - win->posy - win->sizey);
+  int posx = 0;
+  int posy = 0;
+
+  if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
+    int scr_w, scr_h;
+    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+      posx = win->posx;
+      posy = (scr_h - win->posy - win->sizey);
+    }
+  }
 
   /* Clear drawable so we can set the new window. */
   wmWindow *prev_windrawable = wm->windrawable;
@@ -695,7 +717,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       g_system,
       static_cast<GHOST_WindowHandle>((win->parent) ? win->parent->ghostwin : nullptr),
       title,
-      win->posx,
+      posx,
       posy,
       win->sizex,
       win->sizey,
@@ -798,18 +820,18 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
   }
 
   /* add keymap handlers (1 handler for all keys in map!) */
-  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Window", 0, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(wm->defaultconf, "Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Screen", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->modalhandlers, keymap);
 
   /* Add drop boxes. */
   {
-    ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+    ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_event_add_dropbox_handler(&win->handlers, lb);
   }
   wm_window_title(wm, win);
@@ -827,7 +849,11 @@ void wm_window_ghostwindows_ensure(wmWindowManager *wm)
    * when there is no startup.blend yet.
    */
   if (wm_init_state.size_x == 0) {
-    wm_get_screensize(&wm_init_state.size_x, &wm_init_state.size_y);
+    if (UNLIKELY(!wm_get_screensize(&wm_init_state.size_x, &wm_init_state.size_y))) {
+      /* Use fallback values. */
+      wm_init_state.size_x = 0;
+      wm_init_state.size_y = 0;
+    }
 
     /* NOTE: this isn't quite correct, active screen maybe offset 1000s if PX,
      * we'd need a #wm_get_screensize like function that gives offset,
@@ -862,12 +888,19 @@ static bool wm_window_update_size_position(wmWindow *win)
 
   GHOST_DisposeRectangle(client_rect);
 
-  int scr_w, scr_h;
-  wm_get_desktopsize(&scr_w, &scr_h);
   int sizex = r - l;
   int sizey = b - t;
-  int posx = l;
-  int posy = scr_h - t - win->sizey;
+
+  int posx = 0;
+  int posy = 0;
+
+  if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
+    int scr_w, scr_h;
+    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+      posx = l;
+      posy = scr_h - t - win->sizey;
+    }
+  }
 
   if (win->sizex != sizex || win->sizey != sizey || win->posx != posx || win->posy != posy) {
     win->sizex = sizex;
@@ -1151,15 +1184,22 @@ void wm_cursor_position_to_ghost_screen_coords(wmWindow *win, int *x, int *y)
   GHOST_ClientToScreen(static_cast<GHOST_WindowHandle>(win->ghostwin), *x, *y, x, y);
 }
 
-void wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
+bool wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
 {
   if (UNLIKELY(G.f & G_FLAG_EVENT_SIMULATE)) {
     *r_x = win->eventstate->xy[0];
     *r_y = win->eventstate->xy[1];
-    return;
+    return true;
   }
-  GHOST_GetCursorPosition(g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y);
-  wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+
+  if (GHOST_GetCursorPosition(
+          g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y) == GHOST_kSuccess)
+  {
+    wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+    return true;
+  }
+
+  return false;
 }
 
 /** Check if specified modifier key type is pressed. */
