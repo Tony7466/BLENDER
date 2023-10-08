@@ -505,19 +505,10 @@ static void end_stroke_evaluation(SurDeformGpencilModifierData *smd, bGPDframe *
     /* ...Go back to the start of the stroke array, 
     increase the layer array  or rol it back*/
     rollback_strokes(smd, smd->layers->frames);
-   // if (smd->layers->layer_idx == smd->num_of_layers-1)
-   // {smd->layers++;}
-   // else
-   // {rollback_layers;}
-    /*Make it point to the right frame
-    
-    int i=0;
-    while (smd->layers->frames->frame_number != gpf->framenum &&
-          i < smd->layers->num_of_frames)
-    { 
-      smd->layers->frames++;
-      i++;  
-    }*/
+
+    /*Set the end of strokes flag*/
+    //smd->flags |= GP_MOD_SDEF_END_OF_STROKES;
+   
   }
   else { /*Else increase the pointer */
     (smd->layers->frames->strokes)++;
@@ -639,9 +630,8 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
   if (!smd->layers)
   {return;}
-    
-  
 
+  
   /*Exit evaluation if we are on a frame that is not bound.
   (? USELESS OR DANGEROUS)
   
@@ -660,9 +650,16 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     if (smd->layers->frames->strokes_num != tot_strokes_num) {
       BKE_gpencil_modifier_set_error(
           md, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
-      //TODO: free_frame
-      free_frame_b(smd_orig, smd, smd->layers, gpf->framenum);
-      return;
+      bGPDstroke *gps_ptr_copy = gps;
+      int i = 0;
+      while (gps_ptr_copy->prev != NULL) {
+        gps_ptr_copy = gps_ptr_copy->prev;
+        i++;
+      }
+      if (i >= smd->layers->frames->strokes_num)
+        return;
+      //free_frame_b(smd_orig, smd, smd->layers, gpf->framenum);
+      //return;
     } 
   }
 
