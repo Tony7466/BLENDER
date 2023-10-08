@@ -256,6 +256,9 @@ struct ScheduledNodes {
     return priority_.size() + normal_.size();
   }
 
+  /**
+   * Split up the scheduled nodes into two groups that can be worked on in parallel.
+   */
   void split_into(ScheduledNodes &other)
   {
     BLI_assert(this != &other);
@@ -811,11 +814,13 @@ class Executor {
       }
       this->run_node_task(*node, current_task, local_data);
 
+      /* If there are many nodes scheduled at the same time, it's benefitial to let multiple
+       * threads work on those. */
       if (current_task.scheduled_nodes.nodes_num() > 128) {
         if (this->try_enable_multi_threading()) {
-          ScheduledNodes *split_nodes = MEM_new<ScheduledNodes>(__func__);
+          std::unique_ptr<ScheduledNodes> split_nodes = std::make_unique<ScheduledNodes>();
           current_task.scheduled_nodes.split_into(*split_nodes);
-          this->push_to_task_pool(split_nodes);
+          this->push_to_task_pool(std::move(split_nodes));
         }
       }
     }
@@ -1256,20 +1261,19 @@ class Executor {
   void push_all_scheduled_nodes_to_task_pool(CurrentTask &current_task)
   {
     BLI_assert(this->use_multi_threading());
-    ScheduledNodes *scheduled_nodes = MEM_new<ScheduledNodes>(__func__);
+    std::unique_ptr<ScheduledNodes> scheduled_nodes = std::make_unique<ScheduledNodes>();
     {
       std::lock_guard lock{current_task.mutex};
       if (current_task.scheduled_nodes.is_empty()) {
-        MEM_delete(scheduled_nodes);
         return;
       }
       *scheduled_nodes = std::move(current_task.scheduled_nodes);
       current_task.has_scheduled_nodes.store(false, std::memory_order_relaxed);
     }
-    this->push_to_task_pool(scheduled_nodes);
+    this->push_to_task_pool(std::move(scheduled_nodes));
   }
 
-  void push_to_task_pool(ScheduledNodes *scheduled_nodes)
+  void push_to_task_pool(std::unique_ptr<ScheduledNodes> scheduled_nodes)
   {
     /* All nodes are pushed as a single task in the pool. This avoids unnecessary threading
      * overhead when the nodes are fast to compute. */
@@ -1284,9 +1288,9 @@ class Executor {
           const LocalData local_data = executor.get_local_data();
           executor.run_task(new_current_task, local_data);
         },
-        scheduled_nodes,
+        scheduled_nodes.release(),
         true,
-        [](TaskPool * /*pool*/, void *data) { MEM_delete(static_cast<ScheduledNodes *>(data)); });
+        [](TaskPool * /*pool*/, void *data) { delete static_cast<ScheduledNodes *>(data); });
   }
 
   LocalData get_local_data()
