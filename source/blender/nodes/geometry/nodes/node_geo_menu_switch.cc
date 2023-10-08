@@ -29,12 +29,119 @@ namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
 
+static void add_input_for_enum_item(NodeDeclarationBuilder &b,
+                                    const eNodeSocketDatatype type,
+                                    const NodeEnumItem &enum_item)
+{
+  StringRef name = enum_item.name;
+
+  switch (type) {
+    case SOCK_CUSTOM:
+      break;
+    case SOCK_FLOAT:
+      b.add_input<decl::Float>(name).supports_field();
+      break;
+    case SOCK_VECTOR:
+      b.add_input<decl::Float>(name).supports_field();
+      break;
+    case SOCK_RGBA:
+      b.add_input<decl::Color>(name).default_value({0.8f, 0.8f, 0.8f, 1.0f}).supports_field();
+      break;
+    case SOCK_SHADER:
+      b.add_input<decl::Shader>(name);
+      break;
+    case SOCK_BOOLEAN:
+      b.add_input<decl::Bool>(name).default_value(false).hide_value().supports_field();
+      break;
+    case SOCK_INT:
+      b.add_input<decl::Int>(name).min(-100000).max(100000).supports_field();
+      break;
+    case SOCK_STRING:
+      b.add_input<decl::String>(name).supports_field();
+      break;
+    case SOCK_OBJECT:
+      b.add_input<decl::Object>(name);
+      break;
+    case SOCK_IMAGE:
+      b.add_input<decl::Image>(name);
+      break;
+    case SOCK_GEOMETRY:
+      b.add_input<decl::Geometry>(name);
+      break;
+    case SOCK_COLLECTION:
+      b.add_input<decl::Collection>(name);
+      break;
+    case SOCK_TEXTURE:
+      b.add_input<decl::Texture>(name);
+      break;
+    case SOCK_MATERIAL:
+      b.add_input<decl::Material>(name);
+      break;
+    case SOCK_ROTATION:
+      b.add_input<decl::Rotation>(name);
+      break;
+  }
+}
+
+static void add_output(NodeDeclarationBuilder &b,
+                       const eNodeSocketDatatype type)
+{
+  StringRef name = "Result";
+
+  switch (type) {
+    case SOCK_CUSTOM:
+      break;
+    case SOCK_FLOAT:
+      b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
+      break;
+    case SOCK_VECTOR:
+      b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
+      break;
+    case SOCK_RGBA:
+      b.add_output<decl::Color>(name);
+      break;
+    case SOCK_SHADER:
+      b.add_output<decl::Shader>(name);
+      break;
+    case SOCK_BOOLEAN:
+      b.add_output<decl::Bool>(name).dependent_field().reference_pass_all();
+      break;
+    case SOCK_INT:
+      b.add_output<decl::Int>(name).dependent_field().reference_pass_all();
+      break;
+    case SOCK_STRING:
+      b.add_output<decl::String>(name).dependent_field().reference_pass_all();
+      break;
+    case SOCK_OBJECT:
+      b.add_output<decl::Object>(name);
+      break;
+    case SOCK_IMAGE:
+      b.add_output<decl::Image>(name);
+      break;
+    case SOCK_GEOMETRY:
+      b.add_output<decl::Geometry>(name).propagate_all();
+      break;
+    case SOCK_COLLECTION:
+      b.add_output<decl::Collection>(name);
+      break;
+    case SOCK_TEXTURE:
+      b.add_output<decl::Texture>(name);
+      break;
+    case SOCK_MATERIAL:
+      b.add_output<decl::Material>(name);
+      break;
+    case SOCK_ROTATION:
+      b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
+      break;
+  }
+}
+
 static void node_declare_dynamic(const bNodeTree &tree,
                                  const bNode &node,
                                  NodeDeclaration &declaration)
 {
   const NodeMenuSwitch &storage = node_storage(node);
-  const eNodeSocketDatatype input_type = eNodeSocketDatatype(storage.input_type);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
 
   /* Remove outdated sockets. */
   declaration.skip_updating_sockets = false;
@@ -43,7 +150,7 @@ static void node_declare_dynamic(const bNodeTree &tree,
 
   NodeDeclarationBuilder b(declaration);
 
-  const bool fields_type = ELEM(storage.input_type,
+  const bool fields_type = ELEM(data_type,
                                 SOCK_FLOAT,
                                 SOCK_INT,
                                 SOCK_BOOLEAN,
@@ -60,75 +167,15 @@ static void node_declare_dynamic(const bNodeTree &tree,
     }
   }
 
+  add_output(b, data_type);
   for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
-    StringRef name = enum_item.name;
-
-    switch (input_type) {
-      case SOCK_CUSTOM:
-        break;
-      case SOCK_FLOAT:
-        b.add_input<decl::Float>(name).supports_field();
-        b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
-        break;
-      case SOCK_VECTOR:
-        b.add_input<decl::Float>(name).supports_field();
-        b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
-        break;
-      case SOCK_RGBA:
-        b.add_input<decl::Color>(name).default_value({0.8f, 0.8f, 0.8f, 1.0f}).supports_field();
-        b.add_output<decl::Color>(name);
-        break;
-      case SOCK_SHADER:
-        b.add_input<decl::Shader>(name);
-        b.add_output<decl::Shader>(name);
-        break;
-      case SOCK_BOOLEAN:
-        b.add_input<decl::Bool>(name).default_value(false).hide_value().supports_field();
-        b.add_output<decl::Bool>(name).dependent_field().reference_pass_all();
-        break;
-      case SOCK_INT:
-        b.add_input<decl::Int>(name).min(-100000).max(100000).supports_field();
-        b.add_output<decl::Int>(name).dependent_field().reference_pass_all();
-        break;
-      case SOCK_STRING:
-        b.add_input<decl::String>(name).supports_field();
-        b.add_output<decl::String>(name).dependent_field().reference_pass_all();
-        break;
-      case SOCK_OBJECT:
-        b.add_input<decl::Object>(name);
-        b.add_output<decl::Object>(name);
-        break;
-      case SOCK_IMAGE:
-        b.add_input<decl::Image>(name);
-        b.add_output<decl::Image>(name);
-        break;
-      case SOCK_GEOMETRY:
-        b.add_input<decl::Geometry>(name);
-        b.add_output<decl::Geometry>(name).propagate_all();
-        break;
-      case SOCK_COLLECTION:
-        b.add_input<decl::Collection>(name);
-        b.add_output<decl::Collection>(name);
-        break;
-      case SOCK_TEXTURE:
-        b.add_input<decl::Texture>(name);
-        b.add_output<decl::Texture>(name);
-        break;
-      case SOCK_MATERIAL:
-        b.add_input<decl::Material>(name);
-        b.add_output<decl::Material>(name);
-        break;
-      case SOCK_ROTATION:
-        b.add_input<decl::Rotation>(name);
-        b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
-        break;
-    }
+    add_input_for_enum_item(b, data_type, enum_item);
   }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_enum_definition_init(NodeEnumDefinition &enum_def) {
@@ -167,7 +214,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeMenuSwitch *data = MEM_cnew<NodeMenuSwitch>(__func__);
   node_enum_definition_init(data->enum_definition);
-  data->input_type = SOCK_GEOMETRY;
+  data->data_type = SOCK_GEOMETRY;
   node->storage = data;
 }
 
@@ -195,7 +242,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   if (params.in_out() == SOCK_OUT) {
     params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMenuSwitch");
-      node_storage(node).input_type = params.socket.type;
+      node_storage(node).data_type = params.socket.type;
       params.update_and_connect_available_socket(node, "Output");
     });
   }
@@ -214,7 +261,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         IFACE_("False"),
         [](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeMenuSwitch");
-          node_storage(node).input_type = params.socket.type;
+          node_storage(node).data_type = params.socket.type;
           params.update_and_connect_available_socket(node, "False");
         },
         true_false_weights);
@@ -222,7 +269,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         IFACE_("True"),
         [](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeMenuSwitch");
-          node_storage(node).input_type = params.socket.type;
+          node_storage(node).data_type = params.socket.type;
           params.update_and_connect_available_socket(node, "True");
         },
         true_false_weights);
@@ -237,7 +284,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   LazyFunctionForMenuSwitchNode(const bNode &node)
   {
     const NodeMenuSwitch &storage = node_storage(node);
-    const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
     can_be_field_ = ELEM(
         data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
 
@@ -499,11 +546,11 @@ static void node_rna(StructRNA *srna)
 
   RNA_def_node_enum(
       srna,
-      "input_type",
-      "Input Type",
+      "data_type",
+      "Data Type",
       "",
       rna_enum_node_socket_data_type_items,
-      NOD_storage_enum_accessors(input_type),
+      NOD_storage_enum_accessors(data_type),
       SOCK_GEOMETRY,
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;

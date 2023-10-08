@@ -1637,7 +1637,7 @@ typedef struct NodeMenuSwitch {
   NodeEnumDefinition enum_definition;
 
   /** #eNodeSocketDatatype. */
-  uint8_t input_type;
+  uint8_t data_type;
   char _pad[7];
 } NodeMenuSwitch;
 
