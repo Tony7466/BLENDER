@@ -778,11 +778,6 @@ struct wmEvent {
   uint8_t prev_press_modifier;
   /** The `keymodifier` at the point of the press action. */
   short prev_press_keymodifier;
-  /**
-   * The time when the key is pressed, see #PIL_check_seconds_timer.
-   * Used to detect double-click events.
-   */
-  double prev_press_time;
 };
 
 /**
@@ -1008,7 +1003,7 @@ struct wmOperatorType {
    * Return a different description to use in the user interface, based on property values.
    * The returned string is expected to be translated if needed.
    */
-  std::string (*get_description)(bContext *C, wmOperatorType *op, PointerRNA *ptr);
+  std::string (*get_description)(bContext *C, wmOperatorType *ot, PointerRNA *ptr);
 
   /** RNA for properties */
   StructRNA *srna;
@@ -1057,7 +1052,8 @@ struct wmOperatorCallParams {
 #ifdef WITH_INPUT_IME
 /* *********** Input Method Editor (IME) *********** */
 /**
- * \note similar to #GHOST_TEventImeData.
+ * \warning this is a duplicate of #GHOST_TEventImeData.
+ * All members must remain aligned and the struct size match!
  */
 struct wmIMEData {
   size_t result_len, composite_len;
@@ -1073,8 +1069,6 @@ struct wmIMEData {
   int sel_start;
   /** End of the selection. */
   int sel_end;
-
-  bool is_ime_composing;
 };
 #endif
 

@@ -512,7 +512,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
     /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
      * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
      * terminate request (e.g., OS Shortcut Alt+F4, Command+Q, (...) or session end). */
-    GHOST_SetWindowModifiedState(handle, static_cast<bool>(!wm->file_saved));
+    GHOST_SetWindowModifiedState(handle, bool(!wm->file_saved));
   }
 }
 
@@ -663,7 +663,10 @@ static void wm_window_update_eventstate_modifiers_clear(wmWindowManager *wm, wmW
 static void wm_window_update_eventstate(wmWindow *win)
 {
   /* Update mouse position when a window is activated. */
-  wm_cursor_position_get(win, &win->eventstate->xy[0], &win->eventstate->xy[1]);
+  int xy[2];
+  if (wm_cursor_position_get(win, &xy[0], &xy[1])) {
+    copy_v2_v2_int(win->eventstate->xy, xy);
+  }
 }
 
 static void wm_window_ensure_eventstate(wmWindow *win)
@@ -1181,15 +1184,22 @@ void wm_cursor_position_to_ghost_screen_coords(wmWindow *win, int *x, int *y)
   GHOST_ClientToScreen(static_cast<GHOST_WindowHandle>(win->ghostwin), *x, *y, x, y);
 }
 
-void wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
+bool wm_cursor_position_get(wmWindow *win, int *r_x, int *r_y)
 {
   if (UNLIKELY(G.f & G_FLAG_EVENT_SIMULATE)) {
     *r_x = win->eventstate->xy[0];
     *r_y = win->eventstate->xy[1];
-    return;
+    return true;
   }
-  GHOST_GetCursorPosition(g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y);
-  wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+
+  if (GHOST_GetCursorPosition(
+          g_system, static_cast<GHOST_WindowHandle>(win->ghostwin), r_x, r_y) == GHOST_kSuccess)
+  {
+    wm_cursor_position_from_ghost_client_coords(win, r_x, r_y);
+    return true;
+  }
+
+  return false;
 }
 
 /** Check if specified modifier key type is pressed. */
@@ -1476,7 +1486,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
       }
 
       case GHOST_kEventOpenMainFile: {
-        const char *path = static_cast<const char *>(GHOST_GetEventData(evt));
+        const char *path = static_cast<const char *>(data);
 
         if (path) {
           wmOperatorType *ot = WM_operatortype_find("WM_OT_open_mainfile", false);
@@ -1496,8 +1506,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         break;
       }
       case GHOST_kEventDraggingDropDone: {
-        GHOST_TEventDragnDropData *ddd = static_cast<GHOST_TEventDragnDropData *>(
-            GHOST_GetEventData(evt));
+        const GHOST_TEventDragnDropData *ddd = static_cast<const GHOST_TEventDragnDropData *>(
+            data);
 
         /* Ensure the event state matches modifiers (window was inactive). */
         wm_window_update_eventstate_modifiers(wm, win);
@@ -1512,9 +1522,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         event.val = KM_NOTHING;
         copy_v2_v2_int(event.prev_xy, event.xy);
 
-        wm_cursor_position_from_ghost_screen_coords(win, &ddd->x, &ddd->y);
-        event.xy[0] = ddd->x;
-        event.xy[1] = ddd->y;
+        copy_v2_v2_int(event.xy, &ddd->x);
+        wm_cursor_position_from_ghost_screen_coords(win, &event.xy[0], &event.xy[1]);
 
         /* The values from #wm_window_update_eventstate may not match (under WAYLAND they don't)
          * Write this into the event state. */
@@ -1542,7 +1551,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         /* add drag data to wm for paths: */
 
         if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
-          GHOST_TStringArray *stra = static_cast<GHOST_TStringArray *>(ddd->data);
+          const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
 
           for (int a = 0; a < stra->count; a++) {
             printf("drop file %s\n", stra->strings[a]);
@@ -1577,20 +1586,6 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
           WM_event_add_notifier(C, NC_WINDOW | NA_EDITED, nullptr);
         }
 
-        break;
-      }
-      case GHOST_kEventTrackpad: {
-        GHOST_TEventTrackpadData *pd = static_cast<GHOST_TEventTrackpadData *>(data);
-
-        wm_cursor_position_from_ghost_screen_coords(win, &pd->x, &pd->y);
-        wm_event_add_ghostevent(wm, win, type, data);
-        break;
-      }
-      case GHOST_kEventCursorMove: {
-        GHOST_TEventCursorData *cd = static_cast<GHOST_TEventCursorData *>(data);
-
-        wm_cursor_position_from_ghost_screen_coords(win, &cd->x, &cd->y);
-        wm_event_add_ghostevent(wm, win, type, data);
         break;
       }
       case GHOST_kEventButtonDown:
@@ -2744,6 +2739,7 @@ void wm_window_IME_end(wmWindow *win)
 
   GHOST_EndIME(static_cast<GHOST_WindowHandle>(win->ghostwin));
   win->ime_data = nullptr;
+  win->ime_data_is_composing = false;
 }
 #endif /* WITH_INPUT_IME */
 
