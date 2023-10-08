@@ -797,6 +797,15 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         BLO_write_string(writer, item.name);
       }
     }
+    if (node->type == GEO_NODE_MENU_SWITCH) {
+      const NodeMenuSwitch &storage = *static_cast<const NodeMenuSwitch *>(
+          node->storage);
+      BLO_write_struct_array(writer, NodeEnumItem, storage.enum_definition.items_num, storage.enum_definition.items_array);
+      for (const NodeEnumItem &item : storage.enum_definition.items()) {
+        BLO_write_string(writer, item.name);
+        BLO_write_string(writer, item.description);
+      }
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1001,6 +1010,16 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           BLO_read_data_address(reader, &storage.items);
           for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
             BLO_read_data_address(reader, &item.name);
+          }
+          break;
+        }
+        case GEO_NODE_MENU_SWITCH: {
+          NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(
+              node->storage);
+          BLO_read_data_address(reader, &storage.enum_definition.items_array);
+          for (const NodeEnumItem &item : storage.enum_definition.items()) {
+            BLO_read_data_address(reader, &item.name);
+            BLO_read_data_address(reader, &item.description);
           }
           break;
         }
