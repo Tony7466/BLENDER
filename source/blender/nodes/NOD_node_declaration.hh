@@ -362,10 +362,6 @@ class BaseSocketDeclarationBuilder {
    * The node type's update function is called afterwards.
    */
   BaseSocketDeclarationBuilder &make_available(std::function<void(bNode &)> fn);
-
- protected:
-  virtual SocketDeclaration *input_declaration() = 0;
-  virtual SocketDeclaration *output_declaration() = 0;
 };
 
 /**
@@ -536,16 +532,6 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
   {
     return static_cast<Self &>(
         static_cast<BaseSocketDeclarationBuilder *>(this)->make_available(std::move(fn)));
-  }
-
- protected:
-  SocketDeclaration *input_declaration() override
-  {
-    return decl_in_;
-  }
-  SocketDeclaration *output_declaration() override
-  {
-    return decl_out_;
   }
 };
 

@@ -37,14 +37,14 @@ void NodeDeclarationBuilder::finalize()
 {
   if (is_function_node_) {
     for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
-      if (SocketDeclaration *socket_decl = socket_builder->input_declaration()) {
+      if (SocketDeclaration *socket_decl = socket_builder->decl_in_base_) {
         if (socket_decl->input_field_type != InputSocketFieldType::Implicit) {
           socket_decl->input_field_type = InputSocketFieldType::IsSupported;
         }
       }
     }
     for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
-      if (SocketDeclaration *socket_decl = socket_builder->output_declaration()) {
+      if (SocketDeclaration *socket_decl = socket_builder->decl_out_base_) {
         socket_decl->output_field_dependency = OutputFieldDependency::ForDependentField();
         socket_builder->reference_pass_all_ = true;
       }
@@ -65,7 +65,7 @@ void NodeDeclarationBuilder::finalize()
   }
 
   for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
-    if (!socket_builder->input_declaration()) {
+    if (!socket_builder->decl_in_base_) {
       continue;
     }
 
@@ -78,7 +78,7 @@ void NodeDeclarationBuilder::finalize()
     }
   }
   for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
-    if (!socket_builder->output_declaration()) {
+    if (!socket_builder->decl_out_base_) {
       continue;
     }
 
