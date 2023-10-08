@@ -3916,7 +3916,7 @@ static bNode *find_node_by_enum_item(PointerRNA *ptr)
   const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("NodeMenuSwitch")) {
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
     NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
     if (storage->enum_definition.items().contains_ptr(item)) {
       return node;
@@ -3943,6 +3943,7 @@ static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = find_node_by_enum_item(ptr);
+  BLI_assert(node != nullptr);
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
