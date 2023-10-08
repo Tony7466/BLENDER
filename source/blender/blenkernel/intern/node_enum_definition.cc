@@ -97,7 +97,10 @@ bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
   return true;
 }
 
-NodeEnumItem *NodeEnumDefinition::active_item() const {}
+NodeEnumItem *NodeEnumDefinition::active_item() const
+{
+  return nullptr;
+}
 
 void NodeEnumDefinition::active_item_set(NodeEnumItem *item) {}
 

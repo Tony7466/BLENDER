@@ -60,8 +60,8 @@ static void node_declare_dynamic(const bNodeTree &tree,
     }
   }
 
-  for (const NodeEnumItem *enum_item : storage.enum_definition.items()) {
-    StringRef name = enum_item->name;
+  for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
+    StringRef name = enum_item.name;
 
     switch (input_type) {
       case SOCK_CUSTOM:
