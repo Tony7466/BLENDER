@@ -5,14 +5,14 @@
 #include <iostream>
 #include <sstream>
 
-#include "BLI_array_utils.hh"
-#include "BLI_virtual_array.hh"
-#include "BLI_offset_indices.hh"
-#include "BLI_index_range.hh"
-#include "BLI_span.hh"
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_index_range.hh"
+#include "BLI_offset_indices.hh"
+#include "BLI_span.hh"
 #include "BLI_task.hh"
+#include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_mesh.hh"
@@ -29,9 +29,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 }
 
 template<typename T>
-static void interpolate_point_values(const VArray<T> &src, const Span<int2> edges, const OffsetIndices<int> edge_offset, MutableSpan<T> dst)
+static void interpolate_point_values(const VArray<T> &src,
+                                     const Span<int2> edges,
+                                     const OffsetIndices<int> edge_offset,
+                                     MutableSpan<T> dst)
 {
-  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range){
+  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
     for (const int index : range) {
       const int2 verties = edges[index];
       /* Conversion of range of new edges to range of new points. */
@@ -50,11 +53,11 @@ static void interpolate_point_values(const VArray<T> &src, const Span<int2> edge
 }
 
 static void interpolate_point_attributes(const AttributeAccessor src_attributes,
-                                        const AnonymousAttributePropagationInfo &propagation_info,
-                                        const Span<int2> edges,
-                                        const int start_vert,
-                                        const OffsetIndices<int> edge_offset,
-                                        MutableAttributeAccessor dst_attributes)
+                                         const AnonymousAttributePropagationInfo &propagation_info,
+                                         const Span<int2> edges,
+                                         const int start_vert,
+                                         const OffsetIndices<int> edge_offset,
+                                         MutableAttributeAccessor dst_attributes)
 {
   src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
     if (meta_data.domain != ATTR_DOMAIN_POINT) {
@@ -64,7 +67,8 @@ static void interpolate_point_attributes(const AttributeAccessor src_attributes,
       return true;
     }
     const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_POINT);
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, ATTR_DOMAIN_POINT, meta_data.data_type);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, ATTR_DOMAIN_POINT, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -98,7 +102,8 @@ static void group_copy_attributes(const AttributeAccessor src_attributes,
       return true;
     }
     const bke::GAttributeReader src = src_attributes.lookup(id, domain);
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, domain, meta_data.data_type);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, domain, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -115,9 +120,12 @@ static void group_copy_attributes(const AttributeAccessor src_attributes,
   });
 }
 
-static void build_edges(const Span<int2> src_edges, const OffsetIndices<int> edge_offset, const int start_vert, MutableSpan<int2> dst_edges)
+static void build_edges(const Span<int2> src_edges,
+                        const OffsetIndices<int> edge_offset,
+                        const int start_vert,
+                        MutableSpan<int2> dst_edges)
 {
-  threading::parallel_for(src_edges.index_range(), 1024, [&](const IndexRange range){
+  threading::parallel_for(src_edges.index_range(), 1024, [&](const IndexRange range) {
     for (const int edge_index : range) {
       const int2 src_edge = src_edges[edge_index];
       MutableSpan<int2> edges = dst_edges.slice(edge_offset[edge_index]);
@@ -186,7 +194,9 @@ void build_faces(const Span<int> src_corner_verts,
   });
 }
 
-static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets, const OffsetIndices<int> corner_offsets, MutableSpan<int> dst_face_offsets)
+static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets,
+                                    const OffsetIndices<int> corner_offsets,
+                                    MutableSpan<int> dst_face_offsets)
 {
   threading::parallel_for(src_face_offsets.index_range(), 2048, [&](const IndexRange range) {
     for (const int index : range) {
@@ -196,36 +206,57 @@ static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets, c
   offset_indices::accumulate_counts_to_offsets(dst_face_offsets);
 }
 
-static Mesh *resample_edges(const Mesh &src_mesh, const VArray<int> &count_varray, const AnonymousAttributePropagationInfo &propagation_info)
+static Mesh *resample_edges(const Mesh &src_mesh,
+                            const VArray<int> &count_varray,
+                            const AnonymousAttributePropagationInfo &propagation_info)
 {
   /* To avoid allocation of array to accumulate new verts, use edge offset[index] - index. */
   Array<int> accumulate_edges(src_mesh.totedge + 1);
   {
     MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
     count_varray.materialize(accumulate_span);
-    std::transform(accumulate_span.begin(), accumulate_span.end(), accumulate_span.begin(), [](const int value) { return value + 1; });
+    std::transform(accumulate_span.begin(),
+                   accumulate_span.end(),
+                   accumulate_span.begin(),
+                   [](const int value) { return value + 1; });
   }
-  const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(accumulate_edges);
+  const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(
+      accumulate_edges);
 
   Array<int> accumulate_corners(src_mesh.totloop + 1);
   {
     MutableSpan<int> accumulate_span = accumulate_corners.as_mutable_span().drop_back(1);
     array_utils::copy(src_mesh.corner_edges(), accumulate_span);
     devirtualize_varray(count_varray, [&](auto count_varray) {
-      std::transform(accumulate_span.begin(), accumulate_span.end(), accumulate_span.begin(), [&](const int edge_index) { return count_varray[edge_index] + 1; });
+      std::transform(accumulate_span.begin(),
+                     accumulate_span.end(),
+                     accumulate_span.begin(),
+                     [&](const int edge_index) { return count_varray[edge_index] + 1; });
     });
   }
-  const OffsetIndices<int> corner_offset = offset_indices::accumulate_counts_to_offsets(accumulate_corners);
+  const OffsetIndices<int> corner_offset = offset_indices::accumulate_counts_to_offsets(
+      accumulate_corners);
 
   const int total_vert = edge_offset.total_size() - src_mesh.totedge + src_mesh.totvert;
-  Mesh *dst_mesh = BKE_mesh_new_nomain(total_vert, edge_offset.total_size(), src_mesh.faces_num, corner_offset.total_size());
+  Mesh *dst_mesh = BKE_mesh_new_nomain(
+      total_vert, edge_offset.total_size(), src_mesh.faces_num, corner_offset.total_size());
   BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
 
   const AttributeAccessor src_attributes = src_mesh.attributes();
   MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
 
-  interpolate_point_attributes(src_attributes, propagation_info, src_mesh.edges(), src_mesh.totvert, edge_offset, dst_attributes);
-  group_copy_attributes(src_attributes, propagation_info, edge_offset, ATTR_DOMAIN_EDGE, {".edge_verts"}, dst_attributes);
+  interpolate_point_attributes(src_attributes,
+                               propagation_info,
+                               src_mesh.edges(),
+                               src_mesh.totvert,
+                               edge_offset,
+                               dst_attributes);
+  group_copy_attributes(src_attributes,
+                        propagation_info,
+                        edge_offset,
+                        ATTR_DOMAIN_EDGE,
+                        {".edge_verts"},
+                        dst_attributes);
   build_edges(src_mesh.edges(), edge_offset, src_mesh.totvert, dst_mesh->edges_for_write());
   accumulate_face_offsets(src_mesh.faces(), corner_offset, dst_mesh->face_offsets_for_write());
   build_faces(src_mesh.corner_verts(),
@@ -237,7 +268,12 @@ static Mesh *resample_edges(const Mesh &src_mesh, const VArray<int> &count_varra
               dst_mesh->corner_verts_for_write(),
               dst_mesh->corner_edges_for_write());
   bke::copy_attributes(src_attributes, ATTR_DOMAIN_FACE, propagation_info, {}, dst_attributes);
-  group_copy_attributes(src_attributes, propagation_info, corner_offset, ATTR_DOMAIN_CORNER, {".corner_vert", ".corner_edge"}, dst_attributes);
+  group_copy_attributes(src_attributes,
+                        propagation_info,
+                        corner_offset,
+                        ATTR_DOMAIN_CORNER,
+                        {".corner_vert", ".corner_edge"},
+                        dst_attributes);
   return dst_mesh;
 }
 
@@ -245,10 +281,15 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
 
-  static const auto clamp_fn = mf::build::SI1_SO<int, int>("Hard Min", [](const int value) { return math::max(0, value); }, mf::build::exec_presets::AllSpanOrSingle());
-  const Field<int> count_field(FieldOperation::Create(clamp_fn, {params.extract_input<Field<int>>("Count")}));
+  static const auto clamp_fn = mf::build::SI1_SO<int, int>(
+      "Hard Min",
+      [](const int value) { return math::max(0, value); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  const Field<int> count_field(
+      FieldOperation::Create(clamp_fn, {params.extract_input<Field<int>>("Count")}));
 
-  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info("Mesh");
+  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
+      "Mesh");
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *mesh = geometry_set.get_mesh();
     if (mesh == nullptr) {
@@ -260,7 +301,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     evaluator.add(count_field);
     evaluator.evaluate();
     const VArray<int> count_varray = evaluator.get_evaluated<int>(0);
-    if (std::optional<int> count = count_varray.get_if_single(); count.has_value() && *count == 0) {
+    if (std::optional<int> count = count_varray.get_if_single(); count.has_value() && *count == 0)
+    {
       return;
     }
     geometry_set.replace_mesh(resample_edges(*mesh, count_varray, propagation_info));
@@ -271,8 +313,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_register()
 {
   static bNodeType ntype;
-  geo_node_type_base(
-      &ntype, GEO_NODE_RESAMPLE_EDGES, "Resample Edges", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_RESAMPLE_EDGES, "Resample Edges", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
