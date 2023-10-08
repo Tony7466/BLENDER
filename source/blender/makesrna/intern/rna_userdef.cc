@@ -5630,10 +5630,28 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Duplicate Node Tree",
                            "Make copies of node groups when duplicating nodes in the node editor");
 
-  prop = RNA_def_property(srna, "node_auto_add_fake_user", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_FAKE_USER);
+  prop = RNA_def_property(srna, "node_auto_add_fake_user_id_ma", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_ADD_FAKE_USER_ID_MA);
+  RNA_def_property_ui_text(prop,
+                           "Auto Add Fake User Material",
+                           "Automatically add a fake user when creating new materials");
+
+  prop = RNA_def_property(srna, "node_auto_add_fake_user_id_te", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_ADD_FAKE_USER_ID_TE);
+  RNA_def_property_ui_text(prop,
+                           "Auto Add Fake User Texture",
+                           "Automatically add a fake user when creating new textures");
+
+  prop = RNA_def_property(srna, "node_auto_add_fake_user_id_wo", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_ADD_FAKE_USER_ID_WO);
   RNA_def_property_ui_text(
-      prop, "Auto Add Fake User", "Automatically add a fake user when creating new node groups");
+      prop, "Auto Add Fake User World", "Automatically add a fake user when creating new worlds");
+
+  prop = RNA_def_property(srna, "node_auto_add_fake_user_id_nt", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_ADD_FAKE_USER_ID_NT);
+  RNA_def_property_ui_text(prop,
+                           "Auto Add Fake User Geometry Node Group",
+                           "Automatically add a fake user when creating new geometry node groups");
 
   prop = RNA_def_property(srna, "node_use_insert_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_NODE_AUTO_OFFSET);

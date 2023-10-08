@@ -1169,7 +1169,7 @@ typedef enum eWalkNavigation_Flag {
 /** #UserDef.uiflag */
 typedef enum eUserpref_UI_Flag {
   USER_NO_MULTITOUCH_GESTURES = (1 << 0),
-  USER_UIFLAG_UNUSED_1 = (1 << 1), /* cleared */
+  USER_NODE_AUTO_ADD_FAKE_USER_ID_MA = (1 << 1), /* cleared */
   USER_WHEELZOOMDIR = (1 << 2),
   USER_FILTERFILEEXTS = (1 << 3),
   USER_DRAWVIEWINFO = (1 << 4),
@@ -1188,11 +1188,11 @@ typedef enum eUserpref_UI_Flag {
   USER_HIDE_DOT = (1 << 16),
   USER_SHOW_GIZMO_NAVIGATE = (1 << 17),
   USER_SHOW_VIEWPORTNAME = (1 << 18),
-  USER_NODE_AUTO_FAKE_USER = (1 << 19), /* Cleared. */
+  USER_NODE_AUTO_ADD_FAKE_USER_ID_TE = (1 << 19), /* Cleared. */
   USER_ZOOM_TO_MOUSEPOS = (1 << 20),
   USER_SHOW_FPS = (1 << 21),
   USER_REGISTER_ALL_USERS = (1 << 22),
-  USER_UIFLAG_UNUSED_4 = (1 << 23), /* Cleared. */
+  USER_NODE_AUTO_ADD_FAKE_USER_ID_WO = (1 << 23), /* Cleared. */
   USER_CONTINUOUS_MOUSE = (1 << 24),
   USER_ZOOM_INVERT = (1 << 25),
   USER_ZOOM_HORIZ = (1 << 26), /* for CONTINUE and DOLLY zoom */
@@ -1213,7 +1213,7 @@ typedef enum eUserpref_UI_Flag {
  * \note don't add new flags here, use 'uiflag' which has flags free.
  */
 typedef enum eUserpref_UI_Flag2 {
-  USER_UIFLAG2_UNUSED_0 = (1 << 0), /* cleared */
+  USER_NODE_AUTO_ADD_FAKE_USER_ID_NT = (1 << 0), /* cleared */
   USER_REGION_OVERLAP = (1 << 1),
   USER_UIFLAG2_UNUSED_2 = (1 << 2),
   USER_UIFLAG2_UNUSED_3 = (1 << 3), /* dirty */

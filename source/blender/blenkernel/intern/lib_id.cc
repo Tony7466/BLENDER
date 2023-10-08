@@ -948,7 +948,31 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
          * will also increment it, decrement it here. */
         id_us_min(newid);
 
-        if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+        bool set_fake_user = false;
+        switch (GS(id->name)) {
+          case ID_MA: {
+            set_fake_user = U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_MA;
+            break;
+          }
+          case ID_TE: {
+            set_fake_user = U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_TE;
+            break;
+          }
+          case ID_WO: {
+            set_fake_user = U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_WO;
+            break;
+          }
+          case ID_NT: {
+            set_fake_user = U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_NT;
+            break;
+          }
+          default: {
+            set_fake_user = false;
+            break;
+          }
+        }
+
+        if (set_fake_user) {
           id_fake_user_set(newid);
         }
 

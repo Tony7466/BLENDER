@@ -576,8 +576,8 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(280, 44)) {
-    userdef->uiflag &= ~(USER_NO_MULTITOUCH_GESTURES | USER_UIFLAG_UNUSED_1);
-    userdef->uiflag2 &= ~(USER_UIFLAG2_UNUSED_0);
+    userdef->uiflag &= ~(USER_NO_MULTITOUCH_GESTURES | USER_NODE_AUTO_ADD_FAKE_USER_ID_MA);
+    userdef->uiflag2 &= ~(USER_NODE_AUTO_ADD_FAKE_USER_ID_NT);
     userdef->gp_settings &= ~(GP_PAINT_UNUSED_0);
   }
 
@@ -712,7 +712,7 @@ void blo_do_versions_userdef(UserDef *userdef)
       userdef->pixelsize = 1.0f;
     }
     /* Clear old userdef flag for "Camera Parent Lock". */
-    userdef->uiflag &= ~USER_NODE_AUTO_FAKE_USER;
+    userdef->uiflag &= ~USER_NODE_AUTO_ADD_FAKE_USER_ID_TE;
   }
 
   if (!USER_VERSION_ATLEAST(292, 9)) {
@@ -874,7 +874,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(400, 24)) {
     /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
-    userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
+    userdef->uiflag &= ~USER_NODE_AUTO_ADD_FAKE_USER_ID_WO;
   }
 
   if (!USER_VERSION_ATLEAST(400, 26)) {

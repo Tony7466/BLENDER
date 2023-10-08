@@ -445,6 +445,20 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
             row_label.active = getattr(edit, prop)
 
 
+class USERPREF_PT_edit_data_blocks(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Data-Blocks"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        col = layout.column(heading="Auto Add Fake User")
+        col.prop(edit, "node_auto_add_fake_user_id_ma",text="Material")
+        col.prop(edit, "node_auto_add_fake_user_id_te",text="Texture")
+        col.prop(edit, "node_auto_add_fake_user_id_wo",text="World")
+        col.prop(edit, "node_auto_add_fake_user_id_nt",text="Geometry Nodes Group")
+
+
 class USERPREF_PT_edit_cursor(EditingPanel, CenterAlignMixIn, Panel):
     bl_label = "3D Cursor"
 
@@ -517,8 +531,6 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
     def draw_centered(self, context, layout):
         prefs = context.preferences
         edit = prefs.edit
-
-        layout.prop(edit, "node_auto_add_fake_user")
 
         col = layout.column(heading="Auto-Offset")
         row = col.row()
@@ -2638,6 +2650,7 @@ classes = (
     USERPREF_PT_edit_objects,
     USERPREF_PT_edit_objects_new,
     USERPREF_PT_edit_objects_duplicate_data,
+    USERPREF_PT_edit_data_blocks,
     USERPREF_PT_edit_cursor,
     USERPREF_PT_edit_annotations,
     USERPREF_PT_edit_weight_paint,

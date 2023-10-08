@@ -783,7 +783,7 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
     ma->use_nodes = true;
   }
 
-  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+  if (U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_MA) {
     id_fake_user_set(&(ma->id));
   }
 
@@ -846,7 +846,7 @@ static int new_texture_exec(bContext *C, wmOperator * /*op*/)
     tex = BKE_texture_add(bmain, DATA_("Texture"));
   }
 
-  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+  if (U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_TE) {
     id_fake_user_set(&(tex->id));
   }
 
@@ -907,7 +907,7 @@ static int new_world_exec(bContext *C, wmOperator * /*op*/)
     wo->use_nodes = true;
   }
 
-  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
+  if (U.uiflag & USER_NODE_AUTO_ADD_FAKE_USER_ID_WO) {
     id_fake_user_set(&(wo->id));
   }
 
@@ -2270,10 +2270,6 @@ static int freestyle_linestyle_new_exec(bContext *C, wmOperator *op)
   }
   else {
     lineset->linestyle = BKE_linestyle_new(bmain, DATA_("LineStyle"));
-  }
-
-  if (U.uiflag & USER_NODE_AUTO_FAKE_USER) {
-    id_fake_user_set(&(lineset->linestyle->id));
   }
 
   DEG_id_tag_update(&lineset->linestyle->id, 0);
