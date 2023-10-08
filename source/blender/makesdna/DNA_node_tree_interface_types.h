@@ -80,6 +80,7 @@ typedef struct bNodeTreeInterfaceSocket {
 
   /* eAttrDomain */
   int16_t attribute_domain;
+  /** GeometryNodeDefaultInputType. */
   int16_t default_input;
   char *default_attribute_name;
 
@@ -119,11 +120,13 @@ typedef enum NodeTreeInterfacePanelFlag {
 } NodeTreeInterfacePanelFlag;
 ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 
-typedef enum NodeInterfaceDefaultInput {
-  NODE_INTERFACE_DEFAULT_INPUT_NONE = 0,
-  NODE_INTERFACE_DEFAULT_INPUT_ID_INDEX = 1,
-  NODE_INTERFACE_DEFAULT_INPUT_POSITION = 2,
-} NodeInterfaceDefaultInput;
+typedef enum GeometryNodeDefaultInputType {
+  GEO_NODE_DEFAULT_FIELD_INPUT_NONE = 0,
+  GEO_NODE_DEFAULT_FIELD_INPUT_INDEX = 1,
+  GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX = 2,
+  GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL = 3,
+  GEO_NODE_DEFAULT_FIELD_INPUT_POSITION = 4,
+} GeometryNodeDefaultInputType;
 
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;

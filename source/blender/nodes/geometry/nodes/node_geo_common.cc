@@ -15,6 +15,35 @@
 
 namespace blender::nodes {
 
+static void set_default_input_field(const bNodeTreeInterfaceSocket &input, SocketDeclaration &decl)
+{
+
+  if (dynamic_cast<decl::Float *>(&decl)) {
+    if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL) {
+      decl.input_field_type = InputSocketFieldType::Implicit;
+      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+          implicit_field_inputs::normal);
+    }
+    else if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_POSITION) {
+      decl.input_field_type = InputSocketFieldType::Implicit;
+      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+          implicit_field_inputs::position);
+    }
+  }
+  else if (dynamic_cast<decl::Int *>(&decl)) {
+    if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_INDEX) {
+      decl.input_field_type = InputSocketFieldType::Implicit;
+      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+          implicit_field_inputs::index);
+    }
+    else if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX) {
+      decl.input_field_type = InputSocketFieldType::Implicit;
+      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+          implicit_field_inputs::id_or_index);
+    }
+  }
+}
+
 static void node_group_declare(const bNodeTree &node_tree,
                                const bNode &node,
                                NodeDeclarationBuilder &b)
@@ -32,12 +61,16 @@ static void node_group_declare(const bNodeTree &node_tree,
     return;
   }
 
+  const Span<const bNodeTreeInterfaceSocket *> inputs = node_tree.interface_inputs();
   const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;
   for (const int i : r_declaration.inputs.index_range()) {
-    if (!r_declaration.inputs[i]->implicit_input_fn_) {
-      r_declaration.inputs[i]->input_field_type = field_interface.inputs[i];
+    SocketDeclaration &decl = *r_declaration.inputs[i];
+    decl.input_field_type = field_interface.inputs[i];
+    if (decl.input_field_type != InputSocketFieldType::None) {
+      set_default_input_field(*inputs[i], decl);
     }
   }
+
   for (const int i : r_declaration.outputs.index_range()) {
     r_declaration.outputs[i]->output_field_dependency = field_interface.outputs[i];
   }
