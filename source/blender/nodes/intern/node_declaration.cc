@@ -426,6 +426,112 @@ std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
   }
 }
 
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
+    const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return this->add_input<decl::Float>(name, identifier);
+    case SOCK_VECTOR:
+      return this->add_input<decl::Vector>(name, identifier);
+    case SOCK_RGBA:
+      return this->add_input<decl::Color>(name, identifier);
+    case SOCK_BOOLEAN:
+      return this->add_input<decl::Bool>(name, identifier);
+    case SOCK_ROTATION:
+      return this->add_input<decl::Rotation>(name, identifier);
+    case SOCK_INT:
+      return this->add_input<decl::Int>(name, identifier);
+    case SOCK_STRING:
+      return this->add_input<decl::String>(name, identifier);
+    case SOCK_GEOMETRY:
+      return this->add_input<decl::Geometry>(name, identifier);
+    case SOCK_OBJECT:
+      return this->add_input<decl::Object>(name, identifier);
+    case SOCK_IMAGE:
+      return this->add_input<decl::Image>(name, identifier);
+    case SOCK_COLLECTION:
+      return this->add_input<decl::Collection>(name, identifier);
+    case SOCK_MATERIAL:
+      return this->add_input<decl::Material>(name, identifier);
+    default:
+      BLI_assert_unreachable();
+      return this->add_input<decl::Float>(name, identifier);
+  }
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(eNodeSocketDatatype socket_type,
+                                                                 StringRef name,
+                                                                 StringRef identifier)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return this->add_output<decl::Float>(name, identifier);
+    case SOCK_VECTOR:
+      return this->add_output<decl::Vector>(name, identifier);
+    case SOCK_RGBA:
+      return this->add_output<decl::Color>(name, identifier);
+    case SOCK_BOOLEAN:
+      return this->add_output<decl::Bool>(name, identifier);
+    case SOCK_ROTATION:
+      return this->add_output<decl::Rotation>(name, identifier);
+    case SOCK_INT:
+      return this->add_output<decl::Int>(name, identifier);
+    case SOCK_STRING:
+      return this->add_output<decl::String>(name, identifier);
+    case SOCK_GEOMETRY:
+      return this->add_output<decl::Geometry>(name, identifier);
+    case SOCK_OBJECT:
+      return this->add_output<decl::Object>(name, identifier);
+    case SOCK_IMAGE:
+      return this->add_output<decl::Image>(name, identifier);
+    case SOCK_COLLECTION:
+      return this->add_output<decl::Collection>(name, identifier);
+    case SOCK_MATERIAL:
+      return this->add_output<decl::Material>(name, identifier);
+    default:
+      BLI_assert_unreachable();
+      return this->add_output<decl::Float>(name, identifier);
+  }
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::reference_pass(
+    const Span<int> input_indices)
+{
+  aal::RelationsInNode &relations = node_decl_builder_->get_anonymous_attribute_relations();
+  for (const int from_input : input_indices) {
+    aal::ReferenceRelation relation;
+    relation.from_field_input = from_input;
+    relation.to_field_output = index_out_;
+    relations.reference_relations.append(relation);
+  }
+  return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<int> indices)
+{
+  aal::RelationsInNode &relations = node_decl_builder_->get_anonymous_attribute_relations();
+  if (decl_in_base_) {
+    this->supports_field();
+    for (const int input_index : indices) {
+      aal::EvalRelation relation;
+      relation.field_input = index_in_;
+      relation.geometry_input = input_index;
+      relations.eval_relations.append(relation);
+    }
+  }
+  if (decl_out_base_) {
+    this->field_source();
+    for (const int output_index : indices) {
+      aal::AvailableRelation relation;
+      relation.field_output = index_out_;
+      relation.geometry_output = output_index;
+      relations.available_relations.append(relation);
+    }
+  }
+  return *this;
+}
+
 namespace implicit_field_inputs {
 
 void position(const bNode & /*node*/, void *r_value)
