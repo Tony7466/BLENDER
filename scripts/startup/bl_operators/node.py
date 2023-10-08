@@ -381,6 +381,22 @@ class NODE_OT_enum_definition_item_add(Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_enum_definition_item_remove(Operator):
+    '''Remove the selected enum item from the definition'''
+    bl_idname = "node.enum_definition_item_remove"
+    bl_label = "Remove Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        item = enum_def.active_item
+        if item:
+            enum_def.enum_items.remove(item)
+        enum_def.active_index = min(max(enum_def.active_index, 0), len(enum_def.enum_items) - 1)
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -393,4 +409,5 @@ classes = (
     NODE_OT_interface_item_remove,
     NODE_OT_tree_path_parent,
     NODE_OT_enum_definition_item_add,
+    NODE_OT_enum_definition_item_remove,
 )

@@ -51,7 +51,7 @@ bool NodeEnumDefinition::remove_item(NodeEnumItem &item)
   std::copy_n(old_items, remove_index, this->items_array);
   std::copy_n(old_items + remove_index + 1,
               this->items_num - remove_index - 1,
-              this->items_array + remove_index + 1);
+              this->items_array + remove_index);
 
   this->items_num--;
   MEM_SAFE_FREE(old_items);
