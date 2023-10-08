@@ -517,13 +517,6 @@ class NodeDeclarationBuilder {
   typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
   PanelDeclarationBuilder &add_panel(StringRef name, int identifier = -1);
 
-  BaseSocketDeclarationBuilder &add_input(eNodeSocketDatatype socket_type,
-                                          StringRef name,
-                                          StringRef identifier);
-  BaseSocketDeclarationBuilder &add_output(eNodeSocketDatatype socket_type,
-                                           StringRef name,
-                                           StringRef identifier);
-
   aal::RelationsInNode &get_anonymous_attribute_relations()
   {
     if (!declaration_.anonymous_attribute_relations_) {
