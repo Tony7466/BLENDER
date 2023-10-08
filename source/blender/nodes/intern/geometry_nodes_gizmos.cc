@@ -26,6 +26,14 @@ static bool is_scalar_socket_type(const int socket_type)
   return ELEM(socket_type, SOCK_FLOAT, SOCK_INT);
 }
 
+static bool is_valid_gizmo_value_link(const bNodeSocket &from_sock, const bNodeSocket &to_sock)
+{
+  if (is_scalar_socket_type(from_sock.type) && is_scalar_socket_type(to_sock.type)) {
+    return true;
+  }
+  return from_sock.type == to_sock.type;
+}
+
 static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
     const bNodeSocket &current_socket, const std::optional<int> &current_elem_index)
 {
@@ -46,9 +54,7 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
     if (!origin_socket.is_available()) {
       return std::nullopt;
     }
-    if (origin_socket.type == input_socket.type ||
-        (is_scalar_socket_type(input_socket.type) && is_scalar_socket_type(origin_socket.type)))
-    {
+    if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
       return find_scalar_gizmo_source_recursive(origin_socket, current_elem_index);
     }
     return std::nullopt;
@@ -92,19 +98,17 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
                                              std::optional<int> elem_index)
 {
-  /* Only scalar values are supported currently. */
-  if (!is_scalar_socket_type(socket.type) && !elem_index) {
-    return std::nullopt;
-  }
   return find_scalar_gizmo_source_recursive(socket, elem_index);
 }
 
-Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input)
+Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input,
+                                                const std::optional<int> elem_index)
 {
   BLI_assert(gizmo_node_input.is_input());
   Vector<GizmoNodeSource> gizmo_node_sources;
   if (!gizmo_node_input.is_directly_linked()) {
-    gizmo_node_sources.append({GizmoSource(InputSocketGizmoSource{&gizmo_node_input})});
+    gizmo_node_sources.append(
+        {GizmoSource(InputSocketGizmoSource{&gizmo_node_input, elem_index})});
   }
   for (const bNodeLink *link : gizmo_node_input.directly_linked_links()) {
     if (link->is_muted()) {
@@ -119,12 +123,12 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_in
     const bNode *variable_node = nullptr;
     if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
       const bNodeSocket &gizmo_variable_input = origin_node.input_socket(0);
-      gizmo_source = find_gizmo_source(gizmo_variable_input, std::nullopt);
+      gizmo_source = find_gizmo_source(gizmo_variable_input, elem_index);
       variable_node = &origin_node;
     }
     else {
-      if (is_scalar_socket_type(origin_socket.type)) {
-        gizmo_source = find_gizmo_source(origin_socket, std::nullopt);
+      if (is_valid_gizmo_value_link(origin_socket, gizmo_node_input)) {
+        gizmo_source = find_gizmo_source(origin_socket, elem_index);
       }
     }
     if (!gizmo_source) {
@@ -182,7 +186,8 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
       const bNodeSocket &gizmo_node_input = gizmo_node->input_socket(0);
       const GizmoInput gizmo_input{&gizmo_node_input, std::nullopt};
-      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_node_input);
+      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_node_input,
+                                                                                 std::nullopt);
       for (const GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, gizmo_node_source.source);
       }
