@@ -25,12 +25,11 @@ NODE_STORAGE_FUNCS(NodeGeometryForEachInput);
 
 static void node_declare_dynamic(const bNodeTree &tree,
                                  const bNode &node,
-                                 NodeDeclaration &r_declaration)
+                                 NodeDeclarationBuilder &b)
 {
   const NodeGeometryForEachInput &input_storage = node_storage(node);
   const bNode *output_node = tree.node_by_id(input_storage.output_node_id);
   if (output_node == nullptr) {
-    r_declaration.skip_updating_sockets = true;
     return;
   }
   const auto &output_storage = *static_cast<const NodeGeometryForEachOutput *>(
@@ -38,7 +37,6 @@ static void node_declare_dynamic(const bNodeTree &tree,
   const GeometryNodeForEachMode mode = GeometryNodeForEachMode(output_storage.mode);
   {
     /* Add standard inputs. */
-    NodeDeclarationBuilder b{r_declaration};
     switch (mode) {
       case GEO_NODE_FOR_EACH_MODE_INDEX: {
         b.add_input<decl::Int>("Amount").min(0).default_value(1);
@@ -47,7 +45,7 @@ static void node_declare_dynamic(const bNodeTree &tree,
       }
       case GEO_NODE_FOR_EACH_MODE_GEOMETRY_ELEMENT: {
         b.add_input<decl::Geometry>("Geometry");
-        b.add_input<decl::Bool>("Selection").supports_field().default_value(true).hide_value(true);
+        b.add_input<decl::Bool>("Selection").default_value(true).hide_value(true).supports_field();
         b.add_output<decl::Int>("Index");
         if (output_storage.domain != ATTR_DOMAIN_CORNER) {
           b.add_output<decl::Geometry>("Element");
@@ -69,36 +67,16 @@ static void node_declare_dynamic(const bNodeTree &tree,
   for (const int i : IndexRange(output_storage.input_items_num)) {
     const NodeForEachInputItem &item = output_storage.input_items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const StringRef name = item.name;
     const std::string identifier = ForEachInputItemsAccessor::socket_identifier_for_item(item);
-    {
-      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
-      BLI_assert(decl);
-      decl->name = StringRef(item.name);
-      decl->identifier = identifier;
-      decl->in_out = SOCK_IN;
-      if (socket_type_supports_fields(socket_type)) {
-        decl->input_field_type = InputSocketFieldType::IsSupported;
-      }
-      r_declaration.inputs.append(decl.get());
-      r_declaration.items.append(std::move(decl));
-    }
-    {
-      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
-      BLI_assert(decl);
-      decl->name = StringRef(item.name);
-      decl->identifier = identifier;
-      decl->in_out = SOCK_OUT;
-      r_declaration.outputs.append(decl.get());
-      r_declaration.items.append(std::move(decl));
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    b.add_output(socket_type, name, identifier);
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
     }
   }
-  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  r_declaration.inputs.append(input_extend_decl.get());
-  r_declaration.items.append(std::move(input_extend_decl));
-
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
-  r_declaration.outputs.append(output_extend_decl.get());
-  r_declaration.items.append(std::move(output_extend_decl));
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

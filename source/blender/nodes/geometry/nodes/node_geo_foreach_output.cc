@@ -22,46 +22,25 @@ NODE_STORAGE_FUNCS(NodeGeometryForEachOutput);
 
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
-                                 NodeDeclaration &r_declaration)
+                                 NodeDeclarationBuilder &b)
 {
   const NodeGeometryForEachOutput &storage = node_storage(node);
   for (const int i : IndexRange(storage.output_items_num)) {
     const NodeForEachOutputItem &item = storage.output_items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     const std::string identifier = ForEachOutputItemsAccessor::socket_identifier_for_item(item);
-    {
-      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
-      BLI_assert(decl);
-      decl->name = StringRef(item.name);
-      decl->identifier = identifier;
-      decl->in_out = SOCK_IN;
-      if (socket_type_supports_fields(socket_type)) {
-        decl->input_field_type = InputSocketFieldType::IsSupported;
-      }
-      r_declaration.inputs.append(decl.get());
-      r_declaration.items.append(std::move(decl));
-    }
-    {
-      SocketDeclarationPtr decl = make_declaration_for_socket_type(socket_type);
-      BLI_assert(decl);
-      decl->name = StringRef(item.name);
-      decl->identifier = identifier;
-      decl->in_out = SOCK_OUT;
-      if (socket_type_supports_fields(socket_type)) {
-        decl->output_field_dependency = OutputFieldDependency::ForFieldSource();
-      }
-      r_declaration.outputs.append(decl.get());
-      r_declaration.items.append(std::move(decl));
+    const StringRef name = item.name;
+
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier);
+
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
+      output_decl.field_on_all();
     }
   }
-
-  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  r_declaration.inputs.append(input_extend_decl.get());
-  r_declaration.items.append(std::move(input_extend_decl));
-
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
-  r_declaration.outputs.append(output_extend_decl.get());
-  r_declaration.items.append(std::move(output_extend_decl));
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
