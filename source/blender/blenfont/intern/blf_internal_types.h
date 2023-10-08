@@ -216,9 +216,18 @@ typedef struct FontMetrics {
   float spacing;
 
   short units_per_EM;
+  short family_class;
+  short selection_flags;
+  int num_glyphs;
+  short first_charindex;
+  short last_charindex;
+
+  rcti bounding_box;
   short ascender;
   short descender;
   short height;
+  short x_height;
+  short cap_height;
   short max_advance_width;
   short max_advance_height;
 
@@ -226,38 +235,12 @@ typedef struct FontMetrics {
   short underline_thickness;
   short strikeout_position;
   short strikeout_thickness;
-
   short subscript_size;
   short subscript_xoffset;
   short subscript_yoffset;
   short superscript_size;
   short superscript_xoffset;
   short superscript_yoffset;
-
-  int num_glyphs;
-
-  rcti bounding_box;
-
-  short family_class;
-
-  char panose_family_type;
-  char panose_serif_style;
-  char panose_weight;
-  char panose_proportion;
-  char panose_contrast;
-  char panose_stroke_variation;
-  char panose_arm_style;
-  char panose_letter_form;
-  char panose_midline;
-  char panose_xheight;
-
-  short selection_flags;
-  short first_charindex;
-  short last_charindex;
-  short typo_linegap;
-
-  short x_height;
-  short cap_height;
 } FontMetrics;
 
 typedef struct FontBLF {

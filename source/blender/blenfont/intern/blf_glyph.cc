@@ -1066,13 +1066,13 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
 
   blf_ensure_size(glyph_font);
 
-  /* Current (base) style values. */
-  float weight = settings_font->metrics.weight;
-  float slant = settings_font->metrics.slant;
-  float width = settings_font->metrics.width;
-  float spacing = settings_font->metrics.spacing;
+  /* Default style values of the font containing the glyph. */
+  float weight = glyph_font->metrics.weight;
+  float slant = glyph_font->metrics.slant;
+  float width = glyph_font->metrics.width;
+  float spacing = glyph_font->metrics.spacing;
 
-  /* The variation targets we are hoping to get. */
+  /* Style targets are on the settings_font. */
   float weight_target = float(settings_font->char_weight);
   if (settings_font->flags & BLF_BOLD) {
     weight_target = MIN2(weight_target + 300.0f, 900.0f);

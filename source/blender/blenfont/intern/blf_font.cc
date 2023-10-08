@@ -1401,20 +1401,9 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
     metrics->superscript_yoffset = short(os2_table->ySuperscriptYOffset);
 
     metrics->family_class = short(os2_table->sFamilyClass);
-    metrics->panose_family_type = char(os2_table->panose[0]);
-    metrics->panose_serif_style = char(os2_table->panose[1]);
-    metrics->panose_weight = char(os2_table->panose[2]);
-    metrics->panose_proportion = char(os2_table->panose[3]);
-    metrics->panose_contrast = char(os2_table->panose[4]);
-    metrics->panose_stroke_variation = char(os2_table->panose[5]);
-    metrics->panose_arm_style = char(os2_table->panose[6]);
-    metrics->panose_letter_form = char(os2_table->panose[7]);
-    metrics->panose_midline = char(os2_table->panose[7]);
-    metrics->panose_xheight = char(os2_table->panose[9]);
     metrics->selection_flags = short(os2_table->fsSelection);
     metrics->first_charindex = short(os2_table->usFirstCharIndex);
     metrics->last_charindex = short(os2_table->usLastCharIndex);
-    metrics->typo_linegap = short(os2_table->sTypoLineGap);
     if (os2_table->version > 1) {
       metrics->cap_height = short(os2_table->sCapHeight);
       metrics->x_height = short(os2_table->sxHeight);
