@@ -42,7 +42,7 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
     return int3(grid_coords * float3(data.tex_size));
   };
 
-  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
+  const BoundBox bbox = *BKE_object_boundbox_get(ob);
   min = int3(INT32_MAX);
   max = int3(INT32_MIN);
 

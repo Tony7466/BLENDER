@@ -4052,7 +4052,7 @@ static void do_tiled(Sculpt *sd,
   SculptSession *ss = ob->sculpt;
   StrokeCache *cache = ss->cache;
   const float radius = cache->radius;
-  const BoundBox bb = BKE_object_boundbox_get(ob);
+  const BoundBox bb = *BKE_object_boundbox_get(ob);
   const float *bbMin = bb.vec[0];
   const float *bbMax = bb.vec[6];
   const float *step = sd->paint.tile_offset;

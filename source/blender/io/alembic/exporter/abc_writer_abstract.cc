@@ -99,19 +99,25 @@ const Imath::Box3d &ABCAbstractWriter::bounding_box() const
 
 void ABCAbstractWriter::update_bounding_box(Object *object)
 {
-  if (object->type == OB_CAMERA) {
+  const std::optional<BoundBox> bb = BKE_object_boundbox_get(object);
+
+  if (!bb) {
+    if (object->type != OB_CAMERA) {
+      CLOG_WARN(&LOG, "Bounding box is null!");
+    }
+    bounding_box_.min.x = bounding_box_.min.y = bounding_box_.min.z = 0;
+    bounding_box_.max.x = bounding_box_.max.y = bounding_box_.max.z = 0;
     return;
   }
-  const BoundBox bb = BKE_object_boundbox_get(object);
 
   /* Convert Z-up to Y-up. This also changes which vector goes into which min/max property. */
-  bounding_box_.min.x = bb.vec[0][0];
-  bounding_box_.min.y = bb.vec[0][2];
-  bounding_box_.min.z = -bb.vec[6][1];
+  bounding_box_.min.x = bb->vec[0][0];
+  bounding_box_.min.y = bb->vec[0][2];
+  bounding_box_.min.z = -bb->vec[6][1];
 
-  bounding_box_.max.x = bb.vec[6][0];
-  bounding_box_.max.y = bb.vec[6][2];
-  bounding_box_.max.z = -bb.vec[0][1];
+  bounding_box_.max.x = bb->vec[6][0];
+  bounding_box_.max.y = bb->vec[6][2];
+  bounding_box_.max.z = -bb->vec[0][1];
 }
 
 void ABCAbstractWriter::write_visibility(const HierarchyContext &context)

@@ -127,9 +127,6 @@ static Volume *mesh_to_volume(ModifierData *md,
   if (mesh == nullptr) {
     return input_volume;
   }
-  if (mesh->totvert == 0) {
-    return input_volume;
-  }
   BKE_mesh_wrapper_ensure_mdata(mesh);
   if (mesh->totvert == 0) {
     return input_volume;

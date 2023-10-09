@@ -853,12 +853,17 @@ void RE_point_density_minmax(Depsgraph *depsgraph,
   }
   else {
     const float radius[3] = {pd->radius, pd->radius, pd->radius};
-    const BoundBox bb = BKE_object_boundbox_get(object);
-    copy_v3_v3(r_min, bb.vec[0]);
-    copy_v3_v3(r_max, bb.vec[6]);
-    /* Adjust texture space to include density points on the boundaries. */
-    sub_v3_v3(r_min, radius);
-    add_v3_v3(r_max, radius);
+    if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(object)) {
+      copy_v3_v3(r_min, bb->vec[0]);
+      copy_v3_v3(r_max, bb->vec[6]);
+      /* Adjust texture space to include density points on the boundaries. */
+      sub_v3_v3(r_min, radius);
+      add_v3_v3(r_max, radius);
+    }
+    else {
+      zero_v3(r_min);
+      zero_v3(r_max);
+    }
   }
 }
 
