@@ -14,6 +14,7 @@ struct ID;
 struct bNodeSocketType;
 struct bNodeTreeType;
 struct bNodeType;
+struct NodeEnumDefinition;
 
 /* Types */
 #define DEF_ENUM(id) extern const EnumPropertyItem id[];
@@ -121,3 +122,9 @@ const EnumPropertyItem *RNA_mask_local_itemf(struct bContext *C,
 
 /* Non confirming, utility function. */
 const EnumPropertyItem *RNA_enum_node_tree_types_itemf_impl(struct bContext *C, bool *r_free);
+
+const EnumPropertyItem *RNA_node_enum_definition_itemf(const NodeEnumDefinition &enum_def, bool *r_free);
+const EnumPropertyItem *RNA_node_socket_enum_itemf(bContext *C,
+                                                   PointerRNA *ptr,
+                                                   PropertyRNA *prop,
+                                                   bool *r_free);

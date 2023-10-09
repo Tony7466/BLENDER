@@ -9495,7 +9495,6 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
 static void rna_def_node_enum_definition_items(BlenderRNA * brna)
 {
   StructRNA *srna;
-  PropertyRNA *prop;
   PropertyRNA *parm;
   FunctionRNA *func;
 

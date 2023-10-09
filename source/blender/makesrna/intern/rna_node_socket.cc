@@ -412,6 +412,52 @@ bool rna_NodeSocketMaterial_default_value_poll(PointerRNA * /*ptr*/, PointerRNA 
   return ma->gp_style == nullptr;
 }
 
+const EnumPropertyItem *RNA_node_enum_definition_itemf(const NodeEnumDefinition &enum_def,
+                                                       bool *r_free)
+{
+  EnumPropertyItem tmp = {0};
+  EnumPropertyItem *result = nullptr;
+  int totitem = 0;
+
+  for (const NodeEnumItem &item : enum_def.items()) {
+    tmp.value = item.identifier;
+    /* Item name is unique and used as the RNA identitifier as well.
+     * The integer value is persistent and unique and should be used
+     * when storing the enum value. */
+    tmp.identifier = item.name;
+    /* TODO support icons in enum definition. */
+    tmp.icon = ICON_NONE;
+    tmp.name = item.name;
+    tmp.description = item.description;
+
+    RNA_enum_item_add(&result, &totitem, &tmp);
+  }
+
+  if (totitem == 0) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+
+  RNA_enum_item_end(&result, &totitem);
+  *r_free = true;
+
+  return result;
+}
+
+const EnumPropertyItem *RNA_node_socket_enum_itemf(bContext * /*C*/,
+                                                   PointerRNA *ptr,
+                                                   PropertyRNA * /*prop*/,
+                                                   bool *r_free)
+{
+  const bNodeSocketValueEnum &storage = *static_cast<bNodeSocketValueEnum *>(ptr->data);
+  const NodeEnumDefinition *enum_def = storage.enum_ref.get();
+  if (!enum_def) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  return RNA_node_enum_definition_itemf(*enum_def, r_free);
+}
+
 #else
 
 static void rna_def_node_socket(BlenderRNA *brna)
@@ -1123,20 +1169,43 @@ static void rna_def_node_socket_interface_string(BlenderRNA *brna, const char *i
   rna_def_node_tree_interface_socket_builtin(srna);
 }
 
+static void rna_def_node_socket_enum(BlenderRNA *brna, const char *identifier)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
+  RNA_def_struct_ui_text(srna, "Enum Node Socket", "Enum socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueEnum", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "value");
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "RNA_node_socket_enum_itemf");
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_update");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
+}
+
 static void rna_def_node_socket_interface_enum(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  CONTINUE
   srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
-  RNA_def_struct_ui_text(srna, "String Node Socket Interface", "String socket of a node");
+  RNA_def_struct_ui_text(srna, "Enum Node Socket Interface", "Enum socket of a node");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
 
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueString", "socket_data");
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueEnum", "socket_data");
 
-  prop = RNA_def_property(srna, "default_value", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "value");
+  prop = RNA_def_property(srna, "default_value", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "value");
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "RNA_node_socket_enum_itemf");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
@@ -1370,31 +1439,6 @@ static void rna_def_node_socket_material(BlenderRNA *brna, const char *identifie
   RNA_def_struct_sdna_from(srna, "bNodeSocketValueMaterial", "default_value");
 
   prop = RNA_def_property(srna, "default_value", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "value");
-  RNA_def_property_struct_type(prop, "Material");
-  RNA_def_property_pointer_funcs(
-      prop, nullptr, nullptr, nullptr, "rna_NodeSocketMaterial_default_value_poll");
-  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
-  RNA_def_property_update(
-      prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_and_relation_update");
-  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT | PROP_CONTEXT_UPDATE);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-}
-
-static void rna_def_node_socket_enum(BlenderRNA *brna, const char *identifier)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
-  RNA_def_struct_ui_text(srna, "Enum Node Socket", "Enum socket of a node");
-  RNA_def_struct_sdna(srna, "bNodeSocket");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueEnum", "default_value");
-
-  prop = RNA_def_property(srna, "default_value", PROP_ENUM, PROP_NONE);
-
-  CONTINUE
   RNA_def_property_pointer_sdna(prop, nullptr, "value");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_pointer_funcs(
