@@ -38,9 +38,7 @@ struct PlanarProbe : ProbePlanarData {
   bool is_probe_used = false;
 
  public:
-  void sync(const float4x4 &world_to_object,
-            const float4x4 &object_to_world,
-            float clipping_offset);
+  void sync(const float4x4 &world_to_object, float clipping_offset, float influence_distance);
 
   /**
    * Update the ProbePlanarData part of the struct.
@@ -52,6 +50,7 @@ struct PlanarProbe : ProbePlanarData {
    * Create the reflection clip plane equation that clips along the XY plane of the given
    * transform. The `clip_offset` will push the clip plane a bit further to avoid missing pixels in
    * reflections. The transform does not need to be normalized but is expected to be orthogonal.
+   * \note Only works after `set_view` was called.
    */
   float4 reflection_clip_plane_get();
 

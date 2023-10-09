@@ -52,11 +52,10 @@ float lightprobe_planar_score(ProbePlanarData planar, vec3 P, vec3 V, vec3 L)
     /* TODO: Transition in Z. Dither? */
     return 0.0;
   }
-  /* For now, just check if L is facing the same side as the planar capture direction. */
-  if (dot(L, planar.normal) > 0.0) {
-    return 1.0;
-  }
-  return 0.0;
+  /* Return how much the ray is lined up with the captured ray. */
+  vec3 R = -reflect(V, planar.normal);
+  /* TODO: Use saturate (dependency hell). */
+  return clamp(dot(L, R), 0.0, 1.0);
 }
 
 #ifdef PLANAR_PROBES
@@ -65,8 +64,10 @@ float lightprobe_planar_score(ProbePlanarData planar, vec3 P, vec3 V, vec3 L)
  */
 int lightprobe_planar_select(vec3 P, vec3 V, vec3 L)
 {
+  /* Initialize to the score of a camera ray. */
+  /* TODO: Use saturate (dependency hell). */
+  float best_score = clamp(dot(L, -V), 0.0, 1.0);
   int best_index = -1;
-  float best_score = 0.0;
 
   for (int index = 0; index < PLANAR_PROBES_MAX; index++) {
     if (probe_planar_buf[index].layer_id == -1) {

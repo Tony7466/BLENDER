@@ -7,16 +7,19 @@
 
 namespace blender::eevee {
 
+using namespace blender::math;
+
 /* -------------------------------------------------------------------- */
-/** \name Planar Probe Module
+/** \name Planar Probe
  * \{ */
 
 void PlanarProbe::sync(const float4x4 &world_to_object,
-                       const float4x4 &object_to_world,
-                       float clipping_offset)
+                       float clipping_offset,
+                       float influence_distance)
 {
   this->plane_to_world = float4x4(world_to_object);
-  this->world_to_plane = float4x4(object_to_world);
+  this->plane_to_world.z_axis() = normalize(this->plane_to_world.z_axis()) * influence_distance;
+  this->world_to_plane = invert(this->plane_to_world);
   this->clipping_offset = clipping_offset;
 }
 
@@ -24,20 +27,25 @@ void PlanarProbe::set_view(const draw::View &view, int layer_id)
 {
   this->viewmat = view.viewmat() * reflection_matrix_get();
   this->winmat = view.winmat();
-  this->world_to_object_transposed = float3x4(math::transpose(world_to_plane));
-  this->normal = math::normalize(plane_to_world.z_axis());
+  this->world_to_object_transposed = float3x4(transpose(world_to_plane));
+  this->normal = normalize(plane_to_world.z_axis());
+
+  bool view_is_below_plane = dot(view.location() - plane_to_world.location(),
+                                 plane_to_world.z_axis()) < 0.0;
+  if (view_is_below_plane) {
+    this->normal = -this->normal;
+  }
   this->layer_id = layer_id;
 }
 
 float4x4 PlanarProbe::reflection_matrix_get()
 {
-  return plane_to_world * math::from_scale<float4x4>(float3(1, 1, -1)) * world_to_plane;
+  return plane_to_world * from_scale<float4x4>(float3(1, 1, -1)) * world_to_plane;
 }
 
 float4 PlanarProbe::reflection_clip_plane_get()
 {
-  float3 normal = math::normalize(plane_to_world.z_axis());
-  return float4(-normal, -math::dot(normal, plane_to_world.location()) - clipping_offset);
+  return float4(-normal, dot(normal, plane_to_world.location()) - clipping_offset);
 }
 
 /** \} */
@@ -68,7 +76,7 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   }
 
   PlanarProbe &probe = find_or_insert(ob_handle);
-  probe.sync(float4x4(ob->object_to_world), float4x4(ob->world_to_object), light_probe->clipsta);
+  probe.sync(float4x4(ob->object_to_world), light_probe->clipsta, light_probe->distinf);
   probe.is_probe_used = true;
 }
 
