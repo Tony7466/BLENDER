@@ -112,7 +112,7 @@ void main()
 
       mask_shift = 1;
 
-      /* Limited by Intel ARC that doesn't support barriers inside a non-uniform control flow. */
+      /* Level 7 requires barriers inside a non-uniform control flow. */
       // downsample_level(out_mip_7, 7);
 
       /* Limited by OpenGL maximum of 8 image slot. */
