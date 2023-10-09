@@ -5999,7 +5999,8 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
 
   paint_stroke_operator_properties(ot);
 
-  RNA_def_float_array(ot->srna, "repeat_tangent_frame", 9, 0, -1, 1, "", "", 0, 0);
+  PropertyRNA *prop = RNA_def_float_array(ot->srna, "repeat_tangent_frame", 9, 0, -1, 1, "", "", 0, 0);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE|PROP_HIDDEN);
 
   RNA_def_boolean(ot->srna,
                   "ignore_background_click",
