@@ -13,7 +13,9 @@ namespace blender::eevee {
 
 void PlanarProbeModule::init()
 {
-  update_probes_ = !probes_.is_empty();
+  if (assign_if_different(update_probes_, !probes_.is_empty())) {
+    instance_.sampling.reset();
+  }
 }
 
 void PlanarProbeModule::begin_sync()
@@ -30,6 +32,12 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
+  /* Deferred shader compilation already triggers a redraw. When planar probes are enabled it can
+   * happen that the first sample is off. */
+  if (!update_probes_) {
+    DRW_viewport_request_redraw();
+  }
+
   /* TODO Cull out of view planars. */
 
   PlanarProbe &probe = find_or_insert(ob_handle);
@@ -42,11 +50,6 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 void PlanarProbeModule::end_sync()
 {
   remove_unused_probes();
-
-  // if (probes_.is_empty()) {
-  //   update_probes_ = true;
-  //   instance_.sampling.reset();
-  // }
 }
 
 float4x4 PlanarProbeModule::reflection_matrix_get(const float4x4 &plane_to_world,
