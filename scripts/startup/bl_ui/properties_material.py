@@ -268,7 +268,7 @@ class EEVEE_NEXT_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
         row = layout.row()
         row.active = ((mat.blend_method == 'CLIP') or (mat.shadow_method == 'CLIP'))
         row.prop(mat, "alpha_threshold")
-        
+
         if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
             col.prop(mat, "show_transparent_back", text="Transparency")
 
