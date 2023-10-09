@@ -81,12 +81,15 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_planar_eval)
     .early_fragment_test(true)
     /* Inputs. */
     .fragment_out(0, Type::VEC4, "out_radiance")
+    .define("REFLECTION_PROBE")
     .define("SSS_TRANSMITTANCE")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_light_data",
+                     "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_hiz_data",
                      "draw_view",

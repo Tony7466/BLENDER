@@ -1009,6 +1009,7 @@ void PlanarProbePipeline::begin_sync()
     inst_.shadows.bind_resources(&pass);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
+    inst_.reflection_probes.bind_resources(&pass);
     inst_.irradiance_cache.bind_resources(&pass);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
