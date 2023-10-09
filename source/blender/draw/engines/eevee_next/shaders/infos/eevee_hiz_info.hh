@@ -15,12 +15,12 @@ GPU_SHADER_CREATE_INFO(eevee_hiz_update)
     .storage_buf(0, Qualifier::READ_WRITE, "uint", "finished_tile_counter")
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .image(0, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_0")
-#if 0
     .image(1, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_1")
     .image(2, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_2")
     .image(3, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_3")
     .image(4, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_4")
-    .image(5, GPU_R32F, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "out_mip_5")
+    .image(5, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_5")
+#if 0
     .image(6, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_6")
     .image(7, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_mip_7")
 #endif

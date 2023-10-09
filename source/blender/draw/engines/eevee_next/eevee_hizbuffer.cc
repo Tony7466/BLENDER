@@ -38,12 +38,12 @@ void HiZBuffer::sync()
     hiz_update_ps_.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     hiz_update_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, with_filter);
     hiz_update_ps_.bind_image("out_mip_0", hiz_tx_.mip_view(0));
-#if 0
     hiz_update_ps_.bind_image("out_mip_1", hiz_tx_.mip_view(1));
     hiz_update_ps_.bind_image("out_mip_2", hiz_tx_.mip_view(2));
     hiz_update_ps_.bind_image("out_mip_3", hiz_tx_.mip_view(3));
     hiz_update_ps_.bind_image("out_mip_4", hiz_tx_.mip_view(4));
     hiz_update_ps_.bind_image("out_mip_5", hiz_tx_.mip_view(5));
+#if 0
     hiz_update_ps_.bind_image("out_mip_6", hiz_tx_.mip_view(6));
     hiz_update_ps_.bind_image("out_mip_7", hiz_tx_.mip_view(7));
 #endif
