@@ -178,6 +178,20 @@ static void verify_socket_template_list(bNodeTree *ntree,
 
 namespace blender::nodes {
 
+static bNodeSocket *get_old_socket_for_declaration(const bNode &node,
+                                                   Vector<bNodeSocket *> &old_sockets,
+                                                   const SocketDeclaration &socket_decl)
+{
+  for (const int i : old_sockets.index_range()) {
+    bNodeSocket &old_socket = *old_sockets[i];
+    if (old_socket.identifier == socket_decl.identifier) {
+      old_sockets.remove_and_reorder(i);
+      return &old_socket;
+    }
+  }
+  return nullptr;
+}
+
 static void refresh_node_socket(bNodeTree &ntree,
                                 bNode &node,
                                 const SocketDeclaration &socket_decl,
@@ -185,15 +199,9 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 VectorSet<bNodeSocket *> &new_sockets)
 {
   /* Try to find a socket that corresponds to the declaration. */
-  bNodeSocket *old_socket_with_same_identifier = nullptr;
-  for (const int i : old_sockets.index_range()) {
-    bNodeSocket &old_socket = *old_sockets[i];
-    if (old_socket.identifier == socket_decl.identifier) {
-      old_sockets.remove_and_reorder(i);
-      old_socket_with_same_identifier = &old_socket;
-      break;
-    }
-  }
+  bNodeSocket *old_socket_with_same_identifier = get_old_socket_for_declaration(
+      node, old_sockets, socket_decl);
+
   bNodeSocket *new_socket = nullptr;
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
