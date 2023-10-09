@@ -2039,29 +2039,17 @@ static void fill_reorder_indices_array(const int reorder_from,
 
   const int start = math::min(reorder_from, reorder_to);
   const int end = math::max(reorder_from, reorder_to);
-
   const int dist = math::abs(reorder_to - reorder_from);
 
-  for (const int i : IndexRange(start)) {
-    reorder_indices[i] = i;
-  }
-
+  array_utils::fill_index_range(reorder_indices.slice(IndexRange(start)));
   reorder_indices[reorder_from] = reorder_to;
-
   if (reorder_from < reorder_to) {
-    for (const int i : IndexRange(reorder_from + 1, dist)) {
-      reorder_indices[i] = i - 1;
-    }
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_from + 1, dist)), reorder_from);
   }
   else {
-    for (const int i : IndexRange(reorder_to, dist)) {
-      reorder_indices[i] = i + 1;
-    }
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_to, dist)), reorder_to + 1);
   }
-
-  for (const int i : IndexRange(end + 1, size - end - 1)) {
-    reorder_indices[i] = i;
-  }
+  array_utils::fill_index_range(reorder_indices.slice(IndexRange(end + 1, size - end - 1)), end + 1);
 }
 
 static void reorder_layer_data(GreasePencil &grease_pencil,
