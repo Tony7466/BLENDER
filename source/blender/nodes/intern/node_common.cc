@@ -269,7 +269,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     case SOCK_ENUM: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueEnum>(io_socket);
       std::unique_ptr<decl::Enum> decl = std::make_unique<decl::Enum>();
-      decl->default_value = value.identifier;
+      decl->default_value = value.value;
       dst = std::move(decl);
       break;
     }

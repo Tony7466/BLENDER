@@ -473,6 +473,53 @@ bNodeSocket &String::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name #Enum
+ * \{ */
+
+bNodeSocket &Enum::build(bNodeTree &ntree, bNode &node) const
+{
+  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+                                             &node,
+                                             this->in_out,
+                                             SOCK_ENUM,
+                                             PROP_NONE,
+                                             this->identifier.c_str(),
+                                             this->name.c_str());
+
+  ((bNodeSocketValueEnum *)socket.default_value)->value = this->default_value;
+  this->set_common_flags(socket);
+  return socket;
+}
+
+bool Enum::matches(const bNodeSocket &socket) const
+{
+  if (!this->matches_common_data(socket)) {
+    return false;
+  }
+  if (socket.type != SOCK_ENUM) {
+    return false;
+  }
+  return true;
+}
+
+bool Enum::can_connect(const bNodeSocket &socket) const
+{
+  return sockets_can_connect(*this, socket) && socket.type == SOCK_ENUM;
+}
+
+bNodeSocket &Enum::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
+{
+  if (socket.type != SOCK_ENUM) {
+    BLI_assert(socket.in_out == this->in_out);
+    return this->build(ntree, node);
+  }
+  this->set_common_flags(socket);
+  return socket;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name #IDSocketDeclaration
  * \{ */
 

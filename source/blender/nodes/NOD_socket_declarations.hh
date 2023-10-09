@@ -179,6 +179,27 @@ class StringBuilder : public SocketDeclarationBuilder<String> {
   StringBuilder &default_value(const std::string value);
 };
 
+class EnumBuilder;
+
+class Enum : public SocketDeclaration {
+ public:
+  int32_t default_value;
+
+  friend EnumBuilder;
+
+  using Builder = EnumBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class EnumBuilder : public SocketDeclarationBuilder<Enum> {
+ public:
+  EnumBuilder &default_value(int32_t value);
+};
+
 class IDSocketDeclaration : public SocketDeclaration {
  public:
   const char *idname;
@@ -484,6 +505,23 @@ inline StringBuilder &StringBuilder::default_value(std::string value)
   }
   if (decl_out_) {
     decl_out_->default_value = std::move(value);
+  }
+  return *this;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #EnumBuilder Inline Methods
+ * \{ */
+
+inline EnumBuilder &EnumBuilder::default_value(const int32_t value)
+{
+  if (decl_in_) {
+    decl_in_->default_value = value;
+  }
+  if (decl_out_) {
+    decl_out_->default_value = value;
   }
   return *this;
 }
