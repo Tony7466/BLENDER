@@ -14,7 +14,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_volume.h"
 
 #include "BLT_translation.h"
@@ -131,6 +131,9 @@ static Volume *mesh_to_volume(ModifierData *md,
     return input_volume;
   }
   BKE_mesh_wrapper_ensure_mdata(mesh);
+  if (mesh->totvert == 0) {
+    return input_volume;
+  }
 
   const float4x4 mesh_to_own_object_space_transform = float4x4(ctx->object->world_to_object) *
                                                       float4x4(object_to_convert->object_to_world);
