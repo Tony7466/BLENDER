@@ -223,11 +223,38 @@ static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclarat
   return std::nullopt;
 }
 
+static bool do_forward_compatible_socket_type_check(const bNode &node)
+{
+  switch (node.type) {
+    case GEO_NODE_SWITCH:
+    case GEO_NODE_ACCUMULATE_FIELD:
+    case GEO_NODE_CAPTURE_ATTRIBUTE:
+    case GEO_NODE_ATTRIBUTE_STATISTIC:
+    case GEO_NODE_BLUR_ATTRIBUTE:
+    case GEO_NODE_CURVE_SAMPLE_FACTOR:
+    case GEO_NODE_EVALUATE_AT_INDEX:
+    case GEO_NODE_EVALUATE_ON_DOMAIN:
+    case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
+    case GEO_NODE_RAYCAST:
+    case GEO_NODE_SAMPLE_INDEX:
+    case GEO_NODE_SAMPLE_NEAREST_SURFACE:
+    case GEO_NODE_SAMPLE_UV_SURFACE:
+    case GEO_NODE_STORE_NAMED_ATTRIBUTE:
+    case GEO_NODE_VIEWER:
+    case FN_NODE_COMPARE:
+    case FN_NODE_RANDOM_VALUE:
+    case SH_NODE_MIX:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static bNodeSocket *get_old_socket_for_declaration(const bNode &node,
                                                    Vector<bNodeSocket *> &old_sockets,
                                                    const SocketDeclaration &socket_decl)
 {
-  const bool use_prefix_and_type_check = ELEM(node.type, GEO_NODE_SWITCH);
+  const bool use_prefix_and_type_check = do_forward_compatible_socket_type_check(node);
 
   for (const int i : old_sockets.index_range()) {
     bNodeSocket &old_socket = *old_sockets[i];
