@@ -119,6 +119,8 @@ struct PaintOperationExecutor {
 
   bke::greasepencil::Drawing *drawing_;
 
+  bke::greasepencil::DrawingTransforms transforms_;
+
   PaintOperationExecutor(const bContext &C)
   {
     Scene *scene = CTX_data_scene(&C);
@@ -155,16 +157,18 @@ struct PaintOperationExecutor {
     BLI_assert(drawing_index >= 0);
     drawing_ =
         &reinterpret_cast<GreasePencilDrawing *>(grease_pencil_->drawing(drawing_index))->wrap();
+
+    transforms_ = bke::greasepencil::DrawingTransforms(*object);
   }
 
   float3 screen_space_to_object_space(const float2 co)
   {
     /* TODO: Use correct plane/projection. */
     const float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
-    /* TODO: Use object transform. */
     float3 proj_point;
-    ED_view3d_win_to_3d_on_plane(region_, plane, co, false, proj_point);
-    return proj_point;
+    ED_view3d_win_to_3d_on_plane(
+        region_, transforms_.layer_space_to_world_space * plane, co, false, proj_point);
+    return math::transform_point(transforms_.world_space_to_layer_space, proj_point);
   }
 
   float radius_from_input_sample(const InputSample &sample)
