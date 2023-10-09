@@ -161,7 +161,7 @@ struct PaintOperationExecutor {
     transforms_ = bke::greasepencil::DrawingTransforms(*object);
   }
 
-  float3 screen_space_to_object_space(const float2 co)
+  float3 screen_space_to_drawing_plane(const float2 co)
   {
     /* TODO: Use correct plane/projection. */
     const float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
@@ -208,7 +208,7 @@ struct PaintOperationExecutor {
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
-    curves.positions_for_write().last() = screen_space_to_object_space(start_coords);
+    curves.positions_for_write().last() = screen_space_to_drawing_plane(start_coords);
     drawing_->radii_for_write().last() = start_radius;
     drawing_->opacities_for_write().last() = start_opacity;
     drawing_->vertex_colors_for_write().last() = start_vertex_color;
@@ -302,7 +302,7 @@ struct PaintOperationExecutor {
 
       /* Update the positions in the current cache. */
       smoothed_coords_slice[i] = new_pos;
-      positions_slice[i] = screen_space_to_object_space(new_pos);
+      positions_slice[i] = screen_space_to_drawing_plane(new_pos);
     }
 
     /* Remove all the converged points from the active window and shrink the window accordingly. */
@@ -336,7 +336,7 @@ struct PaintOperationExecutor {
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = screen_space_to_object_space(coords);
+      curves.positions_for_write().last() = screen_space_to_drawing_plane(coords);
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -380,7 +380,7 @@ struct PaintOperationExecutor {
     if (points.size() < min_active_smoothing_points_num) {
       MutableSpan<float3> positions_slice = curves.positions_for_write().slice(new_range);
       for (const int64_t i : new_screen_space_coords.index_range()) {
-        positions_slice[i] = screen_space_to_object_space(new_screen_space_coords[i]);
+        positions_slice[i] = screen_space_to_drawing_plane(new_screen_space_coords[i]);
       }
       return;
     }
