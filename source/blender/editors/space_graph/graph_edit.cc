@@ -42,7 +42,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -604,7 +604,7 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
 }
 
 static std::string graphkeys_paste_description(bContext * /*C*/,
-                                               wmOperatorType * /*op*/,
+                                               wmOperatorType * /*ot*/,
                                                PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
@@ -830,13 +830,18 @@ static void clean_graph_keys(bAnimContext *ac, float thresh, bool clean_chan)
 
   /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
-            ANIMFILTER_FOREDIT | ANIMFILTER_SEL | ANIMFILTER_NODUPLIS);
+            ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
+  if (clean_chan) {
+    filter |= ANIMFILTER_SEL;
+  }
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
+  const bool only_selected_keys = !clean_chan;
   /* Loop through filtered data and clean curves. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    clean_fcurve(ac, ale, thresh, clean_chan);
+
+    clean_fcurve(ac, ale, thresh, clean_chan, only_selected_keys);
 
     ale->update |= ANIM_UPDATE_DEFAULT;
   }
@@ -1305,7 +1310,7 @@ void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
  * \{ */
 
 /* Evaluates the curves between each selected keyframe on each frame, and keys the value. */
-static void sample_graph_keys(bAnimContext *ac)
+static void bake_graph_keys(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
@@ -1318,7 +1323,7 @@ static void sample_graph_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    sample_fcurve((FCurve *)ale->key_data);
+    bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
@@ -1329,7 +1334,7 @@ static void sample_graph_keys(bAnimContext *ac)
 
 /* ------------------- */
 
-static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
+static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
@@ -1338,8 +1343,8 @@ static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  /* Sample keyframes. */
-  sample_graph_keys(&ac);
+  /* Bake keyframes. */
+  bake_graph_keys(&ac);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
@@ -1347,15 +1352,15 @@ static int graphkeys_sample_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_sample(wmOperatorType *ot)
+void GRAPH_OT_bake_keys(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Sample Keyframes";
-  ot->idname = "GRAPH_OT_sample";
+  ot->name = "Bake Keyframes";
+  ot->idname = "GRAPH_OT_bake_keys";
   ot->description = "Add keyframes on every frame between the selected keyframes";
 
   /* API callbacks */
-  ot->exec = graphkeys_sample_exec;
+  ot->exec = graphkeys_bake_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags */

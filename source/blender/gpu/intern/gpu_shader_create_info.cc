@@ -141,6 +141,7 @@ void ShaderCreateInfo::finalize()
       depth_write_ = info.depth_write_;
     }
 
+    /* Inherit builtin bits from additional info. */
     builtins_ |= info.builtins_;
 
     validate_merge(info);
@@ -179,9 +180,13 @@ void ShaderCreateInfo::finalize()
       assert_no_overlap(compute_source_.is_empty(), "Compute source already existing");
       compute_source_ = info.compute_source_;
     }
+  }
 
-    /* Inherit builtin bits from additional info. */
-    builtins_ |= info.builtins_;
+  if (!geometry_source_.is_empty() && bool(builtins_ & BuiltinBits::LAYER)) {
+    std::cout << name_
+              << ": Validation failed. BuiltinBits::LAYER shouldn't be used with geometry shaders."
+              << std::endl;
+    BLI_assert(0);
   }
 
   if (auto_resource_location_) {
@@ -517,8 +522,7 @@ bool gpu_shader_create_info_compile_all()
       if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
-          (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
-          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage()))
+          (GPU_shader_image_load_store_support() == false && info->has_resource_image()))
       {
         skipped++;
         continue;

@@ -24,6 +24,12 @@ struct Mesh;
 struct PointCloud;
 struct Volume;
 struct GreasePencil;
+namespace blender::bke {
+class ComponentAttributeProviders;
+class CurvesEditHints;
+class Instances;
+class GeometryComponent;
+}  // namespace blender::bke
 
 namespace blender::bke {
 
@@ -38,11 +44,6 @@ enum class GeometryOwnershipType {
   ReadOnly = 2,
 };
 
-class ComponentAttributeProviders;
-class CurvesEditHints;
-class Instances;
-
-class GeometryComponent;
 using GeometryComponentPtr = ImplicitSharingPtr<GeometryComponent>;
 
 /**
@@ -398,6 +399,12 @@ struct GeometrySet {
    */
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+
+  friend bool operator==(const GeometrySet &a, const GeometrySet &b)
+  {
+    /* This compares only the component pointers, not the actual geometry data. */
+    return Span(a.components_) == Span(b.components_);
+  }
 
  private:
   /**
