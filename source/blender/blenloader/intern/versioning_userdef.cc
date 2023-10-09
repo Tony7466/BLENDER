@@ -70,6 +70,9 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     memcpy(btheme, &U_theme_default, sizeof(*btheme));
   }
 
+  printf("VERSION:");
+  printf("%d", userdef->versionfile);
+  printf("%d", userdef->subversionfile);
   /* Again reset the theme, but only if stored with an early 3.1 alpha version. Some changes were
    * done in the release branch and then merged into the 3.1 branch (master). So the previous reset
    * wouldn't work for people who saved their preferences with a 3.1 build meanwhile. But we still
@@ -110,6 +113,9 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   if (!USER_VERSION_ATLEAST(400, 14)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.back);
     FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.header_back);
+  }
+  if (!USER_VERSION_ATLEAST(400, 24)) {
+    memcpy(btheme->tarm, &U_theme_default.tarm, sizeof(*btheme->tarm)*20);
   }
 
   if (!USER_VERSION_ATLEAST(400, 24)) {
