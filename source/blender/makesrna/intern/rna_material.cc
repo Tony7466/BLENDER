@@ -858,9 +858,10 @@ void RNA_def_material(BlenderRNA *brna)
       prop, "Backface Culling", "Use back face culling to hide the back side of faces");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
-  prop = RNA_def_property(srna, "double_sided_gi", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_DOUBLE_SIDED_GI);
-  RNA_def_property_ui_text(prop, "Double Sided GI", "Use back faces for GI");
+  prop = RNA_def_property(srna, "use_backface_culling_probe", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_CULL_BACKFACE_PROBE);
+  RNA_def_property_ui_text(
+      prop, "Probe Capture Backface Culling", "Use back faces for probe captures");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
   prop = RNA_def_property(srna, "use_screen_refraction", PROP_BOOLEAN, PROP_NONE);

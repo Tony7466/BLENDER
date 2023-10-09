@@ -1086,7 +1086,7 @@ PassMain::Sub *CapturePipeline::surface_material_add(::Material *blender_mat, GP
   PassMain::Sub &sub_pass = surface_ps_.sub(GPU_material_get_name(gpumat));
   GPUPass *gpupass = GPU_material_get_pass(gpumat);
   sub_pass.shader_set(GPU_pass_shader_get(gpupass));
-  sub_pass.push_constant("double_sided_for_gi", blender_mat->blend_flag & MA_BL_DOUBLE_SIDED_GI);
+  sub_pass.push_constant("double_sided", !(blender_mat->blend_flag & MA_BL_CULL_BACKFACE_PROBE));
   return &sub_pass;
 }
 
