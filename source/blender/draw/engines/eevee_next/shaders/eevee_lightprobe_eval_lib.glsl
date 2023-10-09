@@ -154,8 +154,9 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
       index = i;
 #ifndef IRRADIANCE_GRID_UPLOAD
       float distance_to_border = min_v3(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
-      float noise = utility_tx_fetch(utility_tx, UTIL_TEXEL, UTIL_BLUE_NOISE_LAYER).x;
-      if (distance_to_border < fract(noise + sampling_rng_1D_get(SAMPLING_VOLUME_U))) {
+      float noise = interlieved_gradient_noise(
+          UTIL_TEXEL, float(i), sampling_rng_1D_get(SAMPLING_VOLUME_U));
+      if (distance_to_border < fract(noise + sampling_rng_1D_get(SAMPLING_VOLUME_V))) {
         /* Try to sample another grid to get smooth transitions at borders. */
         continue;
       }
