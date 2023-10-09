@@ -108,8 +108,6 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
     probe_planar_buf_[resource_index] = probe;
 
     res.view.sync(probe.viewmat, probe.winmat);
-    /* FIXME: Huge performance issue. Visibility should still work with inverted matrices. */
-    res.view.visibility_test(false);
 
     world_clip_buf_.plane = probe.reflection_clip_plane_get();
     world_clip_buf_.push_update();
