@@ -32,12 +32,6 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
-  /* Deferred shader compilation already triggers a redraw. When planar probes are enabled it can
-   * happen that the first sample is off. */
-  if (!update_probes_) {
-    DRW_viewport_request_redraw();
-  }
-
   /* TODO Cull out of view planars. */
 
   PlanarProbe &probe = find_or_insert(ob_handle);
@@ -50,6 +44,11 @@ void PlanarProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 void PlanarProbeModule::end_sync()
 {
   remove_unused_probes();
+
+  /* When first planar probes are enabled it can happen that the first sample is off. */
+  if (!update_probes_ && !probes_.is_empty()) {
+    DRW_viewport_request_redraw();
+  }
 }
 
 float4x4 PlanarProbeModule::reflection_matrix_get(const float4x4 &plane_to_world,
