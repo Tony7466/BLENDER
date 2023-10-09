@@ -43,10 +43,7 @@ void HiZBuffer::sync()
     hiz_update_ps_.bind_image("out_mip_3", hiz_tx_.mip_view(3));
     hiz_update_ps_.bind_image("out_mip_4", hiz_tx_.mip_view(4));
     hiz_update_ps_.bind_image("out_mip_5", hiz_tx_.mip_view(5));
-#if 0
     hiz_update_ps_.bind_image("out_mip_6", hiz_tx_.mip_view(6));
-    hiz_update_ps_.bind_image("out_mip_7", hiz_tx_.mip_view(7));
-#endif
     /* TODO(@fclem): There might be occasions where we might not want to
      * copy mip 0 for performance reasons if there is no need for it. */
     hiz_update_ps_.push_constant("update_mip_0", true);

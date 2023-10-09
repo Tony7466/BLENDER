@@ -92,7 +92,6 @@ void main()
   }
   finished_tile_counter = 0u;
 
-#if 0
   ivec2 iter = divide_ceil(imageSize(out_mip_5), ivec2(gl_WorkGroupSize.xy * 2u));
   ivec2 image_border = imageSize(out_mip_5) - 1;
   for (int y = 0; y < iter.y; y++) {
@@ -113,8 +112,8 @@ void main()
 
       mask_shift = 1;
 
-      /* Level 7. */
-      downsample_level(out_mip_7, 7);
+      /* Limited by Intel ARC that doesn't support barriers inside a non-uniform control flow. */
+      // downsample_level(out_mip_7, 7);
 
       /* Limited by OpenGL maximum of 8 image slot. */
       // downsample_level(out_mip_8, 8);
@@ -122,5 +121,4 @@ void main()
       // downsample_level(out_mip_10, 10);
     }
   }
-#endif
 }
