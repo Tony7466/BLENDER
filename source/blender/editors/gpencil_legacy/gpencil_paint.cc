@@ -48,7 +48,7 @@
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "UI_view2d.hh"
@@ -4048,7 +4048,7 @@ void GPENCIL_OT_draw(wmOperatorType *ot)
 
 /* additional OPs */
 
-static int gpencil_guide_rotate(bContext *C, wmOperator *op)
+static int gpencil_guide_rotate_exec(bContext *C, wmOperator *op)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
   GP_Sculpt_Guide *guide = &ts->gp_sculpt.guide;
@@ -4074,7 +4074,7 @@ void GPENCIL_OT_guide_rotate(wmOperatorType *ot)
   ot->description = "Rotate guide angle";
 
   /* api callbacks */
-  ot->exec = gpencil_guide_rotate;
+  ot->exec = gpencil_guide_rotate_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

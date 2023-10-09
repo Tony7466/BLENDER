@@ -88,7 +88,7 @@
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_unit.h"
 #include "BKE_workspace.h"
@@ -1070,7 +1070,7 @@ static void displacement_principled_nodes(bNode *node)
     }
   }
   else if (node->type == SH_NODE_BSDF_PRINCIPLED) {
-    if (node->custom2 != SHD_SUBSURFACE_RANDOM_WALK) {
+    if (node->custom2 != SHD_SUBSURFACE_RANDOM_WALK_SKIN) {
       node->custom2 = SHD_SUBSURFACE_BURLEY;
     }
   }
@@ -2404,6 +2404,32 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
 
             /* Don't forget to unset! */
             area->butspacetype = SPACE_EMPTY;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 280, 14)) {
+    /* This code fixes crashes when loading early 2.80 development files, due to the lack of a
+     * master collection after removal of the versioning code handling the 'SceneCollection' data
+     * that was part of the very early 2.80 development (commit 23835a393c).
+     *
+     * NOTE: This code only ensures that there is no crash, since the whole collection hierarchy
+     * from these files remain lost, these files will still need a lot of manual work if one want
+     * to get them working properly again. Or just open and save them with an older release of
+     * Blender (up to 3.6 included). */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->master_collection == nullptr) {
+        scene->master_collection = BKE_collection_master_add(scene);
+        /* #BKE_layer_collection_sync accepts missing view-layer in a scene, but not invalid ones
+         * where the first view-layer's layer-collection would not be for the Scene's master
+         * collection. */
+        LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
+          if (LayerCollection *first_layer_collection = static_cast<LayerCollection *>(
+                  view_layer->layer_collections.first))
+          {
+            first_layer_collection->collection = scene->master_collection;
           }
         }
       }

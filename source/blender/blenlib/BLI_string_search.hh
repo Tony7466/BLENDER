@@ -14,7 +14,18 @@ namespace blender::string_search {
 
 struct SearchItem {
   void *user_data;
-  Span<blender::StringRef> normalized_words;
+  Span<StringRef> normalized_words;
+  /**
+   * When using menu-search, the search item is often split into multiple groups of words, each of
+   * which corresponds to a menu entry. This id is the same for words in the same group and
+   * different otherwise.
+   */
+  Span<int> word_group_ids;
+  /**
+   * The id of the group that is highlighted in the UI. In some places, the words in this group are
+   * given higher weight.
+   */
+  int main_group_id;
   int length;
   int weight;
   /**
@@ -26,7 +37,7 @@ struct SearchItem {
 
 struct RecentCache {
   /**
-   * Stores a logical time stamp for each previously choosen search item. The higher the time
+   * Stores a logical time stamp for each previously chosen search item. The higher the time
    * stamp, the more recently the item has been selected.
    */
   Map<std::string, int> logical_time_by_str;
@@ -106,6 +117,7 @@ int get_fuzzy_match_errors(StringRef query, StringRef full);
  */
 void extract_normalized_words(StringRef str,
                               LinearAllocator<> &allocator,
-                              Vector<StringRef, 64> &r_words);
+                              Vector<StringRef, 64> &r_words,
+                              Vector<int, 64> &r_word_group_ids);
 
 }  // namespace blender::string_search
