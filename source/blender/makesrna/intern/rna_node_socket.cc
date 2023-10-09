@@ -449,7 +449,12 @@ const EnumPropertyItem *RNA_node_socket_enum_itemf(bContext * /*C*/,
                                                    PropertyRNA * /*prop*/,
                                                    bool *r_free)
 {
-  const bNodeSocketValueEnum &storage = *static_cast<bNodeSocketValueEnum *>(ptr->data);
+  const bNodeSocket *socket = static_cast<bNodeSocket *>(ptr->data);
+  if (!socket) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  const bNodeSocketValueEnum &storage = *static_cast<bNodeSocketValueEnum *>(socket->default_value);
   const NodeEnumDefinition *enum_def = storage.enum_ref.get();
   if (!enum_def) {
     *r_free = false;
