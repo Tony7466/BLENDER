@@ -1126,6 +1126,7 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
       GHOST_TAxisFlag bounds_axis = GHOST_kAxisNone;
 
       if (window->getCursorGrabMode() == GHOST_kGrabHide) {
+        /* Use custom grab bounds if available, window bounds if not. */
         if (window->getCursorGrabBounds(bounds) == GHOST_kFailure) {
           window->getClientBounds(bounds);
 
