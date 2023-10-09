@@ -83,6 +83,12 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
     case SOCK_ROTATION:
       b.add_input<decl::Rotation>(name, identifier);
       break;
+
+    case SOCK_ENUM:
+      /* Technically possible perhaps to select an enum based on
+       * another enum, but not supported for now. */
+      BLI_assert_unreachable();
+      break;
   }
 }
 
@@ -135,6 +141,12 @@ static void add_output(NodeDeclarationBuilder &b,
       break;
     case SOCK_ROTATION:
       b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
+      break;
+
+    case SOCK_ENUM:
+      /* Technically possible perhaps to select an enum based on
+       * another enum, but not supported for now. */
+      BLI_assert_unreachable();
       break;
   }
 }
