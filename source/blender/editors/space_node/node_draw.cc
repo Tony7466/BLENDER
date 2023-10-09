@@ -2973,13 +2973,14 @@ static void node_draw_basis(const bContext &C,
   char showname[128];
   bke::nodeLabel(&ntree, &node, showname, sizeof(showname));
 
+  const int labelbut_x = rct.xmin + NODE_MARGIN_X + 0.4f;
   uiBut *but = uiDefBut(&block,
                         UI_BTYPE_LABEL,
                         0,
                         showname,
-                        int(rct.xmin + NODE_MARGIN_X + 0.4f),
+                        labelbut_x,
                         int(rct.ymax - NODE_DY),
-                        short(iconofs - rct.xmin - (18.0f * UI_SCALE_FAC)),
+                        short(iconofs - labelbut_x),
                         short(NODE_DY),
                         nullptr,
                         0,
