@@ -151,7 +151,7 @@ static AttributeAccessorFunctions get_grease_pencil_accessor_functions()
     }
   };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
-    return ELEM(domain, ATTR_DOMAIN_GREASE_PENCIL_LAYER);
+    return domain == ATTR_DOMAIN_GREASE_PENCIL_LAYER;
   };
   fn.adapt_domain = [](const void *owner,
                        const GVArray &varray,

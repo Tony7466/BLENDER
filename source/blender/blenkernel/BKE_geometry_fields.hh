@@ -132,8 +132,10 @@ class GeometryFieldContext : public fn::FieldContext {
   const void *geometry_;
   const GeometryComponent::Type type_;
   const eAttrDomain domain_;
-  /** Only used when the type is grease pencil and the domain is either points or curves
-   * (not layers). */
+  /**
+   * Only used when the type is grease pencil and the domain is either points or curves
+   * (not layers).
+   */
   int grease_pencil_layer_index_;
 
   friend GeometryFieldInput;
@@ -168,6 +170,9 @@ class GeometryFieldContext : public fn::FieldContext {
 
   int grease_pencil_layer_index() const
   {
+    BLI_assert(this->type_ == GeometryComponent::Type::GreasePencil);
+    BLI_assert(ELEM(
+        this->domain_, ATTR_DOMAIN_GREASE_PENCIL_LAYER, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT));
     return grease_pencil_layer_index_;
   }
 

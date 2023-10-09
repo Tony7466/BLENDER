@@ -601,7 +601,7 @@ static bool try_add_shared_field_attribute(MutableAttributeAccessor attributes,
 }
 
 static bool try_capture_field_on_geometry(MutableAttributeAccessor attributes,
-                                          GeometryFieldContext field_context,
+                                          const GeometryFieldContext &field_context,
                                           const AttributeIDRef &attribute_id,
                                           const eAttrDomain domain,
                                           const fn::Field<bool> &selection,
@@ -696,27 +696,26 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     if (grease_pencil == nullptr) {
       return false;
     }
-    std::atomic<bool> any_success = false;
-    threading::parallel_for(
-        grease_pencil->layers().index_range(), 64, [&](const IndexRange range) {
-          for (const int layer_index : range) {
-            if (greasepencil::Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(
-                    *grease_pencil, layer_index))
-            {
-              const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
-              const bool success = try_capture_field_on_geometry(
-                  drawing->strokes_for_write().attributes_for_write(),
-                  field_context,
-                  attribute_id,
-                  domain,
-                  selection,
-                  field);
-              if (success & !any_success) {
-                any_success = true;
-              }
-            }
+    bool any_success = false;
+    threading::parallel_for(grease_pencil->layers().index_range(), 8, [&](const IndexRange range) {
+      for (const int layer_index : range) {
+        if (greasepencil::Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(
+                *grease_pencil, layer_index))
+        {
+          const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
+          const bool success = try_capture_field_on_geometry(
+              drawing->strokes_for_write().attributes_for_write(),
+              field_context,
+              attribute_id,
+              domain,
+              selection,
+              field);
+          if (success & !any_success) {
+            any_success = true;
           }
-        });
+        }
+      }
+    });
     return any_success;
   }
 

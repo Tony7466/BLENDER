@@ -690,7 +690,8 @@ class GeometryComponentEditData final : public GeometryComponent {
 
 /**
  * A geometry component that stores #GreasePencil data.
- * The attributes on this component are only on the layer domain.
+ * The attributes on this component are only on the layer domain. Each individual layer represents
+ * a #CurvesGeometry with its own curve and point domain. See #CurveComponent.
  */
 class GreasePencilComponent : public GeometryComponent {
  private:
