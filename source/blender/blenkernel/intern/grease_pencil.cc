@@ -1974,8 +1974,8 @@ static void grow_customdata(CustomData &data, const int insertion_index, const i
   CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
   CustomData_realloc(&new_data, size, size + 1);
 
-  IndexRange range_before(insertion_index + 1);
-  IndexRange range_after(insertion_index + 1, size - insertion_index - 1);
+  const IndexRange range_before(insertion_index + 1);
+  const IndexRange range_after(insertion_index + 1, size - insertion_index - 1);
 
   if (range_before.size() > 0) {
     CustomData_copy_data(
@@ -1997,7 +1997,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
   std::string unique_name = unique_layer_name(*this, name);
 
   const Span<const bke::greasepencil::Layer *> layers = this->layers();
-  if (layers.size() == 0) {
+  if (layers.is_empty()) {
     CustomData_realloc(&this->layers_data, 0, 1);
     return parent_group.add_layer(unique_name);
   }
@@ -2295,8 +2295,8 @@ static void shrink_customdata(CustomData &data, const int index_to_remove, const
   CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
   CustomData_realloc(&new_data, size, size - 1);
 
-  IndexRange range_before(index_to_remove);
-  IndexRange range_after(index_to_remove + 1, size - index_to_remove - 1);
+  const IndexRange range_before(index_to_remove);
+  const IndexRange range_after(index_to_remove + 1, size - index_to_remove - 1);
 
   if (range_before.size() > 0) {
     CustomData_copy_data(
