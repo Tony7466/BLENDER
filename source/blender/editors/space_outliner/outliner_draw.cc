@@ -2527,12 +2527,12 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
     case ID_LP: {
       const LightProbe *lp = (LightProbe *)id;
       switch (lp->type) {
-        case LIGHTPROBE_TYPE_CUBE:
+        case LIGHTPROBE_TYPE_CUBEMAP:
           return ICON_LIGHTPROBE_CUBEMAP;
         case LIGHTPROBE_TYPE_PLANAR:
           return ICON_LIGHTPROBE_PLANAR;
-        case LIGHTPROBE_TYPE_GRID:
-          return ICON_LIGHTPROBE_GRID;
+        case LIGHTPROBE_TYPE_VOLUME:
+          return ICON_LIGHTPROBE_VOLUME;
         default:
           return ICON_LIGHTPROBE_CUBEMAP;
       }

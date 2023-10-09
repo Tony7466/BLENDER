@@ -164,13 +164,9 @@ static const EnumPropertyItem field_type_items[] = {
 };
 
 static EnumPropertyItem lightprobe_type_items[] = {
-    {LIGHTPROBE_TYPE_CUBE, "CUBEMAP", ICON_LIGHTPROBE_CUBEMAP, "Cubemap", "Omnidirectional probe"},
-    {LIGHTPROBE_TYPE_PLANAR,
-     "PLANAR",
-     ICON_LIGHTPROBE_PLANAR,
-     "Planar",
-     "Planar reflection probe"},
-    {LIGHTPROBE_TYPE_GRID, "GRID", ICON_LIGHTPROBE_GRID, "Volume", "Volume grid probe"},
+    {LIGHTPROBE_TYPE_CUBEMAP, "CUBEMAP", ICON_LIGHTPROBE_CUBEMAP, "Cubemap", "Cubemap probe"},
+    {LIGHTPROBE_TYPE_PLANAR, "PLANAR", ICON_LIGHTPROBE_PLANAR, "Planar", "Planar probe"},
+    {LIGHTPROBE_TYPE_VOLUME, "VOLUME", ICON_LIGHTPROBE_VOLUME, "Volume", "Volume probe"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -738,11 +734,11 @@ void OBJECT_OT_add(wmOperatorType *ot)
 static const char *get_lightprobe_defname(int type)
 {
   switch (type) {
-    case LIGHTPROBE_TYPE_GRID:
+    case LIGHTPROBE_TYPE_VOLUME:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "IrradianceVolume");
     case LIGHTPROBE_TYPE_PLANAR:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "ReflectionPlane");
-    case LIGHTPROBE_TYPE_CUBE:
+    case LIGHTPROBE_TYPE_CUBEMAP:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "ReflectionCubemap");
     default:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "LightProbe");

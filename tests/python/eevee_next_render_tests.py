@@ -35,7 +35,7 @@ def setup():
         cubemap.data.falloff = 0
         cubemap.data.clip_start = 2.4
 
-        bpy.ops.object.lightprobe_add(type='GRID', location=(0, 0, 0.25))
+        bpy.ops.object.lightprobe_add(type='VOLUME', location=(0, 0, 0.25))
         grid = bpy.context.selected_objects[0]
         grid.scale = (1.735, 1.735, 1.735)
         grid.data.bake_samples = 256

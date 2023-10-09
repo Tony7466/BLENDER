@@ -436,9 +436,9 @@ static bool eevee_lightprobes_culling_test(Object *ob)
       const DRWView *default_view = DRW_view_default_get();
       return DRW_culling_box_test(default_view, &bbox);
     }
-    case LIGHTPROBE_TYPE_CUBE:
+    case LIGHTPROBE_TYPE_CUBEMAP:
       return true; /* TODO */
-    case LIGHTPROBE_TYPE_GRID:
+    case LIGHTPROBE_TYPE_VOLUME:
       return true; /* TODO */
   }
   BLI_assert(0);
@@ -450,8 +450,8 @@ void EEVEE_lightprobes_cache_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata
   EEVEE_LightProbesInfo *pinfo = sldata->probes;
   LightProbe *probe = (LightProbe *)ob->data;
 
-  if ((probe->type == LIGHTPROBE_TYPE_CUBE && pinfo->num_cube >= EEVEE_PROBE_MAX) ||
-      (probe->type == LIGHTPROBE_TYPE_GRID && pinfo->num_grid >= EEVEE_PROBE_MAX) ||
+  if ((probe->type == LIGHTPROBE_TYPE_CUBEMAP && pinfo->num_cube >= EEVEE_PROBE_MAX) ||
+      (probe->type == LIGHTPROBE_TYPE_VOLUME && pinfo->num_grid >= EEVEE_PROBE_MAX) ||
       (probe->type == LIGHTPROBE_TYPE_PLANAR && pinfo->num_planar >= MAX_PLANAR))
   {
     printf("Too many probes in the view !!!\n");
@@ -477,7 +477,7 @@ void EEVEE_lightprobes_cache_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata
   else {
     EEVEE_LightProbeEngineData *ped = EEVEE_lightprobe_data_ensure(ob);
     if (ped->need_update) {
-      if (probe->type == LIGHTPROBE_TYPE_GRID) {
+      if (probe->type == LIGHTPROBE_TYPE_VOLUME) {
         pinfo->do_grid_update = true;
       }
       else {

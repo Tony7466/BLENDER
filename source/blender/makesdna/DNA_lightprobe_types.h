@@ -97,9 +97,9 @@ typedef enum eLightProbeResolution {
 
 /* Probe->type */
 enum {
-  LIGHTPROBE_TYPE_CUBE = 0,
+  LIGHTPROBE_TYPE_CUBEMAP = 0,
   LIGHTPROBE_TYPE_PLANAR = 1,
-  LIGHTPROBE_TYPE_GRID = 2,
+  LIGHTPROBE_TYPE_VOLUME = 2,
 };
 
 /* Probe->flag */
