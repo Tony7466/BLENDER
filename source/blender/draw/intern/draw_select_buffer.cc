@@ -71,10 +71,14 @@ uint *DRW_select_buffer_read(
   rcti rect_clamp = *rect;
   if (BLI_rcti_isect(&r, &rect_clamp, &rect_clamp)) {
     SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+    RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
     DRW_gpu_context_enable();
-    /* Update the drawing. */
-    DRW_draw_select_id(depsgraph, region, v3d, rect);
+
+    if (select_ctx->is_dirty(rv3d)) {
+      /* Update drawing. */
+      DRW_draw_select_id(depsgraph, region, v3d);
+    }
 
     if (select_ctx->index_drawn_len > 1) {
       BLI_assert(region->winx == GPU_texture_width(DRW_engine_select_texture_get()) &&
@@ -97,7 +101,7 @@ uint *DRW_select_buffer_read(
                                  r_buf);
 
       if (!BLI_rcti_compare(rect, &rect_clamp)) {
-        /* The rect has been clamped so you need to realign the buffer and fill in the blanks */
+        /* The rect has been clamped so we need to realign the buffer and fill in the blanks */
         GPU_select_buffer_stride_realign(rect, &rect_clamp, r_buf);
       }
     }

@@ -17,8 +17,6 @@
 #include "DRW_engine.h"
 #include "DRW_select_buffer.hh"
 
-#include "DEG_depsgraph_query.hh"
-
 #include "draw_cache_impl.hh"
 #include "draw_manager.h"
 
@@ -178,12 +176,13 @@ static void select_cache_init(void *vedata)
     DrawData *data = DRW_drawdata_ensure(
         &obj_eval->id, &draw_engine_select_type, sizeof(SELECTID_ObjectData), nullptr, nullptr);
     SELECTID_ObjectData *sel_data = reinterpret_cast<SELECTID_ObjectData *>(data);
+
+    data->recalc = 0;
     sel_data->drawn_index = sel_id;
     sel_data->in_pass = false;
-    sel_data->is_draw = false;
+    sel_data->is_drawn = false;
   }
 
-  /* Remove all tags from drawn or culled objects. */
   copy_m4_m4(e_data.context.persmat, draw_ctx->rv3d->persmat);
   e_data.context.index_drawn_len = 1;
   select_engine_framebuffer_setup();
@@ -197,9 +196,9 @@ static void select_cache_populate(void *vedata, Object *ob)
   SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
       &ob->id, &draw_engine_select_type);
 
-  if (!sel_data || sel_data->is_draw) {
+  if (!sel_data || sel_data->is_drawn) {
     if (sel_data) {
-      /* Remove. It shouldn't be here. */
+      /* Remove data, object is not in array. */
       DrawDataList *drawdata = DRW_drawdatalist_from_id(&ob->id);
       BLI_freelinkN((ListBase *)drawdata, sel_data);
     }
@@ -258,11 +257,12 @@ static void select_draw_scene(void *vedata)
     DRW_draw_pass(psl->select_id_vert_pass);
   }
 
-  /* Mark objects from the array to remove later. */
+  /* Mark objects from the array to later identify which ones are not in the array. */
   for (Object *obj_eval : e_data.context.objects) {
-    SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
-        &obj_eval->id, &draw_engine_select_type);
-    sel_data->is_draw = true;
+    DrawData *data = DRW_drawdata_ensure(
+        &obj_eval->id, &draw_engine_select_type, sizeof(SELECTID_ObjectData), nullptr, nullptr);
+    SELECTID_ObjectData *sel_data = reinterpret_cast<SELECTID_ObjectData *>(data);
+    sel_data->is_drawn = true;
   }
 }
 

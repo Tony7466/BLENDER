@@ -2752,7 +2752,7 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_exit(&DST);
 }
 
-void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, const rcti *rect)
+void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d)
 {
   SELECTID_Context *sel_ctx = DRW_select_engine_context_get();
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
@@ -2763,13 +2763,9 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     return;
   }
 
-  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-  if (!sel_ctx->is_dirty(rv3d)) {
-    return;
-  }
-
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -2794,9 +2790,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
   DRW_globals_update();
 
-  /* Init Select Engine */
-  sel_ctx->last_rect = *rect;
-
+  /* Select Engine */
   use_drw_engine(&draw_engine_select_type);
   drw_engines_init();
   {

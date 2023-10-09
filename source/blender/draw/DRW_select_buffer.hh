@@ -27,7 +27,7 @@ struct SELECTID_ObjectData {
   bool in_pass;
 
   /* Used to detect and remove objects that are not included in the array. */
-  bool is_draw;
+  bool is_drawn;
 };
 
 struct ObjectOffsets {
@@ -56,9 +56,6 @@ struct SELECTID_Context {
   uint index_drawn_len;
 
   short select_mode;
-
-  /* rect is used to check which objects whose indexes need to be drawn. */
-  rcti last_rect;
 
   /* To check for updates. */
   float persmat[4][4];
