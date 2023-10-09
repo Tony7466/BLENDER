@@ -110,13 +110,6 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   return 0.5 + cell_start + trilinear_coord;
 }
 
-#if defined(GPU_FRAGMENT_SHADER)
-#  define UTIL_TEXEL vec2(gl_FragCoord)
-#elif defined(GPU_COMPUTE_SHADER)
-#  define UTIL_TEXEL vec2(gl_GlobalInvocationID)
-#else
-#  define UTIL_TEXEL vec2(gl_VertexID, 0)
-#endif
 SphericalHarmonicL1 lightprobe_irradiance_sample_atlas(sampler3D atlas_tx, vec3 atlas_coord)
 {
   vec4 texture_coord = vec4(atlas_coord, float(IRRADIANCE_GRID_BRICK_SIZE)) /
@@ -152,7 +145,7 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
     /* If sample fall inside the grid, step out of the loop. */
     if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
       index = i;
-#ifndef IRRADIANCE_GRID_UPLOAD
+#ifdef SAMPLING_LIGHTPROBE
       float distance_to_border = min_v3(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
       float noise = interlieved_gradient_noise(
           UTIL_TEXEL, float(i), sampling_rng_1D_get(SAMPLING_VOLUME_U));
