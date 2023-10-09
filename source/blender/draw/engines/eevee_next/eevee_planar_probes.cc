@@ -48,7 +48,9 @@ float4 PlanarProbe::reflection_clip_plane_get()
 
 void PlanarProbeModule::init()
 {
-  update_probes_ = !probes_.is_empty();
+  if (assign_if_different(update_probes_, !probes_.is_empty())) {
+    instance_.sampling.reset();
+  }
 }
 
 void PlanarProbeModule::begin_sync()
@@ -74,6 +76,11 @@ void PlanarProbeModule::end_sync()
 {
   probes_.remove_if(
       [](const PlanarProbes::MutableItem &item) { return !item.value.is_probe_used; });
+
+  /* When first planar probes are enabled it can happen that the first sample is off. */
+  if (!update_probes_ && !probes_.is_empty()) {
+    DRW_viewport_request_redraw();
+  }
 }
 
 void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
