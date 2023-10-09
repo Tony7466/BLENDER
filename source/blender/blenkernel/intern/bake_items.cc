@@ -73,6 +73,8 @@ PrimitiveBakeItem::~PrimitiveBakeItem()
 
 StringBakeItem::StringBakeItem(std::string value) : value_(std::move(value)) {}
 
+EnumBakeItem::EnumBakeItem(const int32_t value) : value_(std::move(value)) {}
+
 BakeStateRef::BakeStateRef(const BakeState &bake_state)
 {
   this->items_by_id.reserve(bake_state.items_by_id.size());

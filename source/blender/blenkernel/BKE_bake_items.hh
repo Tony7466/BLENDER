@@ -103,4 +103,17 @@ class StringBakeItem : public BakeItem {
   }
 };
 
+class EnumBakeItem : public BakeItem {
+ private:
+  int32_t value_;
+
+ public:
+  EnumBakeItem(int32_t value);
+
+  int32_t value() const
+  {
+    return value_;
+  }
+};
+
 }  // namespace blender::bke::bake
