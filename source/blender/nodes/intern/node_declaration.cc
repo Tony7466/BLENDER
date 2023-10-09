@@ -466,6 +466,13 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
   }
 }
 
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
+                                                                const StringRef name,
+                                                                const StringRef identifier)
+{
+  return this->add_input(bke::custom_data_to_socket_type_type(data_type), name, identifier);
+}
+
 BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
     const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
 {
@@ -498,6 +505,13 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
       BLI_assert_unreachable();
       return this->add_output<decl::Float>("", "");
   }
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
+                                                                 const StringRef name,
+                                                                 const StringRef identifier)
+{
+  return this->add_output(bke::custom_data_to_socket_type_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()

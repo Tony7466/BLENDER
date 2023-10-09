@@ -19,24 +19,23 @@
 
 namespace blender::nodes::node_fn_boolean_math_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
   b.is_function_node();
+  const auto type = NodeBooleanMathOperation(node.custom1);
+
   b.add_input<decl::Bool>("Boolean", "Boolean");
-  b.add_input<decl::Bool>("Boolean", "Boolean_001");
+  if (type == NODE_BOOLEAN_MATH_NOT) {
+    b.add_input<decl::Bool>("Boolean", "Boolean_001");
+  }
   b.add_output<decl::Bool>("Boolean");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  bNodeSocket *sockB = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
-
-  bke::nodeSetSocketAvailability(ntree, sockB, !ELEM(node->custom1, NODE_BOOLEAN_MATH_NOT));
 }
 
 static void node_label(const bNodeTree * /*tree*/,
@@ -143,9 +142,8 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_BOOLEAN_MATH, "Boolean Math", NODE_CLASS_CONVERTER);
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.labelfunc = node_label;
-  ntype.updatefunc = node_update;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;

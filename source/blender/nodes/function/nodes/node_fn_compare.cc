@@ -25,29 +25,33 @@ namespace blender::nodes::node_fn_compare_cc {
 
 NODE_STORAGE_FUNCS(NodeFunctionCompare)
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>("A").min(-10000.0f).max(10000.0f).translation_context(
-      BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Float>("B").min(-10000.0f).max(10000.0f).translation_context(
-      BLT_I18NCONTEXT_ID_NODETREE);
+  const NodeFunctionCompare &storage = node_storage(node);
+  const NodeCompareOperation operation = NodeCompareOperation(storage.operation);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
+  const NodeCompareMode mode = NodeCompareMode(storage.mode);
 
-  b.add_input<decl::Int>("A", "A_INT").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Int>("B", "B_INT").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  const bool type_is_floating = !ELEM(data_type, SOCK_INT, SOCK_STRING);
+  const bool is_vector = data_type == SOCK_VECTOR;
 
-  b.add_input<decl::Vector>("A", "A_VEC3").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Vector>("B", "B_VEC3").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_output(data_type, "A").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_output(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
-  b.add_input<decl::Color>("A", "A_COL").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Color>("B", "B_COL").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  if (is_vector && mode == NODE_COMPARE_MODE_DOT_PRODUCT) {
+    b.add_input<decl::Float>("C").default_value(0.9f);
+  }
 
-  b.add_input<decl::String>("A", "A_STR").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::String>("B", "B_STR").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  if (is_vector && mode == NODE_COMPARE_MODE_DIRECTION) {
+    b.add_input<decl::Float>("Angle").default_value(0.0872665f).subtype(PROP_ANGLE);
+  }
 
-  b.add_input<decl::Float>("C").default_value(0.9f);
-  b.add_input<decl::Float>("Angle").default_value(0.0872665f).subtype(PROP_ANGLE);
-  b.add_input<decl::Float>("Epsilon").default_value(0.001).min(-10000.0f).max(10000.0f);
+  if (type_is_floating && ELEM(operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL)) {
+    b.add_input<decl::Float>("Epsilon").default_value(0.001).min(-10000.0f).max(10000.0f);
+  }
 
   b.add_output<decl::Bool>("Result");
 }
@@ -60,36 +64,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
     uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
   }
   uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  NodeFunctionCompare *data = (NodeFunctionCompare *)node->storage;
-
-  bNodeSocket *sock_comp = (bNodeSocket *)BLI_findlink(&node->inputs, 10);
-  bNodeSocket *sock_angle = (bNodeSocket *)BLI_findlink(&node->inputs, 11);
-  bNodeSocket *sock_epsilon = (bNodeSocket *)BLI_findlink(&node->inputs, 12);
-
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
-    bke::nodeSetSocketAvailability(
-        ntree, socket, socket->type == (eNodeSocketDatatype)data->data_type);
-  }
-
-  bke::nodeSetSocketAvailability(
-      ntree,
-      sock_epsilon,
-      ELEM(data->operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL) &&
-          !ELEM(data->data_type, SOCK_INT, SOCK_STRING));
-
-  bke::nodeSetSocketAvailability(ntree,
-                                 sock_comp,
-                                 ELEM(data->mode, NODE_COMPARE_MODE_DOT_PRODUCT) &&
-                                     data->data_type == SOCK_VECTOR);
-
-  bke::nodeSetSocketAvailability(ntree,
-                                 sock_angle,
-                                 ELEM(data->mode, NODE_COMPARE_MODE_DIRECTION) &&
-                                     data->data_type == SOCK_VECTOR);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -734,9 +708,8 @@ static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_COMPARE, "Compare", NODE_CLASS_CONVERTER);
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.labelfunc = node_label;
-  ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeFunctionCompare", node_free_standard_storage, node_copy_standard_storage);
