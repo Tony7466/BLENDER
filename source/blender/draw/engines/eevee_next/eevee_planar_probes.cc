@@ -115,7 +115,7 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
     res.combined_fb.ensure(GPU_ATTACHMENT_TEXTURE_LAYER(depth_tx_, resource_index),
                            GPU_ATTACHMENT_TEXTURE_LAYER(radiance_tx_, resource_index));
 
-    instance_.pipelines.planar.render(res.view, res.combined_fb, extent);
+    instance_.pipelines.planar.render(res.view, res.combined_fb, resource_index, extent);
 
     resource_index++;
   }

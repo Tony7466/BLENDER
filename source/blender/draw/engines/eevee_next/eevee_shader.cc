@@ -98,6 +98,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_deferred_light";
     case DEFERRED_CAPTURE_EVAL:
       return "eevee_deferred_capture_eval";
+    case DEFERRED_PLANAR_EVAL:
+      return "eevee_deferred_planar_eval";
     case HIZ_DEBUG:
       return "eevee_hiz_debug";
     case HIZ_UPDATE:

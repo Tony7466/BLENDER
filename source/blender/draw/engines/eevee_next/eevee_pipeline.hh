@@ -342,6 +342,8 @@ class PlanarProbePipeline : DeferredLayerBase {
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
+  /* Planar layer currently being rendered. */
+  int planar_layer_id_;
 
  public:
   PlanarProbePipeline(Instance &inst) : inst_(inst){};
@@ -352,7 +354,7 @@ class PlanarProbePipeline : DeferredLayerBase {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &combined_fb, int2 extent);
+  void render(View &view, Framebuffer &combined_fb, int layer_id, int2 extent);
 };
 
 /** \} */
