@@ -104,6 +104,7 @@ void RayTraceModule::sync()
       sub.bind_image("ray_data_img", &ray_data_tx_);
       sub.bind_image("ray_time_img", &ray_time_tx_);
       sub.bind_image("ray_radiance_img", &ray_radiance_tx_);
+      sub.bind_texture("depth_tx", &depth_tx);
       inst_.bind_uniform_data(&sub);
       inst_.planar_probes.bind_resources(&sub);
       inst_.irradiance_cache.bind_resources(&sub);

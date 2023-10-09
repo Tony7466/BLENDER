@@ -102,9 +102,11 @@ class PlanarProbeModule {
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
-    pass->bind_ubo(PLANAR_PROBE_BUF_SLOT, probe_planar_buf_);
-    pass->bind_texture(PLANAR_PROBE_RADIANCE_TEX_SLOT, radiance_tx_);
-    pass->bind_texture(PLANAR_PROBE_DEPTH_TEX_SLOT, depth_tx_);
+    /* Disable filter to avoid interpolation with missing background. */
+    GPUSamplerState no_filter = GPUSamplerState::default_sampler();
+    pass->bind_ubo(PLANAR_PROBE_BUF_SLOT, &probe_planar_buf_);
+    pass->bind_texture(PLANAR_PROBE_RADIANCE_TEX_SLOT, &radiance_tx_, no_filter);
+    pass->bind_texture(PLANAR_PROBE_DEPTH_TEX_SLOT, &depth_tx_);
   }
 
   bool enabled() const

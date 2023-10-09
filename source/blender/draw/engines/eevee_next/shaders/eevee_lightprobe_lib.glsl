@@ -66,7 +66,7 @@ float lightprobe_planar_score(ProbePlanarData planar, vec3 P, vec3 V, vec3 L)
 int lightprobe_planar_select(vec3 P, vec3 V, vec3 L)
 {
   int best_index = -1;
-  float best_score = FLT_MAX;
+  float best_score = 0.0;
 
   for (int index = 0; index < PLANAR_PROBES_MAX; index++) {
     if (probe_planar_buf[index].layer_id == -1) {
