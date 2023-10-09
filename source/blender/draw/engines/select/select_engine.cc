@@ -129,7 +129,6 @@ static void select_cache_init(void *vedata)
     state |= DRW_STATE_CLIP_PLANES;
   }
 
-  bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) && !XRAY_ENABLED(draw_ctx->v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(draw_ctx->v3d);
 
   {
@@ -138,7 +137,7 @@ static void select_cache_init(void *vedata)
     /* Not setting ID because this pass only draws to the depth buffer. */
     DRW_shgroup_uniform_float_copy(pd->shgrp_depth_only, "retopologyOffset", retopology_offset);
 
-    if (retopology_occlusion) {
+    if (!XRAY_ENABLED(draw_ctx->v3d)) {
       pd->shgrp_occlude = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
       /* Not setting ID because this pass only draws to the depth buffer. */
       DRW_shgroup_uniform_float_copy(pd->shgrp_occlude, "retopologyOffset", 0.0f);
