@@ -35,6 +35,7 @@
 
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_declarations.hh"
 
 #include "FN_field.hh"
 
@@ -178,13 +179,67 @@ static void verify_socket_template_list(bNodeTree *ntree,
 
 namespace blender::nodes {
 
+static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclaration &socket_decl)
+{
+  if (dynamic_cast<const decl::Float *>(&socket_decl)) {
+    return SOCK_FLOAT;
+  }
+  else if (dynamic_cast<const decl::Int *>(&socket_decl)) {
+    return SOCK_INT;
+  }
+  else if (dynamic_cast<const decl::Bool *>(&socket_decl)) {
+    return SOCK_BOOLEAN;
+  }
+  else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
+    return SOCK_VECTOR;
+  }
+  else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
+    return SOCK_RGBA;
+  }
+  else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
+    return SOCK_ROTATION;
+  }
+  else if (dynamic_cast<const decl::String *>(&socket_decl)) {
+    return SOCK_STRING;
+  }
+  else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
+    return SOCK_IMAGE;
+  }
+  else if (dynamic_cast<const decl::Texture *>(&socket_decl)) {
+    return SOCK_TEXTURE;
+  }
+  else if (dynamic_cast<const decl::Material *>(&socket_decl)) {
+    return SOCK_MATERIAL;
+  }
+  else if (dynamic_cast<const decl::Shader *>(&socket_decl)) {
+    return SOCK_SHADER;
+  }
+  else if (dynamic_cast<const decl::Collection *>(&socket_decl)) {
+    return SOCK_COLLECTION;
+  }
+  else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
+    return SOCK_OBJECT;
+  }
+  return std::nullopt;
+}
+
 static bNodeSocket *get_old_socket_for_declaration(const bNode &node,
                                                    Vector<bNodeSocket *> &old_sockets,
                                                    const SocketDeclaration &socket_decl)
 {
+  const bool use_prefix_and_type_check = ELEM(node.type, GEO_NODE_SWITCH);
+
   for (const int i : old_sockets.index_range()) {
     bNodeSocket &old_socket = *old_sockets[i];
-    if (old_socket.identifier == socket_decl.identifier) {
+    if (use_prefix_and_type_check) {
+      if (BLI_str_startswith(socket_decl.identifier.c_str(), old_socket.identifier)) {
+        if (old_socket.type == decl_to_data_type(socket_decl)) {
+          old_sockets.remove_and_reorder(i);
+          return &old_socket;
+        }
+      }
+    }
+    else if (old_socket.identifier == socket_decl.identifier) {
       old_sockets.remove_and_reorder(i);
       return &old_socket;
     }
