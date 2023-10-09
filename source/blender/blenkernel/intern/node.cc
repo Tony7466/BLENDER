@@ -345,6 +345,12 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
       break;
     }
+    case SOCK_ENUM: {
+      bNodeSocketValueEnum &default_value =
+          *sock->default_value_typed<bNodeSocketValueEnum>();
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.enum_ref.node_tree, IDWALK_CB_USER);
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -640,6 +646,9 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
       break;
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
+      break;
+    case SOCK_ENUM:
+      BLO_write_struct(writer, bNodeSocketValueEnum, sock->default_value);
       break;
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
@@ -1753,6 +1762,12 @@ static void socket_id_user_increment(bNodeSocket *sock)
       id_us_plus(reinterpret_cast<ID *>(default_value.value));
       break;
     }
+    case SOCK_ENUM: {
+      bNodeSocketValueEnum &default_value =
+          *sock->default_value_typed<bNodeSocketValueEnum>();
+      id_us_plus(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1798,6 +1813,12 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
           *sock->default_value_typed<bNodeSocketValueMaterial>();
       id_us_min(reinterpret_cast<ID *>(default_value.value));
       return default_value.value != nullptr;
+    }
+    case SOCK_ENUM: {
+      bNodeSocketValueEnum &default_value =
+          *sock->default_value_typed<bNodeSocketValueEnum>();
+      id_us_min(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
+      return default_value.enum_ref.node_tree != nullptr;
     }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
@@ -1865,6 +1886,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_COLLECTION:
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
+        case SOCK_ENUM:
           break;
       }
     }
@@ -1999,6 +2021,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
+    case SOCK_ENUM:
+      return "NodeSocketEnum";
     case SOCK_CUSTOM:
       break;
   }
@@ -2080,6 +2104,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
       return "NodeTreeInterfaceSocketTexture";
     case SOCK_MATERIAL:
       return "NodeTreeInterfaceSocketMaterial";
+    case SOCK_ENUM:
+      return "NodeTreeInterfaceSocketEnum";
     case SOCK_CUSTOM:
       break;
   }
@@ -2117,6 +2143,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
+    case SOCK_ENUM:
+      return "Enum";
     case SOCK_CUSTOM:
       break;
   }
@@ -2620,6 +2648,8 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_ROTATION:
       return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
+    case SOCK_ENUM:
+      return &socket.default_value_typed<bNodeSocketValueEnum>()->value;
     case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;

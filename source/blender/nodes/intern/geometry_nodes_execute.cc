@@ -145,6 +145,15 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       ui_data->default_value = BLI_strdup(value->value);
       return property;
     }
+    case SOCK_ENUM: {
+      const bNodeSocketValueEnum *value = static_cast<const bNodeSocketValueEnum *>(
+          socket.socket_data);
+      auto property = bke::idprop::create(identifier, value->value);
+      IDPropertyUIDataString *ui_data = (IDPropertyUIDataString *)IDP_ui_data_ensure(
+          property.get());
+      ui_data->default_value = BLI_strdup(value->value);
+      return property;
+    }
     case SOCK_OBJECT: {
       const bNodeSocketValueObject *value = static_cast<const bNodeSocketValueObject *>(
           socket.socket_data);
@@ -201,6 +210,8 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_BOOLEAN:
       return property.type == IDP_BOOLEAN;
     case SOCK_STRING:
+      return property.type == IDP_STRING;
+    case SOCK_ENUM:
       return property.type == IDP_STRING;
     case SOCK_OBJECT:
     case SOCK_COLLECTION:

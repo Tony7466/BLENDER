@@ -1198,6 +1198,7 @@ static const float std_node_socket_colors[][4] = {
     {0.62, 0.31, 0.64, 1.0}, /* SOCK_TEXTURE */
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
+    {1.00, 1.00, 1.00, 1.0}, /* SOCK_ROTATION */
 };
 
 /* Callback for colors that does not depend on the socket pointer argument to get the type. */
@@ -1232,6 +1233,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_TEXTURE>,
     std_node_socket_color_fn<SOCK_MATERIAL>,
     std_node_socket_color_fn<SOCK_ROTATION>,
+    std_node_socket_color_fn<SOCK_ENUM>,
 };
 
 /* draw function for file output node sockets,
@@ -1370,6 +1372,10 @@ static void std_node_socket_draw(
 
       break;
     }
+    case SOCK_ENUM: {
+      uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
+      break;
+    }
     case SOCK_OBJECT: {
       uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
       break;
@@ -1494,6 +1500,10 @@ static void std_node_socket_interface_draw(ID *id,
     case SOCK_IMAGE:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL: {
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      break;
+    }
+    case SOCK_ENUM: {
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }

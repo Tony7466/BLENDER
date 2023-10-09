@@ -394,6 +394,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       else if (dynamic_cast<const decl::String *>(&socket_decl)) {
         item.socket_type = SOCK_STRING;
       }
+      else if (dynamic_cast<const decl::Enum *>(&socket_decl)) {
+        item.socket_type = SOCK_ENUM;
+      }
       else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
         item.socket_type = SOCK_IMAGE;
       }
@@ -992,6 +995,9 @@ static void ui_node_draw_input(uiLayout &layout,
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
         }
+        case SOCK_ENUM:
+          uiItemL(sub, "ENUM SOCKET TODO", ICON_NONE);
+          break;
         case SOCK_CUSTOM:
           input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
           break;

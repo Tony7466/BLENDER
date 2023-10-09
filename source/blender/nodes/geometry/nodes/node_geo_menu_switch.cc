@@ -163,8 +163,7 @@ static void node_declare_dynamic(const bNodeTree &tree,
                                 SOCK_ROTATION);
 
   {
-    // TODO implement the Enum socket type
-    auto sb = b.add_input<decl::Bool>("Switch").default_value(false);
+    auto sb = b.add_input<decl::Enum>("Switch").default_value(false);
     if (fields_type) {
       sb.supports_field();
     }

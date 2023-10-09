@@ -158,6 +158,7 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
     {"NodeSocketCollection", "NodeTreeInterfaceSocketCollection", SOCK_COLLECTION, PROP_NONE},
     {"NodeSocketTexture", "NodeTreeInterfaceSocketTexture", SOCK_TEXTURE, PROP_NONE},
     {"NodeSocketMaterial", "NodeTreeInterfaceSocketMaterial", SOCK_MATERIAL, PROP_NONE},
+    {"NodeSocketEnum", "NodeTreeInterfaceSocketEnum", SOCK_ENUM, PROP_NONE},
 };
 
 template<typename Fn> bool socket_data_to_static_type(const eNodeSocketDatatype type, const Fn &fn)
@@ -198,6 +199,9 @@ template<typename Fn> bool socket_data_to_static_type(const eNodeSocketDatatype 
       return true;
     case SOCK_MATERIAL:
       fn.template operator()<bNodeSocketValueMaterial>();
+      return true;
+    case SOCK_ENUM:
+      fn.template operator()<bNodeSocketValueEnum>();
       return true;
 
     case SOCK_CUSTOM:

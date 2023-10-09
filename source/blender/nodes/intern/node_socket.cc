@@ -470,6 +470,14 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
       *data = dval;
       break;
     }
+    case SOCK_ENUM: {
+      bNodeSocketValueEnum *dval = MEM_cnew<bNodeSocketValueEnum>("node socket value enum");
+      dval->value = -1;
+      dval->enum_ref.reset();
+
+      *data = dval;
+      break;
+    }
     case SOCK_OBJECT: {
       bNodeSocketValueObject *dval = MEM_cnew<bNodeSocketValueObject>("node socket value object");
       dval->value = nullptr;
@@ -562,6 +570,12 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
     case SOCK_STRING: {
       bNodeSocketValueString *toval = (bNodeSocketValueString *)to;
       bNodeSocketValueString *fromval = (bNodeSocketValueString *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_ENUM: {
+      bNodeSocketValueEnum *toval = (bNodeSocketValueEnum *)to;
+      bNodeSocketValueEnum *fromval = (bNodeSocketValueEnum *)from;
       *toval = *fromval;
       break;
     }
@@ -858,6 +872,21 @@ static bNodeSocketType *make_socket_type_string()
   return socktype;
 }
 
+static bNodeSocketType *make_socket_type_enum()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_ENUM, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<int>();
+  socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
+    *(int *)r_value = ((bNodeSocketValueEnum *)socket_value)->value;
+  };
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<ValueOrField<int>>();
+  socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
+    const int value = ((bNodeSocketValueEnum *)socket_value)->value;
+    new (r_value) ValueOrField<int>(value);
+  };
+  return socktype;
+}
+
 static bNodeSocketType *make_socket_type_object()
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_OBJECT, PROP_NONE);
@@ -962,6 +991,8 @@ void register_standard_node_socket_types()
   nodeRegisterSocketType(make_socket_type_rgba());
 
   nodeRegisterSocketType(make_socket_type_string());
+
+  nodeRegisterSocketType(make_socket_type_enum());
 
   nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
 

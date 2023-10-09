@@ -7,6 +7,8 @@
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 
+#include "BKE_node.h"
+
 blender::Span<NodeEnumItem> NodeEnumDefinition::items() const
 {
   return {this->items_array, this->items_num};
@@ -150,4 +152,42 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, blender::StringRef na
   item.name = BLI_strdup(unique_name);
 
   this->flag |= NODE_ENUM_DEFINITION_CHANGED;
+}
+
+void NodeEnumDefinitionRef::set(bNodeTree &node_tree, bNode &node) {
+  this->node_tree = &node_tree;
+  this->node_identifier = node.identifier;
+}
+
+void NodeEnumDefinitionRef::reset()
+{
+  this->node_tree = nullptr;
+  this->node_identifier = -1;
+}
+
+bool NodeEnumDefinitionRef::is_valid() const
+{
+  if (this->node_tree == nullptr) {
+    return false;
+  }
+  this->node_tree->ensure_topology_cache();
+  return this->node_tree->node_by_id(this->node_identifier) != nullptr;
+}
+
+NodeEnumDefinition *NodeEnumDefinitionRef::get() const {
+  if (this->node_tree == nullptr) {
+    return nullptr;
+  }
+  this->node_tree->ensure_topology_cache();
+  bNode *node = this->node_tree->node_by_id(this->node_identifier);
+  BLI_assert(node->typeinfo != nullptr);
+  switch (node->typeinfo->type) {
+    case GEO_NODE_MENU_SWITCH: {
+      NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+      return &storage.enum_definition;
+    }
+    default:
+      BLI_assert_unreachable();
+      return nullptr;
+  }
 }

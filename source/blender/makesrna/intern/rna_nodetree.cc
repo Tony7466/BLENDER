@@ -76,6 +76,7 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
     {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
+    {SOCK_ENUM, "ENUM", 0, "Enum", ""},
     {SOCK_RGBA, "RGBA", 0, "Color", ""},
     {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
     {SOCK_IMAGE, "IMAGE", 0, "Image", ""},

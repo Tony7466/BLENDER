@@ -54,6 +54,12 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         bake_items[i] = std::make_unique<StringBakeItem>(value.as_value());
         break;
       }
+      case SOCK_ENUM: {
+        const fn::ValueOrField<uint32_t> &value =
+            *static_cast<const fn::ValueOrField<uint32_t> *>(socket_value);
+        bake_items[i] = std::make_unique<EnumBakeItem>(value.as_value());
+        break;
+      }
       case SOCK_FLOAT:
       case SOCK_VECTOR:
       case SOCK_INT:
@@ -170,6 +176,13 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     case SOCK_STRING: {
       if (const auto *item = dynamic_cast<const StringBakeItem *>(&bake_item)) {
         new (r_value) fn::ValueOrField<std::string>(item->value());
+        return true;
+      }
+      return false;
+    }
+    case SOCK_ENUM: {
+      if (const auto *item = dynamic_cast<const EnumBakeItem *>(&bake_item)) {
+        new (r_value) fn::ValueOrField<uint32_t>(item->value());
         return true;
       }
       return false;

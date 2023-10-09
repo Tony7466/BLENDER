@@ -69,6 +69,7 @@ struct bNodeLink;
 struct bNodePreview;
 struct bNodeType;
 struct bNode;
+struct NodeEnumDefinition;
 
 #define NODE_MAXSTR 64
 
@@ -255,6 +256,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_TEXTURE = 12,
   SOCK_MATERIAL = 13,
   SOCK_ROTATION = 14,
+  SOCK_ENUM = 15,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -900,6 +902,29 @@ typedef struct bNodeSocketValueTexture {
 typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
+
+/* Weak reference to a node that defines enum items. */
+typedef struct NodeEnumDefinitionRef {
+  bNodeTree *node_tree;
+  int32_t node_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  void set(bNodeTree &node_tree, bNode &node);
+  void reset();
+
+  bool is_valid() const;
+  NodeEnumDefinition *get() const;
+#endif
+} NodeEnumDefinitionRef;
+
+typedef struct bNodeSocketValueEnum {
+  /* Weak reference to the enum definition. */
+  NodeEnumDefinitionRef enum_ref;
+  /* Default input enum identifier. */
+  int32_t value;
+  char _pad[4];
+} bNodeSocketValueEnum;
 
 typedef struct GeometryNodeAssetTraits {
   int flag;
@@ -1598,7 +1623,7 @@ typedef struct NodeEnumItem {
   char *name;
   char *description;
   /* Immutable unique identifier. */
-  uint32_t identifier;
+  int32_t identifier;
   char _pad[4];
 } NodeEnumItem;
 
@@ -1640,13 +1665,6 @@ typedef struct NodeMenuSwitch {
   uint8_t data_type;
   char _pad[7];
 } NodeMenuSwitch;
-
-/* Weak reference to a node that defines enum items. */
-typedef struct NodeEnumDefinitionRef {
-  bNodeTree *node_tree;
-  int32_t node_identifier;
-  char _pad[4];
-} NodeEnumRef;
 
 typedef struct NodeGeometryCurveSplineType {
   /** #GeometryNodeSplineType. */
