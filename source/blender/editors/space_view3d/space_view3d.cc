@@ -796,14 +796,12 @@ static void view3d_ob_drop_matrix_from_snap(V3DSnapCursorState *snap_state,
   mat4_to_size(scale, ob->object_to_world);
   rescale_m4(obmat_final, scale);
 
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
-  if (bb) {
-    float offset[3];
-    BKE_boundbox_calc_center_aabb(bb, offset);
-    offset[2] = bb->vec[0][2];
-    mul_mat3_m4_v3(obmat_final, offset);
-    sub_v3_v3(obmat_final[3], offset);
-  }
+  const BoundBox bb = BKE_object_boundbox_get(ob);
+  float offset[3];
+  BKE_boundbox_calc_center_aabb(&bb, offset);
+  offset[2] = bb.vec[0][2];
+  mul_mat3_m4_v3(obmat_final, offset);
+  sub_v3_v3(obmat_final[3], offset);
 }
 
 static void view3d_ob_drop_copy_local_id(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)

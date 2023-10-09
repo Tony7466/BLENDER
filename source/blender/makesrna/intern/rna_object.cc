@@ -1991,12 +1991,7 @@ static void rna_Object_boundbox_get(PointerRNA *ptr, float *values)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   const BoundBox bb = BKE_object_boundbox_get(ob);
-  if (bb) {
-    memcpy(values, bb->vec, sizeof(bb->vec));
-  }
-  else {
-    copy_vn_fl(values, sizeof(bb->vec) / sizeof(float), 0.0f);
-  }
+  memcpy(values, bb->vec, sizeof(bb->vec));
 }
 
 static bool check_object_vgroup_support_and_warn(const Object *ob,
