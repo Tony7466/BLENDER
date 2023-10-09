@@ -91,6 +91,11 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
   command_buffer.submit();
 }
 
+void VKStorageBuffer::sync_to_host()
+{
+  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+}
+
 void VKStorageBuffer::read(void *data)
 {
   ensure_allocated();

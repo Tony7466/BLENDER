@@ -246,6 +246,11 @@ class StorageCommon : public DataBuffer<T, len, false>, NonMovable, NonCopyable 
     GPU_storagebuf_clear_to_zero(ssbo_);
   }
 
+  void sync_to_host()
+  {
+    GPU_storagebuf_sync_to_host(ssbo_);
+  }
+
   void read()
   {
     GPU_storagebuf_read(ssbo_, this->data_);
