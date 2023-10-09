@@ -735,11 +735,11 @@ static const char *get_lightprobe_defname(int type)
 {
   switch (type) {
     case LIGHTPROBE_TYPE_VOLUME:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "IrradianceVolume");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Volume");
     case LIGHTPROBE_TYPE_PLANAR:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "ReflectionPlane");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Planar");
     case LIGHTPROBE_TYPE_CUBEMAP:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "ReflectionCubemap");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Cubemap");
     default:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "LightProbe");
   }
