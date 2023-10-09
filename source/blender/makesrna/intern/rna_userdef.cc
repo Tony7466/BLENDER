@@ -1879,7 +1879,7 @@ static void rna_def_userdef_theme_space_common(StructRNA *srna)
   prop = RNA_def_property(srna, "header", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Header", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "header_text", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
@@ -2520,17 +2520,17 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "bone_pose", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Bone Pose", "");
+  RNA_def_property_ui_text(prop, "Bone Pose Selected", "Outline color of selected pose bones");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "bone_pose_active", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Bone Pose Active", "");
+  RNA_def_property_ui_text(prop, "Bone Pose Active", "Outline color of active pose bones");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "bone_solid", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Bone Solid", "");
+  RNA_def_property_ui_text(prop, "Bone Solid", "Default color of the solid shapes of bones");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "bone_locked_weight", PROP_FLOAT, PROP_COLOR_GAMMA);
