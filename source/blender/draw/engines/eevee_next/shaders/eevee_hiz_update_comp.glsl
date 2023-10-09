@@ -53,6 +53,8 @@ void main()
     imageStore(out_mip_0, src_px + ivec2(1, 0), samp.zzzz);
     imageStore(out_mip_0, src_px + ivec2(0, 0), samp.wwww);
   }
+}
+#if 0
 
   /* Level 1. (No load) */
   float max_depth = max_v4(samp);
@@ -64,19 +66,19 @@ void main()
   bool active_thread;
   int mask_shift = 1;
 
-#define downsample_level(out_mip__, lod_) \
-  active_thread = all(lessThan(uvec2(local_px), gl_WorkGroupSize.xy >> uint(mask_shift))); \
-  barrier(); /* Wait for previous writes to finish. */ \
-  if (active_thread) { \
-    max_depth = max_v4(load_local_depths(local_px)); \
-    dst_px = ivec2((kernel_origin >> mask_shift) + local_px); \
-    imageStore(out_mip__, dst_px, vec4(max_depth)); \
-  } \
-  barrier(); /* Wait for previous reads to finish. */ \
-  if (active_thread) { \
-    store_local_depth(local_px, max_depth); \
-  } \
-  mask_shift++;
+#  define downsample_level(out_mip__, lod_) \
+    active_thread = all(lessThan(uvec2(local_px), gl_WorkGroupSize.xy >> uint(mask_shift))); \
+    barrier(); /* Wait for previous writes to finish. */ \
+    if (active_thread) { \
+      max_depth = max_v4(load_local_depths(local_px)); \
+      dst_px = ivec2((kernel_origin >> mask_shift) + local_px); \
+      imageStore(out_mip__, dst_px, vec4(max_depth)); \
+    } \
+    barrier(); /* Wait for previous reads to finish. */ \
+    if (active_thread) { \
+      store_local_depth(local_px, max_depth); \
+    } \
+    mask_shift++;
 
   downsample_level(out_mip_2, 2);
   downsample_level(out_mip_3, 3);
@@ -122,3 +124,4 @@ void main()
     }
   }
 }
+#endif
