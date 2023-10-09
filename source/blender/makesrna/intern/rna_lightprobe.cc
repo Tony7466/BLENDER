@@ -43,16 +43,12 @@ static EnumPropertyItem parallax_type_items[] = {
 };
 
 static EnumPropertyItem lightprobe_type_items[] = {
-    {LIGHTPROBE_TYPE_CUBE,
-     "CUBEMAP",
-     ICON_LIGHTPROBE_CUBEMAP,
-     "Reflection Cubemap",
-     "Capture reflections"},
-    {LIGHTPROBE_TYPE_PLANAR, "PLANAR", ICON_LIGHTPROBE_PLANAR, "Reflection Plane", ""},
+    {LIGHTPROBE_TYPE_CUBE, "CUBEMAP", ICON_LIGHTPROBE_CUBEMAP, "Cubemap", "Capture reflections"},
+    {LIGHTPROBE_TYPE_PLANAR, "PLANAR", ICON_LIGHTPROBE_PLANAR, "Planar", ""},
     {LIGHTPROBE_TYPE_GRID,
      "GRID",
      ICON_LIGHTPROBE_GRID,
-     "Irradiance Volume",
+     "Volume",
      "Volume used for precomputing indirect lighting"},
     {0, nullptr, 0, nullptr, nullptr},
 };
