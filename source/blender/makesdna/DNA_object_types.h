@@ -98,6 +98,7 @@ typedef struct BoundBox {
 enum {
   /* BOUNDBOX_DISABLED = (1 << 0), */ /* UNUSED */
   BOUNDBOX_DIRTY = (1 << 1),
+  BOUNDBOX_EMPTY_INVALID = (1 << 2),
 };
 
 struct CustomData_MeshMasks;

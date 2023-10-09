@@ -32,7 +32,7 @@
 
 void select_id_object_min_max(Object *obj, float r_min[3], float r_max[3])
 {
-  const BoundBox *bb;
+  BoundBox bb;
   BMEditMesh *em = BKE_editmesh_from_object(obj);
   if (em) {
     bb = BKE_editmesh_cage_boundbox_get(obj, em);
@@ -40,8 +40,8 @@ void select_id_object_min_max(Object *obj, float r_min[3], float r_max[3])
   else {
     bb = BKE_object_boundbox_get(obj);
   }
-  copy_v3_v3(r_min, bb->vec[0]);
-  copy_v3_v3(r_max, bb->vec[6]);
+  copy_v3_v3(r_min, bb.vec[0]);
+  copy_v3_v3(r_max, bb.vec[6]);
 }
 
 short select_id_get_object_select_mode(Scene *scene, Object *ob)

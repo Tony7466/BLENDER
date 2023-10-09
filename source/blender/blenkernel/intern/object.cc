@@ -3662,18 +3662,13 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
 
 void BKE_object_dimensions_get(Object *ob, float r_vec[3])
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
-  if (bb) {
-    float3 scale;
-    mat4_to_size(scale, ob->object_to_world);
+  const BoundBox bb = BKE_object_boundbox_get(ob);
+  float3 scale;
+  mat4_to_size(scale, ob->object_to_world);
 
-    r_vec[0] = fabsf(scale[0]) * (bb->vec[4][0] - bb->vec[0][0]);
-    r_vec[1] = fabsf(scale[1]) * (bb->vec[2][1] - bb->vec[0][1]);
-    r_vec[2] = fabsf(scale[2]) * (bb->vec[1][2] - bb->vec[0][2]);
-  }
-  else {
-    zero_v3(r_vec);
-  }
+  r_vec[0] = fabsf(scale[0]) * (bb.vec[4][0] - bb.vec[0][0]);
+  r_vec[1] = fabsf(scale[1]) * (bb.vec[2][1] - bb.vec[0][1]);
+  r_vec[2] = fabsf(scale[2]) * (bb.vec[1][2] - bb.vec[0][2]);
 }
 
 void BKE_object_dimensions_set_ex(Object *ob,
@@ -3682,27 +3677,25 @@ void BKE_object_dimensions_set_ex(Object *ob,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
-  if (bb) {
-    float3 len;
-    len.x = bb->vec[4][0] - bb->vec[0][0];
-    len.y = bb->vec[2][1] - bb->vec[0][1];
-    len.z = bb->vec[1][2] - bb->vec[0][2];
+  const BoundBox bb = BKE_object_boundbox_get(ob);
+  float3 len;
+  len.x = bb.vec[4][0] - bb.vec[0][0];
+  len.y = bb.vec[2][1] - bb.vec[0][1];
+  len.z = bb.vec[1][2] - bb.vec[0][2];
 
-    for (int i = 0; i < 3; i++) {
-      if (((1 << i) & axis_mask) == 0) {
+  for (int i = 0; i < 3; i++) {
+    if (((1 << i) & axis_mask) == 0) {
 
-        if (ob_scale_orig != nullptr) {
-          const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
-          if (isfinite(scale_delta)) {
-            len[i] *= scale_delta;
-          }
+      if (ob_scale_orig != nullptr) {
+        const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
+        if (isfinite(scale_delta)) {
+          len[i] *= scale_delta;
         }
+      }
 
-        const float scale = copysignf(value[i] / len[i], ob->scale[i]);
-        if (isfinite(scale)) {
-          ob->scale[i] = scale;
-        }
+      const float scale = copysignf(value[i] / len[i], ob->scale[i]);
+      if (isfinite(scale)) {
+        ob->scale[i] = scale;
       }
     }
   }
@@ -3727,7 +3720,7 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
       break;
     }
     case OB_MESH: {
-      const BoundBox bb = *BKE_mesh_boundbox_get(ob);
+      const BoundBox bb = BKE_mesh_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;
@@ -3977,18 +3970,16 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
       /* Do not modify the original bounding-box. */
       temp_ob.runtime.bb = nullptr;
       BKE_object_replace_data_on_shallow_copy(&temp_ob, dob->ob_data);
-      const BoundBox *bb = BKE_object_boundbox_get(&temp_ob);
+      const BoundBox bb = BKE_object_boundbox_get(&temp_ob);
 
-      if (bb) {
-        int i;
-        for (i = 0; i < 8; i++) {
-          float3 vec;
-          mul_v3_m4v3(vec, dob->mat, bb->vec[i]);
-          minmax_v3v3_v3(r_min, r_max, vec);
-        }
-
-        ok = true;
+      int i;
+      for (i = 0; i < 8; i++) {
+        float3 vec;
+        mul_v3_m4v3(vec, dob->mat, bb.vec[i]);
+        minmax_v3v3_v3(r_min, r_max, vec);
       }
+
+      ok = true;
 
       MEM_SAFE_FREE(temp_ob.runtime.bb);
     }

@@ -454,8 +454,8 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
   SnapData_Mesh nearest2d(sctx, me_eval, obmat);
 
   if (ob_eval->data == me_eval) {
-    const BoundBox *bb = BKE_mesh_boundbox_get(ob_eval);
-    if (!nearest2d.snap_boundbox(bb->vec[0], bb->vec[6])) {
+    const BoundBox bb = BKE_mesh_boundbox_get(ob_eval);
+    if (!nearest2d.snap_boundbox(bb.vec[0], bb.vec[6])) {
       return SCE_SNAP_TO_NONE;
     }
   }
