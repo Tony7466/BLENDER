@@ -81,16 +81,14 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_planar_eval)
     .early_fragment_test(true)
     /* Inputs. */
     .fragment_out(0, Type::VEC4, "out_radiance")
-    .push_constant(Type::INT, "planar_layer_id")
-    .sampler(11, ImageType::DEPTH_2D_ARRAY, "depth_tx")
     .define("SSS_TRANSMITTANCE")
     .additional_info("eevee_shared",
-                     "eevee_global_ubo",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_light_data",
                      "eevee_shadow_data",
+                     "eevee_hiz_data",
                      "draw_view",
                      "draw_fullscreen")
     .fragment_source("eevee_deferred_planar_frag.glsl")

@@ -895,6 +895,7 @@ void DeferredProbeLayer::render(View &view,
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, view);
 
+  inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
   inst_.hiz_buffer.set_dirty();
   inst_.lights.set_view(view, extent);
   inst_.shadows.set_view(view);
@@ -1002,13 +1003,12 @@ void PlanarProbePipeline::begin_sync()
     pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
     pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_PLANAR_EVAL));
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    pass.bind_texture("depth_tx", &inst_.planar_probes.depth_tx_);
-    pass.push_constant("planar_layer_id", &planar_layer_id_);
     inst_.bind_uniform_data(&pass);
     inst_.gbuffer.bind_resources(&pass);
     inst_.lights.bind_resources(&pass);
     inst_.shadows.bind_resources(&pass);
     inst_.sampling.bind_resources(&pass);
+    inst_.hiz_buffer.bind_resources(&pass);
     inst_.irradiance_cache.bind_resources(&pass);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
@@ -1044,7 +1044,9 @@ PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMat
 void PlanarProbePipeline::render(View &view, Framebuffer &combined_fb, int layer_id, int2 extent)
 {
   GPU_debug_group_begin("Planar.Capture");
-  planar_layer_id_ = layer_id;
+
+  inst_.hiz_buffer.set_source(&inst_.planar_probes.depth_tx_, layer_id);
+  inst_.hiz_buffer.set_dirty();
 
   GPU_framebuffer_bind(combined_fb);
   GPU_framebuffer_clear_depth(combined_fb, 1.0f);
@@ -1056,6 +1058,7 @@ void PlanarProbePipeline::render(View &view, Framebuffer &combined_fb, int layer
 
   inst_.gbuffer.acquire(extent, closure_bits_);
 
+  inst_.hiz_buffer.update();
   GPU_framebuffer_bind(combined_fb);
   GPU_framebuffer_clear_color(combined_fb, float4(0.0f, 0.0f, 0.0f, 1.0f));
   inst_.manager->submit(gbuffer_ps_, view);

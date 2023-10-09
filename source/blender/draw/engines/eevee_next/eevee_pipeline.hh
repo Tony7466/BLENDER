@@ -342,8 +342,6 @@ class PlanarProbePipeline : DeferredLayerBase {
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
-  /* Planar layer currently being rendered. */
-  int planar_layer_id_;
 
  public:
   PlanarProbePipeline(Instance &inst) : inst_(inst){};

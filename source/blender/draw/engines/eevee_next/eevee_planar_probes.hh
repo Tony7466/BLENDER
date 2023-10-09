@@ -19,6 +19,7 @@ struct Material;
 namespace blender::eevee {
 
 class Instance;
+class HiZBuffer;
 struct ObjectHandle;
 
 /* -------------------------------------------------------------------- */
@@ -118,6 +119,7 @@ class PlanarProbeModule {
   PlanarProbe &find_or_insert(ObjectHandle &ob_handle);
 
   friend class Instance;
+  friend class HiZBuffer;
   friend class PlanarProbePipeline;
 };
 

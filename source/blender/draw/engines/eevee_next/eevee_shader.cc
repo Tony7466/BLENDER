@@ -104,6 +104,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_hiz_debug";
     case HIZ_UPDATE:
       return "eevee_hiz_update";
+    case HIZ_UPDATE_LAYER:
+      return "eevee_hiz_update_layer";
     case MOTION_BLUR_GATHER:
       return "eevee_motion_blur_gather";
     case MOTION_BLUR_TILE_DILATE:
