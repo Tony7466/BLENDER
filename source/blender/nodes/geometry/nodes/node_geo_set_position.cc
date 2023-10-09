@@ -29,10 +29,9 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void set_computed_position_and_offset(GeometryComponent &component,
                                              const VArray<float3> &in_positions,
                                              const VArray<float3> &in_offsets,
-                                             const IndexMask &selection)
+                                             const IndexMask &selection,
+                                             MutableAttributeAccessor attributes)
 {
-  MutableAttributeAccessor attributes = *component.attributes_for_write();
-
   /* Optimize the case when `in_positions` references the original positions array. */
   const bke::AttributeReader positions_read_only = attributes.lookup<float3>("position");
   bool positions_are_original = false;
@@ -109,16 +108,18 @@ static void set_computed_position_and_offset(GeometryComponent &component,
   }
 }
 
-static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
+static void set_position_in_grease_pencil(GreasePencilComponent &grease_pencil_component,
                                           const Field<bool> &selection_field,
                                           const Field<float3> &position_field,
                                           const Field<float3> &offset_field)
 {
   using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *grease_pencil_component.get_for_write();
+  /* Set position for each layer. */
   for (const int layer_index : grease_pencil.layers().index_range()) {
     Drawing *drawing = bke::get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
                                                                            layer_index);
-    if (drawing == nullptr) {
+    if (drawing == nullptr || drawing->strokes().points_num() == 0) {
       continue;
     }
     bke::GreasePencilLayerFieldContext field_context(
@@ -134,15 +135,11 @@ static void set_position_in_grease_pencil(GreasePencil &grease_pencil,
       continue;
     }
 
+    MutableAttributeAccessor attributes = drawing->strokes_for_write().attributes_for_write();
     const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
     const VArray<float3> offsets_input = evaluator.get_evaluated<float3>(1);
-
-    MutableSpan<float3> positions = drawing->strokes_for_write().positions_for_write();
-
-    selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i) {
-      positions[i] = positions_input[i] + offsets_input[i];
-    });
-
+    set_computed_position_and_offset(
+        grease_pencil_component, positions_input, offsets_input, selection, attributes);
     drawing->tag_positions_changed();
   }
 }
@@ -175,9 +172,11 @@ static void set_position_in_component(GeometrySet &geometry,
   }
 
   GeometryComponent &mutable_component = geometry.get_component_for_write(component_type);
+  MutableAttributeAccessor attributes = *mutable_component.attributes_for_write();
   const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
   const VArray<float3> offsets_input = evaluator.get_evaluated<float3>(1);
-  set_computed_position_and_offset(mutable_component, positions_input, offsets_input, selection);
+  set_computed_position_and_offset(
+      mutable_component, positions_input, offsets_input, selection, attributes);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -188,8 +187,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float3> position_field = params.extract_input<Field<float3>>("Position");
 
   if (geometry.has_grease_pencil()) {
-    set_position_in_grease_pencil(
-        *geometry.get_grease_pencil_for_write(), selection_field, position_field, offset_field);
+    set_position_in_grease_pencil(geometry.get_component_for_write<GreasePencilComponent>(),
+                                  selection_field,
+                                  position_field,
+                                  offset_field);
   }
 
   for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
