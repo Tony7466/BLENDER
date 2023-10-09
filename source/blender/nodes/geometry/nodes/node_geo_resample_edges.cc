@@ -2,9 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <iostream>
-#include <sstream>
-
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
@@ -84,12 +81,22 @@ static void interpolate_point_attributes(const AttributeAccessor src_attributes,
   });
 }
 
-static void group_copy_attributes(const AttributeAccessor src_attributes,
-                                  const AnonymousAttributePropagationInfo &propagation_info,
-                                  const OffsetIndices<int> edge_offset,
-                                  const eAttrDomain domain,
-                                  const Set<std::string> &skip,
-                                  MutableAttributeAccessor dst_attributes)
+template<typename T>
+static void fill_groups(const VArray<T> src, const OffsetIndices<int> groups, MutableSpan<T> dst)
+{
+  threading::parallel_for(src.index_range(), 2048, [&](const IndexRange range) {
+    for (const int index : range) {
+      dst.slice(groups[index]).fill(src[index]);
+    }
+  });
+}
+
+static void fill_groups_attributes(const AttributeAccessor src_attributes,
+                                   const AnonymousAttributePropagationInfo &propagation_info,
+                                   const OffsetIndices<int> groups,
+                                   const eAttrDomain domain,
+                                   const Set<std::string> &skip,
+                                   MutableAttributeAccessor dst_attributes)
 {
   src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
     if (meta_data.domain != domain) {
@@ -109,11 +116,7 @@ static void group_copy_attributes(const AttributeAccessor src_attributes,
     }
     bke::attribute_math::convert_to_static_type(src.varray.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      const VArray<T> src_typed = src.varray.typed<T>();
-      MutableSpan<T> dst_typed = dst.span.typed<T>();
-      for (const int index : edge_offset.index_range()) {
-        dst_typed.slice(edge_offset[index]).fill(src_typed[index]);
-      }
+      fill_groups<T>(src.varray.typed<T>(), groups, dst.span.typed<T>());
     });
     dst.finish();
     return true;
@@ -146,8 +149,7 @@ static void build_edges(const Span<int2> src_edges,
       const IndexRange edges_to_fill = edges.index_range().drop_front(1).drop_back(1);
       for (const int i : edges_to_fill.index_range()) {
         const int index = edges_to_fill[i];
-        edges[index][0] = start_vert + dst_left_verts[i];
-        edges[index][1] = start_vert + dst_right_verts[i];
+        edges[index] = int2(start_vert) + int2(dst_left_verts[i], dst_right_verts[i]);
       }
 
       edges.last()[0] = start_vert + verts_on_edge.last();
@@ -156,14 +158,14 @@ static void build_edges(const Span<int2> src_edges,
   });
 }
 
-void build_faces(const Span<int> src_corner_verts,
-                 const Span<int> src_corner_edges,
-                 const Span<int2> src_edges,
-                 const Span<int2> dst_edges,
-                 const OffsetIndices<int> dst_corner_offsets,
-                 const OffsetIndices<int> dst_edge_offsets,
-                 MutableSpan<int> r_corner_verts,
-                 MutableSpan<int> r_corner_edges)
+static void build_faces(const Span<int> src_corner_verts,
+                        const Span<int> src_corner_edges,
+                        const Span<int2> src_edges,
+                        const Span<int2> dst_edges,
+                        const OffsetIndices<int> dst_corner_offsets,
+                        const OffsetIndices<int> dst_edge_offsets,
+                        MutableSpan<int> r_corner_verts,
+                        MutableSpan<int> r_corner_edges)
 {
   threading::parallel_for(dst_corner_offsets.index_range(), 1024, [&](const IndexRange range) {
     for (const int corner_index : range) {
@@ -178,16 +180,16 @@ void build_faces(const Span<int> src_corner_verts,
       MutableSpan<int> corner_edges = r_corner_edges.slice(dst_corner_offsets[corner_index]);
 
       if (left_right) {
+        array_utils::fill_index_range<int>(corner_edges, edges_range.first());
         for (const int index : IndexRange(edges_range.size())) {
           corner_verts[index] = edges_of_corner[index][0];
-          corner_edges[index] = edges_range[index];
         }
       }
       else {
+        std::iota(corner_edges.rbegin(), corner_edges.rend(), edges_range.first());
         for (const int i : IndexRange(edges_range.size())) {
           const int index = edges_range.size() - 1 - i;
           corner_verts[index] = edges_of_corner[i][1];
-          corner_edges[index] = edges_range[i];
         }
       }
     }
@@ -198,6 +200,9 @@ static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets,
                                     const OffsetIndices<int> corner_offsets,
                                     MutableSpan<int> dst_face_offsets)
 {
+  if (dst_face_offsets.is_empty()) {
+    return;
+  }
   threading::parallel_for(src_face_offsets.index_range(), 2048, [&](const IndexRange range) {
     for (const int index : range) {
       dst_face_offsets[index] = corner_offsets[src_face_offsets[index]].size();
@@ -206,36 +211,38 @@ static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets,
   offset_indices::accumulate_counts_to_offsets(dst_face_offsets);
 }
 
+template<typename T, typename Func>
+static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, const Func &func)
+{
+  threading::parallel_for(values.index_range(), grain_size, [&](const IndexRange range) {
+    MutableSpan<T> values_range = values.slice(range);
+    std::transform(values_range.begin(), values_range.end(), values_range.begin(), func);
+  });
+}
+
 static Mesh *resample_edges(const Mesh &src_mesh,
                             const VArray<int> &count_varray,
                             const AnonymousAttributePropagationInfo &propagation_info)
 {
   /* To avoid allocation of array to accumulate new verts, use edge offset[index] - index. */
   Array<int> accumulate_edges(src_mesh.totedge + 1);
-  {
+  const OffsetIndices<int> edge_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
     count_varray.materialize(accumulate_span);
-    std::transform(accumulate_span.begin(),
-                   accumulate_span.end(),
-                   accumulate_span.begin(),
-                   [](const int value) { return value + 1; });
-  }
-  const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(
-      accumulate_edges);
+    parallel_transform(accumulate_span, 2048, [](int value) { return value + 1; });
+    return offset_indices::accumulate_counts_to_offsets(accumulate_edges);
+  }();
 
   Array<int> accumulate_corners(src_mesh.totloop + 1);
-  {
+  const OffsetIndices<int> corner_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_corners.as_mutable_span().drop_back(1);
     array_utils::copy(src_mesh.corner_edges(), accumulate_span);
     devirtualize_varray(count_varray, [&](auto count_varray) {
-      std::transform(accumulate_span.begin(),
-                     accumulate_span.end(),
-                     accumulate_span.begin(),
-                     [&](const int edge_index) { return count_varray[edge_index] + 1; });
+      parallel_transform(
+          accumulate_span, 2048, [&](int edge_index) { return count_varray[edge_index] + 1; });
     });
-  }
-  const OffsetIndices<int> corner_offset = offset_indices::accumulate_counts_to_offsets(
-      accumulate_corners);
+    return offset_indices::accumulate_counts_to_offsets(accumulate_corners);
+  }();
 
   const int total_vert = edge_offset.total_size() - src_mesh.totedge + src_mesh.totvert;
   Mesh *dst_mesh = BKE_mesh_new_nomain(
@@ -251,12 +258,12 @@ static Mesh *resample_edges(const Mesh &src_mesh,
                                src_mesh.totvert,
                                edge_offset,
                                dst_attributes);
-  group_copy_attributes(src_attributes,
-                        propagation_info,
-                        edge_offset,
-                        ATTR_DOMAIN_EDGE,
-                        {".edge_verts"},
-                        dst_attributes);
+  fill_groups_attributes(src_attributes,
+                         propagation_info,
+                         edge_offset,
+                         ATTR_DOMAIN_EDGE,
+                         {".edge_verts"},
+                         dst_attributes);
   build_edges(src_mesh.edges(), edge_offset, src_mesh.totvert, dst_mesh->edges_for_write());
   accumulate_face_offsets(src_mesh.faces(), corner_offset, dst_mesh->face_offsets_for_write());
   build_faces(src_mesh.corner_verts(),
@@ -268,12 +275,12 @@ static Mesh *resample_edges(const Mesh &src_mesh,
               dst_mesh->corner_verts_for_write(),
               dst_mesh->corner_edges_for_write());
   bke::copy_attributes(src_attributes, ATTR_DOMAIN_FACE, propagation_info, {}, dst_attributes);
-  group_copy_attributes(src_attributes,
-                        propagation_info,
-                        corner_offset,
-                        ATTR_DOMAIN_CORNER,
-                        {".corner_vert", ".corner_edge"},
-                        dst_attributes);
+  fill_groups_attributes(src_attributes,
+                         propagation_info,
+                         corner_offset,
+                         ATTR_DOMAIN_CORNER,
+                         {".corner_vert", ".corner_edge"},
+                         dst_attributes);
   return dst_mesh;
 }
 
@@ -301,8 +308,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     evaluator.add(count_field);
     evaluator.evaluate();
     const VArray<int> count_varray = evaluator.get_evaluated<int>(0);
-    if (std::optional<int> count = count_varray.get_if_single(); count.has_value() && *count == 0)
-    {
+    const std::optional<int> count = count_varray.get_if_single();
+    if (count.has_value() && *count == 0) {
       return;
     }
     geometry_set.replace_mesh(resample_edges(*mesh, count_varray, propagation_info));
