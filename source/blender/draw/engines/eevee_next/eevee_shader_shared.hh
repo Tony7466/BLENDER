@@ -1033,7 +1033,7 @@ struct Surfel {
   packed_float3 albedo_back;
   /** Cluster this surfel is assigned to. */
   int cluster_id;
-  /** True if the light can bounce on the surfel back face. */
+  /** True if the light can bounce or be emitted by the surfel back face. */
   bool1 double_sided;
   int _pad0;
   int _pad1;
