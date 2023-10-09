@@ -66,14 +66,12 @@ static bool export_script_node(MaterialX::DocumentPtr doc,
                                Depsgraph *depsgraph,
                                Material *material)
 {
-  bool script_found = false;
   Main *bmain = DEG_get_bmain(depsgraph);
   LISTBASE_FOREACH (bNode *, node, &material->nodetree->nodes) {
     if (node->typeinfo->type == SH_NODE_SCRIPT) {
       NodeShaderScript *script = static_cast<NodeShaderScript *>(node->storage);
       if (script->mode == NODE_SCRIPT_EXTERNAL) {
-        if (script->filepath[0] != '\0') {
-          script_found = true;
+        if (!STREQ(script->filepath, "")) {
           char filepath[FILE_MAX];
           STRNCPY(filepath, script->filepath);
           BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
@@ -92,13 +90,12 @@ static bool export_script_node(MaterialX::DocumentPtr doc,
                       material->id.name,
                       node->name);
           }
-          break;
+          return true;
         }
       }
       else if (script->mode == NODE_SCRIPT_INTERNAL) {
         Text *text = reinterpret_cast<Text *>(node->id);
         if (text) {
-          script_found = true;
           std::stringstream text_content;
           LISTBASE_FOREACH (TextLine *, line, &text->lines) {
             text_content << line->line;
@@ -112,7 +109,7 @@ static bool export_script_node(MaterialX::DocumentPtr doc,
                       material->id.name,
                       node->name);
           }
-          break;
+          return true;
         }
       }
       else {
@@ -120,7 +117,7 @@ static bool export_script_node(MaterialX::DocumentPtr doc,
       }
     }
   }
-  return script_found;
+  return false;
 }
 
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
@@ -130,15 +127,12 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
 
   MaterialX::DocumentPtr doc = MaterialX::createDocument();
-  bool script_found = false;
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
 
     /* Look for first script node with assigned file.
      * If it's found, we load content and ignore everything other. */
-    script_found = export_script_node(doc, depsgraph, material);
-
-    if (!script_found) {
+    if (!export_script_node(doc, depsgraph, material)) {
       bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
       if (output_node) {
         NodeParserData data = {doc.get(),
