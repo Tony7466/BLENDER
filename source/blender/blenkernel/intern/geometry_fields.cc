@@ -39,22 +39,21 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
                                                             const IndexMask &mask,
                                                             ResourceScope &scope) const
 {
-  if (const GeometryFieldInput *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
+  if (const CurvesFieldInput *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
           &field_input))
   {
-    const GeometryFieldContext context{this->grease_pencil(), this->domain(), this->layer_index()};
-    return geometry_field_input->get_varray_for_context(context, mask, scope);
-  }
-  if (const bke::greasepencil::Drawing *drawing =
-          bke::greasepencil::get_eval_grease_pencil_layer_drawing(this->grease_pencil(),
-                                                                  this->layer_index()))
-  {
-    if (drawing->strokes().attributes().domain_supported(this->domain())) {
-      const CurvesFieldContext context{drawing->strokes(), this->domain()};
-      return field_input.get_varray_for_context(context, mask, scope);
+    if (const bke::greasepencil::Drawing *drawing =
+            bke::greasepencil::get_eval_grease_pencil_layer_drawing(this->grease_pencil(),
+                                                                    this->layer_index()))
+    {
+      if (drawing->strokes().attributes().domain_supported(this->domain())) {
+        const CurvesFieldContext context{drawing->strokes(), this->domain()};
+        return curves_field_input->get_varray_for_context(context, mask, scope);
+      }
     }
+    return {};
   }
-  return {};
+  return field_input.get_varray_for_context(*this, mask, scope);
 }
 
 GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
