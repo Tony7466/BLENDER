@@ -3568,7 +3568,10 @@ std::optional<BoundBox> BKE_object_boundbox_get(Object *ob)
     case OB_FONT:
       return *BKE_curve_boundbox_get(ob);
     case OB_MBALL:
-      return *BKE_mball_boundbox_get(ob);
+      if (const BoundBox *bb = BKE_mball_boundbox_get(ob)) {
+        return *bb;
+      }
+      return std::nullopt;
     case OB_LATTICE:
       return *BKE_lattice_boundbox_get(ob);
     case OB_ARMATURE:
