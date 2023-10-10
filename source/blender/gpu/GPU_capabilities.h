@@ -34,6 +34,7 @@ int GPU_max_varying_floats(void);
 int GPU_max_shader_storage_buffer_bindings(void);
 int GPU_max_compute_shader_storage_blocks(void);
 int GPU_max_samplers(void);
+size_t GPU_max_storage_buffer_size(void);
 
 int GPU_extensions_len(void);
 const char *GPU_extension_get(int i);
