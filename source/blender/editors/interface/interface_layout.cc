@@ -3179,6 +3179,8 @@ void uiItemPopoverPanel_ptr(
   if (ok && (pt->draw_header != nullptr)) {
     layout = uiLayoutRow(layout, true);
     Panel panel{};
+    Panel_Runtime panel_runtime{};
+    panel.runtime = &panel_runtime;
     panel.type = pt;
     panel.layout = layout;
     panel.flag = PNL_POPOVER;
