@@ -1019,9 +1019,9 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         "disabling will render faster but not give accurate shadows",
         default=True,
     )
-    use_bump_mapping_corrections: BoolProperty(
-        name="Use Bump-Mapping Correction",
-        description="Apply corrections to solve terminator artifacts caused by bump-mapping",
+    use_bump_map_correction: BoolProperty(
+        name="Bump Map Correction",
+        description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
         default=True,
     )
     homogeneous_volume: BoolProperty(
