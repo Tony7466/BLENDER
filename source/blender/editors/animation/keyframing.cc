@@ -6,19 +6,12 @@
  * \ingroup edanimation
  */
 
-#include <cfloat>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
-#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math_matrix.h"
-#include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -29,7 +22,6 @@
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
-#include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
@@ -38,22 +30,15 @@
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
-#include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_material.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
 
-#include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
