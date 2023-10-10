@@ -895,7 +895,7 @@ class NodeTreeMainUpdater {
           const bNodeTree *group_tree = reinterpret_cast<bNodeTree *>(node->id);
           for (const int socket_i : group_tree->interface_inputs().index_range()) {
             bNodeSocket &input = *node->input_sockets()[socket_i];
-            const bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
+            const bNodeTreeInterfaceSocket &iosocket = *group_tree->interface_inputs()[socket_i];
             BLI_assert(STREQ(input.identifier, iosocket.identifier));
             if (!input.is_available() || input.type != SOCK_ENUM) {
               continue;
