@@ -139,6 +139,8 @@ class ReflectionProbeModule {
 
   void debug_print() const;
 
+  ReflectionProbeAtlasCoordinate world_atlas_coord_get() const;
+
  private:
   /** Get the number of layers that is needed to store probes. */
   int needed_layers_get() const;

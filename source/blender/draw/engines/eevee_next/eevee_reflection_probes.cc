@@ -187,7 +187,7 @@ void ReflectionProbeModule::init()
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_UPDATE_IRRADIANCE));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_probe_coord_));
     pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
-    bind_resources(&pass);
+    pass.bind_texture("reflection_probes_tx", &probes_tx_);
     pass.dispatch(int2(1, 1));
   }
 }
@@ -353,23 +353,15 @@ void ReflectionProbeModule::end_sync()
 
 bool ReflectionProbeModule::remove_unused_probes()
 {
-  Vector<uint64_t> pruned_keys;
-  for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-    if (item.value.is_probe_used == false) {
-      pruned_keys.append(item.key);
-    }
-  }
+  int64_t removed_count = probes_.remove_if(
+      [](const Map<uint64_t, ReflectionProbe>::MutableItem &item) {
+        return !item.value.is_probe_used;
+      });
 
-  const bool probes_removed = !pruned_keys.is_empty();
-
-  for (uint64_t key : pruned_keys) {
-    probes_.remove(key);
-  }
-
-  if (probes_removed) {
+  if (removed_count > 0) {
     instance_.sampling.reset();
   }
-  return probes_removed;
+  return removed_count > 0;
 }
 
 bool ReflectionProbeModule::do_world_update_get() const
@@ -514,7 +506,13 @@ void ReflectionProbeModule::set_view(View & /*view*/)
 
   int probe_id = 0;
   for (auto &probe : probe_active) {
-    data_buf_[probe_id] = *probe;
+    data_buf_[probe_id++] = *probe;
+  }
+  data_buf_[probe_id++] = probes_.lookup(world_object_key_);
+
+  if (probe_id < REFLECTION_PROBES_MAX) {
+    /* Tag the end of the array. */
+    data_buf_[probe_id].atlas_coord.layer = -1;
   }
 
   reflection_probe_count_ = probe_active.size();
@@ -522,6 +520,11 @@ void ReflectionProbeModule::set_view(View & /*view*/)
   dispatch_probe_select_ = int3(
       divide_ceil_u(reflection_probe_count_, REFLECTION_PROBE_SELECT_GROUP_SIZE), 1, 1);
   instance_.manager->submit(select_ps_);
+}
+
+ReflectionProbeAtlasCoordinate ReflectionProbeModule::world_atlas_coord_get() const
+{
+  return probes_.lookup(world_object_key_).atlas_coord;
 }
 
 /** \} */

@@ -1094,6 +1094,9 @@ struct CaptureInfoData {
   bool1 capture_indirect;
   bool1 capture_emission;
   int _pad0;
+  /* World light probe atlas coordinate. */
+  /* TODO(fclem): Remove this silly aliasing. */
+  int4 world_atlas_coord;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
