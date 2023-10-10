@@ -33,8 +33,8 @@ static Result horizontal_pass(Context &context, Result &input, int distance, int
   input.bind_as_texture(shader, "input_tx");
 
   const MorphologicalDistanceFeatherWeights &weights =
-      context.cache_manager().morphological_distance_feather_weights.get(falloff_type,
-                                                                         math::abs(distance));
+      context.cache_manager().morphological_distance_feather_weights.get(
+          context, falloff_type, math::abs(distance));
   weights.bind_weights_as_texture(shader, "weights_tx");
   weights.bind_distance_falloffs_as_texture(shader, "falloffs_tx");
 
@@ -77,8 +77,8 @@ static void vertical_pass(Context &context,
   horizontal_pass_result.bind_as_texture(shader, "input_tx");
 
   const MorphologicalDistanceFeatherWeights &weights =
-      context.cache_manager().morphological_distance_feather_weights.get(falloff_type,
-                                                                         math::abs(distance));
+      context.cache_manager().morphological_distance_feather_weights.get(
+          context, falloff_type, math::abs(distance));
   weights.bind_weights_as_texture(shader, "weights_tx");
   weights.bind_distance_falloffs_as_texture(shader, "falloffs_tx");
 

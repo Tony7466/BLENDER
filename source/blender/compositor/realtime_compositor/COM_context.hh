@@ -115,6 +115,8 @@ class Context {
   /* Get the current time in seconds of the active scene. */
   float get_time() const;
 
+  /* Get a GPU shader with the given info name with its outputs' precision set to the context's
+   * precision. */
   GPUShader *get_shader(const char *info_name);
 
   /* Get a reference to the texture pool of this context. */

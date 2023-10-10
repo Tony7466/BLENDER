@@ -31,6 +31,8 @@ enum class ResultType : uint8_t {
    * and outputs of operations. Furthermore, they can't be single values and thus always need to be
    * allocated as textures. It follows that they needn't be handled in implicit operations like
    * type conversion, shader, or single value reduction operations. */
+  Float2,
+  Float3,
   Int2,
 };
 
@@ -132,6 +134,12 @@ class Result {
   static Result Temporary(ResultType type,
                           TexturePool &texture_pool,
                           ResultPrecision precision = ResultPrecision::Half);
+
+  /* Returns the appropriate texture format based on the given result type and precision. */
+  static eGPUTextureFormat texture_format(ResultType type, ResultPrecision precision);
+
+  /* Returns the appropriate texture format based on the result's type and precision. */
+  eGPUTextureFormat get_texture_format() const;
 
   /* Declare the result to be a texture result, allocate a texture of an appropriate type with
    * the size of the given domain from the result's texture pool, and set the domain of the result
@@ -288,9 +296,6 @@ class Result {
 
   /* Returns a reference to the domain of the result. See the Domain class. */
   const Domain &domain() const;
-
-  /* Returns the appropriate texture format based on the result's type and precision. */
-  eGPUTextureFormat get_texture_format() const;
 };
 
 }  // namespace blender::realtime_compositor

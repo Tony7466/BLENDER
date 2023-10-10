@@ -38,10 +38,17 @@ static void set_shader_luminance_coefficients(GPUShader *shader, ResultType type
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       return;
     }
-    case ResultType::Int2: {
+    case ResultType::Float2: {
+      float luminance_coefficients[3] = {1.0f, 1.0f, 0.0f};
+      GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
+      return;
+    }
+    case ResultType::Float3:
+      /* GPU module does not support float3 outputs. */
+      break;
+    case ResultType::Int2:
       /* SMAA does not support integer types. */
       break;
-    }
   }
 
   BLI_assert_unreachable();
@@ -106,11 +113,31 @@ static Result calculate_blending_weights(Context &context, Result &edges, int co
   return weights;
 }
 
+static const char *get_blend_shader_name(ResultType type)
+{
+  switch (type) {
+    case ResultType::Color:
+    case ResultType::Vector:
+      return "compositor_smaa_neighborhood_blending_float4";
+    case ResultType::Float2:
+      return "compositor_smaa_neighborhood_blending_float2";
+    case ResultType::Float:
+      return "compositor_smaa_neighborhood_blending_float";
+    case ResultType::Float3:
+      /* GPU module does not support float3 outputs. */
+      break;
+    case ResultType::Int2:
+      /* SMAA does not support integer types. */
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return "";
+}
+
 static void blend_neighborhood(Context &context, Result &input, Result &weights, Result &output)
 {
-  GPUShader *shader = context.get_shader(input.type() == ResultType::Float ?
-                                             "compositor_smaa_neighborhood_blending_float" :
-                                             "compositor_smaa_neighborhood_blending_color");
+  GPUShader *shader = context.get_shader(get_blend_shader_name(input.type()));
   GPU_shader_bind(shader);
 
   GPU_texture_filter_mode(input.texture(), true);

@@ -103,7 +103,8 @@ class InpaintOperation : public NodeOperation {
      * inpainting boundary. So the maximum possible blur radius is the user supplied distance. */
     const float max_radius = float(get_distance());
     const SymmetricSeparableBlurWeights &gaussian_weights =
-        context().cache_manager().symmetric_separable_blur_weights.get(R_FILTER_GAUSS, max_radius);
+        context().cache_manager().symmetric_separable_blur_weights.get(
+            context(), R_FILTER_GAUSS, max_radius);
     gaussian_weights.bind_as_texture(shader, "gaussian_weights_tx");
 
     const Domain domain = compute_domain();

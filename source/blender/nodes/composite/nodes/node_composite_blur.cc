@@ -138,7 +138,7 @@ class BlurOperation : public NodeOperation {
     const float2 blur_radius = compute_blur_radius();
 
     const SymmetricBlurWeights &weights = context().cache_manager().symmetric_blur_weights.get(
-        node_storage(bnode()).filtertype, blur_radius);
+        context(), node_storage(bnode()).filtertype, blur_radius);
     weights.bind_as_texture(shader, "weights_tx");
 
     Domain domain = compute_domain();
@@ -173,7 +173,7 @@ class BlurOperation : public NodeOperation {
     const float2 blur_radius = compute_blur_radius();
 
     const SymmetricBlurWeights &weights = context().cache_manager().symmetric_blur_weights.get(
-        node_storage(bnode()).filtertype, blur_radius);
+        context(), node_storage(bnode()).filtertype, blur_radius);
     weights.bind_as_texture(shader, "weights_tx");
 
     const Result &input_size = get_input("Size");

@@ -25,9 +25,14 @@ static const char *get_blur_shader(ResultType type)
   switch (type) {
     case ResultType::Float:
       return "compositor_symmetric_separable_blur_float";
+    case ResultType::Float2:
+      return "compositor_symmetric_separable_blur_float2";
     case ResultType::Vector:
     case ResultType::Color:
-      return "compositor_symmetric_separable_blur_color";
+      return "compositor_symmetric_separable_blur_float4";
+    case ResultType::Float3:
+      /* GPU module does not support float3 outputs. */
+      break;
     case ResultType::Int2:
       /* Blur does not support integer types. */
       break;
@@ -54,7 +59,7 @@ static Result horizontal_pass(Context &context,
   input.bind_as_texture(shader, "input_tx");
 
   const SymmetricSeparableBlurWeights &weights =
-      context.cache_manager().symmetric_separable_blur_weights.get(filter_type, radius);
+      context.cache_manager().symmetric_separable_blur_weights.get(context, filter_type, radius);
   weights.bind_as_texture(shader, "weights_tx");
 
   Domain domain = input.domain();
@@ -105,7 +110,7 @@ static void vertical_pass(Context &context,
   horizontal_pass_result.bind_as_texture(shader, "input_tx");
 
   const SymmetricSeparableBlurWeights &weights =
-      context.cache_manager().symmetric_separable_blur_weights.get(filter_type, radius.y);
+      context.cache_manager().symmetric_separable_blur_weights.get(context, filter_type, radius.y);
   weights.bind_as_texture(shader, "weights_tx");
 
   Domain domain = original_input.domain();

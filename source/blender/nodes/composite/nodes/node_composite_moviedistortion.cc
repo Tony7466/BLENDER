@@ -112,7 +112,11 @@ class MovieDistortionOperation : public NodeOperation {
 
     const Domain domain = compute_domain();
     const DistortionGrid &distortion_grid = context().cache_manager().distortion_grids.get(
-        get_movie_clip(), domain.size, get_distortion_type(), context().get_frame_number());
+        context(),
+        get_movie_clip(),
+        domain.size,
+        get_distortion_type(),
+        context().get_frame_number());
 
     GPUShader *shader = context().get_shader("compositor_movie_distortion");
     GPU_shader_bind(shader);
