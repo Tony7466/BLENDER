@@ -1020,7 +1020,7 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         default=True,
     )
     use_smooth_bump_illumination: BoolProperty(
-        name="Use Bump Smooth",
+        name="Smooth Bump Illumination",
         description="Smooth illumination on grazing angles when using bump mapping",
         default=True,
     )
