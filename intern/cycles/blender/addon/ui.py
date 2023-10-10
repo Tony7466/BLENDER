@@ -1967,7 +1967,7 @@ class CYCLES_MATERIAL_PT_settings_surface(CyclesButtonsPanel, Panel):
         col.prop(cmat, "displacement_method", text="Displacement")
         col.prop(cmat, "emission_sampling")
         col.prop(cmat, "use_transparent_shadow")
-        col.prop(cmat, "use_smooth_bump_illumination")
+        col.prop(cmat, "use_bump_mapping_corrections")
 
     def draw(self, context):
         self.draw_shared(self, context.material)
