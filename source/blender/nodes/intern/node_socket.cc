@@ -357,7 +357,40 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   }
 }
 
-static const char *get_forward_compatible_identifier(const bNode &node, const bNodeSocket &socket)
+static const char *get_identifier_from_decl(const char *identifier_prefix,
+                                            const bNodeSocket &socket,
+                                            const Span<const SocketDeclaration *> socket_decls)
+{
+  if (!BLI_str_startswith(socket.identifier, identifier_prefix)) {
+    return nullptr;
+  }
+  for (const SocketDeclaration *socket_decl : socket_decls) {
+    if (BLI_str_startswith(socket_decl->identifier.c_str(), identifier_prefix)) {
+      if (socket.type == decl_to_data_type(*socket_decl)) {
+        return socket_decl->identifier.c_str();
+      }
+    }
+  }
+  return nullptr;
+}
+
+static const char *get_identifier_from_decl(const Span<const char *> identifier_prefixes,
+                                            const bNodeSocket &socket,
+                                            const Span<const SocketDeclaration *> socket_decls)
+{
+  for (const char *identifier_prefix : identifier_prefixes) {
+    if (const char *identifier = get_identifier_from_decl(identifier_prefix, socket, socket_decls))
+    {
+      return identifier;
+    }
+  }
+  return nullptr;
+}
+
+static const char *get_forward_compatible_identifier(
+    const bNode &node,
+    const bNodeSocket &socket,
+    const Span<const SocketDeclaration *> socket_decls)
 {
   switch (node.type) {
     case GEO_NODE_SWITCH: {
@@ -367,120 +400,97 @@ static const char *get_forward_compatible_identifier(const bNode &node, const bN
                                          SOCK_INT,
                                          SOCK_BOOLEAN,
                                          SOCK_VECTOR,
-                                         SOCK_VECTOR,
                                          SOCK_RGBA,
-                                         SOCK_STRING);
+                                         SOCK_STRING,
+                                         SOCK_ROTATION);
       if (BLI_str_startswith(socket.identifier, "Switch")) {
         if (use_field_socket) {
           return "Switch";
         }
         return "Switch_001";
       }
-      if (BLI_str_startswith(socket.identifier, "False")) {
-        switch (storage.input_type) {
-          case SOCK_FLOAT:
-            return "False";
-          case SOCK_INT:
-            return "False_001";
-          case SOCK_BOOLEAN:
-            return "False_002";
-          case SOCK_VECTOR:
-            return "False_003";
-          case SOCK_RGBA:
-            return "False_004";
-          case SOCK_STRING:
-            return "False_005";
-          case SOCK_GEOMETRY:
-            return "False_006";
-          case SOCK_OBJECT:
-            return "False_007";
-          case SOCK_COLLECTION:
-            return "False_008";
-          case SOCK_TEXTURE:
-            return "False_009";
-          case SOCK_MATERIAL:
-            return "False_010";
-          case SOCK_IMAGE:
-            return "False_011";
-          case SOCK_ROTATION:
-            return "False_012";
-        }
-      }
-      if (BLI_str_startswith(socket.identifier, "True")) {
-        switch (storage.input_type) {
-          case SOCK_FLOAT:
-            return "True";
-          case SOCK_INT:
-            return "True_001";
-          case SOCK_BOOLEAN:
-            return "True_002";
-          case SOCK_VECTOR:
-            return "True_003";
-          case SOCK_RGBA:
-            return "True_004";
-          case SOCK_STRING:
-            return "True_005";
-          case SOCK_GEOMETRY:
-            return "True_006";
-          case SOCK_OBJECT:
-            return "True_007";
-          case SOCK_COLLECTION:
-            return "True_008";
-          case SOCK_TEXTURE:
-            return "True_009";
-          case SOCK_MATERIAL:
-            return "True_010";
-          case SOCK_IMAGE:
-            return "True_011";
-          case SOCK_ROTATION:
-            return "True_012";
-        }
-      }
-      if (BLI_str_startswith(socket.identifier, "Output")) {
-        switch (storage.input_type) {
-          case SOCK_FLOAT:
-            return "Output";
-          case SOCK_INT:
-            return "Output_001";
-          case SOCK_BOOLEAN:
-            return "Output_002";
-          case SOCK_VECTOR:
-            return "Output_003";
-          case SOCK_RGBA:
-            return "Output_004";
-          case SOCK_STRING:
-            return "Output_005";
-          case SOCK_GEOMETRY:
-            return "Output_006";
-          case SOCK_OBJECT:
-            return "Output_007";
-          case SOCK_COLLECTION:
-            return "Output_008";
-          case SOCK_TEXTURE:
-            return "Output_009";
-          case SOCK_MATERIAL:
-            return "Output_010";
-          case SOCK_IMAGE:
-            return "Output_011";
-          case SOCK_ROTATION:
-            return "Output_012";
-        }
-      }
-      break;
+      return get_identifier_from_decl({"False", "True", "Output"}, socket, socket_decls);
+    }
+    case GEO_NODE_ACCUMULATE_FIELD: {
+      return get_identifier_from_decl(
+          {"Value", "Leading", "Trailing", "Total"}, socket, socket_decls);
+    }
+    case GEO_NODE_CAPTURE_ATTRIBUTE: {
+      return get_identifier_from_decl({"Value", "Attribute"}, socket, socket_decls);
+    }
+    case GEO_NODE_ATTRIBUTE_STATISTIC: {
+      return get_identifier_from_decl({"Attribute",
+                                       "Mean",
+                                       "Median",
+                                       "Sum",
+                                       "Min",
+                                       "Max",
+                                       "Range",
+                                       "Standard Deviation",
+                                       "Variance"},
+                                      socket,
+                                      socket_decls);
+    }
+    case GEO_NODE_BLUR_ATTRIBUTE: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_SAMPLE_CURVE: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_EVALUATE_AT_INDEX: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_EVALUATE_ON_DOMAIN: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_INPUT_NAMED_ATTRIBUTE: {
+      return get_identifier_from_decl({"Attribute"}, socket, socket_decls);
+    }
+    case GEO_NODE_RAYCAST: {
+      return get_identifier_from_decl({"Attribute"}, socket, socket_decls);
+    }
+    case GEO_NODE_SAMPLE_INDEX: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_SAMPLE_NEAREST_SURFACE: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case FN_NODE_RANDOM_VALUE: {
+      return get_identifier_from_decl({"Min", "Max", "Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_SAMPLE_UV_SURFACE: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_STORE_NAMED_ATTRIBUTE: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case GEO_NODE_VIEWER: {
+      return get_identifier_from_decl({"Value"}, socket, socket_decls);
+    }
+    case SH_NODE_MIX: {
+      return get_identifier_from_decl({"A", "B", "Result"}, socket, socket_decls);
+    }
+    case FN_NODE_COMPARE: {
+      return get_identifier_from_decl({"A", "B"}, socket, socket_decls);
     }
   }
+
   return nullptr;
 }
 
-static void do_forward_compat_versioning(bNode &node)
+static void do_forward_compat_versioning(bNode &node, const NodeDeclaration &node_decl)
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
-    if (const char *new_identifier = get_forward_compatible_identifier(node, *socket)) {
+    if (const char *new_identifier = get_forward_compatible_identifier(
+            node, *socket, node_decl.inputs))
+    {
       STRNCPY(socket->identifier, new_identifier);
     }
   }
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
-    if (const char *new_identifier = get_forward_compatible_identifier(node, *socket)) {
+    if (const char *new_identifier = get_forward_compatible_identifier(
+            node, *socket, node_decl.outputs))
+    {
       STRNCPY(socket->identifier, new_identifier);
     }
   }
@@ -488,17 +498,17 @@ static void do_forward_compat_versioning(bNode &node)
 
 static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             bNode &node,
-                                            Span<ItemDeclarationPtr> item_decls,
+                                            const NodeDeclaration &node_decl,
                                             const bool do_id_user)
 {
   if (!node.runtime->forward_compat_versioning_done) {
-    do_forward_compat_versioning(node);
+    do_forward_compat_versioning(node, node_decl);
     node.runtime->forward_compat_versioning_done = true;
   }
 
   /* Count panels */
   int new_num_panels = 0;
-  for (const ItemDeclarationPtr &item_decl : item_decls) {
+  for (const ItemDeclarationPtr &item_decl : node_decl.items) {
     if (dynamic_cast<const PanelDeclaration *>(item_decl.get())) {
       ++new_num_panels;
     }
@@ -525,7 +535,7 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
   VectorSet<bNodeSocket *> new_inputs;
   VectorSet<bNodeSocket *> new_outputs;
   bNodePanelState *new_panel = node.panel_states_array;
-  for (const ItemDeclarationPtr &item_decl : item_decls) {
+  for (const ItemDeclarationPtr &item_decl : node_decl.items) {
     if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
             item_decl.get()))
     {
@@ -576,7 +586,7 @@ static void refresh_node(bNodeTree &ntree,
     return;
   }
   if (!node_decl.matches(node)) {
-    refresh_node_sockets_and_panels(ntree, node, node_decl.items, do_id_user);
+    refresh_node_sockets_and_panels(ntree, node, node_decl, do_id_user);
   }
   blender::bke::nodeSocketDeclarationsUpdate(&node);
 }
