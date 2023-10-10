@@ -336,7 +336,7 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_wrapper.hh"
 #  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_object.hh"
 #  include "BKE_particle.h"
 #  include "BKE_scene.h"
 
@@ -2919,6 +2919,11 @@ static void rna_def_object_visibility(StructRNA *srna)
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_PROBE_CUBEMAP);
   RNA_def_property_ui_text(
       prop, "Disable in Cubemap Probes", "Globally disable in cubemap probes");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
+
+  prop = RNA_def_property(srna, "hide_probe_planar", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_PROBE_PLANAR);
+  RNA_def_property_ui_text(prop, "Disable in Planar Probes", "Globally disable in planar probes");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
   /* Instancer options. */
