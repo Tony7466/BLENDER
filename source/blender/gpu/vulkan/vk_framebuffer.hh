@@ -18,8 +18,6 @@
 #include "vk_common.hh"
 #include "vk_image_view.hh"
 
-#include <optional>
-
 namespace blender::gpu {
 class VKContext;
 
