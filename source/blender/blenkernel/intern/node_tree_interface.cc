@@ -78,6 +78,10 @@ template<> void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
 {
   id_us_plus(reinterpret_cast<ID *>(data.value));
 }
+template<> void socket_data_id_user_increment(bNodeSocketValueEnum &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.enum_ref.node_tree));
+}
 
 /** \} */
 
@@ -105,6 +109,10 @@ template<> void socket_data_id_user_decrement(bNodeSocketValueTexture &data)
 template<> void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
 {
   id_us_min(reinterpret_cast<ID *>(data.value));
+}
+template<> void socket_data_id_user_decrement(bNodeSocketValueEnum &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.enum_ref.node_tree));
 }
 
 /** \} */
@@ -170,6 +178,11 @@ template<> void socket_data_init_impl(bNodeSocketValueTexture &data)
 template<> void socket_data_init_impl(bNodeSocketValueMaterial &data)
 {
   data.value = nullptr;
+}
+template<> void socket_data_init_impl(bNodeSocketValueEnum &data)
+{
+  data.value = -1;
+  data.enum_ref.reset();
 }
 
 static void *make_socket_data(const StringRef socket_type)
@@ -368,6 +381,11 @@ template<>
 void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMaterial &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
+}
+template<>
+void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueEnum &data)
+{
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.enum_ref.node_tree, IDWALK_CB_USER);
 }
 
 static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceSocket &socket)
