@@ -60,7 +60,7 @@ void BM_log_mesh_elems_reorder(BMesh *bm, BMLog *log);
  *
  * In either case, the new entry is set as the current log entry.
  */
-BMLogEntry *BM_log_entry_add(BMLog *log);
+BMLogEntry *BM_log_entry_add(const BMesh *bm, BMLog *log);
 
 /** Mark all used ids as unused for this node */
 void BM_log_cleanup_entry(BMLogEntry *entry);
@@ -114,7 +114,7 @@ void BM_log_redo(BMesh *bm, BMLog *log);
  * state so that a subsequent redo operation will restore the newer
  * vertex state.
  */
-void BM_log_vert_before_modified(BMLog *log, struct BMVert *v, int cd_vert_mask_offset);
+void BM_log_vert_before_modified(BMLog *log, const struct BMesh *bm, const struct BMVert *v);
 
 /**
  * Log a new vertex as added to the #BMesh.
@@ -123,7 +123,7 @@ void BM_log_vert_before_modified(BMLog *log, struct BMVert *v, int cd_vert_mask_
  * of added vertices, with the key being its ID and the value
  * containing everything needed to reconstruct that vertex.
  */
-void BM_log_vert_added(BMLog *log, struct BMVert *v, int cd_vert_mask_offset);
+void BM_log_vert_added(BMLog *log, const struct BMesh *bm, const struct BMVert *v);
 
 /**
  * Log a face before it is modified.
@@ -159,7 +159,7 @@ void BM_log_face_added(BMLog *log, struct BMFace *f);
  * If there's a move record for the vertex, that's used as the
  * vertices original location, then the move record is deleted.
  */
-void BM_log_vert_removed(BMLog *log, struct BMVert *v, int cd_vert_mask_offset);
+void BM_log_vert_removed(BMLog *log, const struct BMesh *bm, const struct BMVert *v);
 
 /**
  * Log a face as removed from the #BMesh.

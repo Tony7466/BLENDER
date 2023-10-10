@@ -1539,7 +1539,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
     unode->applied = true;
 
     if (type == SCULPT_UNDO_DYNTOPO_END) {
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
       BM_log_before_all_removed(ss->bm, ss->bm_log);
     }
     else if (type == SCULPT_UNDO_DYNTOPO_BEGIN) {
@@ -1551,11 +1551,11 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
       SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
       sculpt_undo_geometry_store_data(geometry, ob);
 
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
       BM_log_all_added(ss->bm, ss->bm_log);
     }
     else {
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
     }
 
     BLI_addtail(&usculpt->nodes, unode);
@@ -1568,7 +1568,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
         /* Before any vertex values get modified, ensure their
          * original positions are logged. */
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
-          BM_log_vert_before_modified(ss->bm_log, vd.bm_vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, ss->bm, vd.bm_vert);
         }
         BKE_pbvh_vertex_iter_end;
         break;
@@ -1577,7 +1577,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
         GSetIterator gs_iter;
         GSet *faces = BKE_pbvh_bmesh_node_faces(node);
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
-          BM_log_vert_before_modified(ss->bm_log, vd.bm_vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, ss->bm, vd.bm_vert);
         }
         BKE_pbvh_vertex_iter_end;
 

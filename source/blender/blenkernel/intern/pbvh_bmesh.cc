@@ -484,8 +484,7 @@ static BMVert *pbvh_bmesh_vert_create(PBVH *pbvh,
                                       const BMVert *v2,
                                       const int node_index,
                                       const float co[3],
-                                      const float no[3],
-                                      const int cd_vert_mask_offset)
+                                      const float no[3])
 {
   PBVHNode *node = &pbvh->nodes[node_index];
 
@@ -505,7 +504,7 @@ static BMVert *pbvh_bmesh_vert_create(PBVH *pbvh,
   node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateBB | PBVH_TopologyUpdated;
 
   /* Log the new vertex */
-  BM_log_vert_added(pbvh->bm_log, v, cd_vert_mask_offset);
+  BM_log_vert_added(pbvh->bm_log, pbvh->header.bm, v);
 
   return v;
 }
@@ -1119,8 +1118,7 @@ static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx,
   normalize_v3(no_mid);
 
   int node_index = BM_ELEM_CD_GET_INT(e->v1, eq_ctx->cd_vert_node_offset);
-  BMVert *v_new = pbvh_bmesh_vert_create(
-      pbvh, e->v1, e->v2, node_index, co_mid, no_mid, eq_ctx->cd_vert_mask_offset);
+  BMVert *v_new = pbvh_bmesh_vert_create(pbvh, e->v1, e->v2, node_index, co_mid, no_mid);
 
   /* For each face, add two new triangles and delete the original */
   for (int i = 0; i < edge_loops->count; i++) {
@@ -1397,7 +1395,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
       if ((v_tri[j] != v_del) && (v_tri[j]->e == nullptr)) {
         pbvh_bmesh_vert_remove(pbvh, v_tri[j]);
 
-        BM_log_vert_removed(pbvh->bm_log, v_tri[j], eq_ctx->cd_vert_mask_offset);
+        BM_log_vert_removed(pbvh->bm_log, pbvh->header.bm, v_tri[j]);
 
         if (v_tri[j] == v_conn) {
           v_conn = nullptr;
@@ -1411,7 +1409,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
   /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it
    * may have been deleted above) */
   if (v_conn != nullptr) {
-    BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
+    BM_log_vert_before_modified(pbvh->bm_log, pbvh->header.bm, v_conn);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
     add_v3_v3(v_conn->no, v_del->no);
     normalize_v3(v_conn->no);
@@ -1427,7 +1425,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
 
   /* Delete v_del */
   BLI_assert(!BM_vert_face_check(v_del));
-  BM_log_vert_removed(pbvh->bm_log, v_del, eq_ctx->cd_vert_mask_offset);
+  BM_log_vert_removed(pbvh->bm_log, pbvh->header.bm, v_del);
   /* v_conn == nullptr is OK */
   BLI_ghash_insert(deleted_verts, v_del, v_conn);
   BM_vert_kill(pbvh->header.bm, v_del);
