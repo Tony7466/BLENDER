@@ -54,7 +54,8 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
 
@@ -92,7 +93,8 @@ class RENDER_PT_color_management_display_settings(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -122,7 +124,8 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header(self, context):
 
@@ -651,8 +654,8 @@ class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
 
     def draw_header(self, context):
         layout = self.layout
-        if context.scene.eevee.ray_split_settings == "UNIFIED":
-            layout.label(text="Reflection & Refraction")
+        if context.scene.eevee.ray_split_settings == 'UNIFIED':
+            layout.label(text="Reflection & Refraction & Diffuse")
         else:
             layout.label(text="Reflection")
 
@@ -683,7 +686,7 @@ class RENDER_PT_eevee_next_raytracing_refraction(EeveeRaytracingOptionsPanel):
 
     @classmethod
     def poll(cls, context):
-        return (context.scene.eevee.ray_split_settings == "SPLIT")
+        return (context.scene.eevee.ray_split_settings == 'SPLIT')
 
     def draw(self, context):
         self.draw_internal(context, context.scene.eevee.refraction_options)
@@ -704,6 +707,35 @@ class RENDER_PT_eevee_next_denoise_refraction(EeveeRaytracingDenoisePanel):
 
     def draw(self, context):
         self.draw_internal(context.scene.eevee.refraction_options)
+
+
+class RENDER_PT_eevee_next_raytracing_diffuse(EeveeRaytracingOptionsPanel):
+    bl_label = "Diffuse"
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+
+    @classmethod
+    def poll(cls, context):
+        return (context.scene.eevee.ray_split_settings == 'SPLIT')
+
+    def draw(self, context):
+        self.draw_internal(context, context.scene.eevee.diffuse_options)
+
+
+class RENDER_PT_eevee_next_screen_trace_diffuse(EeveeRaytracingScreenOption):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_diffuse"
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.diffuse_options)
+
+
+class RENDER_PT_eevee_next_denoise_diffuse(EeveeRaytracingDenoisePanel):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_diffuse"
+
+    def draw_header(self, context):
+        self.draw_header_internal(context.scene.eevee.diffuse_options)
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.diffuse_options)
 
 
 class RENDER_PT_eevee_shadows(RenderButtonsPanel, Panel):
@@ -753,6 +785,9 @@ class RENDER_PT_eevee_next_shadows(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(props, "shadow_pool_size", text="Pool Size")
+        col.prop(props, "shadow_ray_count")
+        col.prop(props, "shadow_step_count")
+        col.prop(props, "shadow_normal_bias")
         col.prop(props, "light_threshold")
 
 
@@ -858,8 +893,8 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = "ALL"
-        col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = "ALL"
+        col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = 'ALL'
+        col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = 'ALL'
 
         col.prop(props, "gi_irradiance_pool_size", text="Pool Size")
 
@@ -1025,7 +1060,8 @@ class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -1117,7 +1153,8 @@ class RENDER_PT_simplify(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header(self, context):
         rd = context.scene.render
@@ -1134,7 +1171,8 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -1167,7 +1205,8 @@ class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -1237,10 +1276,13 @@ classes = (
     RENDER_PT_eevee_next_raytracing,
     RENDER_PT_eevee_next_raytracing_reflection,
     RENDER_PT_eevee_next_raytracing_refraction,
+    RENDER_PT_eevee_next_raytracing_diffuse,
     RENDER_PT_eevee_next_screen_trace_reflection,
     RENDER_PT_eevee_next_screen_trace_refraction,
+    RENDER_PT_eevee_next_screen_trace_diffuse,
     RENDER_PT_eevee_next_denoise_reflection,
     RENDER_PT_eevee_next_denoise_refraction,
+    RENDER_PT_eevee_next_denoise_diffuse,
     RENDER_PT_eevee_motion_blur,
     RENDER_PT_eevee_next_motion_blur,
     RENDER_PT_motion_blur_curve,

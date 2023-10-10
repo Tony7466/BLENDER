@@ -107,13 +107,14 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
             col.separator()
 
-            col.operator("object.lightprobe_cache_bake").subset = "ACTIVE"
-            col.operator("object.lightprobe_cache_free").subset = "ACTIVE"
+            col.operator("object.lightprobe_cache_bake").subset = 'ACTIVE'
+            col.operator("object.lightprobe_cache_free").subset = 'ACTIVE'
 
             col.separator()
 
             col.prop(probe, "grid_bake_samples")
             col.prop(probe, "surfel_density")
+            col.prop(probe, "clip_end", text="Capture Distance")
 
             col.separator()
 
@@ -143,12 +144,6 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.prop(probe, "grid_capture_indirect")
             col.prop(probe, "grid_capture_emission")
 
-            col.separator()
-
-            row = col.row(align=True)
-            row.prop(probe, "visibility_collection")
-            row.prop(probe, "invert_visibility_collection", text="", icon='ARROW_LEFTRIGHT')
-
         elif probe.type == 'CUBEMAP':
             col = layout.column()
             col.prop(probe, "resolution")
@@ -157,7 +152,10 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub.prop(probe, "clip_end", text="End")
 
         elif probe.type == 'PLANAR':
-            # Currently unsupported
+            col = layout.column()
+            row = col.row()
+            col.prop(probe, "clip_start", text="Clipping Offset")
+            col.prop(probe, "influence_distance", text="Distance")
             pass
         else:
             # Currently unsupported

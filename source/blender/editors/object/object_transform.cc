@@ -48,14 +48,14 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -1540,7 +1540,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
         tot_change++;
         arm->id.tag |= LIB_TAG_DOIT;
-        /* do_inverse_offset = true; */ /* docenter_armature() handles this */
+        // do_inverse_offset = true; /* docenter_armature() handles this. */
 
         Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
         BKE_object_transform_copy(ob_eval, ob);

@@ -25,14 +25,15 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "BIK_api.h"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -98,7 +99,7 @@ static void autokeyframe_pose(
   ListBase nla_cache = {nullptr, nullptr};
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, float(scene->r.cfra));
+      depsgraph, BKE_scene_frame_get(scene));
   eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* flag is initialized from UserPref keyframing settings
@@ -231,7 +232,7 @@ static bConstraint *add_temporary_ik_constraint(bPoseChannel *pchan,
       nullptr, pchan, "TempConstraint", CONSTRAINT_TYPE_KINEMATIC);
 
   /* for draw, but also for detecting while pose solving */
-  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
   bKinematicConstraint *temp_con_data = static_cast<bKinematicConstraint *>(con->data);
 
@@ -1629,9 +1630,9 @@ static short apply_targetless_ik(Object *ob)
             mat3_to_size(parchan->size, smat);
           }
 
-          /* causes problems with some constraints (e.g. childof), so disable this */
-          /* as it is IK shouldn't affect location directly */
-          /* copy_v3_v3(parchan->loc, mat[3]); */
+          /* Causes problems with some constraints (e.g. child-of), so disable this
+           * as it is IK shouldn't affect location directly. */
+          // copy_v3_v3(parchan->loc, mat[3]);
         }
       }
 
@@ -1654,7 +1655,7 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
     /* clear all temporary lock flags */
     pchan->ikflag &= ~(BONE_IK_NO_XDOF_TEMP | BONE_IK_NO_YDOF_TEMP | BONE_IK_NO_ZDOF_TEMP);
 
-    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
     /* remove all temporary IK-constraints added */
     for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = next) {
@@ -1674,7 +1675,7 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
         }
         pchan->constflag |= PCHAN_HAS_IK;
         if (data->tar == nullptr || (data->tar->type == OB_ARMATURE && data->subtarget[0] == 0)) {
-          pchan->constflag |= PCHAN_HAS_TARGET;
+          pchan->constflag |= PCHAN_HAS_NO_TARGET;
         }
       }
     }
