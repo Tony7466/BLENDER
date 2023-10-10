@@ -1036,6 +1036,11 @@ struct Surfel {
   packed_float3 albedo_back;
   /** Cluster this surfel is assigned to. */
   int cluster_id;
+  /** True if the light can bounce or be emitted by the surfel back face. */
+  bool1 double_sided;
+  int _pad0;
+  int _pad1;
+  int _pad2;
   /** Surface radiance: Emission + Direct Lighting. */
   SurfelRadiance radiance_direct;
   /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
@@ -1320,7 +1325,7 @@ struct ReflectionProbeData {
 
   /**
    * Irradiance at the probe location encoded as spherical harmonics.
-   * Only contain the average luminance. Used for cubemap normalization.
+   * Only contain the average luminance. Used for cube-map normalization.
    */
   ReflectionProbeLowFreqLight low_freq_light;
 };
@@ -1340,7 +1345,7 @@ struct ProbePlanarData {
 BLI_STATIC_ASSERT_ALIGN(ProbePlanarData, 16)
 
 struct ClipPlaneData {
-  /** World space clip plane equation. Used to render planar lightprobes. */
+  /** World space clip plane equation. Used to render planar light-probes. */
   float4 plane;
 };
 BLI_STATIC_ASSERT_ALIGN(ClipPlaneData, 16)
