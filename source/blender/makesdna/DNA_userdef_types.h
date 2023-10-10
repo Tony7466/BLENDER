@@ -955,6 +955,9 @@ typedef struct UserDef {
   short autokey_mode;
   /** Flags for autokeying. */
   short autokey_flag;
+  /** Flags for which channels to insert keys at. */
+  short key_insert_channels;
+  char _pad15[6];
   /** Flags for animation. */
   short animation_flag;
 
@@ -1295,6 +1298,15 @@ typedef enum eAutokey_Flag {
   AUTOKEY_FLAG_CYCLEAWARE = (1 << 8),
   ANIMRECORD_FLAG_WITHNLA = (1 << 10),
 } eAutokey_Flag;
+
+typedef enum eKeyInsertChannels {
+  USER_ANIM_KEY_CHANNEL_TRANSLATE = (1 << 0),
+  USER_ANIM_KEY_CHANNEL_ROTATE = (1 << 1),
+  USER_ANIM_KEY_CHANNEL_SCALE = (1 << 2),
+  USER_ANIM_KEY_CHANNEL_ROTATION_MODE = (1 << 3),
+  USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES = (1 << 4),
+  USER_ANIM_KEY_CHANNEL_BBONE_SHAPE = (1 << 5),
+} eKeyInsertChannels;
 
 /**
  * Animation flags

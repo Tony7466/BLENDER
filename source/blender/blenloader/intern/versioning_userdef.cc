@@ -896,6 +896,9 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+    userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_TRANSLATE |
+                                    USER_ANIM_KEY_CHANNEL_ROTATE | USER_ANIM_KEY_CHANNEL_SCALE |
+                                    USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
