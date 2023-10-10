@@ -12,6 +12,8 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
 
+#include "FN_multi_function.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -290,6 +292,49 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+template <typename T>
+class MenuSwitchFn : public mf::MultiFunction {
+  const NodeEnumDefinition &enum_def_;
+
+ public:
+  MenuSwitchFn(const NodeEnumDefinition &enum_def) : enum_def_(enum_def)
+  {
+    static const mf::Signature signature = [enum_def]() {
+      mf::Signature signature;
+      mf::SignatureBuilder builder{"Menu Switch", signature};
+      builder.single_input<int>("Switch");
+      for (const NodeEnumItem enum_item : enum_def.items()) {
+        builder.single_input<T>(enum_item.name);
+      }
+      builder.single_output<T>("Output");
+      return signature;
+    }();
+    this->set_signature(&signature);
+  }
+
+  void call(const IndexMask &mask, mf::Params params, mf::Context context) const
+  {
+    VArray<int> condition = params.readonly_single_input<T>(0, "Switch");
+    Map<int32_t, VArray<T>> inputs_map;
+    inputs_map.reserve(enum_def_.items_num);
+    for (const int i : IndexRange(enum_def_.items_num)) {
+      const NodeEnumItem &enum_item = enum_def_.items()[i];
+      inputs_map.add_new(enum_item.identifier,
+                         params.readonly_single_input<T>(i + 1, enum_item.name));
+    }
+    MutableSpan<T> outputs = params.uninitialized_single_output<T>(enum_def_.items_num + 1,
+                                                                   "Output");
+
+    const T *default_value = static_cast<const T *>(CPPType::get<T>().default_value);
+
+    mask.foreach_index([&](const int i) {
+      const int condition = outputs[i];
+      const VArray<T> *inputs = inputs_map.lookup_ptr(condition);
+      outputs[i] = inputs ? inputs[i] : *default_value;
+    });
+  }
+};
+
 class LazyFunctionForMenuSwitchNode : public LazyFunction {
  private:
   bool can_be_field_ = false;
@@ -376,23 +421,23 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         *cpp_type_);
     const CPPType &value_type = value_or_field_type.value;
-    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type);
+    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type, *enum_def_);
 
     //GField false_field = value_or_field_type.as_field(false_value_or_field);
     //GField true_field = value_or_field_type.as_field(true_value_or_field);
-    Vector<GField> item_field(enum_def_->items_num + 1);
-    item_field[0] = std::move(condition);
+    Vector<GField> item_fields(enum_def_->items_num + 1);
+    item_fields[0] = std::move(condition);
     for (const int i : IndexRange(enum_def_->items_num)) {
-      item_field[i + 1] = value_or_field_type.as_field(item_value_or_field[i]);
+      item_fields[i + 1] = value_or_field_type.as_field(item_value_or_field[i]);
     }
-    GField output_field{FieldOperation::Create(switch_multi_function, std::move(item_field))};
+    GField output_field{FieldOperation::Create(switch_multi_function, std::move(item_fields))};
 
     void *output_ptr = params.get_output_data_ptr(0);
     value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
     params.output_set(0);
   }
 
-  const MultiFunction &get_switch_multi_function(const CPPType &type) const
+  const MultiFunction &get_switch_multi_function(const CPPType &type, const NodeEnumDefinition &enum_def) const
   {
     const MultiFunction *switch_multi_function = nullptr;
     type.to_static_type_tag<float,
@@ -407,11 +452,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         BLI_assert_unreachable();
       }
       else {
-        static auto switch_fn = mf::build::SI3_SO<bool, T, T, T>(
-            "Switch", [](const bool condition, const T &false_value, const T &true_value) {
-              return condition ? true_value : false_value;
-            });
-        switch_multi_function = &switch_fn;
+        static MenuSwitchMultiFunction fn(enum_def);
+        switch_multi_function = &fn;
       }
     });
     BLI_assert(switch_multi_function != nullptr);

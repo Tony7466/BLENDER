@@ -1117,6 +1117,43 @@ class LazyFunctionForSwitchSocketUsage : public lf::LazyFunction {
 };
 
 /**
+ * Outputs booleans that indicate which inputs of a menu switch node
+ * are used. Note that it's possible that multiple inputs are used
+ * when the condition is a field.
+ */
+class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
+  const NodeEnumDefinition &enum_def_;
+
+ public:
+  LazyFunctionForMenuSwitchSocketUsage(const NodeEnumDefinition &enum_def) : enum_def_(enum_def)
+  {
+    debug_name_ = "Menu Switch Socket Usage";
+    inputs_.append_as("Condition", CPPType::get<ValueOrField<int>>());
+    for (const int i : IndexRange(enum_def.items_num)) {
+      const NodeEnumItem &enum_item = enum_def.items()[i];
+      outputs_.append_as(enum_item.name, CPPType::get<bool>());
+    }
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    const ValueOrField<bool> &condition = params.get_input<ValueOrField<bool>>(0);
+    if (condition.is_field()) {
+      for (const int i : IndexRange(enum_def_.items_num)) {
+        params.set_output(i, true);
+      }
+    }
+    else {
+      const int32_t value = condition.as_value();
+      for (const int i : IndexRange(enum_def_.items_num)) {
+        const NodeEnumItem &enum_item = enum_def_.items()[i];
+        params.set_output(i, value == enum_item.identifier);
+      }
+    }
+  }
+};
+
+/**
  * Takes a field as input and extracts the set of anonymous attributes that it references.
  */
 class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
@@ -3073,6 +3110,10 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_switch_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_MENU_SWITCH: {
+        this->build_menu_switch_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3611,6 +3652,73 @@ struct GeometryNodesLazyFunctionBuilder {
       }
       else {
         graph_params.usage_by_bsocket.add(false_input_bsocket, output_is_used_socket);
+      }
+    }
+  }
+
+  void build_menu_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_menu_switch_node_lazy_function(bnode);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    int input_index = 0;
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      if (bsocket->is_available()) {
+        lf::InputSocket &lf_socket = lf_node.input(input_index);
+        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        input_index++;
+      }
+    }
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      if (bsocket->is_available()) {
+        lf::OutputSocket &lf_socket = lf_node.output(0);
+        graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        break;
+      }
+    }
+
+    this->build_menu_switch_node_socket_usage(bnode, graph_params);
+  }
+
+  void build_menu_switch_node_socket_usage(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(bnode.storage);
+    const NodeEnumDefinition &enum_def = storage.enum_definition;
+
+    const bNodeSocket *switch_input_bsocket = bnode.input_sockets()[0];
+    Vector<const bNodeSocket *> input_bsockets(enum_def.items_num);
+    for (const int i : IndexRange(enum_def.items_num)) {
+      input_bsockets[i] = bnode.input_sockets()[i + 1];
+    }
+    const bNodeSocket *output_bsocket = bnode.output_sockets()[0];
+
+    lf::OutputSocket *output_is_used_socket = graph_params.usage_by_bsocket.lookup_default(
+        output_bsocket, nullptr);
+    if (output_is_used_socket == nullptr) {
+      return;
+    }
+    graph_params.usage_by_bsocket.add(switch_input_bsocket, output_is_used_socket);
+    if (switch_input_bsocket->is_directly_linked()) {
+      /* The condition input is dynamic, so the usage of the other inputs is as well. */
+      static const LazyFunctionForMenuSwitchSocketUsage menu_switch_socket_usage_fn(enum_def);
+      lf::Node &lf_node = graph_params.lf_graph.add_function(menu_switch_socket_usage_fn);
+      graph_params.lf_inputs_by_bsocket.add(switch_input_bsocket, &lf_node.input(0));
+      for (const int i : IndexRange(enum_def.items_num)) {
+        graph_params.usage_by_bsocket.add(input_bsockets[i], &lf_node.output(i));
+      }
+    }
+    else {
+      const int condition =
+          switch_input_bsocket->default_value_typed<bNodeSocketValueEnum>()->value;
+      for (const int i : IndexRange(enum_def.items_num)) {
+        const NodeEnumItem &enum_item = enum_def.items()[i];
+        if (enum_item.identifier == condition) {
+          graph_params.usage_by_bsocket.add(input_bsockets[i], output_is_used_socket);
+          break;
+        }
       }
     }
   }
