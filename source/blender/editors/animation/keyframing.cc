@@ -1979,7 +1979,6 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   bool ob_edit_mode = false;
 
   const float cfra = BKE_scene_frame_get(scene);
-  int num_channels;
   const bool confirm = op->flag & OP_IS_INVOKE;
 
   KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
@@ -1996,7 +1995,9 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   }
 
   /* try to insert keyframes for the channels specified by KeyingSet */
-  num_channels = ANIM_apply_keyingset(C, nullptr, nullptr, ks, MODIFYKEY_MODE_INSERT, cfra);
+  const int num_channels = ANIM_apply_keyingset(
+      C, nullptr, nullptr, ks, MODIFYKEY_MODE_INSERT, cfra);
+
   if (G.debug & G_DEBUG) {
     BKE_reportf(op->reports,
                 RPT_INFO,
