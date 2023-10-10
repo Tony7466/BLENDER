@@ -2358,11 +2358,11 @@ static void shrink_customdata(CustomData &data, const int index_to_remove, const
   const IndexRange range_before(index_to_remove);
   const IndexRange range_after(index_to_remove + 1, size - index_to_remove - 1);
 
-  if (range_before.size() > 0) {
+  if (!range_before.is_empty()) {
     CustomData_copy_data(
         &data, &new_data, range_before.start(), range_before.start(), range_before.size());
   }
-  if (range_after.size() > 0) {
+  if (!range_after.is_empty()) {
     CustomData_copy_data(
         &data, &new_data, range_after.start(), range_after.start() - 1, range_after.size());
   }
