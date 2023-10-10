@@ -737,7 +737,7 @@ void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob)
   copy_m4_m4(instdata.mat, ob->object_to_world);
 
   switch (prb->type) {
-    case LIGHTPROBE_TYPE_CUBEMAP:
+    case LIGHTPROBE_TYPE_SPHERE:
       instdata.clip_sta = show_clipping ? prb->clipsta : -1.0;
       instdata.clip_end = show_clipping ? prb->clipend : -1.0;
       DRW_buffer_add_entry(cb->probe_cube, color_p, &instdata);
@@ -787,7 +787,7 @@ void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob)
         DRW_shgroup_call_procedural_points(grp, nullptr, cell_count);
       }
       break;
-    case LIGHTPROBE_TYPE_PLANAR:
+    case LIGHTPROBE_TYPE_PLANE:
       DRW_buffer_add_entry(cb->probe_planar, color_p, &instdata);
 
       if (DRW_state_is_select() && (prb->flag & LIGHTPROBE_FLAG_SHOW_DATA)) {

@@ -144,7 +144,7 @@ void ReflectionProbeModule::sync_world_lookdev()
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
   const ::LightProbe *light_probe = (::LightProbe *)ob->data;
-  if (light_probe->type != LIGHTPROBE_TYPE_CUBEMAP) {
+  if (light_probe->type != LIGHTPROBE_TYPE_SPHERE) {
     return;
   }
   const bool is_dirty = ob_handle.recalc != 0;

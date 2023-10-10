@@ -164,9 +164,21 @@ static const EnumPropertyItem field_type_items[] = {
 };
 
 static EnumPropertyItem lightprobe_type_items[] = {
-    {LIGHTPROBE_TYPE_CUBEMAP, "CUBEMAP", ICON_LIGHTPROBE_CUBEMAP, "Cubemap", "Cubemap probe"},
-    {LIGHTPROBE_TYPE_PLANAR, "PLANAR", ICON_LIGHTPROBE_PLANAR, "Planar", "Planar probe"},
-    {LIGHTPROBE_TYPE_VOLUME, "VOLUME", ICON_LIGHTPROBE_VOLUME, "Volume", "Volume probe"},
+    {LIGHTPROBE_TYPE_SPHERE,
+     "SPHERE",
+     ICON_LIGHTPROBE_SPHERE,
+     "Sphere",
+     "Light probe that captures precise lighting from all directions at a single point in space"},
+    {LIGHTPROBE_TYPE_PLANE,
+     "PLANE",
+     ICON_LIGHTPROBE_PLANE,
+     "Plane",
+     "Light probe that captures incoming light from a single direction on a plane"},
+    {LIGHTPROBE_TYPE_VOLUME,
+     "VOLUME",
+     ICON_LIGHTPROBE_VOLUME,
+     "Volume",
+     "Light probe that captures low frequency lighting inside a volume"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -736,10 +748,10 @@ static const char *get_lightprobe_defname(int type)
   switch (type) {
     case LIGHTPROBE_TYPE_VOLUME:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Volume");
-    case LIGHTPROBE_TYPE_PLANAR:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Planar");
-    case LIGHTPROBE_TYPE_CUBEMAP:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Cubemap");
+    case LIGHTPROBE_TYPE_PLANE:
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Plane");
+    case LIGHTPROBE_TYPE_SPHERE:
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "Sphere");
     default:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_LIGHT, "LightProbe");
   }

@@ -91,12 +91,12 @@ void BKE_lightprobe_type_set(LightProbe *probe, const short lightprobe_type)
       probe->falloff = 1.0f;
       probe->clipsta = 0.01f;
       break;
-    case LIGHTPROBE_TYPE_PLANAR:
+    case LIGHTPROBE_TYPE_PLANE:
       probe->distinf = 0.1f;
       probe->falloff = 0.5f;
       probe->clipsta = 0.001f;
       break;
-    case LIGHTPROBE_TYPE_CUBEMAP:
+    case LIGHTPROBE_TYPE_SPHERE:
       probe->attenuation_type = LIGHTPROBE_SHAPE_ELIPSOID;
       break;
     default:
