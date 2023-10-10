@@ -102,7 +102,15 @@ ssize_t BLI_read(int fd, void *buf, size_t nbytes)
    * exiting on EOF with the second iteration. */
   ssize_t nbytes_read_total = 0;
   while (true) {
-    ssize_t nbytes_read = read(fd, buf, nbytes);
+    ssize_t nbytes_read = read(fd,
+                               buf,
+#ifndef WIN32
+                               /* Read must not exceed INT_MAX on WIN32, clamp. */
+                               MIN2(nbytes, INT_MAX)
+#else
+                               nbytes
+#endif
+    );
     if (nbytes_read == nbytes) {
       /* Success (common case). */
       return nbytes_read_total + nbytes_read;

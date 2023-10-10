@@ -291,7 +291,9 @@ int BLI_open(const char *filepath, int oflag, int pmode) ATTR_WARN_UNUSED_RESULT
 int BLI_access(const char *filepath, int mode) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
 /**
- * A version of `read` which continues reading until failure or the requested size is met.
+ * A version of `read` with the following differences:
+ * - continues reading until failure or the requested size is met.
+ * - Reads `size_t` bytes instead of `int` on WIN32.
  * \return the number of bytes read.
  */
 ssize_t BLI_read(int fd, void *buf, size_t nbytes);
