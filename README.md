@@ -4,7 +4,7 @@ linking to external resources instead of including content in-line.
 See 'release/text/readme.html' for the end user read-me.
 -->
 
-![Mechanical Blender logo](https://www.mechanicablender.org.org/mechanical_blender.svg)
+![Mechanical Blender logo](https://www.mechanicalblender.org/mechanical_blender.svg)
 =======
 
 Mechanical Blender (aka mblender) aims to give mechanical engineering and design tools 
