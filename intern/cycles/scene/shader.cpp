@@ -54,6 +54,9 @@ NODE_DEFINE(Shader)
               EMISSION_SAMPLING_AUTO);
 
   SOCKET_BOOLEAN(use_transparent_shadow, "Use Transparent Shadow", true);
+  SOCKET_BOOLEAN(use_smooth_bump_illumination,
+                 "Smooth illumination on grazing angles when using bump mapping",
+                 true);
   SOCKET_BOOLEAN(heterogeneous_volume, "Heterogeneous Volume", true);
 
   static NodeEnum volume_sampling_method_enum;
@@ -580,6 +583,9 @@ void ShaderManager::device_update_common(Device * /*device*/,
     }
     if (shader->get_displacement_method() != DISPLACE_BUMP) {
       flag |= SD_HAS_DISPLACEMENT;
+    }
+    if (shader->get_use_smooth_bump_illumination()) {
+      flag |= SD_USE_SMOOTH_BUMP_ILLUMINATION;
     }
 
     /* constant emission check */

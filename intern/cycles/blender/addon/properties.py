@@ -1019,6 +1019,11 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         "disabling will render faster but not give accurate shadows",
         default=True,
     )
+    use_smooth_bump_illumination: BoolProperty(
+        name="Use Bump Smooth",
+        description="Smooth illumination on grazing angles when using bump mapping",
+        default=True,
+    )
     homogeneous_volume: BoolProperty(
         name="Homogeneous Volume",
         description="When using volume rendering, assume volume has the same density everywhere "
