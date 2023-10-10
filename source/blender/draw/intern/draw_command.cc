@@ -677,7 +677,6 @@ void DrawMultiBuf::bind(RecordingState &state,
 #ifdef WITH_METAL_BACKEND
     /* For SSBO vertex fetch, mutate output vertex count by ssbo vertex fetch expansion factor. */
     if (group.gpu_shader) {
-      int old_vlen = group.vertex_len;
       int num_input_primitives = gpu_get_prim_count_from_type(group.vertex_len,
                                                               group.gpu_batch->prim_type);
       group.vertex_len = num_input_primitives *
