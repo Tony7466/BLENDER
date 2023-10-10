@@ -8458,7 +8458,16 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
   /* number editing */
   if (state == BUTTON_STATE_NUM_EDITING) {
     if (ui_but_is_cursor_warp(but)) {
-      WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, nullptr, true);
+      if (ELEM(but->type, UI_BTYPE_HSVCIRCLE, UI_BTYPE_HSVCUBE)) {
+        rctf rectf;
+        ui_block_to_window_rctf(data->region, but->block, &rectf, &but->rect);
+        rcti bounds;
+        BLI_rcti_rctf_copy(&bounds, &rectf);
+        WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, &bounds, true);
+      }
+      else {
+        WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, nullptr, true);
+      }
     }
     ui_numedit_begin(but, data);
   }
@@ -10306,7 +10315,7 @@ float ui_block_calc_pie_segment(uiBlock *block, const float event_xy[2])
 
 static int ui_handle_menu_letter_press(uiPopupBlockHandle *menu)
 {
-  /* Start menu search on spacebar press if the menu has a name. */
+  /* Start menu search on space-bar press if the menu has a name. */
   if (menu->menu_idname[0]) {
     uiAfterFunc *after = ui_afterfunc_new();
     wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
@@ -10779,7 +10788,7 @@ static int ui_handle_menu_event(bContext *C,
           break;
         }
         case EVT_SPACEKEY: {
-          /* Press spacebar to start menu search. */
+          /* Press space-bar to start menu search. */
           if ((level != 0) && (but == nullptr || !menu->menu_idname[0])) {
             /* Search parent if the child is open but not activated or not searchable. */
             menu->menuretval = UI_RETURN_OUT | UI_RETURN_OUT_PARENT;
