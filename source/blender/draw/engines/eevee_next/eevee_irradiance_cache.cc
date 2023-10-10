@@ -860,13 +860,22 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   irradiance_L1_b_tx_.ensure_3d(GPU_RGBA32F, grid_resolution, texture_usage);
   irradiance_L1_c_tx_.ensure_3d(GPU_RGBA32F, grid_resolution, texture_usage);
   validity_tx_.ensure_3d(GPU_R32F, grid_resolution, texture_usage);
+  virtual_offset_tx_.ensure_3d(GPU_RGBA16F, grid_resolution, texture_usage);
+
+  if (!irradiance_L0_tx_.is_valid() || !irradiance_L1_a_tx_.is_valid() ||
+      !irradiance_L1_b_tx_.is_valid() || !irradiance_L1_c_tx_.is_valid() ||
+      !validity_tx_.is_valid() || !virtual_offset_tx_.is_valid())
+  {
+    inst_.info = "Error: Not enough memory to bake " + std::string(probe_object.id.name) + ".";
+    do_break_ = true;
+    return;
+  }
+
   irradiance_L0_tx_.clear(float4(0.0f));
   irradiance_L1_a_tx_.clear(float4(0.0f));
   irradiance_L1_b_tx_.clear(float4(0.0f));
   irradiance_L1_c_tx_.clear(float4(0.0f));
   validity_tx_.clear(float4(0.0f));
-
-  virtual_offset_tx_.ensure_3d(GPU_RGBA16F, grid_resolution, texture_usage);
   virtual_offset_tx_.clear(float4(0.0f));
 
   DRW_stats_group_start("IrradianceBake.SceneBounds");
@@ -951,7 +960,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
     return;
   }
 
-  if (capture_info_buf_.surfel_len > surfels_buf_.size() && GPU_mem_stats_supported()) {
+  if (capture_info_buf_.surfel_len > surfels_buf_.size()) {
     int total_mem_kb, free_mem_kb;
     GPU_mem_stats_get(&total_mem_kb, &free_mem_kb);
     size_t free_mem = size_t(free_mem_kb) * 1024;
