@@ -2013,6 +2013,38 @@ static void grow_customdata(CustomData &data, const int insertion_index, const i
   data = new_data;
 }
 
+static int find_layer_insertion_index(
+    const blender::Span<const blender::bke::greasepencil::Layer *> layers,
+    const blender::bke::greasepencil::LayerGroup &group,
+    const bool above = true)
+{
+  using namespace blender;
+  if (!group.layers().is_empty()) {
+    if (above) {
+      return layers.first_index(group.layers().last());
+    }
+    return layers.first_index(group.layers().first());
+  }
+  if (!group.as_node().parent_group()) {
+    return 0;
+  }
+  bke::greasepencil::LayerGroup &parent_group = *group.as_node().parent_group();
+  const Span<const bke::greasepencil::TreeNode *> nodes = parent_group.nodes();
+  int index = nodes.first_index(&group.as_node());
+  while (index > 0 && index < nodes.size()) {
+    if (nodes[index]->is_layer()) {
+      break;
+    }
+    if (above) {
+      index++;
+    }
+    else {
+      index--;
+    }
+  }
+  return index;
+}
+
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
 {
@@ -2024,7 +2056,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     CustomData_realloc(&this->layers_data, 0, 1);
     return parent_group.add_layer(unique_name);
   }
-  const int insertion_index = layers.first_index(parent_group.layers().last());
+  int insertion_index = find_layer_insertion_index(layers, parent_group, false);
   grow_customdata(this->layers_data, insertion_index, layers.size());
 
   return parent_group.add_layer(unique_name);
@@ -2141,7 +2173,7 @@ void GreasePencil::move_node_down(blender::bke::greasepencil::TreeNode &node, co
       }
       else if (target_node.is_group()) {
         const bke::greasepencil::LayerGroup &group = target_node.as_group();
-        to_index = layers.first_index(group.layers().first());
+        to_index = find_layer_insertion_index(layers, group, false);
       }
 
       reorder_layer_data(*this, from_index, to_index);
@@ -2162,6 +2194,7 @@ void GreasePencil::move_node_top(blender::bke::greasepencil::TreeNode &node)
     const Span<const bke::greasepencil::Layer *> layers = this->layers();
     const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
     const int from_index = layers.first_index(&node.as_layer());
+    /* Since `group` is the parent of `node`, we know `group` can never be empty. */
     const int to_index = layers.first_index(group.layers().last());
 
     reorder_layer_data(*this, from_index, to_index);
@@ -2181,6 +2214,7 @@ void GreasePencil::move_node_bottom(blender::bke::greasepencil::TreeNode &node)
     const Span<const bke::greasepencil::Layer *> layers = this->layers();
     const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
     const int from_index = layers.first_index(&node.as_layer());
+    /* Since `group` is the parent of `node`, we know `group` can never be empty. */
     const int to_index = layers.first_index(group.layers().first());
 
     reorder_layer_data(*this, from_index, to_index);
@@ -2208,7 +2242,7 @@ void GreasePencil::move_node_after(blender::bke::greasepencil::TreeNode &node,
     }
     else if (target_node.is_group()) {
       const bke::greasepencil::LayerGroup &group = target_node.as_group();
-      to_index = layers.first_index(group.layers().last());
+      to_index = find_layer_insertion_index(layers, group, true);
     }
     if (from_index > to_index) {
       to_index++;
@@ -2240,7 +2274,7 @@ void GreasePencil::move_node_before(blender::bke::greasepencil::TreeNode &node,
     }
     else if (target_node.is_group()) {
       const bke::greasepencil::LayerGroup &group = target_node.as_group();
-      to_index = layers.first_index(group.layers().first());
+      to_index = find_layer_insertion_index(layers, group, false);
     }
     if (to_index > from_index) {
       to_index--;
@@ -2265,7 +2299,7 @@ void GreasePencil::move_node_into(blender::bke::greasepencil::TreeNode &node,
   if (node.is_layer()) {
     const Span<const bke::greasepencil::Layer *> layers = this->layers();
     const int from_index = layers.first_index(&node.as_layer());
-    int to_index = layers.first_index(parent_group.layers().last());
+    int to_index = find_layer_insertion_index(layers, parent_group, true);
     if (from_index > to_index) {
       to_index++;
     }
