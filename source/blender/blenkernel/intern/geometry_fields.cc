@@ -209,11 +209,13 @@ const GreasePencil *GeometryFieldContext::grease_pencil() const
 }
 const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing() const
 {
-  return this->type() == GeometryComponent::Type::GreasePencil &&
-                 ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT) ?
-             get_eval_grease_pencil_layer_drawing(*this->grease_pencil(),
-                                                  grease_pencil_layer_index_) :
-             nullptr;
+  if (!(this->type() == GeometryComponent::Type::GreasePencil) ||
+      !ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT))
+  {
+    return nullptr;
+  }
+  return get_eval_grease_pencil_layer_drawing(*this->grease_pencil(),
+                                              this->grease_pencil_layer_index_);
 }
 const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
 {
