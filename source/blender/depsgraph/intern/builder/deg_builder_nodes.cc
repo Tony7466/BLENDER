@@ -703,6 +703,7 @@ void DepsgraphNodeBuilder::build_collection(LayerCollection *from_layer_collecti
     id_node->is_visible_on_build = is_collection_visible;
 
     build_idproperties(collection->id.properties);
+    build_parameters(&collection->id);
     add_operation_node(&collection->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL_DONE);
   }
   if (from_layer_collection != nullptr) {
@@ -914,9 +915,8 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
           return;
         }
         if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
-          if (nmd->simulation_cache &&
-              nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid) {
-            nmd->simulation_cache->invalidate();
+          if (nmd->simulation_cache->ptr->cache_state() == bke::sim::CacheState::Valid) {
+            nmd->simulation_cache->ptr->invalidate();
           }
         }
       };

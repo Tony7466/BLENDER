@@ -209,6 +209,7 @@ static bool polygons_check_flip(blender::MutableSpan<int> corner_verts,
                                corner_verts.data(),
                                corner_edges.data(),
                                ldata,
+                               corner_edges.size(),
                                reinterpret_cast<float(*)[3]>(nos),
                                mdisp,
                                true);
@@ -551,9 +552,9 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           result->poly_normals(),
                                           sharp_edges.span.data(),
                                           sharp_faces,
+                                          clnors,
                                           true,
                                           result->smoothresh,
-                                          clnors,
                                           nullptr,
                                           loop_normals);
   }

@@ -369,7 +369,7 @@ const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
 
 const float (*BKE_mesh_poly_normals_ensure(const Mesh *mesh))[3]
 {
-  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
+  return reinterpret_cast<const float(*)[3]>(mesh->poly_normals().data());
 }
 
 void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
@@ -488,6 +488,8 @@ static void lnor_space_define(CornerNormalSpace *lnor_space,
     return;
   }
 
+  lnor_space->vec_lnor = lnor;
+
   /* Compute ref alpha, average angle of all available edge vectors to lnor. */
   if (!edge_vectors.is_empty()) {
     float alpha = 0.0f;
@@ -542,7 +544,7 @@ void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
   using namespace blender::bke::mesh;
   CornerNormalSpace space{};
   lnor_space_define(&space, lnor, vec_ref, vec_other, edge_vectors);
-  copy_v3_v3(lnor_space->vec_lnor, lnor);
+  copy_v3_v3(lnor_space->vec_lnor, space.vec_lnor);
   copy_v3_v3(lnor_space->vec_ref, space.vec_ref);
   copy_v3_v3(lnor_space->vec_ortho, space.vec_ortho);
   lnor_space->ref_alpha = space.ref_alpha;
@@ -586,13 +588,12 @@ MINLINE short unit_float_to_short(const float val)
 
 namespace blender::bke::mesh {
 static void lnor_space_custom_data_to_normal(const CornerNormalSpace *lnor_space,
-                                             const float3 lnor_no_custom,
                                              const short clnor_data[2],
                                              float r_custom_lnor[3])
 {
   /* NOP custom normal data or invalid lnor space, return. */
   if (clnor_data[0] == 0 || lnor_space->ref_alpha == 0.0f || lnor_space->ref_beta == 0.0f) {
-    copy_v3_v3(r_custom_lnor, lnor_no_custom);
+    copy_v3_v3(r_custom_lnor, lnor_space->vec_lnor);
     return;
   }
 
@@ -605,7 +606,7 @@ static void lnor_space_custom_data_to_normal(const CornerNormalSpace *lnor_space
                         alphafac;
     const float betafac = unit_short_to_float(clnor_data[1]);
 
-    mul_v3_v3fl(r_custom_lnor, lnor_no_custom, cosf(alpha));
+    mul_v3_v3fl(r_custom_lnor, lnor_space->vec_lnor, cosf(alpha));
 
     if (betafac == 0.0f) {
       madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ref, sinf(alpha));
@@ -627,29 +628,29 @@ void BKE_lnor_space_custom_data_to_normal(const MLoopNorSpace *lnor_space,
 {
   using namespace blender::bke::mesh;
   CornerNormalSpace space;
+  space.vec_lnor = lnor_space->vec_lnor;
   space.vec_ref = lnor_space->vec_ref;
   space.vec_ortho = lnor_space->vec_ortho;
   space.ref_alpha = lnor_space->ref_alpha;
   space.ref_beta = lnor_space->ref_beta;
-  lnor_space_custom_data_to_normal(&space, lnor_space->vec_lnor, clnor_data, r_custom_lnor);
+  lnor_space_custom_data_to_normal(&space, clnor_data, r_custom_lnor);
 }
 
 namespace blender::bke::mesh {
 void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
-                                      const float3 lnor_no_custom,
                                       const float custom_lnor[3],
                                       short r_clnor_data[2])
 {
   /* We use nullptr vector as NOP custom normal (can be simpler than giving auto-computed `lnor`).
    */
-  if (is_zero_v3(custom_lnor) || compare_v3v3(lnor_no_custom, custom_lnor, 1e-4f)) {
+  if (is_zero_v3(custom_lnor) || compare_v3v3(lnor_space->vec_lnor, custom_lnor, 1e-4f)) {
     r_clnor_data[0] = r_clnor_data[1] = 0;
     return;
   }
 
   {
     const float pi2 = float(M_PI * 2.0);
-    const float cos_alpha = dot_v3v3(lnor_no_custom, custom_lnor);
+    const float cos_alpha = dot_v3v3(lnor_space->vec_lnor, custom_lnor);
     float vec[3], cos_beta;
     float alpha;
 
@@ -664,7 +665,7 @@ void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
     }
 
     /* Project custom lnor on (vec_ref, vec_ortho) plane. */
-    mul_v3_v3fl(vec, lnor_no_custom, -cos_alpha);
+    mul_v3_v3fl(vec, lnor_space->vec_lnor, -cos_alpha);
     add_v3_v3(vec, custom_lnor);
     normalize_v3(vec);
 
@@ -696,11 +697,12 @@ void BKE_lnor_space_custom_normal_to_data(const MLoopNorSpace *lnor_space,
 {
   using namespace blender::bke::mesh;
   CornerNormalSpace space;
+  space.vec_lnor = lnor_space->vec_lnor;
   space.vec_ref = lnor_space->vec_ref;
   space.vec_ortho = lnor_space->vec_ortho;
   space.ref_alpha = lnor_space->ref_alpha;
   space.ref_beta = lnor_space->ref_beta;
-  lnor_space_custom_normal_to_data(&space, lnor_space->vec_lnor, custom_lnor, r_clnor_data);
+  lnor_space_custom_normal_to_data(&space, custom_lnor, r_clnor_data);
 }
 
 namespace blender::bke::mesh {
@@ -711,7 +713,6 @@ struct LoopSplitTaskDataCommon {
    * different elements in the arrays. */
   CornerNormalSpaceArray *lnors_spacearr;
   MutableSpan<float3> loop_normals;
-  MutableSpan<short2> clnors_data;
 
   /* Read-only. */
   Span<float3> positions;
@@ -723,6 +724,7 @@ struct LoopSplitTaskDataCommon {
   Span<int> loop_to_poly;
   Span<float3> poly_normals;
   Span<float3> vert_normals;
+  Span<short2> clnors_data;
 };
 
 #define INDEX_UNSET INT_MIN
@@ -917,10 +919,8 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
     lnors_spacearr->corner_space_indices[ml_curr_index] = space_index;
 
     if (!clnors_data.is_empty()) {
-      lnor_space_custom_data_to_normal(lnor_space,
-                                       loop_normals[ml_curr_index],
-                                       clnors_data[ml_curr_index],
-                                       loop_normals[ml_curr_index]);
+      lnor_space_custom_data_to_normal(
+          lnor_space, clnors_data[ml_curr_index], loop_normals[ml_curr_index]);
     }
 
     if (!lnors_spacearr->corners_by_space.is_empty()) {
@@ -936,7 +936,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 {
   CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
-  MutableSpan<short2> clnors_data = common_data->clnors_data;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
@@ -946,6 +945,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<int2> edge_to_loops = common_data->edge_to_loops;
   const Span<int> loop_to_poly = common_data->loop_to_poly;
   const Span<float3> poly_normals = common_data->poly_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
   const int poly_index = loop_to_poly[ml_curr_index];
   const int ml_prev_index = poly_corner_prev(polys[poly_index], ml_curr_index);
@@ -966,11 +966,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
-  short2 *clnor_ref = nullptr;
-  int clnors_count = 0;
-  bool clnors_invalid = false;
 
   Vector<int, 8> processed_corners;
 
@@ -1019,22 +1015,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       const float fac = saacos(dot_v3v3(vec_curr, vec_prev));
       /* Accumulate */
       lnor += poly_normals[mpfan_curr_index] * fac;
-
-      if (!clnors_data.is_empty()) {
-        /* Accumulate all clnors, if they are not all equal we have to fix that! */
-        short2 *clnor = &clnors_data[mlfan_vert_index];
-        if (clnors_count) {
-          clnors_invalid |= ((*clnor_ref)[0] != (*clnor)[0] || (*clnor_ref)[1] != (*clnor)[1]);
-        }
-        else {
-          clnor_ref = clnor;
-        }
-        clnors_avg[0] += (*clnor)[0];
-        clnors_avg[1] += (*clnor)[1];
-        clnors_count++;
-      }
     }
-
     processed_corners.append(mlfan_vert_index);
 
     if (lnors_spacearr) {
@@ -1044,6 +1025,9 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       }
       if (!lnors_spacearr->corners_by_space.is_empty()) {
         lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
+      }
+      if (!clnors_data.is_empty()) {
+        clnors_avg += int2(clnors_data[mlfan_vert_index]);
       }
     }
 
@@ -1086,21 +1070,8 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     edge_vectors->clear();
 
     if (!clnors_data.is_empty()) {
-      if (clnors_invalid) {
-        clnors_avg[0] /= clnors_count;
-        clnors_avg[1] /= clnors_count;
-        /* Fix/update all clnors of this fan with computed average value. */
-        if (G.debug & G_DEBUG) {
-          printf("Invalid clnors in this fan!\n");
-        }
-        clnors_data.fill_indices(processed_corners.as_span(),
-                                 short2(clnors_avg[0], clnors_avg[1]));
-        // print_v2("new clnors", clnors_avg);
-      }
-      /* Extra bonus: since small-stack is local to this function,
-       * no more need to empty it at all cost! */
-
-      lnor_space_custom_data_to_normal(lnor_space, lnor, *clnor_ref, lnor);
+      clnors_avg /= processed_corners.size();
+      lnor_space_custom_data_to_normal(lnor_space, short2(clnors_avg), lnor);
     }
   }
 
@@ -1274,9 +1245,9 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> poly_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
@@ -1350,8 +1321,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   LoopSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
   common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {reinterpret_cast<short2 *>(clnors_data),
-                             clnors_data ? corner_verts.size() : 0};
+  common_data.clnors_data = {clnors_data, clnors_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
   common_data.polys = polys;
@@ -1461,9 +1431,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     poly_normals,
                     sharp_edges.data(),
                     sharp_faces,
+                    r_clnors_data.data(),
                     use_split_normals,
                     split_angle,
-                    r_clnors_data.data(),
                     &lnors_spacearr,
                     loop_normals);
 
@@ -1583,9 +1553,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       poly_normals,
                       sharp_edges.data(),
                       sharp_faces,
+                      r_clnors_data.data(),
                       use_split_normals,
                       split_angle,
-                      r_clnors_data.data(),
                       &lnors_spacearr,
                       loop_normals);
   }
@@ -1616,8 +1586,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       float *nor = r_custom_loop_normals[nidx];
 
       const int space_index = lnors_spacearr.corner_space_indices[i];
-      lnor_space_custom_normal_to_data(
-          &lnors_spacearr.spaces[space_index], loop_normals[i], nor, r_clnors_data[i]);
+      lnor_space_custom_normal_to_data(&lnors_spacearr.spaces[space_index], nor, r_clnors_data[i]);
       done_loops[i].reset();
     }
     else {
@@ -1634,7 +1603,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       mul_v3_fl(avg_nor, 1.0f / float(fan_corners.size()));
       short2 clnor_data_tmp;
       lnor_space_custom_normal_to_data(
-          &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor, clnor_data_tmp);
+          &lnors_spacearr.spaces[space_index], avg_nor, clnor_data_tmp);
 
       r_clnors_data.fill_indices(fan_corners, clnor_data_tmp);
     }

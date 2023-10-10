@@ -39,7 +39,9 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
+#include "BKE_blender_version.h"
 #include "BKE_blendfile.h"
+#include "BKE_cachefile.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -65,8 +67,10 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_fileselect.h"
+#include "ED_info.h"
 #include "ED_object.h"
 #include "ED_render.h"
 #include "ED_screen.h"
@@ -2991,6 +2995,8 @@ static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
   uiLayoutSetUnitsX(layout, 4.0f);
+
+  UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
 
   /* Apply. */
   uiItemO(layout,
@@ -6507,6 +6513,126 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   }
 }
 
+void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  if (!bmain->has_forward_compatibility_issues) {
+    const char *status_info_txt = ED_info_statusbar_string(bmain, scene, view_layer);
+    uiItemL(layout, status_info_txt, ICON_NONE);
+    return;
+  }
+
+  /* Blender version part is shown as warning area when there are forward compatibility issues with
+   * currently loaded .blend file. */
+
+  const char *status_info_txt = ED_info_statusbar_string_ex(
+      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
+  uiItemL(layout, status_info_txt, ICON_NONE);
+
+  status_info_txt = ED_info_statusbar_string_ex(bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
+
+  uiBut *but;
+
+  const uiStyle *style = UI_style_get();
+  uiLayout *ui_abs = uiLayoutAbsolute(layout, false);
+  uiBlock *block = uiLayoutGetBlock(ui_abs);
+  eUIEmbossType previous_emboss = UI_block_emboss_get(block);
+
+  UI_fontstyle_set(&style->widgetlabel);
+  int width = int(
+      BLF_width(style->widgetlabel.uifont_id, status_info_txt, strlen(status_info_txt)));
+  width = max_ii(width, int(10 * UI_SCALE_FAC));
+
+  UI_block_align_begin(block);
+
+  /* Background for icon. */
+  but = uiDefBut(block,
+                 UI_BTYPE_ROUNDBOX,
+                 0,
+                 "",
+                 0,
+                 0,
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0,
+                 0,
+                 "");
+  /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
+
+  /* Background for the rest of the message. */
+  but = uiDefBut(block,
+                 UI_BTYPE_ROUNDBOX,
+                 0,
+                 "",
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
+                 0,
+                 UI_UNIT_X + width,
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0,
+                 0,
+                 "");
+
+  /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
+  but->col[3] = 64;
+
+  UI_block_align_end(block);
+  UI_block_emboss_set(block, UI_EMBOSS_NONE);
+
+  /* The report icon itself. */
+  static char compat_error_msg[256];
+  char writer_ver_str[12];
+  BKE_blender_version_blendfile_string_from_values(
+      writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
+  SNPRINTF(compat_error_msg,
+           TIP_("File saved by newer Blender\n(%s), expect loss of data"),
+           writer_ver_str);
+  but = uiDefIconBut(block,
+                     UI_BTYPE_BUT,
+                     0,
+                     ICON_ERROR,
+                     int(3 * UI_SCALE_FAC),
+                     0,
+                     UI_UNIT_X,
+                     UI_UNIT_Y,
+                     nullptr,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     compat_error_msg);
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING_TEXT, SPACE_INFO, but->col);
+  but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
+
+  /* The report message. */
+  but = uiDefBut(block,
+                 UI_BTYPE_BUT,
+                 0,
+                 status_info_txt,
+                 UI_UNIT_X,
+                 0,
+                 short(width + UI_UNIT_X),
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 compat_error_msg);
+
+  UI_block_emboss_set(block, previous_emboss);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -6804,8 +6930,16 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   Scene *scene = CTX_data_scene(C);
   const bool engine_supports_procedural = RE_engine_supports_alembic_procedural(engine_type,
                                                                                 scene);
+  CacheFile *cache_file = static_cast<CacheFile *>(fileptr->data);
+  CacheFile *cache_file_eval = reinterpret_cast<CacheFile *>(
+      DEG_get_evaluated_id(CTX_data_depsgraph_pointer(C), &cache_file->id));
+  bool is_alembic = cache_file_eval->type == CACHEFILE_TYPE_ALEMBIC;
 
-  if (!engine_supports_procedural) {
+  if (!is_alembic) {
+    row = uiLayoutRow(layout, false);
+    uiItemL(row, TIP_("Only Alembic Procedurals supported"), ICON_INFO);
+  }
+  else if (!engine_supports_procedural) {
     row = uiLayoutRow(layout, false);
     /* For Cycles, verify that experimental features are enabled. */
     if (BKE_scene_uses_cycles(scene) && !BKE_scene_uses_cycles_experimental_features(scene)) {
@@ -6822,7 +6956,7 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   }
 
   row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, engine_supports_procedural);
+  uiLayoutSetActive(row, is_alembic && engine_supports_procedural);
   uiItemR(row, fileptr, "use_render_procedural", 0, nullptr, ICON_NONE);
 
   const bool use_render_procedural = RNA_boolean_get(fileptr, "use_render_procedural");

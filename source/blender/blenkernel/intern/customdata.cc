@@ -2238,7 +2238,9 @@ static bool customdata_merge_internal(const CustomData *source,
     const int src_layer_flag = src_layer.flag;
 
     if (type != last_type) {
-      current_type_layer_count = 0;
+      /* Dont exceed layer count on destination. */
+      const int layernum_dst = CustomData_number_of_layers(dest, type);
+      current_type_layer_count = layernum_dst;
       max_current_type_layer_count = CustomData_layertype_layers_max(type);
       last_active = src_layer.active;
       last_render = src_layer.active_rnd;
@@ -3505,7 +3507,7 @@ void CustomData_swap_corners(CustomData *data, const int index, const int *corne
   }
 }
 
-void CustomData_swap(CustomData *data, const int index_a, const int index_b)
+void CustomData_swap(CustomData *data, const int index_a, const int index_b, const int totelem)
 {
   char buff_static[256];
 
@@ -3514,17 +3516,17 @@ void CustomData_swap(CustomData *data, const int index_a, const int index_b)
   }
 
   for (int i = 0; i < data->totlayer; i++) {
-    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(data->layers[i].type));
+    CustomDataLayer &layer = data->layers[i];
+    ensure_layer_data_is_mutable(layer, totelem);
+    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer.type));
     const size_t size = typeInfo->size;
     const size_t offset_a = size * index_a;
     const size_t offset_b = size * index_b;
 
     void *buff = size <= sizeof(buff_static) ? buff_static : MEM_mallocN(size, __func__);
-    memcpy(buff, POINTER_OFFSET(data->layers[i].data, offset_a), size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_a),
-           POINTER_OFFSET(data->layers[i].data, offset_b),
-           size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_b), buff, size);
+    memcpy(buff, POINTER_OFFSET(layer.data, offset_a), size);
+    memcpy(POINTER_OFFSET(layer.data, offset_a), POINTER_OFFSET(layer.data, offset_b), size);
+    memcpy(POINTER_OFFSET(layer.data, offset_b), buff, size);
 
     if (buff != buff_static) {
       MEM_freeN(buff);

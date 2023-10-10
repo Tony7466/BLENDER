@@ -238,7 +238,7 @@ StripElem *SEQ_render_give_stripelem(const Scene *scene, Sequence *seq, int time
      * all other strips don't use this...
      */
 
-    int frame_index = (int)SEQ_give_frame_index(scene, seq, timeline_frame);
+    int frame_index = (int)seq_give_frame_index(scene, seq, timeline_frame);
 
     if (frame_index == -1 || se == NULL) {
       return NULL;
@@ -265,7 +265,8 @@ int seq_get_shown_sequences(const Scene *scene,
       scene, channels, seqbase, timeline_frame, chanshown);
   const int strip_count = BLI_gset_len(collection->set);
 
-  if (strip_count > MAXSEQ) {
+  if (UNLIKELY(strip_count > MAXSEQ)) {
+    SEQ_collection_free(collection);
     BLI_assert_msg(0, "Too many strips, this shouldn't happen");
     return 0;
   }
@@ -1047,7 +1048,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
     }
   }
 
-  int frameno = (int)SEQ_give_frame_index(context->scene, seq, timeline_frame) +
+  int frameno = (int)seq_give_frame_index(context->scene, seq, timeline_frame) +
                 seq->anim_startofs;
   return IMB_anim_absolute(proxy->anim, frameno, IMB_TC_NONE, IMB_PROXY_NONE);
 }
@@ -1664,7 +1665,7 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
                                        bool *r_is_proxy_image)
 {
   ImBuf *ibuf = NULL;
-  float frame_index = SEQ_give_frame_index(context->scene, seq, timeline_frame);
+  float frame_index = seq_give_frame_index(context->scene, seq, timeline_frame);
   int type = (seq->type & SEQ_TYPE_EFFECT) ? SEQ_TYPE_EFFECT : seq->type;
   switch (type) {
     case SEQ_TYPE_META: {
@@ -1868,7 +1869,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
   ImBuf *out = NULL;
 
   count = seq_get_shown_sequences(
-      context->scene, channels, seqbasep, timeline_frame, chanshown, (Sequence **)&seq_arr);
+      context->scene, channels, seqbasep, timeline_frame, chanshown, seq_arr);
 
   if (count == 0) {
     return NULL;

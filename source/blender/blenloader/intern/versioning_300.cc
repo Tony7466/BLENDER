@@ -65,6 +65,7 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
+#include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.h"
 #include "BKE_simulation_state_serialize.hh"
@@ -81,7 +82,6 @@
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
 #include "SEQ_iterator.h"
-#include "SEQ_retiming.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
@@ -696,25 +696,6 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
   return true;
 }
 
-static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *user_data)
-{
-  const Scene *scene = static_cast<const Scene *>(user_data);
-
-  if (seq->speed_factor == 1 || !SEQ_retiming_is_allowed(seq)) {
-    return true;
-  }
-
-  const int content_length = SEQ_time_strip_length_get(scene, seq);
-
-  SEQ_retiming_data_ensure(seq);
-
-  SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
-  handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 1.0f;
-
-  return true;
-}
-
 static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *ntree)
 {
   using namespace blender;
@@ -1084,6 +1065,28 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
   }
 }
 
+/* Change the action strip (if a NLA strip is preset) to HOLD instead of HOLD FORWARD to maintain
+ * backwards compatibility.*/
+static void version_nla_action_strip_hold(Main *bmain)
+{
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    AnimData *adt = BKE_animdata_from_id(id);
+    /* We only want to preserve existing behavior if there's an action and 1 or more NLA strips. */
+    if (adt == nullptr || adt->action == nullptr ||
+        adt->act_extendmode != NLASTRIP_EXTEND_HOLD_FORWARD)
+    {
+      continue;
+    }
+
+    if (BKE_nlatrack_has_strips(&adt->nla_tracks)) {
+      adt->act_extendmode = NLASTRIP_EXTEND_HOLD;
+    }
+
+    FOREACH_MAIN_ID_END;
+  }
+}
+
 void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
 {
   if (MAIN_VERSION_ATLEAST(bmain, 300, 0) && !MAIN_VERSION_ATLEAST(bmain, 300, 1)) {
@@ -1361,16 +1364,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed == nullptr) {
-        continue;
-      }
-
-      SEQ_for_each_callback(
-          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
-    }
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 13)) {
+    version_nla_action_strip_hold(bmain);
   }
 
   /**
@@ -1799,8 +1794,12 @@ static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_dat
   }
 
   seq->speed_factor = 1.0f;
-  SEQ_retiming_data_clear(seq);
-  seq->startofs = 0.0f;
+
+  /* Broken files do have negative start offset, which should not be present in sound strips. */
+  if (seq->startofs < 0) {
+    seq->startofs = 0.0f;
+  }
+
   return true;
 }
 

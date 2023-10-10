@@ -229,9 +229,9 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  wn_data->poly_normals,
                                  wn_data->sharp_edges.data(),
                                  wn_data->sharp_faces,
+                                 has_clnors ? clnors.data() : nullptr,
                                  true,
                                  split_angle,
-                                 has_clnors ? clnors.data() : nullptr,
                                  &lnors_spacearr,
                                  loop_normals);
 
@@ -243,6 +243,9 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
     WeightedNormalDataAggregateItem start_item{};
     start_item.curr_strength = FACE_STRENGTH_WEAK;
     items_data = Array<WeightedNormalDataAggregateItem>(verts_num, start_item);
+    lnors_spacearr.corner_space_indices.reinitialize(corner_verts.size());
+    std::iota(
+        lnors_spacearr.corner_space_indices.begin(), lnors_spacearr.corner_space_indices.end(), 0);
   }
   wn_data->items_data = items_data;
 
@@ -357,9 +360,9 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                             poly_normals,
                                             wn_data->sharp_edges.data(),
                                             wn_data->sharp_faces,
+                                            has_clnors ? clnors.data() : nullptr,
                                             true,
                                             split_angle,
-                                            has_clnors ? clnors.data() : nullptr,
                                             nullptr,
                                             loop_normals);
 

@@ -1453,6 +1453,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
                                                                       rna_itemindex_a,
                                                                       true,
                                                                       NULL);
+              opop->tag &= ~LIBOVERRIDE_PROP_OP_TAG_UNUSED;
               BLI_assert(opop != NULL);
             }
 
@@ -1576,6 +1577,18 @@ static int rna_property_override_diff_propptr(Main *bmain,
                                                      override,
                                                      flags,
                                                      r_report_flag);
+
+      /* Regardless of whether the data from both pointers matches or not, a potentially existing
+       * operation on current extended rna path should be removed. This is done by tagging said
+       * operation as unused, while clearing the property tag (see also
+       * #RNA_struct_override_matches handling of #LIBOVERRIDE_PROP_OP_TAG_UNUSED). Note that a
+       * property with no operations will also be cleared by
+       * #BKE_lib_override_library_id_unused_cleanup. */
+      IDOverrideLibraryProperty *op = BKE_lib_override_library_property_find(override,
+                                                                             extended_rna_path);
+      if (op != NULL) {
+        op->tag &= ~LIBOVERRIDE_PROP_OP_TAG_UNUSED;
+      }
 
       if (!ELEM(extended_rna_path, extended_rna_path_buffer, rna_path)) {
         MEM_freeN(extended_rna_path);
@@ -2942,7 +2955,7 @@ static void rna_def_property(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  EnumPropertyItem dummy_prop_tags[] = {
+  static const EnumPropertyItem dummy_prop_tags[] = {
       {0, NULL, 0, NULL, NULL},
   };
 
