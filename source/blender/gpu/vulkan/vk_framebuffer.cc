@@ -413,7 +413,8 @@ void VKFrameBuffer::render_pass_create()
 
   bool has_depth_attachment = false;
   bool found_attachment = false;
-  bool has_missing_attachments = false;
+  const VKImageView &dummy_attachment =
+      VKBackend::get().device_get().dummy_color_attachment_get().image_view_get();
   int depth_location = -1;
 
   for (int type = GPU_FB_MAX_ATTACHMENT - 1; type >= 0; type--) {
@@ -475,8 +476,7 @@ void VKFrameBuffer::render_pass_create()
                                         VK_IMAGE_LAYOUT_GENERAL;
     }
     else if (!is_depth_attachment) {
-      has_missing_attachments = true;
-      image_views[attachment_location] = VK_NULL_HANDLE;
+      image_views[attachment_location] = dummy_attachment.vk_handle();
 
       VkAttachmentDescription &attachment_description =
           attachment_descriptions[attachment_location];
@@ -512,21 +512,7 @@ void VKFrameBuffer::render_pass_create()
   viewport_reset();
   scissor_reset();
 
-  /* Full missing attachments. */
-  if (has_missing_attachments) {
-    const VKImageView &image_view =
-        VKBackend::get().device_get().dummy_color_attachment_get().image_view_get();
-
-    for (int64_t attachment_index : IndexRange(attachment_references.size())) {
-      VkAttachmentReference &attachment_reference = attachment_references[attachment_index];
-      if (attachment_reference.attachment == VK_ATTACHMENT_UNUSED) {
-        image_views[attachment_index] = image_view.vk_handle();
-      }
-    }
-  }
-
   /* Create render pass. */
-
   const int attachment_len = has_depth_attachment ? depth_location + 1 : depth_location;
   const int color_attachment_len = depth_location;
   VkSubpassDescription subpass = {};
