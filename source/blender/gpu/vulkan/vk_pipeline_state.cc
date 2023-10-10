@@ -77,16 +77,9 @@ void VKPipelineStateManager::force_state(const GPUState &state,
 
 void VKPipelineStateManager::finalize_color_blend_state(const VKFrameBuffer &framebuffer)
 {
-  int max_color_slot = 0;
-  for (int64_t color_slot : IndexRange(GPU_FB_MAX_COLOR_ATTACHMENT)) {
-    VKTexture *texture = unwrap(unwrap(framebuffer.color_tex(color_slot)));
-    if (texture) {
-      max_color_slot = max_ii(color_slot + 1, max_color_slot);
-    }
-  }
-
   color_blend_attachments.clear();
-  color_blend_attachments.append_n_times(color_blend_attachment_template, max_color_slot);
+  color_blend_attachments.append_n_times(color_blend_attachment_template,
+                                         framebuffer.color_attachments_resource_size());
   pipeline_color_blend_state.attachmentCount = color_blend_attachments.size();
   pipeline_color_blend_state.pAttachments = color_blend_attachments.data();
 }

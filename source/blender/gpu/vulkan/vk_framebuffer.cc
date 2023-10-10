@@ -614,6 +614,17 @@ void VKFrameBuffer::update_size()
   size_set(1, 1);
 }
 
+int VKFrameBuffer::color_attachments_resource_size() const
+{
+  int size = 0;
+  for (int color_slot : IndexRange(GPU_FB_MAX_COLOR_ATTACHMENT)) {
+    if (color_tex(color_slot) != nullptr) {
+      size = max_ii(color_slot + 1, size);
+    }
+  }
+  return size;
+}
+
 /** \} */
 
 }  // namespace blender::gpu
