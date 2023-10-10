@@ -60,9 +60,9 @@ struct DrawGroup {
       uint front_facing_counter;
       uint back_facing_counter;
       uint _pad0, _pad1;
-#  if defined(WITH_METAL_BACKEND) || defined(GPU_METAL)
+#if defined(WITH_METAL_BACKEND) || defined(GPU_METAL)
       uint _pad2, _pad3, _pad4, _pad5;
-#  endif
+#endif
 #ifndef GPU_SHADER
     };
   };

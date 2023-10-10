@@ -652,7 +652,7 @@ void MTLBatch::prepare_vertex_descriptor_and_bindings(MTLVertBuf **buffers, int 
 
     /* Use cached ssbo attribute binding data. */
     if (active_shader_->get_uses_ssbo_vertex_fetch()) {
-      BLI_assert(desc.vertex_descriptor.get_uses_ssbo_vertex_fetch);
+      BLI_assert(desc.vertex_descriptor.uses_ssbo_vertex_fetch);
       for (int attr_id = 0; attr_id < desc.vertex_descriptor.num_ssbo_attributes; attr_id++) {
         active_shader_->ssbo_vertex_fetch_bind_attribute(
             desc.vertex_descriptor.ssbo_attributes[attr_id]);
@@ -707,8 +707,7 @@ void MTLBatch::prepare_vertex_descriptor_and_bindings(MTLVertBuf **buffers, int 
     }
 
     /* Add to VertexDescriptor cache */
-    desc.vertex_descriptor.get_uses_ssbo_vertex_fetch =
-        active_shader_->get_uses_ssbo_vertex_fetch();
+    desc.vertex_descriptor.uses_ssbo_vertex_fetch = active_shader_->get_uses_ssbo_vertex_fetch();
     pair.attr_mask = attr_mask;
     pair.vertex_descriptor = desc.vertex_descriptor;
     pair.num_buffers = num_buffers;

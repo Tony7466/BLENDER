@@ -308,10 +308,12 @@ class MTLShader : public Shader {
   void push_constant_bindstate_mark_dirty(bool is_dirty);
 
   /* SSBO vertex fetch draw parameters. */
-  bool get_uses_ssbo_vertex_fetch() const override {
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
     return use_ssbo_vertex_fetch_mode_;
   }
-  int get_ssbo_vertex_fetch_output_num_verts() const override {
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
     return ssbo_vertex_fetch_output_num_verts_;
   }
 

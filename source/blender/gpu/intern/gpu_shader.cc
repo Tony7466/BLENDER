@@ -641,7 +641,8 @@ int GPU_shader_get_ssbo_vertex_fetch_num_verts_per_prim(GPUShader *shader)
   return unwrap(shader)->get_ssbo_vertex_fetch_output_num_verts();
 }
 
-bool GPU_shader_uses_ssbo_vertex_fetch(GPUShader *shader) {
+bool GPU_shader_uses_ssbo_vertex_fetch(GPUShader *shader)
+{
   return unwrap(shader)->get_uses_ssbo_vertex_fetch();
 }
 

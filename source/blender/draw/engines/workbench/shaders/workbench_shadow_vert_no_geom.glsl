@@ -99,16 +99,20 @@ void main()
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].pos);
-  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].pos) + extrude_offset(vData[0].pos));
+  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].pos) +
+                                             extrude_offset(vData[0].pos));
 
   vData[1].frontPosition = point_object_to_ndc(vData[1].pos);
-  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].pos) + extrude_offset(vData[1].pos));
+  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].pos) +
+                                             extrude_offset(vData[1].pos));
 
   vData[2].frontPosition = point_object_to_ndc(vData[2].pos);
-  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].pos) + extrude_offset(vData[2].pos));
+  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].pos) +
+                                             extrude_offset(vData[2].pos));
 
   vData[3].frontPosition = point_object_to_ndc(vData[3].pos);
-  vData[3].backPosition = point_world_to_ndc(point_object_to_world(vData[3].pos) + extrude_offset(vData[3].pos));
+  vData[3].backPosition = point_world_to_ndc(point_object_to_world(vData[3].pos) +
+                                             extrude_offset(vData[3].pos));
 
   /* Geometry shader equivalent path. */
   vec3 v10 = vData[0].pos - vData[1].pos;

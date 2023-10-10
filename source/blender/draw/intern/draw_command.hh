@@ -612,9 +612,9 @@ class DrawMultiBuf {
       group.vertex_len = vertex_len;
       group.vertex_first = vertex_first;
 #ifdef WITH_METAL_BACKEND
-    /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
-     */
-    group.gpu_shader = shader;
+      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
+       */
+      group.gpu_shader = shader;
 #endif
       /* Custom group are not to be registered in the group_ids_. */
       if (!custom_group) {
@@ -630,9 +630,9 @@ class DrawMultiBuf {
       group.len += instance_len;
       group.front_facing_len += inverted ? 0 : instance_len;
 #ifdef WITH_METAL_BACKEND
-    /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
-     */
-    group.gpu_shader = shader;
+      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
+       */
+      group.gpu_shader = shader;
 #endif
       /* For serialization only. */
       (inverted ? group.back_proto_len : group.front_proto_len)++;
