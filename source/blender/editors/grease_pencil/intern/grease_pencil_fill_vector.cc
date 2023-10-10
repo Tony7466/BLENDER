@@ -119,6 +119,7 @@ namespace blender::ed::greasepencil::vectorfill {
 #define GAP_PIXEL_FACTOR 20.0f
 /* Margin for intersection distances to be considered equal. */
 #define DISTANCE_EPSILON 0.001f
+#define DISTANCE_SORT_EPSILON 0.02f
 /* Margin for angles to be considered equal. */
 #define ANGLE_EPSILON 0.005f
 /* Margin for vector cross product considered to be parallel. */
@@ -240,8 +241,8 @@ struct SegmentEnd {
   }
 };
 
-/* Fill edge segment. An edge segment is a part of an existing curve. A fill edge is a closed set
- * of edge segments. */
+/* Fill edge segment. An edge segment is a set of points on an existing curve. A fill edge is a
+ * closed set of edge segments. */
 struct EdgeSegment {
   /* Curve index in #Curves2DSpace struct (with curve points in 2D space). */
   int curve_index_2d{};
@@ -458,20 +459,21 @@ static Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
   const float2 segment_vec = segment_b - segment_a;
 
   float2 segment_epsilon = {0.0f, 0.0f};
-  rctf bbox_segment, bbox_isect;
   if (use_epsilon) {
     if (segment_direction == 1) {
-      const int ext_i = curves_2d->point_offset[segment_curve_index] + segment_point_a;
-      segment_epsilon = -vf->curve_segment_epsilon[ext_i];
+      const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_a;
+      segment_epsilon = -vf->curve_segment_epsilon[epsilon_i];
     }
     else {
-      const int ext_i = curves_2d->point_offset[segment_curve_index] + segment_point_b;
-      segment_epsilon = vf->curve_segment_epsilon[ext_i];
+      const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_b;
+      segment_epsilon = vf->curve_segment_epsilon[epsilon_i];
     }
   }
 
   /* Loop all curves, looking for intersecting segments. */
   threading::parallel_for(curves_2d->point_offset.index_range(), 256, [&](const IndexRange range) {
+    rctf bbox_segment, bbox_isect;
+
     for (const int curve_i : range) {
       /* Create a slightly extended segment to avoid floating point precision errors. Otherwise an
        * intersection can be missed when it is on the outer end of a segment. */
@@ -1399,7 +1401,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
       std::sort(segment->segment_ends.begin(),
                 segment->segment_ends.end(),
                 [](const SegmentEnd &a, const SegmentEnd &b) {
-                  if (compare_ff(a.distance, b.distance, DISTANCE_EPSILON)) {
+                  if (compare_ff(a.distance, b.distance, DISTANCE_SORT_EPSILON)) {
                     if ((a.flag & vfFlag::HasStroke) != (b.flag & vfFlag::HasStroke)) {
                       return (a.flag & vfFlag::HasStroke) == true;
                     }
@@ -1492,7 +1494,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
       std::sort(segment->segment_ends.begin(),
                 segment->segment_ends.end(),
                 [](const SegmentEnd &a, const SegmentEnd &b) {
-                  if (compare_ff(a.distance, b.distance, DISTANCE_EPSILON)) {
+                  if (compare_ff(a.distance, b.distance, DISTANCE_SORT_EPSILON)) {
                     if ((a.flag & vfFlag::HasStroke) != (b.flag & vfFlag::HasStroke)) {
                       return (a.flag & vfFlag::HasStroke) == true;
                     }
@@ -1778,8 +1780,8 @@ static bool find_closed_fill_edge(VectorFillData *vf)
 
 #ifdef GP_VFILL_DEBUG_VERBOSE
     /* Limit number of iterations in debug mode. */
-    iteration++;
-    if (iteration > 30) {
+    if (iteration++ > 200) {
+      printf("Aborted, more than 200 iterations...\n");
       return false;
     }
 #else
@@ -1911,7 +1913,7 @@ static bool vector_fill_do(VectorFillData *vf)
     std::sort(vf->starting_segments.begin(),
               vf->starting_segments.end(),
               [](const IntersectingSegment2D &a, const IntersectingSegment2D &b) {
-                if (compare_ff(a.distance[0], b.distance[0], DISTANCE_EPSILON)) {
+                if (compare_ff(a.distance[0], b.distance[0], DISTANCE_SORT_EPSILON)) {
                   if (a.has_stroke != b.has_stroke) {
                     return a.has_stroke;
                   }
@@ -2202,7 +2204,7 @@ static void get_curve_end_extensions(VectorFillData *vf)
       const float shortest_dist = all_intersections.first().distance[0];
       for (const auto &intersection : all_intersections) {
         if (vf->extensions_stop_at_first_intersection &&
-            (intersection.distance[0] - shortest_dist) > DISTANCE_EPSILON)
+            (intersection.distance[0] - shortest_dist) > DISTANCE_SORT_EPSILON)
         {
           break;
         }
