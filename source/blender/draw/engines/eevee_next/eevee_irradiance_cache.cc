@@ -947,10 +947,25 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.read();
   if (capture_info_buf_.surfel_len == 0) {
     /* No surfel to allocated. */
+    do_break_ = true;
     return;
   }
 
-  /* TODO(fclem): Check for GL limit and abort if the surfel cache doesn't fit the GPU memory. */
+  if (capture_info_buf_.surfel_len > surfels_buf_.size() && GPU_mem_stats_supported()) {
+    int total_mem_kb, free_mem_kb;
+    GPU_mem_stats_get(&total_mem_kb, &free_mem_kb);
+    size_t free_mem = size_t(free_mem_kb) * 1024;
+    size_t required_mem = (size_t(capture_info_buf_.surfel_len) - surfels_buf_.size()) *
+                          size_t(sizeof(Surfel));
+    if (required_mem > free_mem) {
+      capture_info_buf_.surfel_len = 0u;
+      capture_info_buf_.push_update();
+      inst_.info = "Error: Not enough memory to bake " + std::string(probe_object.id.name) + ".";
+      do_break_ = true;
+      return;
+    }
+  }
+
   surfels_buf_.resize(capture_info_buf_.surfel_len);
   surfels_buf_.clear_to_zero();
 
