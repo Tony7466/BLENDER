@@ -113,14 +113,20 @@ static bool buffer_from_filepath(const char *filepath, void **r_mem, size_t *r_s
   bool success = false;
   uchar *mem = nullptr;
   const size_t size = BLI_file_descriptor_size(file);
+  ssize_t size_read;
   if (UNLIKELY(size == size_t(-1))) {
     CLOG_WARN(&LOG, "failure '%s' to access size '%s'", strerror(errno), filepath);
   }
   else if (r_mem && UNLIKELY(!(mem = static_cast<uchar *>(MEM_mallocN(size, __func__))))) {
     CLOG_WARN(&LOG, "error allocating buffer for '%s'", filepath);
   }
-  else if (r_mem && UNLIKELY(read(file, mem, size) != size)) {
-    CLOG_WARN(&LOG, "error '%s' while reading '%s'", strerror(errno), filepath);
+  else if (r_mem && UNLIKELY((size_read = read(file, mem, size)) != size)) {
+    CLOG_WARN(&LOG,
+              "error '%s' while reading '%s' (expected %" PRIu64 ", was %" PRId64 ")",
+              strerror(errno),
+              filepath,
+              size,
+              size_read);
   }
   else {
     close(file);
@@ -175,6 +181,8 @@ struct GhostData {
 struct PlayDisplayContext {
   ColorManagedViewSettings view_settings;
   ColorManagedDisplaySettings display_settings;
+  /** Scale calculated from the DPI. */
+  float ui_scale;
   /** Window & viewport size in pixels. */
   int size[2];
 };
@@ -309,7 +317,7 @@ static void playanim_event_qual_update(GhostData *ghost_data)
 struct PlayAnimPict {
   PlayAnimPict *next, *prev;
   uchar *mem;
-  int size;
+  size_t size;
   /** The allocated file-path to the image. */
   const char *filepath;
   ImBuf *ibuf;
@@ -663,6 +671,7 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
   pupdate_time();
 
   if ((fontid != -1) && picture) {
+    const int font_margin = int(10 * display_ctx->ui_scale);
     int sizex, sizey;
     float fsizex_inv, fsizey_inv;
     char label[32 + FILE_MAX];
@@ -678,10 +687,23 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
     fsizey_inv = 1.0f / sizey;
 
     BLF_color4f(fontid, 1.0, 1.0, 1.0, 1.0);
+
+    /* FIXME(@ideasman42): Font positioning doesn't work because the aspect causes the position
+     * to be rounded to zero, investigate making BLF support this,
+     * for now use GPU matrix API to adjust the text position. */
+#if 0
     BLF_enable(fontid, BLF_ASPECT);
     BLF_aspect(fontid, fsizex_inv, fsizey_inv, 1.0f);
-    BLF_position(fontid, 10.0f * fsizex_inv, 10.0f * fsizey_inv, 0.0f);
+    BLF_position(fontid, font_margin * fsizex_inv, font_margin * fsizey_inv, 0.0f);
     BLF_draw(fontid, label, sizeof(label));
+#else
+    GPU_matrix_push();
+    GPU_matrix_scale_2f(fsizex_inv, fsizey_inv);
+    GPU_matrix_translate_2f(font_margin, font_margin);
+    BLF_position(fontid, 0, 0, 0.0f);
+    BLF_draw(fontid, label, sizeof(label));
+    GPU_matrix_pop();
+#endif
   }
 
   if (indicator_factor != -1.0f) {
@@ -730,8 +752,14 @@ static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf 
 {
   float indicator_factor = -1.0f;
   if (ps->indicator) {
-    indicator_factor = picture->frame / double(((PlayAnimPict *)picsbase.last)->frame -
-                                               ((PlayAnimPict *)picsbase.first)->frame);
+    const int frame_range = static_cast<const PlayAnimPict *>(picsbase.last)->frame -
+                            static_cast<const PlayAnimPict *>(picsbase.first)->frame;
+    if (frame_range > 0) {
+      indicator_factor = float(double(picture->frame) / double(frame_range));
+    }
+    else {
+      BLI_assert_msg(BLI_listbase_is_single(&picsbase), "Multiple frames without a valid range!");
+    }
   }
 
   int fontid = -1;
@@ -756,7 +784,8 @@ static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf 
 
 static void build_pict_list_from_anim(GhostData *ghost_data,
                                       const PlayDisplayContext *display_ctx,
-                                      const char *filepath_first)
+                                      const char *filepath_first,
+                                      const int frame_offset)
 {
   /* OCIO_TODO: support different input color space */
   anim *anim = IMB_open_anim(filepath_first, IB_rect, 0, nullptr);
@@ -774,7 +803,7 @@ static void build_pict_list_from_anim(GhostData *ghost_data,
   for (int pic = 0; pic < IMB_anim_get_duration(anim, IMB_TC_NONE); pic++) {
     PlayAnimPict *picture = (PlayAnimPict *)MEM_callocN(sizeof(PlayAnimPict), "Pict");
     picture->anim = anim;
-    picture->frame = pic;
+    picture->frame = pic + frame_offset;
     picture->IB_flags = IB_rect;
     picture->filepath = BLI_sprintfN("%s : %4.d", filepath_first, pic + 1);
     BLI_addtail(&picsbase, picture);
@@ -784,6 +813,7 @@ static void build_pict_list_from_anim(GhostData *ghost_data,
 static void build_pict_list_from_image_sequence(GhostData *ghost_data,
                                                 const PlayDisplayContext *display_ctx,
                                                 const char *filepath_first,
+                                                const int frame_offset,
                                                 const int totframes,
                                                 const int fstep,
                                                 const bool *loading_p)
@@ -831,7 +861,7 @@ static void build_pict_list_from_image_sequence(GhostData *ghost_data,
     picture->IB_flags = IB_rect;
     picture->mem = static_cast<uchar *>(mem);
     picture->filepath = BLI_strdup(filepath);
-    picture->frame = pic;
+    picture->frame = pic + frame_offset;
     BLI_addtail(&picsbase, picture);
 
     pupdate_time();
@@ -891,12 +921,19 @@ static void build_pict_list(GhostData *ghost_data,
                             bool *loading_p)
 {
   *loading_p = true;
+
+  /* NOTE(@ideasman42): When loading many files (expanded from shell globing for e.g.)
+   * it's important the frame number increases each time. Otherwise playing `*.png`
+   * in a directory will expand into many arguments, each calling this function adding
+   * a frame that's set to zero. */
+  const int frame_offset = picsbase.last ? ((PlayAnimPict *)picsbase.last)->frame + 1 : 0;
+
   if (IMB_isanim(filepath_first)) {
-    build_pict_list_from_anim(ghost_data, display_ctx, filepath_first);
+    build_pict_list_from_anim(ghost_data, display_ctx, filepath_first, frame_offset);
   }
   else {
     build_pict_list_from_image_sequence(
-        ghost_data, display_ctx, filepath_first, totframes, fstep, loading_p);
+        ghost_data, display_ctx, filepath_first, frame_offset, totframes, fstep, loading_p);
   }
   *loading_p = false;
 }
@@ -1456,11 +1493,47 @@ static GHOST_WindowHandle playanim_window_open(
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpusettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
-  if (GHOST_GetCapabilities() & GHOST_kCapabilityWindowPosition) {
-    uint32_t scr_w, scr_h;
-    if (GHOST_GetMainDisplayDimensions(ghost_system, &scr_w, &scr_h) == GHOST_kSuccess) {
-      posy = (scr_h - posy - sizey);
+  {
+    bool screen_size_valid = false;
+    uint32_t screen_size[2];
+    if ((GHOST_GetMainDisplayDimensions(ghost_system, &screen_size[0], &screen_size[1]) ==
+         GHOST_kSuccess) &&
+        (screen_size[0] > 0) && (screen_size[1] > 0))
+    {
+      screen_size_valid = true;
     }
+    else {
+      /* Unlikely the screen size fails to access,
+       * if this happens it's still important to clamp the window size by *something*. */
+      screen_size[0] = 1024;
+      screen_size[1] = 1024;
+    }
+
+    if (screen_size_valid) {
+      if (GHOST_GetCapabilities() & GHOST_kCapabilityWindowPosition) {
+        posy = (screen_size[1] - posy - sizey);
+      }
+    }
+    else {
+      posx = 0;
+      posy = 0;
+    }
+
+    /* NOTE: ideally the GPU could be queried for the maximum supported window size,
+     * this isn't so simple as the GPU back-end's capabilities are initialized *after* the window
+     * has been created. Further, it's quite unlikely the users main monitor size is larger
+     * than the maximum window size supported by the GPU. */
+
+    /* Clamp the size so very large requests aren't rejected by the GPU.
+     * Halve until a usable range is reached instead of scaling down to meet the screen size
+     * since fractional scaling tends not to look so nice. */
+    while (sizex >= int(screen_size[0]) || sizey >= int(screen_size[1])) {
+      sizex /= 2;
+      sizey /= 2;
+    }
+    /* Unlikely but ensure the size is *never* zero. */
+    CLAMP_MIN(sizex, 1);
+    CLAMP_MIN(sizey, 1);
   }
 
   return GHOST_CreateWindow(ghost_system,
@@ -1502,12 +1575,16 @@ static bool playanim_window_font_scale_from_dpi(PlayState *ps)
   const float scale = (GHOST_GetDPIHint(ps->ghost_data.window) / 96.0f);
   const float font_size_base = 11.0f; /* Font size un-scaled. */
   const int font_size = int(font_size_base * scale) + 0.5f;
+  bool changed = false;
   if (ps->font_size != font_size) {
     BLF_size(ps->fontid, font_size);
     ps->font_size = font_size;
-    return true;
+    changed = true;
   }
-  return false;
+  if (ps->display_ctx.ui_scale != scale) {
+    ps->display_ctx.ui_scale = scale;
+  }
+  return changed;
 }
 
 /**
@@ -1551,6 +1628,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_BYTE));
   IMB_colormanagement_init_default_view_settings(&ps.display_ctx.view_settings,
                                                  &ps.display_ctx.display_settings);
+  ps.display_ctx.ui_scale = 1.0f;
 
   /* Skip the first argument which is assumed to be '-a' (used to launch this player). */
   while (argc > 1) {
