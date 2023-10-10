@@ -10,6 +10,7 @@
 
 #include <climits>
 
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -647,7 +648,7 @@ static void pbvh_build(PBVH *pbvh,
     pbvh->nodes.clear_and_shrink();
 
     pbvh->prim_indices.reinitialize(totprim);
-    std::iota(pbvh->prim_indices.begin(), pbvh->prim_indices.end(), 0);
+    blender::array_utils::fill_index_range<int>(pbvh->prim_indices);
   }
 
   pbvh->nodes.resize(1);
@@ -1370,10 +1371,10 @@ static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
     PBVHVertexIter vd;
 
     BKE_pbvh_vertex_iter_begin (&pbvh, &node, vd, PBVH_ITER_ALL) {
-      if (vd.mask && *vd.mask < 1.0f) {
+      if (vd.mask < 1.0f) {
         has_unmasked = true;
       }
-      if (vd.mask && *vd.mask > 0.0f) {
+      if (vd.mask > 0.0f) {
         has_masked = false;
       }
     }
@@ -3114,7 +3115,7 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     vi->grid_hidden = pbvh->grid_hidden;
   }
 
-  vi->mask = nullptr;
+  vi->mask = 0.0f;
   if (pbvh->header.type == PBVH_FACES) {
     vi->vert_normals = pbvh->vert_normals;
     vi->hide_vert = pbvh->hide_vert;
