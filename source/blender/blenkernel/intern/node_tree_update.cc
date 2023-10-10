@@ -870,11 +870,11 @@ class NodeTreeMainUpdater {
         propagate_enum_definitions_from_sockets(*output, output->directly_linked_sockets());
       }
 
-      /* Propagate group input enum definitions to the interface. */
-      for (const bNode *input_node : ntree.group_input_nodes()) {
+      if (node->is_group_input()) {
+        /* Propagate group input enum definitions to the interface. */
         for (const int socket_i : ntree.interface_inputs().index_range()) {
           bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
-          const bNodeSocket &output = *input_node->output_sockets()[socket_i];
+          const bNodeSocket &output = *node->output_sockets()[socket_i];
           BLI_assert(STREQ(iosocket.identifier, output.identifier));
           if (!output.is_available() || output.type != SOCK_ENUM)
           {
@@ -884,13 +884,8 @@ class NodeTreeMainUpdater {
                                         *output.default_value_typed<bNodeSocketValueEnum>());
         }
       }
-
-      /* Propagate over internal relations. */
-      /* XXX Placeholder implementation just propagates all outputs
-       * to all inputs for built-in nodes and handles node groups as
-       * a special case. This could perhaps use input/output
-       * relations to handle propagation generically? */
-      if (node->is_group()) {
+      else if (node->is_group()) {
+        /* Node groups also expose internal enum definitions. */
         if (node->id) {
           const bNodeTree *group_tree = reinterpret_cast<bNodeTree *>(node->id);
           for (const int socket_i : group_tree->interface_inputs().index_range()) {
@@ -907,6 +902,10 @@ class NodeTreeMainUpdater {
         }
       }
       else {
+        /* Propagate over internal relations. */
+        /* XXX Placeholder implementation just propagates all outputs
+         * to all inputs for built-in nodes This could perhaps use
+         * input/output relations to handle propagation generically? */
         for (bNodeSocket *input : node->input_sockets()) {
           propagate_enum_definitions_from_sockets(*input, node->output_sockets());
         }
