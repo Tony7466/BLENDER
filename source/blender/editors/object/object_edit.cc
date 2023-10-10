@@ -1143,6 +1143,8 @@ static int forcefield_toggle_exec(bContext *C, wmOperator * /*op*/)
     ob->pd->forcefield = 0;
   }
 
+  ob->empty_drawtype = OB_PLAINAXES;
+
   ED_object_check_force_modifiers(CTX_data_main(C), CTX_data_scene(C), ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
