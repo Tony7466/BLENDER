@@ -250,23 +250,15 @@ static bool do_forward_compatible_socket_type_check(const bNode &node)
   }
 }
 
-static bNodeSocket *get_old_socket_for_declaration(const bNode &node,
+static bNodeSocket *get_old_socket_for_declaration(const bNode & /*node*/,
                                                    Vector<bNodeSocket *> &old_sockets,
                                                    const SocketDeclaration &socket_decl)
 {
-  const bool use_prefix_and_type_check = do_forward_compatible_socket_type_check(node);
+  // const bool use_prefix_and_type_check = do_forward_compatible_socket_type_check(node);
 
   for (const int i : old_sockets.index_range()) {
     bNodeSocket &old_socket = *old_sockets[i];
-    if (use_prefix_and_type_check) {
-      if (BLI_str_startswith(socket_decl.identifier.c_str(), old_socket.identifier)) {
-        if (old_socket.type == decl_to_data_type(socket_decl)) {
-          old_sockets.remove_and_reorder(i);
-          return &old_socket;
-        }
-      }
-    }
-    else if (old_socket.identifier == socket_decl.identifier) {
+    if (old_socket.identifier == socket_decl.identifier) {
       old_sockets.remove_and_reorder(i);
       return &old_socket;
     }
@@ -365,11 +357,70 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   }
 }
 
+static void do_forward_compat_versioning(bNode &node)
+{
+  switch (node.type) {
+    case GEO_NODE_SWITCH: {
+      const NodeSwitch &storage = *static_cast<const NodeSwitch *>(node.storage);
+      LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
+        if (BLI_str_startswith(socket->identifier, "Switch")) {
+          if (ELEM(storage.input_type,
+                   SOCK_FLOAT,
+                   SOCK_INT,
+                   SOCK_BOOLEAN,
+                   SOCK_VECTOR,
+                   SOCK_RGBA,
+                   SOCK_STRING,
+                   SOCK_ROTATION))
+          {
+            STRNCPY(socket->identifier, "Switch");
+          }
+          else {
+            STRNCPY(socket->identifier, "Switch_001");
+          }
+        }
+        else if (BLI_str_startswith(socket->identifier, "False")) {
+          switch (storage.input_type) {
+            case SOCK_FLOAT:
+              STRNCPY(socket->identifier, "False");
+              break;
+            case SOCK_VECTOR:
+              STRNCPY(socket->identifier, "False_003");
+              break;
+            case SOCK_ROTATION:
+              STRNCPY(socket->identifier, "False_012");
+              break;
+          }
+        }
+        else if (BLI_str_startswith(socket->identifier, "True")) {
+          switch (storage.input_type) {
+            case SOCK_FLOAT:
+              STRNCPY(socket->identifier, "True");
+              break;
+            case SOCK_VECTOR:
+              STRNCPY(socket->identifier, "True_003");
+              break;
+            case SOCK_ROTATION:
+              STRNCPY(socket->identifier, "True_012");
+              break;
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
 static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             bNode &node,
                                             Span<ItemDeclarationPtr> item_decls,
                                             const bool do_id_user)
 {
+  if (!node.runtime->forward_compat_versioning_done) {
+    do_forward_compat_versioning(node);
+    node.runtime->forward_compat_versioning_done = true;
+  }
+
   /* Count panels */
   int new_num_panels = 0;
   for (const ItemDeclarationPtr &item_decl : item_decls) {
