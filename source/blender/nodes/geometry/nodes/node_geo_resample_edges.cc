@@ -21,8 +21,22 @@ namespace blender::nodes::node_geo_resample_edges_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
-  b.add_input<decl::Int>("Count").hide_value().field_on_all();
+  b.add_input<decl::Int>("Count").field_on_all();
   b.add_output<decl::Geometry>("Mesh").propagate_all();
+}
+
+static IndexRange new_edges_to_points(const IndexRange edges, const int src_edge_index)
+{
+  return edges.shift(-src_edge_index).drop_back(1);
+}
+
+template<typename T, typename Func>
+static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, const Func &func)
+{
+  threading::parallel_for(values.index_range(), grain_size, [&](const IndexRange range) {
+    MutableSpan<T> values_range = values.slice(range);
+    std::transform(values_range.begin(), values_range.end(), values_range.begin(), func);
+  });
 }
 
 template<typename T>
@@ -35,7 +49,7 @@ static void interpolate_point_values(const VArray<T> &src,
     for (const int index : range) {
       const int2 verties = edges[index];
       /* Conversion of range of new edges to range of new points. */
-      const IndexRange dst_range = edge_offset[index].shift(-index).drop_back(1);
+      const IndexRange dst_range = new_edges_to_points(edge_offset[index], index);
 
       const T a_value = src[verties[0]];
       const T b_value = src[verties[1]];
@@ -133,13 +147,12 @@ static void build_edges(const Span<int2> src_edges,
       const int2 src_edge = src_edges[edge_index];
       MutableSpan<int2> edges = dst_edges.slice(edge_offset[edge_index]);
       BLI_assert(!edges.is_empty());
-
       if (edges.size() == 1) {
         edges.first() = src_edge;
         continue;
       }
 
-      const IndexRange verts_on_edge = edge_offset[edge_index].shift(-edge_index).drop_back(1);
+      const IndexRange verts_on_edge = new_edges_to_points(edge_offset[edge_index], edge_index);
       const IndexRange dst_left_verts = verts_on_edge.drop_back(1);
       const IndexRange dst_right_verts = verts_on_edge.drop_front(1);
 
@@ -167,30 +180,46 @@ static void build_faces(const Span<int> src_corner_verts,
                         MutableSpan<int> r_corner_verts,
                         MutableSpan<int> r_corner_edges)
 {
-  threading::parallel_for(dst_corner_offsets.index_range(), 1024, [&](const IndexRange range) {
+  Array<bool> loop_edge_is_inverted(src_corner_verts.size());
+  threading::parallel_for(dst_corner_offsets.index_range(), 4096, [&](const IndexRange range) {
     for (const int corner_index : range) {
       const int src_corner_vert = src_corner_verts[corner_index];
       const int src_corner_edge = src_corner_edges[corner_index];
       const int2 src_edge = src_edges[src_corner_edge];
+      BLI_assert(ELEM(src_corner_vert, src_edge[0], src_edge[1]));
+      loop_edge_is_inverted[corner_index] = src_edge[0] != src_corner_vert;
+    }
+  });
+
+  threading::parallel_for(dst_corner_offsets.index_range(), 1024, [&](const IndexRange range) {
+    for (const int corner_index : range) {
+      const int src_corner_edge = src_corner_edges[corner_index];
       const IndexRange edges_range = dst_edge_offsets[src_corner_edge];
-      const bool left_right = src_edge[0] == src_corner_vert;
-
-      const Span<int2> edges_of_corner = dst_edges.slice(edges_range);
-      MutableSpan<int> corner_verts = r_corner_verts.slice(dst_corner_offsets[corner_index]);
       MutableSpan<int> corner_edges = r_corner_edges.slice(dst_corner_offsets[corner_index]);
-
-      if (left_right) {
+      if (!loop_edge_is_inverted[corner_index]) {
         array_utils::fill_index_range<int>(corner_edges, edges_range.first());
-        for (const int index : IndexRange(edges_range.size())) {
-          corner_verts[index] = edges_of_corner[index][0];
-        }
       }
       else {
         std::iota(corner_edges.rbegin(), corner_edges.rend(), edges_range.first());
-        for (const int i : IndexRange(edges_range.size())) {
-          const int index = edges_range.size() - 1 - i;
-          corner_verts[index] = edges_of_corner[i][1];
-        }
+      }
+    }
+  });
+
+  threading::parallel_for(dst_corner_offsets.index_range(), 1024, [&](const IndexRange range) {
+    for (const int corner_index : range) {
+      const int src_corner_edge = src_corner_edges[corner_index];
+      const IndexRange edges_range = dst_edge_offsets[src_corner_edge];
+      const Span<int> corner_edges = r_corner_edges.slice(dst_corner_offsets[corner_index]);
+      MutableSpan<int> corner_verts = r_corner_verts.slice(dst_corner_offsets[corner_index]);
+
+      array_utils::copy<int>(corner_edges, corner_verts);
+      if (!loop_edge_is_inverted[corner_index]) {
+        parallel_transform(
+            corner_verts, 2048, [&](const int edge_index) { return dst_edges[edge_index][0]; });
+      }
+      else {
+        parallel_transform(
+            corner_verts, 2048, [&](const int edge_index) { return dst_edges[edge_index][1]; });
       }
     }
   });
@@ -211,15 +240,6 @@ static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets,
   offset_indices::accumulate_counts_to_offsets(dst_face_offsets);
 }
 
-template<typename T, typename Func>
-static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, const Func &func)
-{
-  threading::parallel_for(values.index_range(), grain_size, [&](const IndexRange range) {
-    MutableSpan<T> values_range = values.slice(range);
-    std::transform(values_range.begin(), values_range.end(), values_range.begin(), func);
-  });
-}
-
 static Mesh *resample_edges(const Mesh &src_mesh,
                             const VArray<int> &count_varray,
                             const AnonymousAttributePropagationInfo &propagation_info)
@@ -228,8 +248,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
   Array<int> accumulate_edges(src_mesh.totedge + 1);
   const OffsetIndices<int> edge_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
-    count_varray.materialize(accumulate_span);
-    parallel_transform(accumulate_span, 2048, [](int value) { return value + 1; });
+    array_utils::copy(count_varray, accumulate_span);
     return offset_indices::accumulate_counts_to_offsets(accumulate_edges);
   }();
 
@@ -239,7 +258,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
     array_utils::copy(src_mesh.corner_edges(), accumulate_span);
     devirtualize_varray(count_varray, [&](auto count_varray) {
       parallel_transform(
-          accumulate_span, 2048, [&](int edge_index) { return count_varray[edge_index] + 1; });
+          accumulate_span, 2048, [&](int edge_index) { return count_varray[edge_index]; });
     });
     return offset_indices::accumulate_counts_to_offsets(accumulate_corners);
   }();
@@ -289,8 +308,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
 
   static const auto clamp_fn = mf::build::SI1_SO<int, int>(
-      "Hard Min",
-      [](const int value) { return math::max(0, value); },
+      "Hard Min, Vertex Count to Edges Count",
+      [](const int value) { return math::max(0, value) + 1; },
       mf::build::exec_presets::AllSpanOrSingle());
   const Field<int> count_field(
       FieldOperation::Create(clamp_fn, {params.extract_input<Field<int>>("Count")}));
@@ -309,7 +328,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     evaluator.evaluate();
     const VArray<int> count_varray = evaluator.get_evaluated<int>(0);
     const std::optional<int> count = count_varray.get_if_single();
-    if (count.has_value() && *count == 0) {
+    if (count.has_value() && *count == 1) {
       return;
     }
     geometry_set.replace_mesh(resample_edges(*mesh, count_varray, propagation_info));
