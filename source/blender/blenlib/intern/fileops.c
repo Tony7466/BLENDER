@@ -104,7 +104,7 @@ ssize_t BLI_read(int fd, void *buf, size_t nbytes)
   while (true) {
     ssize_t nbytes_read = read(fd,
                                buf,
-#ifndef WIN32
+#ifdef WIN32
                                /* Read must not exceed INT_MAX on WIN32, clamp. */
                                MIN2(nbytes, INT_MAX)
 #else
