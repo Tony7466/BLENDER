@@ -120,8 +120,8 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   if (CoatWeight > 1e-5) {
-    coat_weight = clamp(CoatWeight, 0.0, 1.0)
     float coat_ior = max(CoatIOR, 1.0);
+    float coat_weight = clamp(CoatWeight, 0.0, 1.0);
     if (CoatTint != color(1.0)) {
       float coat_neta = 1.0 / coat_ior;
       float cosNI = dot(I, CoatNormal);
