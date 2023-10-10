@@ -103,6 +103,10 @@ class GreasePencilLayerFieldContext : public fn::FieldContext {
   {
     return layer_index_;
   }
+
+  GVArray get_varray_for_input(const fn::FieldInput &field_input,
+                               const IndexMask &mask,
+                               ResourceScope &scope) const;
 };
 
 class InstancesFieldContext : public fn::FieldContext {

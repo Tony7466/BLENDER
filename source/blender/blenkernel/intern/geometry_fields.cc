@@ -35,29 +35,25 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const eAttr
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
-const greasepencil::Drawing *get_eval_grease_pencil_layer_drawing(
-    const GreasePencil &grease_pencil, const int layer_index)
+GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
+                                                            const IndexMask &mask,
+                                                            ResourceScope &scope) const
 {
-  BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
-  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
-  const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
-  if (drawing_index == -1) {
-    return nullptr;
+  if (const CurvesFieldInput *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
+          &field_input))
+  {
+    if (const bke::greasepencil::Drawing *drawing =
+            bke::greasepencil::get_eval_grease_pencil_layer_drawing(this->grease_pencil(),
+                                                                    this->layer_index()))
+    {
+      if (drawing->strokes().attributes().domain_supported(this->domain())) {
+        const CurvesFieldContext context{drawing->strokes(), this->domain()};
+        return curves_field_input->get_varray_for_context(context, mask, scope);
+      }
+    }
+    return {};
   }
-  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
-  if (drawing_base->type != GP_DRAWING) {
-    return nullptr;
-  }
-  const bke::greasepencil::Drawing &drawing =
-      reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-  return &drawing;
-}
-
-greasepencil::Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
-                                                                      const int layer)
-{
-  return const_cast<greasepencil::Drawing *>(
-      get_eval_grease_pencil_layer_drawing(grease_pencil, layer));
+  return field_input.get_varray_for_context(*this, mask, scope);
 }
 
 GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
@@ -172,8 +168,9 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
     if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
       return grease_pencil->attributes();
     }
-    else if (const greasepencil::Drawing *drawing = get_eval_grease_pencil_layer_drawing(
-                 *grease_pencil, grease_pencil_layer_index_))
+    else if (const greasepencil::Drawing *drawing =
+                 greasepencil::get_eval_grease_pencil_layer_drawing(*grease_pencil,
+                                                                    grease_pencil_layer_index_))
     {
       return drawing->strokes().attributes();
     }
@@ -209,11 +206,13 @@ const GreasePencil *GeometryFieldContext::grease_pencil() const
 }
 const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing() const
 {
-  return this->type() == GeometryComponent::Type::GreasePencil &&
-                 ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT) ?
-             get_eval_grease_pencil_layer_drawing(*this->grease_pencil(),
-                                                  grease_pencil_layer_index_) :
-             nullptr;
+  if (!(this->type() == GeometryComponent::Type::GreasePencil) ||
+      !ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT))
+  {
+    return nullptr;
+  }
+  return greasepencil::get_eval_grease_pencil_layer_drawing(*this->grease_pencil(),
+                                                            this->grease_pencil_layer_index_);
 }
 const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
 {
@@ -699,8 +698,9 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     bool any_success = false;
     threading::parallel_for(grease_pencil->layers().index_range(), 8, [&](const IndexRange range) {
       for (const int layer_index : range) {
-        if (greasepencil::Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(
-                *grease_pencil, layer_index))
+        if (greasepencil::Drawing *drawing =
+                greasepencil::get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
+                                                                             layer_index))
         {
           const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
           const bool success = try_capture_field_on_geometry(

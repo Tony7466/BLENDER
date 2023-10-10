@@ -99,30 +99,6 @@ void GreasePencilComponent::ensure_owns_direct_data()
   }
 }
 
-static const greasepencil::Drawing *get_eval_grease_pencil_layer_drawing(
-    const GreasePencil &grease_pencil, const int layer_index)
-{
-  BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
-  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
-  const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
-  if (drawing_index == -1) {
-    return nullptr;
-  }
-  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
-  if (drawing_base->type != GP_DRAWING) {
-    return nullptr;
-  }
-  const bke::greasepencil::Drawing &drawing =
-      reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-  return &drawing;
-}
-
-const greasepencil::Drawing *GreasePencilComponent::grease_pencil_layer_drawing(
-    const int layer_index) const
-{
-  return get_eval_grease_pencil_layer_drawing(*this->grease_pencil_, layer_index);
-}
-
 static ComponentAttributeProviders create_attribute_providers_for_grease_pencil()
 {
   static CustomDataAccessInfo layers_access = {
