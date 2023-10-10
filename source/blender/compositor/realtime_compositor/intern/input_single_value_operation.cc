@@ -18,7 +18,7 @@ InputSingleValueOperation::InputSingleValueOperation(Context &context, DInputSoc
     : Operation(context), input_socket_(input_socket)
 {
   const ResultType result_type = get_node_socket_result_type(input_socket_.bsocket());
-  Result result = Result(result_type, texture_pool());
+  Result result = Result(result_type, texture_pool(), context.get_precision());
 
   /* The result of an input single value operation is guaranteed to have a single user. */
   result.set_initial_reference_count(1);

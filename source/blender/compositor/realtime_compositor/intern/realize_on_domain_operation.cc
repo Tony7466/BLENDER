@@ -33,7 +33,7 @@ RealizeOnDomainOperation::RealizeOnDomainOperation(Context &context,
   InputDescriptor input_descriptor;
   input_descriptor.type = type;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(type, texture_pool()));
+  populate_result(Result(type, texture_pool(), context.get_precision()));
 }
 
 void RealizeOnDomainOperation::execute()
@@ -94,11 +94,11 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
   if (get_input().get_realization_options().interpolation == Interpolation::Bicubic) {
     switch (get_result().type()) {
       case ResultType::Color:
-        return shader_manager().get("compositor_realize_on_domain_bicubic_color");
+        return context().get_shader("compositor_realize_on_domain_bicubic_color");
       case ResultType::Vector:
-        return shader_manager().get("compositor_realize_on_domain_bicubic_vector");
+        return context().get_shader("compositor_realize_on_domain_bicubic_vector");
       case ResultType::Float:
-        return shader_manager().get("compositor_realize_on_domain_bicubic_float");
+        return context().get_shader("compositor_realize_on_domain_bicubic_float");
       default:
         /* Other types are internal and needn't be handled by operations. */
         BLI_assert_unreachable();
@@ -108,11 +108,11 @@ GPUShader *RealizeOnDomainOperation::get_realization_shader()
   else {
     switch (get_result().type()) {
       case ResultType::Color:
-        return shader_manager().get("compositor_realize_on_domain_color");
+        return context().get_shader("compositor_realize_on_domain_color");
       case ResultType::Vector:
-        return shader_manager().get("compositor_realize_on_domain_vector");
+        return context().get_shader("compositor_realize_on_domain_vector");
       case ResultType::Float:
-        return shader_manager().get("compositor_realize_on_domain_float");
+        return context().get_shader("compositor_realize_on_domain_float");
       default:
         /* Other types are internal and needn't be handled by operations. */
         BLI_assert_unreachable();

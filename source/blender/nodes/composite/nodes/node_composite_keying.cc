@@ -147,7 +147,7 @@ class KeyingOperation : public NodeOperation {
 
   Result extract_input_chroma()
   {
-    GPUShader *shader = context().shader_manager().get("compositor_keying_extract_chroma");
+    GPUShader *shader = context().get_shader("compositor_keying_extract_chroma");
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
@@ -168,7 +168,7 @@ class KeyingOperation : public NodeOperation {
 
   Result replace_input_chroma(Result &new_chroma)
   {
-    GPUShader *shader = context().shader_manager().get("compositor_keying_replace_chroma");
+    GPUShader *shader = context().get_shader("compositor_keying_replace_chroma");
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
@@ -192,7 +192,7 @@ class KeyingOperation : public NodeOperation {
 
   Result compute_matte(Result &input)
   {
-    GPUShader *shader = context().shader_manager().get("compositor_keying_compute_matte");
+    GPUShader *shader = context().get_shader("compositor_keying_compute_matte");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "key_balance", node_storage(bnode()).screen_balance);
@@ -238,7 +238,7 @@ class KeyingOperation : public NodeOperation {
       return output_matte;
     }
 
-    GPUShader *shader = context().shader_manager().get("compositor_keying_tweak_matte");
+    GPUShader *shader = context().get_shader("compositor_keying_tweak_matte");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "compute_edges", output_edges.should_compute());
@@ -333,7 +333,7 @@ class KeyingOperation : public NodeOperation {
 
   void compute_image(Result &matte)
   {
-    GPUShader *shader = context().shader_manager().get("compositor_keying_compute_image");
+    GPUShader *shader = context().get_shader("compositor_keying_compute_image");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "despill_factor", node_storage(bnode()).despill_factor);

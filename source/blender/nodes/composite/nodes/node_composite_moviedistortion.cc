@@ -114,7 +114,7 @@ class MovieDistortionOperation : public NodeOperation {
     const DistortionGrid &distortion_grid = context().cache_manager().distortion_grids.get(
         get_movie_clip(), domain.size, get_distortion_type(), context().get_frame_number());
 
-    GPUShader *shader = shader_manager().get("compositor_movie_distortion");
+    GPUShader *shader = context().get_shader("compositor_movie_distortion");
     GPU_shader_bind(shader);
 
     GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);

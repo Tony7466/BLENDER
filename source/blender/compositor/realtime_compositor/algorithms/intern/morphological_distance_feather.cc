@@ -27,7 +27,7 @@ static const char *get_shader_name(int distance)
 
 static Result horizontal_pass(Context &context, Result &input, int distance, int falloff_type)
 {
-  GPUShader *shader = context.shader_manager().get(get_shader_name(distance));
+  GPUShader *shader = context.get_shader(get_shader_name(distance));
   GPU_shader_bind(shader);
 
   input.bind_as_texture(shader, "input_tx");
@@ -71,7 +71,7 @@ static void vertical_pass(Context &context,
                           int distance,
                           int falloff_type)
 {
-  GPUShader *shader = context.shader_manager().get(get_shader_name(distance));
+  GPUShader *shader = context.get_shader(get_shader_name(distance));
   GPU_shader_bind(shader);
 
   horizontal_pass_result.bind_as_texture(shader, "input_tx");

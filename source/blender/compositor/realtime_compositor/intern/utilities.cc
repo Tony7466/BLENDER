@@ -199,7 +199,7 @@ void compute_preview_from_result(Context &context, const DNode &node, Result &in
   bNodePreview *preview = bke::node_preview_verify(
       root_tree->previews, node.instance_key(), preview_size.x, preview_size.y, true);
 
-  GPUShader *shader = context.shader_manager().get("compositor_compute_preview");
+  GPUShader *shader = context.get_shader("compositor_compute_preview");
   GPU_shader_bind(shader);
 
   if (input_result.type() == ResultType::Float) {

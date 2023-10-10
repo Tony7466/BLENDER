@@ -53,7 +53,7 @@ class IDMaskOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get("compositor_id_mask");
+    GPUShader *shader = context().get_shader("compositor_id_mask");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "index", get_index());

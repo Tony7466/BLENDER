@@ -95,7 +95,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_classic");
+    GPUShader *shader = context().get_shader("compositor_kuwahara_classic");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
@@ -125,7 +125,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
     summed_area_table(
         context(), get_input("Image"), squared_table, SummedAreaTableOperation::Square);
 
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_classic_summed_area_table");
+    GPUShader *shader = context().get_shader("compositor_kuwahara_classic_summed_area_table");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
@@ -164,7 +164,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
                              float2(node_storage(bnode()).uniformity));
     structure_tensor.release();
 
-    GPUShader *shader = shader_manager().get("compositor_kuwahara_anisotropic");
+    GPUShader *shader = context().get_shader("compositor_kuwahara_anisotropic");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
@@ -193,7 +193,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   Result compute_structure_tensor()
   {
-    GPUShader *shader = shader_manager().get(
+    GPUShader *shader = context().get_shader(
         "compositor_kuwahara_anisotropic_compute_structure_tensor");
     GPU_shader_bind(shader);
 

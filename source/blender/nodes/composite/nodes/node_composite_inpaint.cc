@@ -67,7 +67,7 @@ class InpaintOperation : public NodeOperation {
 
   Result compute_inpainting_boundary()
   {
-    GPUShader *shader = shader_manager().get("compositor_inpaint_compute_boundary");
+    GPUShader *shader = context().get_shader("compositor_inpaint_compute_boundary");
     GPU_shader_bind(shader);
 
     const Result &input = get_input("Image");
@@ -89,7 +89,7 @@ class InpaintOperation : public NodeOperation {
 
   void compute_inpainting_region(Result &flooded_boundary)
   {
-    GPUShader *shader = shader_manager().get("compositor_inpaint_compute_region");
+    GPUShader *shader = context().get_shader("compositor_inpaint_compute_region");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "max_distance", get_distance());

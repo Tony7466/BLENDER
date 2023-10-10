@@ -110,14 +110,14 @@ class ViewerOperation : public NodeOperation {
   /* Executes when the alpha channel of the image is ignored. */
   void execute_ignore_alpha()
   {
-    GPUShader *shader = shader_manager().get("compositor_write_output_opaque");
+    GPUShader *shader = context().get_shader("compositor_write_output_opaque");
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a smaller region of the output texture, so only
      * write into that compositing region. */
     const rcti compositing_region = context().get_compositing_region();
     const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
-    GPU_shader_uniform_2iv(shader, "compositing_region_lower_bound", lower_bound);
+    GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
     const Result &image = get_input("Image");
     image.bind_as_texture(shader, "input_tx");
@@ -138,14 +138,14 @@ class ViewerOperation : public NodeOperation {
    * to the output texture. */
   void execute_copy()
   {
-    GPUShader *shader = shader_manager().get("compositor_write_output");
+    GPUShader *shader = context().get_shader("compositor_write_output");
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a smaller region of the output texture, so only
      * write into that compositing region. */
     const rcti compositing_region = context().get_compositing_region();
     const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
-    GPU_shader_uniform_2iv(shader, "compositing_region_lower_bound", lower_bound);
+    GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
     const Result &image = get_input("Image");
     image.bind_as_texture(shader, "input_tx");
@@ -165,14 +165,14 @@ class ViewerOperation : public NodeOperation {
   /* Executes when the alpha channel of the image is set as the value of the input alpha. */
   void execute_set_alpha()
   {
-    GPUShader *shader = shader_manager().get("compositor_write_output_alpha");
+    GPUShader *shader = context().get_shader("compositor_write_output_alpha");
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a smaller region of the output texture, so only
      * write into that compositing region. */
     const rcti compositing_region = context().get_compositing_region();
     const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
-    GPU_shader_uniform_2iv(shader, "compositing_region_lower_bound", lower_bound);
+    GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
     const Result &image = get_input("Image");
     image.bind_as_texture(shader, "input_tx");

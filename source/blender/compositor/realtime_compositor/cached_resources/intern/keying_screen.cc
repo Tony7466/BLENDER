@@ -137,7 +137,7 @@ KeyingScreen::KeyingScreen(Context &context,
   compute_marker_points(
       movie_clip, movie_clip_user, movie_tracking_object, marker_positions, marker_colors);
 
-  GPUShader *shader = context.shader_manager().get("compositor_keying_screen");
+  GPUShader *shader = context.get_shader("compositor_keying_screen");
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1f(shader, "smoothness", smoothness);

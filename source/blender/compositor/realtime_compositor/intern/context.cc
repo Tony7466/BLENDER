@@ -6,9 +6,10 @@
 
 #include "DNA_vec_types.h"
 
+#include "GPU_shader.h"
+
 #include "COM_context.hh"
 #include "COM_static_cache_manager.hh"
-#include "COM_static_shader_manager.hh"
 #include "COM_texture_pool.hh"
 
 namespace blender::realtime_compositor {
@@ -39,14 +40,15 @@ float Context::get_time() const
   return frame_number / frame_rate;
 }
 
+GPUShader *Context::get_shader(const char *info_name)
+{
+  const ResultPrecision precision = get_precision();
+  return cache_manager().cached_shaders.get(info_name, precision);
+}
+
 TexturePool &Context::texture_pool()
 {
   return texture_pool_;
-}
-
-StaticShaderManager &Context::shader_manager()
-{
-  return shader_manager_;
 }
 
 StaticCacheManager &Context::cache_manager()

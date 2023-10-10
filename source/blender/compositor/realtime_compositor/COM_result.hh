@@ -15,6 +15,8 @@
 
 namespace blender::realtime_compositor {
 
+/* To add a new type, update the get_texture_format() and change_texture_format_precision()
+ * functions. */
 enum class ResultType : uint8_t {
   /* The following types are user facing and can be used as inputs and outputs of operations. They
    * either represent the base type of the result texture or a single value result. The color type
@@ -28,8 +30,7 @@ enum class ResultType : uint8_t {
   /* The following types are for internal use only, not user facing, and can't be used as inputs
    * and outputs of operations. Furthermore, they can't be single values and thus always need to be
    * allocated as textures. It follows that they needn't be handled in implicit operations like
-   * type conversion, shader, or single value reduction operations. To add a new type, just add a
-   * new case in the get_texture_format() function. */
+   * type conversion, shader, or single value reduction operations. */
   Int2,
 };
 
@@ -288,7 +289,6 @@ class Result {
   /* Returns a reference to the domain of the result. See the Domain class. */
   const Domain &domain() const;
 
- private:
   /* Returns the appropriate texture format based on the result's type and precision. */
   eGPUTextureFormat get_texture_format() const;
 };

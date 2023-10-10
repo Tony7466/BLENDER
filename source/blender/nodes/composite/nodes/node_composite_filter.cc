@@ -11,6 +11,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GPU_debug.h"
+
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
 
@@ -47,7 +49,8 @@ class FilterOperation : public NodeOperation {
 
   void execute() override
   {
-    GPUShader *shader = shader_manager().get(get_shader_name());
+    GPU_debug_capture_begin();
+    GPUShader *shader = context().get_shader(get_shader_name());
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_mat3_as_mat4(shader, "ukernel", get_filter_kernel().ptr());
@@ -70,6 +73,7 @@ class FilterOperation : public NodeOperation {
     factor.unbind_as_texture();
     output_image.unbind_as_image();
     GPU_shader_unbind();
+    GPU_debug_capture_end();
   }
 
   CMPNodeFilterMethod get_filter_method()

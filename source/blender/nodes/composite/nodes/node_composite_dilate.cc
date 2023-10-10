@@ -104,7 +104,7 @@ class DilateErodeOperation : public NodeOperation {
 
   Result execute_step_horizontal_pass()
   {
-    GPUShader *shader = shader_manager().get(get_morphological_step_shader_name());
+    GPUShader *shader = context().get_shader(get_morphological_step_shader_name());
     GPU_shader_bind(shader);
 
     /* Pass the absolute value of the distance. We have specialized shaders for each sign. */
@@ -139,7 +139,7 @@ class DilateErodeOperation : public NodeOperation {
 
   void execute_step_vertical_pass(Result &horizontal_pass_result)
   {
-    GPUShader *shader = shader_manager().get(get_morphological_step_shader_name());
+    GPUShader *shader = context().get_shader(get_morphological_step_shader_name());
     GPU_shader_bind(shader);
 
     /* Pass the absolute value of the distance. We have specialized shaders for each sign. */
@@ -184,7 +184,7 @@ class DilateErodeOperation : public NodeOperation {
 
   void execute_distance_threshold()
   {
-    GPUShader *shader = shader_manager().get("compositor_morphological_distance_threshold");
+    GPUShader *shader = context().get_shader("compositor_morphological_distance_threshold");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "inset", get_inset());

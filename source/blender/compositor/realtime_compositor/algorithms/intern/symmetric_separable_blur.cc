@@ -44,7 +44,7 @@ static Result horizontal_pass(Context &context,
                               bool extend_bounds,
                               bool gamma_correct)
 {
-  GPUShader *shader = context.shader_manager().get(get_blur_shader(input.type()));
+  GPUShader *shader = context.get_shader(get_blur_shader(input.type()));
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1b(shader, "extend_bounds", extend_bounds);
@@ -95,7 +95,7 @@ static void vertical_pass(Context &context,
                           bool extend_bounds,
                           bool gamma_correct)
 {
-  GPUShader *shader = context.shader_manager().get(get_blur_shader(original_input.type()));
+  GPUShader *shader = context.get_shader(get_blur_shader(original_input.type()));
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1b(shader, "extend_bounds", extend_bounds);

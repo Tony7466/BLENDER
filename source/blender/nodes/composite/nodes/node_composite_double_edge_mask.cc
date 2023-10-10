@@ -87,7 +87,7 @@ class DoubleEdgeMaskOperation : public NodeOperation {
 
   void compute_boundary(Result &inner_boundary, Result &outer_boundary)
   {
-    GPUShader *shader = shader_manager().get("compositor_double_edge_mask_compute_boundary");
+    GPUShader *shader = context().get_shader("compositor_double_edge_mask_compute_boundary");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "include_all_inner_edges", include_all_inner_edges());
@@ -118,7 +118,7 @@ class DoubleEdgeMaskOperation : public NodeOperation {
 
   void compute_gradient(Result &flooded_inner_boundary, Result &flooded_outer_boundary)
   {
-    GPUShader *shader = shader_manager().get("compositor_double_edge_mask_compute_gradient");
+    GPUShader *shader = context().get_shader("compositor_double_edge_mask_compute_gradient");
     GPU_shader_bind(shader);
 
     const Result &inner_mask = get_input("Inner Mask");

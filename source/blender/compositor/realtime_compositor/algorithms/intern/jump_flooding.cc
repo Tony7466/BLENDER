@@ -20,7 +20,7 @@ namespace blender::realtime_compositor {
 
 static void jump_flooding_pass(Context &context, Result &input, Result &output, int step_size)
 {
-  GPUShader *shader = context.shader_manager().get("compositor_jump_flooding");
+  GPUShader *shader = context.get_shader("compositor_jump_flooding");
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1i(shader, "step_size", step_size);

@@ -160,7 +160,7 @@ class GlareOperation : public NodeOperation {
 
   Result execute_highlights()
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_highlights");
+    GPUShader *shader = context().get_shader("compositor_glare_highlights");
     GPU_shader_bind(shader);
 
     float luminance_coefficients[3];
@@ -208,7 +208,7 @@ class GlareOperation : public NodeOperation {
      * so just use it as the pass result. */
     Result &vertical_pass_result = highlights_result;
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_vertical_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_vertical_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -241,7 +241,7 @@ class GlareOperation : public NodeOperation {
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     GPU_texture_copy(horizontal_pass_result.texture(), highlights_result.texture());
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_horizontal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_horizontal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -266,7 +266,7 @@ class GlareOperation : public NodeOperation {
      * so just use it as the pass result. */
     Result &anti_diagonal_pass_result = highlights_result;
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_anti_diagonal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_anti_diagonal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -298,7 +298,7 @@ class GlareOperation : public NodeOperation {
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     GPU_texture_copy(diagonal_pass_result.texture(), highlights_result.texture());
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_diagonal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_diagonal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -344,7 +344,7 @@ class GlareOperation : public NodeOperation {
       const float2 streak_direction = compute_streak_direction(streak_index);
       Result streak_result = apply_streak_filter(highlights_result, streak_direction);
 
-      GPUShader *shader = shader_manager().get("compositor_glare_streaks_accumulate");
+      GPUShader *shader = context().get_shader("compositor_glare_streaks_accumulate");
       GPU_shader_bind(shader);
 
       const float attenuation_factor = compute_streak_attenuation_factor();
@@ -367,7 +367,7 @@ class GlareOperation : public NodeOperation {
 
   Result apply_streak_filter(Result &highlights_result, const float2 &streak_direction)
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_streaks_filter");
+    GPUShader *shader = context().get_shader("compositor_glare_streaks_filter");
     GPU_shader_bind(shader);
 
     /* Copy the highlights result into a new image because the output will be copied to the input
@@ -504,7 +504,7 @@ class GlareOperation : public NodeOperation {
   {
     Result base_ghost_result = compute_base_ghost(highlights_result);
 
-    GPUShader *shader = shader_manager().get("compositor_glare_ghost_accumulate");
+    GPUShader *shader = context().get_shader("compositor_glare_ghost_accumulate");
     GPU_shader_bind(shader);
 
     /* Color modulators are constant across iterations. */
@@ -579,7 +579,7 @@ class GlareOperation : public NodeOperation {
 
     highlights_result.release();
 
-    GPUShader *shader = shader_manager().get("compositor_glare_ghost_base");
+    GPUShader *shader = context().get_shader("compositor_glare_ghost_base");
     GPU_shader_bind(shader);
 
     small_ghost_result.bind_as_texture(shader, "small_ghost_tx");
@@ -732,7 +732,7 @@ class GlareOperation : public NodeOperation {
 
     /* Notice that for a chain length of n, we need (n - 1) up-sampling passes. */
     const IndexRange upsample_passes_range(chain_length - 1);
-    GPUShader *shader = shader_manager().get("compositor_glare_fog_glow_upsample");
+    GPUShader *shader = context().get_shader("compositor_glare_fog_glow_upsample");
     GPU_shader_bind(shader);
 
     for (const int i : upsample_passes_range) {
@@ -779,11 +779,11 @@ class GlareOperation : public NodeOperation {
        * more information. Later passes use a simple average down-sampling filter because fireflies
        * doesn't service the first pass. */
       if (i == downsample_passes_range.first()) {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_karis_average");
+        shader = context().get_shader("compositor_glare_fog_glow_downsample_karis_average");
         GPU_shader_bind(shader);
       }
       else {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_simple_average");
+        shader = context().get_shader("compositor_glare_fog_glow_downsample_simple_average");
         GPU_shader_bind(shader);
       }
 
@@ -826,7 +826,7 @@ class GlareOperation : public NodeOperation {
 
   void execute_mix(Result &glare_result)
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_mix");
+    GPUShader *shader = context().get_shader("compositor_glare_mix");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "mix_factor", node_storage(bnode()).mix);
