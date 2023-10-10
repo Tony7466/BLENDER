@@ -473,7 +473,6 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
     case SOCK_ENUM: {
       bNodeSocketValueEnum *dval = MEM_cnew<bNodeSocketValueEnum>("node socket value enum");
       dval->value = -1;
-      dval->enum_ref.reset();
 
       *data = dval;
       break;

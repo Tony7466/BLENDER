@@ -803,6 +803,25 @@ static int rna_NodeTreeInterface_items_lookup_string(PointerRNA *ptr,
   return false;
 }
 
+const EnumPropertyItem *RNA_node_tree_interface_socket_enum_itemf(bContext * /*C*/,
+                                                                  PointerRNA *ptr,
+                                                                  PropertyRNA * /*prop*/,
+                                                                  bool *r_free)
+{
+  const bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  if (!socket) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  const NodeEnumDefinition *enum_def =
+      static_cast<bNodeSocketValueEnum *>(socket->socket_data)->enum_ref.get();
+  if (!enum_def) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  return RNA_node_enum_definition_itemf(*enum_def, r_free);
+}
+
 #else
 
 static void rna_def_node_interface_item(BlenderRNA *brna)

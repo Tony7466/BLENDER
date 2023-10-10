@@ -8,6 +8,7 @@
 #include "BLI_string_utils.h"
 
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
 
 blender::Span<NodeEnumItem> NodeEnumDefinition::items() const
 {
@@ -154,7 +155,8 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, blender::StringRef na
   this->flag |= NODE_ENUM_DEFINITION_CHANGED;
 }
 
-void NodeEnumDefinitionRef::set(bNodeTree &node_tree, bNode &node) {
+void NodeEnumDefinitionRef::set(bNodeTree &node_tree, bNode &node)
+{
   this->node_tree = &node_tree;
   this->node_identifier = node.identifier;
 }
@@ -163,6 +165,11 @@ void NodeEnumDefinitionRef::reset()
 {
   this->node_tree = nullptr;
   this->node_identifier = -1;
+}
+
+bool NodeEnumDefinitionRef::is_undefined() const
+{
+  return *this == undefined();
 }
 
 bool NodeEnumDefinitionRef::is_valid() const
@@ -174,7 +181,17 @@ bool NodeEnumDefinitionRef::is_valid() const
   return this->node_tree->node_by_id(this->node_identifier) != nullptr;
 }
 
-NodeEnumDefinition *NodeEnumDefinitionRef::get() const {
+bool NodeEnumDefinitionRef::operator==(const NodeEnumDefinitionRef &other) const {
+  return this->node_tree == other.node_tree && this->node_identifier == other.node_identifier;
+}
+
+bool NodeEnumDefinitionRef::operator!=(const NodeEnumDefinitionRef &other) const
+{
+  return this->node_tree != other.node_tree || this->node_identifier != other.node_identifier;
+}
+
+NodeEnumDefinition *NodeEnumDefinitionRef::get() const
+{
   if (this->node_tree == nullptr) {
     return nullptr;
   }

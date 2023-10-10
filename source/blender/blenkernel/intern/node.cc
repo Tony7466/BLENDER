@@ -346,8 +346,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       break;
     }
     case SOCK_ENUM: {
-      bNodeSocketValueEnum &default_value =
-          *sock->default_value_typed<bNodeSocketValueEnum>();
+      bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.enum_ref.node_tree, IDWALK_CB_USER);
       break;
     }
@@ -1763,8 +1762,7 @@ static void socket_id_user_increment(bNodeSocket *sock)
       break;
     }
     case SOCK_ENUM: {
-      bNodeSocketValueEnum &default_value =
-          *sock->default_value_typed<bNodeSocketValueEnum>();
+      bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
       id_us_plus(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
       break;
     }
@@ -1815,8 +1813,7 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
       return default_value.value != nullptr;
     }
     case SOCK_ENUM: {
-      bNodeSocketValueEnum &default_value =
-          *sock->default_value_typed<bNodeSocketValueEnum>();
+      bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
       id_us_min(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
       return default_value.enum_ref.node_tree != nullptr;
     }

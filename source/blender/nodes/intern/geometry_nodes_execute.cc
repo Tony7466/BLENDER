@@ -309,6 +309,11 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       new (r_value) fn::ValueOrField<std::string>(std::move(value));
       break;
     }
+    case SOCK_ENUM: {
+      int value = IDP_Int(&property);
+      new (r_value) fn::ValueOrField<int>(std::move(value));
+      break;
+    }
     case SOCK_OBJECT: {
       ID *id = IDP_Id(&property);
       Object *object = (id && GS(id->name) == ID_OB) ? (Object *)id : nullptr;

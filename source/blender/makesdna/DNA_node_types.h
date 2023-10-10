@@ -839,6 +839,29 @@ typedef enum eNodeTreeRuntimeFlag {
   NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE = 1 << 2,
 } eNodeTreeRuntimeFlag;
 
+/* Weak reference to a node that defines enum items. */
+typedef struct NodeEnumDefinitionRef {
+  bNodeTree *node_tree;
+  int32_t node_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  static inline NodeEnumDefinitionRef undefined()
+  {
+    return {nullptr, INT_MAX};
+  }
+
+  void set(bNodeTree &node_tree, bNode &node);
+  void reset();
+
+  bool is_undefined() const;
+  bool is_valid() const;
+  bool operator==(const NodeEnumDefinitionRef &other) const;
+  bool operator!=(const NodeEnumDefinitionRef &other) const;
+  NodeEnumDefinition *get() const;
+#endif
+} NodeEnumDefinitionRef;
+
 /* socket value structs for input buttons
  * DEPRECATED now using ID properties
  */
@@ -903,23 +926,8 @@ typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
 
-/* Weak reference to a node that defines enum items. */
-typedef struct NodeEnumDefinitionRef {
-  bNodeTree *node_tree;
-  int32_t node_identifier;
-  char _pad[4];
-
-#ifdef __cplusplus
-  void set(bNodeTree &node_tree, bNode &node);
-  void reset();
-
-  bool is_valid() const;
-  NodeEnumDefinition *get() const;
-#endif
-} NodeEnumDefinitionRef;
-
 typedef struct bNodeSocketValueEnum {
-  /* Weak reference to the enum definition. */
+  /* Weak runtime reference to a node enum definition. */
   NodeEnumDefinitionRef enum_ref;
   /* Default input enum identifier. */
   int32_t value;

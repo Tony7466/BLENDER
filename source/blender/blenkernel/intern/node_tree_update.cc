@@ -509,6 +509,7 @@ class NodeTreeMainUpdater {
     this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
+    this->propagate_enum_definitions(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
       if (node_field_inferencing::update_field_inferencing(ntree)) {
         result.interface_changed = true;
@@ -793,6 +794,112 @@ class NodeTreeMainUpdater {
       /* Check if there is a simulation zone. */
       if (!ntree.nodes_by_type("GeometryNodeSimulationOutput").is_empty()) {
         ntree.runtime->runtime_flag |= NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE;
+      }
+    }
+  }
+
+  /* Reset enum references. */
+  void clear_enum_definitions(const Span<bNodeSocket *> sockets)
+  {
+    for (bNodeSocket *socket : sockets) {
+      if (!socket->is_available() || socket->type != SOCK_ENUM) {
+        continue;
+      }
+      bNodeSocketValueEnum &default_value = *socket->default_value_typed<bNodeSocketValueEnum>();
+      default_value.enum_ref.reset();
+    }
+  }
+
+  void update_socket_enum_definition(bNodeSocket &dst, const bNodeSocket &src) {
+    bNodeSocketValueEnum &dst_default_value = *dst.default_value_typed<bNodeSocketValueEnum>();
+    const bNodeSocketValueEnum &src_default_value =
+        *src.default_value_typed<bNodeSocketValueEnum>();
+
+    if (src_default_value.enum_ref.is_undefined()) {
+      /* Undefined if any source enum ref is undefined. */
+      dst_default_value.enum_ref = NodeEnumDefinitionRef::undefined();
+    }
+    else if (!dst_default_value.enum_ref.is_valid()) {
+      /* First connection, set the reference. */
+      dst_default_value.enum_ref = src_default_value.enum_ref;
+    }
+    else if (dst_default_value.enum_ref != src_default_value.enum_ref) {
+      /* Error if enum ref does not match other connections. */
+      dst_default_value.enum_ref = NodeEnumDefinitionRef::undefined();
+    }
+  }
+
+  void propagate_enum_definitions_from_sockets(bNodeSocket &dst,
+                                               const Span<const bNodeSocket *> src_span)
+  {
+    if (!dst.is_available() || dst.type != SOCK_ENUM) {
+      return;
+    }
+    /* Skip destination if it's already undefined (conflicting references). */
+    bNodeSocketValueEnum &dst_default_value = *dst.default_value_typed<bNodeSocketValueEnum>();
+    if (dst_default_value.enum_ref.is_undefined()) {
+      return;
+    }
+
+    for (const bNodeSocket *src : src_span) {
+      if (src->is_available() && src->type == SOCK_ENUM) {
+        update_socket_enum_definition(dst, *src);
+      }
+    }
+  }
+
+  void propagate_enum_definitions(bNodeTree &ntree)
+  {
+    /* Propagation from right to left to determine which enum
+     * definition to use for enum sockets. */
+    for (bNode *node : ntree.toposort_right_to_left()) {
+      /* Enum definition source nodes. */
+      if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
+        bNodeSocket *input = node->input_sockets()[0];
+        BLI_assert(input->type == SOCK_ENUM);
+        if (input->is_available()) {
+          input->default_value_typed<bNodeSocketValueEnum>()->enum_ref.set(ntree, *node);
+        }
+      }
+      else {
+        /* Reset enum references. */
+        clear_enum_definitions(node->input_sockets());
+        clear_enum_definitions(node->output_sockets());
+      }
+
+      /* Propagate enum references from output links. */
+      for (bNodeSocket *output : node->output_sockets()) {
+        propagate_enum_definitions_from_sockets(*output, output->directly_linked_sockets());
+      }
+
+      /* Propagate over internal relations. */
+      /* XXX Placeholder implementation just propagates all outputs
+       * to all inputs for built-in nodes and handles node groups as
+       * a special case. This could perhaps use input/output
+       * relations to handle propagation generically? */
+      if (node->is_group()) {
+        /* Propagate internal enum definitions to inputs. */
+        if (node->id) {
+          const bNodeTree *group_tree = reinterpret_cast<bNodeTree *>(node->id);
+          for (const bNode *input_node : group_tree->group_input_nodes()) {
+            for (const bNodeSocket *output : input_node->output_sockets()) {
+              if (!output->is_available() || output->type != SOCK_ENUM ||
+                  output->default_value_typed<bNodeSocketValueEnum>()->enum_ref.is_undefined())
+              {
+                continue;
+              }
+              bNodeSocket &group_input = node->input_by_identifier(output->identifier);
+              BLI_assert(group_input.is_available());
+              BLI_assert(group_input.type == SOCK_ENUM);
+              update_socket_enum_definition(group_input, *output);
+            }
+          }
+        }
+      }
+      else {
+        for (bNodeSocket *input : node->input_sockets()) {
+          propagate_enum_definitions_from_sockets(*input, node->output_sockets());
+        }
       }
     }
   }
