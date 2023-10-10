@@ -83,6 +83,9 @@ class GeometryDataSource : public DataSource {
       const SpreadsheetColumnID &column_id) const override;
 
   int tot_rows() const override;
+
+ private:
+  std::optional<const bke::AttributeAccessor> get_component_attributes() const;
 };
 
 class VolumeDataSource : public DataSource {
