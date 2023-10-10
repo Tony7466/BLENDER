@@ -121,6 +121,25 @@ class ProbeLocationFinder {
 /** \name Reflection Probe Module
  * \{ */
 
+eLightProbeResolution ReflectionProbeModule::reflection_probe_resolution() const
+{
+  switch (instance_.scene->eevee.gi_cubemap_resolution) {
+    case 64:
+      return LIGHT_PROBE_RESOLUTION_64;
+    case 128:
+      return LIGHT_PROBE_RESOLUTION_128;
+    case 256:
+      return LIGHT_PROBE_RESOLUTION_256;
+    case 512:
+      return LIGHT_PROBE_RESOLUTION_512;
+    case 1024:
+      return LIGHT_PROBE_RESOLUTION_1024;
+    default:
+      return LIGHT_PROBE_RESOLUTION_2048;
+  }
+  return LIGHT_PROBE_RESOLUTION_2048;
+}
+
 void ReflectionProbeModule::init()
 {
   if (!is_initialized) {
@@ -129,7 +148,8 @@ void ReflectionProbeModule::init()
     /* Initialize the world probe. */
 
     ReflectionProbe world_probe;
-    world_probe.type = ReflectionProbe::Type::World;
+    world_probe.type = ReflectionProbe::Type::WORLD;
+    world_probe.is_probe_used = true;
     world_probe.do_render = true;
     world_probe.atlas_coord = find_empty_atlas_region(0);
     world_probe.clipping_distances = float2(1.0f, 10.0f);
@@ -148,9 +168,6 @@ void ReflectionProbeModule::init()
                                9999);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
     probes_tx_.clear(float4(0.0f));
-
-    recalc_lod_factors();
-    data_buf_.push_update();
   }
 
   {
@@ -159,9 +176,8 @@ void ReflectionProbeModule::init()
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_image("octahedral_img", &probes_tx_);
-    pass.push_constant("reflection_probe_index", &reflection_probe_index_);
-    pass.push_constant("reflection_probe_coord", (int4 *)&reflection_probe_coord_);
-    pass.push_constant("reflection_probe_is_world", &reflection_probe_is_world_);
+    pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&reflection_probe_coord_));
+    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_probe_coord_));
     pass.dispatch(&dispatch_probe_pack_);
   }
 
@@ -169,8 +185,7 @@ void ReflectionProbeModule::init()
     PassSimple &pass = update_irradiance_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_UPDATE_IRRADIANCE));
-    pass.push_constant("probe_coord", (int4 *)&reflection_probe_coord_);
-    pass.push_constant("world_coord", (int4 *)&world_probe_coord_);
+    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_probe_coord_));
     pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
     bind_resources(&pass);
     pass.dispatch(int2(1, 1));
@@ -180,7 +195,7 @@ void ReflectionProbeModule::init()
 void ReflectionProbeModule::begin_sync()
 {
   for (ReflectionProbe &reflection_probe : probes_.values()) {
-    if (reflection_probe.type == ReflectionProbe::Type::Probe) {
+    if (reflection_probe.type == ReflectionProbe::Type::PROBE) {
       reflection_probe.is_probe_used = false;
     }
   }
@@ -247,11 +262,14 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
   }
-  const bool is_dirty = ob_handle.recalc != 0;
-  int subdivision = layer_subdivision_for(
-      max_resolution_, static_cast<eLightProbeResolution>(light_probe->resolution));
-  ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
-  probe.do_render |= is_dirty;
+  ReflectionProbe &probe = probes_.lookup_or_add_cb(ob_handle.object_key.hash(), []() {
+    ReflectionProbe probe;
+    probe.atlas_coord.layer_subdivision = -1;
+    probe.do_render = true;
+    probe.type = ReflectionProbe::Type::PROBE;
+    return probe;
+  });
+  probe.do_render |= (ob_handle.recalc != 0);
   probe.is_probe_used = true;
 
   const bool probe_sync_active = instance_.do_reflection_probe_sync();
@@ -266,11 +284,9 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 
   probe.clipping_distances = float2(light_probe->clipsta, light_probe->clipend);
 
-  if (probe.layer_subdivision != subdivision) {
-    ReflectionProbeData new_probe_data = find_empty_atlas_region(subdivision);
-    probe.layer = new_probe_data.layer;
-    probe.layer_subdivision = new_probe_data.layer_subdivision;
-    probe.area_index = new_probe_data.area_index;
+  int subdivision = layer_subdivision_for(max_resolution_, reflection_probe_resolution());
+  if (probe.atlas_coord.layer_subdivision != subdivision) {
+    probe.atlas_coord = find_empty_atlas_region(subdivision);
   }
 
   float4x4 obmat = math::scale(float4x4(ob->object_to_world), float3(light_probe->distpar));
@@ -283,32 +299,12 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.influence_bias = 1.0;
 }
 
-ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
-                                                       int subdivision_level)
-{
-  ReflectionProbe &reflection_probe = probes_.lookup_or_add_cb(
-      ob_handle.object_key.hash(), [this, subdivision_level]() {
-        ReflectionProbe probe;
-        ReflectionProbeData probe_data = find_empty_atlas_region(subdivision_level);
-
-        probe.do_render = true;
-        probe.type = ReflectionProbe::Type::Probe;
-
-        data_buf_[probe.index] = probe_data;
-        return probe;
-      });
-
-  return reflection_probe;
-}
-
 ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(
     int subdivision_level) const
 {
   ProbeLocationFinder location_finder(needed_layers_get() + 1, subdivision_level);
-  for (const ReflectionProbe &probe : probes_) {
-    if (probe.type != Type::Unused) {
-      location_finder.mark_space_used(data);
-    }
+  for (const ReflectionProbe &probe : probes_.values()) {
+    location_finder.mark_space_used(probe.atlas_coord);
   }
   return location_finder.first_free_spot();
 }
@@ -316,7 +312,6 @@ ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(
 void ReflectionProbeModule::end_sync()
 {
   const bool probes_removed = remove_unused_probes();
-
   const bool world_updated = do_world_update_get();
   const bool only_world = has_only_world_probe();
   const int number_layers_needed = needed_layers_get();
@@ -353,80 +348,28 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.clear(float4(0.0f));
   }
 
-  recalc_lod_factors();
   data_buf_.push_update();
 }
 
 bool ReflectionProbeModule::remove_unused_probes()
 {
-  ReflectionProbeData init_probe_data = {};
-  init_probe_data.layer = -1;
-
-  Vector<int> removed_indexes;
-
-  bool found = false;
-  do {
-    found = false;
-    uint64_t key_to_remove = 0;
-    for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-      const ReflectionProbe &probe = item.value;
-      if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
-        key_to_remove = item.key;
-        data_buf_[probe.index] = init_probe_data;
-        found = true;
-        removed_indexes.append(probe.index);
-        break;
-      }
+  Vector<uint64_t> pruned_keys;
+  for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
+    if (item.value.is_probe_used == false) {
+      pruned_keys.append(item.key);
     }
-    if (found) {
-      probes_.remove(key_to_remove);
-    }
-  } while (found);
+  }
 
-  const bool probes_removed = !removed_indexes.is_empty();
+  const bool probes_removed = !pruned_keys.is_empty();
+
+  for (uint64_t key : pruned_keys) {
+    probes_.remove(key);
+  }
 
   if (probes_removed) {
     instance_.sampling.reset();
   }
-
   return probes_removed;
-}
-
-void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_data_index)
-{
-  int max_index = reflection_probe_data_index_max();
-  BLI_assert_msg(reflection_probe_data_index <= max_index,
-                 "Trying to remove reflection probes when it isn't part of the reflection probe "
-                 "data. This can also happens when the state is set to "
-                 "ReflectionProbe::Type::UNUSED, before removing the data.");
-  for (int index = reflection_probe_data_index; index < max_index; index++) {
-    data_buf_[index] = data_buf_[index + 1];
-  }
-  for (ReflectionProbe &probe : probes_.values()) {
-    if (probe.index == reflection_probe_data_index) {
-      probe.index = -1;
-    }
-    if (probe.index > reflection_probe_data_index) {
-      probe.index--;
-    }
-  }
-  data_buf_[max_index].layer = -1;
-  BLI_assert(reflection_probe_data_index_max() == max_index - 1);
-}
-
-void ReflectionProbeModule::recalc_lod_factors()
-{
-  for (ReflectionProbeData &probe_data : data_buf_) {
-    if (probe_data.layer == -1) {
-      return;
-    }
-
-    const float bias = 0.0;
-    const float lod_factor =
-        bias +
-        0.5 * log(float(square_i(probes_tx_.width() >> probe_data.layer_subdivision))) / log(2.0);
-    probe_data.lod_factor = lod_factor;
-  }
 }
 
 bool ReflectionProbeModule::do_world_update_get() const
@@ -459,32 +402,30 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
   const bool do_probe_sync = instance_.do_reflection_probe_sync();
   const bool only_world = has_only_world_probe();
   const int max_shift = int(log2(max_resolution_));
-  for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-    if (!item.value.do_render && !item.value.do_world_irradiance_update) {
+  for (ReflectionProbe &probe : probes_.values()) {
+    if (!probe.do_render && !probe.do_world_irradiance_update) {
       continue;
     }
-    if (item.value.type != probe_type) {
+    if (probe.type != probe_type) {
       continue;
     }
     /* Do not update this probe during this sample. */
-    if (item.value.type == ReflectionProbe::Type::World && !only_world && !do_probe_sync) {
+    if (probe.type == ReflectionProbe::Type::WORLD && !only_world && !do_probe_sync) {
       continue;
     }
-    if (item.value.type == ReflectionProbe::Type::Probe && !do_probe_sync) {
+    if (probe.type == ReflectionProbe::Type::PROBE && !do_probe_sync) {
       continue;
     }
 
-    ReflectionProbeData &probe_data = data_buf_[item.value.index];
     ReflectionProbeUpdateInfo info = {};
-    info.probe_type = item.value.type;
-    info.object_key = item.key;
-    info.resolution = 1 << (max_shift - probe_data.layer_subdivision - 1);
-    info.clipping_distances = item.value.clipping_distances;
-    info.probe_pos = float4(0.0, 0.0, 0.0, 1.0) * probe_data.world_to_probe_transposed;
-    info.do_render = item.value.do_render;
-    info.do_world_irradiance_update = item.value.do_world_irradiance_update;
+    info.probe_type = probe.type;
+    info.atlas_coord = probe.atlas_coord;
+    info.resolution = 1 << (max_shift - probe.atlas_coord.layer_subdivision - 1);
+    info.clipping_distances = probe.clipping_distances;
+    info.probe_pos = float4(0.0, 0.0, 0.0, 1.0) * probe.world_to_probe_transposed;
+    info.do_render = probe.do_render;
+    info.do_world_irradiance_update = probe.do_world_irradiance_update;
 
-    ReflectionProbe &probe = probes_.lookup(item.key);
     probe.do_render = false;
     probe.do_world_irradiance_update = false;
 
@@ -499,32 +440,26 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
   }
 
   /* Check reset probe updating as we completed rendering all Probes. */
-  if (probe_type == ReflectionProbe::Type::Probe && update_probes_this_sample_) {
+  if (probe_type == ReflectionProbe::Type::PROBE && update_probes_this_sample_) {
     update_probes_next_sample_ = false;
   }
 
   return std::nullopt;
 }
 
-void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
+void ReflectionProbeModule::remap_to_octahedral_projection(
+    const ReflectionProbeAtlasCoordinate &atlas_coord)
 {
-  const ReflectionProbe &probe = probes_.lookup(object_key);
+  int resolution = max_resolution_ >> atlas_coord.layer_subdivision;
   /* Update shader parameters that change per dispatch. */
-  reflection_probe_index_ = probe.index;
-  dispatch_probe_pack_ = int3(int2(ceil_division(max_resolution_ >> probe_data.layer_subdivision,
-                                                 REFLECTION_PROBE_GROUP_SIZE)),
-                              1);
+  reflection_probe_coord_ = atlas_coord;
+  dispatch_probe_pack_ = int3(int2(ceil_division(resolution, REFLECTION_PROBE_GROUP_SIZE)), 1);
 
   instance_.manager->submit(remap_ps_);
 }
 
 void ReflectionProbeModule::update_world_irradiance()
 {
-  const ReflectionProbe &probe = probes_.lookup(world_object_key_);
-
-  /* Update shader parameters that change per dispatch. */
-  reflection_probe_index_ = probe.index;
-
   instance_.manager->submit(update_irradiance_ps_);
 }
 
@@ -541,10 +476,11 @@ void ReflectionProbeModule::set_view(View & /*view*/)
     if (reflection_probe_count_ >= REFLECTION_PROBES_MAX - 1) {
       break;
     }
-    if (reflection_probe_count_ >= REFLECTION_PROBES_MAX - 1) {
+    if (probe.type == ReflectionProbe::Type::WORLD) {
       break;
     }
     /* TODO(fclem): Culling. */
+    probe.recalc_lod_factors(probes_tx_.width());
     probe_active.append(&probe);
   }
 
@@ -600,13 +536,13 @@ void ReflectionProbeModule::debug_print() const
   std::ostream &os = std::cout;
   for (const ReflectionProbe &probe : probes_.values()) {
     switch (probe.type) {
-      case ReflectionProbe::Type::World: {
+      case ReflectionProbe::Type::WORLD: {
         os << "WORLD";
         os << " do_render: " << probe.do_render;
         os << "\n";
         break;
       }
-      case ReflectionProbe::Type::Probe: {
+      case ReflectionProbe::Type::PROBE: {
         os << "PROBE";
         os << " do_render: " << probe.do_render;
         os << " is_used: " << probe.is_probe_used;
