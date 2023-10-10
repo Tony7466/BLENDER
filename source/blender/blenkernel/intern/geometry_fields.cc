@@ -35,6 +35,28 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const eAttr
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
+GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
+                                                            const IndexMask &mask,
+                                                            ResourceScope &scope) const
+{
+  if (const GeometryFieldInput *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
+          &field_input))
+  {
+    const GeometryFieldContext context{this->grease_pencil(), this->domain(), this->layer_index()};
+    return geometry_field_input->get_varray_for_context(context, mask, scope);
+  }
+  if (const bke::greasepencil::Drawing *drawing =
+          bke::greasepencil::get_eval_grease_pencil_layer_drawing(this->grease_pencil(),
+                                                                  this->layer_index()))
+  {
+    if (drawing->strokes().attributes().domain_supported(this->domain())) {
+      const CurvesFieldContext context{drawing->strokes(), this->domain()};
+      return field_input.get_varray_for_context(context, mask, scope);
+    }
+  }
+  return {};
+}
+
 GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
                                            const eAttrDomain domain)
     : geometry_(other.geometry_),
