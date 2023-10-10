@@ -1114,7 +1114,6 @@ static void direct_link_panel_list(BlendDataReader *reader, ListBase *lb)
     panel->activedata = nullptr;
     panel->type = nullptr;
     panel->drawname = nullptr;
-    panel->runtime->custom_data_ptr = nullptr;
     direct_link_panel_list(reader, &panel->children);
   }
 }
