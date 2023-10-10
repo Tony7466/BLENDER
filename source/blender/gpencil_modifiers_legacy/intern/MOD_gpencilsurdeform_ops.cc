@@ -26,6 +26,7 @@
 #include "BKE_scene.h"
 #include "BKE_bvhutils.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_report.h"
