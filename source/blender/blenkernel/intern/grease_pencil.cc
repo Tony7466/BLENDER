@@ -431,6 +431,29 @@ void Drawing::tag_topology_changed()
   this->tag_positions_changed();
 }
 
+const Drawing *get_eval_grease_pencil_layer_drawing(const GreasePencil &grease_pencil,
+                                                    const int layer_index)
+{
+  BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
+  const Layer &layer = *grease_pencil.layers()[layer_index];
+  const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
+  if (drawing_index == -1) {
+    return nullptr;
+  }
+  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
+  if (drawing_base->type != GP_DRAWING) {
+    return nullptr;
+  }
+  const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+  return &drawing;
+}
+
+Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
+                                                        const int layer)
+{
+  return const_cast<Drawing *>(get_eval_grease_pencil_layer_drawing(grease_pencil, layer));
+}
+
 TreeNode::TreeNode()
 {
   this->next = this->prev = nullptr;
@@ -2044,12 +2067,15 @@ static void fill_reorder_indices_array(const int reorder_from,
   array_utils::fill_index_range(reorder_indices.slice(IndexRange(start)));
   reorder_indices[reorder_from] = reorder_to;
   if (reorder_from < reorder_to) {
-    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_from + 1, dist)), reorder_from);
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_from + 1, dist)),
+                                  reorder_from);
   }
   else {
-    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_to, dist)), reorder_to + 1);
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_to, dist)),
+                                  reorder_to + 1);
   }
-  array_utils::fill_index_range(reorder_indices.slice(IndexRange(end + 1, size - end - 1)), end + 1);
+  array_utils::fill_index_range(reorder_indices.slice(IndexRange(end + 1, size - end - 1)),
+                                end + 1);
 }
 
 static void reorder_layer_data(GreasePencil &grease_pencil,
