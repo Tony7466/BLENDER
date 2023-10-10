@@ -18,10 +18,6 @@
 
 #include <limits.h> /* for PATH_MAX */
 
-#ifdef WIN32
-#  include "BLI_winstuff.h" /* for ssize_t */
-#endif
-
 #include "BLI_compiler_attrs.h"
 #include "BLI_fileops_types.h"
 #include "BLI_utildefines.h"
@@ -300,7 +296,7 @@ int BLI_access(const char *filepath, int mode) ATTR_WARN_UNUSED_RESULT ATTR_NONN
  * - Reads `size_t` bytes instead of `int` on WIN32.
  * \return the number of bytes read.
  */
-ssize_t BLI_read(int fd, void *buf, size_t nbytes);
+int64_t BLI_read(int fd, void *buf, size_t nbytes);
 
 /**
  * Returns true if the file with the specified name can be written.
