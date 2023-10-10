@@ -882,7 +882,7 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
                        v2d->cur.xmin,
                        ymin + NLACHANNEL_SKIP,
                        v2d->cur.xmax,
-                       ymax - NLACHANNEL_SKIP);
+                       ymax + NLACHANNEL_SKIP * 0.5);
               break;
             }
             case NLASTRIP_EXTEND_HOLD_FORWARD: {
@@ -906,7 +906,7 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
                                     static_cast<bAction *>(ale->data),
                                     ycenter,
                                     ymin + NLACHANNEL_SKIP,
-                                    ymax - NLACHANNEL_SKIP);
+                                    ymax + NLACHANNEL_SKIP * 0.5);
 
           GPU_blend(GPU_BLEND_NONE);
           break;
