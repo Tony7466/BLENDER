@@ -18,6 +18,10 @@
 
 #include <limits.h> /* for PATH_MAX */
 
+#ifdef WIN32
+#  include "BLI_winstuff.h" /* for ssize_t */
+#endif
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_fileops_types.h"
 #include "BLI_utildefines.h"
