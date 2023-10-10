@@ -46,12 +46,13 @@ else()
   endif()
 endif()
 
-
 # Support restoring this value once pre-compiled libraries have been handled.
 set(WITH_STATIC_LIBS_INIT ${WITH_STATIC_LIBS})
 
 if(DEFINED LIBDIR)
-  message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  if(FIRST_RUN)
+    message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  endif()
 
   file(GLOB LIB_SUBDIRS ${LIBDIR}/*)
 
@@ -118,6 +119,7 @@ if(WITH_VULKAN_BACKEND)
   find_package_wrapper(Vulkan REQUIRED)
   find_package_wrapper(ShaderC REQUIRED)
 endif()
+add_bundled_libraries(vulkan/lib)
 
 function(check_freetype_for_brotli)
   if((DEFINED HAVE_BROTLI AND HAVE_BROTLI) AND
@@ -549,7 +551,9 @@ if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
   if(openpgl_FOUND)
     get_target_property(OPENPGL_LIBRARIES openpgl::openpgl LOCATION)
     get_target_property(OPENPGL_INCLUDE_DIR openpgl::openpgl INTERFACE_INCLUDE_DIRECTORIES)
-    message(STATUS "Found OpenPGL: ${OPENPGL_LIBRARIES}")
+    if(FIRST_RUN)
+      message(STATUS "Found OpenPGL: ${OPENPGL_LIBRARIES}")
+    endif()
   else()
     set(WITH_CYCLES_PATH_GUIDING OFF)
     message(STATUS "OpenPGL not found, disabling WITH_CYCLES_PATH_GUIDING")
@@ -716,10 +720,6 @@ if(WITH_GHOST_WAYLAND)
   set_and_warn_library_found("xkbcommon" xkbcommon_FOUND WITH_GHOST_WAYLAND)
 
   if(WITH_GHOST_WAYLAND)
-    if(WITH_GHOST_WAYLAND_DBUS)
-      pkg_check_modules(dbus REQUIRED dbus-1)
-    endif()
-
     if(WITH_GHOST_WAYLAND_LIBDECOR)
       if(_use_system_wayland)
         pkg_check_modules(libdecor libdecor-0>=0.1)
@@ -728,10 +728,6 @@ if(WITH_GHOST_WAYLAND)
         set(libdecor_FOUND ON)
       endif()
       set_and_warn_library_found("libdecor" libdecor_FOUND WITH_GHOST_WAYLAND_LIBDECOR)
-    endif()
-
-    if(WITH_GHOST_WAYLAND_DBUS)
-      add_definitions(-DWITH_GHOST_WAYLAND_DBUS)
     endif()
 
     if(WITH_GHOST_WAYLAND_LIBDECOR)
