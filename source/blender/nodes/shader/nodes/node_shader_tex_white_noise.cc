@@ -185,6 +185,45 @@ static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder
   builder.construct_and_set_matching_fn<WhiteNoiseFunction>(int(node.custom1));
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem noise = empty();
+  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
+  NodeItem w = get_input_value("W", NodeItem::Type::Float);
+  switch (node_->custom1) {
+    case 1:
+      noise = create_node("cellnoise2d",
+                          NodeItem::Type::Float,
+                          {{"texcoord", w.convert(NodeItem::Type::Vector2)}});
+      break;
+    case 2:
+      noise = create_node("cellnoise2d",
+                          NodeItem::Type::Float,
+                          {{"texcoord", vector.convert(NodeItem::Type::Vector2)}});
+      break;
+    case 3:
+      noise = create_node("cellnoise3d", NodeItem::Type::Float, {{"position", vector}});
+      break;
+    case 4:
+      noise = create_node("cellnoise3d", NodeItem::Type::Float, {{"position", vector + w}});
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+    }
+
+  if (STREQ(socket_out_->name, "Value")) {
+    return noise;
+  }
+
+  NodeItem combine = create_node(
+      "combine3", NodeItem::Type::Color3, {{"in1", noise}, {"in2", val(1.0f)}, {"in3", val(0.5f)}});
+  return create_node("hsvtorgb", NodeItem::Type::Color3, {{"in", combine}});
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_tex_white_noise_cc
 
 void register_node_type_sh_tex_white_noise()
@@ -200,6 +239,7 @@ void register_node_type_sh_tex_white_noise()
   ntype.gpu_fn = file_ns::gpu_shader_tex_white_noise;
   ntype.updatefunc = file_ns::node_shader_update_tex_white_noise;
   ntype.build_multi_function = file_ns::sh_node_noise_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
