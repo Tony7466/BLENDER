@@ -29,6 +29,9 @@ class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
 class GeometryComponent;
+namespace greasepencil {
+class Drawing;
+}  // namespace greasepencil
 }  // namespace blender::bke
 
 namespace blender::bke {
@@ -723,6 +726,8 @@ class GreasePencilComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  const bke::greasepencil::Drawing *grease_pencil_layer_drawing(int layer_index) const;
 
   static constexpr inline GeometryComponent::Type static_type = Type::GreasePencil;
 

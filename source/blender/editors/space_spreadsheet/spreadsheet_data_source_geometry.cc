@@ -11,7 +11,9 @@
 #include "BKE_curves.hh"
 #include "BKE_editmesh.h"
 #include "BKE_geometry_fields.hh"
+#include "BKE_geometry_set.hh"
 #include "BKE_global.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
@@ -186,6 +188,10 @@ void GeometryDataSource::foreach_default_column_ids(
     fn({(char *)"Name"}, false);
   }
 
+  if (component_->type() == bke::GeometryComponent::Type::GreasePencil) {
+    fn({(char *)"Name"}, false);
+  }
+
   extra_columns_.foreach_default_column_ids(fn);
 
   attributes.for_all(
@@ -262,6 +268,44 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
         return std::make_unique<ColumnValues>(
             column_id.name, VArray<float3>::ForFunc(domain_num, [transforms](int64_t index) {
               return math::to_scale(transforms[index]);
+            }));
+      }
+    }
+  }
+  else if (component_->type() == bke::GeometryComponent::Type::GreasePencil) {
+    if (ELEM(domain_, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT)) {
+      const bke::GreasePencilComponent &grease_pencil_component =
+          static_cast<const bke::GreasePencilComponent &>(*component_);
+      if (grease_pencil_component.has_grease_pencil()) {
+        if (const bke::greasepencil::Drawing *drawing =
+                grease_pencil_component.grease_pencil_layer_drawing(component_index_))
+        {
+          bke::GAttributeReader attribute = drawing->strokes().attributes().lookup(column_id.name);
+          if (!attribute) {
+            return {};
+          }
+          GVArray varray = std::move(attribute.varray);
+          if (attribute.domain != domain_) {
+            return {};
+          }
+
+          StringRefNull column_display_name = column_id.name;
+          if (column_display_name == ".viewer") {
+            column_display_name = "Viewer";
+          }
+
+          return std::make_unique<ColumnValues>(column_display_name, std::move(varray));
+        }
+      }
+    }
+    if (const GreasePencil *grease_pencil =
+            static_cast<const bke::GreasePencilComponent &>(*component_).get())
+    {
+      if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER && STREQ(column_id.name, "Name")) {
+        const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
+        return std::make_unique<ColumnValues>(
+            column_id.name, VArray<std::string>::ForFunc(domain_num, [layers](int64_t index) {
+              return std::string(layers[index]->name());
             }));
       }
     }
@@ -503,8 +547,8 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
       if (object_orig->mode == OB_MODE_EDIT) {
         if (const BMEditMesh *em = mesh->edit_mesh) {
           Mesh *new_mesh = (Mesh *)BKE_id_new_nomain(ID_ME, nullptr);
-          /* This is a potentially heavy operation to do on every redraw. The best solution here is
-           * to display the data directly from the bmesh without a conversion, which can be
+          /* This is a potentially heavy operation to do on every redraw. The best solution here
+           * is to display the data directly from the bmesh without a conversion, which can be
            * implemented a bit later. */
           BM_mesh_bm_to_me_for_eval(em->bm, new_mesh, nullptr);
           geometry_set.replace_mesh(new_mesh, bke::GeometryOwnershipType::Owned);
@@ -555,6 +599,7 @@ std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object 
   SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
   const eAttrDomain domain = (eAttrDomain)sspreadsheet->attribute_domain;
   const auto component_type = bke::GeometryComponent::Type(sspreadsheet->geometry_component_type);
+  const int active_component_index = sspreadsheet->active_component_index;
   bke::GeometrySet geometry_set = spreadsheet_get_display_geometry_set(sspreadsheet, object_eval);
   if (!geometry_set.has(component_type)) {
     return {};
@@ -563,8 +608,20 @@ std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object 
   if (component_type == bke::GeometryComponent::Type::Volume) {
     return std::make_unique<VolumeDataSource>(std::move(geometry_set));
   }
+  // if (component_type == bke::GeometryComponent::Type::GreasePencil) {
+  //   if (ELEM(domain, ATTR_DOMAIN_CURVE, ATTR_DOMAIN_POINT) && geometry_set.has_grease_pencil()) {
+  //     const bke::GreasePencilComponent *grease_pencil_component =
+  //         geometry_set.get_component<bke::GreasePencilComponent>();
+  //     if (const bke::greasepencil::Drawing *drawing =
+  //             grease_pencil_component->grease_pencil_layer_drawing(active_component_index))
+  //     {
+  //       return std::make_unique<GeometryDataSource>(
+  //           object_eval, std::move(geometry_set), component_type, domain);
+  //     }
+  //   }
+  // }
   return std::make_unique<GeometryDataSource>(
-      object_eval, std::move(geometry_set), component_type, domain);
+      object_eval, std::move(geometry_set), component_type, domain, active_component_index);
 }
 
 }  // namespace blender::ed::spreadsheet
