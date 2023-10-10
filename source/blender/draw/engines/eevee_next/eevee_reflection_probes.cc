@@ -353,10 +353,8 @@ void ReflectionProbeModule::end_sync()
 
 bool ReflectionProbeModule::remove_unused_probes()
 {
-  int64_t removed_count = probes_.remove_if(
-      [](const Map<uint64_t, ReflectionProbe>::MutableItem &item) {
-        return !item.value.is_probe_used;
-      });
+  const int64_t removed_count = probes_.remove_if(
+      [](const ReflectionProbes::Item &item) { return !item.value.is_probe_used; });
 
   if (removed_count > 0) {
     instance_.sampling.reset();

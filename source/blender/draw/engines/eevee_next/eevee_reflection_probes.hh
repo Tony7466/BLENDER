@@ -70,6 +70,8 @@ struct ReflectionProbe : ReflectionProbeData {
  * \{ */
 
 class ReflectionProbeModule {
+  using ReflectionProbes = Map<uint64_t, ReflectionProbe>;
+
  private:
   /**
    * The maximum resolution of a cube-map side.
@@ -83,7 +85,7 @@ class ReflectionProbeModule {
   bool is_initialized = false;
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;
-  Map<uint64_t, ReflectionProbe> probes_;
+  ReflectionProbes probes_;
 
   ReflectionProbe world_probe_data;
 
