@@ -1292,36 +1292,43 @@ struct ReflectionProbeLowFreqLight {
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeLowFreqLight, 16)
 
-/** Mapping data to locate a reflection probe in texture. */
-struct ReflectionProbeData {
-  /**
-   * Position of the light probe in world space.
-   * World probe uses origin.
-   *
-   * 4th component is not used.
-   */
-  float4 pos;
+enum ParallaxType : uint32_t {
+  PARALLAX_SPHERE = 0u,
+  PARALLAX_CUBE = 1u,
+};
 
+struct ReflectionProbeAtlasCoordinate {
   /** On which layer of the texture array is this reflection probe stored. */
   int layer;
-
   /**
    * Subdivision of the layer. 0 = no subdivision and resolution would be
    * ReflectionProbeModule::MAX_RESOLUTION.
    */
   int layer_subdivision;
-
   /**
    * Which area of the subdivided layer is the reflection probe located.
    *
    * A layer has (2^layer_subdivision)^2 areas.
    */
   int area_index;
+  int _pad1;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeAtlasCoordinate, 16)
 
-  /**
-   * LOD factor for mipmap selection.
-   */
+/** Mapping data to locate a reflection probe in texture. */
+struct ReflectionProbeData {
+  /** Transform to probe local position with non-uniform scaling. */
+  float3x4 world_to_probe_transposed;
+
+  /** Shape of the parallax projection. */
+  ParallaxType parallax_type;
+  /** Influence factor based on the distance to the parallax shape. */
+  float influence_scale;
+  float influence_bias;
+  /** LOD factor for mipmap selection. */
   float lod_factor;
+
+  ReflectionProbeAtlasCoordinate atlas_coord;
 
   /**
    * Irradiance at the probe location encoded as spherical harmonics.

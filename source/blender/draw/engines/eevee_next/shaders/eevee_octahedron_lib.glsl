@@ -66,9 +66,7 @@ vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
  * It also applies wrapping in the additional space near borders.
  * NOTE: Doesn't apply the translation part of the packing.
  */
-vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
-                                             ReflectionProbeData probe_data,
-                                             vec2 texel_size)
+vec2 octahedral_uv_from_layer_texture_coords(vec2 uv, vec2 texel_size)
 
 {
   /* Apply border region. */

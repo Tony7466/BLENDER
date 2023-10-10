@@ -28,10 +28,15 @@ struct ReflectionProbeUpdateInfo;
 /** \name Reflection Probe
  * \{ */
 
-struct ReflectionProbe {
-  enum Type { Unused, World, Probe };
+struct ReflectionProbe : ReflectionProbeData {
+  enum Type {
+    World,
+    Probe,
+  } type;
 
-  Type type = Type::Unused;
+  /* Used to sort the probes by priority. */
+  float3 location;
+  float volume;
 
   /* Should the area in the probes_tx_ be updated? */
   bool do_render = false;
@@ -43,12 +48,6 @@ struct ReflectionProbe {
    * Only valid when type == Type::Probe.
    */
   bool is_probe_used = false;
-
-  /**
-   * Index into ReflectionProbeDataBuf.
-   * -1 = not added yet
-   */
-  int index = -1;
 
   /**
    * Far and near clipping distances for rendering
@@ -64,7 +63,6 @@ struct ReflectionProbe {
 
 class ReflectionProbeModule {
  private:
-  static constexpr int world_probe_data_index = 0;
   /**
    * The maximum resolution of a cube-map side.
    *
@@ -78,6 +76,8 @@ class ReflectionProbeModule {
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;
   Map<uint64_t, ReflectionProbe> probes_;
+
+  ReflectionProbe world_probe_data;
 
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
@@ -97,6 +97,12 @@ class ReflectionProbeModule {
   Texture cubemap_tx_ = {"Probe.Cubemap"};
   /** Index of the probe being updated. */
   int reflection_probe_index_ = 0;
+  /** True if updated probe is the world probe. */
+  bool1 reflection_probe_is_world_ = 0;
+  /** Updated Probe coordinates in the atlas. */
+  ReflectionProbeAtlasCoordinate reflection_probe_coord_;
+  /** World coordinates in the atlas. */
+  ReflectionProbeAtlasCoordinate world_probe_coord_;
   /** Number of the probe to process in the select phase. */
   int reflection_probe_count_ = 0;
 
@@ -150,8 +156,7 @@ class ReflectionProbeModule {
    * Create a reflection probe data element that points to an empty spot in the cubemap that can
    * hold a texture with the given subdivision_level.
    */
-  ReflectionProbeData find_empty_reflection_probe_data(int subdivision_level,
-                                                       bool skip_world) const;
+  ReflectionProbeAtlasCoordinate find_empty_atlas_region(int subdivision_level) const;
 
   /**
    * Pop the next reflection probe that requires to be updated.
@@ -168,10 +173,6 @@ class ReflectionProbeModule {
   /* Instance requires access to #update_probes_this_sample_ */
   friend class Instance;
 };
-
-std::ostream &operator<<(std::ostream &os, const ReflectionProbeModule &module);
-std::ostream &operator<<(std::ostream &os, const ReflectionProbeData &probe_data);
-std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe);
 
 /** \} */
 

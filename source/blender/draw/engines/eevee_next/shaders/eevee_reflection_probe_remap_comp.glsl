@@ -19,14 +19,13 @@ ivec2 probe_area_offset(ReflectionProbeData probe_data, ivec3 texture_size)
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
-
+  ReflectionProbeAtlasCoordinate coord;
   ivec3 texture_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 texture_size = imageSize(octahedral_img);
 
   ivec3 octahedral_coord = ivec3(gl_GlobalInvocationID.xyz);
-  ivec2 octahedral_size = ivec2(texture_size.x >> probe_data.layer_subdivision,
-                                texture_size.y >> probe_data.layer_subdivision);
+  ivec2 octahedral_size = ivec2(texture_size.x >> coord.layer_subdivision,
+                                texture_size.y >> coord.layer_subdivision);
   /* Exit when pixel being written doesn't fit in the area reserved for the probe. */
   if (any(greaterThanEqual(octahedral_coord.xy, octahedral_size.xy))) {
     return;
@@ -38,14 +37,13 @@ void main()
   vec2 octahedral_uv = octahedral_uv_from_layer_texture_coords(uv, probe_data, texel_size);
   vec3 R = octahedral_uv_to_direction(octahedral_uv);
 
-  vec4 col = textureLod(cubemap_tx, R, float(probe_data.layer_subdivision));
+  vec4 col = textureLod(cubemap_tx, R, float(coord.layer_subdivision));
 
   /* Convert transmittance to transparency. */
   col.a = 1.0 - col.a;
 
   /* Composite world into reflection probes. */
-  bool is_reflection_probe = reflection_probe_index != 0;
-  if (is_reflection_probe && col.a != 1.0) {
+  if (!is_world && col.a != 1.0) {
     ReflectionProbeData world_probe_data = reflection_probe_buf[0];
     vec2 world_octahedral_size = vec2(texture_size.x >> world_probe_data.layer_subdivision,
                                       texture_size.y >> world_probe_data.layer_subdivision);

@@ -210,15 +210,26 @@ struct LightProbeSample {
   int spherical_id;
 };
 
+#  if defined(GPU_FRAGMENT_SHADER)
+#    define UTIL_TEXEL vec2(gl_FragCoord)
+#  elif defined(GPU_COMPUTE_SHADER)
+#    define UTIL_TEXEL vec2(gl_GlobalInvocationID)
+#  else
+#    define UTIL_TEXEL vec2(gl_VertexID, 0)
+#  endif
+
 /**
  * Return cached light-probe data at P.
  * Ng and V are use for biases.
  */
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
+  /* TODO: Dependency hell */
+  float noise = 0.5;
+
   LightProbeSample result;
   result.volume_irradiance = lightprobe_irradiance_sample(P, V, Ng);
-  result.spherical_id = reflection_probes_find_closest(P);
+  result.spherical_id = reflection_probes_select(P, noise);
   return result;
 }
 

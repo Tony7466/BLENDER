@@ -21,7 +21,9 @@ void main()
     sh = lightprobe_irradiance_world();
   }
   else {
-    sh = lightprobe_irradiance_sample(reflection_probe_buf[idx].pos.xyz);
+    /* TODO(fclem): Make a util for that. */
+    vec3 probe_center = transpose(reflection_probe_buf[idx].world_to_probe_transposed)[3];
+    sh = lightprobe_irradiance_sample(probe_center);
   }
 
   reflection_probe_buf[idx].low_freq_light = reflection_probes_extract_low_freq(sh);
