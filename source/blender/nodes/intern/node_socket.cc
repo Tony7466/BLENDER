@@ -179,93 +179,6 @@ static void verify_socket_template_list(bNodeTree *ntree,
 
 namespace blender::nodes {
 
-static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclaration &socket_decl)
-{
-  if (dynamic_cast<const decl::Float *>(&socket_decl)) {
-    return SOCK_FLOAT;
-  }
-  else if (dynamic_cast<const decl::Int *>(&socket_decl)) {
-    return SOCK_INT;
-  }
-  else if (dynamic_cast<const decl::Bool *>(&socket_decl)) {
-    return SOCK_BOOLEAN;
-  }
-  else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
-    return SOCK_VECTOR;
-  }
-  else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
-    return SOCK_RGBA;
-  }
-  else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
-    return SOCK_ROTATION;
-  }
-  else if (dynamic_cast<const decl::String *>(&socket_decl)) {
-    return SOCK_STRING;
-  }
-  else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
-    return SOCK_IMAGE;
-  }
-  else if (dynamic_cast<const decl::Texture *>(&socket_decl)) {
-    return SOCK_TEXTURE;
-  }
-  else if (dynamic_cast<const decl::Material *>(&socket_decl)) {
-    return SOCK_MATERIAL;
-  }
-  else if (dynamic_cast<const decl::Shader *>(&socket_decl)) {
-    return SOCK_SHADER;
-  }
-  else if (dynamic_cast<const decl::Collection *>(&socket_decl)) {
-    return SOCK_COLLECTION;
-  }
-  else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
-    return SOCK_OBJECT;
-  }
-  return std::nullopt;
-}
-
-// static bool do_forward_compatible_socket_type_check(const bNode &node)
-// {
-//   switch (node.type) {
-//     case GEO_NODE_SWITCH:
-//     case GEO_NODE_ACCUMULATE_FIELD:
-//     case GEO_NODE_CAPTURE_ATTRIBUTE:
-//     case GEO_NODE_ATTRIBUTE_STATISTIC:
-//     case GEO_NODE_BLUR_ATTRIBUTE:
-//     case GEO_NODE_CURVE_SAMPLE_FACTOR:
-//     case GEO_NODE_EVALUATE_AT_INDEX:
-//     case GEO_NODE_EVALUATE_ON_DOMAIN:
-//     case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
-//     case GEO_NODE_RAYCAST:
-//     case GEO_NODE_SAMPLE_INDEX:
-//     case GEO_NODE_SAMPLE_NEAREST_SURFACE:
-//     case GEO_NODE_SAMPLE_UV_SURFACE:
-//     case GEO_NODE_STORE_NAMED_ATTRIBUTE:
-//     case GEO_NODE_VIEWER:
-//     case FN_NODE_COMPARE:
-//     case FN_NODE_RANDOM_VALUE:
-//     case SH_NODE_MIX:
-//       return true;
-//     default:
-//       return false;
-//   }
-// }
-
-static bNodeSocket *get_old_socket_for_declaration(const bNode & /*node*/,
-                                                   Vector<bNodeSocket *> &old_sockets,
-                                                   const SocketDeclaration &socket_decl)
-{
-  // const bool use_prefix_and_type_check = do_forward_compatible_socket_type_check(node);
-
-  for (const int i : old_sockets.index_range()) {
-    bNodeSocket &old_socket = *old_sockets[i];
-    if (old_socket.identifier == socket_decl.identifier) {
-      old_sockets.remove_and_reorder(i);
-      return &old_socket;
-    }
-  }
-  return nullptr;
-}
-
 static void refresh_node_socket(bNodeTree &ntree,
                                 bNode &node,
                                 const SocketDeclaration &socket_decl,
@@ -273,9 +186,15 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 VectorSet<bNodeSocket *> &new_sockets)
 {
   /* Try to find a socket that corresponds to the declaration. */
-  bNodeSocket *old_socket_with_same_identifier = get_old_socket_for_declaration(
-      node, old_sockets, socket_decl);
-
+  bNodeSocket *old_socket_with_same_identifier = nullptr;
+  for (const int i : old_sockets.index_range()) {
+    bNodeSocket &old_socket = *old_sockets[i];
+    if (old_socket.identifier == socket_decl.identifier) {
+      old_sockets.remove_and_reorder(i);
+      old_socket_with_same_identifier = &old_socket;
+      break;
+    }
+  }
   bNodeSocket *new_socket = nullptr;
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
@@ -357,6 +276,54 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   }
 }
 
+/**
+ *  Not great to have this here, but this is only for forward compatibility, so this code shouldn't
+ * in the `main` branch.
+ */
+static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclaration &socket_decl)
+{
+  if (dynamic_cast<const decl::Float *>(&socket_decl)) {
+    return SOCK_FLOAT;
+  }
+  else if (dynamic_cast<const decl::Int *>(&socket_decl)) {
+    return SOCK_INT;
+  }
+  else if (dynamic_cast<const decl::Bool *>(&socket_decl)) {
+    return SOCK_BOOLEAN;
+  }
+  else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
+    return SOCK_VECTOR;
+  }
+  else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
+    return SOCK_RGBA;
+  }
+  else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
+    return SOCK_ROTATION;
+  }
+  else if (dynamic_cast<const decl::String *>(&socket_decl)) {
+    return SOCK_STRING;
+  }
+  else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
+    return SOCK_IMAGE;
+  }
+  else if (dynamic_cast<const decl::Texture *>(&socket_decl)) {
+    return SOCK_TEXTURE;
+  }
+  else if (dynamic_cast<const decl::Material *>(&socket_decl)) {
+    return SOCK_MATERIAL;
+  }
+  else if (dynamic_cast<const decl::Shader *>(&socket_decl)) {
+    return SOCK_SHADER;
+  }
+  else if (dynamic_cast<const decl::Collection *>(&socket_decl)) {
+    return SOCK_COLLECTION;
+  }
+  else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
+    return SOCK_OBJECT;
+  }
+  return std::nullopt;
+}
+
 static const char *get_identifier_from_decl(const char *identifier_prefix,
                                             const bNodeSocket &socket,
                                             const Span<const SocketDeclaration *> socket_decls)
@@ -387,7 +354,12 @@ static const char *get_identifier_from_decl(const Span<const char *> identifier_
   return nullptr;
 }
 
-static const char *get_forward_compatible_identifier(
+/**
+ * This is used for forward compatibility. It can change identifiers of sockets created in the
+ * future to socket identifiers that are known in this version. That only works for a few
+ * hard-coded sockets of course.
+ */
+static const char *get_current_socket_identifier_for_future_socket(
     const bNode &node,
     const bNodeSocket &socket,
     const Span<const SocketDeclaration *> socket_decls)
@@ -474,21 +446,23 @@ static const char *get_forward_compatible_identifier(
       return get_identifier_from_decl({"A", "B"}, socket, socket_decls);
     }
   }
-
   return nullptr;
 }
 
+/**
+ * Try to update identifiers of sockets created in the future to match identifiers that exist now.
+ */
 static void do_forward_compat_versioning(bNode &node, const NodeDeclaration &node_decl)
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
-    if (const char *new_identifier = get_forward_compatible_identifier(
+    if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
             node, *socket, node_decl.inputs))
     {
       STRNCPY(socket->identifier, new_identifier);
     }
   }
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
-    if (const char *new_identifier = get_forward_compatible_identifier(
+    if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
             node, *socket, node_decl.outputs))
     {
       STRNCPY(socket->identifier, new_identifier);
@@ -501,9 +475,9 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             const NodeDeclaration &node_decl,
                                             const bool do_id_user)
 {
-  if (!node.runtime->forward_compat_versioning_done) {
+  if (!node.runtime->forward_compatible_versioning_done) {
     do_forward_compat_versioning(node, node_decl);
-    node.runtime->forward_compat_versioning_done = true;
+    node.runtime->forward_compatible_versioning_done = true;
   }
 
   /* Count panels */
