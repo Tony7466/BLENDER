@@ -95,7 +95,7 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
 static void add_output(NodeDeclarationBuilder &b,
                        const eNodeSocketDatatype type)
 {
-  StringRef name = "Result";
+  StringRef name = "Output";
 
   switch (type) {
     case SOCK_CUSTOM:
@@ -293,6 +293,9 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 class LazyFunctionForMenuSwitchNode : public LazyFunction {
  private:
   bool can_be_field_ = false;
+  const NodeEnumDefinition *enum_def_;
+  const CPPType *cpp_type_;
+
 
  public:
   LazyFunctionForMenuSwitchNode(const bNode &node)
@@ -301,83 +304,88 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
     can_be_field_ = ELEM(
         data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
-
-    const bNodeSocketType *socket_type = nullptr;
-    for (const bNodeSocket *socket : node.output_sockets()) {
-      if (socket->type == data_type) {
-        socket_type = socket->typeinfo;
-        break;
-      }
-    }
+    enum_def_ = &storage.enum_definition;
+    const bNodeSocketType *socket_type = nodeSocketTypeFind(
+        nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
-    const CPPType &cpp_type = *socket_type->geometry_nodes_cpp_type;
+    cpp_type_ = socket_type->geometry_nodes_cpp_type;
 
     debug_name_ = node.name;
-    inputs_.append_as("Condition", CPPType::get<ValueOrField<bool>>());
-    inputs_.append_as("False", cpp_type, lf::ValueUsage::Maybe);
-    inputs_.append_as("True", cpp_type, lf::ValueUsage::Maybe);
-    outputs_.append_as("Value", cpp_type);
+    inputs_.append_as("Switch", CPPType::get<ValueOrField<int>>());
+    for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
+      inputs_.append_as(enum_item.name, *cpp_type_, lf::ValueUsage::Maybe);
+    }
+    outputs_.append_as("Value", *cpp_type_);
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    const ValueOrField<bool> condition = params.get_input<ValueOrField<bool>>(0);
+    const ValueOrField<int> condition = params.get_input<ValueOrField<int>>(0);
     if (condition.is_field() && can_be_field_) {
-      Field<bool> condition_field = condition.as_field();
+      Field<int> condition_field = condition.as_field();
       if (condition_field.node().depends_on_input()) {
         this->execute_field(condition.as_field(), params);
         return;
       }
-      const bool condition_bool = fn::evaluate_constant_field(condition_field);
-      this->execute_single(condition_bool, params);
+      const int condition_int = fn::evaluate_constant_field(condition_field);
+      this->execute_single(condition_int, params);
       return;
     }
     this->execute_single(condition.as_value(), params);
   }
 
-  static constexpr int false_input_index = 1;
-  static constexpr int true_input_index = 2;
-
-  void execute_single(const bool condition, lf::Params &params) const
+  void execute_single(const int condition, lf::Params &params) const
   {
-    const int input_to_forward = condition ? true_input_index : false_input_index;
-    const int input_to_ignore = condition ? false_input_index : true_input_index;
+    for (const int i : IndexRange(enum_def_->items_num)) {
+      const NodeEnumItem &enum_item = enum_def_->items_array[i];
+      const int input_index = i + 1;
+      if (enum_item.identifier == condition) {
+        void *value_to_forward = params.try_get_input_data_ptr_or_request(input_index);
+        if (value_to_forward == nullptr) {
+          /* Try again when the value is available. */
+          continue;
+        }
 
-    params.set_input_unused(input_to_ignore);
-    void *value_to_forward = params.try_get_input_data_ptr_or_request(input_to_forward);
-    if (value_to_forward == nullptr) {
-      /* Try again when the value is available. */
-      return;
+        void *output_ptr = params.get_output_data_ptr(0);
+        cpp_type_->move_construct(value_to_forward, output_ptr);
+        params.output_set(0);
+      }
+      else {
+        params.set_input_unused(input_index);
+      }
     }
-
-    const CPPType &type = *outputs_[0].type;
-    void *output_ptr = params.get_output_data_ptr(0);
-    type.move_construct(value_to_forward, output_ptr);
-    params.output_set(0);
   }
 
-  void execute_field(Field<bool> condition, lf::Params &params) const
+  void execute_field(Field<int> condition, lf::Params &params) const
   {
-    /* When the condition is a non-constant field, we need both inputs. */
-    void *false_value_or_field = params.try_get_input_data_ptr_or_request(false_input_index);
-    void *true_value_or_field = params.try_get_input_data_ptr_or_request(true_input_index);
-    if (ELEM(nullptr, false_value_or_field, true_value_or_field)) {
-      /* Try again when inputs are available. */
+    /* When the condition is a non-constant field, we need all inputs. */
+    Array<void *> item_value_or_field(enum_def_->items_num);
+    bool all_inputs_available = true;
+    for (const int i : IndexRange(enum_def_->items_num)) {
+      const int input_index = i + 1;
+
+      item_value_or_field[i] = params.try_get_input_data_ptr_or_request(input_index);
+      if (item_value_or_field[i] == nullptr) {
+        all_inputs_available = false;
+      }
+    }
+    if (!all_inputs_available) {
       return;
     }
 
-    const CPPType &type = *outputs_[0].type;
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
-        type);
+        *cpp_type_);
     const CPPType &value_type = value_or_field_type.value;
     const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type);
 
-    GField false_field = value_or_field_type.as_field(false_value_or_field);
-    GField true_field = value_or_field_type.as_field(true_value_or_field);
-
-    GField output_field{FieldOperation::Create(
-        switch_multi_function,
-        {std::move(condition), std::move(false_field), std::move(true_field)})};
+    //GField false_field = value_or_field_type.as_field(false_value_or_field);
+    //GField true_field = value_or_field_type.as_field(true_value_or_field);
+    Vector<GField> item_field(enum_def_->items_num + 1);
+    item_field[0] = std::move(condition);
+    for (const int i : IndexRange(enum_def_->items_num)) {
+      item_field[i + 1] = value_or_field_type.as_field(item_value_or_field[i]);
+    }
+    GField output_field{FieldOperation::Create(switch_multi_function, std::move(item_field))};
 
     void *output_ptr = params.get_output_data_ptr(0);
     value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
