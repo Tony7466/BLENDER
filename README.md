@@ -13,12 +13,12 @@ to a really awesome piece of software.
 Project Pages
 -------------
 
-- [Main Website](https://www.mechanicablender.org.org)
+- [Main Website](https://www.mechanicalblender.org)
 
 Development
 -----------
 
-Project is currently on development, on *early* early stages. 
+Project is currently on development, on **early** early stages. 
 
 
 License
