@@ -1178,13 +1178,19 @@ static void panel_draw_aligned_backdrop(const Panel *panel,
 
   const bTheme *btheme = UI_GetTheme();
   const float aspect = panel->runtime.block->aspect;
-  const float radius = btheme->tui.panel_roundness * U.widget_unit * 0.5f / aspect;
+  const float radius = btheme->tui.panel_roundness * U.widget_unit * 0.5f / aspect * 3;
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_blend(GPU_BLEND_ALPHA);
 
   /* Panel backdrop. */
   if (is_open || panel->type->flag & PANEL_TYPE_NO_HEADER) {
+    if (strstr(panel->panelname, "internal")) {
+      int a = 0;
+    }
+    else if (strstr(panel->panelname, "output")) {
+      int b = 0;
+    }
     float panel_backcolor[4];
     UI_draw_roundbox_corner_set(is_open ? UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT : UI_CNR_ALL);
     UI_GetThemeColor4fv((is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK), panel_backcolor);

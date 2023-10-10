@@ -1703,6 +1703,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
 
   modifier_panel_end(layout, ptr);
+
+  uiLayout *subpanel = uiLayoutPanel(layout);
+  uiItemL(subpanel, "Hello World", ICON_NONE);
 }
 
 static void output_attribute_panel_draw(const bContext *C, Panel *panel)

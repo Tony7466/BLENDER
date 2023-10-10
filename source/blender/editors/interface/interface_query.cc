@@ -39,7 +39,8 @@ bool ui_but_is_editable(const uiBut *but)
                UI_BTYPE_SEPR_LINE,
                UI_BTYPE_ROUNDBOX,
                UI_BTYPE_LISTBOX,
-               UI_BTYPE_PROGRESS);
+               UI_BTYPE_PROGRESS,
+               UI_BTYPE_PANEL);
 }
 
 bool ui_but_is_editable_as_text(const uiBut *but)
@@ -77,7 +78,13 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
     }
   }
 
-  if (ELEM(but->type, UI_BTYPE_ROUNDBOX, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE, UI_BTYPE_LISTBOX)) {
+  if (ELEM(but->type,
+           UI_BTYPE_ROUNDBOX,
+           UI_BTYPE_SEPR,
+           UI_BTYPE_SEPR_LINE,
+           UI_BTYPE_LISTBOX,
+           UI_BTYPE_PANEL))
+  {
     return false;
   }
   if (but->flag & UI_HIDDEN) {

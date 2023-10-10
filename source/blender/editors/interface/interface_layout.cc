@@ -89,6 +89,7 @@ enum uiItemType {
   ITEM_BUTTON,
 
   ITEM_LAYOUT_ROW,
+  ITEM_LAYOUT_PANEL,
   ITEM_LAYOUT_COLUMN,
   ITEM_LAYOUT_COLUMN_FLOW,
   ITEM_LAYOUT_ROW_FLOW,
@@ -194,6 +195,11 @@ struct uiLayoutItemGridFlow {
 struct uiLayoutItemBx {
   uiLayout litem;
   uiBut *roundbox;
+};
+
+struct uiLayoutItemPanel {
+  uiLayout litem;
+  uiBut *panel_but;
 };
 
 struct uiLayoutItemSplit {
@@ -457,6 +463,7 @@ int uiLayoutGetLocalDir(const uiLayout *layout)
     case ITEM_LAYOUT_SPLIT:
     case ITEM_LAYOUT_ABSOLUTE:
     case ITEM_LAYOUT_BOX:
+    case ITEM_LAYOUT_PANEL:
     default:
       return UI_LAYOUT_VERTICAL;
   }
@@ -4099,6 +4106,25 @@ static void ui_litem_layout_root(uiLayout *litem)
   }
 }
 
+/* panel layout */
+static void ui_litem_estimate_panel(uiLayout *litem)
+{
+  ui_litem_estimate_column(litem, false);
+}
+
+static void ui_litem_layout_panel(uiLayout *litem)
+{
+  uiLayoutItemPanel *panel = reinterpret_cast<uiLayoutItemPanel *>(litem);
+
+  ui_litem_layout_column(litem, false, false);
+
+  uiBut *but = panel->panel_but;
+  but->rect.xmin = litem->x - 10;
+  but->rect.ymin = litem->y;
+  but->rect.xmax = litem->x + litem->w + 20;
+  but->rect.ymax = litem->y + litem->h;
+}
+
 /* box layout */
 static void ui_litem_estimate_box(uiLayout *litem)
 {
@@ -4840,6 +4866,21 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
+uiLayout *uiLayoutPanel(uiLayout *layout)
+{
+  uiLayoutItemPanel *litem = MEM_cnew<uiLayoutItemPanel>(__func__);
+  ui_litem_init_from_parent(&litem->litem, layout, false);
+
+  litem->litem.item.type = ITEM_LAYOUT_PANEL;
+
+  UI_block_layout_set_current(layout->root->block, &litem->litem);
+
+  litem->panel_but = uiDefBut(
+      layout->root->block, UI_BTYPE_PANEL, 0, "", 0, 0, 0, 0, nullptr, 0.0, 0.0, 0.0, 0.0, "");
+
+  return &litem->litem;
+}
+
 uiLayout *uiLayoutRowWithHeading(uiLayout *layout, bool align, const char *heading)
 {
   uiLayout *litem = uiLayoutRow(layout, align);
@@ -5391,6 +5432,9 @@ static void ui_item_estimate(uiItem *item)
       case ITEM_LAYOUT_ROW:
         ui_litem_estimate_row(litem);
         break;
+      case ITEM_LAYOUT_PANEL:
+        ui_litem_estimate_panel(litem);
+        break;
       case ITEM_LAYOUT_BOX:
         ui_litem_estimate_box(litem);
         break;
@@ -5496,6 +5540,9 @@ static void ui_item_layout(uiItem *item)
         break;
       case ITEM_LAYOUT_ROW:
         ui_litem_layout_row(litem);
+        break;
+      case ITEM_LAYOUT_PANEL:
+        ui_litem_layout_panel(litem);
         break;
       case ITEM_LAYOUT_BOX:
         ui_litem_layout_box(litem);
@@ -6102,6 +6149,7 @@ static void ui_layout_introspect_items(DynStr *ds, ListBase *lb)
     switch (item->type) {
       CASE_ITEM(ITEM_BUTTON);
       CASE_ITEM(ITEM_LAYOUT_ROW);
+      CASE_ITEM(ITEM_LAYOUT_PANEL);
       CASE_ITEM(ITEM_LAYOUT_COLUMN);
       CASE_ITEM(ITEM_LAYOUT_COLUMN_FLOW);
       CASE_ITEM(ITEM_LAYOUT_ROW_FLOW);

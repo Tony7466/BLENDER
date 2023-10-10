@@ -106,6 +106,7 @@ enum uiWidgetTypeEnum {
   UI_WTYPE_PROGRESS,
   UI_WTYPE_NODESOCKET,
   UI_WTYPE_VIEW_ITEM,
+  UI_WTYPE_PANEL,
 };
 
 /**
@@ -4665,6 +4666,11 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       wt.wcol_theme = &btheme->tui.wcol_box;
       break;
 
+    case UI_WTYPE_PANEL:
+      wt.custom = widget_box;
+      wt.wcol_theme = &btheme->tui.wcol_box;
+      break;
+
     case UI_WTYPE_RGB_PICKER:
       break;
 
@@ -4959,6 +4965,10 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
       case UI_BTYPE_ROUNDBOX:
       case UI_BTYPE_LISTBOX:
         wt = widget_type(UI_WTYPE_BOX);
+        break;
+
+      case UI_BTYPE_PANEL:
+        wt = widget_type(UI_WTYPE_PANEL);
         break;
 
       case UI_BTYPE_PREVIEW_TILE:
