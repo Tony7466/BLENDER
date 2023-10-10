@@ -259,7 +259,7 @@ std::optional<bool> GeometryDataSetTreeViewItem::should_be_active() const
 
 bool GeometryDataSetTreeViewItem::supports_collapsing() const
 {
-  return component_type_ == bke::GeometryComponent::Type::GreasePencil;
+  return domain_.has_value();
 }
 
 GeometryDataSetTreeView &GeometryDataSetTreeViewItem::get_tree() const
