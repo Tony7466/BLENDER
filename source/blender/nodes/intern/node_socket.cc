@@ -223,32 +223,32 @@ static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclarat
   return std::nullopt;
 }
 
-static bool do_forward_compatible_socket_type_check(const bNode &node)
-{
-  switch (node.type) {
-    case GEO_NODE_SWITCH:
-    case GEO_NODE_ACCUMULATE_FIELD:
-    case GEO_NODE_CAPTURE_ATTRIBUTE:
-    case GEO_NODE_ATTRIBUTE_STATISTIC:
-    case GEO_NODE_BLUR_ATTRIBUTE:
-    case GEO_NODE_CURVE_SAMPLE_FACTOR:
-    case GEO_NODE_EVALUATE_AT_INDEX:
-    case GEO_NODE_EVALUATE_ON_DOMAIN:
-    case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
-    case GEO_NODE_RAYCAST:
-    case GEO_NODE_SAMPLE_INDEX:
-    case GEO_NODE_SAMPLE_NEAREST_SURFACE:
-    case GEO_NODE_SAMPLE_UV_SURFACE:
-    case GEO_NODE_STORE_NAMED_ATTRIBUTE:
-    case GEO_NODE_VIEWER:
-    case FN_NODE_COMPARE:
-    case FN_NODE_RANDOM_VALUE:
-    case SH_NODE_MIX:
-      return true;
-    default:
-      return false;
-  }
-}
+// static bool do_forward_compatible_socket_type_check(const bNode &node)
+// {
+//   switch (node.type) {
+//     case GEO_NODE_SWITCH:
+//     case GEO_NODE_ACCUMULATE_FIELD:
+//     case GEO_NODE_CAPTURE_ATTRIBUTE:
+//     case GEO_NODE_ATTRIBUTE_STATISTIC:
+//     case GEO_NODE_BLUR_ATTRIBUTE:
+//     case GEO_NODE_CURVE_SAMPLE_FACTOR:
+//     case GEO_NODE_EVALUATE_AT_INDEX:
+//     case GEO_NODE_EVALUATE_ON_DOMAIN:
+//     case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
+//     case GEO_NODE_RAYCAST:
+//     case GEO_NODE_SAMPLE_INDEX:
+//     case GEO_NODE_SAMPLE_NEAREST_SURFACE:
+//     case GEO_NODE_SAMPLE_UV_SURFACE:
+//     case GEO_NODE_STORE_NAMED_ATTRIBUTE:
+//     case GEO_NODE_VIEWER:
+//     case FN_NODE_COMPARE:
+//     case FN_NODE_RANDOM_VALUE:
+//     case SH_NODE_MIX:
+//       return true;
+//     default:
+//       return false;
+//   }
+// }
 
 static bNodeSocket *get_old_socket_for_declaration(const bNode & /*node*/,
                                                    Vector<bNodeSocket *> &old_sockets,
@@ -357,56 +357,131 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   }
 }
 
-static void do_forward_compat_versioning(bNode &node)
+static const char *get_forward_compatible_identifier(const bNode &node, const bNodeSocket &socket)
 {
   switch (node.type) {
     case GEO_NODE_SWITCH: {
       const NodeSwitch &storage = *static_cast<const NodeSwitch *>(node.storage);
-      LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
-        if (BLI_str_startswith(socket->identifier, "Switch")) {
-          if (ELEM(storage.input_type,
-                   SOCK_FLOAT,
-                   SOCK_INT,
-                   SOCK_BOOLEAN,
-                   SOCK_VECTOR,
-                   SOCK_RGBA,
-                   SOCK_STRING,
-                   SOCK_ROTATION))
-          {
-            STRNCPY(socket->identifier, "Switch");
-          }
-          else {
-            STRNCPY(socket->identifier, "Switch_001");
-          }
+      const bool use_field_socket = ELEM(storage.input_type,
+                                         SOCK_FLOAT,
+                                         SOCK_INT,
+                                         SOCK_BOOLEAN,
+                                         SOCK_VECTOR,
+                                         SOCK_VECTOR,
+                                         SOCK_RGBA,
+                                         SOCK_STRING);
+      if (BLI_str_startswith(socket.identifier, "Switch")) {
+        if (use_field_socket) {
+          return "Switch";
         }
-        else if (BLI_str_startswith(socket->identifier, "False")) {
-          switch (storage.input_type) {
-            case SOCK_FLOAT:
-              STRNCPY(socket->identifier, "False");
-              break;
-            case SOCK_VECTOR:
-              STRNCPY(socket->identifier, "False_003");
-              break;
-            case SOCK_ROTATION:
-              STRNCPY(socket->identifier, "False_012");
-              break;
-          }
+        return "Switch_001";
+      }
+      if (BLI_str_startswith(socket.identifier, "False")) {
+        switch (storage.input_type) {
+          case SOCK_FLOAT:
+            return "False";
+          case SOCK_INT:
+            return "False_001";
+          case SOCK_BOOLEAN:
+            return "False_002";
+          case SOCK_VECTOR:
+            return "False_003";
+          case SOCK_RGBA:
+            return "False_004";
+          case SOCK_STRING:
+            return "False_005";
+          case SOCK_GEOMETRY:
+            return "False_006";
+          case SOCK_OBJECT:
+            return "False_007";
+          case SOCK_COLLECTION:
+            return "False_008";
+          case SOCK_TEXTURE:
+            return "False_009";
+          case SOCK_MATERIAL:
+            return "False_010";
+          case SOCK_IMAGE:
+            return "False_011";
+          case SOCK_ROTATION:
+            return "False_012";
         }
-        else if (BLI_str_startswith(socket->identifier, "True")) {
-          switch (storage.input_type) {
-            case SOCK_FLOAT:
-              STRNCPY(socket->identifier, "True");
-              break;
-            case SOCK_VECTOR:
-              STRNCPY(socket->identifier, "True_003");
-              break;
-            case SOCK_ROTATION:
-              STRNCPY(socket->identifier, "True_012");
-              break;
-          }
+      }
+      if (BLI_str_startswith(socket.identifier, "True")) {
+        switch (storage.input_type) {
+          case SOCK_FLOAT:
+            return "True";
+          case SOCK_INT:
+            return "True_001";
+          case SOCK_BOOLEAN:
+            return "True_002";
+          case SOCK_VECTOR:
+            return "True_003";
+          case SOCK_RGBA:
+            return "True_004";
+          case SOCK_STRING:
+            return "True_005";
+          case SOCK_GEOMETRY:
+            return "True_006";
+          case SOCK_OBJECT:
+            return "True_007";
+          case SOCK_COLLECTION:
+            return "True_008";
+          case SOCK_TEXTURE:
+            return "True_009";
+          case SOCK_MATERIAL:
+            return "True_010";
+          case SOCK_IMAGE:
+            return "True_011";
+          case SOCK_ROTATION:
+            return "True_012";
+        }
+      }
+      if (BLI_str_startswith(socket.identifier, "Output")) {
+        switch (storage.input_type) {
+          case SOCK_FLOAT:
+            return "Output";
+          case SOCK_INT:
+            return "Output_001";
+          case SOCK_BOOLEAN:
+            return "Output_002";
+          case SOCK_VECTOR:
+            return "Output_003";
+          case SOCK_RGBA:
+            return "Output_004";
+          case SOCK_STRING:
+            return "Output_005";
+          case SOCK_GEOMETRY:
+            return "Output_006";
+          case SOCK_OBJECT:
+            return "Output_007";
+          case SOCK_COLLECTION:
+            return "Output_008";
+          case SOCK_TEXTURE:
+            return "Output_009";
+          case SOCK_MATERIAL:
+            return "Output_010";
+          case SOCK_IMAGE:
+            return "Output_011";
+          case SOCK_ROTATION:
+            return "Output_012";
         }
       }
       break;
+    }
+  }
+  return nullptr;
+}
+
+static void do_forward_compat_versioning(bNode &node)
+{
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
+    if (const char *new_identifier = get_forward_compatible_identifier(node, *socket)) {
+      STRNCPY(socket->identifier, new_identifier);
+    }
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
+    if (const char *new_identifier = get_forward_compatible_identifier(node, *socket)) {
+      STRNCPY(socket->identifier, new_identifier);
     }
   }
 }
