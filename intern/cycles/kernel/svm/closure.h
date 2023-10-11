@@ -390,6 +390,7 @@ ccl_device
         bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->alpha = sqr(roughness);
         bssrdf->ior = eta;
+        /* Anisotropy is clamped to [0.0..0.9] inside bssrdf_setup */
         bssrdf->anisotropy = stack_load_float(stack, data_subsurf.w);
         if (subsurface_method == CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID) {
           bssrdf->ior = stack_load_float(stack, data_subsurf.x);
