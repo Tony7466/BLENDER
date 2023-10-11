@@ -2161,11 +2161,8 @@ static int bake_frames(bContext *C, wmOperator *op)
   bGPDframe *gpf_eval;
   bGPDstroke *gps_new;
 
-  smd_orig->bake_range_start = RNA_int_get( op->ptr, "frame_start");
-  smd_orig->bake_range_end = RNA_int_get(op->ptr, "frame_end");
-
-  int frame_start = smd_orig->bake_range_start;
-  int frame_end = smd_orig->bake_range_end;
+  int frame_start = RNA_int_get(op->ptr, "frame_start");
+  int frame_end = RNA_int_get(op->ptr, "frame_end");
 
   /*Iterate the frames in the range backwards, so each can still be evaluated and baked
   based on the previous bound frame*/
