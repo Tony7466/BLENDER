@@ -9,6 +9,7 @@
 #include "DNA_anim_types.h"
 
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_nla.h"
@@ -120,7 +121,7 @@ static void invert_snap(eSnapMode &snap_mode)
 /* WORKAROUND: The source position is based on the transformed elements.
  * However, at this stage, the transformation has not yet been applied.
  * So apply the transformation here. */
-static float nla_transform_apply(TransInfo *t, float *vec, float ival)
+static float2 nla_transform_apply(TransInfo *t, float *vec, float2 &ival)
 {
   float4x4 mat = float4x4::identity();
 
@@ -129,12 +130,13 @@ static float nla_transform_apply(TransInfo *t, float *vec, float ival)
   memcpy(values_final_prev, t->values_final, values_final_size);
   memcpy(t->values_final, vec, values_final_size);
 
-  mat[3][0] = ival;
+  mat[3][0] = ival[0];
+  mat[3][1] = ival[1];
   transform_apply_matrix(t, mat.ptr());
 
   memcpy(t->values_final, values_final_prev, values_final_size);
 
-  return mat.location()[0];
+  return mat.location().xy();
 }
 
 bool transform_snap_nla_calc(TransInfo *t, float *vec)
@@ -146,25 +148,26 @@ bool transform_snap_nla_calc(TransInfo *t, float *vec)
     invert_snap(snap_mode);
   }
 
-  float best_dist = FLT_MAX, best_target = 0.0f, best_source = 0.0f;
+  float best_dist = FLT_MAX;
+  float2 best_source = float2(0);
+  float2 best_target = float2(0);
 
   for (int i = 0; i < tc->data_len; i++) {
     TransData *td = &tc->data[i];
-    float snap_source = td->iloc[0];
-    float snap_target;
-    float source_transformed = nla_transform_apply(t, vec, snap_source);
+    float2 snap_source = td->iloc;
+    float2 snap_target = nla_transform_apply(t, vec, snap_source);
 
-    transform_snap_anim_flush_data_ex(t, td, source_transformed, snap_mode, &snap_target);
-    int dist = abs(snap_target - snap_source);
+    transform_snap_anim_flush_data_ex(t, td, snap_target[0], snap_mode, &snap_target[0]);
+    int dist = abs(snap_target[0] - snap_source[0]);
     if (dist != 0.0f && dist < best_dist) {
       best_dist = dist;
-      best_target = snap_target;
       best_source = snap_source;
+      best_target = snap_target;
     }
   }
 
-  t->tsnap.snap_target[0] = best_target;
-  t->tsnap.snap_source[0] = best_source;
+  copy_v2_v2(t->tsnap.snap_source, best_source);
+  copy_v2_v2(t->tsnap.snap_target, best_target);
   return true;
 }
 
