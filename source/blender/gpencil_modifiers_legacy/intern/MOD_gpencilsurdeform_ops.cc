@@ -1630,42 +1630,41 @@ static bool surfacedeformBind(bContext *C,
       BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "No layer data to unbind");
     }
     rollback_layers_a(smd_orig);
-    
-    /*free one frame or all the frames?*/
-    if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) 
-    {
-      /*Just free al of the data*/
-      freeData_a(smd_orig);
 
-      /*Set all bound keyframes back to normal*/
-      LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers) {
-        LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
-          if (curr_gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND) {
-            curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
+      /*free one frame or all the frames?*/
+      if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES)
+      {
+        /*Just free al of the data*/
+        freeData_a(smd_orig);
+
+        /*Set all bound keyframes back to normal*/
+        LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers) {
+          LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
+            if (curr_gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND) {
+              curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
+            }
           }
         }
       }
-      
-    }
-    else {
-      bGPDframe *curr_gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl_active);
-          uint framenum = curr_gpf->framenum;
-      for (int l = 0; l < smd_orig->num_of_layers; l++) {
-        /*EXIT IF FRAME IS NOT ALREADY BOUND*/
-        for (int f = 0; f < smd_orig->layers[l].num_of_frames; f++) {
-          if (smd_orig->layers[l].frames[f].frame_number == framenum)
-          {
-            free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
+      else {
+      LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers) {
+        bGPDframe *curr_gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, curr_gpl);
+        uint framenum = curr_gpf->framenum;
+        for (int l = 0; l < smd_orig->num_of_layers; l++) {
+          /*EXIT IF FRAME IS NOT ALREADY BOUND*/
+          for (int f = 0; f < smd_orig->layers[l].num_of_frames; f++) {
+            if (smd_orig->layers[l].frames[f].frame_number == framenum) {
+              free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
+              curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
+              break;
+            }
             curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
-            break;
-          }
-          curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
-          /*If last frame of layer was removed, free the layer data (todo) 
-          if (!smd_orig->layers[l].frames[f]) {
+            /*If last frame of layer was removed, free the layer data (todo)
+            if (!smd_orig->layers[l].frames[f]) {
 
-          }*/
+            }*/
+          }
         }
-        
       }
     }
     rollback_layers_a(smd_orig);
