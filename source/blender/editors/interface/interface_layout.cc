@@ -89,7 +89,8 @@ enum uiItemType {
   ITEM_BUTTON,
 
   ITEM_LAYOUT_ROW,
-  ITEM_LAYOUT_PANEL,
+  ITEM_LAYOUT_PANEL_BODY,
+  ITEM_LAYOUT_PANEL_HEADER,
   ITEM_LAYOUT_COLUMN,
   ITEM_LAYOUT_COLUMN_FLOW,
   ITEM_LAYOUT_ROW_FLOW,
@@ -197,9 +198,12 @@ struct uiLayoutItemBx {
   uiBut *roundbox;
 };
 
-struct uiLayoutItemPanel {
+struct uiLayoutItemPanelHeader {
   uiLayout litem;
-  uiBut *panel_but;
+};
+
+struct uiLayoutItemPanelBody {
+  uiLayout litem;
 };
 
 struct uiLayoutItemSplit {
@@ -456,6 +460,7 @@ int uiLayoutGetLocalDir(const uiLayout *layout)
     case ITEM_LAYOUT_ROW:
     case ITEM_LAYOUT_ROOT:
     case ITEM_LAYOUT_OVERLAP:
+    case ITEM_LAYOUT_PANEL_HEADER:
       return UI_LAYOUT_HORIZONTAL;
     case ITEM_LAYOUT_COLUMN:
     case ITEM_LAYOUT_COLUMN_FLOW:
@@ -463,7 +468,7 @@ int uiLayoutGetLocalDir(const uiLayout *layout)
     case ITEM_LAYOUT_SPLIT:
     case ITEM_LAYOUT_ABSOLUTE:
     case ITEM_LAYOUT_BOX:
-    case ITEM_LAYOUT_PANEL:
+    case ITEM_LAYOUT_PANEL_BODY:
     default:
       return UI_LAYOUT_VERTICAL;
   }
@@ -4113,26 +4118,32 @@ static void ui_litem_layout_root(uiLayout *litem)
   }
 }
 
-/* panel layout */
-static void ui_litem_estimate_panel(uiLayout *litem)
+/* panel body layout */
+static void ui_litem_estimate_panel_body(uiLayout *litem)
 {
   ui_litem_estimate_column(litem, false);
 }
 
-static void ui_litem_layout_panel(uiLayout *litem)
+static void ui_litem_layout_panel_body(uiLayout *litem)
 {
-  uiLayoutItemPanel *layout_panel = reinterpret_cast<uiLayoutItemPanel *>(litem);
-  Panel *panel = layout_panel->litem.root->block->panel;
+  uiLayoutItemPanelBody *body_litem = reinterpret_cast<uiLayoutItemPanelBody *>(litem);
+  Panel *panel = body_litem->litem.root->block->panel;
 
   ui_litem_layout_column(litem, false, false);
 
-  uiBut *but = layout_panel->panel_but;
-  but->rect.xmin = litem->x - 10;
-  but->rect.ymin = litem->y;
-  but->rect.xmax = litem->x + litem->w + 20;
-  but->rect.ymax = litem->y + litem->h;
-
   panel->runtime->sub_panel_extends.append({float(litem->y), float(litem->y + litem->h)});
+}
+
+/* panel header layout */
+static void ui_litem_estimate_panel_header(uiLayout *litem)
+{
+  ui_litem_estimate_row(litem);
+}
+
+static void ui_litem_layout_panel_header(uiLayout *litem)
+{
+  // uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
+  ui_litem_layout_row(litem);
 }
 
 /* box layout */
@@ -4883,45 +4894,51 @@ uiLayout *uiLayoutPanel(uiLayout *layout,
 {
   const bool is_open = RNA_boolean_get(open_prop_owner, open_prop_name);
 
-  /* The `but` below will be added to this row. */
-  uiLayoutRow(layout, true);
-  uiBlock *block = uiLayoutGetBlock(layout);
-  UI_block_emboss_set(layout->root->block, UI_EMBOSS_NONE);
-  uiBut *but = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW,
-                                IFACE_(name),
-                                0,
-                                0,
-                                UI_UNIT_X * 4,
-                                UI_UNIT_Y,
-                                nullptr,
-                                0.0,
-                                0.0,
-                                0.0,
-                                0.0,
-                                "");
-  UI_block_emboss_set(layout->root->block, UI_EMBOSS);
-  UI_but_drawflag_enable(but, UI_BUT_TEXT_LEFT | UI_BUT_NO_TOOLTIP);
+  {
+    uiLayoutItemPanelHeader *header_litem = MEM_cnew<uiLayoutItemPanelHeader>(__func__);
+    uiLayout *litem = &header_litem->litem;
+    ui_litem_init_from_parent(litem, layout, false);
+    litem->item.type = ITEM_LAYOUT_PANEL_HEADER;
 
-  UI_but_func_set(
-      but, [ptr = *open_prop_owner, name = std::string(open_prop_name)](bContext &C) mutable {
-        RNA_boolean_set(&ptr, name.c_str(), !RNA_boolean_get(&ptr, name.c_str()));
-        WM_event_add_notifier(&C, NC_SPACE, nullptr);
-      });
+    UI_block_layout_set_current(layout->root->block, litem);
+
+    uiBlock *block = uiLayoutGetBlock(layout);
+    UI_block_emboss_set(layout->root->block, UI_EMBOSS_NONE);
+    uiBut *but = uiDefIconTextBut(block,
+                                  UI_BTYPE_BUT,
+                                  0,
+                                  is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW,
+                                  IFACE_(name),
+                                  0,
+                                  0,
+                                  UI_UNIT_X * 4,
+                                  UI_UNIT_Y,
+                                  nullptr,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  "");
+    UI_block_emboss_set(layout->root->block, UI_EMBOSS);
+    UI_but_drawflag_enable(but, UI_BUT_TEXT_LEFT | UI_BUT_NO_TOOLTIP);
+
+    UI_but_func_set(
+        but, [ptr = *open_prop_owner, name = std::string(open_prop_name)](bContext &C) mutable {
+          RNA_boolean_set(&ptr, name.c_str(), !RNA_boolean_get(&ptr, name.c_str()));
+          WM_event_add_notifier(&C, NC_SPACE, nullptr);
+        });
+  }
 
   if (!is_open) {
     return nullptr;
   }
 
-  uiLayoutItemPanel *litem = MEM_cnew<uiLayoutItemPanel>(__func__);
-  ui_litem_init_from_parent(&litem->litem, layout, false);
-  litem->litem.item.type = ITEM_LAYOUT_PANEL;
-  UI_block_layout_set_current(layout->root->block, &litem->litem);
-  litem->panel_but = uiDefBut(
-      layout->root->block, UI_BTYPE_PANEL, 0, "", 0, 0, 0, 0, nullptr, 0.0, 0.0, 0.0, 0.0, "");
-  return &litem->litem;
+  uiLayoutItemPanelBody *body_litem = MEM_cnew<uiLayoutItemPanelBody>(__func__);
+  uiLayout *litem = &body_litem->litem;
+  litem->item.type = ITEM_LAYOUT_PANEL_BODY;
+  ui_litem_init_from_parent(litem, layout, false);
+  UI_block_layout_set_current(layout->root->block, litem);
+  return litem;
 }
 
 uiLayout *uiLayoutRowWithHeading(uiLayout *layout, bool align, const char *heading)
@@ -5475,8 +5492,11 @@ static void ui_item_estimate(uiItem *item)
       case ITEM_LAYOUT_ROW:
         ui_litem_estimate_row(litem);
         break;
-      case ITEM_LAYOUT_PANEL:
-        ui_litem_estimate_panel(litem);
+      case ITEM_LAYOUT_PANEL_BODY:
+        ui_litem_estimate_panel_body(litem);
+        break;
+      case ITEM_LAYOUT_PANEL_HEADER:
+        ui_litem_estimate_panel_header(litem);
         break;
       case ITEM_LAYOUT_BOX:
         ui_litem_estimate_box(litem);
@@ -5584,8 +5604,11 @@ static void ui_item_layout(uiItem *item)
       case ITEM_LAYOUT_ROW:
         ui_litem_layout_row(litem);
         break;
-      case ITEM_LAYOUT_PANEL:
-        ui_litem_layout_panel(litem);
+      case ITEM_LAYOUT_PANEL_BODY:
+        ui_litem_layout_panel_body(litem);
+        break;
+      case ITEM_LAYOUT_PANEL_HEADER:
+        ui_litem_layout_panel_header(litem);
         break;
       case ITEM_LAYOUT_BOX:
         ui_litem_layout_box(litem);
@@ -6191,7 +6214,8 @@ static void ui_layout_introspect_items(DynStr *ds, ListBase *lb)
     switch (item->type) {
       CASE_ITEM(ITEM_BUTTON);
       CASE_ITEM(ITEM_LAYOUT_ROW);
-      CASE_ITEM(ITEM_LAYOUT_PANEL);
+      CASE_ITEM(ITEM_LAYOUT_PANEL_BODY);
+      CASE_ITEM(ITEM_LAYOUT_PANEL_HEADER);
       CASE_ITEM(ITEM_LAYOUT_COLUMN);
       CASE_ITEM(ITEM_LAYOUT_COLUMN_FLOW);
       CASE_ITEM(ITEM_LAYOUT_ROW_FLOW);
