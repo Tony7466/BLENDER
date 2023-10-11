@@ -28,6 +28,7 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_attribute.h"
 #  include "BKE_node.h"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
@@ -433,6 +434,27 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
 
   RNA_enum_item_end(&items, &items_count);
   return items;
+}
+
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_attribute_domain_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  EnumPropertyItem *item_array = nullptr;
+  int items_len = 0;
+
+  for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
+       item++)
+  {
+    if (!U.experimental.use_grease_pencil_version3 &&
+        item->value == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
+      continue;
+    }
+    RNA_enum_item_add(&item_array, &items_len, item);
+  }
+  RNA_enum_item_end(&item_array, &items_len);
+
+  *r_free = true;
+  return item_array;
 }
 
 static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
@@ -969,6 +991,8 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_attribute_domain_itemf");
   RNA_def_property_ui_text(
       prop,
       "Attribute Domain",
