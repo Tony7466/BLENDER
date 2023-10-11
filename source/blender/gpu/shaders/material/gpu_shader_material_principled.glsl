@@ -66,7 +66,8 @@ void node_bsdf_principled(vec4 base_color,
   alpha = saturate(alpha);
   subsurface_weight = saturate(subsurface_weight);
   subsurface_radius = max(subsurface_radius, vec3(0.0));
-
+  subsurface_scale = max(subsurface_scale, 0.0);
+  
   coat_roughness = saturate(coat_roughness);
   
   sheen_roughness = saturate(sheen_roughness);
