@@ -2185,7 +2185,7 @@ static int bake_frames(bContext *C, wmOperator *op)
       /* get the current state in current frame (orig)*/
       gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
       /*eval*/
-      gpl_eval = static_cast<bGPDlayer *>(BLI_rfindlink(&gpd_eval->layers, l));
+      gpl_eval = static_cast<bGPDlayer *>(BLI_rfindstring(&gpd_eval->layers, gpl->info, offsetof(bGPDlayer, info)));
       gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, frame, GP_GETFRAME_USE_PREV);
       /*All the properties of the second frame were copied; including the changed color!
       Let's set it back to normal, cuz the baked frame must not be or appear bound.
