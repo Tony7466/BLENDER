@@ -934,11 +934,6 @@ void UI_but_disable(uiBut *but, const char *disabled_hint);
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
 /**
- * Set at hint that describes the expected value when empty.
- */
-void UI_but_placeholder_set(uiBut *but, const char *placeholder_text) ATTR_NONNULL(1);
-
-/**
  * Special button case, only draw it when used actively, for outliner etc.
  *
  * Needed for temporarily rename buttons, such as in outliner or file-select,
@@ -2780,8 +2775,7 @@ void uiItemFullR(uiLayout *layout,
                  int value,
                  eUI_Item_Flag flag,
                  const char *name,
-                 int icon,
-                 const char *placeholder = nullptr);
+                 int icon);
 /**
  * Use a wrapper function since re-implementing all the logic in this function would be messy.
  */
@@ -2839,16 +2833,20 @@ void uiItemPointerR(uiLayout *layout,
                     const char *searchpropname,
                     const char *name,
                     int icon);
+
+/* Create a list of enum items. Active is an optional item to highlight. */
 void uiItemsFullEnumO(uiLayout *layout,
                       const char *opname,
                       const char *propname,
                       IDProperty *properties,
                       wmOperatorCallContext context,
-                      eUI_Item_Flag flag);
+                      eUI_Item_Flag flag,
+                      const int active = -1);
 /**
  * Create UI items for enum items in \a item_array.
  *
  * A version of #uiItemsFullEnumO that takes pre-calculated item array.
+ * active, if not -1, will highlight that item.
  */
 void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorType *ot,
@@ -2858,7 +2856,8 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorCallContext context,
                             eUI_Item_Flag flag,
                             const EnumPropertyItem *item_array,
-                            int totitem);
+                            int totitem,
+                            int active = -1);
 
 struct uiPropertySplitWrapper {
   uiLayout *label_column;
