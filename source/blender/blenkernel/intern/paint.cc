@@ -2834,7 +2834,7 @@ static void sculpt_attribute_update_refs(Object *ob)
   }
 }
 
-void BKE_sculptsession_update_attr_refs(Object *ob)
+void BKE_sculpt_update_attribute_refs(Object *ob)
 {
   sculpt_attribute_update_refs(ob);
 }
