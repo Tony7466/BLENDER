@@ -2241,7 +2241,7 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
         BKE_gpencil_layer_delete(gpd, gpl);
         ale->update = ANIM_UPDATE_DEPS;
 
-        /* If we removed the last layer for annotations, free the scene's GPencil block. */
+        /* Free Grease Pencil data block when last annotation layer is removed, see: #112683. */
         if (gpd->flag & GP_DATA_ANNOTATIONS && gpd->layers.first == nullptr) {
           BKE_gpencil_free_data(gpd, true);
 
