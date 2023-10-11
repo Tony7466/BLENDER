@@ -1338,20 +1338,23 @@ static void blf_font_fill(FontBLF *font)
   font->buf_info.col_init[3] = 0;
 }
 
+/* Note that the data the following function creates is not yet used.
+ * But do not remove it as it will be used in the near future - Harley */
 static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
 {
+  /* Members with non-zero defaults. */
   metrics->weight = 400;
   metrics->width = 1.0f;
   metrics->spacing = 1.0f;
 
   TT_OS2 *os2_table = (TT_OS2 *)FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
   if (os2_table) {
-    /* The default weight. */
+    /* The default (resting) font weight. */
     if (os2_table->usWeightClass >= 1 && os2_table->usWeightClass <= 1000) {
       metrics->weight = short(os2_table->usWeightClass);
     }
 
-    /* Width value is just integers 1-9 with known values. */
+    /* Width value is one of integers 1-9 with known values. */
     if (os2_table->usWidthClass >= 1 && os2_table->usWidthClass <= 9) {
       switch (os2_table->usWidthClass) {
         case 1:
@@ -1386,14 +1389,12 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
 
     metrics->strikeout_position = short(os2_table->yStrikeoutPosition);
     metrics->strikeout_thickness = short(os2_table->yStrikeoutSize);
-
     metrics->subscript_size = short(os2_table->ySubscriptYSize);
     metrics->subscript_xoffset = short(os2_table->ySubscriptXOffset);
     metrics->subscript_yoffset = short(os2_table->ySubscriptYOffset);
     metrics->superscript_size = short(os2_table->ySuperscriptYSize);
     metrics->superscript_xoffset = short(os2_table->ySuperscriptXOffset);
     metrics->superscript_yoffset = short(os2_table->ySuperscriptYOffset);
-
     metrics->family_class = short(os2_table->sFamilyClass);
     metrics->selection_flags = short(os2_table->fsSelection);
     metrics->first_charindex = short(os2_table->usFirstCharIndex);
@@ -1404,7 +1405,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
     }
   }
 
-  /* The Post table usually contains the slant value, though in counter-clockwise degrees. */
+  /* The Post table usually contains a slant value, but in counter-clockwise degrees. */
   TT_Postscript *post_table = (TT_Postscript *)FT_Get_Sfnt_Table(face, FT_SFNT_POST);
   if (post_table) {
     if (post_table->italicAngle != 0) {
@@ -1412,6 +1413,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
     }
   }
 
+  /* Metrics copied from those gathered by FreeType. */
   metrics->units_per_EM = short(face->units_per_EM);
   metrics->ascender = short(face->ascender);
   metrics->descender = short(face->descender);
@@ -1420,7 +1422,6 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
   metrics->max_advance_height = short(face->max_advance_height);
   metrics->underline_position = short(face->underline_position);
   metrics->underline_thickness = short(face->underline_thickness);
-
   metrics->num_glyphs = int(face->num_glyphs);
   metrics->bounding_box.xmin = int(face->bbox.xMin);
   metrics->bounding_box.xmax = int(face->bbox.xMax);
