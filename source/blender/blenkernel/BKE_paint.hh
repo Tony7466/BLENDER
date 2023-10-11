@@ -786,6 +786,9 @@ void BKE_sculpt_attribute_destroy_temporary_all(Object *ob);
 /* Destroy attributes that were marked as stroke only in SculptAttributeParams. */
 void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob);
 
+/* Ensures the internal sculpt attribute references are valid. */
+void BKE_sculpt_update_attribute_refs(Object *ob);
+
 BLI_INLINE void *BKE_sculpt_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
 {
   if (attr->data) {

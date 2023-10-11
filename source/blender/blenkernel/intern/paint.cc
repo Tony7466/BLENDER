@@ -2834,6 +2834,11 @@ static void sculpt_attribute_update_refs(Object *ob)
   }
 }
 
+void BKE_sculptsession_update_attr_refs(Object *ob)
+{
+  sculpt_attribute_update_refs(ob);
+}
+
 void BKE_sculpt_attribute_destroy_temporary_all(Object *ob)
 {
   SculptSession *ss = ob->sculpt;

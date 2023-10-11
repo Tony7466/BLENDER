@@ -1589,14 +1589,17 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
         break;
       }
 
+      case SCULPT_UNDO_GEOMETRY:
       case SCULPT_UNDO_DYNTOPO_BEGIN:
       case SCULPT_UNDO_DYNTOPO_END:
       case SCULPT_UNDO_DYNTOPO_SYMMETRIZE:
-      case SCULPT_UNDO_GEOMETRY:
       case SCULPT_UNDO_FACE_SETS:
       case SCULPT_UNDO_COLOR:
         break;
     }
+  }
+  else if (type == SCULPT_UNDO_GEOMETRY) {
+    BM_log_full_mesh(ss->bm, ss->bm_log);
   }
 
   return unode;
@@ -2043,6 +2046,11 @@ void ED_sculpt_undo_geometry_begin_ex(Object *ob, const char *name)
 
 void ED_sculpt_undo_geometry_end(Object *ob)
 {
+  /* Inform the sculpt system attribute layouts may have changed,
+   * e.g. with voxel remesh. 
+   */
+  BKE_sculpt_update_attribute_refs(ob);
+
   SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_GEOMETRY);
   SCULPT_undo_push_end(ob);
 }
