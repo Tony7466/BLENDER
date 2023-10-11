@@ -151,7 +151,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   if (SheenWeight > CLOSURE_WEIGHT_CUTOFF) {
     normal sheen_normal = normalize(mix(Normal, CoatNormal, coat_weight));
     closure color SheenBSDF = sheen(sheen_normal, clamp(SheenRoughness, 0.0, 1.0));
-    BSDF = layer(SheenWeight * SheenTint * SheenBSDF, BSDF);
+    BSDF = layer(SheenWeight * max(SheenTint, color(0.0)) * SheenBSDF, BSDF);
   }
 
   BSDF = mix(transparent(), BSDF, clamp(Alpha, 0.0, 1.0));

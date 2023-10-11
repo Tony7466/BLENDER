@@ -116,7 +116,7 @@ ccl_device
       float anisotropic = min(stack_load_float(stack, anisotropic_offset), 1.0f);
       /* sheen_weight is clamped to > 0 later on. */
       float sheen_weight = stack_load_float(stack, sheen_weight_offset);
-      float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
+      float3 sheen_tint = max(stack_load_float3(stack, sheen_tint_offset), zero_float3());
       float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
       float coat_weight = saturatef(stack_load_float(stack, coat_weight_offset));
       float coat_roughness = saturatef(stack_load_float(stack, coat_roughness_offset));

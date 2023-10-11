@@ -80,6 +80,7 @@ void node_bsdf_principled(vec4 base_color,
   coat_ior = max(coat_ior, 1.0);
   coat_tint = max(coat_tint, vec4(0.0));
   sheen_roughness = saturate(sheen_roughness);
+  sheen_tint = max(sheen_tint, vec4(0.0));
   
   base_color = max(base_color, vec4(0.0));
   vec4 clamped_base_color = min(base_color, vec4(1.0));
