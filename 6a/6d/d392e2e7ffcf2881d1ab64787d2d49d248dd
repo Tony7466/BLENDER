@@ -1,1 +1,2 @@
 Referenced by issue #113545, Splitting Areas crashes Blender
+Referenced by commit 449ded0258fcdaee066f7aeea381bf86b18deb85, Fix #113545: crash when trying to create panel with unknown type
