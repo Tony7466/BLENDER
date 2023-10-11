@@ -1204,6 +1204,16 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
       panel_blockspace.ymax = panel->runtime->block->rect.ymax + sub_panel_extend.end_y - 8;
       panel_blockspace.ymin = panel->runtime->block->rect.ymax + sub_panel_extend.start_y - 8;
 
+      const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
+
+      if (is_main_panel_end) {
+        panel_blockspace.ymin = panel->runtime->block->rect.ymin;
+        UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+      }
+      else {
+        UI_draw_roundbox_corner_set(UI_CNR_NONE);
+      }
+
       rcti panel_pixelspace;
       ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace, &panel_pixelspace);
 

@@ -4883,7 +4883,8 @@ uiLayout *uiLayoutPanel(uiLayout *layout,
 {
   const bool is_open = RNA_boolean_get(open_prop_owner, open_prop_name);
 
-  uiLayout *row = uiLayoutRow(layout, true);
+  /* The `but` below will be added to this row. */
+  uiLayoutRow(layout, true);
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_emboss_set(layout->root->block, UI_EMBOSS_NONE);
   uiBut *but = uiDefIconTextBut(block,
