@@ -1153,7 +1153,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_mesh_vertices")
                 layout.menu("VIEW3D_MT_edit_mesh_edges")
                 layout.menu("VIEW3D_MT_edit_mesh_faces")
-                layout.menu("VIEW3D_MT_uv_map", text="UV")
+                layout.menu("VIEW3D_MT_edit_mesh_attributes")
                 layout.template_node_operator_asset_root_items()
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
@@ -1386,6 +1386,11 @@ class VIEW3D_MT_uv_map(Menu):
 
         layout.operator("mesh.mark_seam").clear = False
         layout.operator("mesh.mark_seam", text="Clear Seam").clear = True
+
+        layout.separator()
+
+        layout.operator("mesh.uvs_rotate")
+        layout.operator("mesh.uvs_reverse")
 
         layout.separator()
 
@@ -4284,11 +4289,9 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.menu("VIEW3D_MT_edit_mesh_normals")
         layout.menu("VIEW3D_MT_edit_mesh_shading")
-        layout.menu("VIEW3D_MT_edit_mesh_attributes")
-        layout.menu("VIEW3D_MT_vertex_group")
-        layout.menu("VIEW3D_MT_edit_mesh_weights")
         layout.menu("VIEW3D_MT_edit_mesh_shape_keys")
-        layout.operator_menu_enum("mesh.sort_elements", "type", text="Sort Elements...")
+        layout.operator_menu_enum("mesh.sort_elements", "type")
+        layout.operator("mesh.flip_quad_tessellation")
 
         layout.separator()
 
@@ -4305,6 +4308,25 @@ class VIEW3D_MT_edit_mesh(Menu):
         layout.menu("VIEW3D_MT_edit_mesh_delete")
 
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
+
+class VIEW3D_MT_edit_mesh_attributes(Menu):
+    bl_label = "Attributes"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.menu("VIEW3D_MT_edit_mesh_set_clear")
+        layout.menu("VIEW3D_MT_uv_map")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_vertex_group")
+        layout.menu("VIEW3D_MT_edit_mesh_weights")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_edit_mesh_colors")
 
 
 class VIEW3D_MT_edit_mesh_context_menu(Menu):
@@ -4518,8 +4540,8 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.delete", text="Delete Faces").type = 'FACE'
 
 
-class VIEW3D_MT_edit_mesh_attributes(Menu):
-    bl_label = "Attributes"
+class VIEW3D_MT_edit_mesh_set_clear(Menu):
+    bl_label = "Set/Clear"
 
     def draw(self, _context):
         layout = self.layout
@@ -4554,8 +4576,18 @@ class VIEW3D_MT_edit_mesh_attributes(Menu):
 
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
+            layout.operator("mesh.mark_freestyle_face").clear = False
+            layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True
 
-        layout.menu("VIEW3D_MT_edit_mesh_faces_data")
+class VIEW3D_MT_edit_mesh_colors(Menu):
+    bl_label = "Colors"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("mesh.colors_rotate")
+        layout.operator("mesh.colors_reverse")
+
 
 class VIEW3D_MT_edit_mesh_select_mode(Menu):
     bl_label = "Mesh Select Mode"
@@ -4616,8 +4648,8 @@ class VIEW3D_MT_edit_mesh_bevel(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("mesh.bevel").affect = 'VERTICES'
-        layout.operator("mesh.bevel").affect = 'EDGES'
+        layout.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
+        layout.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
 
 
 class VIEW3D_MT_edit_mesh_fill_connect(Menu):
@@ -4652,8 +4684,13 @@ class VIEW3D_MT_edit_mesh_cut_slide(Menu):
         layout.separator()
 
         layout.operator("mesh.bisect")
+        props = layout.operator("mesh.knife_tool", text="Knife (Visible)")
+        props.use_occlude_geometry = True
+        props.only_selected = False
+        props = layout.operator("mesh.knife_tool", text="Knife (Selected)")
+        props.use_occlude_geometry = False
+        props.only_selected = True
         layout.operator("mesh.knife_project")
-        layout.operator("mesh.knife_tool")
         layout.operator("mesh.intersect")
         layout.operator("mesh.intersect_boolean")
 
@@ -4716,35 +4753,6 @@ class VIEW3D_MT_edit_mesh_shape_keys(Menu):
 
         layout.operator("mesh.blend_from_shape")
         layout.operator("mesh.shape_propagate_to_all", text="Propagate to Shapes")
-
-
-class VIEW3D_MT_edit_mesh_faces_data(Menu):
-    bl_label = "Face Data"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        with_freestyle = bpy.app.build_options.freestyle
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("mesh.colors_rotate")
-        layout.operator("mesh.colors_reverse")
-
-        layout.separator()
-
-        layout.operator("mesh.uvs_rotate")
-        layout.operator("mesh.uvs_reverse")
-
-        layout.separator()
-
-        layout.operator("mesh.flip_quad_tessellation")
-
-        if with_freestyle:
-            layout.separator()
-            layout.operator("mesh.mark_freestyle_face").clear = False
-            layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True
-        layout.template_node_operator_asset_menu_items(catalog_path="Face/Face Data")
 
 
 class VIEW3D_MT_edit_mesh_normals_select_strength(Menu):
@@ -8886,6 +8894,7 @@ classes = (
     VIEW3D_MT_bone_options_disable,
     VIEW3D_MT_edit_mesh_context_menu,
     VIEW3D_MT_edit_mesh_attributes,
+    VIEW3D_MT_edit_mesh_set_clear,
     VIEW3D_MT_edit_mesh_select_mode,
     VIEW3D_MT_edit_mesh_select_linked,
     VIEW3D_MT_edit_mesh_select_loops,
@@ -8898,7 +8907,7 @@ classes = (
     VIEW3D_MT_edit_mesh_convert,
     VIEW3D_MT_edit_mesh_smooth,
     VIEW3D_MT_edit_mesh_shape_keys,
-    VIEW3D_MT_edit_mesh_faces_data,
+    VIEW3D_MT_edit_mesh_colors,
     VIEW3D_MT_edit_mesh_normals,
     VIEW3D_MT_edit_mesh_normals_select_strength,
     VIEW3D_MT_edit_mesh_normals_set_strength,
