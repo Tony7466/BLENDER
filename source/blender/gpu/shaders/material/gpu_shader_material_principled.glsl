@@ -70,6 +70,7 @@ void node_bsdf_principled(vec4 base_color,
   /* Not used by EEVEE */
   /* subsurface_anisotropy = clamp(subsurface_anisotropy, 0.0, 0.9); */
   /* subsurface_ior = clamp(subsurface_ior, 1.01, 3.8); */
+  specular_ior_level = max(specular_ior_level, 0.0);
   
   coat_roughness = saturate(coat_roughness);
   

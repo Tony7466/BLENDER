@@ -70,7 +70,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float eta = max(IOR, 1e-5);
     float f0 = F0_from_ior(eta);
     if (SpecularIORLevel != 0.5) {
-      f0 *= 2.0 * SpecularIORLevel;
+      f0 *= 2.0 * max(SpecularIORLevel, 0.0);
       eta = ior_from_F0(f0);
       if (IOR < 1.0) {
         eta = 1.0 / eta;
