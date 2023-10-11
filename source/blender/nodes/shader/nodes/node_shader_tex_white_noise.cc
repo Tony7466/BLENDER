@@ -191,7 +191,8 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem noise = empty();
   NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
   NodeItem w = get_input_value("W", NodeItem::Type::Float);
-  switch (node_->custom1) {
+  int dimension = node_->custom1;
+  switch (dimension) {
     case 1:
       noise = create_node("cellnoise2d",
                           NodeItem::Type::Float,
