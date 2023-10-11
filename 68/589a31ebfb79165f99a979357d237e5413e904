@@ -4,3 +4,4 @@ Referenced by issue #101394, Importing file after making a new collection active
 Referenced by issue #101272, Missing view layer updates handling collections in python
 Referenced by issue #101128, Regression: Torus Adding Error (can't be selected because it is not in View Layer)
 Referenced by issue #73411, Fix ViewLayers cache building
+Referenced by issue #113378, Regression: Deleting Objects in a View Layer leaves None in the View Layer's .objects for the script duration
