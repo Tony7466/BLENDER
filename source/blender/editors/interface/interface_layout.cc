@@ -4128,7 +4128,7 @@ static void ui_litem_estimate_panel_body(uiLayout *litem)
 
 static void ui_litem_layout_panel_body(uiLayout *litem)
 {
-  uiLayoutItemPanelBody *body_litem = reinterpret_cast<uiLayoutItemPanelBody *>(litem);
+  // uiLayoutItemPanelBody *body_litem = reinterpret_cast<uiLayoutItemPanelBody *>(litem);
   Panel *panel = litem->root->block->panel;
 
   ui_litem_layout_column(litem, false, false);
@@ -4139,7 +4139,7 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
 /* panel header layout */
 static void ui_litem_estimate_panel_header(uiLayout *litem)
 {
-  ui_litem_estimate_row(litem);
+  ui_litem_estimate_column(litem, false);
 }
 
 static void ui_litem_layout_panel_header(uiLayout *litem)
@@ -4147,7 +4147,7 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
   uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
   Panel *panel = litem->root->block->panel;
 
-  ui_litem_layout_row(litem);
+  ui_litem_layout_column(litem, false, false);
 
   panel->runtime->sub_panel_headers.append({float(litem->y),
                                             float(litem->y + litem->h),
@@ -4915,30 +4915,21 @@ uiLayout *uiLayoutPanel(uiLayout *layout,
     UI_block_layout_set_current(layout->root->block, litem);
 
     uiBlock *block = uiLayoutGetBlock(layout);
-    UI_block_emboss_set(layout->root->block, UI_EMBOSS_NONE);
-    uiBut *but = uiDefIconTextBut(block,
-                                  UI_BTYPE_BUT,
-                                  0,
-                                  is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW,
-                                  IFACE_(name),
-                                  0,
-                                  0,
-                                  UI_UNIT_X * 4,
-                                  UI_UNIT_Y,
-                                  nullptr,
-                                  0.0,
-                                  0.0,
-                                  0.0,
-                                  0.0,
-                                  "");
-    UI_block_emboss_set(layout->root->block, UI_EMBOSS);
-    UI_but_drawflag_enable(but, UI_BUT_TEXT_LEFT | UI_BUT_NO_TOOLTIP);
-
-    UI_but_func_set(
-        but, [ptr = *open_prop_owner, name = std::string(open_prop_name)](bContext &C) mutable {
-          RNA_boolean_set(&ptr, name.c_str(), !RNA_boolean_get(&ptr, name.c_str()));
-          WM_event_add_notifier(&C, NC_SPACE, nullptr);
-        });
+    uiDefIconTextBut(block,
+                     UI_BTYPE_LABEL,
+                     0,
+                     is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW,
+                     IFACE_(name),
+                     0,
+                     0,
+                     UI_UNIT_X * 4,
+                     UI_UNIT_Y,
+                     nullptr,
+                     0.0,
+                     0.0,
+                     0.0,
+                     0.0,
+                     "");
   }
 
   if (!is_open) {

@@ -120,6 +120,7 @@ typedef struct ModifierData {
   short flag;
   /** An "expand" bit for each of the modifier's (sub)panels (#uiPanelDataExpansion). */
   short ui_expand_flag;
+  uint64_t ui_expand_flag2;
   /** MAX_NAME. */
   char name[64];
 

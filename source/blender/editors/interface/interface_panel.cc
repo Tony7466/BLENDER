@@ -86,6 +86,7 @@ enum uiPanelMouseState {
   PANEL_MOUSE_OUTSIDE,        /** Mouse is not in the panel. */
   PANEL_MOUSE_INSIDE_CONTENT, /** Mouse is in the actual panel content. */
   PANEL_MOUSE_INSIDE_HEADER,  /** Mouse is in the panel header. */
+  PANEL_MOUSE_INSIDE_LAYOUT_HEADER,
 };
 
 enum uiHandlePanelState {
@@ -537,7 +538,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, const ARegion *r
 
     /* Check for #PANEL_ACTIVE so we only set the expand flag for active panels. */
     if (panel_type->flag & PANEL_TYPE_INSTANCED && panel->runtime_flag & PANEL_ACTIVE) {
-      short expand_flag;
+      short expand_flag = 0;
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
       if (panel->type->set_list_data_expand_flag) {
@@ -1936,6 +1937,11 @@ static uiPanelMouseState ui_panel_mouse_state_get(const uiBlock *block,
   if (IN_RANGE(float(my), block->rect.ymax, block->rect.ymax + PNL_HEADER)) {
     return PANEL_MOUSE_INSIDE_HEADER;
   }
+  for (const LayoutPanelHeaderInfo &info : panel->runtime->sub_panel_headers) {
+    if (IN_RANGE(float(my - panel->runtime->block->rect.ymax + 8), info.start_y, info.end_y)) {
+      return PANEL_MOUSE_INSIDE_LAYOUT_HEADER;
+    }
+  }
 
   if (!UI_panel_is_closed(panel)) {
     if (IN_RANGE(float(my), block->rect.ymin, block->rect.ymax + PNL_HEADER)) {
@@ -1968,10 +1974,9 @@ static void ui_panel_drag_collapse(const bContext *C,
     float xy_b_block[2] = {float(xy_dst[0]), float(xy_dst[1])};
     Panel *panel = block->panel;
 
-    if (panel == nullptr || (panel->type && (panel->type->flag & PANEL_TYPE_NO_HEADER))) {
+    if (panel == nullptr) {
       continue;
     }
-    const int oldflag = panel->flag;
 
     /* Lock axis. */
     xy_b_block[0] = dragcol_data->xy_init[0];
@@ -1979,6 +1984,26 @@ static void ui_panel_drag_collapse(const bContext *C,
     /* Use cursor coords in block space. */
     ui_window_to_block_fl(region, block, &xy_a_block[0], &xy_a_block[1]);
     ui_window_to_block_fl(region, block, &xy_b_block[0], &xy_b_block[1]);
+
+    for (LayoutPanelHeaderInfo &info : panel->runtime->sub_panel_headers) {
+      rctf rect = block->rect;
+      rect.ymin = block->rect.ymax + info.start_y + 8;
+      rect.ymax = block->rect.ymax + info.end_y + 8;
+
+      if (BLI_rctf_isect_segment(&rect, xy_a_block, xy_b_block)) {
+        RNA_boolean_set(
+            &info.open_owner_ptr, info.open_prop_name.c_str(), !dragcol_data->was_first_open);
+        RNA_property_update(
+            const_cast<bContext *>(C),
+            &info.open_owner_ptr,
+            RNA_struct_find_property(&info.open_owner_ptr, info.open_prop_name.c_str()));
+      }
+    }
+
+    if (panel->type && (panel->type->flag & PANEL_TYPE_NO_HEADER)) {
+      continue;
+    }
+    const int oldflag = panel->flag;
 
     /* Set up `rect` to match header size. */
     rctf rect = block->rect;
@@ -2052,6 +2077,40 @@ static void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was
                           ui_panel_drag_collapse_handler_remove,
                           dragcol_data,
                           eWM_EventHandlerFlag(0));
+}
+
+static void ui_handle_layout_panel_header(
+    const bContext *C, const uiBlock *block, const int mx, const int my, const int event_type)
+{
+  Panel *panel = block->panel;
+  BLI_assert(panel->type != nullptr);
+
+  LayoutPanelHeaderInfo *header_info = nullptr;
+  for (LayoutPanelHeaderInfo &info : panel->runtime->sub_panel_headers) {
+    if (IN_RANGE(float(my - panel->runtime->block->rect.ymax + 8), info.start_y, info.end_y)) {
+      header_info = &info;
+    }
+  }
+  if (header_info == nullptr) {
+    return;
+  }
+
+  const bool is_open = RNA_boolean_get(&header_info->open_owner_ptr,
+                                       header_info->open_prop_name.c_str());
+  if (is_open) {
+    RNA_boolean_set(&header_info->open_owner_ptr, header_info->open_prop_name.c_str(), false);
+  }
+  else {
+    RNA_boolean_set(&header_info->open_owner_ptr, header_info->open_prop_name.c_str(), true);
+  }
+  RNA_property_update(
+      const_cast<bContext *>(C),
+      &header_info->open_owner_ptr,
+      RNA_struct_find_property(&header_info->open_owner_ptr, header_info->open_prop_name.c_str()));
+
+  if (event_type == LEFTMOUSE) {
+    ui_panel_drag_collapse_handler_add(C, is_open);
+  }
 }
 
 /**
@@ -2420,6 +2479,12 @@ int ui_handler_panel_region(bContext *C,
         ui_popup_context_menu_for_panel(C, region, block->panel);
       }
       break;
+    }
+    if (mouse_state == PANEL_MOUSE_INSIDE_LAYOUT_HEADER) {
+      if (ELEM(event->type, EVT_RETKEY, EVT_PADENTER, LEFTMOUSE)) {
+        retval = WM_UI_HANDLER_BREAK;
+        ui_handle_layout_panel_header(C, block, mx, my, event->type);
+      }
     }
   }
 

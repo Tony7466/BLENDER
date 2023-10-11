@@ -7428,17 +7428,17 @@ void RNA_def_modifier(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_subpanel_expanded_1", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", UI_SUBPANEL_DATA_EXPAND_1);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 0));
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_property(srna, "show_subpanel_expanded_2", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", UI_SUBPANEL_DATA_EXPAND_2);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 1));
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_property(srna, "show_subpanel_expanded_3", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", UI_SUBPANEL_DATA_EXPAND_3);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 2));
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_property(srna, "is_active", PROP_BOOLEAN, PROP_NONE);
