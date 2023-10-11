@@ -110,14 +110,14 @@ ccl_device
       float metallic = param1;
       float subsurface_weight = param2;
       float specular_ior_level = stack_load_float(stack, specular_ior_level_offset);
-      float roughness = stack_load_float(stack, roughness_offset);
+      float roughness = saturatef(stack_load_float(stack, roughness_offset));
       Spectrum specular_tint = rgb_to_spectrum(stack_load_float3(stack, specular_tint_offset));
       float anisotropic = stack_load_float(stack, anisotropic_offset);
       float sheen_weight = stack_load_float(stack, sheen_weight_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
-      float sheen_roughness = stack_load_float(stack, sheen_roughness_offset);
+      float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
       float coat_weight = stack_load_float(stack, coat_weight_offset);
-      float coat_roughness = stack_load_float(stack, coat_roughness_offset);
+      float coat_roughness = saturatef(stack_load_float(stack, coat_roughness_offset));
       float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
       float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
       float transmission_weight = stack_load_float(stack, transmission_weight_offset);
