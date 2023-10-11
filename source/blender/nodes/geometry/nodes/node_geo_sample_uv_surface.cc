@@ -23,45 +23,19 @@ namespace blender::nodes::node_geo_sample_uv_surface_cc {
 
 using geometry::ReverseUVSampler;
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eCustomDataType data_type = eCustomDataType(node.custom1);
+
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input(data_type, "Value").hide_value().field_on_all();
+  b.add_input<decl::Vector>("Source UV Map").hide_value().field_on_all().description("The mesh UV map to sample. Should not have overlapping faces");
+  b.add_input<decl::Vector>("Sample UV").supports_field().description("The coordinates to sample within the UV map");
 
-  b.add_input<decl::Float>("Value", "Value_Float").hide_value().field_on_all();
-  b.add_input<decl::Int>("Value", "Value_Int").hide_value().field_on_all();
-  b.add_input<decl::Vector>("Value", "Value_Vector").hide_value().field_on_all();
-  b.add_input<decl::Color>("Value", "Value_Color").hide_value().field_on_all();
-  b.add_input<decl::Bool>("Value", "Value_Bool").hide_value().field_on_all();
-  b.add_input<decl::Rotation>("Value", "Value_Rotation").hide_value().field_on_all();
-
-  b.add_input<decl::Vector>("Source UV Map")
-      .hide_value()
-      .field_on_all()
-      .description("The mesh UV map to sample. Should not have overlapping faces");
-  b.add_input<decl::Vector>("Sample UV")
-      .supports_field()
-      .description("The coordinates to sample within the UV map");
-
-  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({8});
-  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({8});
-  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({8});
-  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({8});
-  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({8});
-  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({8});
-
-  b.add_output<decl::Bool>("Is Valid")
-      .dependent_field({8})
-      .description("Whether the node could find a single face to sample at the UV coordinate");
-}
-
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_init(bNodeTree * /*tree*/, bNode *node)
-{
-  node->custom1 = CD_PROP_FLOAT;
+  b.add_output(data_type, "Value").dependent_field({3});
+  b.add_output<decl::Bool>("Is Valid").dependent_field({3}).description("Whether the node could find a single face to sample at the UV coordinate");
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
@@ -96,6 +70,16 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, out_socket_quat, data_type == CD_PROP_QUATERNION);
+}
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = CD_PROP_FLOAT;
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -270,7 +254,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(geometry),
                                                                      std::move(field)),
       {Field<int>(uv_op, 1), Field<float3>(uv_op, 2)});
-  output_attribute_field(params, GField(sample_op, 0));
+  params.set_output("Value", GField(sample_op, 0));
 }
 
 static void node_rna(StructRNA *srna)
@@ -291,8 +275,7 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_UV_SURFACE, "Sample UV Surface", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;

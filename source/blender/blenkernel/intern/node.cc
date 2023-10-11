@@ -3495,6 +3495,49 @@ bNodeTree *ntreeFromID(ID *id)
 
 namespace blender::bke {
 
+eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype socket_type)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return CD_PROP_FLOAT;
+    case SOCK_INT:
+      return CD_PROP_INT32;
+    case SOCK_VECTOR:
+      return CD_PROP_FLOAT3;
+    case SOCK_BOOLEAN:
+      return CD_PROP_BOOL;
+    case SOCK_RGBA:
+      return CD_PROP_COLOR;
+    case SOCK_ROTATION:
+      return CD_PROP_QUATERNION;
+    default:
+      /* Fallback. */
+      return CD_AUTO_FROM_NAME;
+  }
+}
+
+eNodeSocketDatatype custom_data_to_socket_type_type(const eCustomDataType data_type)
+{
+  switch (data_type) {
+    case CD_PROP_FLOAT:
+      return SOCK_FLOAT;
+    case CD_PROP_INT32:
+      return SOCK_INT;
+    case CD_PROP_FLOAT3:
+      return SOCK_VECTOR;
+    case CD_PROP_BOOL:
+      return SOCK_BOOLEAN;
+    case CD_PROP_COLOR:
+      return SOCK_RGBA;
+    case CD_PROP_QUATERNION:
+      return SOCK_ROTATION;
+    default:
+      break;
+  }
+  BLI_assert_unreachable();
+  return eNodeSocketDatatype(0);
+}
+
 void ntreeNodeFlagSet(const bNodeTree *ntree, const int flag, const bool enable)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {

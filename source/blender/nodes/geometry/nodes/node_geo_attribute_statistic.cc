@@ -21,42 +21,24 @@
 
 namespace blender::nodes::node_geo_attribute_statistic_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eCustomDataType data_type = eCustomDataType(node.custom1);
+
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
-  b.add_input<decl::Float>("Attribute").hide_value().field_on_all();
-  b.add_input<decl::Vector>("Attribute", "Attribute_001").hide_value().field_on_all();
+  b.add_input(data_type, "Attribute").hide_value().field_on_all();
 
-  b.add_output<decl::Float>("Mean");
-  b.add_output<decl::Float>("Median");
-  b.add_output<decl::Float>("Sum");
-  b.add_output<decl::Float>("Min");
-  b.add_output<decl::Float>("Max");
-  b.add_output<decl::Float>("Range");
-  b.add_output<decl::Float>("Standard Deviation");
-  b.add_output<decl::Float>("Variance");
-
-  b.add_output<decl::Vector>("Mean", "Mean_001");
-  b.add_output<decl::Vector>("Median", "Median_001");
-  b.add_output<decl::Vector>("Sum", "Sum_001");
-  b.add_output<decl::Vector>("Min", "Min_001");
-  b.add_output<decl::Vector>("Max", "Max_001");
-  b.add_output<decl::Vector>("Range", "Range_001");
-  b.add_output<decl::Vector>("Standard Deviation", "Standard Deviation_001");
-  b.add_output<decl::Vector>("Variance", "Variance_001");
-}
-
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_init(bNodeTree * /*tree*/, bNode *node)
-{
-  node->custom1 = CD_PROP_FLOAT;
-  node->custom2 = ATTR_DOMAIN_POINT;
+  b.add_output(data_type, "Mean");
+  b.add_output(data_type, "Median");
+  b.add_output(data_type, "Sum");
+  b.add_output(data_type, "Min");
+  b.add_output(data_type, "Max");
+  b.add_output(data_type, "Range");
+  b.add_output(data_type, "Standard Deviation");
+  b.add_output(data_type, "Variance");
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
@@ -105,6 +87,18 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, socket_vector_range, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, socket_vector_std, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, socket_vector_variance, data_type == CD_PROP_FLOAT3);
+}
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = CD_PROP_FLOAT;
+  node->custom2 = ATTR_DOMAIN_POINT;
 }
 
 static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSocket &socket)
@@ -418,9 +412,8 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_ATTRIBUTE_STATISTIC, "Attribute Statistic", NODE_CLASS_ATTRIBUTE);
 
-  ntype.declare = node_declare;
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;

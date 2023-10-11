@@ -562,6 +562,13 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::reference_pass(
   return *this;
 }
 
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
+                                                                const StringRef name,
+                                                                const StringRef identifier)
+{
+  return this->add_input(bke::custom_data_to_socket_type_type(data_type), name, identifier);
+}
+
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<int> indices)
 {
   aal::RelationsInNode &relations = node_decl_builder_->get_anonymous_attribute_relations();
@@ -584,6 +591,13 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<
     }
   }
   return *this;
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
+                                                                 const StringRef name,
+                                                                 const StringRef identifier)
+{
+  return this->add_output(bke::custom_data_to_socket_type_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::description(std::string value)

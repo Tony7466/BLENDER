@@ -187,6 +187,9 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node);
 
 bNode *nodeGetActivePaintCanvas(bNodeTree *ntree);
 
+eCustomDataType socket_type_to_custom_data_type(eNodeSocketDatatype socket_type);
+eNodeSocketDatatype custom_data_to_socket_type_type(eCustomDataType data_type);
+
 /**
  * \brief Does the given node supports the sub active flag.
  *

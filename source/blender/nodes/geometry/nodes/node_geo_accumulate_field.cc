@@ -22,61 +22,41 @@ namespace blender::nodes::node_geo_accumulate_field_cc {
 
 NODE_STORAGE_FUNCS(NodeAccumulateField)
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
-  std::string value_in_description = N_("The values to be accumulated");
-  std::string leading_out_description = N_(
-      "The running total of values in the corresponding group, starting at the first value");
-  std::string trailing_out_description = N_(
-      "The running total of values in the corresponding group, starting at zero");
-  std::string total_out_description = N_(
-      "The total of all of the values in the corresponding group");
+  const NodeAccumulateField &storage = node_storage(node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
-  b.add_input<decl::Vector>("Value", "Value Vector")
-      .default_value({1.0f, 1.0f, 1.0f})
-      .supports_field()
-      .description(value_in_description);
-  b.add_input<decl::Float>("Value", "Value Float")
-      .default_value(1.0f)
-      .supports_field()
-      .description(value_in_description);
-  b.add_input<decl::Int>("Value", "Value Int")
-      .default_value(1)
-      .supports_field()
-      .description(value_in_description);
+  BaseSocketDeclarationBuilder *value_declaration = nullptr;
+  switch (data_type) {
+    case CD_PROP_FLOAT3:
+      value_declaration = &b.add_input<decl::Vector>("Value").default_value({1.0f, 1.0f, 1.0f});
+    case CD_PROP_FLOAT:
+      value_declaration = &b.add_input<decl::Float>("Value").default_value(1.0f);
+    case CD_PROP_INT32:
+      value_declaration = &b.add_input<decl::Int>("Value").default_value(1);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  value_declaration->supports_field().description(N_("The values to be accumulated"));
+
   b.add_input<decl::Int>("Group ID", "Group Index")
       .supports_field()
       .description("An index used to group values together for multiple separate accumulations");
 
-  b.add_output<decl::Vector>("Leading", "Leading Vector")
+  b.add_output(data_type, "Leading")
       .field_source_reference_all()
-      .description(leading_out_description);
-  b.add_output<decl::Float>("Leading", "Leading Float")
+      .description(N_(
+          "The running total of values in the corresponding group, starting at the first value"));
+  b.add_output(data_type, "Trailing")
       .field_source_reference_all()
-      .description(leading_out_description);
-  b.add_output<decl::Int>("Leading", "Leading Int")
+      .description(N_("The running total of values in the corresponding group, starting at zero"));
+  b.add_output(data_type, "Total")
       .field_source_reference_all()
-      .description(leading_out_description);
-
-  b.add_output<decl::Vector>("Trailing", "Trailing Vector")
-      .field_source_reference_all()
-      .description(trailing_out_description);
-  b.add_output<decl::Float>("Trailing", "Trailing Float")
-      .field_source_reference_all()
-      .description(trailing_out_description);
-  b.add_output<decl::Int>("Trailing", "Trailing Int")
-      .field_source_reference_all()
-      .description(trailing_out_description);
-
-  b.add_output<decl::Vector>("Total", "Total Vector")
-      .field_source_reference_all()
-      .description(total_out_description);
-  b.add_output<decl::Float>("Total", "Total Float")
-      .field_source_reference_all()
-      .description(total_out_description);
-  b.add_output<decl::Int>("Total", "Total Int")
-      .field_source_reference_all()
-      .description(total_out_description);
+      .description(N_("The total of all of the values in the corresponding group"));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -91,43 +71,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   data->data_type = CD_PROP_FLOAT;
   data->domain = ATTR_DOMAIN_POINT;
   node->storage = data;
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const NodeAccumulateField &storage = node_storage(*node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
-
-  bNodeSocket *sock_in_vector = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *sock_in_float = sock_in_vector->next;
-  bNodeSocket *sock_in_int = sock_in_float->next;
-
-  bNodeSocket *sock_out_vector = static_cast<bNodeSocket *>(node->outputs.first);
-  bNodeSocket *sock_out_float = sock_out_vector->next;
-  bNodeSocket *sock_out_int = sock_out_float->next;
-
-  bNodeSocket *sock_out_first_vector = sock_out_int->next;
-  bNodeSocket *sock_out_first_float = sock_out_first_vector->next;
-  bNodeSocket *sock_out_first_int = sock_out_first_float->next;
-  bNodeSocket *sock_out_total_vector = sock_out_first_int->next;
-  bNodeSocket *sock_out_total_float = sock_out_total_vector->next;
-  bNodeSocket *sock_out_total_int = sock_out_total_float->next;
-
-  bke::nodeSetSocketAvailability(ntree, sock_in_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_in_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_in_int, data_type == CD_PROP_INT32);
-
-  bke::nodeSetSocketAvailability(ntree, sock_out_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_out_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_out_int, data_type == CD_PROP_INT32);
-
-  bke::nodeSetSocketAvailability(ntree, sock_out_first_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_out_first_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_out_first_int, data_type == CD_PROP_INT32);
-
-  bke::nodeSetSocketAvailability(ntree, sock_out_total_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_out_total_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_out_total_int, data_type == CD_PROP_INT32);
 }
 
 enum class AccumulationMode { Leading = 0, Trailing = 1 };
@@ -395,50 +338,30 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
   }
 };
 
-template<typename T> std::string identifier_suffix()
-{
-  if constexpr (std::is_same_v<T, int>) {
-    return "Int";
-  }
-  if constexpr (std::is_same_v<T, float>) {
-    return "Float";
-  }
-  if constexpr (std::is_same_v<T, float3>) {
-    return "Vector";
-  }
-}
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const NodeAccumulateField &storage = node_storage(params.node());
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
   const eAttrDomain source_domain = eAttrDomain(storage.domain);
 
-  Field<int> group_index_field = params.extract_input<Field<int>>("Group Index");
-  bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
-    using T = decltype(dummy);
-    if constexpr (is_same_any_v<T, int, float, float3>) {
-      const std::string suffix = " " + identifier_suffix<T>();
-      Field<T> input_field = params.extract_input<Field<T>>("Value" + suffix);
-      if (params.output_is_required("Leading" + suffix)) {
-        params.set_output(
-            "Leading" + suffix,
-            Field<T>{std::make_shared<AccumulateFieldInput>(
-                source_domain, input_field, group_index_field, AccumulationMode::Leading)});
-      }
-      if (params.output_is_required("Trailing" + suffix)) {
-        params.set_output(
-            "Trailing" + suffix,
-            Field<T>{std::make_shared<AccumulateFieldInput>(
-                source_domain, input_field, group_index_field, AccumulationMode::Trailing)});
-      }
-      if (params.output_is_required("Total" + suffix)) {
-        params.set_output("Total" + suffix,
-                          Field<T>{std::make_shared<TotalFieldInput>(
-                              source_domain, input_field, group_index_field)});
-      }
-    }
-  });
+  const Field<int> group_index_field = params.extract_input<Field<int>>("Group Index");
+  const GField input_field = params.extract_input<GField>("Value");
+  if (params.output_is_required("Leading")) {
+    params.set_output<GField>(
+        "Leading",
+        GField{std::make_shared<AccumulateFieldInput>(
+            source_domain, input_field, group_index_field, AccumulationMode::Leading)});
+  }
+  if (params.output_is_required("Trailing")) {
+    params.set_output<GField>(
+        "Trailing",
+        GField{std::make_shared<AccumulateFieldInput>(
+            source_domain, input_field, group_index_field, AccumulationMode::Trailing)});
+  }
+  if (params.output_is_required("Total")) {
+    params.set_output<GField>(
+        "Total",
+        GField{std::make_shared<TotalFieldInput>(source_domain, input_field, group_index_field)});
+  }
 }
 
 static void node_rna(StructRNA *srna)
@@ -475,9 +398,8 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_ACCUMULATE_FIELD, "Accumulate Field", NODE_CLASS_CONVERTER);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
   ntype.draw_buttons = node_layout;
-  ntype.declare = node_declare;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.gather_link_search_ops = node_gather_link_searches;
   node_type_storage(
       &ntype, "NodeAccumulateField", node_free_standard_storage, node_copy_standard_storage);

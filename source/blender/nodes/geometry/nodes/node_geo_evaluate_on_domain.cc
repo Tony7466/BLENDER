@@ -20,33 +20,15 @@
 
 namespace blender::nodes::node_geo_evaluate_on_domain_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Value", "Value_Float").supports_field();
-  b.add_input<decl::Int>("Value", "Value_Int").supports_field();
-  b.add_input<decl::Vector>("Value", "Value_Vector").supports_field();
-  b.add_input<decl::Color>("Value", "Value_Color").supports_field();
-  b.add_input<decl::Bool>("Value", "Value_Bool").supports_field();
-  b.add_input<decl::Rotation>("Value", "Value_Rotation").supports_field();
+  const eCustomDataType data_type = eCustomDataType(node.custom2);
 
-  b.add_output<decl::Float>("Value", "Value_Float").field_source_reference_all();
-  b.add_output<decl::Int>("Value", "Value_Int").field_source_reference_all();
-  b.add_output<decl::Vector>("Value", "Value_Vector").field_source_reference_all();
-  b.add_output<decl::Color>("Value", "Value_Color").field_source_reference_all();
-  b.add_output<decl::Bool>("Value", "Value_Bool").field_source_reference_all();
-  b.add_output<decl::Rotation>("Value", "Value_Rotation").field_source_reference_all();
-}
+  b.add_input(data_type, "Value").supports_field();
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_init(bNodeTree * /*tree*/, bNode *node)
-{
-  node->custom1 = ATTR_DOMAIN_POINT;
-  node->custom2 = CD_PROP_FLOAT;
+  b.add_output(data_type, "Value").field_source_reference_all();
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
@@ -80,6 +62,18 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, sock_out_color, data_type == CD_PROP_COLOR);
   bke::nodeSetSocketAvailability(ntree, sock_out_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, sock_out_quat, data_type == CD_PROP_QUATERNION);
+}
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = ATTR_DOMAIN_POINT;
+  node->custom2 = CD_PROP_FLOAT;
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -192,13 +186,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eAttrDomain domain = eAttrDomain(node.custom1);
   const eCustomDataType data_type = eCustomDataType(node.custom2);
 
-  bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
-    using T = decltype(dummy);
-    static const std::string identifier = "Value_" + identifier_suffix(data_type);
-    Field<T> src_field = params.extract_input<Field<T>>(identifier);
-    Field<T> dst_field{std::make_shared<EvaluateOnDomainInput>(std::move(src_field), domain)};
-    params.set_output(identifier, std::move(dst_field));
-  });
+  GField src_field = params.extract_input<GField>("Value");
+  GField dst_field{std::make_shared<EvaluateOnDomainInput>(std::move(src_field), domain)};
+  params.set_output<GField>("Value", std::move(dst_field));
 }
 
 static void node_rna(StructRNA *srna)
@@ -229,10 +219,9 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_EVALUATE_ON_DOMAIN, "Evaluate on Domain", NODE_CLASS_CONVERTER);
   ntype.geometry_node_execute = node_geo_exec;
-  ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 
