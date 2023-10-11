@@ -1,1 +1,2 @@
 Referenced by issue #113546, GPU rendering not working in latest build of 4.0 beta on macOS
+Referenced by commit aa88d9a8e3302fc7b56b7d22ad9262811d04d542, Revert "UI: Input Placeholders"
