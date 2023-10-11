@@ -1295,9 +1295,9 @@ struct ReflectionProbeLowFreqLight {
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeLowFreqLight, 16)
 
-enum ParallaxType : uint32_t {
-  PARALLAX_SPHERE = 0u,
-  PARALLAX_CUBE = 1u,
+enum LightProbeShape : uint32_t {
+  SHAPE_ELIPSOID = 0u,
+  SHAPE_CUBOID = 1u,
 };
 
 struct ReflectionProbeAtlasCoordinate {
@@ -1324,12 +1324,17 @@ struct ReflectionProbeData {
   float3x4 world_to_probe_transposed;
 
   /** Shape of the parallax projection. */
-  ParallaxType parallax_type;
+  LightProbeShape parallax_shape;
+  LightProbeShape influence_shape;
+  float parallax_distance;
   /** Influence factor based on the distance to the parallax shape. */
   float influence_scale;
   float influence_bias;
   /** LOD factor for mipmap selection. */
   float lod_factor;
+  float _pad0;
+  float _pad1;
+  float _pad2;
 
   ReflectionProbeAtlasCoordinate atlas_coord;
 

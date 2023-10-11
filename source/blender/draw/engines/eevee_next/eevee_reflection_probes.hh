@@ -103,8 +103,8 @@ class ReflectionProbeModule {
   PassSimple update_irradiance_ps_ = {"Probe.UpdateIrradiance"};
   PassSimple select_ps_ = {"Probe.Select"};
 
-  int3 dispatch_probe_pack_ = int3(0);
-  int3 dispatch_probe_select_ = int3(0);
+  int3 dispatch_probe_pack_ = int3(1);
+  int3 dispatch_probe_select_ = int3(1);
 
   /**
    * Texture containing a cube-map where the probe should be rendering to.

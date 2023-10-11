@@ -225,7 +225,7 @@ struct LightProbeSample {
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
   /* TODO: Dependency hell */
-  float noise = 0.5;
+  float noise = 0.0;
 
   LightProbeSample result;
   result.volume_irradiance = lightprobe_irradiance_sample(P, V, Ng);

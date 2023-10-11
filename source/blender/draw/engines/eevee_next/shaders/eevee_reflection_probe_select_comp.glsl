@@ -21,8 +21,9 @@ void main()
     sh = lightprobe_irradiance_world();
   }
   else {
-    /* TODO(fclem): Make a util for that. */
-    vec3 probe_center = transpose(reflection_probe_buf[idx].world_to_probe_transposed)[3];
+    /* NOTE: The vector-matrix multiplication swapped on purpose to cancel the matrix transpose. */
+    vec3 probe_center = vec4(0.0, 0.0, 0.0, -1.0) *
+                        reflection_probe_buf[idx].world_to_probe_transposed;
     sh = lightprobe_irradiance_sample(probe_center);
   }
 

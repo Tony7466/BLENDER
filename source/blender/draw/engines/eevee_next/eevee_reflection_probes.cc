@@ -153,9 +153,12 @@ void ReflectionProbeModule::init()
     world_probe.do_render = true;
     world_probe.clipping_distances = float2(1.0f, 10.0f);
     world_probe.world_to_probe_transposed = float3x4::identity();
-    world_probe.parallax_type = PARALLAX_SPHERE;
+    world_probe.influence_shape = SHAPE_ELIPSOID;
+    world_probe.parallax_shape = SHAPE_ELIPSOID;
+    /* Full influence. */
     world_probe.influence_scale = 0.0f;
     world_probe.influence_bias = 1.0f;
+    world_probe.parallax_distance = 1e10f;
 
     probes_.add(world_object_key_, world_probe);
 
@@ -257,8 +260,8 @@ void ReflectionProbeModule::sync_world_lookdev()
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
-  const ::LightProbe *light_probe = (::LightProbe *)ob->data;
-  if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
+  const ::LightProbe &light_probe = *(::LightProbe *)ob->data;
+  if (light_probe.type != LIGHTPROBE_TYPE_CUBE) {
     return;
   }
 
@@ -282,21 +285,30 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
-  probe.clipping_distances = float2(light_probe->clipsta, light_probe->clipend);
+  probe.clipping_distances = float2(light_probe.clipsta, light_probe.clipend);
 
   int subdivision = layer_subdivision_for(max_resolution_, reflection_probe_resolution());
   if (probe.atlas_coord.layer_subdivision != subdivision) {
     probe.atlas_coord = find_empty_atlas_region(subdivision);
   }
 
-  float4x4 obmat = math::scale(float4x4(ob->object_to_world), float3(light_probe->distpar));
-  probe.location = obmat.location();
-  probe.volume = math::abs(math::determinant(obmat)) *
-                 cube_f(light_probe->distinf / light_probe->distpar);
-  probe.world_to_probe_transposed = float3x4(math::transpose(obmat));
-  probe.parallax_type = PARALLAX_SPHERE;
-  probe.influence_scale = -1.0;
-  probe.influence_bias = 1.0;
+  bool use_custom_parallax = (light_probe.flag & LIGHTPROBE_FLAG_CUSTOM_PARALLAX) != 0;
+  float parallax_distance = use_custom_parallax ? light_probe.distpar : light_probe.distinf;
+  float influence_distance = light_probe.distinf;
+  float influence_falloff = light_probe.falloff;
+  probe.influence_shape = (light_probe.attenuation_type == LIGHTPROBE_SHAPE_BOX) ? SHAPE_CUBOID :
+                                                                                   SHAPE_ELIPSOID;
+  probe.parallax_shape = (light_probe.parallax_type == LIGHTPROBE_SHAPE_BOX) ? SHAPE_CUBOID :
+                                                                               SHAPE_ELIPSOID;
+
+  float4x4 object_to_world = math::scale(float4x4(ob->object_to_world),
+                                         float3(influence_distance));
+  probe.location = object_to_world.location();
+  probe.volume = math::abs(math::determinant(object_to_world));
+  probe.world_to_probe_transposed = float3x4(math::transpose(math::invert(object_to_world)));
+  probe.influence_scale = 1.0 / max_ff(1e-8f, influence_falloff);
+  probe.influence_bias = probe.influence_scale;
+  probe.parallax_distance = parallax_distance / influence_distance;
 }
 
 ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(
@@ -468,11 +480,12 @@ void ReflectionProbeModule::set_view(View & /*view*/)
     if (reflection_probe_count_ >= REFLECTION_PROBES_MAX - 1) {
       break;
     }
+    probe.recalc_lod_factors(probes_tx_.width());
+    /* World is always considered active and added last. */
     if (probe.type == ReflectionProbe::Type::WORLD) {
-      break;
+      continue;
     }
     /* TODO(fclem): Culling. */
-    probe.recalc_lod_factors(probes_tx_.width());
     probe_active.append(&probe);
   }
 
@@ -504,21 +517,23 @@ void ReflectionProbeModule::set_view(View & /*view*/)
               }
             });
 
+  /* Push all sorted data to the UBO. */
   int probe_id = 0;
   for (auto &probe : probe_active) {
     data_buf_[probe_id++] = *probe;
   }
+  /* Add world probe at the end. */
   data_buf_[probe_id++] = probes_.lookup(world_object_key_);
-
   if (probe_id < REFLECTION_PROBES_MAX) {
     /* Tag the end of the array. */
     data_buf_[probe_id].atlas_coord.layer = -1;
   }
+  data_buf_.push_update();
 
-  reflection_probe_count_ = probe_active.size();
-
-  dispatch_probe_select_ = int3(
-      divide_ceil_u(reflection_probe_count_, REFLECTION_PROBE_SELECT_GROUP_SIZE), 1, 1);
+  /* Add one for world probe. */
+  reflection_probe_count_ = probe_active.size() + 1;
+  dispatch_probe_select_.x = divide_ceil_u(reflection_probe_count_,
+                                           REFLECTION_PROBE_SELECT_GROUP_SIZE);
   instance_.manager->submit(select_ps_);
 }
 
