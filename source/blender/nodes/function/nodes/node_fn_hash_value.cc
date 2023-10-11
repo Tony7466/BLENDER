@@ -9,6 +9,7 @@
 #include "BLI_noise.hh"
 
 #include "NOD_rna_define.hh"
+#include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
@@ -20,97 +21,71 @@
 
 namespace blender::nodes::node_fn_hash_value_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*ntree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eNodeSocketDatatype input_type = static_cast<eNodeSocketDatatype>(node.custom1);
   b.is_function_node();
-  b.add_input<decl::Float>("Value", "Value_Float");
-  b.add_input<decl::Vector>("Value", "Value_Vector");
-  b.add_input<decl::String>("Value", "Value_String");
-  b.add_input<decl::Color>("Value", "Value_Color");
-  b.add_input<decl::Rotation>("Value", "Value_Rotation");
-  b.add_input<decl::Int>("Value", "Value_Int");
-  b.add_input<decl::Int>("Value", "Value_Int_001");
-  b.add_input<decl::Int>("Value", "Value_Int_002");
+  b.add_input(input_type, "Value");
+  b.add_input<decl::Int>("Seed", "Seed");
   b.add_output<decl::Int>("Hash");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = CD_PROP_INT32;
-}
-
-static eCustomDataType hash_socket_to_type(const eNodeSocketDatatype socket_type)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return CD_PROP_FLOAT;
-    case SOCK_INT:
-      return CD_PROP_INT32;
-    case SOCK_BOOLEAN:
-      return CD_PROP_INT32;
-    case SOCK_VECTOR:
-      return CD_PROP_FLOAT3;
-    case SOCK_RGBA:
-      return CD_PROP_COLOR;
-    case SOCK_ROTATION:
-      return CD_PROP_QUATERNION;
-    case SOCK_STRING:
-      return CD_PROP_STRING;
-    default:
-      /* Fallback. */
-      return CD_AUTO_FROM_NAME;
-  }
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const eCustomDataType data_type = static_cast<eCustomDataType>(node->custom1);
-
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
-    bke::nodeSetSocketAvailability(
-        ntree, socket, data_type == hash_socket_to_type(eNodeSocketDatatype(socket->type)));
-  }
+  node->custom1 = SOCK_INT;
 }
 
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
-  const eCustomDataType data_type = static_cast<eCustomDataType>(bnode.custom1);
+  const eNodeSocketDatatype socket_type = static_cast<eNodeSocketDatatype>(bnode.custom1);
 
   static auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
 
-  static auto fn_hash_float = mf::build::SI1_SO<float, int>(
-      "Hash Float", [](float a) { return noise::hash_float(a); }, exec_preset);
-  static auto fn_hash_vector = mf::build::SI1_SO<float3, int>(
-      "Hash Vector", [](float3 a) { return noise::hash_float(a); }, exec_preset);
-  static auto fn_hash_color = mf::build::SI1_SO<ColorGeometry4f, int>(
-      "Hash Color", [](ColorGeometry4f a) { return noise::hash_float(float4(a)); }, exec_preset);
-  static auto fn_hash_int_i3 = mf::build::SI3_SO<int, int, int, int>(
-      "Hash Integer", [](int a, int b, int c) { return noise::hash(a, b, c); }, exec_preset);
-  static auto fn_hash_string = mf::build::SI1_SO<std::string, int>(
-      "Hash String", [](std::string a) { return BLI_hash_string(a.c_str()); }, exec_preset);
-  static auto fn_hash_rotation = mf::build::SI1_SO<math::Quaternion, int>(
+  static auto fn_hash_float = mf::build::SI2_SO<float, int, int>(
+      "Hash Float",
+      [](float a, int seed) { return noise::hash(noise::hash_float(a), seed); },
+      exec_preset);
+  static auto fn_hash_vector = mf::build::SI2_SO<float3, int, int>(
+      "Hash Vector",
+      [](float3 a, int seed) { return noise::hash(noise::hash_float(a), seed); },
+      exec_preset);
+  static auto fn_hash_color = mf::build::SI2_SO<ColorGeometry4f, int, int>(
+      "Hash Color",
+      [](ColorGeometry4f a, int seed) { return noise::hash(noise::hash_float(float4(a)), seed); },
+      exec_preset);
+  static auto fn_hash_int = mf::build::SI2_SO<int, int, int>(
+      "Hash Integer",
+      [](int a, int seed) { return noise::hash(noise::hash(a), seed); },
+      exec_preset);
+  static auto fn_hash_string = mf::build::SI2_SO<std::string, int, int>(
+      "Hash String",
+      [](std::string a, int seed) { return noise::hash(BLI_hash_string(a.c_str()), seed); },
+      exec_preset);
+  static auto fn_hash_rotation = mf::build::SI2_SO<math::Quaternion, int, int>(
       "Hash Rotation",
-      [](math::Quaternion a) { return noise::hash_float(float4(a)); },
+      [](math::Quaternion a, int seed) { return noise::hash(noise::hash_float(float4(a)), seed); },
       exec_preset);
 
-  switch (data_type) {
-    case CD_PROP_QUATERNION:
+  switch (socket_type) {
+    case SOCK_ROTATION:
       return &fn_hash_rotation;
-    case CD_PROP_STRING:
+    case SOCK_STRING:
       return &fn_hash_string;
-    case CD_PROP_FLOAT:
+    case SOCK_FLOAT:
       return &fn_hash_float;
-    case CD_PROP_FLOAT3:
+    case SOCK_VECTOR:
       return &fn_hash_vector;
-    case CD_PROP_COLOR:
+    case SOCK_RGBA:
       return &fn_hash_color;
-    case CD_PROP_INT32:
-      return &fn_hash_int_i3;
+    case SOCK_INT:
+      return &fn_hash_int;
     default:
       BLI_assert_unreachable();
       return nullptr;
@@ -120,29 +95,41 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 class SocketSearchOp {
  public:
   const StringRef socket_name;
-  eCustomDataType data_type;
+  eNodeSocketDatatype socket_type;
   void operator()(LinkSearchOpParams &params)
   {
     bNode &node = params.add_node("FunctionNodeHashValue");
-    node.custom1 = data_type;
+    node.custom1 = socket_type;
     params.update_and_connect_available_socket(node, socket_name);
   }
 };
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  eCustomDataType type = hash_socket_to_type(eNodeSocketDatatype(params.other_socket().type));
-  if (type == CD_AUTO_FROM_NAME) {
+  eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  if (!ELEM(socket_type,
+            SOCK_BOOLEAN,
+            SOCK_FLOAT,
+            SOCK_INT,
+            SOCK_ROTATION,
+            SOCK_VECTOR,
+            SOCK_STRING,
+            SOCK_RGBA))
+  {
     return;
   }
 
   if (params.in_out() == SOCK_IN) {
-    params.add_item(IFACE_("Value"), SocketSearchOp{"Value", type});
+    if (socket_type == SOCK_BOOLEAN) {
+      socket_type = SOCK_INT;
+    }
+    params.add_item(IFACE_("Seed"), SocketSearchOp{"Seed", SOCK_INT});
+    params.add_item(IFACE_("Value"), SocketSearchOp{"Value", socket_type});
   }
   else {
-    if (!ELEM(type, CD_PROP_STRING)) {
+    if (!ELEM(socket_type, SOCK_STRING)) {
       const int weight = ELEM(params.other_socket().type, SOCK_INT) ? 0 : -1;
-      params.add_item(IFACE_("Hash"), SocketSearchOp{"Hash", CD_PROP_INT32}, weight);
+      params.add_item(IFACE_("Hash"), SocketSearchOp{"Hash", SOCK_INT}, weight);
     }
   }
 }
@@ -157,23 +144,24 @@ static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(
       srna,
-      "data_type",
-      "Data Type",
-      "Type of data stored in attribute",
-      rna_enum_attribute_type_items,
+      "input_type",
+      "Input Type",
+      "",
+      rna_enum_node_socket_data_type_items,
       NOD_inline_enum_accessors(custom1),
-      CD_PROP_INT32,
+      SOCK_INT,
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;
-        return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
-          return ELEM(item.value,
-                      CD_PROP_FLOAT,
-                      CD_PROP_FLOAT3,
-                      CD_PROP_STRING,
-                      CD_PROP_COLOR,
-                      CD_PROP_INT32,
-                      CD_PROP_QUATERNION);
-        });
+        return enum_items_filter(rna_enum_node_socket_data_type_items,
+                                 [](const EnumPropertyItem &item) -> bool {
+                                   return ELEM(item.value,
+                                               SOCK_FLOAT,
+                                               SOCK_INT,
+                                               SOCK_ROTATION,
+                                               SOCK_VECTOR,
+                                               SOCK_STRING,
+                                               SOCK_RGBA);
+                                 });
       });
 }
 
@@ -182,8 +170,7 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_HASH_VALUE, "Hash Value", NODE_CLASS_CONVERTER);
-  ntype.declare = node_declare;
-  ntype.updatefunc = node_update;
+  ntype.declare_dynamic = node_declare_dynamic;
   ntype.initfunc = node_init;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
