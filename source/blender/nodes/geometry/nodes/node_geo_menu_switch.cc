@@ -176,14 +176,13 @@ static void node_declare_dynamic(const bNodeTree &tree,
                                 SOCK_STRING,
                                 SOCK_ROTATION);
 
+  add_output(b, data_type);
   {
     auto sb = b.add_input<decl::Enum>("Switch").default_value(false);
     if (fields_type) {
       sb.supports_field();
     }
   }
-
-  add_output(b, data_type);
   for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
     add_input_for_enum_item(b, data_type, enum_item);
   }
@@ -314,7 +313,7 @@ class MenuSwitchFn : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context context) const
   {
-    VArray<int> condition = params.readonly_single_input<T>(0, "Switch");
+    VArray<int> condition = params.readonly_single_input<int>(0, "Switch");
     Map<int32_t, VArray<T>> inputs_map;
     inputs_map.reserve(enum_def_.items_num);
     for (const int i : IndexRange(enum_def_.items_num)) {
@@ -325,10 +324,10 @@ class MenuSwitchFn : public mf::MultiFunction {
     MutableSpan<T> outputs = params.uninitialized_single_output<T>(enum_def_.items_num + 1,
                                                                    "Output");
 
-    const T *default_value = static_cast<const T *>(CPPType::get<T>().default_value);
+    const T *default_value = static_cast<const T *>(CPPType::get<T>().default_value());
 
     mask.foreach_index([&](const int i) {
-      const int condition = outputs[i];
+      const int condition = inputs[i];
       const VArray<T> *inputs = inputs_map.lookup_ptr(condition);
       outputs[i] = inputs ? inputs[i] : *default_value;
     });
@@ -452,7 +451,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         BLI_assert_unreachable();
       }
       else {
-        static MenuSwitchMultiFunction fn(enum_def);
+        static MenuSwitchFn<T> fn(enum_def);
         switch_multi_function = &fn;
       }
     });
