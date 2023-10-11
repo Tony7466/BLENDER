@@ -20,24 +20,24 @@ static void set_default_input_field(const bNodeTreeInterfaceSocket &input, Socke
   if (dynamic_cast<decl::Vector *>(&decl)) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL) {
       decl.input_field_type = InputSocketFieldType::Implicit;
-      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+      decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::normal);
     }
     else if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_POSITION) {
       decl.input_field_type = InputSocketFieldType::Implicit;
-      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+      decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::position);
     }
   }
   else if (dynamic_cast<decl::Int *>(&decl)) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_INDEX) {
       decl.input_field_type = InputSocketFieldType::Implicit;
-      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+      decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::index);
     }
     else if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX) {
       decl.input_field_type = InputSocketFieldType::Implicit;
-      decl.implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(
+      decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::id_or_index);
     }
   }

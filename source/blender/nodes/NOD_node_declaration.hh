@@ -207,7 +207,7 @@ class SocketDeclaration : public ItemDeclaration {
  public:
   /** Some input sockets can have non-trivial values in the case when they are unlinked. This
    * callback computes the default input of a values in geometry nodes when nothing is linked. */
-  std::unique_ptr<ImplicitInputValueFn> implicit_input_fn_;
+  std::unique_ptr<ImplicitInputValueFn> implicit_input_fn;
 
   friend NodeDeclarationBuilder;
   friend class BaseSocketDeclarationBuilder;
@@ -239,7 +239,7 @@ class SocketDeclaration : public ItemDeclaration {
 
   const ImplicitInputValueFn *implicit_input_fn() const
   {
-    return implicit_input_fn_.get();
+    return implicit_input_fn.get();
   }
 
  protected:
