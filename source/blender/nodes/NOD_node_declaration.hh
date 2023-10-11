@@ -186,6 +186,9 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
 
+  /** Utility method to make the socket available if there is a straightforward way to do so. */
+  std::function<void(bNode &)> make_available_fn_;
+
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
 
@@ -200,9 +203,6 @@ class SocketDeclaration : public ItemDeclaration {
   /** This input expects a single value and can't operate on non-single values. See
    * realtime_compositor::InputDescriptor for more information. */
   bool compositor_expects_single_value_ = false;
-
-  /** Utility method to make the socket available if there is a straightforward way to do so. */
-  std::function<void(bNode &)> make_available_fn_;
 
   /** Some input sockets can have non-trivial values in the case when they are unlinked. This
    * callback computes the default input of a values in geometry nodes when nothing is linked. */

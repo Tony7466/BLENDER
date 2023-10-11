@@ -6,10 +6,12 @@
 
 #include <functional>
 
+#include "BLI_function_ref.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_node_types.h" /* Necessary for eNodeSocketInOut. */
+#include "NOD_node_declaration.hh"
 
 #include "NOD_node_declaration.hh"
 
@@ -147,5 +149,8 @@ void search_link_ops_for_basic_node(GatherLinkSearchOpParams &params);
 
 void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
                                       Span<SocketDeclaration *> declarations);
+
+void search_link_ops_for_declaration(GatherLinkSearchOpParams &params,
+                                     FunctionRef<void(NodeDeclarationBuilder &b)> builder);
 
 }  // namespace blender::nodes

@@ -21,15 +21,18 @@ namespace blender::nodes::node_geo_viewer_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryViewer)
 
+static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+{
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input(data_type, "Value").field_on_all().hide_value();
+}
+
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclarationBuilder &b)
 {
   const NodeGeometryViewer &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
-
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_input(data_type, "Value").field_on_all().hide_value();
+  node_declare(b, eCustomDataType(storage.data_type));
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -53,54 +56,13 @@ static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  auto set_active_fn = [](LinkSearchOpParams &params, bNode &viewer_node) {
-    /* Set this new viewer node active in spreadsheet editors. */
-    SpaceNode *snode = CTX_wm_space_node(&params.C);
-    Main *bmain = CTX_data_main(&params.C);
-    ED_node_set_active(bmain, snode, &params.node_tree, &viewer_node, nullptr);
-    ed::viewer_path::activate_geometry_node(*bmain, *snode, viewer_node);
-  };
-
-  const std::optional<eCustomDataType> type = node_socket_to_custom_data_type(
-      params.other_socket());
-  if (params.in_out() == SOCK_OUT) {
-    /* The viewer node only has inputs. */
-    return;
-  }
-  if (params.other_socket().type == SOCK_GEOMETRY) {
-    params.add_item(IFACE_("Geometry"), [set_active_fn](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeViewer");
-      params.connect_available_socket(node, "Geometry");
-      set_active_fn(params, node);
-    });
-  }
-  if (type && ELEM(type,
-                   CD_PROP_FLOAT,
-                   CD_PROP_BOOL,
-                   CD_PROP_INT32,
-                   CD_PROP_FLOAT3,
-                   CD_PROP_COLOR,
-                   CD_PROP_QUATERNION))
-  {
-    params.add_item(IFACE_("Value"), [type, set_active_fn](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeViewer");
-      node_storage(node).data_type = *type;
-      params.update_and_connect_available_socket(node, "Value");
-
-      /* If the source node has a geometry socket, connect it to the new viewer node as well. */
-      LISTBASE_FOREACH (bNodeSocket *, socket, &params.node.outputs) {
-        if (socket->type == SOCK_GEOMETRY && socket->is_visible()) {
-          nodeAddLink(&params.node_tree,
-                      &params.node,
-                      socket,
-                      &node,
-                      static_cast<bNodeSocket *>(node.inputs.first));
-        }
-      }
-
-      set_active_fn(params, node);
-    });
-  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+            socket_type)) {
+      node_declare(b, *type);
+    }
+  });
 }
 
 static void node_rna(StructRNA *srna)

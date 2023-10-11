@@ -25,6 +25,7 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclarationBuilder &b)
 {
+  return;
   const eCustomDataType data_type = eCustomDataType(node.custom1);
 
   b.add_input<decl::Geometry>("Geometry");
@@ -39,54 +40,6 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   b.add_output(data_type, "Range");
   b.add_output(data_type, "Standard Deviation");
   b.add_output(data_type, "Variance");
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  bNodeSocket *socket_geo = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *socket_selection = socket_geo->next;
-  bNodeSocket *socket_float_attr = socket_selection->next;
-  bNodeSocket *socket_float3_attr = socket_float_attr->next;
-
-  bNodeSocket *socket_float_mean = static_cast<bNodeSocket *>(node->outputs.first);
-  bNodeSocket *socket_float_median = socket_float_mean->next;
-  bNodeSocket *socket_float_sum = socket_float_median->next;
-  bNodeSocket *socket_float_min = socket_float_sum->next;
-  bNodeSocket *socket_float_max = socket_float_min->next;
-  bNodeSocket *socket_float_range = socket_float_max->next;
-  bNodeSocket *socket_float_std = socket_float_range->next;
-  bNodeSocket *socket_float_variance = socket_float_std->next;
-
-  bNodeSocket *socket_vector_mean = socket_float_variance->next;
-  bNodeSocket *socket_vector_median = socket_vector_mean->next;
-  bNodeSocket *socket_vector_sum = socket_vector_median->next;
-  bNodeSocket *socket_vector_min = socket_vector_sum->next;
-  bNodeSocket *socket_vector_max = socket_vector_min->next;
-  bNodeSocket *socket_vector_range = socket_vector_max->next;
-  bNodeSocket *socket_vector_std = socket_vector_range->next;
-  bNodeSocket *socket_vector_variance = socket_vector_std->next;
-
-  const eCustomDataType data_type = eCustomDataType(node->custom1);
-
-  bke::nodeSetSocketAvailability(ntree, socket_float_attr, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_mean, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_median, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_sum, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_min, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_max, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_range, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_std, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, socket_float_variance, data_type == CD_PROP_FLOAT);
-
-  bke::nodeSetSocketAvailability(ntree, socket_float3_attr, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_mean, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_median, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_sum, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_min, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_max, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_range, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_std, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, socket_vector_variance, data_type == CD_PROP_FLOAT3);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -117,34 +70,14 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-  const bNodeType &node_type = params.node_type();
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(2));
-
-  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
-  if (!type) {
-    return;
-  }
-
-  if (params.in_out() == SOCK_IN) {
-    params.add_item(IFACE_("Attribute"), [node_type, type](LinkSearchOpParams &params) {
-      bNode &node = params.add_node(node_type);
-      node.custom1 = *type;
-      params.update_and_connect_available_socket(node, "Attribute");
-    });
-  }
-  else {
-    for (const StringRefNull name :
-         {"Mean", "Median", "Sum", "Min", "Max", "Range", "Standard Deviation", "Variance"})
-    {
-      params.add_item(IFACE_(name.c_str()), [node_type, name, type](LinkSearchOpParams &params) {
-        bNode &node = params.add_node(node_type);
-        node.custom1 = *type;
-        params.update_and_connect_available_socket(node, name);
-      });
-    }
-  }
+{ /*
+   return;
+   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+   search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+     if (const std::optional<eCustomDataType> type =
+   node_data_type_to_custom_data_type(socket_type)) { node_declare(b, *type);
+     }
+   });*/
 }
 
 template<typename T> static T compute_sum(const Span<T> data)

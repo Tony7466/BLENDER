@@ -24,17 +24,20 @@ namespace blender::nodes::node_geo_sample_nearest_surface_cc {
 
 using namespace blender::bke::mesh_surface_sample;
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
-
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input(data_type, "Value").hide_value().field_on_all();
   b.add_input<decl::Vector>("Sample Position").implicit_field(implicit_field_inputs::position);
 
   b.add_output(data_type, "Value").dependent_field({2});
+}
+
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
+{
+  node_declare(b, eCustomDataType(node.custom1));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -49,20 +52,13 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
-
-  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      eNodeSocketDatatype(params.other_socket().type));
-  if (type && *type != CD_PROP_STRING) {
-    /* The input and output sockets have the same name. */
-    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeSampleNearestSurface");
-      node.custom1 = *type;
-      params.update_and_connect_available_socket(node, "Value");
-    });
-  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+            socket_type)) {
+      node_declare(b, *type);
+    }
+  });
 }
 
 static void get_closest_mesh_looptris(const Mesh &mesh,

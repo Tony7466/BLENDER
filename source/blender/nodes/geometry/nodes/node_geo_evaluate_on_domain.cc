@@ -20,48 +20,18 @@
 
 namespace blender::nodes::node_geo_evaluate_on_domain_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom2);
-
   b.add_input(data_type, "Value").supports_field();
 
   b.add_output(data_type, "Value").field_source_reference_all();
 }
 
-static void node_update(bNodeTree *ntree, bNode *node)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node->custom2);
-
-  bNodeSocket *sock_in_float = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *sock_in_int = sock_in_float->next;
-  bNodeSocket *sock_in_vector = sock_in_int->next;
-  bNodeSocket *sock_in_color = sock_in_vector->next;
-  bNodeSocket *sock_in_bool = sock_in_color->next;
-  bNodeSocket *sock_in_quat = sock_in_bool->next;
-
-  bNodeSocket *sock_out_float = static_cast<bNodeSocket *>(node->outputs.first);
-  bNodeSocket *sock_out_int = sock_out_float->next;
-  bNodeSocket *sock_out_vector = sock_out_int->next;
-  bNodeSocket *sock_out_color = sock_out_vector->next;
-  bNodeSocket *sock_out_bool = sock_out_color->next;
-  bNodeSocket *sock_out_quat = sock_out_bool->next;
-
-  bke::nodeSetSocketAvailability(ntree, sock_in_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_in_int, data_type == CD_PROP_INT32);
-  bke::nodeSetSocketAvailability(ntree, sock_in_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_in_color, data_type == CD_PROP_COLOR);
-  bke::nodeSetSocketAvailability(ntree, sock_in_bool, data_type == CD_PROP_BOOL);
-  bke::nodeSetSocketAvailability(ntree, sock_in_quat, data_type == CD_PROP_QUATERNION);
-
-  bke::nodeSetSocketAvailability(ntree, sock_out_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, sock_out_int, data_type == CD_PROP_INT32);
-  bke::nodeSetSocketAvailability(ntree, sock_out_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, sock_out_color, data_type == CD_PROP_COLOR);
-  bke::nodeSetSocketAvailability(ntree, sock_out_bool, data_type == CD_PROP_BOOL);
-  bke::nodeSetSocketAvailability(ntree, sock_out_quat, data_type == CD_PROP_QUATERNION);
+  node_declare(b, eCustomDataType(node.custom2));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -78,16 +48,13 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const bNodeType &node_type = params.node_type();
-  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      eNodeSocketDatatype(params.other_socket().type));
-  if (type && *type != CD_PROP_STRING) {
-    params.add_item(IFACE_("Value"), [node_type, type](LinkSearchOpParams &params) {
-      bNode &node = params.add_node(node_type);
-      node.custom2 = *type;
-      params.update_and_connect_available_socket(node, "Value");
-    });
-  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+            socket_type)) {
+      node_declare(b, *type);
+    }
+  });
 }
 
 class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
@@ -159,32 +126,10 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
   }
 };
 
-static StringRefNull identifier_suffix(eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_BOOL:
-      return "Bool";
-    case CD_PROP_FLOAT:
-      return "Float";
-    case CD_PROP_INT32:
-      return "Int";
-    case CD_PROP_COLOR:
-      return "Color";
-    case CD_PROP_FLOAT3:
-      return "Vector";
-    case CD_PROP_QUATERNION:
-      return "Rotation";
-    default:
-      BLI_assert_unreachable();
-      return "";
-  }
-}
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
   const eAttrDomain domain = eAttrDomain(node.custom1);
-  const eCustomDataType data_type = eCustomDataType(node.custom2);
 
   GField src_field = params.extract_input<GField>("Value");
   GField dst_field{std::make_shared<EvaluateOnDomainInput>(std::move(src_field), domain)};

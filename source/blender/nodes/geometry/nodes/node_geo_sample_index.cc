@@ -52,52 +52,26 @@ namespace blender::nodes::node_geo_sample_index_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySampleIndex);
 
+static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+{
+  b.add_input<decl::Geometry>("Geometry")
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::PointCloud,
+                       GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::Instance});
+  b.add_input(data_type, "Value").hide_value().field_on_all();
+  b.add_input<decl::Int>("Index").supports_field().description(
+      "Which element to retrieve a value from on the geometry");
+
+  b.add_output(data_type, "Value").dependent_field({2});
+}
+
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclarationBuilder &b)
 {
   const NodeGeometrySampleIndex &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
-
-  b.add_input<decl::Geometry>("Geometry").supported_type({GeometryComponent::Type::Mesh,GeometryComponent::Type::PointCloud,GeometryComponent::Type::Curve,GeometryComponent::Type::Instance});
-  b.add_input(data_type, "Value").hide_value().field_on_all();
-  b.add_input<decl::Int>("Index").supports_field().description("Which element to retrieve a value from on the geometry");
-
-  b.add_output(data_type, "Value").dependent_field({2});
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
-
-  bNodeSocket *in_socket_geometry = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *in_socket_float = in_socket_geometry->next;
-  bNodeSocket *in_socket_int32 = in_socket_float->next;
-  bNodeSocket *in_socket_vector = in_socket_int32->next;
-  bNodeSocket *in_socket_color4f = in_socket_vector->next;
-  bNodeSocket *in_socket_bool = in_socket_color4f->next;
-  bNodeSocket *in_socket_quat = in_socket_bool->next;
-
-  bke::nodeSetSocketAvailability(ntree, in_socket_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, in_socket_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, in_socket_color4f, data_type == CD_PROP_COLOR);
-  bke::nodeSetSocketAvailability(ntree, in_socket_bool, data_type == CD_PROP_BOOL);
-  bke::nodeSetSocketAvailability(ntree, in_socket_int32, data_type == CD_PROP_INT32);
-  bke::nodeSetSocketAvailability(ntree, in_socket_quat, data_type == CD_PROP_QUATERNION);
-
-  bNodeSocket *out_socket_float = static_cast<bNodeSocket *>(node->outputs.first);
-  bNodeSocket *out_socket_int32 = out_socket_float->next;
-  bNodeSocket *out_socket_vector = out_socket_int32->next;
-  bNodeSocket *out_socket_color4f = out_socket_vector->next;
-  bNodeSocket *out_socket_bool = out_socket_color4f->next;
-  bNodeSocket *out_socket_quat = out_socket_bool->next;
-
-  bke::nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
-  bke::nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
-  bke::nodeSetSocketAvailability(ntree, out_socket_color4f, data_type == CD_PROP_COLOR);
-  bke::nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
-  bke::nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
-  bke::nodeSetSocketAvailability(ntree, out_socket_quat, data_type == CD_PROP_QUATERNION);
+  node_declare(b, eCustomDataType(storage.data_type));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -118,20 +92,13 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(1));
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
-
-  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      eNodeSocketDatatype(params.other_socket().type));
-  if (type && *type != CD_PROP_STRING) {
-    /* The input and output sockets have the same name. */
-    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeSampleIndex");
-      node_storage(node).data_type = *type;
-      params.update_and_connect_available_socket(node, "Value");
-    });
-  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+            socket_type)) {
+      node_declare(b, *type);
+    }
+  });
 }
 
 static bool component_is_available(const GeometrySet &geometry,

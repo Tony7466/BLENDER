@@ -19,18 +19,21 @@ namespace blender::nodes::node_geo_attribute_capture_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryAttributeCapture)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
 {
-  const NodeGeometryAttributeCapture &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
-
   b.add_input<decl::Geometry>("Geometry");
   b.add_input(data_type, "Value").field_on_all();
 
   b.add_output<decl::Geometry>("Geometry").propagate_all();
   b.add_output(data_type, "Attribute").field_on_all();
+}
+
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
+{
+  const NodeGeometryAttributeCapture &storage = node_storage(node);
+  node_declare(b, eCustomDataType(storage.data_type));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -52,29 +55,13 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
-  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(1));
-
-  const bNodeType &node_type = params.node_type();
-  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      eNodeSocketDatatype(params.other_socket().type));
-  if (type && *type != CD_PROP_STRING) {
-    if (params.in_out() == SOCK_OUT) {
-      params.add_item(IFACE_("Attribute"), [node_type, type](LinkSearchOpParams &params) {
-        bNode &node = params.add_node(node_type);
-        node_storage(node).data_type = *type;
-        params.update_and_connect_available_socket(node, "Attribute");
-      });
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
+    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+            socket_type)) {
+      node_declare(b, *type);
     }
-    else {
-      params.add_item(IFACE_("Value"), [node_type, type](LinkSearchOpParams &params) {
-        bNode &node = params.add_node(node_type);
-        node_storage(node).data_type = *type;
-        params.update_and_connect_available_socket(node, "Value");
-      });
-    }
-  }
+  });
 }
 
 static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
@@ -103,27 +90,6 @@ static void clean_unused_attributes(const AnonymousAttributePropagationInfo &pro
 
   for (const std::string &unused_id : unused_ids) {
     attributes->remove(unused_id);
-  }
-}
-
-static StringRefNull identifier_suffix(eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return "_001";
-    case CD_PROP_INT32:
-      return "_004";
-    case CD_PROP_QUATERNION:
-      return "_005";
-    case CD_PROP_COLOR:
-      return "_002";
-    case CD_PROP_BOOL:
-      return "_003";
-    case CD_PROP_FLOAT3:
-      return "";
-    default:
-      BLI_assert_unreachable();
-      return "";
   }
 }
 

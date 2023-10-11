@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_function_ref.hh"
 #include "BLI_set.hh"
 
 #include "BKE_context.h"
@@ -127,12 +128,15 @@ void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
      * Negative weights are used to avoid making the highest weight dependent on the number of
      * sockets. */
     const int weight = (&socket == main_socket) ? 0 : -1 - i;
+    std::string name = socket.name;
+    std::function<void(bNode &)> make_available = socket.make_available_fn_;
     params.add_item(
-        IFACE_(socket.name.c_str()),
-        [&node_type, &socket](LinkSearchOpParams &params) {
+        IFACE_(name.c_str()),
+        [&node_type, name = std::move(name), make_available = std::move(make_available)](
+            LinkSearchOpParams &params) {
           bNode &node = params.add_node(node_type);
-          socket.make_available(node);
-          params.update_and_connect_available_socket(node, socket.name);
+          make_available(node);
+          params.update_and_connect_available_socket(node, name);
         },
         weight);
   }
@@ -154,6 +158,22 @@ void search_link_ops_for_basic_node(GatherLinkSearchOpParams &params)
   const NodeDeclaration &declaration = *node_type.fixed_declaration;
 
   search_link_ops_for_declarations(params, declaration.sockets(params.in_out()));
+}
+
+void search_link_ops_for_declaration(GatherLinkSearchOpParams &params,
+                                     FunctionRef<void(NodeDeclarationBuilder &b)> builder)
+{
+  NodeDeclaration declaration;
+  NodeDeclarationBuilder node_decl_builder{declaration};
+  builder(node_decl_builder);
+  node_decl_builder.finalize();
+
+  if (params.in_out() == SOCK_IN) {
+    search_link_ops_for_declarations(params, declaration.inputs.as_span());
+  }
+  else {
+    search_link_ops_for_declarations(params, declaration.outputs.as_span());
+  }
 }
 
 }  // namespace blender::nodes
