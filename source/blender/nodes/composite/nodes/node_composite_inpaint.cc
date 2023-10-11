@@ -68,7 +68,8 @@ class InpaintOperation : public NodeOperation {
 
   Result compute_inpainting_boundary()
   {
-    GPUShader *shader = context().get_shader("compositor_inpaint_compute_boundary");
+    GPUShader *shader = context().get_shader("compositor_inpaint_compute_boundary",
+                                             ResultPrecision::Half);
     GPU_shader_bind(shader);
 
     const Result &input = get_input("Image");

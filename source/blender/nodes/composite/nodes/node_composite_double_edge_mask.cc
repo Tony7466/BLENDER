@@ -91,7 +91,8 @@ class DoubleEdgeMaskOperation : public NodeOperation {
 
   void compute_boundary(Result &inner_boundary, Result &outer_boundary)
   {
-    GPUShader *shader = context().get_shader("compositor_double_edge_mask_compute_boundary");
+    GPUShader *shader = context().get_shader("compositor_double_edge_mask_compute_boundary",
+                                             ResultPrecision::Half);
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "include_all_inner_edges", include_all_inner_edges());

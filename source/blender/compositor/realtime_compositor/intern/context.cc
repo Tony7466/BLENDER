@@ -40,10 +40,14 @@ float Context::get_time() const
   return frame_number / frame_rate;
 }
 
+GPUShader *Context::get_shader(const char *info_name, ResultPrecision precision)
+{
+  return cache_manager().cached_shaders.get(info_name, precision);
+}
+
 GPUShader *Context::get_shader(const char *info_name)
 {
-  const ResultPrecision precision = get_precision();
-  return cache_manager().cached_shaders.get(info_name, precision);
+  return get_shader(info_name, get_precision());
 }
 
 Result Context::create_result(ResultType type, ResultPrecision precision)
