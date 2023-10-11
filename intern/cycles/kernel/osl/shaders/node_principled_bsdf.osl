@@ -36,6 +36,11 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             normal Tangent = normalize(dPdu),
                             output closure color BSDF = 0)
 {
+    /* Clamping to match SVM */
+    color base_color = max(BaseColor, color(0.0));
+    
+    
+    
   float r2 = Roughness;
   r2 = r2 * r2;
 
@@ -62,7 +67,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       }
     }
 
-    BSDF = BaseColor * diffuse(Normal);
+    BSDF = base_color * diffuse(Normal);
     if (SubsurfaceWeight > 1e-5) {
       float subsurface_weight = SubsurfaceWeight;
       vector radius = SubsurfaceScale * SubsurfaceRadius;
@@ -70,14 +75,14 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
                                          SubsurfaceScale * SubsurfaceRadius,
-                                         BaseColor,
+                                         base_color,
                                          "roughness",
                                          r2,
                                          "ior",
                                          subsurface_ior,
                                          "anisotropy",
                                          SubsurfaceAnisotropy);
-      BSDF = mix(BSDF, BaseColor * SubsurfBSDF, subsurface_weight);
+      BSDF = mix(BSDF, base_color * SubsurfBSDF, subsurface_weight);
     }
 
     if (eta != 1.0) {
@@ -101,13 +106,13 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     color F90 = color(1.0);
 
     TransmissionBSDF = generalized_schlick_bsdf(
-        Normal, vector(0.0), color(1.0), sqrt(BaseColor), r2, r2, F0, F90, -eta, distribution),
+        Normal, vector(0.0), color(1.0), sqrt(base_color), r2, r2, F0, F90, -eta, distribution),
     BSDF = mix(BSDF, TransmissionBSDF, TransmissionWeight);
   }
 
   closure color MetallicBSDF = 0;
   if (Metallic > 0.0) {
-    color F0 = BaseColor;
+    color F0 = base_color;
     color F82 = SpecularTint;
     MetallicBSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
     BSDF = mix(BSDF, MetallicBSDF, Metallic);

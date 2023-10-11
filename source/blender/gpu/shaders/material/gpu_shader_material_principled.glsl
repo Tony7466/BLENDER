@@ -60,7 +60,9 @@ void node_bsdf_principled(vec4 base_color,
                           out Closure result)
 {
   /* Match cycles. */
-
+  base_color = max(base_color, vec4(0.0));
+  
+  
   N = safe_normalize(N);
   CN = safe_normalize(CN);
   vec3 V = cameraVec(g_data.P);

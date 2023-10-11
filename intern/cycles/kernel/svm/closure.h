@@ -139,6 +139,7 @@ ccl_device
                               make_float3(__uint_as_float(data_base_color.y),
                                           __uint_as_float(data_base_color.z),
                                           __uint_as_float(data_base_color.w));
+        base_color = max(base_color, zero_float3());
 
       // get the subsurface scattering data
       uint4 data_subsurf = read_node(kg, &offset);
