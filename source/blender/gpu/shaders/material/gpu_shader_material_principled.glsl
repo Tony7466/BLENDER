@@ -71,6 +71,7 @@ void node_bsdf_principled(vec4 base_color,
   /* subsurface_anisotropy = clamp(subsurface_anisotropy, 0.0, 0.9); */
   /* subsurface_ior = clamp(subsurface_ior, 1.01, 3.8); */
   specular_ior_level = max(specular_ior_level, 0.0);
+  specular_tint = max(specular_tint, vec4(0.0));
   
   coat_roughness = saturate(coat_roughness);
   
@@ -151,7 +152,7 @@ void node_bsdf_principled(vec4 base_color,
   vec3 reflection_tint = specular_tint.rgb;
   if (metallic > 0.0) {
     vec3 F0 = clamped_base_color.rgb;
-    vec3 F82 = reflection_tint;
+    vec3 F82 = min(reflection_tint, vec3(1.0));
     vec3 metallic_brdf;
     brdf_f82_tint_lut(F0, F82, NV, roughness, do_multiscatter != 0.0, metallic_brdf);
     reflection_data.color = weight * metallic * metallic_brdf;

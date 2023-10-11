@@ -827,7 +827,7 @@ ccl_device void bsdf_microfacet_setup_fresnel_f82_tint(KernelGlobals kg,
      * Therefore, the factor follows by setting F82Tint(cosI) = FSchlick(cosI) - b*cosI*(1-cosI)^6
      * and F82Tint(acos(1/7)) = FSchlick(acos(1/7)) * f82_tint and solving for b. */
     const float f = 6.0f / 7.0f;
-    const float f5 = sqr(sqr(f)) * f;
+    const float f5 = sqr(sqr(f)) * f; /* 0.4626643659 */
     const Spectrum F_schlick = mix(fresnel->f0, one_spectrum(), f5);
     fresnel->b = F_schlick * (7.0f / (f5 * f)) * (one_spectrum() - f82_tint);
   }

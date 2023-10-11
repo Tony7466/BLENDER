@@ -41,7 +41,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     /* Clamping to match SVM */
     float metallic = clamp(Metallic, 0.0, 1.0);
     float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
-    
+    color specular_tint = max(SpecularTint, color(0.0));
     color base_color = max(BaseColor, color(0.0));
     color clamped_base_color = min(base_color, color(1.0));
     float clamped_color_weight = max(metallic, subsurface_weight);
@@ -96,7 +96,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     if (eta != 1.0) {
       /* Apply specular tint */
-      color F0 = f0 * SpecularTint;
+      color F0 = f0 * specular_tint;
       color F90 = color(1.0);
 
       BSDF = layer(
@@ -111,7 +111,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float eta = max(IOR, 1e-5);
     eta = backfacing() ? 1.0 / eta : eta;
 
-    color F0 = F0_from_ior(eta) * SpecularTint;
+    color F0 = F0_from_ior(eta) * specular_tint;
     color F90 = color(1.0);
 
     TransmissionBSDF = generalized_schlick_bsdf(
@@ -122,7 +122,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   closure color MetallicBSDF = 0;
   if (metallic > CLOSURE_WEIGHT_CUTOFF) {
     color F0 = clamped_base_color;
-    color F82 = SpecularTint;
+    color F82 = min(specular_tint, color(1.0));
     MetallicBSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
     BSDF = mix(BSDF, MetallicBSDF, metallic);
   }

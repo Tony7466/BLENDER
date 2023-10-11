@@ -111,7 +111,7 @@ ccl_device
       float subsurface_weight = saturatef(param2);
       float specular_ior_level = max(stack_load_float(stack, specular_ior_level_offset), 0.0f);
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
-      Spectrum specular_tint = rgb_to_spectrum(stack_load_float3(stack, specular_tint_offset));
+      Spectrum specular_tint = rgb_to_spectrum(max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
       float anisotropic = stack_load_float(stack, anisotropic_offset);
       float sheen_weight = stack_load_float(stack, sheen_weight_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
@@ -289,7 +289,7 @@ ccl_device
           bsdf->alpha_y = alpha_y;
 
           fresnel->f0 = rgb_to_spectrum(clamped_base_color);
-          const Spectrum f82 = specular_tint;
+          const Spectrum f82 = min(specular_tint, one_spectrum());
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
