@@ -1,2 +1,3 @@
 Referenced by pull request #113290, Fix #113255: LineStyle modifiers cannot be accessed by name anymore
 Referenced by issue #113255, Freestyle: Lineset "Fill Range by selection" operator fails with python error
+Referenced by commit f8d38b65a442db71488eabb7c3ebb5cb72c275fc, Fix #113255: LineStyle modifiers cannot be accessed by name anymore
