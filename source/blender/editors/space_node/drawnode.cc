@@ -1512,13 +1512,15 @@ static void std_node_socket_interface_draw(ID *id,
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     if (ELEM(type, SOCK_INT, SOCK_VECTOR)) {
-      uiLayout *sub = uiLayoutColumn(col, false);
-      uiLayoutSetActive(sub, interface_socket->flag & NODE_INTERFACE_SOCKET_HIDE_VALUE);
-      uiItemR(sub, &ptr, "default_input", DEFAULT_FLAGS, nullptr, ICON_NONE);
+      uiItemR(col, &ptr, "default_input", DEFAULT_FLAGS, nullptr, ICON_NONE);
     }
   }
 
-  uiItemR(col, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
+  {
+    uiLayout *sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub, interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE);
+    uiItemR(sub, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
+  }
 
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, &ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, ICON_NONE);

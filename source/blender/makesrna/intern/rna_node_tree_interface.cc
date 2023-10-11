@@ -33,7 +33,11 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
+
 #  include "BLI_set.hh"
+
+#  include "BLT_translation.h"
+
 #  include "DNA_material_types.h"
 #  include "ED_node.hh"
 #  include "WM_api.hh"
@@ -400,34 +404,42 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
   EnumPropertyItem *items = nullptr;
   int items_count = 0;
 
-  const EnumPropertyItem none{GEO_NODE_DEFAULT_FIELD_INPUT_NONE, "NONE", 0, "None", ""};
+  const EnumPropertyItem none{GEO_NODE_DEFAULT_INPUT_VALUE,
+                              "VALUE",
+                              0,
+                              N_("Default Value"),
+                              N_("The node socket's default value")};
   RNA_enum_item_add(&items, &items_count, &none);
 
   if (ntree->type == NTREE_GEOMETRY) {
     const bNodeSocketType *type = socket->socket_typeinfo();
     if (type->type == SOCK_INT) {
-      const EnumPropertyItem index{
-          GEO_NODE_DEFAULT_FIELD_INPUT_INDEX, "INDEX", 0, "Index", "The index from the context"};
+      const EnumPropertyItem index{GEO_NODE_DEFAULT_FIELD_INPUT_INDEX_FIELD,
+                                   "INDEX",
+                                   0,
+                                   N_("Index"),
+                                   N_("The index from the context")};
       RNA_enum_item_add(&items, &items_count, &index);
-      const EnumPropertyItem index_or_id{GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX,
-                                         "ID_OR_INDEX",
-                                         0,
-                                         "ID or Index",
-                                         "The \"id\" attribute if available, otherwise the index"};
+      const EnumPropertyItem index_or_id{
+          GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX_FIELD,
+          "ID_OR_INDEX",
+          0,
+          N_("ID or Index"),
+          N_("The \"id\" attribute if available, otherwise the index")};
       RNA_enum_item_add(&items, &items_count, &index_or_id);
     }
     else if (type->type == SOCK_VECTOR) {
-      const EnumPropertyItem normal{GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL,
+      const EnumPropertyItem normal{GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL_FIELD,
                                     "NORMAL",
                                     0,
-                                    "Normal",
-                                    "The geometry's normal direction"};
+                                    N_("Normal"),
+                                    N_("The geometry's normal direction")};
       RNA_enum_item_add(&items, &items_count, &normal);
-      const EnumPropertyItem position{GEO_NODE_DEFAULT_FIELD_INPUT_POSITION,
+      const EnumPropertyItem position{GEO_NODE_DEFAULT_FIELD_INPUT_POSITION_FIELD,
                                       "POSITION",
                                       0,
-                                      "Position",
-                                      "The position from the context"};
+                                      N_("Position"),
+                                      N_("The position from the context")};
       RNA_enum_item_add(&items, &items_count, &position);
     }
   }

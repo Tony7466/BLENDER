@@ -237,11 +237,6 @@ class SocketDeclaration : public ItemDeclaration {
   int compositor_domain_priority() const;
   bool compositor_expects_single_value() const;
 
-  const ImplicitInputValueFn *implicit_input_fn() const
-  {
-    return implicit_input_fn.get();
-  }
-
  protected:
   void set_common_flags(bNodeSocket &socket) const;
   bool matches_common_data(const bNodeSocket &socket) const;
