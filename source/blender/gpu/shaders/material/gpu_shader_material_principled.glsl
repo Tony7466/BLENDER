@@ -75,10 +75,10 @@ void node_bsdf_principled(vec4 base_color,
   /* Not used by EEVEE */
   /* anisotropic = saturate(anisotropic); */
   transmission_weight = saturate(transmission_weight);
+  coat_weight = max(coat_weight, 0.0);
   coat_roughness = saturate(coat_roughness);
   coat_ior = max(coat_ior, 1.0);
   coat_tint = max(coat_tint, vec4(0.0));
-  sheen_weight = max(sheen_weight, 0.0);
   sheen_roughness = saturate(sheen_roughness);
   
   base_color = max(base_color, vec4(0.0));
