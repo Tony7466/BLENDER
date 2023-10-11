@@ -360,9 +360,6 @@ ARegion *BKE_area_region_copy(const SpaceType *st, const ARegion *region)
   }
 
   panel_list_copy(&newar->panels, &region->panels);
-  LISTBASE_FOREACH (Panel *, p, &newar->panels) {
-    BLI_assert(p->runtime);
-  }
 
   BLI_listbase_clear(&newar->ui_previews);
   BLI_duplicatelist(&newar->ui_previews, &region->ui_previews);
@@ -493,7 +490,9 @@ Panel *BKE_panel_new(PanelType *panel_type)
   Panel *panel = MEM_cnew<Panel>(__func__);
   panel->runtime = MEM_new<Panel_Runtime>(__func__);
   panel->type = panel_type;
-  STRNCPY(panel->panelname, panel_type->idname);
+  if (panel_type) {
+    STRNCPY(panel->panelname, panel_type->idname);
+  }
   return panel;
 }
 
