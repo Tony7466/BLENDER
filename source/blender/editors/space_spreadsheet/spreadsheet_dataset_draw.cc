@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_string.h"
+
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
@@ -92,6 +94,19 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     curve.add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::Curve, ATTR_DOMAIN_CURVE, IFACE_("Spline"), ICON_CURVE_PATH);
 
+    if (U.experimental.use_grease_pencil_version3) {
+      GeometryDataSetTreeViewItem &grease_pencil =
+          this->add_tree_item<GeometryDataSetTreeViewItem>(
+              bke::GeometryComponent::Type::GreasePencil,
+              IFACE_("Grease Pencil"),
+              ICON_OUTLINER_DATA_GREASEPENCIL);
+      grease_pencil.add_tree_item<GeometryDataSetTreeViewItem>(
+          bke::GeometryComponent::Type::GreasePencil,
+          ATTR_DOMAIN_GREASE_PENCIL_LAYER,
+          IFACE_("Layer"),
+          ICON_OUTLINER_DATA_GP_LAYER);
+    }
+
     GeometryDataSetTreeViewItem &pointcloud = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::PointCloud, IFACE_("Point Cloud"), ICON_POINTCLOUD_DATA);
     pointcloud.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::PointCloud,
@@ -134,8 +149,7 @@ void GeometryDataSetTreeViewItem::on_activate(bContext &C)
   if (domain_) {
     tree_view.sspreadsheet_.attribute_domain = *domain_;
   }
-  PointerRNA ptr;
-  RNA_pointer_create(&tree_view.screen_.id, &RNA_SpaceSpreadsheet, &sspreadsheet, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&tree_view.screen_.id, &RNA_SpaceSpreadsheet, &sspreadsheet);
   RNA_property_update(&C, &ptr, RNA_struct_find_property(&ptr, "attribute_domain"));
   RNA_property_update(&C, &ptr, RNA_struct_find_property(&ptr, "geometry_component_type"));
 }

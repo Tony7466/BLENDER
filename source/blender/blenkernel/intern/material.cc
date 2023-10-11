@@ -41,6 +41,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -62,19 +63,20 @@
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_scene.h"
 #include "BKE_vfont.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_material.h"
 
 #include "NOD_shader.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.material"};
 

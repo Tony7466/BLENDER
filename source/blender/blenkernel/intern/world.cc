@@ -30,17 +30,18 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_preview_image.hh"
 #include "BKE_world.h"
 
 #include "BLT_translation.h"
 
 #include "DRW_engine.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_material.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /** Free (or release) any data used by this world (does not free the world itself). */
 static void world_free_data(ID *id)

@@ -40,11 +40,11 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -156,7 +156,7 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
                                                                     sqrtf(test.dist),
                                                                     vd.no,
                                                                     vd.fno,
-                                                                    vd.mask ? *vd.mask : 0.0f,
+                                                                    vd.mask,
                                                                     vd.vertex,
                                                                     thread_id,
                                                                     &automask_data);
@@ -177,7 +177,7 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
                                                                   sqrtf(test.dist),
                                                                   vd.no,
                                                                   vd.fno,
-                                                                  vd.mask ? *vd.mask : 0.0f,
+                                                                  vd.mask,
                                                                   vd.vertex,
                                                                   thread_id,
                                                                   &automask_data);
@@ -235,7 +235,7 @@ static void do_relax_face_sets_brush_task(Object *ob,
                                                                 sqrtf(test.dist),
                                                                 vd.no,
                                                                 vd.fno,
-                                                                vd.mask ? *vd.mask : 0.0f,
+                                                                vd.mask,
                                                                 vd.vertex,
                                                                 thread_id,
                                                                 &automask_data);
@@ -710,7 +710,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 
@@ -893,7 +893,7 @@ static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 
@@ -1203,6 +1203,7 @@ static void sculpt_face_set_edit_fair_face_set(Object *ob,
   for (int i = 0; i < totvert; i++) {
     if (fair_verts[i]) {
       interp_v3_v3v3(positions[i], orig_positions[i], positions[i], strength);
+      BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_index_to_vertex(ss->pbvh, i));
     }
   }
 }
@@ -1305,7 +1306,7 @@ static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 }
 
 static void sculpt_face_set_edit_modify_face_sets(Object *ob,
@@ -1498,7 +1499,7 @@ static int sculpt_face_sets_invert_visibility_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_update_visibility(node);
   }
 
-  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+  BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_tag_update_overlays(C);
 

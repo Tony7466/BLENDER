@@ -39,17 +39,17 @@
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_object.hh"
+#include "BKE_screen.hh"
 #include "BKE_shrinkwrap.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_gpencil_legacy_modifiertypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 

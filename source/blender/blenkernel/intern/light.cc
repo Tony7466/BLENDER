@@ -33,12 +33,13 @@
 #include "BKE_light.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_preview_image.hh"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void light_init_data(ID *id)
 {

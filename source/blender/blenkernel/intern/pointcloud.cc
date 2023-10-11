@@ -35,14 +35,14 @@
 #include "BKE_main.h"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 using blender::float3;
 using blender::IndexRange;

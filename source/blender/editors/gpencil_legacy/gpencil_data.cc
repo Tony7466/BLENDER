@@ -50,7 +50,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -68,9 +68,9 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -922,7 +922,7 @@ static bool gpencil_frame_is_equal(const bGPDframe *gpf_a, const bGPDframe *gpf_
     if (gps_a->caps[1] != gps_b->caps[1]) {
       return false;
     }
-    if (gps_a->hardeness != gps_b->hardeness) {
+    if (gps_a->hardness != gps_b->hardness) {
       return false;
     }
     if (!equals_v2v2(gps_a->aspect_ratio, gps_b->aspect_ratio)) {

@@ -32,12 +32,12 @@
 
 #include "BKE_camera.h"
 #include "BKE_context.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BIF_glutil.hh"
 

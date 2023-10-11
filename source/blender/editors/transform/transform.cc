@@ -595,23 +595,22 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       }
       break;
     }
-    case TFM_MODAL_AXIS_X:
-    case TFM_MODAL_AXIS_Y:
     case TFM_MODAL_AXIS_Z:
     case TFM_MODAL_PLANE_X:
     case TFM_MODAL_PLANE_Y:
     case TFM_MODAL_PLANE_Z:
-    case TFM_MODAL_AUTOCONSTRAINTPLANE: {
+    case TFM_MODAL_AUTOCONSTRAINTPLANE:
+      if (t->flag & T_2D_EDIT) {
+        return false;
+      }
+      [[fallthrough]];
+    case TFM_MODAL_AXIS_X:
+    case TFM_MODAL_AXIS_Y:
+    case TFM_MODAL_AUTOCONSTRAINT:
       if (t->flag & T_NO_CONSTRAINT) {
         return false;
       }
-      if (!ELEM(value, TFM_MODAL_AXIS_X, TFM_MODAL_AXIS_Y)) {
-        if (t->flag & T_2D_EDIT) {
-          return false;
-        }
-      }
       break;
-    }
     case TFM_MODAL_CONS_OFF: {
       if ((t->con.mode & CON_APPLY) == 0) {
         return false;
@@ -1537,7 +1536,7 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
 
   offset *= U.scale_factor;
 
-  xco = (rect->xmax - U.widget_unit) - (int)printable_size[0] - offset;
+  xco = (rect->xmax - U.widget_unit) - int(printable_size[0]) - offset;
   yco = (rect->ymax - U.widget_unit);
 
   /* warning text (to clarify meaning of overlays)
@@ -1717,7 +1716,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
           short *snap_flag_ptr;
 
           wmMsgParams_RNA msg_key_params = {{nullptr}};
-          RNA_pointer_create(&t->scene->id, &RNA_ToolSettings, ts, &msg_key_params.ptr);
+          msg_key_params.ptr = RNA_pointer_create(&t->scene->id, &RNA_ToolSettings, ts);
 
           if (t->spacetype == SPACE_NODE) {
             snap_flag_ptr = &ts->snap_flag_node;
@@ -2032,7 +2031,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   initSnapSpatial(t, t->snap_spatial, &t->snap_spatial_precision);
 
-  /* EVIL! posemode code can switch translation to rotate when 1 bone is selected.
+  /* EVIL! pose-mode code can switch translation to rotate when 1 bone is selected.
    * will be removed (ton) */
 
   /* EVIL2: we gave as argument also texture space context bit... was cleared */

@@ -198,7 +198,22 @@ void gpu::MTLTexture::bake_mip_swizzle_view()
         mip_texture_base_level_,
         min_ii(mip_texture_max_level_, (int)texture_.mipmapLevelCount),
         range_len);
+#ifndef NDEBUG
+    mip_swizzle_view_.label = [NSString
+        stringWithFormat:
+            @"MipSwizzleView_%s__format=%u_type=%u_baselevel=%u_numlevels=%u_swizzle='%c%c%c%c'",
+            [[texture_ label] UTF8String],
+            (uint)texture_view_pixel_format,
+            (uint)texture_view_texture_type,
+            (uint)mip_texture_base_level_,
+            (uint)range_len,
+            tex_swizzle_mask_[0],
+            tex_swizzle_mask_[1],
+            tex_swizzle_mask_[2],
+            tex_swizzle_mask_[3]];
+#else
     mip_swizzle_view_.label = [texture_ label];
+#endif
     texture_view_dirty_flags_ = TEXTURE_VIEW_NOT_DIRTY;
   }
 }
@@ -1189,7 +1204,7 @@ void gpu::MTLTexture::generate_mipmap()
   }
 
   /* Ensure mipmaps. */
-  this->ensure_mipmaps(9999);
+  this->ensure_mipmaps(mtl_max_mips_);
 
   /* Ensure texture is baked. */
   this->ensure_baked();
@@ -2136,10 +2151,27 @@ void gpu::MTLTexture::ensure_baked()
     /* Determine Resource Mode. */
     resource_mode_ = MTL_TEXTURE_MODE_DEFAULT;
 
+    /* Override storage mode if memoryless attachments are being used. */
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      if (@available(macOS 11.00, *)) {
+        texture_descriptor_.storageMode = MTLStorageModeMemoryless;
+      }
+      else {
+        BLI_assert_msg(0, "GPU_TEXTURE_USAGE_MEMORYLESS is not available on older MacOS versions");
+      }
+    }
+
     /* Standard texture allocation. */
     texture_ = [ctx->device newTextureWithDescriptor:texture_descriptor_];
+#ifndef NDEBUG
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      texture_.label = [NSString stringWithFormat:@"MemorylessTexture_%s", this->get_name()];
+    }
+    else {
+      texture_.label = [NSString stringWithFormat:@"Texture_%s", this->get_name()];
+    }
+#endif
 
-    texture_.label = [NSString stringWithUTF8String:this->get_name()];
     BLI_assert(texture_);
     is_baked_ = true;
     is_dirty_ = false;

@@ -100,7 +100,7 @@ struct wmJob {
   void (*canceled)(void *);
 
   /** Running jobs each have own timer */
-  double timestep;
+  double time_step;
   wmTimer *wt;
   /** Only start job after specified time delay */
   double start_delay_time;
@@ -112,8 +112,9 @@ struct wmJob {
   eWM_JobFlag flag;
   bool suspended, running, ready;
   eWM_JobType job_type;
-  bool do_update, stop;
-  float progress;
+
+  /** Data shared with the worker code, so can be accessed and edited from several threads. */
+  wmJobWorkerStatus worker_status;
 
   /** For display in header, identification */
   char name[128];
@@ -239,7 +240,7 @@ float WM_jobs_progress(const wmWindowManager *wm, const void *owner)
   const wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
   if (wm_job && wm_job->flag & WM_JOB_PROGRESS) {
-    return wm_job->progress;
+    return wm_job->worker_status.progress;
   }
 
   return 0.0;
@@ -255,7 +256,7 @@ static void wm_jobs_update_progress_bars(wmWindowManager *wm)
       if (wm_job->flag & WM_JOB_PROGRESS) {
         /* accumulate global progress for running jobs */
         jobs_progress++;
-        total_progress += wm_job->progress;
+        total_progress += wm_job->worker_status.progress;
       }
     }
   }
@@ -316,7 +317,7 @@ bool WM_jobs_is_running(const wmJob *wm_job)
 bool WM_jobs_is_stopped(const wmWindowManager *wm, const void *owner)
 {
   wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
-  return wm_job ? wm_job->stop : true; /* XXX to be redesigned properly. */
+  return wm_job ? wm_job->worker_status.stop : true; /* XXX to be redesigned properly. */
 }
 
 void *WM_jobs_customdata_get(wmJob *wm_job)
@@ -339,13 +340,13 @@ void WM_jobs_customdata_set(wmJob *wm_job, void *customdata, void (*free)(void *
 
   if (wm_job->running) {
     /* signal job to end */
-    wm_job->stop = true;
+    wm_job->worker_status.stop = true;
   }
 }
 
-void WM_jobs_timer(wmJob *wm_job, double timestep, uint note, uint endnote)
+void WM_jobs_timer(wmJob *wm_job, double time_step, uint note, uint endnote)
 {
-  wm_job->timestep = timestep;
+  wm_job->time_step = time_step;
   wm_job->note = note;
   wm_job->endnote = endnote;
 }
@@ -384,7 +385,7 @@ static void *do_job_thread(void *job_v)
 {
   wmJob *wm_job = static_cast<wmJob *>(job_v);
 
-  wm_job->startjob(wm_job->run_customdata, &wm_job->stop, &wm_job->do_update, &wm_job->progress);
+  wm_job->startjob(wm_job->run_customdata, &wm_job->worker_status);
   wm_job->ready = true;
 
   return nullptr;
@@ -426,7 +427,7 @@ static void wm_jobs_test_suspend_stop(wmWindowManager *wm, wmJob *test)
 
       /* if this job has higher priority, stop others */
       if (test->flag & WM_JOB_PRIORITY) {
-        wm_job->stop = true;
+        wm_job->worker_status.stop = true;
         // printf("job stopped: %s\n", wm_job->name);
       }
     }
@@ -445,14 +446,14 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
 {
   if (wm_job->running) {
     /* signal job to end and restart */
-    wm_job->stop = true;
+    wm_job->worker_status.stop = true;
     // printf("job started a running job, ending... %s\n", wm_job->name);
   }
   else {
 
     if (wm_job->customdata && wm_job->startjob) {
-      const double timestep = (wm_job->start_delay_time > 0.0) ? wm_job->start_delay_time :
-                                                                 wm_job->timestep;
+      const double time_step = (wm_job->start_delay_time > 0.0) ? wm_job->start_delay_time :
+                                                                  wm_job->time_step;
 
       wm_jobs_test_suspend_stop(wm, wm_job);
 
@@ -468,9 +469,9 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
           wm_job->initjob(wm_job->run_customdata);
         }
 
-        wm_job->stop = false;
+        wm_job->worker_status.stop = false;
         wm_job->ready = false;
-        wm_job->progress = 0.0;
+        wm_job->worker_status.progress = 0.0;
 
         // printf("job started: %s\n", wm_job->name);
 
@@ -479,12 +480,12 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
       }
 
       /* restarted job has timer already */
-      if (wm_job->wt && (wm_job->wt->timestep > timestep)) {
+      if (wm_job->wt && (wm_job->wt->time_step > time_step)) {
         WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
-        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
+        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, time_step);
       }
       if (wm_job->wt == nullptr) {
-        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
+        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, time_step);
       }
 
       wm_job->start_time = PIL_check_seconds_timer();
@@ -505,7 +506,7 @@ static void wm_job_end(wmJob *wm_job)
   /* Do the final callback based on whether the job was run to completion or not.
    * Not all jobs have the same way of signaling cancellation (i.e. rendering stops when
    * `G.is_break == true`, but doesn't set any wm_job properties to cancel the WM job). */
-  const bool was_canceled = wm_job->stop || G.is_break;
+  const bool was_canceled = wm_job->worker_status.stop || G.is_break;
   void (*final_callback)(void *) = (wm_job->ready && !was_canceled) ? wm_job->completed :
                                                                       wm_job->canceled;
   if (final_callback) {
@@ -528,7 +529,7 @@ static void wm_jobs_kill_job(wmWindowManager *wm, wmJob *wm_job)
 
   if (wm_job->running) {
     /* signal job to end */
-    wm_job->stop = true;
+    wm_job->worker_status.stop = true;
 
     WM_job_main_thread_lock_release(wm_job);
     BLI_threadpool_end(&wm_job->threads);
@@ -589,20 +590,18 @@ void WM_jobs_kill_type(wmWindowManager *wm, const void *owner, int job_type)
   }
 }
 
-void WM_jobs_stop(wmWindowManager *wm, const void *owner, void *startjob)
+void WM_jobs_stop(wmWindowManager *wm, const void *owner, wm_jobs_start_callback startjob)
 {
   LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
     if (wm_job->owner == owner || wm_job->startjob == startjob) {
       if (wm_job->running) {
-        wm_job->stop = true;
+        wm_job->worker_status.stop = true;
       }
     }
   }
 }
 
-void WM_jobs_kill(wmWindowManager *wm,
-                  void *owner,
-                  void (*startjob)(void *, bool *, bool *, float *))
+void WM_jobs_kill(wmWindowManager *wm, void *owner, wm_jobs_start_callback startjob)
 {
   LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
     if (wm_job->owner == owner || wm_job->startjob == startjob) {
@@ -613,28 +612,24 @@ void WM_jobs_kill(wmWindowManager *wm,
 
 void wm_jobs_timer_end(wmWindowManager *wm, wmTimer *wt)
 {
-  LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
-    if (wm_job->wt == wt) {
-      wm_jobs_kill_job(wm, wm_job);
-      return;
-    }
+  wmJob *wm_job = static_cast<wmJob *>(BLI_findptr(&wm->jobs, wt, offsetof(wmJob, wt)));
+  if (wm_job) {
+    wm_jobs_kill_job(wm, wm_job);
   }
 }
 
 void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
 {
-  LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
-    if (wm_job->wt != wt) {
-      continue;
-    }
+  wmJob *wm_job = static_cast<wmJob *>(BLI_findptr(&wm->jobs, wt, offsetof(wmJob, wt)));
 
+  if (wm_job) {
     /* running threads */
     if (wm_job->threads.first) {
       /* let threads get temporary lock over main thread if needed */
       wm_job_main_thread_yield(wm_job);
 
       /* always call note and update when ready */
-      if (wm_job->do_update || wm_job->ready) {
+      if (wm_job->worker_status.do_update || wm_job->ready) {
         if (wm_job->update) {
           wm_job->update(wm_job->run_customdata);
         }
@@ -645,7 +640,7 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
         if (wm_job->flag & WM_JOB_PROGRESS) {
           WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, nullptr);
         }
-        wm_job->do_update = false;
+        wm_job->worker_status.do_update = false;
       }
 
       if (wm_job->ready) {

@@ -15,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_vector.hh"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -36,14 +37,14 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"

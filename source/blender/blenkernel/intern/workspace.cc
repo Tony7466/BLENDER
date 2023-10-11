@@ -24,7 +24,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_viewer_path.h"
 #include "BKE_workspace.h"
@@ -35,11 +35,11 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* -------------------------------------------------------------------- */
 

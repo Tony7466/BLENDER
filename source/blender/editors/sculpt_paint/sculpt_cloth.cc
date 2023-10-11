@@ -8,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_gsqueue.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -32,8 +31,8 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -154,7 +153,7 @@ static bool cloth_brush_sim_has_length_constraint(SculptClothSimulation *cloth_s
                                                   const int v1,
                                                   const int v2)
 {
-  return BLI_edgeset_haskey(cloth_sim->created_length_constraints, v1, v2);
+  return cloth_sim->created_length_constraints.contains({v1, v2});
 }
 
 static void cloth_brush_reallocate_constraints(SculptClothSimulation *cloth_sim)
@@ -207,7 +206,7 @@ static void cloth_brush_add_length_constraint(SculptSession *ss,
   cloth_brush_reallocate_constraints(cloth_sim);
 
   /* Add the constraint to the #GSet to avoid creating it again. */
-  BLI_edgeset_add(cloth_sim->created_length_constraints, v1, v2);
+  cloth_sim->created_length_constraints.add({v1, v2});
 }
 
 static void cloth_brush_add_softbody_constraint(SculptClothSimulation *cloth_sim,
@@ -514,7 +513,7 @@ static void do_cloth_brush_apply_forces_task(Object *ob,
                                                     dist,
                                                     vd.no,
                                                     vd.fno,
-                                                    vd.mask ? *vd.mask : 0.0f,
+                                                    vd.mask,
                                                     vd.vertex,
                                                     thread_id,
                                                     &automask_data);
@@ -572,7 +571,8 @@ static void do_cloth_brush_apply_forces_task(Object *ob,
         mul_v3_v3fl(z_disp, z_object_space, dot_v3v3(disp_center, z_object_space));
         add_v3_v3v3(disp_center, x_disp, z_disp);
         mul_v3_v3fl(force, disp_center, fade);
-      } break;
+        break;
+      }
       case BRUSH_CLOTH_DEFORM_INFLATE:
         mul_v3_v3fl(force, vd.no ? vd.no : vd.fno, fade);
         break;
@@ -761,7 +761,7 @@ static void do_cloth_brush_solve_simulation_task(Object *ob,
     sub_v3_v3v3(pos_diff, cloth_sim->pos[i], cloth_sim->prev_pos[i]);
     mul_v3_fl(pos_diff, (1.0f - cloth_sim->damping) * sim_factor);
 
-    const float mask_v = (1.0f - (vd.mask ? *vd.mask : 0.0f)) *
+    const float mask_v = (1.0f - (vd.mask)) *
                          SCULPT_automasking_factor_get(automasking, ss, vd.vertex, &automask_data);
 
     madd_v3_v3fl(cloth_sim->pos[i], pos_diff, mask_v);
@@ -1011,7 +1011,7 @@ SculptClothSimulation *SCULPT_cloth_brush_simulation_create(Object *ob,
   const int totverts = SCULPT_vertex_count_get(ss);
   SculptClothSimulation *cloth_sim;
 
-  cloth_sim = MEM_cnew<SculptClothSimulation>(__func__);
+  cloth_sim = MEM_new<SculptClothSimulation>(__func__);
 
   cloth_sim->length_constraints = MEM_cnew_array<SculptClothLengthConstraint>(
       CLOTH_LENGTH_CONSTRAINTS_BLOCK, __func__);
@@ -1065,14 +1065,14 @@ void SCULPT_cloth_brush_ensure_nodes_constraints(
   /* Currently all constrains are added to the same global array which can't be accessed from
    * different threads. */
 
-  cloth_sim->created_length_constraints = BLI_edgeset_new("created length constraints");
+  cloth_sim->created_length_constraints.clear();
 
   for (const int i : nodes.index_range()) {
     do_cloth_brush_build_constraints_task(
         ob, brush, cloth_sim, initial_location, radius, nodes[i]);
   }
 
-  BLI_edgeset_free(cloth_sim->created_length_constraints);
+  cloth_sim->created_length_constraints.clear_and_shrink();
 }
 
 void SCULPT_cloth_brush_simulation_init(SculptSession *ss, SculptClothSimulation *cloth_sim)
@@ -1384,7 +1384,7 @@ static void cloth_filter_apply_forces_task(Object *ob,
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float fade = vd.mask ? *vd.mask : 0.0f;
+    float fade = vd.mask;
     fade *= SCULPT_automasking_factor_get(
         ss->filter_cache->automasking, ss, vd.vertex, &automask_data);
     fade = 1.0f - fade;
@@ -1413,7 +1413,8 @@ static void cloth_filter_apply_forces_task(Object *ob,
         float normal[3];
         SCULPT_vertex_normal_get(ss, vd.vertex, normal);
         mul_v3_v3fl(force, normal, fade * filter_strength);
-      } break;
+        break;
+      }
       case CLOTH_FILTER_EXPAND:
         cloth_sim->length_constraint_tweak[vd.index] += fade * filter_strength * 0.01f;
         zero_v3(force);

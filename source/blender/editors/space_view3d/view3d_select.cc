@@ -57,7 +57,7 @@
 #include "BKE_layer.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
@@ -92,11 +92,13 @@
 #include "GPU_matrix.h"
 #include "GPU_select.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_engine.h"
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "view3d_intern.h" /* own include */
 
@@ -203,7 +205,7 @@ static void editselect_buf_cache_init(ViewContext *vc, short select_mode)
     Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
         vc->scene, vc->view_layer, vc->v3d, &bases_len);
 
-    DRW_select_buffer_context_create(bases, bases_len, select_mode);
+    DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, select_mode);
     MEM_freeN(bases);
   }
   else {
@@ -211,7 +213,7 @@ static void editselect_buf_cache_init(ViewContext *vc, short select_mode)
     if (vc->obact) {
       BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
       Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
-      DRW_select_buffer_context_create(&base, 1, select_mode);
+      DRW_select_buffer_context_create(vc->depsgraph, &base, 1, select_mode);
     }
   }
 }
@@ -3274,7 +3276,6 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   SelectPick_Params params{};
   ED_select_pick_params_from_operator(op->ptr, &params);
 
-  const bool vert_without_handles = RNA_boolean_get(op->ptr, "vert_without_handles");
   bool center = RNA_boolean_get(op->ptr, "center");
   bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
   /* Only force object select for edit-mode to support vertex parenting,
@@ -3334,8 +3335,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       changed = ED_lattice_select_pick(C, mval, &params);
     }
     else if (ELEM(obedit->type, OB_CURVES_LEGACY, OB_SURF)) {
-      changed = ED_curve_editnurb_select_pick(
-          C, mval, ED_view3d_select_dist_px(), vert_without_handles, &params);
+      changed = ED_curve_editnurb_select_pick(C, mval, ED_view3d_select_dist_px(), &params);
     }
     else if (obedit->type == OB_MBALL) {
       changed = ED_mball_select_pick(C, mval, &params);
@@ -3420,15 +3420,6 @@ void VIEW3D_OT_select(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
       ot->srna, "object", false, "Object", "Use object selection (edit mode only)");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  /* Needed for select-through to usefully drag handles, see: #98254.
-   * NOTE: this option may be removed and become default behavior, see design task: #98552. */
-  prop = RNA_def_boolean(ot->srna,
-                         "vert_without_handles",
-                         false,
-                         "Control Point Without Handles",
-                         "Only select the curve control point, not its handles");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_int_vector(ot->srna,
@@ -4609,7 +4600,7 @@ static bool paint_vertsel_circle_select(ViewContext *vc,
   const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
   Object *ob = vc->obact;
   Mesh *me = static_cast<Mesh *>(ob->data);
-  /* CircleSelectUserData data = {nullptr}; */ /* UNUSED */
+  // CircleSelectUserData data = {nullptr}; /* UNUSED. */
 
   bool changed = false;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {

@@ -928,6 +928,16 @@ void gather_attributes(AttributeAccessor src_attributes,
                        MutableAttributeAccessor dst_attributes);
 
 /**
+ * Fill the destination attribute by gathering indexed values from src attributes.
+ */
+void gather_attributes(AttributeAccessor src_attributes,
+                       eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const Span<int> indices,
+                       MutableAttributeAccessor dst_attributes);
+
+/**
  * Copy attribute values from groups defined by \a src_offsets to groups defined by \a
  * dst_offsets. The group indices are gathered to the result by \a selection. The size of each
  * source and result group must be the same.
@@ -946,5 +956,14 @@ void copy_attributes(const AttributeAccessor src_attributes,
                      const AnonymousAttributePropagationInfo &propagation_info,
                      const Set<std::string> &skip,
                      MutableAttributeAccessor dst_attributes);
+
+void copy_attributes_group_to_group(AttributeAccessor src_attributes,
+                                    eAttrDomain domain,
+                                    const AnonymousAttributePropagationInfo &propagation_info,
+                                    const Set<std::string> &skip,
+                                    OffsetIndices<int> src_offsets,
+                                    OffsetIndices<int> dst_offsets,
+                                    const IndexMask &selection,
+                                    MutableAttributeAccessor dst_attributes);
 
 }  // namespace blender::bke

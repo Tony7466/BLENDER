@@ -33,8 +33,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLO_readfile.h"
-#include "readfile.h"
-#include "versioning_common.h"
+#include "readfile.hh"
+#include "versioning_common.hh"
 
 using blender::Map;
 using blender::StringRef;
@@ -185,17 +185,18 @@ void version_node_output_socket_name(bNodeTree *ntree,
 
 bNodeSocket *version_node_add_socket_if_not_exist(bNodeTree *ntree,
                                                   bNode *node,
-                                                  eNodeSocketInOut in_out,
+                                                  int in_out,
                                                   int type,
                                                   int subtype,
                                                   const char *identifier,
                                                   const char *name)
 {
-  bNodeSocket *sock = nodeFindSocket(node, in_out, identifier);
+  bNodeSocket *sock = nodeFindSocket(node, eNodeSocketInOut(in_out), identifier);
   if (sock != nullptr) {
     return sock;
   }
-  return nodeAddStaticSocket(ntree, node, in_out, type, subtype, identifier, name);
+  return nodeAddStaticSocket(
+      ntree, node, eNodeSocketInOut(in_out), type, subtype, identifier, name);
 }
 
 void version_node_id(bNodeTree *ntree, const int node_type, const char *new_name)
@@ -359,7 +360,7 @@ float *version_cycles_node_socket_vector_value(bNodeSocket *socket)
 
 IDProperty *version_cycles_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
@@ -406,7 +407,7 @@ void version_cycles_property_boolean_set(IDProperty *idprop, const char *name, b
 
 IDProperty *version_cycles_visibility_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : nullptr;
 }
 

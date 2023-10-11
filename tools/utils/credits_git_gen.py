@@ -335,7 +335,7 @@ def main() -> None:
     args = argparse_create().parse_args()
 
     # TODO, there are for sure more companies then are currently listed.
-    # 1 liners for in html syntax
+    # 1 liners for in HTML syntax.
     contrib_companies = (
         "<b>Unity Technologies</b> - FBX Exporter",
         "<b>BioSkill GmbH</b> - H3D compatibility for X3D Exporter, OBJ Nurbs Import/Export",
@@ -358,7 +358,7 @@ def main() -> None:
     if jobs <= 0:
         # Clamp the value, higher values give errors with too many open files.
         # Allow users to manually pass very high values in as they might want to tweak system limits themselves.
-        jobs = min(multiprocessing.cpu_count() * 2, 400)
+        jobs = min(multiprocessing.cpu_count(), 400)
 
     credits.process(GitCommitIter(args.source_dir, commit_range), jobs=jobs)
 

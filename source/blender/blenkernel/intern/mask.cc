@@ -41,11 +41,11 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "DRW_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.mask"};
 
@@ -1830,7 +1830,7 @@ void BKE_mask_layer_shape_changed_add(MaskLayer *masklay,
     const int pi_next = (spline_point_index + 1) % spline->tot_point;
 
     const int index_offset = index - spline_point_index;
-    /* const int pi_curr_abs = index; */
+    // const int pi_curr_abs = index;
     const int pi_prev_abs = pi_prev + index_offset;
     const int pi_next_abs = pi_next + index_offset;
 
