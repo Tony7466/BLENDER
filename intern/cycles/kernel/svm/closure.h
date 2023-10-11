@@ -111,7 +111,8 @@ ccl_device
       float subsurface_weight = saturatef(param2);
       float specular_ior_level = max(stack_load_float(stack, specular_ior_level_offset), 0.0f);
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
-      Spectrum specular_tint = rgb_to_spectrum(max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
+      Spectrum specular_tint = rgb_to_spectrum(
+          max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
       /* anisotropic is clamped to > 0 later on resulting in [0..1] clamping. */
       float anisotropic = min(stack_load_float(stack, anisotropic_offset), 1.0f);
       /* sheen_weight is clamped to > 0 later on. */
@@ -141,13 +142,14 @@ ccl_device
                               make_float3(__uint_as_float(data_base_color.y),
                                           __uint_as_float(data_base_color.z),
                                           __uint_as_float(data_base_color.w));
-        base_color = max(base_color, zero_float3());
-        const float3 clamped_base_color = min(base_color, one_float3());
-        const float clamped_color_weight = max(metallic, subsurface_weight);
-        if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
-            /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
-            base_color = mix(base_color, clamped_base_color, clamped_color_weight);
-        }
+      base_color = max(base_color, zero_float3());
+      const float3 clamped_base_color = min(base_color, one_float3());
+      const float clamped_color_weight = max(metallic, subsurface_weight);
+      if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
+        /* Metallic and Subsurface Scattering materials behave unpredictably with values greater
+         * than 1.0. */
+        base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+      }
 
       // get the subsurface scattering data
       uint4 data_subsurf = read_node(kg, &offset);
@@ -160,7 +162,7 @@ ccl_device
                              &dummy);
       float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
                                                 __uint_as_float(data_alpha_emission.y);
-        alpha = saturatef(alpha);
+      alpha = saturatef(alpha);
 
       float emission_strength = stack_valid(emission_strength_offset) ?
                                     stack_load_float(stack, emission_strength_offset) :
@@ -269,8 +271,8 @@ ccl_device
         }
       }
 
-        /* Emission (attenuated by sheen and coat) */
-        weight = max(weight, zero_spectrum());
+      /* Emission (attenuated by sheen and coat) */
+      weight = max(weight, zero_spectrum());
       if (!is_zero(emission) && !isequal(weight, zero_spectrum())) {
         emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }

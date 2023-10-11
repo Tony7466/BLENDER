@@ -81,19 +81,16 @@ void node_bsdf_principled(vec4 base_color,
   coat_tint = max(coat_tint, vec4(0.0));
   sheen_roughness = saturate(sheen_roughness);
   sheen_tint = max(sheen_tint, vec4(0.0));
-  
+
   base_color = max(base_color, vec4(0.0));
   vec4 clamped_base_color = min(base_color, vec4(1.0));
   float clamped_color_weight = max(metallic, subsurface_weight);
   if (clamped_color_weight > 0.0) {
-      /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
-      base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+    /* Metallic and Subsurface Scattering materials behave unpredictably with values greater
+     * than 1.0. */
+    base_color = mix(base_color, clamped_base_color, clamped_color_weight);
   }
-  
-  
-  
-  
-  
+
   N = safe_normalize(N);
   CN = safe_normalize(CN);
   vec3 V = cameraVec(g_data.P);

@@ -36,22 +36,22 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             normal Tangent = normalize(dPdu),
                             output closure color BSDF = 0)
 {
-    float CLOSURE_WEIGHT_CUTOFF = 1e-5;
-    
-    /* Clamping to match SVM */
-    float metallic = clamp(Metallic, 0.0, 1.0);
-    float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
-    color specular_tint = max(SpecularTint, color(0.0));
-    float coat_weight = clamp(CoatWeight, 0.0, 1.0);
-    color base_color = max(BaseColor, color(0.0));
-    color clamped_base_color = min(base_color, color(1.0));
-    float clamped_color_weight = max(metallic, subsurface_weight);
-    if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
-        /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
-        base_color = mix(base_color, clamped_base_color, clamped_color_weight);
-    }
-    
-    
+  float CLOSURE_WEIGHT_CUTOFF = 1e-5;
+
+  /* Clamping to match SVM */
+  float metallic = clamp(Metallic, 0.0, 1.0);
+  float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
+  color specular_tint = max(SpecularTint, color(0.0));
+  float coat_weight = clamp(CoatWeight, 0.0, 1.0);
+  color base_color = max(BaseColor, color(0.0));
+  color clamped_base_color = min(base_color, color(1.0));
+  float clamped_color_weight = max(metallic, subsurface_weight);
+  if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
+    /* Metallic and Subsurface Scattering materials behave unpredictably with values greater
+     * than 1.0. */
+    base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+  }
+
   float r2 = clamp(Roughness, 0.0, 1.0);
   r2 = r2 * r2;
 
