@@ -254,6 +254,91 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   return (bmd->value == 0.0f);
 }
 
+static void profile_panel_draw(uiLayout *layout, PointerRNA *ptr)
+{
+  uiLayout *row;
+
+  int profile_type = RNA_enum_get(ptr, "profile_type");
+  int miter_inner = RNA_enum_get(ptr, "miter_inner");
+  int miter_outer = RNA_enum_get(ptr, "miter_outer");
+  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
+
+  uiItemR(layout, ptr, "profile_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+
+  uiLayoutSetPropSep(layout, true);
+
+  if (ELEM(profile_type, MOD_BEVEL_PROFILE_SUPERELLIPSE, MOD_BEVEL_PROFILE_CUSTOM)) {
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetActive(
+        row,
+        profile_type == MOD_BEVEL_PROFILE_SUPERELLIPSE ||
+            (profile_type == MOD_BEVEL_PROFILE_CUSTOM && edge_bevel &&
+             !((miter_inner == MOD_BEVEL_MITER_SHARP) && (miter_outer == MOD_BEVEL_MITER_SHARP))));
+    uiItemR(row,
+            ptr,
+            "profile",
+            UI_ITEM_R_SLIDER,
+            (profile_type == MOD_BEVEL_PROFILE_SUPERELLIPSE) ? IFACE_("Shape") :
+                                                               IFACE_("Miter Shape"),
+            ICON_NONE);
+
+    if (profile_type == MOD_BEVEL_PROFILE_CUSTOM) {
+      uiLayout *sub = uiLayoutColumn(layout, false);
+      uiLayoutSetPropDecorate(sub, false);
+      uiTemplateCurveProfile(sub, ptr, "custom_profile");
+    }
+  }
+}
+
+static void geometry_panel_draw(uiLayout *layout, PointerRNA *ptr)
+{
+  uiLayout *row;
+
+  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
+
+  uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, edge_bevel);
+  uiItemR(row, ptr, "miter_outer", UI_ITEM_NONE, IFACE_("Miter Outer"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, edge_bevel);
+  uiItemR(row, ptr, "miter_inner", UI_ITEM_NONE, IFACE_("Inner"), ICON_NONE);
+  if (RNA_enum_get(ptr, "miter_inner") == BEVEL_MITER_ARC) {
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetActive(row, edge_bevel);
+    uiItemR(row, ptr, "spread", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  uiItemS(layout);
+
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, edge_bevel);
+  uiItemR(row, ptr, "vmesh_method", UI_ITEM_NONE, IFACE_("Intersections"), ICON_NONE);
+  uiItemR(layout, ptr, "use_clamp_overlap", UI_ITEM_NONE, nullptr, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, edge_bevel);
+  uiItemR(row, ptr, "loop_slide", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+static void shading_panel_draw(uiLayout *layout, PointerRNA *ptr)
+{
+  uiLayout *col;
+
+  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, ptr, "harden_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  col = uiLayoutColumnWithHeading(layout, true, IFACE_("Mark"));
+  uiLayoutSetActive(col, edge_bevel);
+  uiItemR(col, ptr, "mark_seam", UI_ITEM_NONE, IFACE_("Seam"), ICON_NONE);
+  uiItemR(col, ptr, "mark_sharp", UI_ITEM_NONE, IFACE_("Sharp"), ICON_NONE);
+
+  uiItemR(layout, ptr, "material", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "face_strength_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
 static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col, *sub;
@@ -294,111 +379,22 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   }
 
   modifier_panel_end(layout, ptr);
-}
 
-static void profile_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *row;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-
-  int profile_type = RNA_enum_get(ptr, "profile_type");
-  int miter_inner = RNA_enum_get(ptr, "miter_inner");
-  int miter_outer = RNA_enum_get(ptr, "miter_outer");
-  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
-
-  uiItemR(layout, ptr, "profile_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-
-  uiLayoutSetPropSep(layout, true);
-
-  if (ELEM(profile_type, MOD_BEVEL_PROFILE_SUPERELLIPSE, MOD_BEVEL_PROFILE_CUSTOM)) {
-    row = uiLayoutRow(layout, false);
-    uiLayoutSetActive(
-        row,
-        profile_type == MOD_BEVEL_PROFILE_SUPERELLIPSE ||
-            (profile_type == MOD_BEVEL_PROFILE_CUSTOM && edge_bevel &&
-             !((miter_inner == MOD_BEVEL_MITER_SHARP) && (miter_outer == MOD_BEVEL_MITER_SHARP))));
-    uiItemR(row,
-            ptr,
-            "profile",
-            UI_ITEM_R_SLIDER,
-            (profile_type == MOD_BEVEL_PROFILE_SUPERELLIPSE) ? IFACE_("Shape") :
-                                                               IFACE_("Miter Shape"),
-            ICON_NONE);
-
-    if (profile_type == MOD_BEVEL_PROFILE_CUSTOM) {
-      uiLayout *sub = uiLayoutColumn(layout, false);
-      uiLayoutSetPropDecorate(sub, false);
-      uiTemplateCurveProfile(sub, ptr, "custom_profile");
-    }
+  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Profile", ptr, "show_subpanel_expanded_1")) {
+    profile_panel_draw(panel_layout, ptr);
   }
-}
-
-static void geometry_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *row;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-
-  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
-
-  uiLayoutSetPropSep(layout, true);
-
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, edge_bevel);
-  uiItemR(row, ptr, "miter_outer", UI_ITEM_NONE, IFACE_("Miter Outer"), ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, edge_bevel);
-  uiItemR(row, ptr, "miter_inner", UI_ITEM_NONE, IFACE_("Inner"), ICON_NONE);
-  if (RNA_enum_get(ptr, "miter_inner") == BEVEL_MITER_ARC) {
-    row = uiLayoutRow(layout, false);
-    uiLayoutSetActive(row, edge_bevel);
-    uiItemR(row, ptr, "spread", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Geometry", ptr, "show_subpanel_expanded_2"))
+  {
+    geometry_panel_draw(panel_layout, ptr);
   }
-  uiItemS(layout);
-
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, edge_bevel);
-  uiItemR(row, ptr, "vmesh_method", UI_ITEM_NONE, IFACE_("Intersections"), ICON_NONE);
-  uiItemR(layout, ptr, "use_clamp_overlap", UI_ITEM_NONE, nullptr, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, edge_bevel);
-  uiItemR(row, ptr, "loop_slide", UI_ITEM_NONE, nullptr, ICON_NONE);
-}
-
-static void shading_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *col;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-
-  bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiItemR(layout, ptr, "harden_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  col = uiLayoutColumnWithHeading(layout, true, IFACE_("Mark"));
-  uiLayoutSetActive(col, edge_bevel);
-  uiItemR(col, ptr, "mark_seam", UI_ITEM_NONE, IFACE_("Seam"), ICON_NONE);
-  uiItemR(col, ptr, "mark_sharp", UI_ITEM_NONE, IFACE_("Sharp"), ICON_NONE);
-
-  uiItemR(layout, ptr, "material", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "face_strength_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Shading", ptr, "show_subpanel_expanded_3")) {
+    shading_panel_draw(panel_layout, ptr);
+  }
 }
 
 static void panel_register(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Bevel, panel_draw);
-  modifier_subpanel_register(
-      region_type, "profile", "Profile", nullptr, profile_panel_draw, panel_type);
-  modifier_subpanel_register(
-      region_type, "geometry", "Geometry", nullptr, geometry_panel_draw, panel_type);
-  modifier_subpanel_register(
-      region_type, "shading", "Shading", nullptr, shading_panel_draw, panel_type);
+  modifier_panel_register(region_type, eModifierType_Bevel, panel_draw);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
