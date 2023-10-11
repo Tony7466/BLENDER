@@ -124,16 +124,12 @@ class Result {
  public:
   /* Construct a result of the given type and precision with the given texture pool that will be
    * used to allocate and release the result's texture. */
-  Result(ResultType type,
-         TexturePool &texture_pool,
-         ResultPrecision precision = ResultPrecision::Half);
+  Result(ResultType type, TexturePool &texture_pool, ResultPrecision precision);
 
   /* Identical to the standard constructor but initializes the reference count to 1. This is useful
    * to construct temporary results that are created and released by the developer manually, which
    * are typically used in operations that need temporary intermediate results. */
-  static Result Temporary(ResultType type,
-                          TexturePool &texture_pool,
-                          ResultPrecision precision = ResultPrecision::Half);
+  static Result Temporary(ResultType type, TexturePool &texture_pool, ResultPrecision precision);
 
   /* Returns the appropriate texture format based on the given result type and precision. */
   static eGPUTextureFormat texture_format(ResultType type, ResultPrecision precision);

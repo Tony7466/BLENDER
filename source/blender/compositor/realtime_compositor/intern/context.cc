@@ -46,6 +46,26 @@ GPUShader *Context::get_shader(const char *info_name)
   return cache_manager().cached_shaders.get(info_name, precision);
 }
 
+Result Context::create_result(ResultType type, ResultPrecision precision)
+{
+  return Result::Temporary(type, texture_pool_, precision);
+}
+
+Result Context::create_result(ResultType type)
+{
+  return create_result(type, get_precision());
+}
+
+Result Context::create_temporary_result(ResultType type, ResultPrecision precision)
+{
+  return Result::Temporary(type, texture_pool_, precision);
+}
+
+Result Context::create_temporary_result(ResultType type)
+{
+  return create_temporary_result(type, get_precision());
+}
+
 TexturePool &Context::texture_pool()
 {
   return texture_pool_;

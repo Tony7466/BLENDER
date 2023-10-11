@@ -93,7 +93,7 @@ ConvertFloatToVectorOperation::ConvertFloatToVectorOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Float;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Vector, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Vector));
 }
 
 void ConvertFloatToVectorOperation::execute_single(const Result &input, Result &output)
@@ -118,7 +118,7 @@ ConvertFloatToColorOperation::ConvertFloatToColorOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Float;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Color, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Color));
 }
 
 void ConvertFloatToColorOperation::execute_single(const Result &input, Result &output)
@@ -145,7 +145,7 @@ ConvertColorToFloatOperation::ConvertColorToFloatOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Color;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Float, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Float));
 }
 
 void ConvertColorToFloatOperation::execute_single(const Result &input, Result &output)
@@ -171,7 +171,7 @@ ConvertColorToVectorOperation::ConvertColorToVectorOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Color;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Vector, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Vector));
 }
 
 void ConvertColorToVectorOperation::execute_single(const Result &input, Result &output)
@@ -197,7 +197,7 @@ ConvertVectorToFloatOperation::ConvertVectorToFloatOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Vector;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Float, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Float));
 }
 
 void ConvertVectorToFloatOperation::execute_single(const Result &input, Result &output)
@@ -223,7 +223,7 @@ ConvertVectorToColorOperation::ConvertVectorToColorOperation(Context &context)
   InputDescriptor input_descriptor;
   input_descriptor.type = ResultType::Vector;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(ResultType::Color, texture_pool(), context.get_precision()));
+  populate_result(context.create_result(ResultType::Color));
 }
 
 void ConvertVectorToColorOperation::execute_single(const Result &input, Result &output)

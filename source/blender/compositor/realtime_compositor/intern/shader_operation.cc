@@ -331,7 +331,7 @@ void ShaderOperation::populate_operation_result(DOutputSocket output_socket, GPU
   std::string output_identifier = "output" + std::to_string(output_id);
 
   const ResultType result_type = get_node_socket_result_type(output_socket.bsocket());
-  const Result result = Result(result_type, texture_pool(), context().get_precision());
+  const Result result = context().create_result(result_type);
   populate_result(output_identifier, result);
 
   /* Map the output socket to the identifier of the newly populated result. */

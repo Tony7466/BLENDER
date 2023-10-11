@@ -124,7 +124,7 @@ class DilateErodeOperation : public NodeOperation {
     const Domain domain = compute_domain();
     const int2 transposed_domain = int2(domain.size.y, domain.size.x);
 
-    Result horizontal_pass_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result horizontal_pass_result = context().create_temporary_result(ResultType::Color);
     horizontal_pass_result.allocate_texture(transposed_domain);
     horizontal_pass_result.bind_as_image(shader, "output_img");
 
