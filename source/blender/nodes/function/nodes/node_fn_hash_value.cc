@@ -23,14 +23,14 @@ namespace blender::nodes::node_fn_hash_value_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>("Value");
-  b.add_input<decl::Vector>("Vector");
-  b.add_input<decl::String>("String");
-  b.add_input<decl::Color>("Color");
-  b.add_input<decl::Rotation>("Rotation");
-  b.add_input<decl::Int>("Integer", "Integer");
-  b.add_input<decl::Int>("Integer", "Integer_001");
-  b.add_input<decl::Int>("Integer", "Integer_002");
+  b.add_input<decl::Float>("Value", "Value_Float");
+  b.add_input<decl::Vector>("Value", "Value_Vector");
+  b.add_input<decl::String>("Value", "Value_String");
+  b.add_input<decl::Color>("Value", "Value_Color");
+  b.add_input<decl::Rotation>("Value", "Value_Rotation");
+  b.add_input<decl::Int>("Value", "Value_Int");
+  b.add_input<decl::Int>("Value", "Value_Int_001");
+  b.add_input<decl::Int>("Value", "Value_Int_002");
   b.add_output<decl::Int>("Hash");
 }
 
@@ -135,31 +135,15 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   if (type == CD_AUTO_FROM_NAME) {
     return;
   }
+
   if (params.in_out() == SOCK_IN) {
-    if (type == CD_PROP_FLOAT) {
-      params.add_item(IFACE_("Value"), SocketSearchOp{"Value", type});
-    }
-    else if (type == CD_PROP_FLOAT3) {
-      params.add_item(IFACE_("Vector"), SocketSearchOp{"Vector", type});
-    }
-    else if (type == CD_PROP_COLOR) {
-      params.add_item(IFACE_("Color"), SocketSearchOp{"Color", type});
-    }
-    else if (type == CD_PROP_INT32) {
-      params.add_item(IFACE_("Integer"), SocketSearchOp{"Integer", type});
-    }
-    else if (type == CD_PROP_STRING) {
-      params.add_item(IFACE_("String"), SocketSearchOp{"String", type});
-    }
-    else if (type == CD_PROP_QUATERNION) {
-      params.add_item(IFACE_("Rotation"), SocketSearchOp{"Rotation", type});
-    }
+    params.add_item(IFACE_("Value"), SocketSearchOp{"Value", type});
   }
   else {
-    if (ELEM(type, CD_PROP_STRING, CD_PROP_QUATERNION)) {
-      return;
+    if (!ELEM(type, CD_PROP_STRING)) {
+      const int weight = ELEM(params.other_socket().type, SOCK_INT) ? 0 : -1;
+      params.add_item(IFACE_("Hash"), SocketSearchOp{"Hash", CD_PROP_INT32}, weight);
     }
-    params.add_item(IFACE_("Hash"), SocketSearchOp{"Hash", CD_PROP_INT32});
   }
 }
 
