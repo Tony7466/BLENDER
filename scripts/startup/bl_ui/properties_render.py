@@ -985,8 +985,10 @@ class RENDER_PT_eevee_next_light_probes_volume(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(props, "gi_irradiance_pool_size", text="Pool Size")
-        col.operator("object.lightprobe_cache_bake", text="Bake Volumes", icon='RENDER_STILL').subset = 'ALL'
-        col.operator("object.lightprobe_cache_free", text="Free Volumes").subset = 'ALL'
+
+        row = col.row(align=True)
+        row.operator("object.lightprobe_cache_bake", text="Bake Volumes").subset = 'ALL'
+        row.operator("object.lightprobe_cache_free", text="", icon='TRASH').subset = 'ALL'
 
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
