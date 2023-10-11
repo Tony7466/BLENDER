@@ -108,7 +108,7 @@ ccl_device
 
       // get Disney principled parameters
       float metallic = param1;
-      float subsurface_weight = param2;
+      float subsurface_weight = saturatef(param2);
       float specular_ior_level = stack_load_float(stack, specular_ior_level_offset);
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
       Spectrum specular_tint = rgb_to_spectrum(stack_load_float3(stack, specular_tint_offset));

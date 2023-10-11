@@ -39,9 +39,11 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float CLOSURE_WEIGHT_CUTOFF = 1e-5;
     
     /* Clamping to match SVM */
+    float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
+    
     color base_color = max(BaseColor, color(0.0));
     color clamped_base_color = min(base_color, color(1.0));
-    float clamped_color_weight = max(Metallic, SubsurfaceWeight);
+    float clamped_color_weight = max(Metallic, subsurface_weight);
     if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
         /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
         base_color = mix(base_color, clamped_base_color, clamped_color_weight);
@@ -75,8 +77,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     }
 
     BSDF = base_color * diffuse(Normal);
-    if (SubsurfaceWeight > CLOSURE_WEIGHT_CUTOFF) {
-      float subsurface_weight = SubsurfaceWeight;
+    if (subsurface_weight > CLOSURE_WEIGHT_CUTOFF) {
       vector radius = SubsurfaceScale * SubsurfaceRadius;
       float subsurface_ior = (subsurface_method == "random_walk_skin") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,

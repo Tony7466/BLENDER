@@ -60,6 +60,15 @@ void node_bsdf_principled(vec4 base_color,
                           out Closure result)
 {
   /* Match cycles. */
+  subsurface_weight = saturate(subsurface_weight);
+  
+  roughness = saturate(roughness);
+  ior = max(ior, 1e-5);
+  alpha = saturate(alpha);
+  coat_roughness = saturate(coat_roughness);
+  
+  sheen_roughness = saturate(sheen_roughness);
+  
   base_color = max(base_color, vec4(0.0));
   vec4 clamped_base_color = min(base_color, vec4(1.0));
   float clamped_color_weight = max(metallic, subsurface_weight);
@@ -67,12 +76,8 @@ void node_bsdf_principled(vec4 base_color,
       /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
       base_color = mix(base_color, clamped_base_color, clamped_color_weight);
   }
-  roughness = saturate(roughness);
-  ior = max(ior, 1e-5);
-  alpha = saturate(alpha);
-  coat_roughness = saturate(coat_roughness);
   
-  sheen_roughness = saturate(sheen_roughness);
+  
   
   
   
