@@ -261,7 +261,7 @@ void ReflectionProbeModule::sync_world_lookdev()
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
   const ::LightProbe &light_probe = *(::LightProbe *)ob->data;
-  if (light_probe.type != LIGHTPROBE_TYPE_CUBE) {
+  if (light_probe.type != LIGHTPROBE_TYPE_SPHERE) {
     return;
   }
 
