@@ -342,17 +342,16 @@ template<typename T> class MenuSwitchFn : public mf::MultiFunction {
 class LazyFunctionForMenuSwitchNode : public LazyFunction {
  private:
   bool can_be_field_ = false;
-  const NodeEnumDefinition *enum_def_;
+  const NodeEnumDefinition &enum_def_;
   const CPPType *cpp_type_;
 
  public:
-  LazyFunctionForMenuSwitchNode(const bNode &node)
+  LazyFunctionForMenuSwitchNode(const bNode &node) : enum_def_(node_storage(node).enum_definition)
   {
     const NodeMenuSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
     can_be_field_ = ELEM(
         data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
-    enum_def_ = &storage.enum_definition;
     const bNodeSocketType *socket_type = nodeSocketTypeFind(
         nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
@@ -384,8 +383,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
   void execute_single(const int condition, lf::Params &params) const
   {
-    for (const int i : IndexRange(enum_def_->items_num)) {
-      const NodeEnumItem &enum_item = enum_def_->items_array[i];
+    for (const int i : IndexRange(enum_def_.items_num)) {
+      const NodeEnumItem &enum_item = enum_def_.items_array[i];
       const int input_index = i + 1;
       if (enum_item.identifier == condition) {
         void *value_to_forward = params.try_get_input_data_ptr_or_request(input_index);
@@ -410,9 +409,9 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   void execute_field(Field<int> condition, lf::Params &params) const
   {
     /* When the condition is a non-constant field, we need all inputs. */
-    Array<void *> item_value_or_field(enum_def_->items_num);
+    Array<void *> item_value_or_field(enum_def_.items_num);
     bool all_inputs_available = true;
-    for (const int i : IndexRange(enum_def_->items_num)) {
+    for (const int i : IndexRange(enum_def_.items_num)) {
       const int input_index = i + 1;
 
       item_value_or_field[i] = params.try_get_input_data_ptr_or_request(input_index);
@@ -428,11 +427,11 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         *cpp_type_);
     const CPPType &value_type = value_or_field_type.value;
     const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type,
-                                                                                 *enum_def_);
+                                                                                 enum_def_);
 
-    Vector<GField> item_fields(enum_def_->items_num + 1);
+    Vector<GField> item_fields(enum_def_.items_num + 1);
     item_fields[0] = std::move(condition);
-    for (const int i : IndexRange(enum_def_->items_num)) {
+    for (const int i : IndexRange(enum_def_.items_num)) {
       item_fields[i + 1] = value_or_field_type.as_field(item_value_or_field[i]);
     }
     GField output_field{FieldOperation::Create(switch_multi_function, std::move(item_fields))};
@@ -464,6 +463,44 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     });
     BLI_assert(switch_multi_function != nullptr);
     return *switch_multi_function;
+  }
+};
+
+/**
+ * Outputs booleans that indicate which inputs of a menu switch node
+ * are used. Note that it's possible that multiple inputs are used
+ * when the condition is a field.
+ */
+class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
+  const NodeEnumDefinition &enum_def_;
+
+ public:
+  LazyFunctionForMenuSwitchSocketUsage(const bNode &node)
+      : enum_def_(node_storage(node).enum_definition)
+  {
+    debug_name_ = "Menu Switch Socket Usage";
+    inputs_.append_as("Condition", CPPType::get<ValueOrField<int>>());
+    for (const int i : IndexRange(enum_def_.items_num)) {
+      const NodeEnumItem &enum_item = enum_def_.items()[i];
+      outputs_.append_as(enum_item.name, CPPType::get<bool>());
+    }
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    const ValueOrField<bool> &condition = params.get_input<ValueOrField<bool>>(0);
+    if (condition.is_field()) {
+      for (const int i : IndexRange(enum_def_.items_num)) {
+        params.set_output(i, true);
+      }
+    }
+    else {
+      const int32_t value = condition.as_value();
+      for (const int i : IndexRange(enum_def_.items_num)) {
+        const NodeEnumItem &enum_item = enum_def_.items()[i];
+        params.set_output(i, value == enum_item.identifier);
+      }
+    }
   }
 };
 
@@ -525,6 +562,13 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &no
   using namespace node_geo_menu_switch_cc;
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
   return std::make_unique<LazyFunctionForMenuSwitchNode>(node);
+}
+
+std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node)
+{
+  using namespace node_geo_menu_switch_cc;
+  BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
+  return std::make_unique<LazyFunctionForMenuSwitchSocketUsage>(node);
 }
 
 }  // namespace blender::nodes
