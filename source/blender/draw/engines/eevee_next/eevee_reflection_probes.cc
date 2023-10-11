@@ -147,11 +147,10 @@ void ReflectionProbeModule::init()
 
     /* Initialize the world probe. */
 
-    ReflectionProbe world_probe;
+    ReflectionProbe world_probe = {};
     world_probe.type = ReflectionProbe::Type::WORLD;
     world_probe.is_probe_used = true;
     world_probe.do_render = true;
-    world_probe.atlas_coord = find_empty_atlas_region(0);
     world_probe.clipping_distances = float2(1.0f, 10.0f);
     world_probe.world_to_probe_transposed = float3x4::identity();
     world_probe.parallax_type = PARALLAX_SPHERE;
@@ -262,13 +261,14 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
   }
+
   ReflectionProbe &probe = probes_.lookup_or_add_cb(ob_handle.object_key.hash(), []() {
-    ReflectionProbe probe;
-    probe.atlas_coord.layer_subdivision = -1;
+    ReflectionProbe probe = {};
     probe.do_render = true;
     probe.type = ReflectionProbe::Type::PROBE;
     return probe;
   });
+
   probe.do_render |= (ob_handle.recalc != 0);
   probe.is_probe_used = true;
 
@@ -304,7 +304,9 @@ ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(
 {
   ProbeLocationFinder location_finder(needed_layers_get() + 1, subdivision_level);
   for (const ReflectionProbe &probe : probes_.values()) {
-    location_finder.mark_space_used(probe.atlas_coord);
+    if (probe.atlas_coord.layer != -1) {
+      location_finder.mark_space_used(probe.atlas_coord);
+    }
   }
   return location_finder.first_free_spot();
 }

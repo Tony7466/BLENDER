@@ -54,6 +54,13 @@ struct ReflectionProbe : ReflectionProbeData {
    */
   float2 clipping_distances;
 
+  ReflectionProbe()
+  {
+    this->atlas_coord.layer_subdivision = -1;
+    this->atlas_coord.layer = -1;
+    this->atlas_coord.area_index = -1;
+  }
+
   void recalc_lod_factors(int atlas_resolution)
   {
     const float probe_resolution = atlas_resolution >> atlas_coord.layer_subdivision;
