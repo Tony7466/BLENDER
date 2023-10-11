@@ -78,6 +78,7 @@
 #include "ED_undo.hh"
 
 #include "bmesh.h"
+#include "bmesh_log.h"
 #include "sculpt_intern.hh"
 
 /* Uncomment to print the undo stack in the console on push/undo/redo. */
@@ -661,7 +662,7 @@ static void sculpt_undo_bmesh_restore_generic(SculptUndoNode *unode, Object *ob,
 }
 
 /* Create empty sculpt BMesh and enable logging. */
-static void sculpt_undo_bmesh_enable(Object *ob, SculptUndoNode *unode)
+static void sculpt_undo_bmesh_enable(Object *ob, SculptUndoNode *unode, bool for_redo)
 {
   SculptSession *ss = ob->sculpt;
   Mesh *me = static_cast<Mesh *>(ob->data);
@@ -678,7 +679,7 @@ static void sculpt_undo_bmesh_enable(Object *ob, SculptUndoNode *unode)
   me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
 
   /* Restore the BMLog using saved entries. */
-  ss->bm_log = BM_log_from_existing_entries_create(ss->bm, unode->bm_entry);
+  ss->bm_log = BM_log_from_existing_entries_create(ss->bm, unode->bm_entry, for_redo);
 }
 
 static void sculpt_undo_bmesh_restore_begin(bContext *C,
@@ -687,15 +688,17 @@ static void sculpt_undo_bmesh_restore_begin(bContext *C,
                                             SculptSession *ss)
 {
   if (unode->applied) {
+    /* Load the full mesh that was saved at this step. */
+    BM_log_undo(ss->bm, ss->bm_log);
+
     SCULPT_dynamic_topology_disable(C, unode);
     unode->applied = false;
   }
   else {
-    sculpt_undo_bmesh_enable(ob, unode);
+    sculpt_undo_bmesh_enable(ob, unode, true);
 
     /* Restore the mesh from the first log entry. */
     BM_log_redo(ss->bm, ss->bm_log);
-
     unode->applied = true;
   }
 }
@@ -706,7 +709,7 @@ static void sculpt_undo_bmesh_restore_end(bContext *C,
                                           SculptSession *ss)
 {
   if (unode->applied) {
-    sculpt_undo_bmesh_enable(ob, unode);
+    sculpt_undo_bmesh_enable(ob, unode, false);
 
     /* Restore the mesh from the last log entry. */
     BM_log_undo(ss->bm, ss->bm_log);
@@ -714,6 +717,9 @@ static void sculpt_undo_bmesh_restore_end(bContext *C,
     unode->applied = false;
   }
   else {
+    /* Load the full mesh that was saved at this step. */
+    BM_log_redo(ss->bm, ss->bm_log);
+
     /* Disable dynamic topology sculpting. */
     SCULPT_dynamic_topology_disable(C, nullptr);
     unode->applied = true;
@@ -1144,7 +1150,6 @@ static void sculpt_undo_free_list(ListBase *lb)
 
     sculpt_undo_geometry_free_data(&unode->geometry_original);
     sculpt_undo_geometry_free_data(&unode->geometry_modified);
-    sculpt_undo_geometry_free_data(&unode->geometry_bmesh_enter);
 
     if (unode->face_sets) {
       MEM_freeN(unode->face_sets);
@@ -1539,23 +1544,19 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
     unode->applied = true;
 
     if (type == SCULPT_UNDO_DYNTOPO_END) {
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
-      BM_log_before_all_removed(ss->bm, ss->bm_log);
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
+      BM_log_full_mesh(ss->bm, ss->bm_log);
     }
     else if (type == SCULPT_UNDO_DYNTOPO_BEGIN) {
       /* Store a copy of the mesh's current vertices, loops, and
        * faces. A full copy like this is needed because entering
        * dynamic-topology immediately does topological edits
-       * (converting faces to triangles) that the BMLog can't
-       * fully restore from. */
-      SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
-      sculpt_undo_geometry_store_data(geometry, ob);
-
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
-      BM_log_all_added(ss->bm, ss->bm_log);
+       * (converting faces to triangles). */
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
+      BM_log_full_mesh(ss->bm, ss->bm_log);
     }
     else {
-      unode->bm_entry = BM_log_entry_add(ss->bm_log);
+      unode->bm_entry = BM_log_entry_add(ss->bm, ss->bm_log);
     }
 
     BLI_addtail(&usculpt->nodes, unode);
@@ -1568,7 +1569,7 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
         /* Before any vertex values get modified, ensure their
          * original positions are logged. */
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
-          BM_log_vert_before_modified(ss->bm_log, vd.bm_vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm, ss->bm_log, vd.bm_vert);
         }
         BKE_pbvh_vertex_iter_end;
         break;
@@ -1577,13 +1578,13 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
         GSetIterator gs_iter;
         GSet *faces = BKE_pbvh_bmesh_node_faces(node);
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
-          BM_log_vert_before_modified(ss->bm_log, vd.bm_vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm, ss->bm_log, vd.bm_vert);
         }
         BKE_pbvh_vertex_iter_end;
 
         GSET_ITER (gs_iter, faces) {
           BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-          BM_log_face_modified(ss->bm_log, f);
+          BM_log_face_modified(ss->bm, ss->bm_log, f);
         }
         break;
       }

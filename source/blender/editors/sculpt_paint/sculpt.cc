@@ -79,6 +79,7 @@
 #include "RNA_define.hh"
 
 #include "bmesh.h"
+#include "bmesh_log.h"
 
 using blender::float3;
 using blender::MutableSpan;

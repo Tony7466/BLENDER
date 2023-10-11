@@ -66,6 +66,7 @@
 #include "UI_resources.hh"
 
 #include "bmesh.h"
+#include "bmesh_log.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -189,7 +190,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
        * parts that symmetrize modifies). */
       SCULPT_undo_push_begin(ob, op);
       SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_DYNTOPO_SYMMETRIZE);
-      BM_log_before_all_removed(ss->bm, ss->bm_log);
+      BM_log_full_mesh(ss->bm, ss->bm_log);
 
       BM_mesh_toolflags_set(ss->bm, true);
 
@@ -208,7 +209,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
       BM_mesh_toolflags_set(ss->bm, false);
 
       /* Finish undo. */
-      BM_log_all_added(ss->bm, ss->bm_log);
+      BM_log_full_mesh(ss->bm, ss->bm_log);
       SCULPT_undo_push_end(ob);
 
       break;
@@ -405,9 +406,8 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
       if (has_undo) {
         SCULPT_undo_push_begin_ex(ob, "Dynamic topology enable");
       }
-      SCULPT_dynamic_topology_enable_ex(bmain, depsgraph, ob);
+      SCULPT_dynamic_topology_enable_ex(bmain, depsgraph, ob, has_undo);
       if (has_undo) {
-        SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_DYNTOPO_BEGIN);
         SCULPT_undo_push_end(ob);
       }
     }
@@ -1315,10 +1315,10 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
     const int cd_mask = CustomData_get_offset(&ss->bm->vdata, CD_PAINT_MASK);
 
     BM_ITER_MESH (v, &iter, ss->bm, BM_VERTS_OF_MESH) {
-      BM_log_vert_before_modified(ss->bm_log, v, cd_mask);
+      BM_log_vert_before_modified(ss->bm, ss->bm_log, v);
     }
     BM_ITER_MESH (f, &iter, ss->bm, BM_FACES_OF_MESH) {
-      BM_log_face_modified(ss->bm_log, f);
+      BM_log_face_modified(ss->bm, ss->bm_log, f);
     }
 
     SCULPT_face_visibility_all_set(ss, true);

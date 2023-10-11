@@ -43,6 +43,7 @@
 #include "UI_resources.hh"
 
 #include "bmesh.h"
+#include "bmesh_log.h"
 #include "bmesh_tools.h"
 
 using blender::IndexRange;
@@ -77,7 +78,10 @@ void SCULPT_pbvh_clear(Object *ob)
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 }
 
-void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob)
+void SCULPT_dynamic_topology_enable_ex(Main *bmain,
+                                       Depsgraph *depsgraph,
+                                       Object *ob,
+                                       bool for_undo)
 {
   SculptSession *ss = ob->sculpt;
   Mesh *me = static_cast<Mesh *>(ob->data);
@@ -99,7 +103,23 @@ void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object
   convert_params.use_shapekey = true;
   convert_params.active_shapekey = ob->shapenr;
   BM_mesh_bm_from_me(ss->bm, me, &convert_params);
+
+  /* Enable logging for undo/redo. */
+  ss->bm_log = BM_log_create(ss->bm);
+
+  /* Log full mesh prior to triangulation. */
+  if (for_undo) {
+    SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_DYNTOPO_BEGIN);
+  }
+
+  int faces_num = ss->bm->totface;
+
   SCULPT_dynamic_topology_triangulate(ss->bm);
+
+  /* Now log full mesh again after triangulation. */
+  if (for_undo && ss->bm->totface != faces_num) {
+    BM_log_full_mesh(ss->bm, ss->bm_log);
+  }
 
   BM_data_layer_add(ss->bm, &ss->bm->vdata, CD_PAINT_MASK);
 
@@ -110,9 +130,6 @@ void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object
 
   /* Enable dynamic topology. */
   me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
-
-  /* Enable logging for undo/redo. */
-  ss->bm_log = BM_log_create(ss->bm);
 
   /* Update dependency graph, so modifiers that depend on dyntopo being enabled
    * are re-evaluated and the PBVH is re-created. */
@@ -125,7 +142,7 @@ void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object
  * If 'unode' is given, the BMesh's data is copied out to the unode
  * before the BMesh is deleted so that it can be restored from. */
 static void SCULPT_dynamic_topology_disable_ex(
-    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, SculptUndoNode *unode)
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, SculptUndoNode * /*unode*/)
 {
   SculptSession *ss = ob->sculpt;
   Mesh *me = static_cast<Mesh *>(ob->data);
@@ -140,35 +157,13 @@ static void SCULPT_dynamic_topology_disable_ex(
 
   SCULPT_pbvh_clear(ob);
 
-  if (unode) {
-    /* Free all existing custom data. */
-    BKE_mesh_clear_geometry(me);
+  BKE_sculptsession_bm_to_me(ob, true);
 
-    /* Copy over stored custom data. */
-    SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
-    me->totvert = geometry->totvert;
-    me->totloop = geometry->totloop;
-    me->faces_num = geometry->faces_num;
-    me->totedge = geometry->totedge;
-    me->totface_legacy = 0;
-    CustomData_copy(&geometry->vert_data, &me->vert_data, CD_MASK_MESH.vmask, geometry->totvert);
-    CustomData_copy(&geometry->edge_data, &me->edge_data, CD_MASK_MESH.emask, geometry->totedge);
-    CustomData_copy(&geometry->loop_data, &me->loop_data, CD_MASK_MESH.lmask, geometry->totloop);
-    CustomData_copy(&geometry->face_data, &me->face_data, CD_MASK_MESH.pmask, geometry->faces_num);
-    blender::implicit_sharing::copy_shared_pointer(geometry->face_offset_indices,
-                                                   geometry->face_offsets_sharing_info,
-                                                   &me->face_offset_indices,
-                                                   &me->runtime->face_offsets_sharing_info);
-  }
-  else {
-    BKE_sculptsession_bm_to_me(ob, true);
-
-    /* Sync the visibility to vertices manually as the `pmap` is still not initialized. */
-    bool *hide_vert = (bool *)CustomData_get_layer_named_for_write(
-        &me->vert_data, CD_PROP_BOOL, ".hide_vert", me->totvert);
-    if (hide_vert != nullptr) {
-      memset(hide_vert, 0, sizeof(bool) * me->totvert);
-    }
+  /* Sync the visibility to vertices manually as the `pmap` is still not initialized. */
+  bool *hide_vert = (bool *)CustomData_get_layer_named_for_write(
+      &me->vert_data, CD_PROP_BOOL, ".hide_vert", me->totvert);
+  if (hide_vert != nullptr) {
+    memset(hide_vert, 0, sizeof(bool) * me->totvert);
   }
 
   /* Clear data. */
@@ -231,9 +226,8 @@ static void sculpt_dynamic_topology_enable_with_undo(Main *bmain, Depsgraph *dep
     if (use_undo) {
       SCULPT_undo_push_begin_ex(ob, "Dynamic topology enable");
     }
-    SCULPT_dynamic_topology_enable_ex(bmain, depsgraph, ob);
+    SCULPT_dynamic_topology_enable_ex(bmain, depsgraph, ob, use_undo);
     if (use_undo) {
-      SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_DYNTOPO_BEGIN);
       SCULPT_undo_push_end(ob);
     }
   }

@@ -27,6 +27,7 @@
 
 struct BMFace;
 struct BMesh;
+struct BMLog;
 struct BlendDataReader;
 struct BlendLibReader;
 struct BlendWriter;

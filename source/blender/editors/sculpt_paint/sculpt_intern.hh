@@ -38,6 +38,7 @@
 struct AutomaskingCache;
 struct AutomaskingNodeData;
 struct BMLog;
+struct BMLogEntry;
 struct Dial;
 struct DistRayAABB_Precalc;
 struct Image;
@@ -219,9 +220,6 @@ struct SculptUndoNode {
   bool geometry_clear_pbvh;
   SculptUndoNodeGeometry geometry_original;
   SculptUndoNodeGeometry geometry_modified;
-
-  /* Geometry at the bmesh enter moment. */
-  SculptUndoNodeGeometry geometry_bmesh_enter;
 
   /* pivot */
   float pivot_pos[3];
@@ -1259,7 +1257,10 @@ enum eDynTopoWarnFlag {
 ENUM_OPERATORS(eDynTopoWarnFlag, DYNTOPO_WARN_MODIFIER);
 
 /** Enable dynamic topology; mesh will be triangulated */
-void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob);
+void SCULPT_dynamic_topology_enable_ex(Main *bmain,
+                                       Depsgraph *depsgraph,
+                                       Object *ob,
+                                       bool for_undo = false);
 void SCULPT_dynamic_topology_disable(bContext *C, SculptUndoNode *unode);
 void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
                                                Depsgraph *depsgraph,

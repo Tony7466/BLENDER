@@ -24,6 +24,7 @@
 #include "DRW_pbvh.hh"
 
 #include "bmesh.h"
+#include "bmesh_log.h"
 #include "pbvh_intern.hh"
 
 using blender::Span;
@@ -505,7 +506,7 @@ static BMVert *pbvh_bmesh_vert_create(PBVH *pbvh,
   node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateBB | PBVH_TopologyUpdated;
 
   /* Log the new vertex */
-  BM_log_vert_added(pbvh->bm_log, v, cd_vert_mask_offset);
+  BM_log_vert_added(pbvh->header.bm, pbvh->bm_log, v);
 
   return v;
 }
@@ -532,7 +533,7 @@ static BMFace *pbvh_bmesh_face_create(
   node->flag &= ~PBVH_FullyHidden;
 
   /* Log the new face */
-  BM_log_face_added(pbvh->bm_log, f);
+  BM_log_face_added(pbvh->header.bm, pbvh->bm_log, f);
 
   return f;
 }
@@ -686,7 +687,7 @@ static void pbvh_bmesh_face_remove(PBVH *pbvh, BMFace *f)
   BM_ELEM_CD_SET_INT(f, pbvh->cd_face_node_offset, DYNTOPO_NODE_NONE);
 
   /* Log removed face */
-  BM_log_face_removed(pbvh->bm_log, f);
+  BM_log_face_removed(pbvh->header.bm, pbvh->bm_log, f);
 
   /* mark node for update */
   f_node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateNormals | PBVH_TopologyUpdated;
@@ -1397,7 +1398,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
       if ((v_tri[j] != v_del) && (v_tri[j]->e == nullptr)) {
         pbvh_bmesh_vert_remove(pbvh, v_tri[j]);
 
-        BM_log_vert_removed(pbvh->bm_log, v_tri[j], eq_ctx->cd_vert_mask_offset);
+        BM_log_vert_removed(pbvh->header.bm, pbvh->bm_log, v_tri[j]);
 
         if (v_tri[j] == v_conn) {
           v_conn = nullptr;
@@ -1411,7 +1412,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
   /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it
    * may have been deleted above) */
   if (v_conn != nullptr) {
-    BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
+    BM_log_vert_before_modified(pbvh->header.bm, pbvh->bm_log, v_conn);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
     add_v3_v3(v_conn->no, v_del->no);
     normalize_v3(v_conn->no);
@@ -1427,7 +1428,7 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
 
   /* Delete v_del */
   BLI_assert(!BM_vert_face_check(v_del));
-  BM_log_vert_removed(pbvh->bm_log, v_del, eq_ctx->cd_vert_mask_offset);
+  BM_log_vert_removed(pbvh->header.bm, pbvh->bm_log, v_del);
   /* v_conn == nullptr is OK */
   BLI_ghash_insert(deleted_verts, v_del, v_conn);
   BM_vert_kill(pbvh->header.bm, v_del);
