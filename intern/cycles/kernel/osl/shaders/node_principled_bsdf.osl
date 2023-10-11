@@ -36,9 +36,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             normal Tangent = normalize(dPdu),
                             output closure color BSDF = 0)
 {
-  color specular_tint = max(SpecularTint, color(0.0));
-
-  float r2 = clamp(Roughness, 0.0, 1.0);
+  float r2 = Roughness;
   r2 = r2 * r2;
 
   float alpha_x = r2, alpha_y = r2;
@@ -57,7 +55,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float eta = IOR;
     float f0 = F0_from_ior(eta);
     if (SpecularIORLevel != 0.5) {
-      f0 *= 2.0 * max(SpecularIORLevel, 0.0);
+      f0 *= 2.0 * SpecularIORLevel;
       eta = ior_from_F0(f0);
       if (IOR < 1.0) {
         eta = 1.0 / eta;
@@ -66,7 +64,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     BSDF = BaseColor * diffuse(Normal);
     if (SubsurfaceWeight > 1e-5) {
-      float subsurface_weight = min(SubsurfaceWeight, 1.0);
+      float subsurface_weight = SubsurfaceWeight;
       vector radius = SubsurfaceScale * SubsurfaceRadius;
       float subsurface_ior = (subsurface_method == "random_walk_skin") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
@@ -84,7 +82,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     if (eta != 1.0) {
       /* Apply specular tint */
-      color F0 = f0 * specular_tint;
+      color F0 = f0 * SpecularTint;
       color F90 = color(1.0);
 
       BSDF = layer(
@@ -99,20 +97,20 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float eta = max(IOR, 1e-5);
     eta = backfacing() ? 1.0 / eta : eta;
 
-    color F0 = F0_from_ior(eta) * specular_tint;
+    color F0 = F0_from_ior(eta) * SpecularTint;
     color F90 = color(1.0);
 
     TransmissionBSDF = generalized_schlick_bsdf(
         Normal, vector(0.0), color(1.0), sqrt(BaseColor), r2, r2, F0, F90, -eta, distribution),
-    BSDF = mix(BSDF, TransmissionBSDF, clamp(TransmissionWeight, 0.0, 1.0));
+    BSDF = mix(BSDF, TransmissionBSDF, TransmissionWeight);
   }
 
   closure color MetallicBSDF = 0;
   if (Metallic > 0.0) {
     color F0 = BaseColor;
-    color F82 = specular_tint;
+    color F82 = SpecularTint;
     MetallicBSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
-    BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
+    BSDF = mix(BSDF, MetallicBSDF, Metallic);
   }
 
   if (EmissionStrength > 0.0 && EmissionColor != color(0.0)) {
@@ -127,19 +125,19 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       float cosNT = sqrt(1.0 - coat_neta * coat_neta * (1 - cosNI * cosNI));
       BSDF *= pow(CoatTint, CoatWeight / cosNT);
     }
-    float coat_r2 = clamp(CoatRoughness, 0.0, 1.0);
+    float coat_r2 = CoatRoughness;
     coat_r2 = coat_r2 * coat_r2;
 
     closure color CoatBSDF = dielectric_bsdf(
         CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, coat_ior, "ggx");
-    BSDF = layer(clamp(CoatWeight, 0.0, 1.0) * CoatBSDF, BSDF);
+    BSDF = layer(CoatWeight * CoatBSDF, BSDF);
   }
 
   if (SheenWeight > 1e-5) {
-    normal sheen_normal = normalize(mix(Normal, CoatNormal, clamp(CoatWeight, 0.0, 1.0)));
-    closure color SheenBSDF = sheen(sheen_normal, clamp(SheenRoughness, 0.0, 1.0));
-    BSDF = layer(clamp(SheenWeight, 0.0, 1.0) * SheenTint * SheenBSDF, BSDF);
+    normal sheen_normal = normalize(mix(Normal, CoatNormal, CoatWeight));
+    closure color SheenBSDF = sheen(sheen_normal, SheenRoughness);
+    BSDF = layer(SheenWeight * SheenTint * SheenBSDF, BSDF);
   }
 
-  BSDF = mix(transparent(), BSDF, clamp(Alpha, 0.0, 1.0));
+  BSDF = mix(transparent(), BSDF, Alpha);
 }

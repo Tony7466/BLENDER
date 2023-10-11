@@ -107,21 +107,20 @@ ccl_device
                              &coat_tint_offset);
 
       // get Disney principled parameters
-      float metallic = saturatef(param1);
-      float subsurface_weight = saturatef(param2);
-      float specular_ior_level = fmaxf(stack_load_float(stack, specular_ior_level_offset), 0.0f);
-      float roughness = saturatef(stack_load_float(stack, roughness_offset));
-      Spectrum specular_tint = rgb_to_spectrum(
-          max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
-      float anisotropic = saturatef(stack_load_float(stack, anisotropic_offset));
-      float sheen_weight = saturatef(stack_load_float(stack, sheen_weight_offset));
+      float metallic = param1;
+      float subsurface_weight = param2;
+      float specular_ior_level = stack_load_float(stack, specular_ior_level_offset);
+      float roughness = stack_load_float(stack, roughness_offset);
+      Spectrum specular_tint = rgb_to_spectrum(stack_load_float3(stack, specular_tint_offset), zero_float3());
+      float anisotropic = stack_load_float(stack, anisotropic_offset);
+      float sheen_weight = stack_load_float(stack, sheen_weight_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
-      float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
-      float coat_weight = saturatef(stack_load_float(stack, coat_weight_offset));
-      float coat_roughness = saturatef(stack_load_float(stack, coat_roughness_offset));
+      float sheen_roughness = stack_load_float(stack, sheen_roughness_offset);
+      float coat_weight = stack_load_float(stack, coat_weight_offset);
+      float coat_roughness = stack_load_float(stack, coat_roughness_offset);
       float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
       float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
-      float transmission_weight = saturatef(stack_load_float(stack, transmission_weight_offset));
+      float transmission_weight = stack_load_float(stack, transmission_weight_offset);
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float ior = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
 
@@ -152,12 +151,11 @@ ccl_device
                              &dummy);
       float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
                                                 __uint_as_float(data_alpha_emission.y);
-      alpha = saturatef(alpha);
 
       float emission_strength = stack_valid(emission_strength_offset) ?
                                     stack_load_float(stack, emission_strength_offset) :
                                     __uint_as_float(data_alpha_emission.z);
-      float3 emission = stack_load_float3(stack, emission_offset) * fmaxf(emission_strength, 0.0f);
+      float3 emission = stack_load_float3(stack, emission_offset) * emission_strength;
 
       Spectrum weight = closure_weight * mix_weight;
 
@@ -193,7 +191,7 @@ ccl_device
             sd, sizeof(SheenBsdf), sheen_weight * rgb_to_spectrum(sheen_tint) * weight);
 
         if (bsdf) {
-          bsdf->N = safe_normalize(mix(N, coat_normal, saturatef(coat_weight)));
+          bsdf->N = safe_normalize(mix(N, coat_normal, coat_weight));
           bsdf->roughness = sheen_roughness;
 
           /* setup bsdf */
