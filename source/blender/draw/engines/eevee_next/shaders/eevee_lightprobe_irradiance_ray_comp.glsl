@@ -53,7 +53,7 @@ void irradiance_capture_surfel(Surfel surfel, vec3 P, inout SphericalHarmonicL1 
 void validity_capture_surfel(Surfel surfel, vec3 P, inout float validity)
 {
   vec3 L = safe_normalize(surfel.position - P);
-  bool facing = dot(-L, surfel.normal) > 0.0;
+  bool facing = surfel.double_sided || dot(-L, surfel.normal) > 0.0;
   validity += float(facing);
 }
 
@@ -68,7 +68,10 @@ void irradiance_capture_world(vec3 L, inout SphericalHarmonicL1 sh)
   float visibility = 0.0;
 
   if (capture_info_buf.capture_world_direct) {
-    radiance = reflection_probes_world_sample(L, 0.0).rgb;
+    ReflectionProbeAtlasCoordinate atlas_coord = reinterpret_as_atlas_coord(
+        capture_info_buf.world_atlas_coord);
+
+    radiance = reflection_probes_sample(L, 0.0, atlas_coord).rgb;
 
     /* Clamped brightness. */
     float luma = max(1e-8, max_v3(radiance));

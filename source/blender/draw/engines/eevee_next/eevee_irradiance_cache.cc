@@ -828,6 +828,9 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.capture_indirect = capture_indirect_;
   capture_info_buf_.capture_emission = capture_emission_;
 
+  ReflectionProbeAtlasCoordinate atlas_coord = inst_.reflection_probes.world_atlas_coord_get();
+  capture_info_buf_.world_atlas_coord = *reinterpret_cast<int4 *>(&atlas_coord);
+
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid_resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
@@ -984,6 +987,9 @@ void IrradianceBake::surfels_lights_eval()
   /* Use the last setup view. This should work since the view is orthographic. */
   /* TODO(fclem): Remove this. It is only present to avoid crash inside `shadows.set_view` */
   inst_.render_buffers.acquire(int2(1));
+  inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
+  inst_.hiz_buffer.set_dirty();
+
   inst_.lights.set_view(view_z_, grid_pixel_extent_.xy());
   inst_.shadows.set_view(view_z_);
   inst_.render_buffers.release();
