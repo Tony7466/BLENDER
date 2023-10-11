@@ -206,7 +206,7 @@ static void node_enum_definition_free(NodeEnumDefinition &enum_def)
   MEM_SAFE_FREE(enum_def.items_array);
 }
 
-static void node_enum_definition_copy(NodeEnumDefinition dst_enum_def,
+static void node_enum_definition_copy(NodeEnumDefinition &dst_enum_def,
                                       const NodeEnumDefinition &src_enum_def)
 {
   dst_enum_def.items_array = MEM_cnew_array<NodeEnumItem>(src_enum_def.items_num, __func__);
