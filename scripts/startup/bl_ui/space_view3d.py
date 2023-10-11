@@ -4313,6 +4313,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
                 selected_faces_len += f
             return (selected_verts_len, selected_edges_len, selected_faces_len)
 
+        is_vert_mode, is_edge_mode, is_face_mode = context.tool_settings.mesh_select_mode
         selected_verts_len, selected_edges_len, selected_faces_len = count_selected_items_for_objects_in_mode()
 
         del count_selected_items_for_objects_in_mode
@@ -4335,13 +4336,6 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         # Else something is selected
 
-        # Subdivision
-        if selected_edges_len > 0:
-            layout.operator("mesh.subdivide")
-            layout.operator("mesh.unsubdivide")
-
-        layout.separator()
-
         # Extrude & Bevel
         layout.operator("view3d.edit_mesh_extrude_move_normal",
                          text="Extrude along Normals").alt_navigation = True
@@ -4354,25 +4348,9 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         layout.separator()
 
-        # Fill & Connect
-        if selected_verts_len > 1:
-            layout.separator()
-            layout.operator("mesh.edge_face_add")
-        if selected_edges_len >= 2:
-            layout.operator("mesh.fill")
-        if selected_verts_len > 1:
-            layout.operator("mesh.vert_connect_path")
-        if selected_edges_len >= 2:
-            layout.operator("mesh.bridge_edge_loops")
-
-        layout.separator()
-
-        layout.operator("mesh.loopcut_slide")
-        layout.operator("mesh.offset_edge_loops_slide")
-
-        layout.separator()
-
-        layout.operator("mesh.knife_tool")
+        props = layout.operator("mesh.knife_tool")
+        props.use_occlude_geometry = props.use_occlude_geometry = True
+        props.only_selected = props.only_selected = False
         if selected_edges_len > 0:
             layout.operator("mesh.bisect")
 
@@ -4386,18 +4364,19 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("mesh.vertices_smooth").factor = 0.5
         layout.operator("transform.vertex_random", text="Randomize Vertices").offset = 0.1
-        # This could get a check for a skin modifier
+        # WIP This could get a check for a skin modifier
         layout.operator("transform.skin_resize")
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_mirror")
-        layout.menu("VIEW3D_MT_snap")
+        layout.operator("mesh.loopcut_slide")
+        if selected_edges_len >= 1:
+            layout.operator("mesh.offset_edge_loops_slide")
 
         layout.separator()
 
-        if selected_verts_len > 1:
-            layout.menu("VIEW3D_MT_uv_map")
+        layout.operator("transform.mirror")
+        layout.menu("VIEW3D_MT_snap")
 
         layout.separator()
 
@@ -4406,9 +4385,32 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("mesh.faces_shade_smooth")
-        layout.operator("mesh.faces_shade_flat")
-        layout.operator("mesh.normals_make_consistent").inside = False
+        # Fill & Connect
+        if selected_verts_len > 1:
+            layout.separator()
+            layout.operator("mesh.edge_face_add")
+            # WIP This is a placeholder menu.
+            layout.menu("VIEW3D_MT_edit_mesh_fill_connect")
+
+        layout.separator()
+
+        # UV Mapping
+        if selected_verts_len > 1:
+            layout.menu("VIEW3D_MT_uv_map")
+
+        layout.separator()
+
+        # Subdivision
+        if selected_edges_len > 0:
+            layout.operator("mesh.subdivide")
+            layout.operator("mesh.unsubdivide")
+
+        layout.separator()
+
+        if selected_faces_len > 1:
+            layout.operator("mesh.faces_shade_smooth")
+            layout.operator("mesh.faces_shade_flat")
+            layout.operator("mesh.normals_make_consistent").inside = False
 
         layout.separator()
 
@@ -4425,6 +4427,13 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             layout.menu("VIEW3D_MT_edit_mesh_merge")
         layout.operator("mesh.split")
         layout.operator_menu_enum("mesh.separate", "type")
+        if is_vert_mode:
+            layout.operator("mesh.delete", text="Delete Vertices").type = 'VERT'
+        if is_edge_mode:
+            layout.operator("mesh.delete", text="Delete Edges").type = 'EDGE'
+        if is_face_mode:
+            layout.operator("mesh.delete", text="Delete Faces").type = 'FACE'
+        layout.operator("mesh.dissolve_mode")
         layout.menu("VIEW3D_MT_edit_mesh_delete")
 
 
@@ -4465,6 +4474,12 @@ class VIEW3D_MT_edit_mesh_attributes(Menu):
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
 
+
+class VIEW3D_MT_edit_mesh_fill_connect(Menu):
+    bl_label = "Fill/Connect"
+
+    def draw(self, _context):
+        layout = self.layout
 
 class VIEW3D_MT_edit_mesh_select_mode(Menu):
     bl_label = "Mesh Select Mode"
@@ -4869,13 +4884,13 @@ class VIEW3D_MT_edit_mesh_delete(Menu):
 
         layout.separator()
 
+        layout.operator("mesh.dissolve_mode")
         layout.operator("mesh.dissolve_verts")
         layout.operator("mesh.dissolve_edges")
         layout.operator("mesh.dissolve_faces")
 
         layout.separator()
 
-        layout.operator("mesh.dissolve_mode")
         layout.operator("mesh.dissolve_limited")
 
         layout.separator()
@@ -8846,6 +8861,7 @@ classes = (
     VIEW3D_MT_edit_mesh_context_menu,
     VIEW3D_MT_edit_mesh_select_mode,
     VIEW3D_MT_edit_mesh_attributes,
+    VIEW3D_MT_edit_mesh_fill_connect,
     VIEW3D_MT_edit_mesh_select_linked,
     VIEW3D_MT_edit_mesh_select_loops,
     VIEW3D_MT_edit_mesh_extrude,
