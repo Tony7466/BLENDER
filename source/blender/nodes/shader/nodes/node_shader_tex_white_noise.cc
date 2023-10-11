@@ -189,29 +189,32 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem noise = empty();
+  NodeItem vector = empty();
+  NodeItem w = empty();
   int dimension = node_->custom1;
   switch (dimension) {
     case 1:
+      w = get_input_value("W", NodeItem::Type::Vector2);
       noise = create_node("cellnoise2d",
                           NodeItem::Type::Float,
-                          {{"texcoord", get_input_value("W", NodeItem::Type::Vector2)}});
+                          {{"texcoord", w}});
       break;
     case 2:
+      vector = get_input_link("Vector", NodeItem::Type::Vector2);
       noise = create_node("cellnoise2d",
-                          NodeItem::Type::Float,
-                          {{"texcoord", get_input_link("Vector", NodeItem::Type::Vector2)}});
+                          NodeItem::Type::Float, {{"texcoord", vector}});
       break;
     case 3:
+      vector = get_input_link("Vector", NodeItem::Type::Vector3);
       noise = create_node("cellnoise3d",
-                          NodeItem::Type::Float,
-                          {{"position", get_input_link("Vector", NodeItem::Type::Vector3)}});
+                          NodeItem::Type::Float, {{"position", vector}});
       break;
     case 4:
+      vector = get_input_link("Vector", NodeItem::Type::Vector3);
+      w = get_input_value("W", NodeItem::Type::Float);      
       noise = create_node("cellnoise3d",
                           NodeItem::Type::Float,
-                          {{"position",
-                            get_input_link("Vector", NodeItem::Type::Vector3) +
-                                get_input_value("W", NodeItem::Type::Float)}});
+                          {{"position", vector + w}});
       break;
     default:
       BLI_assert_unreachable();
