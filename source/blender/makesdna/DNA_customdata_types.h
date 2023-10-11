@@ -57,7 +57,22 @@ typedef struct CustomDataLayer {
    * other geometries).
    */
   const ImplicitSharingInfoHandle *sharing_info;
+
+  /** Sized to #CUSTOMDATA_PY_INSTANCE_NUM. */
+  void *py_instance_array[4];
 } CustomDataLayer;
+
+/**
+ * Note that legacy items can be removed once legacy access has been removed.
+ */
+enum {
+  CUSTOMDATA_PY_INSTANCE_ATTR = 0,
+  CUSTOMDATA_PY_INSTANCE_ATTR_DATA = 1,
+  CUSTOMDATA_PY_INSTANCE_LEGACY = 2,
+  CUSTOMDATA_PY_INSTANCE_LEGACY_DATA = 3,
+/** Keep in sync with #CustomDataLayer::py_instance_array. */
+#define CUSTOMDATA_PY_INSTANCE_NUM 4
+};
 
 #define MAX_CUSTOMDATA_LAYER_NAME 68
 #define MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX 64

@@ -7572,6 +7572,7 @@ PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr)
 PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
 {
   BPy_PropertyRNA *pyrna;
+  void **instance = nullptr;
 
   if (RNA_property_array_check(prop) == 0) {
     PyTypeObject *type;
@@ -7581,6 +7582,19 @@ PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
     }
     else {
       if ((RNA_property_flag(prop) & PROP_IDPROPERTY) == 0) {
+        PointerRNA cptr;
+        if (RNA_property_collection_type_get(ptr, prop, &cptr)) {
+          instance = RNA_struct_instance(&cptr);
+          if (instance && *instance) {
+            pyrna = (BPy_PropertyRNA *)*instance;
+            BLI_assert((pyrna->ptr.type == ptr->type) &&         /* Type. */
+                       (pyrna->ptr.owner_id == ptr->owner_id) && /* ID. */
+                       (pyrna->ptr.data == ptr->data) &&         /* Data. */
+                       (pyrna->prop == prop));                   /* Property. */
+            Py_INCREF(pyrna);
+            return (PyObject *)pyrna;
+          }
+        }
         type = &pyrna_prop_collection_Type;
       }
       else {
@@ -7609,6 +7623,11 @@ PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
 
   pyrna->ptr = *ptr;
   pyrna->prop = prop;
+
+  if (instance) {
+    Py_INCREF(pyrna);
+    *instance = (void *)pyrna;
+  }
 
 #ifdef USE_PYRNA_INVALIDATE_WEAKREF
   if (ptr->owner_id) {

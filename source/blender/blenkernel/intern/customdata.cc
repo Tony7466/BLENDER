@@ -52,6 +52,10 @@
 #include "BKE_multires.hh"
 #include "BKE_subsurf.hh"
 
+#ifdef WITH_PYTHON
+#  include "BPY_extern.h"
+#endif
+
 #include "BLO_read_write.hh"
 
 #include "bmesh.h"
@@ -78,6 +82,8 @@ BLI_STATIC_ASSERT(BOUNDED_ARRAY_TYPE_SIZE<decltype(CustomData::typemap)>() == CD
                   "size mismatch");
 
 static CLG_LogRef LOG = {"bke.customdata"};
+
+static void customData_py_invalidate_layer(CustomDataLayer *layer);
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Mask Utilities
@@ -2334,6 +2340,8 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
       continue;
     }
     dst_layers.append(layer);
+    CustomDataLayer &layer_new = dst_layers.last();
+    memset(layer_new.py_instance_array, 0, sizeof(layer_new.py_instance_array));
   }
 
   CustomData dst = *src;
@@ -2503,6 +2511,8 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
     layer->sharing_info->remove_user_and_delete_if_last();
     layer->sharing_info = nullptr;
   }
+
+  customData_py_invalidate_layer(layer);
 }
 
 static void CustomData_external_free(CustomData *data)
@@ -2855,6 +2865,31 @@ bool CustomData_layer_is_anonymous(const CustomData *data, eCustomDataType type,
   return data->layers[layer_index].anonymous_id != nullptr;
 }
 
+static void customData_py_invalidate_layer(CustomDataLayer *layer)
+{
+#ifdef WITH_PYTHON
+  for (int i = 0; i < CUSTOMDATA_PY_INSTANCE_NUM; i++) {
+    if (layer->py_instance_array[i]) {
+      BPY_DECREF_RNA_INVALIDATE(layer->py_instance_array[i]);
+      layer->py_instance_array[i] = nullptr;
+    }
+  }
+#else
+  UNUSED_VARS(layer);
+#endif /* WITH_PYTHON */
+}
+static void customData_py_invalidate_all(CustomData *data)
+{
+#ifdef WITH_PYTHON
+  CustomDataLayer *layer = data->layers;
+  for (int i = 0; i < data->totlayer; i++, layer++) {
+    customData_py_invalidate_layer(layer);
+  }
+#else
+  UNUSED_VARS(data);
+#endif /* WITH_PYTHON */
+}
+
 static void customData_resize(CustomData *data, const int grow_amount)
 {
   data->layers = static_cast<CustomDataLayer *>(
@@ -2881,6 +2916,8 @@ static CustomDataLayer *customData_add_layer__internal(
     BLI_assert(layer_data_to_assign == nullptr);
     return &data->layers[CustomData_get_layer_index(data, type)];
   }
+
+  customData_py_invalidate_all(data);
 
   int index = data->totlayer;
   if (index >= data->maxlayer) {
@@ -3105,6 +3142,11 @@ bool CustomData_free_layer(CustomData *data,
   }
   BLI_assert(data->layers[index].type == type);
 
+  /* While we *could* only free layers after the current one
+   * the layers are sometimes resized (which invalidates all anyway)
+   * so prefer predictable behavior where clearing layers frees all. */
+  customData_py_invalidate_all(data);
+
   customData_free_layer__internal(&data->layers[index], totelem);
 
   for (int i = index + 1; i < data->totlayer; i++) {
@@ -3230,11 +3272,13 @@ void CustomData_free_temporary(CustomData *data, const int totelem)
 {
   int i, j;
   bool changed = false;
+  bool changed_relocate = false;
   for (i = 0, j = 0; i < data->totlayer; i++) {
     CustomDataLayer *layer = &data->layers[i];
 
     if (i != j) {
       data->layers[j] = data->layers[i];
+      changed_relocate = true;
     }
 
     if ((layer->flag & CD_FLAG_TEMPORARY) == CD_FLAG_TEMPORARY) {
@@ -3251,6 +3295,10 @@ void CustomData_free_temporary(CustomData *data, const int totelem)
   if (data->totlayer <= data->maxlayer - CUSTOMDATA_GROW) {
     customData_resize(data, -CUSTOMDATA_GROW);
     changed = true;
+  }
+  else if (changed || changed_relocate) {
+    /* Resizing already invalidates all. */
+    customData_py_invalidate_all(data);
   }
 
   if (changed) {
@@ -3708,6 +3756,10 @@ bool CustomData_bmesh_merge_layout(const CustomData *source,
   if (CustomData_number_of_layers_typemask(source, mask) == 0) {
     return false;
   }
+
+  /* NOTE: #CustomDataLayer::py_instance doesn't need to be handled here. Functions called by
+   * #CustomData_merge_layout are responsible for that, the `destold.layers` duplication is
+   * temporary and is always freed before this function exits. */
 
   /* copy old layer description so that old data can be copied into
    * the new allocation */
@@ -4260,6 +4312,10 @@ void CustomData_blend_write_prepare(CustomData &data,
       continue;
     }
     layers_to_write.append(layer);
+
+    /* Harmless but avoid writing unnecessary noise. */
+    CustomDataLayer &layer_new = layers_to_write.last();
+    memset(layer_new.py_instance_array, 0, sizeof(layer_new.py_instance_array));
   }
   data.totlayer = layers_to_write.size();
   data.maxlayer = data.totlayer;
@@ -5244,6 +5300,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
       layer->flag &= ~CD_FLAG_IN_MEMORY;
     }
     layer->sharing_info = nullptr;
+    memset(layer->py_instance_array, 0, sizeof(layer->py_instance_array));
 
     if (CustomData_verify_versions(data, i)) {
       BLO_read_data_address(reader, &layer->data);

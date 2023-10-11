@@ -936,6 +936,19 @@ DEFINE_CUSTOMDATA_LAYER_COLLECTION_ACTIVEITEM(
 
 /* MeshUVLoopLayer */
 
+#  ifdef WITH_PYTHON
+void **rna_CustomDataLayer_instance_legacy(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
+  return &layer->py_instance_array[CUSTOMDATA_PY_INSTANCE_LEGACY];
+}
+void **rna_CustomDataLayer_instance_legacy_data(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
+  return &layer->py_instance_array[CUSTOMDATA_PY_INSTANCE_LEGACY_DATA];
+}
+#  endif
+
 static char *rna_MeshUVLoopLayer_path(const PointerRNA *ptr)
 {
   const CustomDataLayer *cdl = static_cast<const CustomDataLayer *>(ptr->data);
@@ -2003,6 +2016,27 @@ static bool rna_Mesh_materials_override_apply(Main *bmain,
 #else
 
 /* -------------------------------------------------------------------- */
+/** \name RNA Collection Helpers
+ * \{ */
+
+static void rna_customdata_collection_legacy_data_type(BlenderRNA *brna,
+                                                       PropertyRNA *cprop,
+                                                       const char *struct_identifier)
+{
+  RNA_def_property_srna(cprop, struct_identifier);
+  StructRNA *srna = RNA_def_struct(brna, struct_identifier, nullptr);
+  RNA_def_struct_sdna(srna, "CustomDataLayer");
+  /* Ideally the name would be unique but it's also not all that important. */
+  RNA_def_struct_ui_text(srna, "Collection Data Type", "");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(
+      srna, nullptr, nullptr, "rna_CustomDataLayer_instance_legacy_data");
+#  endif
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name RNA Mesh Definition
  * \{ */
 
@@ -2390,6 +2424,9 @@ static void rna_def_mloopuv(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "MeshUVLoopLayer", nullptr);
   RNA_def_struct_sdna(srna, "CustomDataLayer");
   RNA_def_struct_path_func(srna, "rna_MeshUVLoopLayer_path");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_CustomDataLayer_instance_legacy");
+#  endif
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshUVLoop");
@@ -2407,6 +2444,8 @@ static void rna_def_mloopuv(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+
+  rna_customdata_collection_legacy_data_type(brna, prop, "MeshUVLoopLayerData");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
@@ -2528,6 +2567,9 @@ static void rna_def_mloopcol(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "CustomDataLayer");
   RNA_def_struct_path_func(srna, "rna_MeshLoopColorLayer_path");
   RNA_def_struct_ui_icon(srna, ICON_GROUP_VCOL);
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_CustomDataLayer_instance_legacy");
+#  endif
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
@@ -2561,6 +2603,8 @@ static void rna_def_mloopcol(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+
+  rna_customdata_collection_legacy_data_type(brna, prop, "MeshLoopColorLayerData");
 
   srna = RNA_def_struct(brna, "MeshLoopColor", nullptr);
   RNA_def_struct_sdna(srna, "MLoopCol");
@@ -2860,6 +2904,9 @@ static void rna_def_skin_vertices(BlenderRNA *brna, PropertyRNA * /*cprop*/)
       srna, "Mesh Skin Vertex Layer", "Per-vertex skin data for use with the Skin modifier");
   RNA_def_struct_sdna(srna, "CustomDataLayer");
   RNA_def_struct_path_func(srna, "rna_MeshSkinVertexLayer_path");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_CustomDataLayer_instance_legacy");
+#  endif
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
@@ -2881,6 +2928,8 @@ static void rna_def_skin_vertices(BlenderRNA *brna, PropertyRNA * /*cprop*/)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+
+  rna_customdata_collection_legacy_data_type(brna, prop, "MeshSkinVertexLayerData");
 
   /* SkinVertex struct */
   srna = RNA_def_struct(brna, "MeshSkinVertex", nullptr);
@@ -2921,6 +2970,9 @@ static void rna_def_paint_mask(BlenderRNA *brna, PropertyRNA * /*cprop*/)
   RNA_def_struct_ui_text(srna, "Mesh Paint Mask Layer", "Per-vertex paint mask data");
   RNA_def_struct_sdna(srna, "CustomDataLayer");
   RNA_def_struct_path_func(srna, "rna_MeshPaintMaskLayer_path");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_CustomDataLayer_instance_legacy");
+#  endif
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshPaintMaskProperty");
@@ -2935,6 +2987,8 @@ static void rna_def_paint_mask(BlenderRNA *brna, PropertyRNA * /*cprop*/)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+
+  rna_customdata_collection_legacy_data_type(brna, prop, "MeshPaintMaskLayerData");
 
   srna = RNA_def_struct(brna, "MeshPaintMaskProperty", nullptr);
   RNA_def_struct_sdna(srna, "MFloatProperty");

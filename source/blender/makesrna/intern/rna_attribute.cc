@@ -219,6 +219,19 @@ static int rna_Attribute_type_get(PointerRNA *ptr)
   return layer->type;
 }
 
+#  ifdef WITH_PYTHON
+void **rna_Attribute_instance(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
+  return &layer->py_instance_array[CUSTOMDATA_PY_INSTANCE_ATTR];
+}
+void **rna_Attribute_data_instance(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
+  return &layer->py_instance_array[CUSTOMDATA_PY_INSTANCE_ATTR_DATA];
+}
+#  endif
+
 const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
                                                         bool include_instances,
                                                         bool *r_free)
@@ -729,6 +742,20 @@ static void rna_AttributeGroup_active_color_name_set(PointerRNA *ptr, const char
 
 #else
 
+static void rna_attribute_collection_data_type(BlenderRNA *brna,
+                                               PropertyRNA *cprop,
+                                               const char *struct_identifier)
+{
+  RNA_def_property_srna(cprop, struct_identifier);
+  StructRNA *srna = RNA_def_struct(brna, struct_identifier, nullptr);
+  RNA_def_struct_sdna(srna, "CustomDataLayer");
+  /* Ideally the name would be unique but it's also not all that important. */
+  RNA_def_struct_ui_text(srna, "Collection Data Type", "");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_Attribute_data_instance");
+#  endif
+}
+
 static void rna_def_attribute_float(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -751,6 +778,7 @@ static void rna_def_attribute_float(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "FloatAttributeValueData");
 
   srna = RNA_def_struct(brna, "FloatAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MFloatProperty");
@@ -784,6 +812,7 @@ static void rna_def_attribute_float_vector(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "FloatVectorAttributeValueData");
 
   /* Float Vector Attribute Value */
   srna = RNA_def_struct(brna, "FloatVectorAttributeValue", nullptr);
@@ -823,6 +852,7 @@ static void rna_def_attribute_float_color(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "FloatColorAttributeValueData");
 
   /* Float Color Attribute Value */
   srna = RNA_def_struct(brna, "FloatColorAttributeValue", nullptr);
@@ -871,6 +901,7 @@ static void rna_def_attribute_byte_color(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "ByteColorAttributeValueData");
 
   /* Byte Color Attribute Value */
   srna = RNA_def_struct(brna, "ByteColorAttributeValue", nullptr);
@@ -920,6 +951,7 @@ static void rna_def_attribute_int(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "IntAttributeValueData");
 
   srna = RNA_def_struct(brna, "IntAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MIntProperty");
@@ -950,6 +982,7 @@ static void rna_def_attribute_string(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "StringAttributeValueData");
 
   srna = RNA_def_struct(brna, "StringAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MStringProperty");
@@ -980,6 +1013,7 @@ static void rna_def_attribute_bool(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "BoolAttributeValueData");
 
   srna = RNA_def_struct(brna, "BoolAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MBoolProperty");
@@ -1010,6 +1044,7 @@ static void rna_def_attribute_int8(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "ByteIntAttributeValueData");
 
   srna = RNA_def_struct(brna, "ByteIntAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MInt8Property");
@@ -1042,6 +1077,7 @@ static void rna_def_attribute_int2(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "Int2AttributeValueData");
 
   srna = RNA_def_struct(brna, "Int2AttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "vec2i");
@@ -1076,6 +1112,7 @@ static void rna_def_attribute_quaternion(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "QuaternionAttributeValueData");
 
   srna = RNA_def_struct(brna, "QuaternionAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "vec4f");
@@ -1112,6 +1149,7 @@ static void rna_def_attribute_float2(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
+  rna_attribute_collection_data_type(brna, prop, "Float2AttributeValueData");
 
   /* Float2 Attribute Value */
   srna = RNA_def_struct(brna, "Float2AttributeValue", nullptr);
@@ -1135,6 +1173,9 @@ static void rna_def_attribute(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Attribute", "Geometry attribute");
   RNA_def_struct_path_func(srna, "rna_Attribute_path");
   RNA_def_struct_refine_func(srna, "rna_Attribute_refine");
+#  ifdef WITH_PYTHON
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_Attribute_instance");
+#  endif
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Attribute_name_set");
