@@ -128,7 +128,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = mix(BSDF, MetallicBSDF, metallic);
   }
 
-  if (EmissionStrength > 0.0 && EmissionColor != color(0.0)) {
+  if (EmissionStrength != 0.0 && EmissionColor != color(0.0)) {
     BSDF += EmissionStrength * EmissionColor * emission();
   }
 

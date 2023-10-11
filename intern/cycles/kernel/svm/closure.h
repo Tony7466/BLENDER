@@ -269,8 +269,9 @@ ccl_device
         }
       }
 
-      /* Emission (attenuated by sheen and coat) */
-      if (!is_zero(emission)) {
+        /* Emission (attenuated by sheen and coat) */
+        weight = max(weight, zero_spectrum());
+      if (!is_zero(emission) && !isequal(weight, zero_spectrum())) {
         emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }
 
