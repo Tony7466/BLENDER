@@ -60,6 +60,7 @@ void node_bsdf_principled(vec4 base_color,
                           out Closure result)
 {
   /* Match cycles. */
+  metallic = saturate(metallic);
   subsurface_weight = saturate(subsurface_weight);
   
   roughness = saturate(roughness);

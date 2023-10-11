@@ -39,11 +39,12 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float CLOSURE_WEIGHT_CUTOFF = 1e-5;
     
     /* Clamping to match SVM */
+    float metallic = clamp(Metallic, 0.0, 1.0);
     float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
     
     color base_color = max(BaseColor, color(0.0));
     color clamped_base_color = min(base_color, color(1.0));
-    float clamped_color_weight = max(Metallic, subsurface_weight);
+    float clamped_color_weight = max(metallic, subsurface_weight);
     if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
         /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
         base_color = mix(base_color, clamped_base_color, clamped_color_weight);
@@ -65,7 +66,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       T = rotate(T, AnisotropicRotation * M_2PI, point(0.0, 0.0, 0.0), Normal);
   }
 
-  if (Metallic < 1.0 && TransmissionWeight < 1.0) {
+  if (metallic < 1.0 && TransmissionWeight < 1.0) {
     float eta = max(IOR, 1e-5);
     float f0 = F0_from_ior(eta);
     if (SpecularIORLevel != 0.5) {
@@ -106,7 +107,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   closure color TransmissionBSDF = 0;
-  if (Metallic < 1.0 && TransmissionWeight > CLOSURE_WEIGHT_CUTOFF) {
+  if (metallic < 1.0 && TransmissionWeight > CLOSURE_WEIGHT_CUTOFF) {
     float eta = max(IOR, 1e-5);
     eta = backfacing() ? 1.0 / eta : eta;
 
@@ -119,11 +120,11 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   closure color MetallicBSDF = 0;
-  if (Metallic > CLOSURE_WEIGHT_CUTOFF) {
+  if (metallic > CLOSURE_WEIGHT_CUTOFF) {
     color F0 = clamped_base_color;
     color F82 = SpecularTint;
     MetallicBSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
-    BSDF = mix(BSDF, MetallicBSDF, Metallic);
+    BSDF = mix(BSDF, MetallicBSDF, metallic);
   }
 
   if (EmissionStrength > 0.0 && EmissionColor != color(0.0)) {
