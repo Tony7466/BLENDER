@@ -15,7 +15,7 @@
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -49,95 +49,6 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
-
-std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item)
-{
-  return SimulationItemsAccessor::socket_identifier_for_item(item);
-}
-
-static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
-    const NodeSimulationItem &item,
-    const eNodeSocketInOut in_out,
-    const int corresponding_input = -1)
-{
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-  BLI_assert(SimulationItemsAccessor::supports_socket_type(socket_type));
-
-  std::unique_ptr<SocketDeclaration> decl;
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      decl = std::make_unique<decl::Float>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_VECTOR:
-      decl = std::make_unique<decl::Vector>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_RGBA:
-      decl = std::make_unique<decl::Color>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_BOOLEAN:
-      decl = std::make_unique<decl::Bool>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_ROTATION:
-      decl = std::make_unique<decl::Rotation>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_INT:
-      decl = std::make_unique<decl::Int>();
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-      break;
-    case SOCK_STRING:
-      decl = std::make_unique<decl::String>();
-      break;
-    case SOCK_GEOMETRY:
-      decl = std::make_unique<decl::Geometry>();
-      break;
-    default:
-      BLI_assert_unreachable();
-  }
-
-  decl->name = item.name ? item.name : "";
-  decl->identifier = socket_identifier_for_simulation_item(item);
-  decl->in_out = in_out;
-  return decl;
-}
-
-void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
-                                              NodeDeclaration &r_declaration)
-{
-  const int inputs_offset = r_declaration.inputs.size();
-  for (const int i : items.index_range()) {
-    const NodeSimulationItem &item = items[i];
-    SocketDeclarationPtr input_decl = socket_declaration_for_simulation_item(item, SOCK_IN);
-    SocketDeclarationPtr output_decl = socket_declaration_for_simulation_item(
-        item, SOCK_OUT, inputs_offset + i);
-    r_declaration.inputs.append(input_decl.get());
-    r_declaration.items.append(std::move(input_decl));
-    r_declaration.outputs.append(output_decl.get());
-    r_declaration.items.append(std::move(output_decl));
-  }
-  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
-  r_declaration.inputs.append(input_extend_decl.get());
-  r_declaration.items.append(std::move(input_extend_decl));
-  r_declaration.outputs.append(output_extend_decl.get());
-  r_declaration.items.append(std::move(output_extend_decl));
-}
 
 const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
@@ -763,21 +674,28 @@ namespace blender::nodes::node_geo_simulation_output_cc {
 
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
-                                 NodeDeclaration &r_declaration)
+                                 NodeDeclarationBuilder &b)
 {
   const NodeGeometrySimulationOutput &storage = node_storage(node);
-  {
-    SocketDeclarationPtr skip_decl = std::make_unique<decl::Bool>();
-    skip_decl->name = N_("Skip");
-    skip_decl->identifier = skip_decl->name;
-    skip_decl->description = N_(
-        "Forward the output of the simulation input node directly to the output node and ignore "
-        "the nodes in the simulation zone");
-    skip_decl->in_out = SOCK_IN;
-    r_declaration.inputs.append(skip_decl.get());
-    r_declaration.items.append(std::move(skip_decl));
+
+  b.add_input<decl::Bool>("Skip").description(
+      "Forward the output of the simulation input node directly to the output node and ignore "
+      "the nodes in the simulation zone");
+
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeSimulationItem &item = storage.items[i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const StringRef name = item.name;
+    const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier);
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
+      output_decl.dependent_field({input_decl.input_index()});
+    }
   }
-  socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -797,36 +715,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
-  if (!node->storage) {
-    return;
-  }
-  NodeGeometrySimulationOutput &storage = node_storage(*node);
-  for (NodeSimulationItem &item : MutableSpan(storage.items, storage.items_num)) {
-    MEM_SAFE_FREE(item.name);
-  }
-  MEM_SAFE_FREE(storage.items);
+  socket_items::destruct_array<SimulationItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometrySimulationOutput &src_storage = node_storage(*src_node);
-  NodeGeometrySimulationOutput *dst_storage = MEM_cnew<NodeGeometrySimulationOutput>(__func__);
-
-  dst_storage->items = MEM_cnew_array<NodeSimulationItem>(src_storage.items_num, __func__);
-  dst_storage->items_num = src_storage.items_num;
-  dst_storage->active_index = src_storage.active_index;
-  dst_storage->next_identifier = src_storage.next_identifier;
-  for (const int i : IndexRange(src_storage.items_num)) {
-    if (char *name = src_storage.items[i].name) {
-      dst_storage->items[i].identifier = src_storage.items[i].identifier;
-      dst_storage->items[i].name = BLI_strdup(name);
-      dst_storage->items[i].socket_type = src_storage.items[i].socket_type;
-      dst_storage->items[i].attribute_domain = src_storage.items[i].attribute_domain;
-    }
-  }
-
+  auto *dst_storage = MEM_new<NodeGeometrySimulationOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  socket_items::copy_array<SimulationItemsAccessor>(*src_node, *dst_node);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)

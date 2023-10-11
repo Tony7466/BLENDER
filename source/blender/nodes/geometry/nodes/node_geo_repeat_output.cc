@@ -20,112 +20,29 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes {
-
-static std::unique_ptr<SocketDeclaration> socket_declaration_for_repeat_item(
-    const NodeRepeatItem &item, const eNodeSocketInOut in_out, const int corresponding_input = -1)
-{
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-
-  std::unique_ptr<SocketDeclaration> decl;
-
-  auto handle_field_decl = [&](SocketDeclaration &decl) {
-    if (in_out == SOCK_IN) {
-      decl.input_field_type = InputSocketFieldType::IsSupported;
-    }
-    else {
-      decl.output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-    }
-  };
-
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      decl = std::make_unique<decl::Float>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_VECTOR:
-      decl = std::make_unique<decl::Vector>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_RGBA:
-      decl = std::make_unique<decl::Color>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_BOOLEAN:
-      decl = std::make_unique<decl::Bool>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_ROTATION:
-      decl = std::make_unique<decl::Rotation>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_INT:
-      decl = std::make_unique<decl::Int>();
-      handle_field_decl(*decl);
-      break;
-    case SOCK_STRING:
-      decl = std::make_unique<decl::String>();
-      break;
-    case SOCK_GEOMETRY:
-      decl = std::make_unique<decl::Geometry>();
-      break;
-    case SOCK_OBJECT:
-      decl = std::make_unique<decl::Object>();
-      break;
-    case SOCK_IMAGE:
-      decl = std::make_unique<decl::Image>();
-      break;
-    case SOCK_COLLECTION:
-      decl = std::make_unique<decl::Collection>();
-      break;
-    case SOCK_MATERIAL:
-      decl = std::make_unique<decl::Material>();
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-
-  decl->name = item.name ? item.name : "";
-  decl->identifier = RepeatItemsAccessor::socket_identifier_for_item(item);
-  decl->in_out = in_out;
-  return decl;
-}
-
-void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
-                                          NodeDeclaration &r_declaration)
-{
-  for (const int i : items.index_range()) {
-    const NodeRepeatItem &item = items[i];
-    SocketDeclarationPtr input_decl = socket_declaration_for_repeat_item(item, SOCK_IN);
-    r_declaration.inputs.append(input_decl.get());
-    r_declaration.items.append(std::move(input_decl));
-
-    SocketDeclarationPtr output_decl = socket_declaration_for_repeat_item(
-        item, SOCK_OUT, r_declaration.inputs.size() - 1);
-    r_declaration.outputs.append(output_decl.get());
-    r_declaration.items.append(std::move(output_decl));
-  }
-  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  r_declaration.inputs.append(input_extend_decl.get());
-  r_declaration.items.append(std::move(input_extend_decl));
-
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
-  r_declaration.outputs.append(output_extend_decl.get());
-  r_declaration.items.append(std::move(output_extend_decl));
-}
-}  // namespace blender::nodes
 namespace blender::nodes::node_geo_repeat_output_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryRepeatOutput);
 
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
-                                 NodeDeclaration &r_declaration)
+                                 NodeDeclarationBuilder &b)
 {
   const NodeGeometryRepeatOutput &storage = node_storage(node);
-  socket_declarations_for_repeat_items(storage.items_span(), r_declaration);
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeRepeatItem &item = storage.items[i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const StringRef name = item.name ? item.name : "";
+    const std::string identifier = RepeatItemsAccessor::socket_identifier_for_item(item);
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier);
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
+      output_decl.dependent_field({input_decl.input_index()});
+    }
+  }
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -145,33 +62,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
-  NodeGeometryRepeatOutput &storage = node_storage(*node);
-  for (NodeRepeatItem &item : storage.items_span()) {
-    MEM_SAFE_FREE(item.name);
-  }
-  MEM_SAFE_FREE(storage.items);
+  socket_items::destruct_array<RepeatItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometryRepeatOutput &src_storage = node_storage(*src_node);
-  NodeGeometryRepeatOutput *dst_storage = MEM_cnew<NodeGeometryRepeatOutput>(__func__);
-
-  dst_storage->items = MEM_cnew_array<NodeRepeatItem>(src_storage.items_num, __func__);
-  dst_storage->items_num = src_storage.items_num;
-  dst_storage->active_index = src_storage.active_index;
-  dst_storage->next_identifier = src_storage.next_identifier;
-  dst_storage->inspection_index = src_storage.inspection_index;
-  for (const int i : IndexRange(src_storage.items_num)) {
-    if (char *name = src_storage.items[i].name) {
-      dst_storage->items[i].identifier = src_storage.items[i].identifier;
-      dst_storage->items[i].name = BLI_strdup(name);
-      dst_storage->items[i].socket_type = src_storage.items[i].socket_type;
-    }
-  }
-
+  auto *dst_storage = MEM_new<NodeGeometryRepeatOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  socket_items::copy_array<RepeatItemsAccessor>(*src_node, *dst_node);
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
