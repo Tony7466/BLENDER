@@ -564,13 +564,15 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   bool layer_found = false;
   if (strcmp(smd->layers->layer_info, gpl->info) == 0)
     layer_found = true;
-  while (smd->layers->layer_idx < smd->num_of_layers -1)
-  {smd->layers++;
-     if (strcmp(smd->layers->layer_info, gpl->info) == 0) {
-       layer_found = true;
-       break;
-     }
-   }
+  else {
+    while (smd->layers->layer_idx < smd->num_of_layers - 1) {
+      smd->layers++;
+      if (strcmp(smd->layers->layer_info, gpl->info) == 0) {
+        layer_found = true;
+        break;
+      }
+    }
+  }
   if (!layer_found)
     return;
   /*Make it point to the right frame*/
