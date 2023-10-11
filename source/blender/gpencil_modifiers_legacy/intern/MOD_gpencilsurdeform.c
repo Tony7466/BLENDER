@@ -561,9 +561,18 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   evaluation. Could be made quicker with a check to see if it corresponds to the saved order,
   and even to swap it if it doesnt.*/
   rollback_layers(smd);
-  while (strcmp(smd->layers->layer_info, gpl->info) != 0 &&
-  smd->layers->layer_idx < smd->num_of_layers)
-   {smd->layers++;}
+  bool layer_found = false;
+  if (strcmp(smd->layers->layer_info, gpl->info) == 0)
+    layer_found = true;
+  while (smd->layers->layer_idx < smd->num_of_layers -1)
+  {smd->layers++;
+     if (strcmp(smd->layers->layer_info, gpl->info) == 0) {
+       layer_found = true;
+       break;
+     }
+   }
+  if (!layer_found)
+    return;
   /*Make it point to the right frame*/
   rollback_frames(smd, smd->layers);
   if (smd->layers->frames != NULL)
