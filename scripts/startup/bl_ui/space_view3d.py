@@ -4316,7 +4316,10 @@ class VIEW3D_MT_edit_mesh_attributes(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.menu("VIEW3D_MT_edit_mesh_set_clear")
+        layout.menu("VIEW3D_MT_edit_mesh_write_attribute")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_uv_map")
 
         layout.separator()
@@ -4540,15 +4543,15 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.delete", text="Delete Faces").type = 'FACE'
 
 
-class VIEW3D_MT_edit_mesh_set_clear(Menu):
-    bl_label = "Set/Clear"
+class VIEW3D_MT_edit_mesh_write_attribute(Menu):
+    bl_label = "Write"
 
     def draw(self, _context):
         layout = self.layout
 
         with_freestyle = bpy.app.build_options.freestyle
 
-        layout.operator("mesh.attribute_set")
+        layout.operator("mesh.attribute_set", text="Set Active Attribute")
 
         layout.separator()
 
@@ -8894,7 +8897,7 @@ classes = (
     VIEW3D_MT_bone_options_disable,
     VIEW3D_MT_edit_mesh_context_menu,
     VIEW3D_MT_edit_mesh_attributes,
-    VIEW3D_MT_edit_mesh_set_clear,
+    VIEW3D_MT_edit_mesh_write_attribute,
     VIEW3D_MT_edit_mesh_select_mode,
     VIEW3D_MT_edit_mesh_select_linked,
     VIEW3D_MT_edit_mesh_select_loops,
