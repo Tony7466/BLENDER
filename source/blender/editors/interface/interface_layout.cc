@@ -4121,15 +4121,18 @@ static void ui_litem_estimate_panel(uiLayout *litem)
 
 static void ui_litem_layout_panel(uiLayout *litem)
 {
-  uiLayoutItemPanel *panel = reinterpret_cast<uiLayoutItemPanel *>(litem);
+  uiLayoutItemPanel *layout_panel = reinterpret_cast<uiLayoutItemPanel *>(litem);
+  Panel *panel = layout_panel->litem.root->block->panel;
 
   ui_litem_layout_column(litem, false, false);
 
-  uiBut *but = panel->panel_but;
+  uiBut *but = layout_panel->panel_but;
   but->rect.xmin = litem->x - 10;
   but->rect.ymin = litem->y;
   but->rect.xmax = litem->x + litem->w + 20;
   but->rect.ymax = litem->y + litem->h;
+
+  panel->runtime->sub_panel_extends.append({float(litem->y), float(litem->y + litem->h)});
 }
 
 /* box layout */

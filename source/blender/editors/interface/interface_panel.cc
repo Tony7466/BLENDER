@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -1156,7 +1157,8 @@ static void panel_draw_aligned_widgets(const uiStyle *style,
   }
 }
 
-static void panel_draw_aligned_backdrop(const Panel *panel,
+static void panel_draw_aligned_backdrop(const ARegion *region,
+                                        const Panel *panel,
                                         const rcti *rect,
                                         const rcti *header_rect)
 {
@@ -1192,6 +1194,24 @@ static void panel_draw_aligned_backdrop(const Panel *panel,
     box_rect.ymin = rect->ymin;
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
+
+    for (const SubPanelExtend &sub_panel_extend : panel->runtime->sub_panel_extends) {
+      float subpanel_backcolor[4];
+      UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
+      subpanel_backcolor[0] = 1.0f;
+      rctf panel_blockspace = panel->runtime->block->rect;
+      /* TODO: Figure out where the offset comes from. */
+      panel_blockspace.ymax = panel->runtime->block->rect.ymax + sub_panel_extend.end_y - 8;
+      panel_blockspace.ymin = panel->runtime->block->rect.ymax + sub_panel_extend.start_y - 8;
+
+      rcti panel_pixelspace;
+      ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace, &panel_pixelspace);
+
+      rctf panel_pixelspacef;
+      BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
+
+      UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
+    }
   }
 
   /* Panel header backdrops for non sub-panels. */
@@ -1214,7 +1234,8 @@ static void panel_draw_aligned_backdrop(const Panel *panel,
   immUnbindProgram();
 }
 
-void ui_draw_aligned_panel(const uiStyle *style,
+void ui_draw_aligned_panel(const ARegion *region,
+                           const uiStyle *style,
                            const uiBlock *block,
                            const rcti *rect,
                            const bool show_pin,
@@ -1232,7 +1253,7 @@ void ui_draw_aligned_panel(const uiStyle *style,
   };
 
   if (show_background) {
-    panel_draw_aligned_backdrop(panel, rect, &header_rect);
+    panel_draw_aligned_backdrop(region, panel, rect, &header_rect);
   }
 
   /* Draw the widgets and text in the panel header. */

@@ -8,6 +8,7 @@
  */
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_vector.hh"
 
 #include "RNA_types.hh"
 
@@ -340,6 +341,11 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
+struct SubPanelExtend {
+  float start_y;
+  float end_y;
+};
+
 typedef struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx = 0;
@@ -359,6 +365,8 @@ typedef struct Panel_Runtime {
 
   /* Non-owning pointer. The context is stored in the block. */
   bContextStore *context = nullptr;
+
+  blender::Vector<SubPanelExtend> sub_panel_extends;
 } Panel_Runtime;
 
 /* #uiList types. */

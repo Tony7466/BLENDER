@@ -1706,6 +1706,17 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayout *subpanel = uiLayoutPanel(layout);
   uiItemL(subpanel, "Hello World", ICON_NONE);
+  uiItemL(subpanel, "A", ICON_NONE);
+  uiItemL(subpanel, "B", ICON_NONE);
+
+  uiItemL(layout, "C", ICON_NONE);
+  uiItemL(layout, "D", ICON_NONE);
+
+  subpanel = uiLayoutPanel(layout);
+  uiItemL(subpanel, "E", ICON_NONE);
+  uiItemL(subpanel, "F", ICON_NONE);
+
+  uiItemL(layout, "G", ICON_NONE);
 }
 
 static void output_attribute_panel_draw(const bContext *C, Panel *panel)

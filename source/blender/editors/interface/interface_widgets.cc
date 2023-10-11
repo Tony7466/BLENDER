@@ -4984,6 +4984,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         break;
 
       case UI_BTYPE_PANEL:
+        return;
         wt = widget_type(UI_WTYPE_PANEL);
         break;
 
