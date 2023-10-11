@@ -1704,19 +1704,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  uiLayout *subpanel = uiLayoutPanel(layout);
-  uiItemL(subpanel, "Hello World", ICON_NONE);
-  uiItemL(subpanel, "A", ICON_NONE);
-  uiItemL(subpanel, "B", ICON_NONE);
-
-  uiItemL(layout, "C", ICON_NONE);
-  uiItemL(layout, "D", ICON_NONE);
-
-  subpanel = uiLayoutPanel(layout);
-  uiItemL(subpanel, "E", ICON_NONE);
-  uiItemL(subpanel, "F", ICON_NONE);
-
-  uiItemL(layout, "G", ICON_NONE);
+  if (uiLayout *subpanel = uiLayoutPanel(layout, "A", ptr, "show_on_cage")) {
+    uiItemL(subpanel, "Hello World", ICON_NONE);
+    uiItemL(subpanel, "A", ICON_NONE);
+    uiItemL(subpanel, "B", ICON_NONE);
+  }
+  if (uiLayout *subpanel = uiLayoutPanel(layout, "B", ptr, "show_in_editmode")) {
+    uiItemL(subpanel, "Hello World", ICON_NONE);
+    uiItemL(subpanel, "A", ICON_NONE);
+    uiItemL(subpanel, "B", ICON_NONE);
+  }
 }
 
 static void output_attribute_panel_draw(const bContext *C, Panel *panel)

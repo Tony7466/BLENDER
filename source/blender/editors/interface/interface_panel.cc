@@ -1198,7 +1198,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     for (const SubPanelExtend &sub_panel_extend : panel->runtime->sub_panel_extends) {
       float subpanel_backcolor[4];
       UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
-      subpanel_backcolor[0] = 1.0f;
+      // subpanel_backcolor[0] = 1.0f;
       rctf panel_blockspace = panel->runtime->block->rect;
       /* TODO: Figure out where the offset comes from. */
       panel_blockspace.ymax = panel->runtime->block->rect.ymax + sub_panel_extend.end_y - 8;

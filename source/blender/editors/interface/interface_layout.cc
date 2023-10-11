@@ -4876,18 +4876,50 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutPanel(uiLayout *layout)
+uiLayout *uiLayoutPanel(uiLayout *layout,
+                        const char *name,
+                        PointerRNA *open_prop_owner,
+                        const char *open_prop_name)
 {
+  const bool is_open = RNA_boolean_get(open_prop_owner, open_prop_name);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiBlock *block = uiLayoutGetBlock(layout);
+  UI_block_emboss_set(layout->root->block, UI_EMBOSS_NONE);
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW,
+                                IFACE_(name),
+                                0,
+                                0,
+                                UI_UNIT_X * 4,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0,
+                                "");
+  UI_block_emboss_set(layout->root->block, UI_EMBOSS);
+  UI_but_drawflag_enable(but, UI_BUT_TEXT_LEFT | UI_BUT_NO_TOOLTIP);
+
+  UI_but_func_set(
+      but, [ptr = *open_prop_owner, name = std::string(open_prop_name)](bContext &C) mutable {
+        RNA_boolean_set(&ptr, name.c_str(), !RNA_boolean_get(&ptr, name.c_str()));
+        WM_event_add_notifier(&C, NC_SPACE, nullptr);
+      });
+
+  if (!is_open) {
+    return nullptr;
+  }
+
   uiLayoutItemPanel *litem = MEM_cnew<uiLayoutItemPanel>(__func__);
   ui_litem_init_from_parent(&litem->litem, layout, false);
-
   litem->litem.item.type = ITEM_LAYOUT_PANEL;
-
   UI_block_layout_set_current(layout->root->block, &litem->litem);
-
   litem->panel_but = uiDefBut(
       layout->root->block, UI_BTYPE_PANEL, 0, "", 0, 0, 0, 0, nullptr, 0.0, 0.0, 0.0, 0.0, "");
-
   return &litem->litem;
 }
 
