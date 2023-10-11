@@ -79,11 +79,11 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     BSDF = base_color * diffuse(Normal);
     if (subsurface_weight > CLOSURE_WEIGHT_CUTOFF) {
-      vector radius = SubsurfaceScale * SubsurfaceRadius;
+      vector radius = SubsurfaceScale * max(SubsurfaceRadius, vector(0.0));
       float subsurface_ior = (subsurface_method == "random_walk_skin") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
-                                         SubsurfaceScale * SubsurfaceRadius,
+                                         radius,
                                          clamped_base_color,
                                          "roughness",
                                          r2,

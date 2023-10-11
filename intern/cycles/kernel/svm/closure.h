@@ -382,7 +382,7 @@ ccl_device
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(
           sd, rgb_to_spectrum(clamped_base_color) * subsurface_weight * weight);
       if (bssrdf) {
-        float3 subsurface_radius = stack_load_float3(stack, data_subsurf.y);
+        float3 subsurface_radius = max(stack_load_float3(stack, data_subsurf.y), zero_float3());
         float subsurface_scale = stack_load_float(stack, data_subsurf.z);
 
         bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);

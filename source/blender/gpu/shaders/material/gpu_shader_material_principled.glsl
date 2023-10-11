@@ -61,11 +61,12 @@ void node_bsdf_principled(vec4 base_color,
 {
   /* Match cycles. */
   metallic = saturate(metallic);
-  subsurface_weight = saturate(subsurface_weight);
-  
   roughness = saturate(roughness);
   ior = max(ior, 1e-5);
   alpha = saturate(alpha);
+  subsurface_weight = saturate(subsurface_weight);
+  subsurface_radius = max(subsurface_radius, vec3(0.0));
+
   coat_roughness = saturate(coat_roughness);
   
   sheen_roughness = saturate(sheen_roughness);
