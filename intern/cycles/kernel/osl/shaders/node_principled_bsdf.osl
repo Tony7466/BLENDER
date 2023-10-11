@@ -64,7 +64,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   if (Metallic < 1.0 && TransmissionWeight < 1.0) {
-    float eta = IOR;
+    float eta = max(IOR, 1e-5);
     float f0 = F0_from_ior(eta);
     if (SpecularIORLevel != 0.5) {
       f0 *= 2.0 * SpecularIORLevel;

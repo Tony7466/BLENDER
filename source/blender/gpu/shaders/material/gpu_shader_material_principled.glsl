@@ -68,6 +68,7 @@ void node_bsdf_principled(vec4 base_color,
       base_color = mix(base_color, clamped_base_color, clamped_color_weight);
   }
   roughness = saturate(roughness);
+  ior = max(ior, 1e-5);
   
   coat_roughness = saturate(coat_roughness);
   
