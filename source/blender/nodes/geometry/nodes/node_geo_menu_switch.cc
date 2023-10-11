@@ -94,8 +94,7 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
   }
 }
 
-static void add_output(NodeDeclarationBuilder &b,
-                       const eNodeSocketDatatype type)
+static void add_output(NodeDeclarationBuilder &b, const eNodeSocketDatatype type)
 {
   StringRef name = "Output";
 
@@ -153,19 +152,17 @@ static void add_output(NodeDeclarationBuilder &b,
   }
 }
 
-static void node_declare_dynamic(const bNodeTree &tree,
+static void node_declare_dynamic(const bNodeTree & /*tree*/,
                                  const bNode &node,
-                                 NodeDeclaration &declaration)
+                                 NodeDeclarationBuilder &b)
 {
   const NodeMenuSwitch &storage = node_storage(node);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
 
   /* Remove outdated sockets. */
-  declaration.skip_updating_sockets = false;
+  b.declaration().skip_updating_sockets = false;
   /* Allow the node group interface to define the socket order. */
-  declaration.use_custom_socket_order = true;
-
-  NodeDeclarationBuilder b(declaration);
+  b.use_custom_socket_order();
 
   const bool fields_type = ELEM(data_type,
                                 SOCK_FLOAT,
@@ -193,13 +190,15 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
-static void node_enum_definition_init(NodeEnumDefinition &enum_def) {
+static void node_enum_definition_init(NodeEnumDefinition &enum_def)
+{
   enum_def.next_identifier = 0;
   enum_def.items_array = nullptr;
   enum_def.items_num = 0;
 }
 
-static void node_enum_definition_free(NodeEnumDefinition &enum_def) {
+static void node_enum_definition_free(NodeEnumDefinition &enum_def)
+{
   for (NodeEnumItem &item : enum_def.items_for_write()) {
     MEM_SAFE_FREE(item.name);
     MEM_SAFE_FREE(item.description);
@@ -291,8 +290,9 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-template <typename T>
-class MenuSwitchFn : public mf::MultiFunction {
+/* Multifunction which evaluates the switch input for each enum item and partially fills the output
+ * array with values from the input array where the identifier matches. */
+template<typename T> class MenuSwitchFn : public mf::MultiFunction {
   const NodeEnumDefinition &enum_def_;
 
  public:
@@ -311,25 +311,30 @@ class MenuSwitchFn : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context context) const
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const
   {
-    VArray<int> condition = params.readonly_single_input<int>(0, "Switch");
-    Map<int32_t, VArray<T>> inputs_map;
-    inputs_map.reserve(enum_def_.items_num);
-    for (const int i : IndexRange(enum_def_.items_num)) {
-      const NodeEnumItem &enum_item = enum_def_.items()[i];
-      inputs_map.add_new(enum_item.identifier,
-                         params.readonly_single_input<T>(i + 1, enum_item.name));
-    }
     MutableSpan<T> outputs = params.uninitialized_single_output<T>(enum_def_.items_num + 1,
                                                                    "Output");
+    /* Fill outputs with the default value, so that any index without a match uses the default.
+     * This causes duplicate writes but is still cheaper than keeping track of which indices are
+     * uninitialized in the end. */
+    outputs.fill(*static_cast<const T *>(CPPType::get<T>().default_value()));
 
-    const T *default_value = static_cast<const T *>(CPPType::get<T>().default_value());
+    VArray<int> conditions = params.readonly_single_input<int>(0, "Switch");
+    devirtualize_varray(conditions, [&](const auto conditions) {
+      for (const int enum_i : IndexRange(enum_def_.items_num)) {
+        const NodeEnumItem &enum_item = enum_def_.items()[enum_i];
 
-    mask.foreach_index([&](const int i) {
-      const int condition = inputs[i];
-      const VArray<T> *inputs = inputs_map.lookup_ptr(condition);
-      outputs[i] = inputs ? inputs[i] : *default_value;
+        const VArray<T> inputs = params.readonly_single_input<T>(enum_i + 1, enum_item.name);
+        devirtualize_varray(inputs, [&](const auto inputs) {
+          mask.foreach_index([&](const int i) {
+            const int condition = conditions[i];
+            if (condition == enum_item.identifier) {
+              outputs[i] = inputs[i];
+            }
+          });
+        });
+      }
     });
   }
 };
@@ -339,7 +344,6 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   bool can_be_field_ = false;
   const NodeEnumDefinition *enum_def_;
   const CPPType *cpp_type_;
-
 
  public:
   LazyFunctionForMenuSwitchNode(const bNode &node)
@@ -398,6 +402,9 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         params.set_input_unused(input_index);
       }
     }
+    /* No guarantee that the switch input matches any enum,
+     * set default outputs to ensure valid state. */
+    params.set_default_remaining_outputs();
   }
 
   void execute_field(Field<int> condition, lf::Params &params) const
@@ -420,10 +427,9 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         *cpp_type_);
     const CPPType &value_type = value_or_field_type.value;
-    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type, *enum_def_);
+    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type,
+                                                                                 *enum_def_);
 
-    //GField false_field = value_or_field_type.as_field(false_value_or_field);
-    //GField true_field = value_or_field_type.as_field(true_value_or_field);
     Vector<GField> item_fields(enum_def_->items_num + 1);
     item_fields[0] = std::move(condition);
     for (const int i : IndexRange(enum_def_->items_num)) {
@@ -436,7 +442,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     params.output_set(0);
   }
 
-  const MultiFunction &get_switch_multi_function(const CPPType &type, const NodeEnumDefinition &enum_def) const
+  const MultiFunction &get_switch_multi_function(const CPPType &type,
+                                                 const NodeEnumDefinition &enum_def) const
   {
     const MultiFunction *switch_multi_function = nullptr;
     type.to_static_type_tag<float,
