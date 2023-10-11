@@ -389,6 +389,7 @@ ccl_device
         bssrdf->albedo = rgb_to_spectrum(clamped_base_color);
         bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->alpha = sqr(roughness);
+        /* IOR is clamped to [1.01..3.8] inside bssrdf_setup */
         bssrdf->ior = eta;
         /* Anisotropy is clamped to [0.0..0.9] inside bssrdf_setup */
         bssrdf->anisotropy = stack_load_float(stack, data_subsurf.w);
