@@ -245,11 +245,12 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   NodeMenuSwitch *dst_storage = MEM_cnew<NodeMenuSwitch>(__func__);
 
   node_enum_definition_copy(dst_storage->enum_definition, src_storage.enum_definition);
+  dst_storage->data_type = src_storage.data_type;
 
   dst_node->storage = dst_storage;
 }
 
-static void node_update(bNodeTree *ntree, bNode *node) {}
+static void node_update(bNodeTree * /*ntree*/, bNode * /*node*/) {}
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
