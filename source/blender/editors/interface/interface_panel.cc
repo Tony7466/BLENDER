@@ -1195,7 +1195,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
 
-    for (const SubPanelExtend &sub_panel_extend : panel->runtime->sub_panel_extends) {
+    for (const LayoutPanelBodyExtend &sub_panel_extend : panel->runtime->sub_panel_body_extends) {
       float subpanel_backcolor[4];
       UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
       // subpanel_backcolor[0] = 1.0f;

@@ -341,9 +341,16 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
-struct SubPanelExtend {
+struct LayoutPanelBodyExtend {
   float start_y;
   float end_y;
+};
+
+struct LayoutPanelHeaderInfo {
+  float start_y;
+  float end_y;
+  PointerRNA open_owner_ptr;
+  std::string open_prop_name;
 };
 
 typedef struct Panel_Runtime {
@@ -366,7 +373,8 @@ typedef struct Panel_Runtime {
   /* Non-owning pointer. The context is stored in the block. */
   bContextStore *context = nullptr;
 
-  blender::Vector<SubPanelExtend> sub_panel_extends;
+  blender::Vector<LayoutPanelBodyExtend> sub_panel_body_extends;
+  blender::Vector<LayoutPanelHeaderInfo> sub_panel_headers;
 } Panel_Runtime;
 
 /* #uiList types. */

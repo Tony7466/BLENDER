@@ -200,6 +200,8 @@ struct uiLayoutItemBx {
 
 struct uiLayoutItemPanelHeader {
   uiLayout litem;
+  PointerRNA open_prop_owner;
+  char open_prop_name[64];
 };
 
 struct uiLayoutItemPanelBody {
@@ -4127,11 +4129,11 @@ static void ui_litem_estimate_panel_body(uiLayout *litem)
 static void ui_litem_layout_panel_body(uiLayout *litem)
 {
   uiLayoutItemPanelBody *body_litem = reinterpret_cast<uiLayoutItemPanelBody *>(litem);
-  Panel *panel = body_litem->litem.root->block->panel;
+  Panel *panel = litem->root->block->panel;
 
   ui_litem_layout_column(litem, false, false);
 
-  panel->runtime->sub_panel_extends.append({float(litem->y), float(litem->y + litem->h)});
+  panel->runtime->sub_panel_body_extends.append({float(litem->y), float(litem->y + litem->h)});
 }
 
 /* panel header layout */
@@ -4142,8 +4144,15 @@ static void ui_litem_estimate_panel_header(uiLayout *litem)
 
 static void ui_litem_layout_panel_header(uiLayout *litem)
 {
-  // uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
+  uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
+  Panel *panel = litem->root->block->panel;
+
   ui_litem_layout_row(litem);
+
+  panel->runtime->sub_panel_headers.append({float(litem->y),
+                                            float(litem->y + litem->h),
+                                            header_litem->open_prop_owner,
+                                            header_litem->open_prop_name});
 }
 
 /* box layout */
@@ -4899,6 +4908,9 @@ uiLayout *uiLayoutPanel(uiLayout *layout,
     uiLayout *litem = &header_litem->litem;
     ui_litem_init_from_parent(litem, layout, false);
     litem->item.type = ITEM_LAYOUT_PANEL_HEADER;
+
+    header_litem->open_prop_owner = *open_prop_owner;
+    STRNCPY(header_litem->open_prop_name, open_prop_name);
 
     UI_block_layout_set_current(layout->root->block, litem);
 
