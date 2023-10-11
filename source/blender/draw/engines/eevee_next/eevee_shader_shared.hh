@@ -1323,6 +1323,9 @@ struct ReflectionProbeData {
   /** Transform to probe local position with non-uniform scaling. */
   float3x4 world_to_probe_transposed;
 
+  packed_float3 location;
+  float _pad2;
+
   /** Shape of the parallax projection. */
   LightProbeShape parallax_shape;
   LightProbeShape influence_shape;

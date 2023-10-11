@@ -426,7 +426,7 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.atlas_coord = probe.atlas_coord;
     info.resolution = 1 << (max_shift - probe.atlas_coord.layer_subdivision - 1);
     info.clipping_distances = probe.clipping_distances;
-    info.probe_pos = float4(0.0, 0.0, 0.0, 1.0) * probe.world_to_probe_transposed;
+    info.probe_pos = probe.location;
     info.do_render = probe.do_render;
     info.do_world_irradiance_update = probe.do_world_irradiance_update;
 

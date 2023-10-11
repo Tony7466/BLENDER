@@ -35,7 +35,6 @@ struct ReflectionProbe : ReflectionProbeData {
   } type;
 
   /* Used to sort the probes by priority. */
-  float3 location;
   float volume;
 
   /* Should the area in the probes_tx_ be updated? */
