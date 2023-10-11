@@ -51,7 +51,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
@@ -773,7 +773,7 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
   }
   else {
     const char *name = DATA_("Material");
-    if (!(ob != nullptr && ob->type == OB_GPENCIL_LEGACY)) {
+    if (!(ob != nullptr && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL))) {
       ma = BKE_material_add(bmain, name);
     }
     else {

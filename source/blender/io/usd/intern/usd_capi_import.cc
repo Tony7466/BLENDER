@@ -20,7 +20,7 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_world.h"
 
@@ -549,6 +549,11 @@ CacheReader *CacheReader_open_usd_object(CacheArchiveHandle *handle,
   }
 
   pxr::UsdPrim prim = archive->stage()->GetPrimAtPath(pxr::SdfPath(object_path));
+
+  if (!prim) {
+    WM_reportf(RPT_WARNING, "USD Import: unable to open cache reader for object %s", object_path);
+    return nullptr;
+  }
 
   if (reader) {
     USD_CacheReader_free(reader);
