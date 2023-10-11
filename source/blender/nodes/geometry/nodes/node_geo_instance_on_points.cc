@@ -201,9 +201,12 @@ static void node_geo_exec(GeoNodeExecParams params)
       instances_component.replace(dst_instances);
     }
 
-    const Array<GeometryComponent::Type> types{GeometryComponent::Type::Mesh,
-                                               GeometryComponent::Type::PointCloud,
-                                               GeometryComponent::Type::Curve};
+    const Array<GeometryComponent::Type> types{
+        GeometryComponent::Type::Mesh,
+        GeometryComponent::Type::PointCloud,
+        GeometryComponent::Type::Curve,
+        GeometryComponent::Type::GreasePencil,
+    };
 
     Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
     geometry_set.gather_attributes_for_propagation(types,
@@ -214,6 +217,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     attributes_to_propagate.remove("position");
 
     for (const GeometryComponent::Type type : types) {
+      /* We need GreasePencil to propagate, but we handle it separately. */
+      if (type == GeometryComponent::Type::GreasePencil) {
+        continue;
+      }
       if (geometry_set.has(type)) {
         const GeometryComponent &component = *geometry_set.get_component(type);
         const bke::GeometryFieldContext field_context{component, ATTR_DOMAIN_POINT};
@@ -225,7 +232,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      attributes_to_propagate);
       }
     }
-    if (geometry_set.has(GeometryComponent::Type::GreasePencil)) {
+    if (geometry_set.has_grease_pencil()) {
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       for (const int layer_index : grease_pencil.layers().index_range()) {
