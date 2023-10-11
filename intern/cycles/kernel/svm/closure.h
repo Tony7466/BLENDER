@@ -158,6 +158,7 @@ ccl_device
                              &dummy);
       float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
                                                 __uint_as_float(data_alpha_emission.y);
+        alpha = saturatef(alpha);
 
       float emission_strength = stack_valid(emission_strength_offset) ?
                                     stack_load_float(stack, emission_strength_offset) :

@@ -69,7 +69,7 @@ void node_bsdf_principled(vec4 base_color,
   }
   roughness = saturate(roughness);
   ior = max(ior, 1e-5);
-  
+  alpha = saturate(alpha);
   coat_roughness = saturate(coat_roughness);
   
   sheen_roughness = saturate(sheen_roughness);

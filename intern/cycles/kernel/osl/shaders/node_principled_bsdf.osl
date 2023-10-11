@@ -151,5 +151,5 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = layer(SheenWeight * SheenTint * SheenBSDF, BSDF);
   }
 
-  BSDF = mix(transparent(), BSDF, Alpha);
+  BSDF = mix(transparent(), BSDF, clamp(Alpha, 0.0, 1.0));
 }
