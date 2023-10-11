@@ -140,6 +140,12 @@ ccl_device
                                           __uint_as_float(data_base_color.z),
                                           __uint_as_float(data_base_color.w));
         base_color = max(base_color, zero_float3());
+        const float3 clamped_base_color = min(base_color, one_float3());
+        const float clamped_color_weight = max(metallic, subsurface_weight);
+        if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
+            /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
+            base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+        }
 
       // get the subsurface scattering data
       uint4 data_subsurf = read_node(kg, &offset);
@@ -281,7 +287,7 @@ ccl_device
           bsdf->alpha_x = alpha_x;
           bsdf->alpha_y = alpha_y;
 
-          fresnel->f0 = rgb_to_spectrum(base_color);
+          fresnel->f0 = rgb_to_spectrum(clamped_base_color);
           const Spectrum f82 = specular_tint;
 
           /* setup bsdf */
@@ -373,13 +379,13 @@ ccl_device
       /* Diffuse/Subsurface component */
 #ifdef __SUBSURFACE__
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(
-          sd, rgb_to_spectrum(base_color) * subsurface_weight * weight);
+          sd, rgb_to_spectrum(clamped_base_color) * subsurface_weight * weight);
       if (bssrdf) {
         float3 subsurface_radius = stack_load_float3(stack, data_subsurf.y);
         float subsurface_scale = stack_load_float(stack, data_subsurf.z);
 
         bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
-        bssrdf->albedo = rgb_to_spectrum(base_color);
+        bssrdf->albedo = rgb_to_spectrum(clamped_base_color);
         bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->alpha = sqr(roughness);
         bssrdf->ior = eta;

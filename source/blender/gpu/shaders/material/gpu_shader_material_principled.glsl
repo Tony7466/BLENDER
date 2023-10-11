@@ -61,7 +61,12 @@ void node_bsdf_principled(vec4 base_color,
 {
   /* Match cycles. */
   base_color = max(base_color, vec4(0.0));
-  
+  vec4 clamped_base_color = min(base_color, vec4(1.0));
+  float clamped_color_weight = max(metallic, subsurface_weight);
+  if (clamped_color_weight > 0.0) {
+      /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
+      base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+  }
   
   N = safe_normalize(N);
   CN = safe_normalize(CN);
@@ -125,7 +130,7 @@ void node_bsdf_principled(vec4 base_color,
   reflection_data.roughness = roughness;
   vec3 reflection_tint = specular_tint.rgb;
   if (metallic > 0.0) {
-    vec3 F0 = base_color.rgb;
+    vec3 F0 = clamped_base_color.rgb;
     vec3 F82 = reflection_tint;
     vec3 metallic_brdf;
     brdf_f82_tint_lut(F0, F82, NV, roughness, do_multiscatter != 0.0, metallic_brdf);

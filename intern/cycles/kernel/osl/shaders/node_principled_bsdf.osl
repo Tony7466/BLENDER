@@ -36,9 +36,16 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             normal Tangent = normalize(dPdu),
                             output closure color BSDF = 0)
 {
+    float CLOSURE_WEIGHT_CUTOFF = 1e-5;
+    
     /* Clamping to match SVM */
     color base_color = max(BaseColor, color(0.0));
-    
+    color clamped_base_color = min(base_color, color(1.0));
+    float clamped_color_weight = max(Metallic, SubsurfaceWeight);
+    if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
+        /* Metallic and Subsurface Scattering materials behave unpredictably with values greater than 1.0. */
+        base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+    }
     
     
   float r2 = Roughness;
@@ -68,21 +75,21 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     }
 
     BSDF = base_color * diffuse(Normal);
-    if (SubsurfaceWeight > 1e-5) {
+    if (SubsurfaceWeight > CLOSURE_WEIGHT_CUTOFF) {
       float subsurface_weight = SubsurfaceWeight;
       vector radius = SubsurfaceScale * SubsurfaceRadius;
       float subsurface_ior = (subsurface_method == "random_walk_skin") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
                                          SubsurfaceScale * SubsurfaceRadius,
-                                         base_color,
+                                         clamped_base_color,
                                          "roughness",
                                          r2,
                                          "ior",
                                          subsurface_ior,
                                          "anisotropy",
                                          SubsurfaceAnisotropy);
-      BSDF = mix(BSDF, base_color * SubsurfBSDF, subsurface_weight);
+      BSDF = mix(BSDF, clamped_base_color * SubsurfBSDF, subsurface_weight);
     }
 
     if (eta != 1.0) {
@@ -98,7 +105,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   closure color TransmissionBSDF = 0;
-  if (Metallic < 1.0 && TransmissionWeight > 0.0) {
+  if (Metallic < 1.0 && TransmissionWeight > CLOSURE_WEIGHT_CUTOFF) {
     float eta = max(IOR, 1e-5);
     eta = backfacing() ? 1.0 / eta : eta;
 
@@ -111,8 +118,8 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   closure color MetallicBSDF = 0;
-  if (Metallic > 0.0) {
-    color F0 = base_color;
+  if (Metallic > CLOSURE_WEIGHT_CUTOFF) {
+    color F0 = clamped_base_color;
     color F82 = SpecularTint;
     MetallicBSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
     BSDF = mix(BSDF, MetallicBSDF, Metallic);
@@ -122,7 +129,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF += EmissionStrength * EmissionColor * emission();
   }
 
-  if (CoatWeight > 1e-5) {
+  if (CoatWeight > CLOSURE_WEIGHT_CUTOFF) {
     float coat_ior = max(CoatIOR, 1.0);
     if (CoatTint != color(1.0)) {
       float coat_neta = 1.0 / coat_ior;
@@ -138,7 +145,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = layer(CoatWeight * CoatBSDF, BSDF);
   }
 
-  if (SheenWeight > 1e-5) {
+  if (SheenWeight > CLOSURE_WEIGHT_CUTOFF) {
     normal sheen_normal = normalize(mix(Normal, CoatNormal, CoatWeight));
     closure color SheenBSDF = sheen(sheen_normal, SheenRoughness);
     BSDF = layer(SheenWeight * SheenTint * SheenBSDF, BSDF);
