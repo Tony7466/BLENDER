@@ -59,7 +59,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   /* Handle anisotropy. */
   vector T = Tangent;
   if (Anisotropic > 0.0) {
-    float aspect = sqrt(1.0 - clamp(Anisotropic, 0.0, 1.0) * 0.9);
+    float aspect = sqrt(1.0 - min(Anisotropic, 1.0) * 0.9);
     alpha_x /= aspect;
     alpha_y *= aspect;
     if (AnisotropicRotation != 0.0)

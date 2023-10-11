@@ -112,7 +112,8 @@ ccl_device
       float specular_ior_level = max(stack_load_float(stack, specular_ior_level_offset), 0.0f);
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
       Spectrum specular_tint = rgb_to_spectrum(max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
-      float anisotropic = stack_load_float(stack, anisotropic_offset);
+      /* anisotropic is clamped to > 0 later on resulting in [0..1] clamping. */
+      float anisotropic = min(stack_load_float(stack, anisotropic_offset), 1.0f);
       float sheen_weight = stack_load_float(stack, sheen_weight_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
       float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
