@@ -43,7 +43,7 @@ set(SRC_KERNEL_DEVICE_OPTIX
 if(WITH_CYCLES_OSL)
   math(EXPR OSL_LIBRARY_VERSION_CODE "${OSL_LIBRARY_VERSION_MAJOR} * 10000 + ${OSL_LIBRARY_VERSION_MINOR} * 100 + ${OSL_LIBRARY_VERSION_PATCH}")
 
-  if (OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
+  if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
     set(SRC_KERNEL_DEVICE_OPTIX
       ${SRC_KERNEL_DEVICE_OPTIX}
       osl/services_optix.cu
@@ -884,7 +884,28 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   endif()
   # Enable zebin, a graphics binary format with improved compatibility.
   string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "--format zebin ")
-  string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "-device ${CYCLES_ONEAPI_SPIR64_GEN_DEVICES} ")
+
+  # Add the list of Intel devices to build binaries for.
+  foreach(device ${CYCLES_ONEAPI_INTEL_BINARIES_ARCH})
+    # Run ocloc ids to test if the device is supported.
+    if(WIN32)
+      execute_process(COMMAND ${OCLOC_INSTALL_DIR}/ocloc.exe ids ${device}
+                      RESULT_VARIABLE oclocids_ret
+                      OUTPUT_QUIET
+                      ERROR_QUIET)
+    else()
+      execute_process(COMMAND ${OCLOC_INSTALL_DIR}/bin/ocloc ids ${device}
+                      RESULT_VARIABLE oclocids_ret
+                      OUTPUT_QUIET
+                      ERROR_QUIET)
+    endif()
+    if(NOT oclocids_ret EQUAL 0)
+      list(REMOVE_ITEM CYCLES_ONEAPI_INTEL_BINARIES_ARCH ${device})
+      message(STATUS "binaries for ${device} not supported by Intel Graphics Compiler/ocloc, skipped.")
+    endif()
+  endforeach()
+  list(JOIN CYCLES_ONEAPI_INTEL_BINARIES_ARCH "," gen_devices_string)
+  string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "-device ${gen_devices_string} ")
 
   # Host execution won't use GPU binaries, no need to compile them.
   if(WITH_CYCLES_ONEAPI_BINARIES AND NOT WITH_CYCLES_ONEAPI_HOST_TASK_EXECUTION)
