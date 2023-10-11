@@ -120,7 +120,7 @@ ccl_device
       float coat_weight = saturatef(stack_load_float(stack, coat_weight_offset));
       float coat_roughness = saturatef(stack_load_float(stack, coat_roughness_offset));
       float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
-      float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
+      float3 coat_tint = max(stack_load_float3(stack, coat_tint_offset), zero_float3());
       float transmission_weight = saturatef(stack_load_float(stack, transmission_weight_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float ior = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
