@@ -524,8 +524,8 @@ void ReflectionProbeModule::set_view(View & /*view*/)
   }
   /* Add world probe at the end. */
   data_buf_[probe_id++] = probes_.lookup(world_object_key_);
+  /* Tag the end of the array. */
   if (probe_id < REFLECTION_PROBES_MAX) {
-    /* Tag the end of the array. */
     data_buf_[probe_id].atlas_coord.layer = -1;
   }
   data_buf_.push_update();

@@ -1334,7 +1334,6 @@ struct ReflectionProbeData {
   float lod_factor;
   float _pad0;
   float _pad1;
-  float _pad2;
 
   ReflectionProbeAtlasCoordinate atlas_coord;
 
