@@ -189,25 +189,29 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   NodeItem noise = empty();
-  NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector3);
-  NodeItem w = get_input_value("W", NodeItem::Type::Float);
   int dimension = node_->custom1;
   switch (dimension) {
     case 1:
       noise = create_node("cellnoise2d",
                           NodeItem::Type::Float,
-                          {{"texcoord", w.convert(NodeItem::Type::Vector2)}});
+                          {{"texcoord", get_input_value("W", NodeItem::Type::Vector2)}});
       break;
     case 2:
       noise = create_node("cellnoise2d",
                           NodeItem::Type::Float,
-                          {{"texcoord", vector.convert(NodeItem::Type::Vector2)}});
+                          {{"texcoord", get_input_link("Vector", NodeItem::Type::Vector2)}});
       break;
     case 3:
-      noise = create_node("cellnoise3d", NodeItem::Type::Float, {{"position", vector}});
+      noise = create_node("cellnoise3d",
+                          NodeItem::Type::Float,
+                          {{"position", get_input_link("Vector", NodeItem::Type::Vector3)}});
       break;
     case 4:
-      noise = create_node("cellnoise3d", NodeItem::Type::Float, {{"position", vector + w}});
+      noise = create_node("cellnoise3d",
+                          NodeItem::Type::Float,
+                          {{"position",
+                            get_input_link("Vector", NodeItem::Type::Vector3) +
+                                get_input_value("W", NodeItem::Type::Float)}});
       break;
     default:
       BLI_assert_unreachable();
@@ -218,6 +222,8 @@ NODE_SHADER_MATERIALX_BEGIN
     return noise;
   }
 
+  /* NOTE: cellnoise node doesn't have colored output, so we create hsvtorgb node and put
+   * noise in first (Hue) channel to generate color. */
   NodeItem combine = create_node(
       "combine3", NodeItem::Type::Color3, {{"in1", noise}, {"in2", val(1.0f)}, {"in3", val(0.5f)}});
   return create_node("hsvtorgb", NodeItem::Type::Color3, {{"in", combine}});
