@@ -384,17 +384,19 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
   void execute_single(const int condition, lf::Params &params) const
   {
+    bool found_match = false;
+    void *output_ptr = params.get_output_data_ptr(0);
     for (const int i : IndexRange(enum_def_.items_num)) {
       const NodeEnumItem &enum_item = enum_def_.items_array[i];
       const int input_index = i + 1;
       if (enum_item.identifier == condition) {
+        found_match = true;
         void *value_to_forward = params.try_get_input_data_ptr_or_request(input_index);
         if (value_to_forward == nullptr) {
           /* Try again when the value is available. */
           continue;
         }
 
-        void *output_ptr = params.get_output_data_ptr(0);
         cpp_type_->move_construct(value_to_forward, output_ptr);
         params.output_set(0);
       }
@@ -404,7 +406,10 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     }
     /* No guarantee that the switch input matches any enum,
      * set default outputs to ensure valid state. */
-    params.set_default_remaining_outputs();
+    if (!found_match) {
+      cpp_type_->value_initialize(output_ptr);
+      params.output_set(0);
+    }
   }
 
   void execute_field(Field<int> condition, lf::Params &params) const
