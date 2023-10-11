@@ -235,7 +235,7 @@ const EnumPropertyItem rna_enum_metaelem_type_items[] = {
 const EnumPropertyItem rna_enum_lightprobes_type_items[] = {
     {LIGHTPROBE_TYPE_SPHERE, "CUBEMAP", ICON_LIGHTPROBE_SPHERE, "Cubemap", ""},
     {LIGHTPROBE_TYPE_PLANE, "PLANAR", ICON_LIGHTPROBE_PLANE, "Planar", ""},
-    {LIGHTPROBE_TYPE_VOLUME, "VOLUME", ICON_LIGHTPROBE_VOLUME, "VOLUME", ""},
+    {LIGHTPROBE_TYPE_VOLUME, "VOLUME", ICON_LIGHTPROBE_VOLUME, "Volume", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
