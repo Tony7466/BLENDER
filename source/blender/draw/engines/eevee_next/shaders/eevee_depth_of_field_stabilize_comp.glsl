@@ -20,7 +20,6 @@
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 
 struct DofSample {
   vec4 color;

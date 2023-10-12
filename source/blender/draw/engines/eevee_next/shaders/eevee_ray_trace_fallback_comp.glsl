@@ -11,7 +11,6 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 
 void main()
 {
