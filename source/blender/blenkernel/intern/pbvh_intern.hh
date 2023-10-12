@@ -129,6 +129,8 @@ struct PBVHNode {
    * debug draw mode (when G.debug_value / bpy.app.debug_value is 889).
    */
   int debug_draw_gen = 0;
+
+  int subtree_tottri = 0; /* Used by PBVH_BMESH balancing code. */
 };
 
 typedef struct PBVHBMeshLog PBVHBMeshLog;
@@ -216,11 +218,16 @@ struct PBVH {
   PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
+
+  int dyntopo_balance_counter = 0;
 };
 
 /* pbvh.cc */
 
 void BB_reset(BB *bb);
+void BB_intersect(BB *r_out, BB *a, BB *b);
+float BB_volume(const BB *bb);
+
 /**
  * Expand the bounding box to include a new coordinate.
  */
@@ -289,3 +296,10 @@ void pbvh_bmesh_normals_update(blender::Span<PBVHNode *> nodes);
 void pbvh_node_pixels_free(PBVHNode *node);
 void pbvh_pixels_free(PBVH *pbvh);
 void pbvh_free_draw_buffers(PBVH *pbvh, PBVHNode *node);
+
+/* Dyntopo balancing. */
+void pbvh_bmesh_compact_tree(PBVH *pbvh);
+bool pbvh_bmesh_join_nodes(PBVH *pbvh);
+
+/* Rebuilds leaf nodes that overlap too much. */
+bool pbvh_bmesh_balance_tree(PBVH *pbvh, float overlap_threshold);

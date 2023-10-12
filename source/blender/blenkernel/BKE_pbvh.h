@@ -46,8 +46,9 @@ typedef enum PBVHNodeFlags {
   PBVH_TexLeaf = 1 << 16,
   /** Used internally by `pbvh_bmesh.cc`. */
   PBVH_TopologyUpdated = 1 << 17,
+  PBVH_Delete = 1 << 18, /* Used for PBVH_BMESH balancing. */
 } PBVHNodeFlags;
-ENUM_OPERATORS(PBVHNodeFlags, PBVH_TopologyUpdated);
+ENUM_OPERATORS(PBVHNodeFlags, PBVH_Delete);
 
 #ifdef __cplusplus
 /* A few C++ methods to play nice with sets and maps. */
