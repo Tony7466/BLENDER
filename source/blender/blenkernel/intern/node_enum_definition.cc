@@ -76,25 +76,22 @@ void NodeEnumDefinition::clear()
 
 bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
 {
-  if (from_index < 0 || from_index >= this->items_num || to_index < 0 ||
-      to_index >= this->items_num) {
+  if (from_index >= this->items_num || to_index >= this->items_num) {
     return false;
   }
 
+  const NodeEnumItem tmp = this->items_array[from_index];
   if (from_index < to_index) {
-    const NodeEnumItem tmp = this->items_array[from_index];
     std::copy(this->items_array + from_index + 1,
-              this->items_array + to_index,
+              this->items_array + to_index + 1,
               this->items_array + from_index);
-    this->items_array[to_index] = tmp;
   }
   else if (from_index > to_index) {
-    const NodeEnumItem tmp = this->items_array[from_index];
     std::copy_backward(this->items_array + to_index,
-                       this->items_array + from_index - 1,
-                       this->items_array + to_index + 1);
-    this->items_array[to_index] = tmp;
+                       this->items_array + from_index,
+                       this->items_array + from_index + 1);
   }
+  this->items_array[to_index] = tmp;
 
   this->flag |= NODE_ENUM_DEFINITION_CHANGED;
   return true;
@@ -116,7 +113,8 @@ NodeEnumItem *NodeEnumDefinition::active_item()
   return nullptr;
 }
 
-void NodeEnumDefinition::active_item_set(NodeEnumItem *item) {
+void NodeEnumDefinition::active_item_set(NodeEnumItem *item)
+{
   this->active_index = this->items().contains_ptr(item) ? item - this->items_array : -1;
 }
 
@@ -181,7 +179,8 @@ bool NodeEnumDefinitionRef::is_valid() const
   return this->node_tree->node_by_id(this->node_identifier) != nullptr;
 }
 
-bool NodeEnumDefinitionRef::operator==(const NodeEnumDefinitionRef &other) const {
+bool NodeEnumDefinitionRef::operator==(const NodeEnumDefinitionRef &other) const
+{
   return this->node_tree == other.node_tree && this->node_identifier == other.node_identifier;
 }
 

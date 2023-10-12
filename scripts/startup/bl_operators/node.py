@@ -413,6 +413,31 @@ class NODE_OT_enum_definition_item_remove(Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_enum_definition_item_move(Operator):
+    '''Remove the selected enum item from the definition'''
+    bl_idname = "node.enum_definition_item_move"
+    bl_label = "Move Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        description="Move up or down",
+        items=[("UP", "Up", ""), ("DOWN", "Down", "")]
+    )
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        index = enum_def.active_index
+        if self.direction == 'UP':
+            enum_def.enum_items.move(index, index - 1)
+            enum_def.active_index = min(max(index - 1, 0), len(enum_def.enum_items) - 1)
+        else:
+            enum_def.enum_items.move(index, index + 1)
+            enum_def.active_index = min(max(index + 1, 0), len(enum_def.enum_items) - 1)
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -426,4 +451,5 @@ classes = (
     NODE_OT_tree_path_parent,
     NODE_OT_enum_definition_item_add,
     NODE_OT_enum_definition_item_remove,
+    NODE_OT_enum_definition_item_move,
 )
