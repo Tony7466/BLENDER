@@ -13,12 +13,11 @@
  * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
  */
 
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 shared vec3 cached_radiance[SUBSURFACE_GROUP_SIZE][SUBSURFACE_GROUP_SIZE];
@@ -77,7 +76,7 @@ void main(void)
   cache_populate(center_uv);
 
   float depth = texelFetch(depth_tx, texel, 0).r;
-  vec3 vP = get_view_space_from_depth(center_uv, depth);
+  vec3 vP = drw_point_screen_to_view(vec3(center_uv, depth));
 
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
@@ -116,7 +115,7 @@ void main(void)
       continue;
     }
     /* Slide 34. */
-    vec3 sample_vP = get_view_space_from_depth(sample_uv, samp.depth);
+    vec3 sample_vP = drw_point_screen_to_view(vec3(sample_uv, samp.depth));
     float r = distance(sample_vP, vP);
     vec3 weight = burley_eval(d, r) * pdf_inv;
 
