@@ -579,8 +579,8 @@ static const EnumPropertyItem prop_delete_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static bke::CurvesGeometry delete_points(const bke::CurvesGeometry &curves,
-                                         const VArray<bool> selection)
+static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &curves,
+                                                   const VArray<bool> selection)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
@@ -714,7 +714,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator *op)
           curves.remove_curves(IndexMask::from_bools(selection, memory));
         }
         else if (mode == DeleteMode::POINTS) {
-          curves = delete_points(curves, selection);
+          curves = remove_points_and_split(curves, selection);
         }
         drawing.tag_topology_changed();
         changed = true;
