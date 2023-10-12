@@ -118,9 +118,9 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   if (!USER_VERSION_ATLEAST(400, 27)) {
-    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_selection);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_select);
     FROM_DEFAULT_V4_UCHAR(space_view3d.edge_mode_selection);
-    FROM_DEFAULT_V4_UCHAR(space_view3d.face_selection); 
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_select); 
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_selection);
   }
 
