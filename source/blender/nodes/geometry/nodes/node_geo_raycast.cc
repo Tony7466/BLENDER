@@ -24,8 +24,13 @@ using namespace blender::bke::mesh_surface_sample;
 
 NODE_STORAGE_FUNCS(NodeGeometryRaycast)
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const NodeGeometryRaycast &storage = node_storage(node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+
   b.add_input<decl::Geometry>("Target Geometry")
       .only_realized_data()
       .supported_type(GeometryComponent::Type::Mesh);
@@ -47,14 +52,6 @@ static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_t
   b.add_output(data_type, "Attribute").dependent_field({2, 3, 4});
 }
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  const NodeGeometryRaycast &storage = node_storage(node);
-  node_declare(b, eCustomDataType(storage.data_type));
-}
-
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
@@ -71,13 +68,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 static void raycast_to_mesh(const IndexMask &mask,

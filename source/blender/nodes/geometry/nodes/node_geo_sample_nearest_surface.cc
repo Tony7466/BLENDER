@@ -24,20 +24,16 @@ namespace blender::nodes::node_geo_sample_nearest_surface_cc {
 
 using namespace blender::bke::mesh_surface_sample;
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eCustomDataType data_type = eCustomDataType(node.custom1);
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input(data_type, "Value").hide_value().field_on_all();
   b.add_input<decl::Vector>("Sample Position").implicit_field(implicit_field_inputs::position);
 
   b.add_output(data_type, "Value").dependent_field({2});
-}
-
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  node_declare(b, eCustomDataType(node.custom1));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -52,13 +48,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
+  static const Array<eNodeSocketDatatype> supported_types({SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION});
+  DynamicGatherBuilder builder(params, supported_types.as_span());
+
+  builder.add_input(SOCK_GEOMETRY, "Mesh");
+  builder.add_dynamic_input("Value");
+  builder.add_input(SOCK_FLOAT, "Sample Position");
+
+  builder.add_dynamic_output("Value");
 }
 
 static void get_closest_mesh_looptris(const Mesh &mesh,

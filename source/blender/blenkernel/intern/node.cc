@@ -3525,9 +3525,13 @@ eNodeSocketDatatype custom_data_to_socket_type_type(const eCustomDataType data_t
       return SOCK_INT;
     case CD_PROP_FLOAT3:
       return SOCK_VECTOR;
+    case CD_PROP_FLOAT2:
+      return SOCK_VECTOR;
     case CD_PROP_BOOL:
       return SOCK_BOOLEAN;
     case CD_PROP_COLOR:
+      return SOCK_RGBA;
+    case CD_PROP_BYTE_COLOR:
       return SOCK_RGBA;
     case CD_PROP_QUATERNION:
       return SOCK_ROTATION;

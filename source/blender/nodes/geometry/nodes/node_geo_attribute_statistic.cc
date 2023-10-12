@@ -69,16 +69,7 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
   }
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{ /*
-   return;
-   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-   search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-     if (const std::optional<eCustomDataType> type =
-   node_data_type_to_custom_data_type(socket_type)) { node_declare(b, *type);
-     }
-   });*/
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 template<typename T> static T compute_sum(const Span<T> data)
 {

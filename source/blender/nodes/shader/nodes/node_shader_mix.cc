@@ -34,55 +34,26 @@ namespace blender::nodes::node_sh_mix_cc {
 
 NODE_STORAGE_FUNCS(NodeShaderMix)
 
-static void sh_node_mix_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  /* TODO: Note the fact of lack of defaut values for colot inputs! */
+  const NodeShaderMix &storage = node_storage(node);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
+  const bool use_vector_factor = data_type == SOCK_VECTOR && storage.factor_mode != NODE_MIX_MODE_UNIFORM;
   b.is_function_node();
-  /* WARNING:
-   * Input socket indices must be kept in sync with ntree_shader_disconnect_inactive_mix_branches
-   */
-  b.add_input<decl::Float>("Factor", "Factor_Float")
-      .default_value(0.5f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .no_muted_links();
-  b.add_input<decl::Vector>("Factor", "Factor_Vector")
-      .default_value(float3(0.5f))
-      .subtype(PROP_FACTOR)
-      .no_muted_links();
 
-  b.add_input<decl::Float>("A", "A_Float")
-      .min(-10000.0f)
-      .max(10000.0f)
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Float>("B", "B_Float")
-      .min(-10000.0f)
-      .max(10000.0f)
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  if (!use_vector_factor) {
+    b.add_input<decl::Float>("Factor").default_value(0.5f).min(0.0f).max(1.0f).subtype(PROP_FACTOR).no_muted_links();
+  } else {
+    b.add_input<decl::Vector>("Factor").default_value(float3(0.5f)).subtype(PROP_FACTOR).no_muted_links();
+  }
 
-  b.add_input<decl::Vector>("A", "A_Vector")
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Vector>("B", "B_Vector").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input(data_type, "A").is_default_link_socket().translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
-  b.add_input<decl::Color>("A", "A_Color")
-      .default_value({0.5f, 0.5f, 0.5f, 1.0f})
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Color>("B", "B_Color")
-      .default_value({0.5f, 0.5f, 0.5f, 1.0f})
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-
-  b.add_input<decl::Rotation>("A", "A_Rotation")
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Rotation>("B", "B_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-
-  b.add_output<decl::Float>("Result", "Result_Float");
-  b.add_output<decl::Vector>("Result", "Result_Vector");
-  b.add_output<decl::Color>("Result", "Result_Color");
-  b.add_output<decl::Rotation>("Result", "Result_Rotation");
+  b.add_output(data_type, "Result");
 };
 
 static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -135,30 +106,6 @@ static int sh_node_mix_ui_class(const bNode *node)
       return NODE_CLASS_OP_COLOR;
     default:
       return NODE_CLASS_CONVERTER;
-  }
-}
-
-static void sh_node_mix_update(bNodeTree *ntree, bNode *node)
-{
-  const NodeShaderMix &storage = node_storage(*node);
-  const eNodeSocketDatatype data_type = static_cast<eNodeSocketDatatype>(storage.data_type);
-
-  bNodeSocket *sock_factor = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *sock_factor_vec = static_cast<bNodeSocket *>(sock_factor->next);
-
-  bool use_vector_factor = data_type == SOCK_VECTOR &&
-                           storage.factor_mode != NODE_MIX_MODE_UNIFORM;
-
-  bke::nodeSetSocketAvailability(ntree, sock_factor, !use_vector_factor);
-
-  bke::nodeSetSocketAvailability(ntree, sock_factor_vec, use_vector_factor);
-
-  for (bNodeSocket *socket = sock_factor_vec->next; socket != nullptr; socket = socket->next) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
-  }
-
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
   }
 }
 
@@ -603,10 +550,9 @@ void register_node_type_sh_mix()
 
   static bNodeType ntype;
   sh_fn_node_type_base(&ntype, SH_NODE_MIX, "Mix", NODE_CLASS_CONVERTER);
-  ntype.declare = file_ns::sh_node_mix_declare;
   ntype.ui_class = file_ns::sh_node_mix_ui_class;
   ntype.gpu_fn = file_ns::gpu_shader_mix;
-  ntype.updatefunc = file_ns::sh_node_mix_update;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.initfunc = file_ns::node_mix_init;
   node_type_storage(
       &ntype, "NodeShaderMix", node_free_standard_storage, node_copy_standard_storage);

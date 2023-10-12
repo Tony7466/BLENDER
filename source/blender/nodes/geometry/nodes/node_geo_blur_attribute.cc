@@ -17,6 +17,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -33,8 +34,12 @@
 
 namespace blender::nodes::node_geo_blur_attribute_cc {
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eCustomDataType data_type = eCustomDataType(node.custom1);
+
   b.add_input(data_type, "Value").supports_field().hide_value().is_default_link_socket();
   b.add_input<decl::Int>("Iterations")
       .default_value(1)
@@ -51,13 +56,6 @@ static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_t
   b.add_output(data_type, "Value").field_source_reference_all().dependent_field();
 }
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  node_declare(b, eCustomDataType(node.custom1));
-}
-
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
@@ -70,13 +68,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 static void build_vert_to_vert_by_edge_map(const Span<int2> edges,
@@ -381,8 +372,9 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         }
         break;
       case GeometryComponent::Type::Curve:
+      case GeometryComponent::Type::GreasePencil:
         if (context.domain() == ATTR_DOMAIN_POINT) {
-          if (const bke::CurvesGeometry *curves = context.curves()) {
+          if (const bke::CurvesGeometry *curves = context.curves_or_strokes()) {
             result_buffer = blur_on_curves(
                 *curves, iterations_, neighbor_weights, buffer_a, buffer_b);
           }

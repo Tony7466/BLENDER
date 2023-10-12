@@ -23,8 +23,12 @@ namespace blender::nodes::node_geo_sample_uv_surface_cc {
 
 using geometry::ReverseUVSampler;
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const eCustomDataType data_type = eCustomDataType(node.custom1);
+
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input(data_type, "Value").hide_value().field_on_all();
   b.add_input<decl::Vector>("Source UV Map")
@@ -41,13 +45,6 @@ static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_t
       .description("Whether the node could find a single face to sample at the UV coordinate");
 }
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  node_declare(b, eCustomDataType(node.custom1));
-}
-
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
@@ -60,13 +57,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 class ReverseUVSampleFunction : public mf::MultiFunction {

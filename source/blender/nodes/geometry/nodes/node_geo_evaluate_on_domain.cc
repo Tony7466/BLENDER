@@ -20,18 +20,15 @@
 
 namespace blender::nodes::node_geo_evaluate_on_domain_cc {
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
-{
-  b.add_input(data_type, "Value").supports_field();
-
-  b.add_output(data_type, "Value").field_source_reference_all();
-}
-
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclarationBuilder &b)
 {
-  node_declare(b, eCustomDataType(node.custom2));
+  const eCustomDataType data_type = eCustomDataType(node.custom2);
+
+  b.add_input(data_type, "Value").supports_field();
+
+  b.add_output(data_type, "Value").field_source_reference_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -48,13 +45,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
@@ -78,13 +68,11 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
     const CPPType &cpp_type = src_field_.cpp_type();
 
     if (context.type() == GeometryComponent::Type::GreasePencil &&
-        (src_domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) !=
-            (dst_domain == ATTR_DOMAIN_GREASE_PENCIL_LAYER))
+        (src_domain_ == ATTR_DOMAIN_LAYER) != (dst_domain == ATTR_DOMAIN_LAYER))
     {
       /* Evaluate field just for the current layer. */
-      if (src_domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
-        const bke::GeometryFieldContext src_domain_context{context,
-                                                           ATTR_DOMAIN_GREASE_PENCIL_LAYER};
+      if (src_domain_ == ATTR_DOMAIN_LAYER) {
+        const bke::GeometryFieldContext src_domain_context{context, ATTR_DOMAIN_LAYER};
         const int layer_index = context.grease_pencil_layer_index();
 
         const IndexMask single_layer_mask = IndexRange(layer_index, 1);

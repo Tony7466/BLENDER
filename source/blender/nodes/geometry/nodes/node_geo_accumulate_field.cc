@@ -22,8 +22,13 @@ namespace blender::nodes::node_geo_accumulate_field_cc {
 
 NODE_STORAGE_FUNCS(NodeAccumulateField)
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const NodeAccumulateField &storage = node_storage(node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+
   BaseSocketDeclarationBuilder *value_declaration = nullptr;
   switch (data_type) {
     case CD_PROP_FLOAT3:
@@ -55,14 +60,6 @@ static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_t
   b.add_output(data_type, "Total")
       .field_source_reference_all()
       .description(N_("The total of all of the values in the corresponding group"));
-}
-
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  const NodeAccumulateField &storage = node_storage(node);
-  node_declare(b, eCustomDataType(storage.data_type));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -97,16 +94,7 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
   }
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 class AccumulateFieldInput final : public bke::GeometryFieldInput {
  private:

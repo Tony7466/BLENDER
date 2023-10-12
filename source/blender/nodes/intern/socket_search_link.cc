@@ -128,15 +128,12 @@ void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
      * Negative weights are used to avoid making the highest weight dependent on the number of
      * sockets. */
     const int weight = (&socket == main_socket) ? 0 : -1 - i;
-    std::string name = socket.name;
-    std::function<void(bNode &)> make_available = socket.make_available_fn_;
     params.add_item(
-        IFACE_(name.c_str()),
-        [&node_type, name = std::move(name), make_available = std::move(make_available)](
-            LinkSearchOpParams &params) {
+        IFACE_(socket.name.c_str()),
+        [&node_type, &socket](LinkSearchOpParams &params) {
           bNode &node = params.add_node(node_type);
-          make_available(node);
-          params.update_and_connect_available_socket(node, name);
+          socket.make_available(node);
+          params.update_and_connect_available_socket(node, socket.name);
         },
         weight);
   }
@@ -163,6 +160,7 @@ void search_link_ops_for_basic_node(GatherLinkSearchOpParams &params)
 void search_link_ops_for_declaration(GatherLinkSearchOpParams &params,
                                      FunctionRef<void(NodeDeclarationBuilder &b)> builder)
 {
+  return;
   NodeDeclaration declaration;
   NodeDeclarationBuilder node_decl_builder{declaration};
   builder(node_decl_builder);

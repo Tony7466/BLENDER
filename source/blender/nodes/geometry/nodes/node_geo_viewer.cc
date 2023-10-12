@@ -21,18 +21,15 @@ namespace blender::nodes::node_geo_viewer_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryViewer)
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
-{
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_input(data_type, "Value").field_on_all().hide_value();
-}
-
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclarationBuilder &b)
 {
   const NodeGeometryViewer &storage = node_storage(node);
-  node_declare(b, eCustomDataType(storage.data_type));
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input(data_type, "Value").field_on_all().hide_value();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -56,13 +53,6 @@ static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 static void node_rna(StructRNA *srna)

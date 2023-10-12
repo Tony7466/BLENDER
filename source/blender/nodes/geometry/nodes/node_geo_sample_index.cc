@@ -52,8 +52,12 @@ namespace blender::nodes::node_geo_sample_index_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySampleIndex);
 
-static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_type)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclarationBuilder &b)
 {
+  const NodeGeometrySampleIndex &storage = node_storage(node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
   b.add_input<decl::Geometry>("Geometry")
       .supported_type({GeometryComponent::Type::Mesh,
                        GeometryComponent::Type::PointCloud,
@@ -64,14 +68,6 @@ static void node_declare(NodeDeclarationBuilder &b, const eCustomDataType data_t
       "Which element to retrieve a value from on the geometry");
 
   b.add_output(data_type, "Value").dependent_field({2});
-}
-
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
-{
-  const NodeGeometrySampleIndex &storage = node_storage(node);
-  node_declare(b, eCustomDataType(storage.data_type));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -92,13 +88,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
-  search_link_ops_for_declaration(params, [socket_type](NodeDeclarationBuilder &b) {
-    if (const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-            socket_type)) {
-      node_declare(b, *type);
-    }
-  });
 }
 
 static bool component_is_available(const GeometrySet &geometry,
