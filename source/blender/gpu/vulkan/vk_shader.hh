@@ -28,6 +28,7 @@ class VKShader : public Shader {
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
   bool compilation_failed_ = false;
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+  VkDescriptorSetLayout subpass_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
 
@@ -84,6 +85,12 @@ class VKShader : public Shader {
   bool finalize_descriptor_set_layouts(VkDevice vk_device,
                                        const VKShaderInterface &shader_interface,
                                        const shader::ShaderCreateInfo &info);
+  bool finalize_descriptor_set_layout(VkDevice vk_device,
+                                      const VKShaderInterface &shader_interface,
+                                      const shader::ShaderCreateInfo &info);
+  bool finalize_subpass_descriptor_set_layout(VkDevice vk_device,
+                                              const VKShaderInterface &shader_interface,
+                                              const shader::ShaderCreateInfo &info);
   bool finalize_pipeline_layout(VkDevice vk_device, const VKShaderInterface &shader_interface);
 
   bool is_graphics_shader() const

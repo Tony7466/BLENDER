@@ -422,7 +422,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
 {
   BLI_assert(state.framebuffer_);
   state.checks_++;
-  if (!state.framebuffer_active_) {
+  if (!state.framebuffer_active_ || state.framebuffer_->has_dirty_attachments()) {
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     state.framebuffer_->vk_render_pass_ensure();

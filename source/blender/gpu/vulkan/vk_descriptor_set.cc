@@ -220,8 +220,7 @@ void VKDescriptorSetTracker::debug_print() const
 
 void VKDescriptorSetTracker::Binding::debug_print() const
 {
-  std::cout << "VkDescriptorSetTrackker::Binding(type=" << type << ", set=" << location.set()
-            << ", location=" << location.binding() << ")\n";
+  std::cout << "VkDescriptorSetTrackker::Binding(type=" << type << ", " << location << ")\n";
 }
 
 }  // namespace blender::gpu

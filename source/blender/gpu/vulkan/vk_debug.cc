@@ -282,8 +282,8 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     severity = CLG_SEVERITY_ERROR;
   }
 
+  const char *format = "{1x%x}% s\n %s ";
   if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level <= severity)) {
-    const char *format = "{0x%x}% s\n %s ";
     CLG_logf(LOG.type,
              severity,
              "",
@@ -292,6 +292,12 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
              callback_data->messageIdNumber,
              callback_data->pMessageIdName,
              callback_data->pMessage);
+  }
+  else {
+    printf(format,
+           callback_data->messageIdNumber,
+           callback_data->pMessageIdName,
+           callback_data->pMessage);
   }
 
   const bool do_labels = (callback_data->objectCount + callback_data->cmdBufLabelCount +

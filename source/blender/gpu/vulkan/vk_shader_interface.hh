@@ -32,7 +32,6 @@ class VKShaderInterface : public ShaderInterface {
 
   shader::BuiltinBits shader_builtins_;
 
-  std::optional<VkDescriptorSetLayout> subpass_layout_;
   struct SubpassData {
     shader::ShaderCreateInfo::Resource resource;
     VKDescriptorSet::Location location;
@@ -65,10 +64,6 @@ class VKShaderInterface : public ShaderInterface {
     return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
   }
 
-  const std::optional<VkDescriptorSetLayout> &subpass_descriptor_set_layout_get() const
-  {
-    return subpass_layout_;
-  }
   const shader::ShaderCreateInfo::Resource &resource_get(
       const shader::ShaderCreateInfo::SubpassIn &subpass) const;
   const VKDescriptorSet::Location &descriptor_set_location(

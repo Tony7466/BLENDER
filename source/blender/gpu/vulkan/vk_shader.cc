@@ -624,6 +624,10 @@ VKShader::~VKShader()
     vkDestroyDescriptorSetLayout(device.device_get(), layout_, vk_allocation_callbacks);
     layout_ = VK_NULL_HANDLE;
   }
+  if (subpass_layout_ != VK_NULL_HANDLE) {
+    vkDestroyDescriptorSetLayout(device.device_get(), subpass_layout_, vk_allocation_callbacks);
+    subpass_layout_ = VK_NULL_HANDLE;
+  }
 }
 
 void VKShader::build_shader_module(MutableSpan<const char *> sources,
@@ -888,21 +892,6 @@ static void add_descriptor_set_layout_bindings(
   }
 }
 
-static VkDescriptorSetLayoutCreateInfo create_descriptor_set_layout(
-    const VKShaderInterface &interface,
-    const Vector<shader::ShaderCreateInfo::Resource> &resources,
-    Vector<VkDescriptorSetLayoutBinding> &r_bindings)
-{
-  add_descriptor_set_layout_bindings(interface, resources, r_bindings);
-  VkDescriptorSetLayoutCreateInfo set_info = {};
-  set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  set_info.flags = 0;
-  set_info.pNext = nullptr;
-  set_info.bindingCount = r_bindings.size();
-  set_info.pBindings = r_bindings.data();
-  return set_info;
-}
-
 static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
                                    const shader::ShaderCreateInfo &info)
 {
@@ -911,33 +900,84 @@ static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
              VKPushConstants::StorageType::UNIFORM_BUFFER;
 }
 
-bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
-                                               const VKShaderInterface &shader_interface,
-                                               const shader::ShaderCreateInfo &info)
+bool VKShader::finalize_descriptor_set_layout(VkDevice vk_device,
+                                              const VKShaderInterface &shader_interface,
+                                              const shader::ShaderCreateInfo &info)
 {
-  if (!descriptor_sets_needed(shader_interface, info)) {
-    return true;
-  }
-
   VK_ALLOCATION_CALLBACKS
 
-  /* Currently we create a single descriptor set. The goal would be to create one descriptor set
-   * for #Frequency::PASS/BATCH. This isn't possible as areas expect that the binding location is
-   * static and predictable (EEVEE-NEXT) or the binding location can be mapped to a single number
-   * (Python). */
   Vector<ShaderCreateInfo::Resource> all_resources;
   all_resources.extend(info.pass_resources_);
   all_resources.extend(info.batch_resources_);
 
   Vector<VkDescriptorSetLayoutBinding> bindings;
-  VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(
-      shader_interface, all_resources, bindings);
-  if (vkCreateDescriptorSetLayout(vk_device, &layout_info, vk_allocation_callbacks, &layout_) !=
-      VK_SUCCESS)
+  add_descriptor_set_layout_bindings(shader_interface, all_resources, bindings);
+  VkDescriptorSetLayoutCreateInfo descriptor_set_layout = {};
+  descriptor_set_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptor_set_layout.flags = 0;
+  descriptor_set_layout.pNext = nullptr;
+  descriptor_set_layout.bindingCount = bindings.size();
+  descriptor_set_layout.pBindings = bindings.data();
+
+  if (vkCreateDescriptorSetLayout(
+          vk_device, &descriptor_set_layout, vk_allocation_callbacks, &layout_) != VK_SUCCESS)
   {
     return false;
   };
   debug::object_label(layout_, name_get());
+  return true;
+}
+
+bool VKShader::finalize_subpass_descriptor_set_layout(VkDevice vk_device,
+                                                      const VKShaderInterface &shader_interface,
+                                                      const shader::ShaderCreateInfo &info)
+{
+  VK_ALLOCATION_CALLBACKS
+
+  Vector<VkDescriptorSetLayoutBinding> bindings;
+  for (const shader::ShaderCreateInfo::SubpassIn &subpass_input : info.subpass_inputs_) {
+    const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
+        subpass_input);
+    VkDescriptorSetLayoutBinding binding = {};
+    binding.binding = location.binding();
+    binding.descriptorCount = 1;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings.append(binding);
+  }
+
+  VkDescriptorSetLayoutCreateInfo descriptor_set_layout = {};
+  descriptor_set_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptor_set_layout.flags = 0;
+  descriptor_set_layout.pNext = nullptr;
+  descriptor_set_layout.bindingCount = bindings.size();
+  descriptor_set_layout.pBindings = bindings.data();
+
+  if (vkCreateDescriptorSetLayout(
+          vk_device, &descriptor_set_layout, vk_allocation_callbacks, &subpass_layout_) !=
+      VK_SUCCESS)
+  {
+    return false;
+  };
+  debug::object_label(subpass_layout_, name_get());
+  return true;
+}
+
+bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
+                                               const VKShaderInterface &shader_interface,
+                                               const shader::ShaderCreateInfo &info)
+{
+  if (descriptor_sets_needed(shader_interface, info)) {
+    if (!finalize_descriptor_set_layout(vk_device, shader_interface, info)) {
+      return false;
+    }
+  }
+
+  if (!info.subpass_inputs_.is_empty()) {
+    if (!finalize_subpass_descriptor_set_layout(vk_device, shader_interface, info)) {
+      return false;
+    }
+  }
 
   return true;
 }

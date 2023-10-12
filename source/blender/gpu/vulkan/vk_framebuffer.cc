@@ -21,6 +21,7 @@ namespace blender::gpu {
 
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
+  color_attachment_states_.reinitialize(GPU_FB_MAX_COLOR_ATTACHMENT);
   size_set(1, 1);
 }
 
@@ -44,6 +45,9 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
   }
 
   context.activate_framebuffer(*this);
+
+  depth_attachment_state_ = GPU_ATTACHEMENT_WRITE;
+  color_attachment_states_.fill(GPU_ATTACHEMENT_WRITE);
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
@@ -217,10 +221,24 @@ void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPUL
 /** \name Sub-pass transition
  * \{ */
 
-void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachment_state*/,
-                                       Span<GPUAttachmentState> /*color_attachment_states*/)
+void VKFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment_state,
+                                       Span<GPUAttachmentState> color_attachment_states)
 {
+  /* TODO: Subpass transition isn't the Vulkan way. For better performance we need to known the
+   * transitions up front. A renderpass and framebuffer are to tightly bound, so an actual
+   * transition is the same as recreating the VkFramebuffer/VkRenderPass and attaching the textures
+   * to read up front.*/
+
+  /* NOTE: Depth is not supported as input attachment because the Metal API doesn't support it and
+   * because depth is not compatible with the framebuffer fetch implementation. */
+  BLI_assert(depth_attachment_state != GPU_ATTACHEMENT_READ);
+  GPU_depth_mask(depth_attachment_state == GPU_ATTACHEMENT_WRITE);
+
   NOT_YET_IMPLEMENTED;
+
+  depth_attachment_state_ = depth_attachment_state;
+  color_attachment_states_ = color_attachment_states;
+  dirty_attachments_ = true;
 }
 
 /** \} */
@@ -385,9 +403,14 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
 /** \name Update attachments
  * \{ */
 
+bool VKFrameBuffer::has_dirty_attachments() const
+{
+  return dirty_attachments_;
+}
+
 void VKFrameBuffer::vk_render_pass_ensure()
 {
-  if (!dirty_attachments_) {
+  if (!has_dirty_attachments()) {
     return;
   }
   render_pass_free();
@@ -470,7 +493,13 @@ void VKFrameBuffer::render_pass_create()
 
       /* Create the attachment reference. */
       VkAttachmentReference &attachment_reference = attachment_references[attachment_location];
-      attachment_reference.attachment = attachment_location;
+      GPUAttachmentState attachment_state = is_depth_attachment ?
+                                                depth_attachment_state_ :
+                                                color_attachment_states_[attachment_location];
+
+      attachment_reference.attachment = attachment_state == GPU_ATTACHEMENT_WRITE ?
+                                            attachment_location :
+                                            VK_ATTACHMENT_UNUSED;
       attachment_reference.layout = is_depth_attachment ?
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
                                         VK_IMAGE_LAYOUT_GENERAL;

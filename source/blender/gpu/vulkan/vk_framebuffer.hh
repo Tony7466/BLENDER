@@ -20,6 +20,8 @@
 
 namespace blender::gpu {
 class VKContext;
+class VKCommandBuffer;
+class VKPipeline;
 
 class VKFrameBuffer : public FrameBuffer {
  private:
@@ -33,6 +35,10 @@ class VKFrameBuffer : public FrameBuffer {
   int depth_ = 1;
 
   Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
+
+  /* Subpass state. */
+  GPUAttachmentState depth_attachment_state_ = GPU_ATTACHEMENT_WRITE;
+  Array<GPUAttachmentState, GPU_FB_MAX_COLOR_ATTACHMENT> color_attachment_states_;
 
  public:
   /**
@@ -83,7 +89,6 @@ class VKFrameBuffer : public FrameBuffer {
     return vk_framebuffer_;
   }
 
-  void vk_render_pass_ensure();
   VkRenderPass vk_render_pass_get() const
   {
     BLI_assert(vk_render_pass_ != VK_NULL_HANDLE);
@@ -119,7 +124,8 @@ class VKFrameBuffer : public FrameBuffer {
   int color_attachments_resource_size() const;
 
  private:
-  void update_attachments();
+  bool has_dirty_attachments() const;
+  void vk_render_pass_ensure();
   void render_pass_free();
   void render_pass_create();
 
@@ -132,6 +138,9 @@ class VKFrameBuffer : public FrameBuffer {
                                      const bool multi_clear_colors,
                                      Vector<VkClearAttachment> &r_attachments) const;
   void clear(const Vector<VkClearAttachment> &attachments) const;
+
+  friend class VKCommandBuffer;
+  friend class VKPipeline;
 };
 
 static inline VKFrameBuffer *unwrap(FrameBuffer *framebuffer)
