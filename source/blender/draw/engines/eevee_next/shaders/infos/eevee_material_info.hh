@@ -249,6 +249,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUMETRICS")
     .additional_info("draw_modelmat_new_common",
+                     /* TODO(fclem): Legacy API. To remove. */
                      "draw_resource_id_uniform",
                      "draw_view",
                      "eevee_shared",
