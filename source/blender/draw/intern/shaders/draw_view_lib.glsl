@@ -136,7 +136,7 @@ vec3 drw_point_world_to_view(vec3 P)
 }
 vec4 drw_point_world_to_homogenous(vec3 P)
 {
-  return (drw_view.viewmat * (drw_view.viewmat * vec4(P, 1.0)));
+  return (drw_view.winmat * (drw_view.viewmat * vec4(P, 1.0)));
 }
 vec3 drw_point_world_to_ndc(vec3 P)
 {

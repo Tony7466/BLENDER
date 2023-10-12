@@ -2,13 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(draw_model_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
-#pragma BLENDER_REQUIRE(common_pointcloud_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
+#pragma BLENDER_REQUIRE(common_pointcloud_lib.glsl)
 
 void main()
 {
@@ -31,7 +31,7 @@ void main()
 #endif
 
 #ifdef MAT_VELOCITY
-  vec3 lP = point_world_to_object(point_cloud_interp.position);
+  vec3 lP = drw_point_world_to_object(point_cloud_interp.position);
   vec3 prv, nxt;
   velocity_local_pos_get(lP, point_cloud_interp_flat.id, prv, nxt);
   /* FIXME(fclem): Evaluating before displacement avoid displacement being treated as motion but
@@ -51,5 +51,5 @@ void main()
   clip_interp.clip_distance = dot(clip_plane.plane, vec4(interp.P, 1.0));
 #endif
 
-  gl_Position = point_world_to_ndc(interp.P);
+  gl_Position = drw_point_world_to_homogenous(interp.P);
 }
