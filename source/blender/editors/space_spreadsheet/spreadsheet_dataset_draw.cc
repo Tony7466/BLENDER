@@ -256,7 +256,7 @@ std::optional<bool> GeometryDataSetTreeViewItem::should_be_active() const
 
 bool GeometryDataSetTreeViewItem::supports_collapsing() const
 {
-  return domain_.has_value() || layer_index_.has_value();
+  return true;
 }
 
 GeometryDataSetTreeView &GeometryDataSetTreeViewItem::get_tree() const
