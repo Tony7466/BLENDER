@@ -1224,7 +1224,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
 
   /* perhaps we should move this into (G.debug & G_DEBUG) - campbell */
   if (U.flag & USER_DEVELOPER_UI) {
-    if (ui_block_is_menu(but->block) == false) {
+    if (ui_block_is_menu(but->block) == false && ui_but_editsource_is_available(but)) {
       uiItemFullO(layout,
                   "UI_OT_editsource",
                   nullptr,

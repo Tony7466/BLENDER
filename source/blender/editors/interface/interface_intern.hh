@@ -1410,6 +1410,8 @@ uiBut *ui_list_find_mouse_over_ex(const ARegion *region, const int xy[2])
 
 bool ui_but_contains_password(const uiBut *but) ATTR_WARN_UNUSED_RESULT;
 
+bool ui_but_editsource_is_available(const uiBut *but);
+
 size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxncpy)
     ATTR_NONNULL(1, 2);
 size_t ui_but_drawstr_len_without_sep_char(const uiBut *but);

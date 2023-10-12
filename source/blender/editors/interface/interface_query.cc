@@ -581,6 +581,11 @@ bool ui_but_contains_password(const uiBut *but)
   return but->rnaprop && (RNA_property_subtype(but->rnaprop) == PROP_PASSWORD);
 }
 
+bool ui_but_editsource_is_available(const uiBut *but)
+{
+  return but->rnaprop != nullptr;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
