@@ -42,6 +42,7 @@
 
 using blender::Array;
 using blender::float3;
+using blender::IndexRange;
 using blender::Map;
 using blender::Set;
 using blender::Vector;
@@ -58,30 +59,17 @@ enum class BMLogSetType { LOG_SET_DIFF, LOG_SET_FULL };
 /* Returns true if the exact layout of a is the same as b. */
 static bool customdata_layout_is_same(const CustomData *data_a, const CustomData *data_b)
 {
-  if (data_a->totlayer != data_b->totlayer) {
+  if (data_a->totlayer != data_b->totlayer || data_a->totsize != data_b->totsize) {
     return false;
   }
 
-  CustomData test_a = *data_a;
-  CustomData test_b = *data_b;
+  for (int i : IndexRange(data_a->totlayer)) {
+    CustomDataLayer &layer_a = data_a->layers[i];
+    CustomDataLayer &layer_b = data_b->layers[i];
 
-  test_a.layers = test_b.layers = nullptr;
-  test_a.pool = test_b.pool = nullptr;
-  test_a.maxlayer = test_b.maxlayer;
-
-  if (memcmp((void *)&test_a, (void *)&test_b, sizeof(CustomData)) != 0) {
-    return false;
-  }
-
-  for (int i = 0; i < test_a.totlayer; i++) {
-    CustomDataLayer cla = data_a->layers[i];
-    CustomDataLayer clb = data_b->layers[i];
-
-    cla.data = clb.data = nullptr;
-    cla.anonymous_id = clb.anonymous_id = nullptr;
-    cla.sharing_info = clb.sharing_info = nullptr;
-
-    if (memcmp((void *)&cla, (void *)&clb, sizeof(CustomDataLayer)) != 0) {
+    if (!STREQ(layer_a.name, layer_b.name) || layer_a.type != layer_b.type ||
+        layer_a.offset != layer_b.offset)
+    {
       return false;
     }
   }
@@ -102,7 +90,7 @@ static void customdata_copy_all_layout(const struct CustomData *source, struct C
     dest->layers = static_cast<CustomDataLayer *>(
         MEM_mallocN(sizeof(*dest->layers) * source->maxlayer, __func__));
 
-    for (int i = 0; i < source->totlayer; i++) {
+    for (int i : IndexRange(source->totlayer)) {
       CustomDataLayer *layer = &dest->layers[i];
 
       *layer = source->layers[i];
@@ -997,8 +985,6 @@ struct BMLog {
 
   bool free_all_entries()
   {
-    printf("Freeing all log entries.\n");
-
     BMLogEntry *entry = first_entry;
 
     if (!entry) {
@@ -1660,8 +1646,6 @@ BMLogEntry *BM_log_entry_check_customdata(BMesh *bm, BMLog *log)
   BMLogEntry *entry = log->current_entry;
 
   if (!entry) {
-    fprintf(stdout, "no current entry; creating...\n");
-    fflush(stdout);
     return BM_log_entry_add(bm, log);
   }
 
@@ -1670,8 +1654,7 @@ BMLogEntry *BM_log_entry_check_customdata(BMesh *bm, BMLog *log)
 
   for (int i = 0; i < 4; i++) {
     if (!customdata_layout_is_same(cd1[i], cd2[i])) {
-      fprintf(stdout, "Customdata changed during stroke.\n");
-      fflush(stdout);
+      printf("%s: Customdata changed during stroke.\n", __func__);
 
       entry->cd_layout_changed = true;
       return BM_log_entry_add_delta_set(bm, log);
