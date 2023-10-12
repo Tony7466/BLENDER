@@ -32,6 +32,20 @@ void main()
     outline_dist = max(outline_dist, radius - radii[1]);
   }
 
+  /* Asterisk outline */
+  if (test(GPU_KEYFRAME_SHAPE_ASTERISK)) {
+    float s1 = radii[0];
+    float s2 = s1 * 0.35;
+    float horizontal_bar_dist = max(absPos.x - s1, absPos.y - s2);
+    float angle = radians(-60);
+    float angle_cos = cos(angle);
+    float angle_sin = sin(angle);
+    float new_pos_x = abs(absPos.x * angle_cos - absPos.y * angle_sin);
+    float new_pos_y = abs(absPos.x * angle_sin + absPos.y * angle_cos);
+    float rotated_bar_dist = max(new_pos_x - s1, new_pos_y - s2);
+    outline_dist = min(horizontal_bar_dist, rotated_bar_dist);
+  }
+
   /* Top & Bottom clamp */
   if (test(GPU_KEYFRAME_SHAPE_CLIPPED_VERTICAL)) {
     outline_dist = max(outline_dist, absPos.y - radii[2]);

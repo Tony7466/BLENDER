@@ -1124,12 +1124,17 @@ static void node_socket_draw(const bNodeSocket &sock,
     case SOCK_DISPLAY_SHAPE_CIRCLE_DOT:
       flags = GPU_KEYFRAME_SHAPE_CIRCLE;
       break;
+    case SOCK_DISPLAY_SHAPE_ASTERISK:
+    case SOCK_DISPLAY_SHAPE_ASTERISK_DOT:
+      flags = GPU_KEYFRAME_SHAPE_ASTERISK;
+      break;
   }
 
   if (ELEM(sock.display_shape,
            SOCK_DISPLAY_SHAPE_DIAMOND_DOT,
            SOCK_DISPLAY_SHAPE_SQUARE_DOT,
-           SOCK_DISPLAY_SHAPE_CIRCLE_DOT))
+           SOCK_DISPLAY_SHAPE_CIRCLE_DOT,
+           SOCK_DISPLAY_SHAPE_ASTERISK_DOT))
   {
     flags |= GPU_KEYFRAME_SHAPE_INNER_DOT;
   }

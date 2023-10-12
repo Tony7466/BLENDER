@@ -652,7 +652,7 @@ static void update_socket_shapes(const bNodeTree &tree,
                                  const Span<SocketFieldState> field_state_by_socket_id)
 {
   const eNodeSocketDisplayShape requires_data_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
-  const eNodeSocketDisplayShape data_but_can_be_field_shape = SOCK_DISPLAY_SHAPE_DIAMOND_DOT;
+  const eNodeSocketDisplayShape data_but_can_be_field_shape = SOCK_DISPLAY_SHAPE_ASTERISK;
   const eNodeSocketDisplayShape is_field_shape = SOCK_DISPLAY_SHAPE_DIAMOND;
 
   auto get_shape_for_state = [&](const SocketFieldState &state) {
