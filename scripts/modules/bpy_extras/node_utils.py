@@ -34,15 +34,28 @@ def connect_sockets(input, output):
         print("Cannot connect two virtual sockets together")
         return
 
+    def find_base_socket_type(socket):
+        """
+        Find the base class of the socket.
+
+        Sockets can have a subtype such as NodeSocketFloatFactor,
+        but only the base type is allowed, e. g. NodeSocketFloat
+        """
+        import re
+        output_type = socket.bl_idname
+        return re.match(r"^([A-Z][a-z]+){3}", output_type).group()
+
     if output_node.type == 'GROUP_OUTPUT' and type(input) == bpy.types.NodeSocketVirtual:
-        output_node.id_data.interface.new_socket(
-            name=output.name, socket_type=type(output).__name__, in_out='OUTPUT'
+        output_type = find_base_socket_type(output)
+        socket_interface = output_node.id_data.interface.new_socket(
+            name=output.name, socket_type=output_type, in_out='OUTPUT'
         )
         input = output_node.inputs[-2]
 
     if input_node.type == 'GROUP_INPUT' and type(output) == bpy.types.NodeSocketVirtual:
-        input_node.id_data.interface.new_socket(
-            name=input.name, socket_type=type(input).__name__, in_out='INPUT'
+        input_type = find_base_socket_type(input)
+        socket_interface = input_node.id_data.interface.new_socket(
+            name=input.name, socket_type=input_type, in_out='INPUT'
         )
         output = input_node.outputs[-2]
 
