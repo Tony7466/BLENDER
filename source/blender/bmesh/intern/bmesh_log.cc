@@ -190,8 +190,8 @@ struct BMLogSetBase {
   {
     return "";
   }
-  virtual void undo(BMesh * /*bm*/) {}
-  virtual void redo(BMesh * /*bm*/) {}
+  virtual void undo(BMesh * /*bm*/) = 0;
+  virtual void redo(BMesh * /*bm*/) = 0;
 };
 
 struct BMLogSetDiff : public BMLogSetBase {
