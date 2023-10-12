@@ -1144,13 +1144,12 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
           if (WM_key_event_operator_string(
                   C, gzop->type->idname, WM_OP_INVOKE_DEFAULT, prop, true, buf, ARRAY_SIZE(buf)))
           {
-            UI_tooltip_text_field_add(
-                data, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
             UI_tooltip_text_field_add(data,
                                       BLI_sprintfN(TIP_("Shortcut: %s"), buf),
                                       nullptr,
                                       UI_TIP_STYLE_NORMAL,
-                                      UI_TIP_LC_VALUE);
+                                      UI_TIP_LC_VALUE,
+                                      true);
           }
         }
       }
