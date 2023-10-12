@@ -9,7 +9,6 @@
  * Also do the temporal reprojection to fight aliasing artifacts. */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
 /* Included here to avoid requiring lightprobe resources for all volume lib users. */
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
