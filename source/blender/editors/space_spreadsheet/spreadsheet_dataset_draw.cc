@@ -41,7 +41,7 @@ class GeometryDataSetTreeViewItem : public ui::AbstractTreeViewItem {
                               StringRef label,
                               BIFIconID icon);
   GeometryDataSetTreeViewItem(bke::GeometryComponent::Type component_type,
-                              int component_index,
+                              int layer_index,
                               StringRef label,
                               BIFIconID icon);
   GeometryDataSetTreeViewItem(bke::GeometryComponent::Type component_type,
@@ -49,7 +49,7 @@ class GeometryDataSetTreeViewItem : public ui::AbstractTreeViewItem {
                               StringRef label,
                               BIFIconID icon);
   GeometryDataSetTreeViewItem(bke::GeometryComponent::Type component_type,
-                              int component_index,
+                              int layer_index,
                               eAttrDomain domain,
                               StringRef label,
                               BIFIconID icon);
@@ -174,11 +174,8 @@ GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
   this->set_collapsed(false);
 }
 GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
-    bke::GeometryComponent::Type component_type,
-    int component_index,
-    StringRef label,
-    BIFIconID icon)
-    : component_type_(component_type), layer_index_(component_index), icon_(icon)
+    bke::GeometryComponent::Type component_type, int layer_index, StringRef label, BIFIconID icon)
+    : component_type_(component_type), layer_index_(layer_index), icon_(icon)
 {
   label_ = label;
 }
@@ -193,11 +190,11 @@ GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
 }
 GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
     bke::GeometryComponent::Type component_type,
-    int component_index,
+    int layer_index,
     eAttrDomain domain,
     StringRef label,
     BIFIconID icon)
-    : component_type_(component_type), layer_index_(component_index), domain_(domain), icon_(icon)
+    : component_type_(component_type), layer_index_(layer_index), domain_(domain), icon_(icon)
 {
   label_ = label;
 }
