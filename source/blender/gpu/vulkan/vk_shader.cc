@@ -676,7 +676,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     return false;
   }
 
-  if (info && do_geometry_shader_injection(info)) {
+  if (do_geometry_shader_injection(info)) {
     std::string source = workaround_geometry_shader_source_create(*info);
     Vector<const char *> sources;
     sources.append("version");
