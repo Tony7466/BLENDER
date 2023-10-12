@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -31,8 +30,9 @@
 
 #include "SEQ_modifier.h"
 #include "SEQ_render.h"
+#include "SEQ_sound.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "render.h"
 
@@ -742,7 +742,7 @@ static void curves_init_data(SequenceModifierData *smd)
 {
   CurvesModifierData *cmd = (CurvesModifierData *)smd;
 
-  BKE_curvemapping_set_defaults(&cmd->curve_mapping, 4, 0.0f, 0.0f, 1.0f, 1.0f);
+  BKE_curvemapping_set_defaults(&cmd->curve_mapping, 4, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
 }
 
 static void curves_free_data(SequenceModifierData *smd)
@@ -861,7 +861,7 @@ static void hue_correct_init_data(SequenceModifierData *smd)
   HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
   int c;
 
-  BKE_curvemapping_set_defaults(&hcmd->curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f);
+  BKE_curvemapping_set_defaults(&hcmd->curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
   hcmd->curve_mapping.preset = CURVE_PRESET_MID9;
 
   for (c = 0; c < 3; c++) {
@@ -1372,6 +1372,15 @@ static SequenceModifierTypeInfo seqModifier_Tonemap = {
     /*apply*/ tonemapmodifier_apply,
 };
 
+static SequenceModifierTypeInfo seqModifier_SoundEqualizer = {
+    CTX_N_(BLT_I18NCONTEXT_ID_SEQUENCE, "Equalizer"), /* name */
+    "SoundEqualizerModifierData",                     /* struct_name */
+    sizeof(SoundEqualizerModifierData),               /* struct_size */
+    SEQ_sound_equalizermodifier_init_data,            /* init_data */
+    SEQ_sound_equalizermodifier_free,                 /* free_data */
+    SEQ_sound_equalizermodifier_copy_data,            /* copy_data */
+    nullptr,                                          /* apply */
+};
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1389,6 +1398,7 @@ static void sequence_modifier_type_info_init()
   INIT_TYPE(Mask);
   INIT_TYPE(WhiteBalance);
   INIT_TYPE(Tonemap);
+  INIT_TYPE(SoundEqualizer);
 
 #undef INIT_TYPE
 }
@@ -1489,7 +1499,6 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
                                 ImBuf *ibuf,
                                 int timeline_frame)
 {
-  SequenceModifierData *smd;
   ImBuf *processed_ibuf = ibuf;
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
@@ -1497,7 +1506,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
     SEQ_render_imbuf_from_sequencer_space(context->scene, processed_ibuf);
   }
 
-  for (smd = static_cast<SequenceModifierData *>(seq->modifiers.first); smd; smd = smd->next) {
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     const SequenceModifierTypeInfo *smti = SEQ_modifier_type_info_get(smd->type);
 
     /* could happen if modifier is being removed or not exists in current version of blender */
@@ -1543,9 +1552,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
 
 void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
 {
-  SequenceModifierData *smd;
-
-  for (smd = static_cast<SequenceModifierData *>(seq->modifiers.first); smd; smd = smd->next) {
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     SequenceModifierData *smdn;
     const SequenceModifierTypeInfo *smti = SEQ_modifier_type_info_get(smd->type);
 
@@ -1555,14 +1562,19 @@ void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
       smti->copy_data(smdn, smd);
     }
 
-    smdn->next = smdn->prev = nullptr;
     BLI_addtail(&seqn->modifiers, smdn);
+    BLI_uniquename(&seqn->modifiers,
+                   smdn,
+                   "Strip Modifier",
+                   '.',
+                   offsetof(SequenceModifierData, name),
+                   sizeof(SequenceModifierData::name));
   }
 }
 
 int SEQ_sequence_supports_modifiers(Sequence *seq)
 {
-  return !ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD);
+  return (seq->type != SEQ_TYPE_SOUND_RAM);
 }
 
 /** \} */
@@ -1588,6 +1600,13 @@ void SEQ_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
         HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
 
         BKE_curvemapping_blend_write(writer, &hcmd->curve_mapping);
+      }
+      else if (smd->type == seqModifierType_SoundEqualizer) {
+        SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
+        LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
+          BLO_write_struct_by_name(writer, "EQCurveMappingData", eqcmd);
+          BKE_curvemapping_blend_write(writer, &eqcmd->curve_mapping);
+        }
       }
     }
     else {
@@ -1615,14 +1634,12 @@ void SEQ_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
 
       BKE_curvemapping_blend_read(reader, &hcmd->curve_mapping);
     }
-  }
-}
-
-void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase *lb)
-{
-  LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
-    if (smd->mask_id) {
-      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
+    else if (smd->type == seqModifierType_SoundEqualizer) {
+      SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
+      BLO_read_list(reader, &semd->graphics);
+      LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
+        BKE_curvemapping_blend_read(reader, &eqcmd->curve_mapping);
+      }
     }
   }
 }

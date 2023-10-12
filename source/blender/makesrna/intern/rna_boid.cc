@@ -17,13 +17,13 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_boidrule_type_items[] = {
     {eBoidRuleType_Goal,
@@ -105,8 +105,8 @@ static const EnumPropertyItem boidruleset_type_items[] = {
 #  include "BKE_context.h"
 #  include "BKE_particle.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static void rna_Boids_reset(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {

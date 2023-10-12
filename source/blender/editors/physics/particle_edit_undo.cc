@@ -27,12 +27,12 @@
 #include "BKE_pointcache.h"
 #include "BKE_undo_system.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_object.h"
-#include "ED_particle.h"
-#include "ED_physics.h"
-#include "ED_undo.h"
+#include "ED_object.hh"
+#include "ED_particle.hh"
+#include "ED_physics.hh"
+#include "ED_undo.hh"
 
 #include "particle_edit_utildefines.h"
 

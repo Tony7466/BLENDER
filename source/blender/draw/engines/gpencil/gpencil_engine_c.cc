@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,8 @@
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 #include "BKE_shader_fx.h"
 
 #include "BKE_camera.h"
@@ -33,12 +33,12 @@
 
 #include "gpencil_engine.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 /* *********** FUNCTIONS *********** */
 
@@ -600,7 +600,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
   }
 
   if (ob->data && (ob->type == OB_GPENCIL_LEGACY) && (ob->dt >= OB_SOLID)) {
-    gpIterPopulateData iter = {0};
+    gpIterPopulateData iter = {nullptr};
     iter.ob = ob;
     iter.pd = pd;
     iter.tgp_ob = gpencil_object_cache_add(pd, ob);

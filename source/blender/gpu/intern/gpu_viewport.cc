@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -159,14 +159,16 @@ static void gpu_viewport_textures_create(GPUViewport *viewport)
     }
   }
 
-  /* Can be shared with GPUOffscreen. */
+  /* Can be shared with #GPUOffscreen. */
   if (viewport->depth_tx == nullptr) {
     /* Depth texture can be read back by gizmos #view3d_depths_create. */
+    /* Swizzle flag is needed by Workbench Volumes to read the stencil view. */
     viewport->depth_tx = GPU_texture_create_2d("dtxl_depth",
                                                UNPACK2(size),
                                                1,
                                                GPU_DEPTH24_STENCIL8,
-                                               usage | GPU_TEXTURE_USAGE_HOST_READ,
+                                               usage | GPU_TEXTURE_USAGE_HOST_READ |
+                                                   GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
                                                nullptr);
     if (GPU_clear_viewport_workaround()) {
       static int depth_clear = 0;
@@ -441,6 +443,8 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
   GPUTexture *color_overlay = viewport->color_overlay_tx[view];
 
   bool use_ocio = false;
+  bool use_hdr = GPU_hdr_support() &&
+                 ((viewport->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0);
 
   if (viewport->do_color_management && display_colorspace) {
     /* During the binding process the last used VertexFormat is tested and can assert as it is not
@@ -467,6 +471,7 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
     GPU_batch_uniform_1i(batch, "overlay", do_overlay_merge);
     GPU_batch_uniform_1i(batch, "display_transform", display_colorspace);
+    GPU_batch_uniform_1i(batch, "use_hdr", use_hdr);
   }
 
   GPU_texture_bind(color, 0);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -21,10 +20,10 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -220,15 +219,12 @@ static void lineart_gpencil_guard_modifiers(LineartBakeJob *bj)
   }
 }
 
-static void lineart_gpencil_bake_startjob(void *customdata,
-                                          bool *stop,
-                                          bool *do_update,
-                                          float *progress)
+static void lineart_gpencil_bake_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   LineartBakeJob *bj = (LineartBakeJob *)customdata;
-  bj->stop = stop;
-  bj->do_update = do_update;
-  bj->progress = progress;
+  bj->stop = &worker_status->stop;
+  bj->do_update = &worker_status->do_update;
+  bj->progress = &worker_status->progress;
 
   lineart_gpencil_guard_modifiers(bj);
 
@@ -340,9 +336,8 @@ static int lineart_gpencil_bake_common(bContext *C,
     return OPERATOR_RUNNING_MODAL;
   }
 
-  float pseduo_progress;
-  bool pseduo_do_update;
-  lineart_gpencil_bake_startjob(bj, nullptr, &pseduo_do_update, &pseduo_progress);
+  wmJobWorkerStatus worker_status = {};
+  lineart_gpencil_bake_startjob(bj, &worker_status);
 
   BLI_linklist_free(bj->objects, nullptr);
   MEM_freeN(bj);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -23,22 +23,24 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_nla.h"
 
-#include "UI_view2d.h"
+#include "UI_interface_c.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_markers.h"
-#include "ED_select_utils.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_markers.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "graph_intern.h"
 
@@ -163,7 +165,6 @@ static void nearest_fcurve_vert_store(ListBase *matches,
 static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], ListBase *matches)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
@@ -184,7 +185,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
     float offset;
@@ -357,7 +358,6 @@ static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mv
 void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channels)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   KeyframeEditData ked = {{nullptr}};
@@ -376,7 +376,7 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
 
   /* See if we should be selecting or deselecting */
   if (test) {
-    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       if (ANIM_fcurve_keyframes_loop(
               &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr))
       {
@@ -390,7 +390,7 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
   sel_cb = ANIM_editkeyframes_select(sel);
 
   /* Now set the flags */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* Keyframes First */
@@ -613,14 +613,11 @@ static bool box_select_graphkeys(bAnimContext *ac,
   const KeyframeEditFunc select_cb = ANIM_editkeyframes_select(selectmode);
   const KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(mode);
 
-  /* Try selecting the keyframes. */
-  bAnimListElem *ale = nullptr;
-
   /* This variable will be set to true if any key is selected or deselected. */
   bool any_key_selection_changed = false;
 
   /* First loop over data, doing box select. try selecting keys only. */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
     float offset;
@@ -958,7 +955,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
-  KeyframeEdit_LassoData data_lasso = {0};
+  KeyframeEdit_LassoData data_lasso = {nullptr};
   rcti rect;
   rctf rect_fl;
 
@@ -1048,7 +1045,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
   bAnimContext ac;
   bool incl_handles = false;
 
-  KeyframeEdit_CircleData data = {0};
+  KeyframeEdit_CircleData data = {nullptr};
   rctf rect_fl;
 
   float x = RNA_int_get(op->ptr, "x");
@@ -1169,7 +1166,6 @@ static const EnumPropertyItem prop_column_select_types[] = {
 static void markers_selectkeys_between(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   KeyframeEditFunc ok_cb, select_cb;
@@ -1195,7 +1191,7 @@ static void markers_selectkeys_between(bAnimContext *ac)
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* select keys in-between */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     if (adt) {
@@ -1218,7 +1214,6 @@ static void markers_selectkeys_between(bAnimContext *ac)
 static void columnselect_graph_keys(bAnimContext *ac, short mode)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   Scene *scene = ac->scene;
@@ -1237,7 +1232,7 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
       ANIM_animdata_filter(
           ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-      for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         ANIM_fcurve_keyframes_loop(
             &ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_to_cfraelem, nullptr);
       }
@@ -1273,13 +1268,13 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* loop over cfraelems (stored in the KeyframeEditData->list)
      * - we need to do this here, as we can apply fewer NLA-mapping conversions
      */
-    for (ce = static_cast<CfraElem *>(ked.list.first); ce; ce = ce->next) {
+    LISTBASE_FOREACH (CfraElem *, ce, &ked.list) {
       /* set frame for validation callback to refer to */
       ked.f1 = BKE_nla_tweakedit_remap(adt, ce->cfra, NLATIME_CONVERT_UNMAP);
 
@@ -1352,7 +1347,6 @@ static int graphkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
   bAnimContext ac;
 
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(BEZT_OK_SELECTED);
@@ -1369,7 +1363,7 @@ static int graphkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
   ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* check if anything selected? */
@@ -1413,7 +1407,6 @@ void GRAPH_OT_select_linked(wmOperatorType *ot)
 static void select_moreless_graph_keys(bAnimContext *ac, short mode)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   KeyframeEditData ked;
@@ -1429,7 +1422,7 @@ static void select_moreless_graph_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* only continue if F-Curve has keyframes */
@@ -1544,7 +1537,6 @@ static const EnumPropertyItem prop_graphkeys_leftright_select_types[] = {
 static void graphkeys_select_leftright(bAnimContext *ac, short leftright, short select_mode)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   KeyframeEditFunc ok_cb, select_cb;
@@ -1580,7 +1572,7 @@ static void graphkeys_select_leftright(bAnimContext *ac, short leftright, short 
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* select keys */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     if (adt) {
@@ -1888,7 +1880,6 @@ static int graphkeys_mselect_column(bAnimContext *ac,
                                     bool wait_to_deselect_others)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
   bool run_modal = false;
 
@@ -1941,7 +1932,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* set frame for validation callback to refer to */
@@ -2072,6 +2063,172 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna, "curves", false, "Only Curves", "Select all the keyframes in the curve");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Key/handles Selection Operator
+ * \{ */
+
+/* Defines for key/handles select tool. */
+static const EnumPropertyItem prop_graphkeys_select_key_handles_actions[] = {
+    {GRAPHKEYS_KEYHANDLESSEL_SELECT, "SELECT", 0, "Select", ""},
+    {GRAPHKEYS_KEYHANDLESSEL_DESELECT, "DESELECT", 0, "Deselect", ""},
+    {GRAPHKEYS_KEYHANDLESSEL_KEEP, "KEEP", 0, "Keep", "Leave as is"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+/**
+ * Select/deselect different parts (e.g. left/right handles) of already-selected keys.
+ *
+ * The *_action parameters determine what action to take on each part of
+ * a key: select, deselect, or keep (do nothing).
+ *
+ * \param left_handle_action: selection action to perform on left handles.
+ * \param key_action: selection action to perform on the keys themselves.
+ * \param right_handle_action: selection action to perform on right handles.
+ */
+static void graphkeys_select_key_handles(
+    bAnimContext *ac,
+    const enum eGraphKey_SelectKeyHandles_Action left_handle_action,
+    const enum eGraphKey_SelectKeyHandles_Action key_action,
+    const enum eGraphKey_SelectKeyHandles_Action right_handle_action)
+{
+  ListBase anim_data = {nullptr, nullptr};
+
+  const eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
+                                    ANIMFILTER_FCURVESONLY | ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(
+      ac, &anim_data, filter, ac->data, static_cast<eAnimCont_Types>(ac->datatype));
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    BLI_assert(ale->type & ANIMTYPE_FCURVE);
+    FCurve *fcu = (FCurve *)ale->key_data;
+
+    /* Only continue if F-Curve has keyframes. */
+    if (fcu->bezt == nullptr) {
+      continue;
+    }
+
+    for (int i = 0; i < fcu->totvert; i++) {
+      BezTriple *bezt = &fcu->bezt[i];
+
+      if (!BEZT_ISSEL_ANY(bezt)) {
+        continue;
+      }
+
+      switch (left_handle_action) {
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
+          BEZT_SEL_IDX(bezt, 0);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 0);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
+          /* Do nothing. */
+          break;
+      }
+
+      switch (key_action) {
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
+          BEZT_SEL_IDX(bezt, 1);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 1);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
+          /* Do nothing. */
+          break;
+      }
+
+      switch (right_handle_action) {
+        case GRAPHKEYS_KEYHANDLESSEL_SELECT:
+          BEZT_SEL_IDX(bezt, 2);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_DESELECT:
+          BEZT_DESEL_IDX(bezt, 2);
+          break;
+        case GRAPHKEYS_KEYHANDLESSEL_KEEP:
+          /* Do nothing. */
+          break;
+      }
+    }
+  }
+
+  /* Cleanup */
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static int graphkeys_select_key_handles_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const eGraphKey_SelectKeyHandles_Action left_handle_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "left_handle_action"));
+  const eGraphKey_SelectKeyHandles_Action key_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "key_action"));
+  const eGraphKey_SelectKeyHandles_Action right_handle_action =
+      static_cast<eGraphKey_SelectKeyHandles_Action>(RNA_enum_get(op->ptr, "right_handle_action"));
+
+  graphkeys_select_key_handles(&ac, left_handle_action, key_action, right_handle_action);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static void graphkeys_select_key_handles_ui(bContext * /*C*/, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayout *row;
+
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "left_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "right_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "key_action", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+void GRAPH_OT_select_key_handles(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Key / Handles";
+  ot->idname = "GRAPH_OT_select_key_handles";
+  ot->description =
+      "For selected keyframes, select/deselect any combination of the key itself and its handles";
+
+  /* callbacks */
+  ot->poll = graphop_visible_keyframes_poll;
+  ot->exec = graphkeys_select_key_handles_exec;
+  ot->ui = graphkeys_select_key_handles_ui;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  RNA_def_enum(ot->srna,
+               "left_handle_action",
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_SELECT,
+               "Left Handle",
+               "Effect on the left handle");
+  RNA_def_enum(ot->srna,
+               "right_handle_action",
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_SELECT,
+               "Right Handle",
+               "Effect on the right handle");
+  RNA_def_enum(ot->srna,
+               "key_action",
+               prop_graphkeys_select_key_handles_actions,
+               GRAPHKEYS_KEYHANDLESSEL_KEEP,
+               "Key",
+               "Effect on the key itself");
 }
 
 /** \} */

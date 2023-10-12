@@ -1,9 +1,9 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "node_geometry_util.hh"
 
@@ -36,7 +36,7 @@ class CornerFaceIndexInput final : public bke::MeshFieldInput {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
     }
-    return VArray<int>::ForContainer(bke::mesh::build_loop_to_face_map(mesh.faces()));
+    return VArray<int>::ForSpan(mesh.corner_to_face_map());
   }
 
   uint64_t hash() const final
@@ -65,12 +65,11 @@ class CornerIndexInFaceInput final : public bke::MeshFieldInput {
       return {};
     }
     const OffsetIndices faces = mesh.faces();
-    Array<int> loop_to_face_map = bke::mesh::build_loop_to_face_map(faces);
-    return VArray<int>::ForFunc(
-        mesh.totloop, [faces, loop_to_face_map = std::move(loop_to_face_map)](const int corner_i) {
-          const int face_i = loop_to_face_map[corner_i];
-          return corner_i - faces[face_i].start();
-        });
+    const Span<int> corner_to_face = mesh.corner_to_face_map();
+    return VArray<int>::ForFunc(mesh.totloop, [faces, corner_to_face](const int corner) {
+      const int face_i = corner_to_face[corner];
+      return corner - faces[face_i].start();
+    });
   }
 
   uint64_t hash() const final
@@ -108,16 +107,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-}  // namespace blender::nodes::node_geo_mesh_topology_face_of_corner_cc
-
-void register_node_type_geo_mesh_topology_face_of_corner()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_topology_face_of_corner_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_TOPOLOGY_FACE_OF_CORNER, "Face of Corner", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_topology_face_of_corner_cc

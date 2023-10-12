@@ -8,16 +8,17 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLT_translation.h"
 
@@ -148,11 +149,11 @@ static void ElementMirror(TransInfo *t, TransDataContainer *tc, TransData *td, i
       add_v3_v3v3(td->loc, td->iloc, vec);
     }
 
-    constraintTransLim(t, td);
+    constraintTransLim(t, tc, td);
   }
 }
 
-static void applyMirror(TransInfo *t, const int[2] /*mval*/)
+static void applyMirror(TransInfo *t)
 {
   int i;
   char str[UI_MAX_DRAW_STR];

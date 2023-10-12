@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,9 +8,9 @@
 
 #ifndef WITH_PYTHON_MODULE
 
-#  include <errno.h>
-#  include <stdlib.h>
-#  include <string.h>
+#  include <cerrno>
+#  include <cstdlib>
+#  include <cstring>
 
 #  include "MEM_guardedalloc.h"
 
@@ -61,7 +61,7 @@
 
 #  include "ED_datafiles.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  ifdef WITH_LIBMV
 #    include "libmv-capi.h"
@@ -71,11 +71,11 @@
 #    include "CCL_api.h"
 #  endif
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_debug.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_debug.hh"
 
-#  include "WM_types.h"
+#  include "WM_types.hh"
 
 #  include "creator_intern.h" /* own include */
 
@@ -99,7 +99,7 @@ struct BuildDefs {
   bool with_xr_openxr;
 };
 
-static void build_defs_init(struct BuildDefs *build_defs, bool force_all)
+static void build_defs_init(BuildDefs *build_defs, bool force_all)
 {
   if (force_all) {
     bool *var_end = (bool *)(build_defs + 1);
@@ -180,7 +180,7 @@ static bool parse_int_relative(const char *str,
     *r_err_msg = msg;
     return false;
   }
-  *r_value = (int)value;
+  *r_value = int(value);
   return true;
 }
 
@@ -284,7 +284,7 @@ static bool parse_int_strict_range(const char *str,
     *r_err_msg = msg;
     return false;
   }
-  *r_value = (int)value;
+  *r_value = int(value);
   return true;
 }
 
@@ -438,9 +438,7 @@ struct BlendePyContextStore {
   bool has_win;
 };
 
-static void arg_py_context_backup(bContext *C,
-                                  struct BlendePyContextStore *c_py,
-                                  const char *script_id)
+static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py, const char *script_id)
 {
   c_py->wm = CTX_wm_manager(C);
   c_py->scene = CTX_data_scene(C);
@@ -458,7 +456,7 @@ static void arg_py_context_backup(bContext *C,
   }
 }
 
-static void arg_py_context_restore(bContext *C, struct BlendePyContextStore *c_py)
+static void arg_py_context_restore(bContext *C, BlendePyContextStore *c_py)
 {
   /* script may load a file, check old data is valid before using */
   if (c_py->has_win) {
@@ -477,7 +475,7 @@ static void arg_py_context_restore(bContext *C, struct BlendePyContextStore *c_p
 /* macro for context setup/reset */
 #    define BPY_CTX_SETUP(_cmd) \
       { \
-        struct BlendePyContextStore py_c; \
+        BlendePyContextStore py_c; \
         arg_py_context_backup(C, &py_c, argv[1]); \
         { \
           _cmd; \
@@ -504,7 +502,7 @@ static void arg_py_context_restore(bContext *C, struct BlendePyContextStore *c_p
  *
  * \{ */
 
-static void print_version_full(void)
+static void print_version_full()
 {
   printf("Blender %s\n", BKE_blender_version_string());
 #  ifdef BUILD_DATE
@@ -522,7 +520,7 @@ static void print_version_full(void)
 #  endif
 }
 
-static void print_version_short(void)
+static void print_version_short()
 {
 #  ifdef BUILD_DATE
   /* NOTE: We include built time since sometimes we need to tell broken from
@@ -550,7 +548,7 @@ static int arg_handle_print_version(int /*argc*/, const char ** /*argv*/, void *
 
 static void print_help(bArgs *ba, bool all)
 {
-  struct BuildDefs defs;
+  BuildDefs defs;
   build_defs_init(&defs, all);
 
 /* All printing must go via `PRINT` macro. */
@@ -665,7 +663,6 @@ static void print_help(bArgs *ba, bool all)
   BLI_args_print_arg_doc(ba, "--debug-wintab");
   BLI_args_print_arg_doc(ba, "--debug-gpu");
   BLI_args_print_arg_doc(ba, "--debug-gpu-force-workarounds");
-  BLI_args_print_arg_doc(ba, "--debug-gpu-disable-ssbo");
   if (defs.with_renderdoc) {
     BLI_args_print_arg_doc(ba, "--debug-gpu-renderdoc");
   }
@@ -851,7 +848,7 @@ static const char arg_handle_python_set_doc_disable[] =
 
 static int arg_handle_python_set(int /*argc*/, const char ** /*argv*/, void *data)
 {
-  if ((bool)data) {
+  if (bool(data)) {
     G.f |= G_FLAG_SCRIPT_AUTOEXEC;
   }
   else {
@@ -902,7 +899,7 @@ static const char arg_handle_background_mode_set_doc[] =
 static int arg_handle_background_mode_set(int /*argc*/, const char ** /*argv*/, void * /*data*/)
 {
   print_version_short();
-  G.background = 1;
+  G.background = true;
   return 0;
 }
 
@@ -1115,9 +1112,6 @@ static const char arg_handle_debug_mode_generic_set_doc_depsgraph_uuid[] =
 static const char arg_handle_debug_mode_generic_set_doc_gpu_force_workarounds[] =
     "\n\t"
     "Enable workarounds for typical GPU issues and disable all GPU extensions.";
-static const char arg_handle_debug_mode_generic_set_doc_gpu_disable_ssbo[] =
-    "\n\t"
-    "Disable usage of shader storage buffer objects.";
 
 static int arg_handle_debug_mode_generic_set(int /*argc*/, const char ** /*argv*/, void *data)
 {
@@ -1230,26 +1224,23 @@ static int arg_handle_debug_gpu_renderdoc_set(int /*argc*/,
 static const char arg_handle_gpu_backend_set_doc_all[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
-    "'vulkan',  "
+    "'vulkan' (experimental),  "
     "'metal',  "
     "'opengl'.";
 static const char arg_handle_gpu_backend_set_doc[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
-#  ifdef WITH_VULKAN_BACKEND
-    "'vulkan'"
-#    if defined(WITH_METAL_BACKEND) || defined(WITH_OPENGL_BACKEND)
-    ",  "
+#  ifdef WITH_OPENGL_BACKEND
+    "'opengl'"
+#    if defined(WITH_VULKAN_BACKEND)
+    " or "
 #    endif
+#  endif
+#  ifdef WITH_VULKAN_BACKEND
+    "'vulkan' (experimental)"
 #  endif
 #  ifdef WITH_METAL_BACKEND
     "'metal'"
-#    if defined(WITH_OPENGL_BACKEND)
-    ",  "
-#    endif
-#  endif
-#  ifdef WITH_OPENGL_BACKEND
-    "'opengl'"
 #  endif
     ".";
 static int arg_handle_gpu_backend_set(int argc, const char **argv, void * /*data*/)
@@ -1325,7 +1316,7 @@ static const char arg_handle_factory_startup_set_doc[] =
     "Skip reading the '" BLENDER_STARTUP_FILE "' in the users home directory.";
 static int arg_handle_factory_startup_set(int /*argc*/, const char ** /*argv*/, void * /*data*/)
 {
-  G.factory_startup = 1;
+  G.factory_startup = true;
   G.f |= G_FLAG_USERPREF_NO_SAVE_ON_EXIT;
   return 0;
 }
@@ -1613,9 +1604,8 @@ static int arg_handle_engine_set(int argc, const char **argv, void *data)
   bContext *C = static_cast<bContext *>(data);
   if (argc >= 2) {
     if (STREQ(argv[1], "help")) {
-      RenderEngineType *type = nullptr;
       printf("Blender Engine Listing:\n");
-      for (type = static_cast<RenderEngineType *>(R_engines.first); type; type = type->next) {
+      LISTBASE_FOREACH (RenderEngineType *, type, &R_engines) {
         printf("\t%s\n", type->idname);
       }
       exit(0);
@@ -2026,7 +2016,7 @@ static int arg_handle_python_text_run(int argc, const char **argv, void *data)
   if (argc > 1) {
     Main *bmain = CTX_data_main(C);
     /* Make the path absolute because its needed for relative linked blends to be found */
-    struct Text *text = (struct Text *)BKE_libblock_find_name(bmain, ID_TXT, argv[1]);
+    Text *text = (Text *)BKE_libblock_find_name(bmain, ID_TXT, argv[1]);
     bool ok;
 
     if (text) {
@@ -2123,7 +2113,7 @@ static int arg_handle_python_exit_code_set(int argc, const char **argv, void * /
       return 1;
     }
 
-    app_state.exit_code_on_error.python = (uchar)exit_code;
+    app_state.exit_code_on_error.python = uchar(exit_code);
     return 1;
   }
   fprintf(stderr, "\nError: you must specify an exit code number '%s'.\n", arg_id);
@@ -2293,7 +2283,7 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 /** A version of `CB` that uses `all`, needed when the doc-string depends on build options. */
 #  define CB_ALL(a) (all ? a##_doc_all : a##_doc), a
 
-  struct BuildDefs defs;
+  BuildDefs defs;
   build_defs_init(&defs, all);
 
   /* end argument processing after -- */
@@ -2483,11 +2473,6 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
                "--debug-gpu-force-workarounds",
                CB_EX(arg_handle_debug_mode_generic_set, gpu_force_workarounds),
                (void *)G_DEBUG_GPU_FORCE_WORKAROUNDS);
-  BLI_args_add(ba,
-               nullptr,
-               "--debug-gpu-disable-ssbo",
-               CB_EX(arg_handle_debug_mode_generic_set, gpu_disable_ssbo),
-               (void *)G_DEBUG_GPU_FORCE_DISABLE_SSBO);
   BLI_args_add(ba, nullptr, "--debug-exit-on-error", CB(arg_handle_debug_exit_on_error), nullptr);
 
   BLI_args_add(ba, nullptr, "--verbose", CB(arg_handle_verbosity_set), nullptr);
@@ -2549,6 +2534,9 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 #  ifdef WITH_PYTHON
   /* Use for Python to extract help text (Python can't call directly - bad-level call). */
   BPY_python_app_help_text_fn = main_args_help_as_string;
+#  else
+  /* Quiet unused function warning. */
+  (void)main_args_help_as_string;
 #  endif
 }
 

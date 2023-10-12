@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,12 +8,15 @@
 
 #include "BlenderFileLoader.h"
 
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include <sstream>
 
@@ -135,7 +138,9 @@ int BlenderFileLoader::countClippedFaces(float v1[3], float v2[3], float v3[3], 
     if (G.debug & G_DEBUG_FREESTYLE) {
       printf("%d %s\n",
              i,
-             (clip[i] == NOT_CLIPPED) ? "not" : (clip[i] == CLIPPED_BY_NEAR) ? "near" : "far");
+             (clip[i] == NOT_CLIPPED)     ? "not" :
+             (clip[i] == CLIPPED_BY_NEAR) ? "near" :
+                                            "far");
     }
 #endif
     sum += clip[i];

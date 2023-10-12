@@ -27,18 +27,18 @@
 #include "BKE_deform.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_undo_system.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_lattice.h"
-#include "ED_object.h"
-#include "ED_undo.h"
-#include "ED_util.h"
+#include "ED_lattice.hh"
+#include "ED_object.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "lattice_intern.h"
 

@@ -8,16 +8,15 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
+#include "DNA_asset_types.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
 
 #include "DNA_ID.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct ARegion;
 struct ARegionType;
@@ -32,6 +31,7 @@ struct uiList;
 struct wmDrawBuffer;
 struct wmTimer;
 struct wmTooltipState;
+struct Panel_Runtime;
 
 /* TODO: Doing this is quite ugly :)
  * Once the top-bar is merged bScreen should be refactored to use ScrAreaMap. */
@@ -121,29 +121,6 @@ typedef struct ScrAreaMap {
   ListBase areabase;
 } ScrAreaMap;
 
-typedef struct Panel_Runtime {
-  /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
-  int region_ofsx;
-
-  char _pad[4];
-
-  /**
-   * Pointer for storing which data the panel corresponds to.
-   * Useful when there can be multiple instances of the same panel type.
-   *
-   * \note A panel and its sub-panels share the same custom data pointer.
-   * This avoids freeing the same pointer twice when panels are removed.
-   */
-  struct PointerRNA *custom_data_ptr;
-
-  /* Pointer to the panel's block. Useful when changes to panel #uiBlocks
-   * need some context from traversal of the panel "tree". */
-  struct uiBlock *block;
-
-  /* Non-owning pointer. The context is stored in the block. */
-  struct bContextStore *context;
-} Panel_Runtime;
-
 /** The part from uiBlock that needs saved in file. */
 typedef struct Panel {
   struct Panel *next, *prev;
@@ -156,7 +133,7 @@ typedef struct Panel {
   /** Defined as UI_MAX_NAME_STR. */
   char panelname[64];
   /** Panel name is identifier for restoring location. */
-  char drawname[64];
+  char *drawname;
   /** Offset within the region. */
   int ofsx, ofsy;
   /** Panel size including children. */
@@ -173,7 +150,7 @@ typedef struct Panel {
   /** Sub panels. */
   ListBase children;
 
-  Panel_Runtime runtime;
+  struct Panel_Runtime *runtime;
 } Panel;
 
 /**
@@ -673,8 +650,10 @@ typedef enum eRegion_Type {
   /* Region type used exclusively by internal code and add-ons to register draw callbacks to the XR
    * context (surface, mirror view). Does not represent any real region. */
   RGN_TYPE_XR = 13,
+  RGN_TYPE_ASSET_SHELF = 14,
+  RGN_TYPE_ASSET_SHELF_HEADER = 15,
 
-#define RGN_TYPE_NUM (RGN_TYPE_XR + 1)
+#define RGN_TYPE_NUM (RGN_TYPE_ASSET_SHELF_HEADER + 1)
 } eRegion_Type;
 
 /** Use for function args. */
@@ -685,8 +664,8 @@ typedef enum eRegion_Type {
 
 /** Check for any kind of header region. */
 #define RGN_TYPE_IS_HEADER_ANY(regiontype) \
-  (((1 << (regiontype)) & \
-    ((1 << RGN_TYPE_HEADER) | 1 << (RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_FOOTER))) != 0)
+  (((1 << (regiontype)) & ((1 << RGN_TYPE_HEADER) | 1 << (RGN_TYPE_TOOL_HEADER) | \
+                           (1 << RGN_TYPE_FOOTER) | (1 << RGN_TYPE_ASSET_SHELF_HEADER))) != 0)
 
 /** #ARegion.alignment */
 enum {
@@ -702,7 +681,10 @@ enum {
   /* Maximum 15. */
 
   /* Flags start here. */
-  RGN_SPLIT_PREV = 32,
+  RGN_SPLIT_PREV = 1 << 5,
+  /** Always let scaling this region scale the previous region instead. Useful to let regions
+   * appear like they are one (while having independent layout, scrolling, etc.). */
+  RGN_SPLIT_SCALE_PREV = 1 << 6,
 };
 
 /** Mask out flags so we can check the alignment. */
@@ -737,6 +719,7 @@ enum {
   /** #ARegionType.poll() failed for the current context, and the region should be treated as if it
    * wouldn't exist. Runtime only flag. */
   RGN_FLAG_POLL_FAILED = (1 << 10),
+  RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS = (1 << 11),
 };
 
 /** #ARegion.do_draw */
@@ -764,6 +747,72 @@ enum {
   RGN_DRAW_EDITOR_OVERLAYS = 32,
 };
 
+typedef struct AssetShelfSettings {
+  struct AssetShelfSettings *next, *prev;
+
+  AssetLibraryReference asset_library_reference;
+
+  ListBase enabled_catalog_paths; /* #LinkData */
+  /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
+  const char *active_catalog_path;
+
+  /** For filtering assets displayed in the asset view. */
+  char search_string[64];
+
+  short preview_size;
+  short display_flag; /* #AssetShelfSettings_DisplayFlag */
+  char _pad1[4];
+
 #ifdef __cplusplus
-}
+  /* Zero initializes. */
+  AssetShelfSettings();
+  /* Proper deep copy. */
+  AssetShelfSettings(const AssetShelfSettings &other);
+  AssetShelfSettings &operator=(const AssetShelfSettings &other);
+  ~AssetShelfSettings();
 #endif
+} AssetShelfSettings;
+
+typedef struct AssetShelf {
+  DNA_DEFINE_CXX_METHODS(AssetShelf)
+
+  struct AssetShelf *next, *prev;
+
+  /** Identifier that matches the #AssetShelfType.idname this shelf was created with. Used to
+   * restore the #AssetShelf.type pointer below on file read. */
+  char idname[64]; /* MAX_NAME */
+  /** Runtime. */
+  struct AssetShelfType *type;
+
+  AssetShelfSettings settings;
+
+  short preferred_row_count;
+  char _pad[6];
+} AssetShelf;
+
+/**
+ * Region-data for the main asset shelf region (#RGN_TYPE_ASSET_SHELF). Managed by the asset shelf
+ * internals.
+ *
+ * Contains storage for all previously activated asset shelf instances plus info on the currently
+ * active one (only one can be active at any time).
+ */
+typedef struct RegionAssetShelf {
+  /** Owning list of previously activated asset shelves. */
+  ListBase shelves;
+  /**
+   * The currently active shelf, if any. Updated on redraw, so that context changes are reflected.
+   * Note that this may still be set even though the shelf isn't available anymore
+   * (#AssetShelfType.poll() fails). The pointer isn't necessarily unset when polling.
+   */
+  AssetShelf *active_shelf; /* Non-owning. */
+#ifdef __cplusplus
+  static RegionAssetShelf *get_from_asset_shelf_region(const ARegion &region);
+#endif
+} RegionAssetShelf;
+
+/* #AssetShelfSettings.display_flag */
+typedef enum AssetShelfSettings_DisplayFlag {
+  ASSETSHELF_SHOW_NAMES = (1 << 0),
+} AssetShelfSettings_DisplayFlag;
+ENUM_OPERATORS(AssetShelfSettings_DisplayFlag, ASSETSHELF_SHOW_NAMES);

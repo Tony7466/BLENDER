@@ -22,7 +22,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_scanfill.h"
 #include "BLI_span.hh"
@@ -39,13 +39,13 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_vfont.h"
 
 #include "BLI_sys_types.h" /* For #intptr_t support. */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 using blender::IndexRange;
 
@@ -67,9 +67,7 @@ static void displist_elem_free(DispList *dl)
 
 void BKE_displist_free(ListBase *lb)
 {
-  DispList *dl;
-
-  while ((dl = (DispList *)BLI_pophead(lb))) {
+  while (DispList *dl = (DispList *)BLI_pophead(lb)) {
     displist_elem_free(dl);
   }
 }
@@ -730,12 +728,12 @@ static blender::bke::GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
       continue;
     }
 
+    blender::bke::ScopedModifierTimer modifier_timer{*md};
+
     if (md->type == eModifierType_Nodes) {
       mti->modify_geometry_set(md, &mectx_apply, &geometry_set);
       continue;
     }
-
-    blender::bke::ScopedModifierTimer modifier_timer{*md};
 
     if (!geometry_set.has_mesh()) {
       geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0));
@@ -1363,7 +1361,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
        */
       Curve &cow_curve = *reinterpret_cast<Curve *>(
           BKE_id_copy_ex(nullptr, &original_curve.id, nullptr, LIB_ID_COPY_LOCALIZE));
-      cow_curve.curve_eval = geometry.get_curves_for_read();
+      cow_curve.curve_eval = geometry.get_curves();
       /* Copy edit mode pointers necessary for drawing to the duplicated curve. */
       cow_curve.editnurb = original_curve.editnurb;
       cow_curve.editfont = original_curve.editfont;

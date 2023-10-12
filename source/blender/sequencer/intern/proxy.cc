@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -32,7 +32,9 @@
 #include "BKE_main.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
+
+#include "WM_types.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -508,7 +510,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
   return true;
 }
 
-void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_update, float *progress)
+void SEQ_proxy_rebuild(SeqIndexBuildContext *context, wmJobWorkerStatus *worker_status)
 {
   const bool overwrite = context->overwrite;
   SeqRenderData render_context;
@@ -519,7 +521,10 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
 
   if (seq->type == SEQ_TYPE_MOVIE) {
     if (context->index_context) {
-      IMB_anim_index_rebuild(context->index_context, stop, do_update, progress);
+      IMB_anim_index_rebuild(context->index_context,
+                             &worker_status->stop,
+                             &worker_status->do_update,
+                             &worker_status->progress);
     }
 
     return;
@@ -565,12 +570,12 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
       seq_proxy_build_frame(&render_context, &state, seq, timeline_frame, 100, overwrite);
     }
 
-    *progress = float(timeline_frame - SEQ_time_left_handle_frame_get(scene, seq)) /
-                (SEQ_time_right_handle_frame_get(scene, seq) -
-                 SEQ_time_left_handle_frame_get(scene, seq));
-    *do_update = true;
+    worker_status->progress = float(timeline_frame - SEQ_time_left_handle_frame_get(scene, seq)) /
+                              (SEQ_time_right_handle_frame_get(scene, seq) -
+                               SEQ_time_left_handle_frame_get(scene, seq));
+    worker_status->do_update = true;
 
-    if (*stop || G.is_break) {
+    if (worker_status->stop || G.is_break) {
       break;
     }
   }
@@ -579,9 +584,7 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
 void SEQ_proxy_rebuild_finish(SeqIndexBuildContext *context, bool stop)
 {
   if (context->index_context) {
-    StripAnim *sanim;
-
-    for (sanim = static_cast<StripAnim *>(context->seq->anims.first); sanim; sanim = sanim->next) {
+    LISTBASE_FOREACH (StripAnim *, sanim, &context->seq->anims) {
       IMB_close_anim_proxies(sanim->anim);
     }
 

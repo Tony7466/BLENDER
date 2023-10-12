@@ -5,7 +5,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_cachefile_types.h"
 #include "DNA_mesh_types.h"
@@ -13,7 +13,7 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "usd_reader_shape.h"
 

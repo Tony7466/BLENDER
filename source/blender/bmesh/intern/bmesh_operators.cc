@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
 #include "BLI_string.h"
@@ -651,7 +652,7 @@ void *bmo_slot_buffer_grow(BMesh *bm, BMOperator *op, int slot_code, int totadd)
 {
   BMOpSlot *slot = &op->slots[slot_code];
   void *tmp;
-  ssize_t allocsize;
+  int64_t allocsize;
 
   BLI_assert(slot->slottype == BMO_OP_SLOT_ELEMENT_BUF);
 
@@ -1512,7 +1513,7 @@ bool BMO_error_get_at_level(BMesh *bm,
                             const char **r_msg,
                             BMOperator **r_op)
 {
-  for (BMOpError *err = static_cast<BMOpError *>(bm->errorstack.first); err; err = err->next) {
+  LISTBASE_FOREACH (BMOpError *, err, &bm->errorstack) {
     if (err->level >= level) {
       if (r_msg) {
         *r_msg = err->msg;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@
 #include "BLI_vector.hh"
 
 #include "UI_abstract_view.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 struct bContext;
 struct uiBlock;
@@ -207,7 +207,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   /** See AbstractViewItem::get_rename_string(). */
   /* virtual */ StringRef get_rename_string() const override;
   /** See AbstractViewItem::rename(). */
-  /* virtual */ bool rename(StringRefNull new_name) override;
+  /* virtual */ bool rename(const bContext &C, StringRefNull new_name) override;
 
   /**
    * Return whether the item can be collapsed. Used to disable collapsing for items with children.
@@ -243,7 +243,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   void ensure_parents_uncollapsed();
 
  private:
-  static void tree_row_click_fn(struct bContext *, void *, void *);
+  static void tree_row_click_fn(bContext *, void *, void *);
   static void collapse_chevron_click_fn(bContext *, void *but_arg1, void *);
   static bool is_collapse_chevron_but(const uiBut *but);
 
@@ -292,16 +292,15 @@ class BasicTreeViewItem : public AbstractTreeViewItem {
 
  protected:
   /**
-   * Optionally passed to the #BasicTreeViewItem constructor. Called when activating this tree
-   * view item. This way users don't have to sub-class #BasicTreeViewItem, just to implement
-   * custom activation behavior (a common thing to do).
+   * Called when activating this tree view item. This way users don't have to sub-class
+   * #BasicTreeViewItem, just to implement custom activation behavior (a common thing to do).
    */
   ActivateFn activate_fn_;
 
   IsActiveFn is_active_fn_;
 
  private:
-  static void tree_row_click_fn(struct bContext *C, void *arg1, void *arg2);
+  static void tree_row_click_fn(bContext *C, void *arg1, void *arg2);
 
   std::optional<bool> should_be_active() const override;
   void on_activate(bContext &C) override;

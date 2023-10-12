@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,6 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -41,15 +40,15 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "ED_clip.h"
-#include "ED_mask.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_clip.hh"
+#include "ED_mask.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "clip_intern.h" /* own include */
 
@@ -710,7 +709,7 @@ static uchar *prefetch_read_file_to_memory(
   }
 
   const size_t size = BLI_file_descriptor_size(file);
-  if (size < 1) {
+  if (UNLIKELY(ELEM(size, 0, size_t(-1)))) {
     close(file);
     return nullptr;
   }
@@ -721,7 +720,7 @@ static uchar *prefetch_read_file_to_memory(
     return nullptr;
   }
 
-  if (read(file, mem, size) != size) {
+  if (BLI_read(file, mem, size) != size) {
     close(file);
     MEM_freeN(mem);
     return nullptr;
@@ -999,7 +998,7 @@ static void do_prefetch_movie(MovieClip *clip,
   }
 }
 
-static void prefetch_startjob(void *pjv, bool *stop, bool *do_update, float *progress)
+static void prefetch_startjob(void *pjv, wmJobWorkerStatus *worker_status)
 {
   PrefetchJob *pj = static_cast<PrefetchJob *>(pjv);
 
@@ -1011,9 +1010,9 @@ static void prefetch_startjob(void *pjv, bool *stop, bool *do_update, float *pro
                            pj->end_frame,
                            pj->render_size,
                            pj->render_flag,
-                           stop,
-                           do_update,
-                           progress);
+                           &worker_status->stop,
+                           &worker_status->do_update,
+                           &worker_status->progress);
   }
   else if (pj->clip->source == MCLIP_SRC_MOVIE) {
     /* read movie in a single thread */
@@ -1024,9 +1023,9 @@ static void prefetch_startjob(void *pjv, bool *stop, bool *do_update, float *pro
                       pj->end_frame,
                       pj->render_size,
                       pj->render_flag,
-                      stop,
-                      do_update,
-                      progress);
+                      &worker_status->stop,
+                      &worker_status->do_update,
+                      &worker_status->progress);
   }
   else {
     BLI_assert_msg(0, "Unknown movie clip source when prefetching frames");

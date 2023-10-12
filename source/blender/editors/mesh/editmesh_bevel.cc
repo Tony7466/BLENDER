@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,8 @@
 
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -24,23 +25,23 @@
 #include "DNA_curveprofile_types.h"
 #include "DNA_mesh_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_mesh.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -900,7 +901,6 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *col, *row;
-  PointerRNA toolsettings_ptr;
 
   int profile_type = RNA_enum_get(op->ptr, "profile_type");
   int offset_type = RNA_enum_get(op->ptr, "offset_type");
@@ -969,7 +969,8 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   if (profile_type == BEVEL_PROFILE_CUSTOM) {
     /* Get an RNA pointer to ToolSettings to give to the curve profile template code. */
     Scene *scene = CTX_data_scene(C);
-    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+    PointerRNA toolsettings_ptr = RNA_pointer_create(
+        &scene->id, &RNA_ToolSettings, scene->toolsettings);
     uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_bevel_profile_preset");
   }
 }

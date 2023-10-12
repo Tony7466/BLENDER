@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
 #include "BLT_translation.h"
@@ -33,21 +34,22 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object_deform.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GEO_mesh_merge_by_distance.hh"
 
@@ -159,7 +161,7 @@ static void dm_mvert_map_doubles(int *doubles_map,
                                  const int source_verts_num,
                                  const float dist)
 {
-  const float dist3 = (float(M_SQRT3) + 0.00005f) * dist; /* Just above sqrt(3) */
+  const float dist3 = (float(M_SQRT3) + 0.00005f) * dist; /* Just above `sqrt(3)`. */
   int i_source, i_target, i_target_low_bound, target_end, source_end;
   SortVertsElem *sve_source, *sve_target, *sve_target_low_bound;
   bool target_scan_completed;
@@ -282,7 +284,7 @@ static void mesh_merge_transform(Mesh *result,
                                  int cap_nfaces,
                                  int *remap,
                                  int remap_len,
-                                 const bool recalc_normals_later)
+                                 MutableSpan<float3> dst_vert_normals)
 {
   using namespace blender;
   int *index_orig;
@@ -305,8 +307,7 @@ static void mesh_merge_transform(Mesh *result,
   }
 
   /* We have to correct normals too, if we do not tag them as dirty later! */
-  if (!recalc_normals_later) {
-    float(*dst_vert_normals)[3] = BKE_mesh_vert_normals_for_write(result);
+  if (!dst_vert_normals.is_empty()) {
     for (i = 0; i < cap_nverts; i++) {
       mul_mat3_m4_v3(cap_offset, dst_vert_normals[cap_verts_index + i]);
       normalize_v3(dst_vert_normals[cap_verts_index + i]);
@@ -380,6 +381,15 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 {
   using namespace blender;
   if (mesh->totvert == 0) {
+    /* Output just the start cap even if the mesh is empty. */
+    Object *start_cap_ob = amd->start_cap;
+    if (start_cap_ob && start_cap_ob != ctx->object) {
+      Mesh *start_cap_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(start_cap_ob);
+      if (start_cap_mesh) {
+        BKE_mesh_wrapper_ensure_mdata(start_cap_mesh);
+        return BKE_mesh_copy_for_eval(start_cap_mesh);
+      }
+    }
     return mesh;
   }
 
@@ -428,6 +438,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 
     start_cap_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(start_cap_ob);
     if (start_cap_mesh) {
+      BKE_mesh_wrapper_ensure_mdata(start_cap_mesh);
       start_cap_nverts = start_cap_mesh->totvert;
       start_cap_nedges = start_cap_mesh->totedge;
       start_cap_nloops = start_cap_mesh->totloop;
@@ -443,6 +454,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 
     end_cap_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(end_cap_ob);
     if (end_cap_mesh) {
+      BKE_mesh_wrapper_ensure_mdata(end_cap_mesh);
       end_cap_nverts = end_cap_mesh->totvert;
       end_cap_nedges = end_cap_mesh->totedge;
       end_cap_nloops = end_cap_mesh->totloop;
@@ -583,11 +595,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 
   unit_m4(current_offset);
   blender::Span<blender::float3> src_vert_normals;
-  float(*dst_vert_normals)[3] = nullptr;
+  Vector<float3> dst_vert_normals;
   if (!use_recalc_normals) {
     src_vert_normals = mesh->vert_normals();
-    dst_vert_normals = BKE_mesh_vert_normals_for_write(result);
-    BKE_mesh_vert_normals_clear_dirty(result);
+    dst_vert_normals.reinitialize(result->totvert);
   }
 
   for (c = 1; c < count; c++) {
@@ -608,7 +619,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
       mul_m4_v3(current_offset, result_positions[i_dst]);
 
       /* We have to correct normals too, if we do not tag them as dirty! */
-      if (!use_recalc_normals) {
+      if (!dst_vert_normals.is_empty()) {
         copy_v3_v3(dst_vert_normals[i_dst], src_vert_normals[i]);
         mul_mat3_m4_v3(current_offset, dst_vert_normals[i_dst]);
         normalize_v3(dst_vert_normals[i_dst]);
@@ -758,7 +769,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                          start_cap_nfaces,
                          vgroup_start_cap_remap,
                          vgroup_start_cap_remap_len,
-                         use_recalc_normals);
+                         dst_vert_normals);
     /* Identify doubles with first chunk */
     if (use_merge) {
       dm_mvert_map_doubles(full_doubles_map,
@@ -788,7 +799,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                          end_cap_nfaces,
                          vgroup_end_cap_remap,
                          vgroup_end_cap_remap_len,
-                         use_recalc_normals);
+                         dst_vert_normals);
     /* Identify doubles with last chunk */
     if (use_merge) {
       dm_mvert_map_doubles(full_doubles_map,
@@ -801,6 +812,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     }
   }
   /* done capping */
+
+  if (!dst_vert_normals.is_empty()) {
+    blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  }
 
   /* Handle merging */
   tot_doubles = 0;

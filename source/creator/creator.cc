@@ -6,8 +6,8 @@
  * \ingroup creator
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #ifdef WIN32
 #  include "utfconv.h"
@@ -39,7 +39,7 @@
 /* Mostly initialization functions. */
 #include "BKE_appdir.h"
 #include "BKE_blender.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_cachefile.h"
 #include "BKE_callbacks.h"
 #include "BKE_context.h"
@@ -61,7 +61,7 @@
 #  include "BLI_args.h"
 #endif
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IMB_imbuf.h" /* For #IMB_init. */
 
@@ -70,16 +70,16 @@
 
 #include "ED_datafiles.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
 #endif
 
-#include <signal.h>
+#include <csignal>
 
 #ifdef __FreeBSD__
 #  include <floatingpoint.h>
@@ -142,7 +142,7 @@ static void callback_mem_error(const char *errorStr)
   fflush(stderr);
 }
 
-static void main_callback_setup(void)
+static void main_callback_setup()
 {
   /* Error output from the guarded allocation routines. */
   MEM_set_error_callback(callback_mem_error);
@@ -166,7 +166,7 @@ struct CreatorAtExitData {
 
 static void callback_main_atexit(void *user_data)
 {
-  struct CreatorAtExitData *app_init_data = static_cast<CreatorAtExitData *>(user_data);
+  CreatorAtExitData *app_init_data = static_cast<CreatorAtExitData *>(user_data);
 
 #ifndef WITH_PYTHON_MODULE
   if (app_init_data->ba) {
@@ -208,7 +208,7 @@ static void callback_clg_fatal(void *fp)
 
 /* Called in `bpy_interface.cc` when building as a Python module. */
 int main_python_enter(int argc, const char **argv);
-void main_python_exit(void);
+void main_python_exit();
 
 /* Rename the 'main' function, allowing Python initialization to call it. */
 #  define main main_python_enter
@@ -297,7 +297,7 @@ int main(int argc,
   /* --- end declarations --- */
 
   /* Ensure we free data on early-exit. */
-  struct CreatorAtExitData app_init_data = {nullptr};
+  CreatorAtExitData app_init_data = {nullptr};
   BKE_blender_atexit_register(callback_main_atexit, &app_init_data);
 
 /* Un-buffered `stdout` makes `stdout` and `stderr` better synchronized, and helps
@@ -369,7 +369,7 @@ int main(int argc,
 #ifdef BUILD_DATE
   {
     time_t temp_time = build_commit_timestamp;
-    struct tm *tm = gmtime(&temp_time);
+    tm *tm = gmtime(&temp_time);
     if (LIKELY(tm)) {
       strftime(build_commit_date, sizeof(build_commit_date), "%Y-%m-%d", tm);
       strftime(build_commit_time, sizeof(build_commit_time), "%H:%M", tm);
@@ -536,17 +536,11 @@ int main(int argc,
 
   WM_init(C, argc, (const char **)argv);
 
-  /* Need to be after WM init so that userpref are loaded. */
-  RE_engines_init_experimental();
-
 #ifndef WITH_PYTHON
   printf(
       "\n* WARNING * - Blender compiled without Python!\n"
       "this is not intended for typical usage\n\n");
 #endif
-
-  CTX_py_init_set(C, true);
-  WM_keyconfig_init(C);
 
 #ifdef WITH_FREESTYLE
   /* Initialize Freestyle. */
@@ -602,7 +596,7 @@ int main(int argc,
 } /* End of `int main(...)` function. */
 
 #ifdef WITH_PYTHON_MODULE
-void main_python_exit(void)
+void main_python_exit()
 {
   WM_exit_ex((bContext *)evil_C, true, false);
   evil_C = nullptr;

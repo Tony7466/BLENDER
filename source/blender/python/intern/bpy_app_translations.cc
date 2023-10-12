@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,7 @@
 #include "BLT_lang.h"
 #include "BLT_translation.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "../generic/python_utildefines.h"
 
@@ -152,8 +152,8 @@ static void _build_translations_cache(PyObject *py_messages, const char *locale)
     PyObject *lang_dict;
 
 #  if 0
-PyObject_Print(uuid_dict, stdout, 0);
-printf("\n");
+    PyObject_Print(uuid_dict, stdout, 0);
+    printf("\n");
 #  endif
 
     /* Try to get first complete locale, then language+country,
@@ -242,7 +242,9 @@ printf("\n");
         /* Do not overwrite existing keys! */
         if (BPY_app_translations_py_pgettext(msgctxt, msgid) == msgid) {
           GHashKey *key = _ghashutil_keyalloc(msgctxt, msgid);
-          BLI_ghash_insert(_translations_cache, key, BLI_strdup(PyUnicode_AsUTF8(trans)));
+          Py_ssize_t trans_str_len;
+          const char *trans_str = PyUnicode_AsUTF8AndSize(trans, &trans_str_len);
+          BLI_ghash_insert(_translations_cache, key, BLI_strdupn(trans_str, trans_str_len));
         }
       }
     }

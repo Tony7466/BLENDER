@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "bmesh.h"
@@ -28,10 +29,8 @@ void BM_mesh_edgesplit(BMesh *bm,
   GHash *ese_gh = nullptr;
 
   if (copy_select && bm->selected.first) {
-    BMEditSelection *ese;
-
     ese_gh = BLI_ghash_ptr_new(__func__);
-    for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
+    LISTBASE_FOREACH (BMEditSelection *, ese, &bm->selected) {
       if (ese->htype != BM_FACE) {
         BLI_ghash_insert(ese_gh, ese->ele, ese);
       }

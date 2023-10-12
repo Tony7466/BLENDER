@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,8 +16,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_hash.h"
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -33,7 +34,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -45,33 +46,33 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "ED_clip.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_clip.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -507,7 +508,7 @@ static void gpencil_brush_angle(bGPdata *gpd, Brush *brush, tGPspoint *pt, const
   /* angle vector of the brush with full thickness */
   const float v0[2] = {cos(angle), sin(angle)};
 
-  /* Apply to first point (only if there are 2 points because before no data to do it ) */
+  /* Apply to first point (only if there are 2 points because before no data to do it). */
   if (gpd->runtime.sbuffer_used == 1) {
     sub_v2_v2v2(mvec, mval, (pt - 1)->m_xy);
     normalize_v2(mvec);
@@ -1051,7 +1052,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = brush->size;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = brush->gpencil_settings->hardeness;
+  gps->hardness = brush->gpencil_settings->hardness;
   copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
@@ -3776,13 +3777,13 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   * - LEFTMOUSE  = standard drawing (all) / straight line drawing (all)
-   * - RIGHTMOUSE = eraser (all)
-   *   (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       p->status = GP_STATUS_DONE;
@@ -3831,7 +3832,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides the right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }
@@ -4047,7 +4048,7 @@ void GPENCIL_OT_draw(wmOperatorType *ot)
 
 /* additional OPs */
 
-static int gpencil_guide_rotate(bContext *C, wmOperator *op)
+static int gpencil_guide_rotate_exec(bContext *C, wmOperator *op)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
   GP_Sculpt_Guide *guide = &ts->gp_sculpt.guide;
@@ -4073,7 +4074,7 @@ void GPENCIL_OT_guide_rotate(wmOperatorType *ot)
   ot->description = "Rotate guide angle";
 
   /* api callbacks */
-  ot->exec = gpencil_guide_rotate;
+  ot->exec = gpencil_guide_rotate_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

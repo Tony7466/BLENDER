@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1458,7 +1458,8 @@ class ViewShape {
           v->setFrontEdgeB(veFrontB, v->frontEdgeB().second);
           v->setBackEdgeA(veBackA, v->backEdgeA().second);
           v->setBackEdgeB(veBackB, v->backEdgeB().second);
-        } break;
+          break;
+        }
         case Nature::NON_T_VERTEX: {
           NonTVertex *v = (NonTVertex *)(*vv);
           vector<ViewVertex::directedViewEdge> &vedges = (v)->viewedges();

@@ -27,7 +27,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
@@ -46,13 +48,13 @@
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_physics.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_physics.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_texture.h"
 
@@ -479,7 +481,6 @@ static float eff_calc_visibility(ListBase *colliders,
 {
   const int raycast_flag = BVH_RAYCAST_DEFAULT & ~BVH_RAYCAST_WATERTIGHT;
   ListBase *colls = colliders;
-  ColliderCache *col;
   float norm[3], len = 0.0;
   float visibility = 1.0, absorption = 0.0;
 
@@ -497,7 +498,7 @@ static float eff_calc_visibility(ListBase *colliders,
   len = normalize_v3(norm);
 
   /* check all collision objects */
-  for (col = static_cast<ColliderCache *>(colls->first); col; col = col->next) {
+  LISTBASE_FOREACH (ColliderCache *, col, colls) {
     CollisionModifierData *collmd = col->collmd;
 
     if (col->ob == eff->ob) {
@@ -838,7 +839,7 @@ static void get_effector_tot(
     if (eff->pd->forcefield == PFIELD_CHARGE) {
       /* Only the charge of the effected particle is used for
        * interaction, not fall-offs. If the fall-offs aren't the
-       * same this will be unphysical, but for animation this
+       * same this will be nonphysical, but for animation this
        * could be the wanted behavior. If you want physical
        * correctness the fall-off should be spherical 2.0 anyways.
        */
@@ -1152,7 +1153,6 @@ void BKE_effectors_apply(ListBase *effectors,
    *   (particles are guided along a curve bezier or old nurbs)
    *   (is independent of other effectors)
    */
-  EffectorCache *eff;
   EffectorData efd;
   int p = 0, tot = 1, step = 1;
 
@@ -1160,7 +1160,7 @@ void BKE_effectors_apply(ListBase *effectors,
   /* Check for min distance here? (yes would be cool to add that, ton) */
 
   if (effectors) {
-    for (eff = static_cast<EffectorCache *>(effectors->first); eff; eff = eff->next) {
+    LISTBASE_FOREACH (EffectorCache *, eff, effectors) {
       /* object effectors were fully checked to be OK to evaluate! */
 
       get_effector_tot(eff, &efd, point, &tot, &p, &step);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,10 +18,12 @@
 #  include "DNA_scene_types.h"
 #  include "DNA_texture_types.h"
 
-#  include "BLI_math.h"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
+#  include "BLI_math_vector.h"
 #  include "BLI_utildefines.h"
 
-#  include "BKE_cloth.h"
+#  include "BKE_cloth.hh"
 #  include "BKE_collision.h"
 #  include "BKE_effect.h"
 
@@ -789,16 +791,16 @@ static int cg_filtered(lfVector *ldV, fmatrix3x3 *lA, lfVector *lB, lfVector *z,
 
     a = s / dot_lfvector(d, q, numverts);
 
-    /* X = X + d*a; */
+    /* `X = X + d*a;` */
     add_lfvector_lfvectorS(ldV, ldV, d, a, numverts);
 
-    /* r = r - q*a; */
+    /* `r = r - q*a;` */
     sub_lfvector_lfvectorS(r, r, q, a, numverts);
 
     s_prev = s;
     s = dot_lfvector(r, r, numverts);
 
-    // d = r+d*(s/s_prev);
+    /* `d = r+d*(s/s_prev);` */
     add_lfvector_lfvectorS(d, r, d, (s / s_prev), numverts);
 
     filter(d, S);
@@ -1723,7 +1725,8 @@ BLI_INLINE bool spring_length(Implicit_Data *data,
 #  if 0
     if (length > L) {
       if ((clmd->sim_parms->flags & CSIMSETT_FLAG_TEARING_ENABLED) &&
-          (((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen)) {
+          (((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen))
+      {
         /* cut spring! */
         s->flags |= CSPRING_FLAG_DEACTIVATE;
         return false;

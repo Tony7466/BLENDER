@@ -11,7 +11,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_crazyspace.h"
@@ -19,9 +20,9 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -226,7 +227,6 @@ static void createTransMeshVertCData(bContext * /*C*/, TransInfo *t)
             td->dist = dists[a];
           }
           else {
-            td->flag |= TD_NOTCONNECTED;
             td->dist = FLT_MAX;
           }
         }

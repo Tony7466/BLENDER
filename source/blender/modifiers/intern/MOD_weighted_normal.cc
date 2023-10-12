@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_linklist.h"
 #include "BLI_math_vector.h"
@@ -26,13 +27,13 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_screen.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_modifiertypes.hh"
@@ -246,8 +247,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
     start_item.curr_strength = FACE_STRENGTH_WEAK;
     items_data = Array<WeightedNormalDataAggregateItem>(verts_num, start_item);
     lnors_spacearr.corner_space_indices.reinitialize(corner_verts.size());
-    std::iota(
-        lnors_spacearr.corner_space_indices.begin(), lnors_spacearr.corner_space_indices.end(), 0);
+    array_utils::fill_index_range<int>(lnors_spacearr.corner_space_indices);
   }
   wn_data->items_data = items_data;
 
@@ -543,7 +543,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   int defgrp_index;
   MOD_get_vgroup(ctx->object, mesh, wnmd->defgrp_name, &dvert, &defgrp_index);
 
-  const Array<int> loop_to_face_map = bke::mesh::build_loop_to_face_map(result->faces());
+  const Span<int> loop_to_face_map = result->corner_to_face_map();
 
   bke::MutableAttributeAccessor attributes = result->attributes_for_write();
   bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(

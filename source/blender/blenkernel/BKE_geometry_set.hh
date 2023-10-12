@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,12 +8,13 @@
  * \ingroup bke
  */
 
-#include <iostream>
+#include <iosfwd>
 #include <mutex>
 
 #include "BLI_bounds_types.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
+#include "BLI_math_vector_types.hh"
 
 #include "BKE_attribute.hh"
 
@@ -23,6 +24,12 @@ struct Mesh;
 struct PointCloud;
 struct Volume;
 struct GreasePencil;
+namespace blender::bke {
+class ComponentAttributeProviders;
+class CurvesEditHints;
+class Instances;
+class GeometryComponent;
+}  // namespace blender::bke
 
 namespace blender::bke {
 
@@ -37,11 +44,6 @@ enum class GeometryOwnershipType {
   ReadOnly = 2,
 };
 
-class ComponentAttributeProviders;
-class CurvesEditHints;
-class Instances;
-
-class GeometryComponent;
 using GeometryComponentPtr = ImplicitSharingPtr<GeometryComponent>;
 
 /**
@@ -157,11 +159,11 @@ struct GeometrySet {
   /**
    * Get the component of the given type. Might return null if the component does not exist yet.
    */
-  const GeometryComponent *get_component_for_read(GeometryComponent::Type component_type) const;
-  template<typename Component> const Component *get_component_for_read() const
+  const GeometryComponent *get_component(GeometryComponent::Type component_type) const;
+  template<typename Component> const Component *get_component() const
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
-    return static_cast<const Component *>(get_component_for_read(Component::static_type));
+    return static_cast<const Component *>(get_component(Component::static_type));
   }
 
   bool has(const GeometryComponent::Type component_type) const;
@@ -194,7 +196,7 @@ struct GeometrySet {
   /**
    * Get all geometry components in this geometry set for read-only access.
    */
-  Vector<const GeometryComponent *> get_components_for_read() const;
+  Vector<const GeometryComponent *> get_components() const;
 
   std::optional<Bounds<float3>> compute_boundbox_without_instances() const;
 
@@ -247,32 +249,32 @@ struct GeometrySet {
   /**
    * Create a new geometry set that only contains the given mesh.
    */
-  static GeometrySet create_with_mesh(
-      Mesh *mesh, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  static GeometrySet from_mesh(Mesh *mesh,
+                               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given volume.
    */
-  static GeometrySet create_with_volume(
-      Volume *volume, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  static GeometrySet from_volume(Volume *volume,
+                                 GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given point cloud.
    */
-  static GeometrySet create_with_pointcloud(
+  static GeometrySet from_pointcloud(
       PointCloud *pointcloud, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given curves.
    */
-  static GeometrySet create_with_curves(
-      Curves *curves, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  static GeometrySet from_curves(Curves *curves,
+                                 GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given instances.
    */
-  static GeometrySet create_with_instances(
+  static GeometrySet from_instances(
       Instances *instances, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given Grease Pencil data.
    */
-  static GeometrySet create_with_grease_pencil(
+  static GeometrySet from_grease_pencil(
       GreasePencil *grease_pencil, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
@@ -312,31 +314,31 @@ struct GeometrySet {
   /**
    * Returns a read-only mesh or null.
    */
-  const Mesh *get_mesh_for_read() const;
+  const Mesh *get_mesh() const;
   /**
    * Returns a read-only point cloud of null.
    */
-  const PointCloud *get_pointcloud_for_read() const;
+  const PointCloud *get_pointcloud() const;
   /**
    * Returns a read-only volume or null.
    */
-  const Volume *get_volume_for_read() const;
+  const Volume *get_volume() const;
   /**
    * Returns a read-only curves data-block or null.
    */
-  const Curves *get_curves_for_read() const;
+  const Curves *get_curves() const;
   /**
    * Returns read-only instances or null.
    */
-  const Instances *get_instances_for_read() const;
+  const Instances *get_instances() const;
   /**
    * Returns read-only curve edit hints or null.
    */
-  const CurvesEditHints *get_curve_edit_hints_for_read() const;
+  const CurvesEditHints *get_curve_edit_hints() const;
   /**
    * Returns a read-only Grease Pencil data-block or null.
    */
-  const GreasePencil *get_grease_pencil_for_read() const;
+  const GreasePencil *get_grease_pencil() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -398,6 +400,12 @@ struct GeometrySet {
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
+  friend bool operator==(const GeometrySet &a, const GeometrySet &b)
+  {
+    /* This compares only the component pointers, not the actual geometry data. */
+    return Span(a.components_) == Span(b.components_);
+  }
+
  private:
   /**
    * Retrieve the pointer to a component without creating it if it does not exist,
@@ -441,7 +449,7 @@ class MeshComponent : public GeometryComponent {
    * Get the mesh from this component. This method can be used by multiple threads at the same
    * time. Therefore, the returned mesh should not be modified. No ownership is transferred.
    */
-  const Mesh *get_for_read() const;
+  const Mesh *get() const;
   /**
    * Get the mesh from this component. This method can only be used when the component is mutable,
    * i.e. it is not shared. The returned mesh can be modified. No ownership is transferred.
@@ -497,7 +505,7 @@ class PointCloudComponent : public GeometryComponent {
    * same time. Therefore, the returned point cloud should not be modified. No ownership is
    * transferred.
    */
-  const PointCloud *get_for_read() const;
+  const PointCloud *get() const;
   /**
    * Get the point cloud from this component. This method can only be used when the component is
    * mutable, i.e. it is not shared. The returned point cloud can be modified. No ownership is
@@ -547,7 +555,7 @@ class CurveComponent : public GeometryComponent {
   void replace(Curves *curve, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   Curves *release();
 
-  const Curves *get_for_read() const;
+  const Curves *get() const;
   Curves *get_for_write();
 
   bool is_empty() const final;
@@ -582,7 +590,7 @@ class InstancesComponent : public GeometryComponent {
 
   void clear() override;
 
-  const Instances *get_for_read() const;
+  const Instances *get() const;
   Instances *get_for_write();
 
   void replace(Instances *instances,
@@ -630,7 +638,7 @@ class VolumeComponent : public GeometryComponent {
    * Get the volume from this component. This method can be used by multiple threads at the same
    * time. Therefore, the returned volume should not be modified. No ownership is transferred.
    */
-  const Volume *get_for_read() const;
+  const Volume *get() const;
   /**
    * Get the volume from this component. This method can only be used when the component is
    * mutable, i.e. it is not shared. The returned volume can be modified. No ownership is
@@ -682,8 +690,8 @@ class GeometryComponentEditData final : public GeometryComponent {
 
 /**
  * A geometry component that stores #GreasePencil data.
- * This component does not implement an attribute API, because the #GreasePencil data itself does
- * not store any attributes, only the individual drawings within it.
+ * The attributes on this component are only on the layer domain. Each individual layer represents
+ * a #CurvesGeometry with its own curve and point domain. See #CurveComponent.
  */
 class GreasePencilComponent : public GeometryComponent {
  private:
@@ -708,7 +716,7 @@ class GreasePencilComponent : public GeometryComponent {
    */
   GreasePencil *release();
 
-  const GreasePencil *get_for_read() const;
+  const GreasePencil *get() const;
   GreasePencil *get_for_write();
 
   bool is_empty() const final;
@@ -717,6 +725,9 @@ class GreasePencilComponent : public GeometryComponent {
   void ensure_owns_direct_data() override;
 
   static constexpr inline GeometryComponent::Type static_type = Type::GreasePencil;
+
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 };
 
 }  // namespace blender::bke

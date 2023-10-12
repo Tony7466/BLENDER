@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,10 +15,10 @@
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_lightprobe_types.h"
@@ -31,12 +31,12 @@
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 /* Rounded to nearest PowerOfTwo */
 #if defined(IRRADIANCE_SH_L2)
@@ -659,7 +659,7 @@ static void eevee_lightbake_count_probes(EEVEE_LightBake *lbake)
   /* At least one of each for the world */
   lbake->grid_len = lbake->cube_len = lbake->total_irr_samples = 1;
 
-  DEGObjectIterSettings deg_iter_settings = {0};
+  DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -671,12 +671,12 @@ static void eevee_lightbake_count_probes(EEVEE_LightBake *lbake)
     if (ob->type == OB_LIGHTPROBE) {
       LightProbe *prb = (LightProbe *)ob->data;
 
-      if (prb->type == LIGHTPROBE_TYPE_GRID) {
+      if (prb->type == LIGHTPROBE_TYPE_VOLUME) {
         lbake->total_irr_samples += prb->grid_resolution_x * prb->grid_resolution_y *
                                     prb->grid_resolution_z;
         lbake->grid_len++;
       }
-      else if (prb->type == LIGHTPROBE_TYPE_CUBE && lbake->cube_len < EEVEE_PROBE_MAX) {
+      else if (prb->type == LIGHTPROBE_TYPE_SPHERE && lbake->cube_len < EEVEE_PROBE_MAX) {
         lbake->cube_len++;
       }
     }
@@ -787,7 +787,7 @@ wmJob *EEVEE_lightbake_job_create(wmWindowManager *wm,
         MEM_callocN(sizeof(EEVEE_LightBake), "EEVEE_LightBake"));
     /* Cannot reuse depsgraph for now because we cannot get the update from the
      * main database directly. TODO: reuse depsgraph and only update positions. */
-    /* lbake->depsgraph = old_lbake->depsgraph; */
+    // lbake->depsgraph = old_lbake->depsgraph;
     lbake->depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
 
     lbake->mutex = BLI_mutex_alloc();
@@ -1322,7 +1322,7 @@ static void eevee_lightbake_gather_probes(EEVEE_LightBake *lbake)
 
   /* Convert all lightprobes to tight UBO data from all lightprobes in the scene.
    * This allows a large number of probe to be precomputed (even dupli ones). */
-  DEGObjectIterSettings deg_iter_settings = {0};
+  DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -1334,12 +1334,12 @@ static void eevee_lightbake_gather_probes(EEVEE_LightBake *lbake)
     if (ob->type == OB_LIGHTPROBE) {
       LightProbe *prb = (LightProbe *)ob->data;
 
-      if (prb->type == LIGHTPROBE_TYPE_GRID) {
+      if (prb->type == LIGHTPROBE_TYPE_VOLUME) {
         lbake->grid_prb[grid_len] = prb;
         EEVEE_LightGrid *egrid = &lcache->grid_data[grid_len++];
         EEVEE_lightprobes_grid_data_from_object(ob, egrid, &total_irr_samples);
       }
-      else if (prb->type == LIGHTPROBE_TYPE_CUBE && cube_len < EEVEE_PROBE_MAX) {
+      else if (prb->type == LIGHTPROBE_TYPE_SPHERE && cube_len < EEVEE_PROBE_MAX) {
         lbake->cube_prb[cube_len] = prb;
         EEVEE_LightProbe *eprobe = &lcache->cube_data[cube_len++];
         EEVEE_lightprobes_cube_data_from_object(ob, eprobe);
@@ -1402,7 +1402,7 @@ static bool lightbake_do_sample(EEVEE_LightBake *lbake,
   return true;
 }
 
-void EEVEE_lightbake_job(void *custom_data, bool *stop, bool *do_update, float *progress)
+void EEVEE_lightbake_job(void *custom_data, wmJobWorkerStatus *worker_status)
 {
   EEVEE_LightBake *lbake = (EEVEE_LightBake *)custom_data;
   Depsgraph *depsgraph = lbake->depsgraph;
@@ -1411,9 +1411,9 @@ void EEVEE_lightbake_job(void *custom_data, bool *stop, bool *do_update, float *
   DEG_evaluate_on_framechange(depsgraph, lbake->frame);
 
   lbake->view_layer = DEG_get_evaluated_view_layer(depsgraph);
-  lbake->stop = stop;
-  lbake->do_update = do_update;
-  lbake->progress = progress;
+  lbake->stop = &worker_status->stop;
+  lbake->do_update = &worker_status->do_update;
+  lbake->progress = &worker_status->progress;
 
   if (G.background) {
     /* Make sure to init GL capabilities before counting probes. */

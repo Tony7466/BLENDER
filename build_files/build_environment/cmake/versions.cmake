@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -11,7 +11,7 @@
 # dependencies have one assigned.
 
 set(ZLIB_VERSION 1.2.13)
-set(ZLIB_URI https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz)
+set(ZLIB_URI https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_HASH 9b8aa094c4e5765dabf4da391f00d15c)
 set(ZLIB_HASH_TYPE MD5)
 set(ZLIB_FILE zlib-${ZLIB_VERSION}.tar.gz)
@@ -49,7 +49,7 @@ set(BOOST_HASH 077f074743ea7b0cb49c6ed43953ae95)
 set(BOOST_HASH_TYPE MD5)
 set(BOOST_FILE boost_${BOOST_VERSION_NODOTS}.tar.gz)
 set(BOOST_CPE "cpe:2.3:a:boost:boost:${BOOST_VERSION}:*:*:*:*:*:*:*")
-SET(BOOST_HOMEPAGE https://www.boost.org/)
+set(BOOST_HOMEPAGE https://www.boost.org/)
 
 set(BLOSC_VERSION 1.21.1)
 set(BLOSC_URI https://github.com/Blosc/c-blosc/archive/v${BLOSC_VERSION}.tar.gz)
@@ -100,7 +100,7 @@ set(FREETYPE_URI http://prdownloads.sourceforge.net/freetype/freetype-${FREETYPE
 set(FREETYPE_HASH 98bc3cf234fe88ef3cf24569251fe0a4)
 set(FREETYPE_HASH_TYPE MD5)
 set(FREETYPE_FILE freetype-${FREETYPE_VERSION}.tar.gz)
-SET(FREETYPE_CPE "cpe:2.3:a:freetype:freetype:${FREETYPE_VERSION}:*:*:*:*:*:*:*")
+set(FREETYPE_CPE "cpe:2.3:a:freetype:freetype:${FREETYPE_VERSION}:*:*:*:*:*:*:*")
 set(FREETYPE_HOMEPAGE https://freetype.org/)
 
 set(EPOXY_VERSION 1.5.10)
@@ -128,9 +128,9 @@ set(OPENSUBDIV_HASH 230f5cd2911d6240e58a3773b9c6e5e4)
 set(OPENSUBDIV_HASH_TYPE MD5)
 set(OPENSUBDIV_FILE opensubdiv-${OPENSUBDIV_VERSION}.tar.gz)
 
-set(SDL_VERSION 2.0.20)
+set(SDL_VERSION 2.28.2)
 set(SDL_URI https://www.libsdl.org/release/SDL2-${SDL_VERSION}.tar.gz)
-set(SDL_HASH a53acc02e1cca98c4123229069b67c9e)
+set(SDL_HASH 06ff379c406cd8318d18f0de81ee2709)
 set(SDL_HASH_TYPE MD5)
 set(SDL_FILE SDL2-${SDL_VERSION}.tar.gz)
 set(SDL_CPE "cpe:2.3:a:libsdl:sdl:${SDL_VERSION}:*:*:*:*:*:*:*")
@@ -174,9 +174,9 @@ set(OPENMP_URI https://github.com/llvm/llvm-project/releases/download/llvmorg-${
 set(OPENMP_HASH_TYPE MD5)
 set(OPENMP_FILE openmp-${OPENMP_VERSION}.src.tar.xz)
 
-set(OPENIMAGEIO_VERSION v2.4.11.0)
+set(OPENIMAGEIO_VERSION v2.4.15.0)
 set(OPENIMAGEIO_URI https://github.com/OpenImageIO/oiio/archive/refs/tags/${OPENIMAGEIO_VERSION}.tar.gz)
-set(OPENIMAGEIO_HASH 7eb997479ecfe7d9fa59cc8ddd35d0ae)
+set(OPENIMAGEIO_HASH aa4f077e5ba2a2e548afc1c4faddd8ff)
 set(OPENIMAGEIO_HASH_TYPE MD5)
 set(OPENIMAGEIO_FILE OpenImageIO-${OPENIMAGEIO_VERSION}.tar.gz)
 
@@ -219,11 +219,11 @@ set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 # BZIP2, FFI, SQLITE and change the versions in this file as well. For compliance
 # reasons there can be no exceptions to this.
 
-set(PYTHON_VERSION 3.10.12)
+set(PYTHON_VERSION 3.10.13)
 set(PYTHON_SHORT_VERSION 3.10)
 set(PYTHON_SHORT_VERSION_NO_DOTS 310)
 set(PYTHON_URI https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz)
-set(PYTHON_HASH 49b0342476b984e106d308c25d657f12)
+set(PYTHON_HASH 8847dc6458d1431d0ae0f55942deeb89)
 set(PYTHON_HASH_TYPE MD5)
 set(PYTHON_FILE Python-${PYTHON_VERSION}.tar.xz)
 set(PYTHON_CPE "cpe:2.3:a:python:python:${PYTHON_VERSION}:-:*:*:*:*:*:*")
@@ -370,16 +370,16 @@ set(ICONV_HASH_TYPE MD5)
 set(ICONV_FILE libiconv-${ICONV_VERSION}.tar.gz)
 set(ICONV_HOMEPAGE https://www.gnu.org/software/libiconv/)
 
-set(SNDFILE_VERSION 1.1.0)
-set(SNDFILE_URI https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-${SNDFILE_VERSION}.tar.xz)
-set(SNDFILE_HASH e63dead2b4f0aaf323687619d007ee6a)
+set(SNDFILE_VERSION 1.2.2)
+set(SNDFILE_URI https://github.com/libsndfile/libsndfile/releases/download/1.2.2/libsndfile-${SNDFILE_VERSION}.tar.xz)
+set(SNDFILE_HASH 04e2e6f726da7c5dc87f8cf72f250d04)
 set(SNDFILE_HASH_TYPE MD5)
 set(SNDFILE_FILE libsndfile-${SNDFILE_VERSION}.tar.xz)
 set(SNDFILE_CPE "cpe:2.3:a:libsndfile_project:libsndfile:${SNDFILE_VERSION}:*:*:*:*:*:*:*")
 
-set(WEBP_VERSION 1.2.2)
+set(WEBP_VERSION 1.3.2)
 set(WEBP_URI https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz)
-set(WEBP_HASH b5e2e414a8adee4c25fe56b18dd9c549)
+set(WEBP_HASH 34869086761c0e2da6361035f7b64771)
 set(WEBP_HASH_TYPE MD5)
 set(WEBP_FILE libwebp-${WEBP_VERSION}.tar.gz)
 set(WEBP_CPE "cpe:2.3:a:webmproject:libwebp:${WEBP_VERSION}:*:*:*:*:*:*:*")
@@ -460,7 +460,7 @@ set(BZIP2_HASH ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269)
 set(BZIP2_HASH_TYPE SHA256)
 set(BZIP2_FILE bzip2_${BZIP2_VERSION}.orig.tar.gz)
 set(BZIP2_CPE "cpe:2.3:a:bzip:bzip2:${BZIP2_VERSION}:*:*:*:*:*:*:*")
-SET(BZIP2_HOMEPAGE https://sourceware.org/bzip2/)
+set(BZIP2_HOMEPAGE https://sourceware.org/bzip2/)
 
 # NOTE: This will *HAVE* to match the version python ships on windows which
 # is hardcoded in pythons PCbuild/get_externals.bat. For compliance reasons there
@@ -471,7 +471,7 @@ set(FFI_HASH 72fba7922703ddfa7a028d513ac15a85c8d54c8d67f55fa5a4802885dc652056)
 set(FFI_HASH_TYPE SHA256)
 set(FFI_FILE libffi-${FFI_VERSION}.tar.gz)
 set(FFI_CPE "cpe:2.3:a:libffi_project:libffi:${FFI_VERSION}:*:*:*:*:*:*:*")
-SET(FFI_HOMEPAGE https://sourceware.org/libffi/)
+set(FFI_HOMEPAGE https://sourceware.org/libffi/)
 
 set(LZMA_VERSION 5.2.5)
 set(LZMA_URI https://tukaani.org/xz/xz-${LZMA_VERSION}.tar.bz2)
@@ -481,9 +481,9 @@ set(LZMA_FILE xz-${LZMA_VERSION}.tar.bz2)
 set(LZMA_HOMEPAGE https://tukaani.org/lzma/)
 
 # NOTE: Python's build has been modified to use our ssl version.
-set(SSL_VERSION 3.0.9)
+set(SSL_VERSION 3.1.2)
 set(SSL_URI https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz)
-set(SSL_HASH eb1ab04781474360f77c318ab89d8c5a03abc38e63d65a603cabbf1b00a1dc90)
+set(SSL_HASH a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539)
 set(SSL_HASH_TYPE SHA256)
 set(SSL_FILE openssl-${SSL_VERSION}.tar.gz)
 set(SSL_CPE "cpe:2.3:a:openssl:openssl:${SSL_VERSION}:*:*:*:*:*:*:*")
@@ -778,7 +778,7 @@ set(AOM_URI https://storage.googleapis.com/aom-releases/libaom-${AOM_VERSION}.ta
 set(AOM_HASH bd754b58c3fa69f3ffd29da77de591bd9c26970e3b18537951336d6c0252e354)
 set(AOM_HASH_TYPE SHA256)
 set(AOM_FILE libaom-${AOM_VERSION}.tar.gz)
-SET(AOM_HOMEPAGE https://aomedia.googlesource.com/aom/)
+set(AOM_HOMEPAGE https://aomedia.googlesource.com/aom/)
 
 set(FRIBIDI_VERSION v1.0.12)
 set(FRIBIDI_URI https://github.com/fribidi/fribidi/archive/refs/tags/${FRIBIDI_VERSION}.tar.gz)

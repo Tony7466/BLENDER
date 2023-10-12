@@ -25,7 +25,10 @@
 #include "BLI_convexhull_2d.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -45,33 +48,33 @@
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
-#include "BKE_subdiv_modifier.h"
+#include "BKE_subdiv_modifier.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GEO_uv_pack.hh"
 #include "GEO_uv_parametrizer.hh"
 
 #include "PIL_time.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "uvedit_intern.h"
 
@@ -880,6 +883,7 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
     blender::geometry::uv_parametrizer_flush(ms->handle);
   }
 
+  blender::geometry::uv_parametrizer_stretch_end(ms->handle);
   delete (ms->handle);
 
   for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
@@ -1399,17 +1403,15 @@ struct UVPackIslandsData {
   blender::geometry::UVPackIsland_Params pack_island_params;
 };
 
-static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float *progress)
+static void pack_islands_startjob(void *pidv, wmJobWorkerStatus *worker_status)
 {
-  if (progress != nullptr) {
-    *progress = 0.02f;
-  }
+  worker_status->progress = 0.02f;
 
   UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
 
-  pid->pack_island_params.stop = stop;
-  pid->pack_island_params.do_update = do_update;
-  pid->pack_island_params.progress = progress;
+  pid->pack_island_params.stop = &worker_status->stop;
+  pid->pack_island_params.do_update = &worker_status->do_update;
+  pid->pack_island_params.progress = &worker_status->progress;
 
   uvedit_pack_islands_multi(pid->scene,
                             pid->objects,
@@ -1420,12 +1422,8 @@ static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float
                             !pid->use_job,
                             &pid->pack_island_params);
 
-  if (progress != nullptr) {
-    *progress = 0.99f;
-  }
-  if (do_update != nullptr) {
-    *do_update = true;
-  }
+  worker_status->progress = 0.99f;
+  worker_status->do_update = true;
 }
 
 static void pack_islands_endjob(void *pidv)
@@ -1550,7 +1548,8 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+  wmJobWorkerStatus worker_status = {};
+  pack_islands_startjob(pid, &worker_status);
   pack_islands_endjob(pid);
   pack_islands_freejob(pid);
 

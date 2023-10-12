@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -23,12 +25,12 @@
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_fcurve.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "BIK_api.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ********************** SPLINE IK SOLVER ******************* */
 
@@ -182,11 +184,9 @@ static void splineik_init_tree_from_pchan(Scene * /*scene*/,
 /* Tag which bones are members of Spline IK chains. */
 static void splineik_init_tree(Scene *scene, Object *ob, float /*ctime*/)
 {
-  bPoseChannel *pchan;
-
   /* Find the tips of Spline IK chains,
    * which are simply the bones which have been tagged as such. */
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     if (pchan->constflag & PCHAN_HAS_SPLINEIK) {
       splineik_init_tree_from_pchan(scene, ob, pchan);
     }
@@ -942,6 +942,7 @@ static void pose_channel_flush_to_orig_if_needed(Depsgraph *depsgraph,
   copy_v3_v3(pchan_orig->pose_head, pchan->pose_mat[3]);
   copy_m4_m4(pchan_orig->constinv, pchan->constinv);
   copy_v3_v3(pchan_orig->pose_tail, pchan->pose_tail);
+  pchan_orig->constflag = pchan->constflag;
 }
 
 void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,8 @@
 #include "BLI_alloca.h"
 #include "BLI_heap.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
@@ -1379,8 +1380,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
     while ((bm->totface > face_tot_target) && (BLI_heap_is_empty(eheap) == false) &&
            (BLI_heap_top_value(eheap) != COST_INVALID))
     {
-      /**
-       * \note
+      /* NOTE:
        * - `eheap_table[e_index_mirr]` is only removed from the heap at the last moment
        *   since its possible (in theory) for collapsing `e` to remove `e_mirr`.
        * - edges sharing a vertex are ignored, so the pivot vertex isn't moved to one side.

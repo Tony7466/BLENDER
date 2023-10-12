@@ -126,7 +126,7 @@ static void initRawInput()
     /* Success. */
   }
   else {
-    GHOST_PRINTF("could not register for RawInput: %d\n", (int)GetLastError());
+    GHOST_PRINTF("could not register for RawInput: %d\n", int(GetLastError()));
   }
 #undef DEVICE_COUNT
 }
@@ -178,7 +178,7 @@ uint64_t GHOST_SystemWin32::performanceCounterToMillis(__int64 perf_ticks) const
   /* Calculate the time passed since system initialization. */
   __int64 delta = (perf_ticks - m_start) * 1000;
 
-  uint64_t t = (uint64_t)(delta / m_freq);
+  uint64_t t = uint64_t(delta / m_freq);
   return t;
 }
 
@@ -275,7 +275,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuS
     case GHOST_kDrawingContextTypeVulkan: {
       GHOST_Context *context = new GHOST_ContextVK(false, (HWND)0, 1, 2, debug_context);
       if (context->initializeDrawingContext()) {
-        return nullptr;
+        return context;
       }
       delete context;
       return nullptr;
@@ -446,6 +446,48 @@ GHOST_TSuccess GHOST_SystemWin32::setCursorPosition(int32_t x, int32_t y)
     return GHOST_kFailure;
   }
   return ::SetCursorPos(x, y) == TRUE ? GHOST_kSuccess : GHOST_kFailure;
+}
+
+GHOST_TSuccess GHOST_SystemWin32::getPixelAtCursor(float r_color[3]) const
+{
+  POINT point;
+  if (!GetCursorPos(&point)) {
+    return GHOST_kFailure;
+  }
+
+  HDC dc = GetDC(NULL);
+  if (dc == NULL) {
+    return GHOST_kFailure;
+  }
+
+  COLORREF color = GetPixel(dc, point.x, point.y);
+  ReleaseDC(NULL, dc);
+
+  if (color == CLR_INVALID) {
+    return GHOST_kFailure;
+  }
+
+  r_color[0] = GetRValue(color) / 255.0f;
+  r_color[1] = GetGValue(color) / 255.0f;
+  r_color[2] = GetBValue(color) / 255.0f;
+  return GHOST_kSuccess;
+}
+
+GHOST_IWindow *GHOST_SystemWin32::getWindowUnderCursor(int32_t /*x*/, int32_t /*y*/)
+{
+  /* Get cursor position from the OS. Do not use the supplied positions as those
+   * could be incorrect, especially if using multiple windows of differing OS scale. */
+  POINT point;
+  if (!GetCursorPos(&point)) {
+    return nullptr;
+  }
+
+  HWND win = WindowFromPoint(point);
+  if (win == NULL) {
+    return nullptr;
+  }
+
+  return m_windowManager->getWindowAssociatedWithOSWindow((const void *)win);
 }
 
 GHOST_TSuccess GHOST_SystemWin32::getModifierKeys(GHOST_ModifierKeys &keys) const
@@ -1080,36 +1122,22 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
     /* Warp within bounds. */
     {
       GHOST_Rect bounds;
-      int32_t bounds_margin = 0;
-      GHOST_TAxisFlag bounds_axis = GHOST_kAxisNone;
-
-      if (window->getCursorGrabMode() == GHOST_kGrabHide) {
+      if (window->getCursorGrabBounds(bounds) == GHOST_kFailure) {
+        /* Use custom grab bounds if available, window bounds if not. */
         window->getClientBounds(bounds);
+      }
 
-        /* WARNING(@ideasman42): The current warping logic fails to warp on every event,
-         * so the box needs to small enough not to let the cursor escape the window but large
-         * enough that the cursor isn't being warped every time.
-         * If this was not the case it would be less trouble to simply warp the cursor to the
-         * center of the screen on every motion, see: D16558 (alternative fix for #102346). */
-        const int32_t subregion_div = 4; /* One quarter of the region. */
-        const int32_t size[2] = {bounds.getWidth(), bounds.getHeight()};
-        const int32_t center[2] = {(bounds.m_l + bounds.m_r) / 2, (bounds.m_t + bounds.m_b) / 2};
-        /* Shrink the box to prevent the cursor escaping. */
-        bounds.m_l = center[0] - (size[0] / (subregion_div * 2));
-        bounds.m_r = center[0] + (size[0] / (subregion_div * 2));
-        bounds.m_t = center[1] - (size[1] / (subregion_div * 2));
-        bounds.m_b = center[1] + (size[1] / (subregion_div * 2));
-        bounds_margin = 0;
-        bounds_axis = GHOST_TAxisFlag(GHOST_kAxisX | GHOST_kAxisY);
-      }
-      else {
-        /* Fallback to window bounds. */
-        if (window->getCursorGrabBounds(bounds) == GHOST_kFailure) {
-          window->getClientBounds(bounds);
-        }
-        bounds_margin = 2;
-        bounds_axis = window->getCursorGrabAxis();
-      }
+      /* WARNING(@ideasman42): The current warping logic fails to warp on every event,
+       * so the box needs to small enough not to let the cursor escape the window but large
+       * enough that the cursor isn't being warped every time. If this was not the case it
+       * would be less trouble to simply warp the cursor to the center of the screen on
+       * every motion, see: D16558 (alternative fix for #102346). */
+
+      /* Rather than adjust the bounds, use a margin based on the bounds width. */
+      int32_t bounds_margin = (window->getCursorGrabMode() == GHOST_kGrabHide) ?
+                                  bounds.getWidth() / 10 :
+                                  2;
+      GHOST_TAxisFlag bounds_axis = window->getCursorGrabAxis();
 
       /* Could also clamp to screen bounds wrap with a window outside the view will
        * fail at the moment. Use inset in case the window is at screen bounds. */
@@ -2588,8 +2616,9 @@ GHOST_TSuccess GHOST_SystemWin32::showMessageBox(const char *title,
   config.pszWindowTitle = L"Blender";
   config.pszMainInstruction = title_16;
   config.pszContent = message_16;
-  config.pButtons = (link) ? buttons : buttons + 1;
-  config.cButtons = (link) ? 2 : 1;
+  const bool has_link = link && strlen(link);
+  config.pButtons = has_link ? buttons : buttons + 1;
+  config.cButtons = has_link ? 2 : 1;
 
   TaskDialogIndirect(&config, &nButtonPressed, nullptr, nullptr);
   switch (nButtonPressed) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,8 +11,10 @@
 #include "draw_attributes.hh"
 #include "draw_pbvh.h"
 
-#include "BKE_paint.h"
+#include "BKE_mesh_types.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
+
 #include "DRW_pbvh.hh"
 
 namespace blender::draw {
@@ -137,7 +139,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(
   data.attrs = attrs;
   data.attrs_len = attrs_len;
 
-  BKE_pbvh_draw_cb(pbvh,
+  BKE_pbvh_draw_cb(*mesh,
+                   pbvh,
                    update_only_visible,
                    &update_frustum,
                    &draw_frustum,
@@ -150,7 +153,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(
   return data.batches;
 }
 
-Vector<SculptBatch> sculpt_batches_get(Object *ob, SculptBatchFeature features)
+Vector<SculptBatch> sculpt_batches_get(Object *ob, bool per_material, SculptBatchFeature features)
 {
   PBVHAttrReq attrs[16] = {};
   int attrs_len = 0;
@@ -191,7 +194,8 @@ Vector<SculptBatch> sculpt_batches_get(Object *ob, SculptBatchFeature features)
     }
   }
 
-  return sculpt_batches_get_ex(ob, features & SCULPT_BATCH_WIREFRAME, false, attrs, attrs_len);
+  return sculpt_batches_get_ex(
+      ob, features & SCULPT_BATCH_WIREFRAME, per_material, attrs, attrs_len);
 }
 
 Vector<SculptBatch> sculpt_batches_per_material_get(Object *ob,

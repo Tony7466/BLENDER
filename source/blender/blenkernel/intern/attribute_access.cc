@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -147,16 +147,18 @@ static int attribute_domain_priority(const eAttrDomain domain)
   switch (domain) {
     case ATTR_DOMAIN_INSTANCE:
       return 0;
-    case ATTR_DOMAIN_CURVE:
+    case ATTR_DOMAIN_GREASE_PENCIL_LAYER:
       return 1;
-    case ATTR_DOMAIN_FACE:
+    case ATTR_DOMAIN_CURVE:
       return 2;
-    case ATTR_DOMAIN_EDGE:
+    case ATTR_DOMAIN_FACE:
       return 3;
-    case ATTR_DOMAIN_POINT:
+    case ATTR_DOMAIN_EDGE:
       return 4;
-    case ATTR_DOMAIN_CORNER:
+    case ATTR_DOMAIN_POINT:
       return 5;
+    case ATTR_DOMAIN_CORNER:
+      return 6;
     default:
       /* Domain not supported in nodes yet. */
       BLI_assert_unreachable();
@@ -804,11 +806,10 @@ GAttributeReader AttributeAccessor::lookup_or_default(const AttributeIDRef &attr
 Set<AttributeIDRef> AttributeAccessor::all_ids() const
 {
   Set<AttributeIDRef> ids;
-  this->for_all(
-      [&](const AttributeIDRef &attribute_id, const AttributeMetaData & /* meta_data */) {
-        ids.add(attribute_id);
-        return true;
-      });
+  this->for_all([&](const AttributeIDRef &attribute_id, const AttributeMetaData & /*meta_data*/) {
+    ids.add(attribute_id);
+    return true;
+  });
   return ids;
 }
 
@@ -1033,6 +1034,63 @@ void gather_attributes(const AttributeAccessor src_attributes,
   });
 }
 
+static bool indices_are_range(const Span<int> indices, const IndexRange range)
+{
+  if (indices.size() != range.size()) {
+    return false;
+  }
+  return threading::parallel_reduce(
+      range,
+      4096,
+      true,
+      [&](const IndexRange range, const bool init) {
+        if (!init) {
+          return false;
+        }
+        for (const int i : range) {
+          if (indices[i] != i) {
+            return false;
+          }
+        }
+        return true;
+      },
+      [](const bool a, const bool b) { return a && b; });
+}
+
+void gather_attributes(const AttributeAccessor src_attributes,
+                       const eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const Span<int> indices,
+                       MutableAttributeAccessor dst_attributes)
+{
+  if (indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
+    copy_attributes(src_attributes, domain, propagation_info, skip, dst_attributes);
+  }
+  else {
+    src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+      if (meta_data.domain != domain) {
+        return true;
+      }
+      if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+        return true;
+      }
+      if (skip.contains(id.name())) {
+        return true;
+      }
+      const bke::GAttributeReader src = src_attributes.lookup(id, domain);
+      bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          id, domain, meta_data.data_type);
+      if (!dst) {
+        return true;
+      }
+      attribute_math::gather(src.varray, indices, dst.span);
+      dst.finish();
+      return true;
+    });
+  }
+}
+
 template<typename T>
 static void gather_group_to_group(const OffsetIndices<int> src_offsets,
                                   const OffsetIndices<int> dst_offsets,
@@ -1101,6 +1159,40 @@ void copy_attributes(const AttributeAccessor src_attributes,
                            skip,
                            IndexMask(src_attributes.domain_size(domain)),
                            dst_attributes);
+}
+
+void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
+                                    const eAttrDomain domain,
+                                    const AnonymousAttributePropagationInfo &propagation_info,
+                                    const Set<std::string> &skip,
+                                    const OffsetIndices<int> src_offsets,
+                                    const OffsetIndices<int> dst_offsets,
+                                    const IndexMask &selection,
+                                    MutableAttributeAccessor dst_attributes)
+{
+  if (selection.is_empty()) {
+    return;
+  }
+  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+    if (meta_data.domain != domain) {
+      return true;
+    }
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      return true;
+    }
+    if (skip.contains(id.name())) {
+      return true;
+    }
+    const GVArraySpan src = *src_attributes.lookup(id, domain);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
+    array_utils::copy_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
+    dst.finish();
+    return true;
+  });
 }
 
 }  // namespace blender::bke

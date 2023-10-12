@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,6 +23,7 @@
 #include "BKE_image.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 #include "gpu_py.h"
 #include "gpu_py_buffer.h"
@@ -123,6 +124,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
 
   static const char *_keywords[] = {"size", "layers", "is_cubemap", "format", "data", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O"  /* `size` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `layers` */
@@ -131,7 +133,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
       "O!" /* `data` */
       ":GPUTexture.__new__",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
@@ -333,12 +335,13 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
 
   static const char *_keywords[] = {"format", "value", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "$"  /* Keyword only arguments. */
       "O&" /* `format` */
       "O"  /* `value` */
       ":clear",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values))

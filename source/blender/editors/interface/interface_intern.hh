@@ -11,13 +11,14 @@
 #include <functional>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 #include "BLI_vector.hh"
 
 #include "DNA_listBase.h"
-#include "RNA_types.h"
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "RNA_types.hh"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 struct AnimationEvalContext;
 struct ARegion;
@@ -82,7 +83,7 @@ enum {
    * active button can be polled on non-active buttons to (e.g. for disabling). */
   UI_BUT_ACTIVE_OVERRIDE = (1 << 7),
 
-  /* WARNING: rest of #uiBut.flag in UI_interface.h */
+  /* WARNING: rest of #uiBut.flag in UI_interface.hh */
 };
 
 /** #uiBut.pie_dir */
@@ -97,6 +98,20 @@ enum RadialDirection {
   UI_RADIAL_W = 6,
   UI_RADIAL_NW = 7,
 };
+
+/** Next direction (clockwise). */
+#define UI_RADIAL_DIRECTION_NEXT(dir) RadialDirection((int(dir) + 1) % (int(UI_RADIAL_NW) + 1))
+/** Previous direction (counter-clockwise). */
+#define UI_RADIAL_DIRECTION_PREV(dir) \
+  RadialDirection(((int(dir) + int(UI_RADIAL_NW))) % (int(UI_RADIAL_NW) + 1))
+
+/** Store a mask for diagonal directions. */
+#define UI_RADIAL_MASK_ALL_DIAGONAL \
+  ((1 << int(UI_RADIAL_NE)) | (1 << int(UI_RADIAL_SE)) | (1 << int(UI_RADIAL_SW)) | \
+   (1 << int(UI_RADIAL_NW)))
+#define UI_RADIAL_MASK_ALL_AXIS_ALIGNED \
+  ((1 << int(UI_RADIAL_N)) | (1 << int(UI_RADIAL_S)) | (1 << int(UI_RADIAL_E)) | \
+   (1 << int(UI_RADIAL_W)))
 
 extern const char ui_radial_dir_order[8];
 extern const char ui_radial_dir_to_numpad[8];
@@ -124,8 +139,6 @@ extern const short ui_radial_dir_to_angle[8];
 
 /** #PieMenuData.flags */
 enum {
-  /** Pie menu item collision is detected at 90 degrees. */
-  UI_PIE_DEGREES_RANGE_LARGE = (1 << 0),
   /** Use initial center of pie menu to calculate direction. */
   UI_PIE_INITIAL_DIRECTION = (1 << 1),
   /** Pie menu is drag style. */
@@ -151,6 +164,7 @@ struct uiBut {
   /** Pointer back to the layout item holding this button. */
   uiLayout *layout = nullptr;
   int flag = 0;
+  int flag2 = 0;
   int drawflag = 0;
   eButType type = eButType(0);
   eButPointerType pointype = UI_BUT_POIN_NONE;
@@ -202,7 +216,7 @@ struct uiBut {
   uiButHandleNFunc funcN = nullptr;
   void *func_argN = nullptr;
 
-  bContextStore *context = nullptr;
+  const bContextStore *context = nullptr;
 
   uiButCompleteFunc autocomplete_func = nullptr;
   void *autofunc_arg = nullptr;
@@ -219,9 +233,10 @@ struct uiBut {
   uiButToolTipFunc tip_func = nullptr;
   void *tip_arg = nullptr;
   uiFreeArgFunc tip_arg_free = nullptr;
-  /** Function to get a custom tooltip label, see #UI_BUT_HAS_TOOLTIP_LABEL. Requires
-   * #UI_BUT_HAS_TOOLTIP_LABEL drawflag. */
+  /** Function to override the label to be displayed in the tooltip. */
   std::function<std::string(const uiBut *)> tip_label_func;
+
+  uiButToolTipCustomFunc tip_custom_func = nullptr;
 
   /** info on why button is disabled, displayed in tooltip */
   const char *disabled_info = nullptr;
@@ -315,6 +330,7 @@ struct uiButSearch : public uiBut {
   uiButSearchListenFn listen_fn = nullptr;
 
   void *item_active = nullptr;
+  char *item_active_str;
 
   void *arg = nullptr;
   uiFreeArgFunc arg_free_fn = nullptr;
@@ -355,6 +371,10 @@ struct uiButProgress : public uiBut {
 struct uiButViewItem : public uiBut {
   /* C-Handle to the view item this button was created for. */
   uiViewItemHandle *view_item = nullptr;
+  /* Some items want to have a fixed size for drawing, differing from the interaction rectangle
+   * (e.g. so highlights are drawn smaller). */
+  int draw_width = 0;
+  int draw_height = 0;
 };
 
 /** Derived struct for #UI_BTYPE_HSVCUBE. */
@@ -369,12 +389,12 @@ struct uiButColorBand : public uiBut {
 
 /** Derived struct for #UI_BTYPE_CURVEPROFILE. */
 struct uiButCurveProfile : public uiBut {
-  struct CurveProfile *edit_profile = nullptr;
+  CurveProfile *edit_profile = nullptr;
 };
 
 /** Derived struct for #UI_BTYPE_CURVE. */
 struct uiButCurveMapping : public uiBut {
-  struct CurveMapping *edit_cumap = nullptr;
+  CurveMapping *edit_cumap = nullptr;
   eButGradientType gradient_type = UI_GRAD_SV;
 };
 
@@ -397,7 +417,7 @@ struct uiButExtraOpIcon {
 };
 
 struct ColorPicker {
-  struct ColorPicker *next, *prev;
+  ColorPicker *next, *prev;
 
   /** Color in HSV or HSL, in color picking color space. Used for HSV cube,
    * circle and slider widgets. The color picking space is perceptually
@@ -428,6 +448,8 @@ struct PieMenuData {
   const char *title;
   int icon;
 
+  /** A mask combining the directions of all buttons in the pie menu (excluding separators). */
+  int pie_dir_mask;
   float pie_dir[2];
   float pie_center_init[2];
   float pie_center_spawned[2];
@@ -467,9 +489,9 @@ struct uiButtonGroup {
 };
 
 struct uiBlockDynamicListener {
-  struct uiBlockDynamicListener *next, *prev;
+  uiBlockDynamicListener *next, *prev;
 
-  void (*listener_func)(const struct wmRegionListenerParams *params);
+  void (*listener_func)(const wmRegionListenerParams *params);
 };
 
 struct uiBlock {
@@ -487,7 +509,7 @@ struct uiBlock {
   ListBase layouts;
   uiLayout *curlayout;
 
-  ListBase contexts;
+  blender::Vector<std::unique_ptr<bContextStore>> contexts;
 
   /** A block can store "views" on data-sets. Currently tree-views (#AbstractTreeView) only.
    * Others are imaginable, e.g. table-views, grid-views, etc. These are stored here to support
@@ -641,6 +663,10 @@ void ui_region_to_window(const ARegion *region, int *x, int *y);
  * for interactivity (point-inside tests for eg), we want the winrct without the margin added.
  */
 void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect);
+
+/** Register a listener callback to this block to tag the area/region for redraw. */
+void ui_block_add_dynamic_listener(uiBlock *block,
+                                   void (*listener_func)(const wmRegionListenerParams *params));
 
 /**
  * Reallocate the button (new address is returned) for a new button type.
@@ -848,6 +874,8 @@ struct uiPopupBlockHandle {
   bool is_grab;
   int grab_xy_prev[2];
   /* #endif */
+
+  char menu_idname[64];
 };
 
 /* -------------------------------------------------------------------- */
@@ -855,7 +883,7 @@ struct uiPopupBlockHandle {
 
 /* `interface_region_tooltip.cc` */
 
-/* exposed as public API in UI_interface.h */
+/* exposed as public API in UI_interface.hh */
 
 /* `interface_region_color_picker.cc` */
 
@@ -992,6 +1020,16 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
  */
 void ui_draw_gradient(const rcti *rect, const float hsv[3], eButGradientType type, float alpha);
 
+/**
+ * Draws rounded corner segments but inverted. Imagine each corner like a filled right triangle,
+ * just that the hypotenuse is nicely curved inwards (towards the right angle of the triangle).
+ *
+ * Useful for connecting orthogonal shapes with a rounded corner, which can look quite nice.
+ */
+void ui_draw_rounded_corners_inverted(const rcti &rect,
+                                      const float rad,
+                                      const blender::float4 color);
+
 /* based on UI_draw_roundbox_gl_mode,
  * check on making a version which allows us to skip some sides */
 void ui_draw_but_TAB_outline(const rcti *rect,
@@ -1097,7 +1135,7 @@ uiBut *ui_but_find_new(uiBlock *block_new, const uiBut *but_old);
 
 #ifdef WITH_INPUT_IME
 void ui_but_ime_reposition(uiBut *but, int x, int y, bool complete);
-wmIMEData *ui_but_ime_data_get(uiBut *but);
+const wmIMEData *ui_but_ime_data_get(uiBut *but);
 #endif
 
 /* interface_widgets.cc */
@@ -1191,13 +1229,18 @@ void ui_draw_preview_item(const uiFontStyle *fstyle,
 /**
  * Version of #ui_draw_preview_item() that does not draw the menu background and item text based on
  * state. It just draws the preview and text directly.
+ *
+ * \param draw_as_icon: Instead of stretching the preview/icon to the available width/height, draw
+ *                      it at the standard icon size. Mono-icons will draw with \a text_col or the
+ *                      corresponding theme override for this type of icon.
  */
 void ui_draw_preview_item_stateless(const uiFontStyle *fstyle,
                                     rcti *rect,
                                     const char *name,
                                     int iconid,
                                     const uchar text_col[4],
-                                    eFontStyle_Align text_align);
+                                    eFontStyle_Align text_align,
+                                    bool draw_as_icon = false);
 
 #define UI_TEXT_MARGIN_X 0.4f
 #define UI_POPUP_MARGIN (UI_SCALE_FAC * 12)
@@ -1342,9 +1385,9 @@ uiBut *ui_list_find_mouse_over(const ARegion *region,
 uiBut *ui_list_find_from_row(const ARegion *region, const uiBut *row_but) ATTR_WARN_UNUSED_RESULT;
 uiBut *ui_list_row_find_mouse_over(const ARegion *region, const int xy[2])
     ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
-uiBut *ui_list_row_find_from_index(const ARegion *region,
-                                   int index,
-                                   uiBut *listbox) ATTR_WARN_UNUSED_RESULT;
+uiBut *ui_list_row_find_index(const ARegion *region,
+                              int index,
+                              uiBut *listbox) ATTR_WARN_UNUSED_RESULT;
 uiBut *ui_view_item_find_mouse_over(const ARegion *region, const int xy[2]) ATTR_NONNULL(1, 2);
 uiBut *ui_view_item_find_active(const ARegion *region);
 

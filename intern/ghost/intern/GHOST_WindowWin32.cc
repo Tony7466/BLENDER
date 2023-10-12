@@ -128,12 +128,12 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   if (!setDrawingContextType(type)) {
     const char *title = "Blender - Unsupported Graphics Card Configuration";
     const char *text =
-        "A graphics card and driver with support for OpenGL 3.3 or higher is "
+        "A graphics card and driver with support for OpenGL 4.3 or higher is "
         "required.\n\nInstalling the latest driver for your graphics card might resolve the "
         "issue.";
     if (GetSystemMetrics(SM_CMONITORS) > 1) {
       text =
-          "A graphics card and driver with support for OpenGL 3.3 or higher is "
+          "A graphics card and driver with support for OpenGL 4.3 or higher is "
           "required.\n\nPlugging all monitors into your primary graphics card might resolve "
           "this issue. Installing the latest driver for your graphics card could also help.";
     }
@@ -361,6 +361,11 @@ HWND GHOST_WindowWin32::getHWND() const
   return m_hWnd;
 }
 
+void *GHOST_WindowWin32::getOSWindow() const
+{
+  return (void *)m_hWnd;
+}
+
 void GHOST_WindowWin32::setTitle(const char *title)
 {
   wchar_t *title_16 = alloc_utf16_from_8((char *)title, 0);
@@ -423,7 +428,7 @@ GHOST_TSuccess GHOST_WindowWin32::setClientWidth(uint32_t width)
   GHOST_TSuccess success;
   GHOST_Rect cBnds, wBnds;
   getClientBounds(cBnds);
-  if (cBnds.getWidth() != (int32_t)width) {
+  if (cBnds.getWidth() != int32_t(width)) {
     getWindowBounds(wBnds);
     int cx = wBnds.getWidth() + width - cBnds.getWidth();
     int cy = wBnds.getHeight();
@@ -442,7 +447,7 @@ GHOST_TSuccess GHOST_WindowWin32::setClientHeight(uint32_t height)
   GHOST_TSuccess success;
   GHOST_Rect cBnds, wBnds;
   getClientBounds(cBnds);
-  if (cBnds.getHeight() != (int32_t)height) {
+  if (cBnds.getHeight() != int32_t(height)) {
     getWindowBounds(wBnds);
     int cx = wBnds.getWidth();
     int cy = wBnds.getHeight() + height - cBnds.getHeight();
@@ -461,7 +466,7 @@ GHOST_TSuccess GHOST_WindowWin32::setClientSize(uint32_t width, uint32_t height)
   GHOST_TSuccess success;
   GHOST_Rect cBnds, wBnds;
   getClientBounds(cBnds);
-  if ((cBnds.getWidth() != (int32_t)width) || (cBnds.getHeight() != (int32_t)height)) {
+  if ((cBnds.getWidth() != int32_t(width)) || (cBnds.getHeight() != int32_t(height))) {
     getWindowBounds(wBnds);
     int cx = wBnds.getWidth() + width - cBnds.getWidth();
     int cy = wBnds.getHeight() + height - cBnds.getHeight();
@@ -666,8 +671,9 @@ void GHOST_WindowWin32::updateMouseCapture(GHOST_MouseCaptureEventWin32 event)
       m_nPressedButtons++;
       break;
     case MouseReleased:
-      if (m_nPressedButtons)
+      if (m_nPressedButtons) {
         m_nPressedButtons--;
+      }
       break;
     case OperatorGrab:
       m_hasGrabMouse = true;
@@ -816,12 +822,14 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
 void GHOST_WindowWin32::loadCursor(bool visible, GHOST_TStandardCursor shape) const
 {
   if (!visible) {
-    while (::ShowCursor(FALSE) >= 0)
-      ;
+    while (::ShowCursor(FALSE) >= 0) {
+      /* Pass. */
+    }
   }
   else {
-    while (::ShowCursor(TRUE) < 0)
-      ;
+    while (::ShowCursor(TRUE) < 0) {
+      /* Pass. */
+    }
   }
 
   HCURSOR cursor = getStandardCursor(shape);

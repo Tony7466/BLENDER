@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,7 +31,7 @@
 
 #include "UI_interface.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 struct bContext;
 struct uiBlock;
@@ -188,7 +188,7 @@ class AbstractViewItem {
    *
    * \return True if the renaming was successful.
    */
-  virtual bool rename(StringRefNull new_name);
+  virtual bool rename(const bContext &C, StringRefNull new_name);
   /**
    * Get the string that should be used for renaming, typically the item's label. This string will
    * not be modified, but if the renaming is canceled, the value will be reset to this.
@@ -249,7 +249,7 @@ class AbstractViewItem {
   bool is_renaming() const;
   void begin_renaming();
   void end_renaming();
-  void rename_apply();
+  void rename_apply(const bContext &C);
 
   template<typename ToType = AbstractViewItem>
   static ToType *from_item_handle(uiViewItemHandle *handle);

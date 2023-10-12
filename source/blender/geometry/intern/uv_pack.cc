@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,10 @@
 #include "BLI_boxpack_2d.h"
 #include "BLI_convexhull_2d.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rect.h"
@@ -37,7 +40,7 @@ class uv_phi {
 
   float2 translation;
   float rotation;
-  /* bool reflect; */
+  // bool reflect;
 };
 
 uv_phi::uv_phi() : translation(-1.0f, -1.0f), rotation(0.0f)
@@ -104,11 +107,31 @@ static float get_aspect_scaled_extent(const rctf &extent, const UVPackIsland_Par
 }
 
 /**
+ * \return the area of `extent`, factoring in the target aspect ratio.
+ */
+static float get_aspect_scaled_area(const rctf &extent, const UVPackIsland_Params &params)
+{
+  const float width = BLI_rctf_size_x(&extent);
+  const float height = BLI_rctf_size_y(&extent);
+  return (width / params.target_aspect_y) * height;
+}
+
+/**
  * \return true if `b` is a preferred layout over `a`, given the packing parameters supplied.
  */
 static bool is_larger(const rctf &a, const rctf &b, const UVPackIsland_Params &params)
 {
-  return get_aspect_scaled_extent(b, params) < get_aspect_scaled_extent(a, params);
+  const float extent_a = get_aspect_scaled_extent(a, params);
+  const float extent_b = get_aspect_scaled_extent(b, params);
+
+  /* Equal extent, use smaller area. */
+  if (compare_ff_relative(extent_a, extent_b, FLT_EPSILON, 64)) {
+    const float area_a = get_aspect_scaled_area(a, params);
+    const float area_b = get_aspect_scaled_area(b, params);
+    return area_b < area_a;
+  }
+
+  return extent_b < extent_a;
 }
 
 PackIsland::PackIsland()
@@ -277,8 +300,7 @@ void PackIsland::finalize_geometry_(const UVPackIsland_Params &params, MemArena 
    * computing convex hull.
    * In the future, we might also detect special-cases for speed or efficiency, such as
    * rectangle approximation, circle approximation, detecting if the shape has any holes,
-   * analysing the shape for rotational symmetry or removing overlaps.
-   */
+   * analyzing the shape for rotational symmetry or removing overlaps. */
   BLI_assert(triangle_vertices_.size() >= 3);
 
   calculate_pre_rotation_(params);
@@ -675,7 +697,7 @@ static void pack_gobel(const Span<std::unique_ptr<UVAABBIsland>> aabbs,
 static bool pack_islands_optimal_pack_table(const int table_count,
                                             const float max_extent,
                                             const float *optimal,
-                                            const char * /* unused_comment */,
+                                            const char * /*unused_comment*/,
                                             int64_t island_count,
                                             const float large_uv,
                                             const Span<std::unique_ptr<UVAABBIsland>> aabbs,
@@ -1329,14 +1351,14 @@ static uv_phi find_best_fit_for_island(const PackIsland *island,
   const float bitmap_scale = 1.0f / occupancy.bitmap_scale_reciprocal;
 
   /* TODO: If `target_aspect_y != 1.0f`, to avoid aliasing issues, we should probably iterate
-   * seperately on `scan_line_x` and `scan_line_y`. See also: Bresenham's algorithm. */
+   * Separately on `scan_line_x` and `scan_line_y`. See also: Bresenham's algorithm. */
   const float sqrt_target_aspect_y = sqrtf(target_aspect_y);
   const int scan_line_x = int(scan_line * sqrt_target_aspect_y);
   const int scan_line_y = int(scan_line / sqrt_target_aspect_y);
 
   uv_phi phi;
   phi.rotation = DEG2RADF(angle_90_multiple * 90);
-  /* phi.reflect = reflect; */
+  // phi.reflect = reflect;
   float matrix[2][2];
   island->build_transformation(scale, phi.rotation, matrix);
 
@@ -1917,8 +1939,10 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
 
   /* At this stage, `extent` contains the fast/optimal/box_pack/xatlas UVs. */
 
-  if (all_can_rotate) {
-    /* Attempt to improve the layout even further by finding the minimal-bounding-square. */
+  /* If more islands remain to be packed, attempt to improve the layout further by finding the
+   * minimal-bounding-square. Disabled for other cases as users often prefer to avoid diagonal
+   * islands. */
+  if (all_can_rotate && aabbs.size() > slow_aabbs.size()) {
     rotate_inside_square(slow_aabbs, islands, params, scale, margin, r_phis, &extent);
   }
 

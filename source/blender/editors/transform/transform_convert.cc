@@ -15,7 +15,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -30,17 +31,18 @@
 #include "BKE_nla.h"
 #include "BKE_scene.h"
 
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
-#include "ED_screen_types.h"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_particle.hh"
+#include "ED_screen.hh"
+#include "ED_screen_types.hh"
+#include "ED_sequencer.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "transform.hh"
 #include "transform_snap.hh"
@@ -320,16 +322,15 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
 /* adjust pose-channel's auto-ik chainlen */
 static bool pchan_autoik_adjust(bPoseChannel *pchan, short chainlen)
 {
-  bConstraint *con;
   bool changed = false;
 
   /* don't bother to search if no valid constraints */
-  if ((pchan->constflag & (PCHAN_HAS_IK | PCHAN_HAS_TARGET)) == 0) {
+  if ((pchan->constflag & (PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET)) == 0) {
     return changed;
   }
 
   /* check if pchan has ik-constraint */
-  for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = con->next) {
+  LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
     if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
       continue;
     }
@@ -359,7 +360,6 @@ void transform_autoik_update(TransInfo *t, short mode)
   Main *bmain = CTX_data_main(t->context);
 
   short *chainlen = &t->settings->autoik_chainlen;
-  bPoseChannel *pchan;
 
   /* mode determines what change to apply to chainlen */
   if (mode == 1) {
@@ -387,9 +387,7 @@ void transform_autoik_update(TransInfo *t, short mode)
       continue;
     }
 
-    for (pchan = static_cast<bPoseChannel *>(tc->poseobj->pose->chanbase.first); pchan;
-         pchan = pchan->next)
-    {
+    LISTBASE_FOREACH (bPoseChannel *, pchan, &tc->poseobj->pose->chanbase) {
       changed |= pchan_autoik_adjust(pchan, *chainlen);
     }
   }
@@ -434,7 +432,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
       next_td = head;
     }
 
-    if (next_td != nullptr && !(next_td->flag & TD_NOTCONNECTED)) {
+    if (next_td != nullptr) {
       sub_v3_v3v3(vec, next_td->center, td->center);
       mul_m3_v3(head->mtx, vec);
       dist = len_v3(vec) + td->dist;
@@ -454,7 +452,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
       next_td = tail;
     }
 
-    if (next_td != nullptr && !(next_td->flag & TD_NOTCONNECTED)) {
+    if (next_td != nullptr) {
       sub_v3_v3v3(vec, next_td->center, td->center);
       mul_m3_v3(head->mtx, vec);
       dist = len_v3(vec) + td->dist;
@@ -489,6 +487,13 @@ TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *b
 
 void clipUVData(TransInfo *t)
 {
+  /* NOTE(@ideasman42): Often used to clip UV's after proportional editing:
+   * In this case the radius of the proportional region can end outside the clipping area,
+   * while not ideal an elegant solution here would likely be computationally expensive
+   * as it would need to calculate the transform value that would meet the UV bounds.
+   * While it would be technically correct to handle this properly,
+   * there isn't a strong use case for it. */
+
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
     for (int a = 0; a < tc->data_len; a++, td++) {
@@ -552,13 +557,11 @@ bool FrameOnMouseSide(char side, float frame, float cframe)
 
 bool constraints_list_needinv(TransInfo *t, ListBase *list)
 {
-  bConstraint *con;
-
   /* loop through constraints, checking if there's one of the mentioned
    * constraints needing special crazy-space corrections
    */
   if (list) {
-    for (con = static_cast<bConstraint *>(list->first); con; con = con->next) {
+    LISTBASE_FOREACH (bConstraint *, con, list) {
       /* only consider constraint if it is enabled, and has influence on result */
       if ((con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) == 0 && (con->enforce != 0.0f)) {
         /* (affirmative) returns for specific constraints here... */
@@ -939,6 +942,9 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
   if (t->spacetype == SPACE_SEQ) {
     if (t->options & CTX_SEQUENCER_IMAGE) {
       return &TransConvertType_SequencerImage;
+    }
+    if (sequencer_retiming_mode_is_active(t->context)) {
+      return &TransConvertType_SequencerRetiming;
     }
     return &TransConvertType_Sequencer;
   }

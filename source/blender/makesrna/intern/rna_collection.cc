@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,12 +14,12 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_collection_color_items[] = {
     {COLLECTION_COLOR_NONE, "NONE", ICON_X, "None", "Assign no color tag to the collection"},
@@ -42,17 +42,17 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "BKE_collection.h"
 #  include "BKE_global.h"
 #  include "BKE_layer.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 static void rna_Collection_all_objects_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
@@ -724,7 +724,6 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_intersection_priority", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_text(prop,
                            "Intersection Priority",
                            "The intersection line will be included into the object with the "

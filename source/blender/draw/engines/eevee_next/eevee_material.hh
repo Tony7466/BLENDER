@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,6 +35,7 @@ enum eMaterialPipeline {
   MAT_PIPE_VOLUME,
   MAT_PIPE_SHADOW,
   MAT_PIPE_CAPTURE,
+  MAT_PIPE_PLANAR_PREPASS,
 };
 
 enum eMaterialGeometry {
@@ -42,8 +43,15 @@ enum eMaterialGeometry {
   MAT_GEOM_POINT_CLOUD,
   MAT_GEOM_CURVES,
   MAT_GEOM_GPENCIL,
-  MAT_GEOM_VOLUME,
+  MAT_GEOM_VOLUME_OBJECT,
+  MAT_GEOM_VOLUME_WORLD,
   MAT_GEOM_WORLD,
+};
+
+enum eMaterialProbe {
+  MAT_PROBE_NONE = 0,
+  MAT_PROBE_REFLECTION,
+  MAT_PROBE_PLANAR,
 };
 
 static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
@@ -100,7 +108,7 @@ static inline eMaterialGeometry to_material_geometry(const Object *ob)
     case OB_CURVES:
       return MAT_GEOM_CURVES;
     case OB_VOLUME:
-      return MAT_GEOM_VOLUME;
+      return MAT_GEOM_VOLUME_OBJECT;
     case OB_GPENCIL_LEGACY:
       return MAT_GEOM_GPENCIL;
     case OB_POINTCLOUD:
@@ -153,13 +161,13 @@ struct ShaderKey {
             eMaterialGeometry geometry,
             eMaterialPipeline pipeline,
             char blend_flags,
-            bool probe_capture)
+            eMaterialProbe probe_capture)
   {
     shader = GPU_material_get_shader(gpumat);
     options = blend_flags;
     options = (options << 6u) | shader_uuid_from_material_type(pipeline, geometry);
     options = (options << 16u) | shader_closure_bits_from_flag(gpumat);
-    options = (options << 1u) | uint64_t(probe_capture);
+    options = (options << 2u) | uint64_t(probe_capture);
   }
 
   uint64_t hash() const
@@ -219,7 +227,8 @@ struct MaterialPass {
 
 struct Material {
   bool is_alpha_blend_transparent;
-  MaterialPass shadow, shading, prepass, capture, probe_prepass, probe_shading;
+  MaterialPass shadow, shading, prepass, capture, reflection_probe_prepass,
+      reflection_probe_shading, planar_probe_prepass, planar_probe_shading, volume;
 };
 
 struct MaterialArray {
@@ -233,6 +242,7 @@ class MaterialModule {
   ::Material *glossy_mat;
 
   int64_t queued_shaders_count = 0;
+  int64_t queued_optimize_shaders_count = 0;
 
  private:
   Instance &inst_;
@@ -274,7 +284,7 @@ class MaterialModule {
                                  ::Material *blender_mat,
                                  eMaterialPipeline pipeline_type,
                                  eMaterialGeometry geometry_type,
-                                 bool probe_capture = false);
+                                 eMaterialProbe probe_capture = MAT_PROBE_NONE);
 };
 
 /** \} */

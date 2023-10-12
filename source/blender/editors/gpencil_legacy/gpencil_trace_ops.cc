@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -23,22 +24,22 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
 
 #include "gpencil_intern.h"
 #include "gpencil_trace.h"
@@ -199,13 +200,13 @@ static void trace_initialize_job_data(TraceJob *trace_job)
   }
 }
 
-static void trace_start_job(void *customdata, bool *stop, bool *do_update, float *progress)
+static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
 {
   TraceJob *trace_job = static_cast<TraceJob *>(customdata);
 
-  trace_job->stop = stop;
-  trace_job->do_update = do_update;
-  trace_job->progress = progress;
+  trace_job->stop = &worker_status->stop;
+  trace_job->do_update = &worker_status->do_update;
+  trace_job->progress = &worker_status->progress;
   trace_job->was_canceled = false;
   const int init_frame = max_ii((trace_job->use_current_frame) ? trace_job->frame_target : 0, 0);
 
@@ -240,7 +241,7 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
       }
 
       *(trace_job->progress) = float(i) / float(iuser->frames);
-      *do_update = true;
+      worker_status->do_update = true;
 
       iuser->framenr = i + 1;
 
@@ -257,8 +258,8 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
   }
 
   trace_job->success = !trace_job->was_canceled;
-  *do_update = true;
-  *stop = false;
+  worker_status->do_update = true;
+  worker_status->stop = false;
 }
 
 static void trace_end_job(void *customdata)
@@ -340,9 +341,8 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   ED_object_base_activate(job->C, job->base_active);
 
   if ((job->image->source == IMA_SRC_FILE) || (job->frame_num > 0)) {
-    bool stop = false, do_update = true;
-    float progress;
-    trace_start_job(job, &stop, &do_update, &progress);
+    wmJobWorkerStatus worker_status = {};
+    trace_start_job(job, &worker_status);
     trace_end_job(job);
     trace_free_job(job);
   }

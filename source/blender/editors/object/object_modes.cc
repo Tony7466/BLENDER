@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@
 #include "DNA_workspace_types.h"
 
 #include "BLI_kdopbvh.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "PIL_time.h"
@@ -27,31 +26,34 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_armature.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
+#include "ED_armature.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
 #include "WM_toolsystem.h"
 
-#include "ED_object.h" /* own include */
+#include "ED_object.hh" /* own include */
 #include "object_intern.h"
 
 /* -------------------------------------------------------------------- */
@@ -129,12 +131,8 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
     case OB_FONT:
     case OB_MBALL:
     case OB_POINTCLOUD:
-      if (mode & OB_MODE_EDIT) {
-        return true;
-      }
-      break;
     case OB_LATTICE:
-      if (mode & (OB_MODE_EDIT | OB_MODE_WEIGHT_PAINT)) {
+      if (mode & OB_MODE_EDIT) {
         return true;
       }
       break;
@@ -311,6 +309,11 @@ static bool ed_object_mode_generic_exit_ex(
     }
     ED_object_gpencil_exit(bmain, ob);
   }
+  else if (ob->mode & OB_MODE_PAINT_GREASE_PENCIL) {
+    ob->mode &= ~OB_MODE_PAINT_GREASE_PENCIL;
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
+  }
   else {
     if (only_test) {
       return false;
@@ -486,6 +489,8 @@ static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base
     }
 
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
+
     WM_toolsystem_update_from_context_view3d(C);
     mode_transferred = true;
   }

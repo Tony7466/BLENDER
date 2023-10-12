@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,15 +30,15 @@
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
-#include "BKE_screen.h"
-#include "BKE_subdiv_modifier.h"
+#include "BKE_screen.hh"
+#include "BKE_subdiv_modifier.hh"
 #include "BKE_viewer_path.h"
 #include "BKE_volume.h"
 
@@ -49,10 +49,10 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
@@ -69,11 +69,11 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #include "draw_color_management.h"
 #include "draw_manager.h"
@@ -85,7 +85,7 @@
 #include "draw_texture_pool.h"
 
 /* only for callbacks */
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "engines/basic/basic_engine.h"
 #include "engines/compositor/compositor_engine.h"
@@ -95,15 +95,15 @@
 #include "engines/gpencil/gpencil_engine.h"
 #include "engines/image/image_engine.h"
 #include "engines/overlay/overlay_engine.h"
-#include "engines/select/select_engine.h"
+#include "engines/select/select_engine.hh"
 #include "engines/workbench/workbench_engine.h"
 
 #include "GPU_context.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 /** Render State: No persistent data between draw calls. */
 DRWManager DST = {nullptr};
@@ -790,9 +790,7 @@ void **DRW_view_layer_engine_data_ensure_ex(ViewLayer *view_layer,
 {
   ViewLayerEngineData *sled;
 
-  for (sled = static_cast<ViewLayerEngineData *>(view_layer->drawdata.first); sled;
-       sled = sled->next)
-  {
+  LISTBASE_FOREACH (ViewLayerEngineData *, sled, &view_layer->drawdata) {
     if (sled->engine_type == engine_type) {
       return &sled->storage;
     }
@@ -841,6 +839,7 @@ static bool id_type_can_have_drawdata(const short id_type)
     case ID_SCE:
     case ID_TE:
     case ID_MSK:
+    case ID_MC:
       return true;
 
     /* no DrawData */
@@ -974,7 +973,6 @@ static void drw_drawdata_unlink_dupli(ID *id)
 void DRW_cache_free_old_batches(Main *bmain)
 {
   Scene *scene;
-  ViewLayer *view_layer;
   static int lasttime = 0;
   int ctime = int(PIL_check_seconds_timer());
 
@@ -987,9 +985,7 @@ void DRW_cache_free_old_batches(Main *bmain)
   for (scene = static_cast<Scene *>(bmain->scenes.first); scene;
        scene = static_cast<Scene *>(scene->id.next))
   {
-    for (view_layer = static_cast<ViewLayer *>(scene->view_layers.first); view_layer;
-         view_layer = view_layer->next)
-    {
+    LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
       Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer);
       if (depsgraph == nullptr) {
         continue;
@@ -997,7 +993,7 @@ void DRW_cache_free_old_batches(Main *bmain)
 
       /* TODO(fclem): This is not optimal since it iter over all dupli instances.
        * In this case only the source object should be tagged. */
-      DEGObjectIterSettings deg_iter_settings = {0};
+      DEGObjectIterSettings deg_iter_settings = {nullptr};
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -1178,11 +1174,6 @@ static void drw_engines_enable_from_engine(const RenderEngineType *engine_type, 
   switch (drawtype) {
     case OB_WIRE:
     case OB_SOLID:
-      if (U.experimental.enable_workbench_next &&
-          STREQ(engine_type->idname, "BLENDER_WORKBENCH_NEXT")) {
-        use_drw_engine(DRW_engine_viewport_workbench_next_type.draw_engine);
-        break;
-      }
       use_drw_engine(DRW_engine_viewport_workbench_type.draw_engine);
       break;
     case OB_MATERIAL:
@@ -1718,7 +1709,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
     if (do_populate_loop) {
       DST.dupli_origin = nullptr;
       DST.dupli_origin_data = nullptr;
-      DEGObjectIterSettings deg_iter_settings = {0};
+      DEGObjectIterSettings deg_iter_settings = {nullptr};
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       if (v3d->flag2 & V3D_SHOW_VIEWER) {
@@ -1876,7 +1867,7 @@ bool DRW_render_check_grease_pencil(Depsgraph *depsgraph)
     return false;
   }
 
-  DEGObjectIterSettings deg_iter_settings = {0};
+  DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -2082,7 +2073,7 @@ void DRW_render_object_iter(
                                                0;
   DST.dupli_origin = nullptr;
   DST.dupli_origin_data = nullptr;
-  DEGObjectIterSettings deg_iter_settings = {0};
+  DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -2241,7 +2232,7 @@ void DRW_draw_render_loop_2d_ex(Depsgraph *depsgraph,
 
     /* Only iterate over objects when overlay uses object data. */
     if (do_populate_loop) {
-      DEGObjectIterSettings deg_iter_settings = {0};
+      DEGObjectIterSettings deg_iter_settings = {nullptr};
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -2536,7 +2527,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
       bool filter_exclude = false;
       DST.dupli_origin = nullptr;
       DST.dupli_origin_data = nullptr;
-      DEGObjectIterSettings deg_iter_settings = {0};
+      DEGObjectIterSettings deg_iter_settings = {nullptr};
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       if (v3d->flag2 & V3D_SHOW_VIEWER) {
@@ -2713,7 +2704,7 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
     const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
     DST.dupli_origin = nullptr;
     DST.dupli_origin_data = nullptr;
-    DEGObjectIterSettings deg_iter_settings = {0};
+    DEGObjectIterSettings deg_iter_settings = {nullptr};
     deg_iter_settings.depsgraph = DST.draw_ctx.depsgraph;
     deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
     if (v3d->flag2 & V3D_SHOW_VIEWER) {
@@ -2761,21 +2752,20 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_exit(&DST);
 }
 
-void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, const rcti *rect)
+void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d)
 {
   SELECTID_Context *sel_ctx = DRW_select_engine_context_get();
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
   if (!viewport) {
     /* Selection engine requires a viewport.
      * TODO(@germano): This should be done internally in the engine. */
-    sel_ctx->is_dirty = true;
-    sel_ctx->objects_drawn_len = 0;
     sel_ctx->index_drawn_len = 1;
     return;
   }
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -2784,7 +2774,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   BKE_view_layer_synced_ensure(scene, view_layer);
   DST.draw_ctx = {};
   DST.draw_ctx.region = region;
-  DST.draw_ctx.rv3d = static_cast<RegionView3D *>(region->regiondata);
+  DST.draw_ctx.rv3d = rv3d;
   DST.draw_ctx.v3d = v3d;
   DST.draw_ctx.scene = scene;
   DST.draw_ctx.view_layer = view_layer;
@@ -2800,22 +2790,18 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
   DRW_globals_update();
 
-  /* Init Select Engine */
-  sel_ctx->last_rect = *rect;
-
+  /* Select Engine */
   use_drw_engine(&draw_engine_select_type);
   drw_engines_init();
   {
     drw_engines_cache_init();
 
-    Object **obj = &sel_ctx->objects[0];
-    for (uint remaining = sel_ctx->objects_len; remaining--; obj++) {
-      Object *obj_eval = DEG_get_evaluated_object(depsgraph, *obj);
+    for (Object *obj_eval : sel_ctx->objects) {
       drw_engines_cache_populate(obj_eval);
     }
 
     if (RETOPOLOGY_ENABLED(v3d) && !XRAY_ENABLED(v3d)) {
-      DEGObjectIterSettings deg_iter_settings = {0};
+      DEGObjectIterSettings deg_iter_settings = {nullptr};
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -2839,7 +2825,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_engines_cache_finish();
 
     drw_task_graph_deinit();
-#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug. (See #69377) */
+#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug (see #69377). */
     DRW_render_instance_buffer_finish();
 #else
     DST.buffer_finish_called = true;
@@ -2923,8 +2909,8 @@ void DRW_draw_depth_object(
 
       GPU_batch_draw(batch);
       GPU_uniformbuf_free(ubo);
-
-    } break;
+      break;
+    }
     case OB_CURVES_LEGACY:
     case OB_SURF:
       break;
@@ -3050,19 +3036,13 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
   g_registered_engines.len = BLI_listbase_count(&g_registered_engines.engines);
 }
 
-void DRW_engines_register_experimental()
-{
-  if (U.experimental.enable_eevee_next) {
-    RE_engines_register(&DRW_engine_viewport_eevee_next_type);
-  }
-  if (U.experimental.enable_workbench_next) {
-    RE_engines_register(&DRW_engine_viewport_workbench_next_type);
-  }
-}
-
 void DRW_engines_register()
 {
   RE_engines_register(&DRW_engine_viewport_eevee_type);
+  /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
+   * (Needed for tests). */
+  RE_engines_register(&DRW_engine_viewport_eevee_next_type);
+
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
@@ -3242,7 +3222,7 @@ void DRW_gpu_context_create()
   DST.system_gpu_context = WM_system_gpu_context_create();
   WM_system_gpu_context_activate(DST.system_gpu_context);
   /* Be sure to create blender_gpu_context too. */
-  DST.blender_gpu_context = GPU_context_create(0, DST.system_gpu_context);
+  DST.blender_gpu_context = GPU_context_create(nullptr, DST.system_gpu_context);
   /* So we activate the window's one afterwards. */
   wm_window_reset_drawable();
 }
