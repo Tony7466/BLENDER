@@ -662,8 +662,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
     attribute.dst.finish();
   }
 
-  array_utils::gather(
-      dst_cyclic.as_span(), dst_to_src_curve.as_span(), dst_curves.cyclic_for_write());
+  array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
   /* Transfer point attributes. */
   for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
