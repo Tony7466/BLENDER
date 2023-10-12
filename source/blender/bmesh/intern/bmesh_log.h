@@ -70,8 +70,11 @@ BMLog *BM_log_create(BMesh *bm);
  */
 BMLog *BM_log_from_existing_entries_create(BMesh *bm, BMLogEntry *entry, bool for_redo);
 
-/* Does not free the log's entries, just the BMLog itself. */
-bool BM_log_free(BMLog *log);
+/* Frees the BMLog.
+ * Note: The actual BMLogEntry instances are not freed they're
+ * owned by SculptUndoNode, not BMLog.
+ */
+bool BM_log_free(BMesh *bm, BMLog *log);
 
 /* Start a new log entry and update the log entry list */
 BMLogEntry *BM_log_entry_add(BMesh *bm, BMLog *log);
@@ -89,12 +92,12 @@ BMLogEntry *BM_log_entry_add_delta_set(BMesh *bm, BMLog *log);
 BMLogEntry *BM_log_entry_check_customdata(BMesh *bm, BMLog *log);
 
 /* Undo one BMLogEntry. */
-void BM_log_undo(BMesh *bm, BMLog *log, BMLogCallbacks *callbacks = nullptr);
+void BM_log_undo(BMesh *bm, BMLog *log);
 /* Skip one BMLogEntry. */
 void BM_log_undo_skip(BMesh *bm, BMLog *log);
 
 /* Redo one BMLogEntry */
-void BM_log_redo(BMesh *bm, BMLog *log, BMLogCallbacks *callbacks = nullptr);
+void BM_log_redo(BMesh *bm, BMLog *log);
 /* Skip one BMLogEntry. */
 void BM_log_redo_skip(BMesh *bm, BMLog *log);
 

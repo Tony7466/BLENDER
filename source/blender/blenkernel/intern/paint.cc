@@ -1494,14 +1494,14 @@ void BKE_sculptsession_free(Object *ob)
 
     if (ss->bm) {
       BKE_sculptsession_bm_to_me(ob, true);
+
+      if (ss->bm_log) {
+        BM_log_free(ss->bm, ss->bm_log);
+      }
       BM_mesh_free(ss->bm);
     }
 
     sculptsession_free_pbvh(ob);
-
-    if (ss->bm_log) {
-      BM_log_free(ss->bm_log);
-    }
 
     if (ss->tex_pool) {
       BKE_image_pool_free(ss->tex_pool);

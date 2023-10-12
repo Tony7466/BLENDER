@@ -1,3 +1,12 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup bmesh
+ *
+ */
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_assert.h"
@@ -93,7 +102,7 @@ static void idmap_grow_map(BMIdMap *idmap, int newid)
   }
 }
 
-void BM_idmap_clear_attributes_mesh(Mesh *me)
+void BM_idmap_delete_attributes_mesh(Mesh *me)
 {
   CustomData_free_layer_named(&me->vert_data, BM_idmap_attr_name_get(BM_VERT), me->totvert);
   CustomData_free_layer_named(&me->edge_data, BM_idmap_attr_name_get(BM_EDGE), me->totedge);
@@ -101,7 +110,7 @@ void BM_idmap_clear_attributes_mesh(Mesh *me)
   CustomData_free_layer_named(&me->face_data, BM_idmap_attr_name_get(BM_FACE), me->faces_num);
 }
 
-void BM_idmap_clear_attributes(BMesh *bm)
+void BM_idmap_delete_attributes(BMesh *bm)
 {
   BM_data_layer_free_named(bm, &bm->vdata, BM_idmap_attr_name_get(BM_VERT));
   BM_data_layer_free_named(bm, &bm->edata, BM_idmap_attr_name_get(BM_EDGE));
@@ -239,7 +248,6 @@ static bool bm_idmap_check_attr(BMIdMap *idmap, int type)
     idx = CustomData_get_named_layer_index(cdata, CD_PROP_INT32, name);
   }
 
-  cdata->layers[idx].flag |= CD_FLAG_TEMPORARY;
   idmap->cd_id_off[type] = cdata->layers[idx].offset;
 
   return !exists;

@@ -159,6 +159,11 @@ static void SCULPT_dynamic_topology_disable_ex(
 
   BKE_sculptsession_bm_to_me(ob, true);
 
+  if (ss->bm_log) {
+    BM_log_free(ss->bm, ss->bm_log);
+    ss->bm_log = nullptr;
+  }
+
   /* Sync the visibility to vertices manually as the `pmap` is still not initialized. */
   bool *hide_vert = (bool *)CustomData_get_layer_named_for_write(
       &me->vert_data, CD_PROP_BOOL, ".hide_vert", me->totvert);
@@ -173,19 +178,15 @@ static void SCULPT_dynamic_topology_disable_ex(
   if (ss->bm) {
     BM_mesh_free(ss->bm);
     ss->bm = nullptr;
-  }
-  if (ss->bm_log) {
-    BM_log_free(ss->bm_log);
-    ss->bm_log = nullptr;
-  }
 
-  BKE_particlesystem_reset_all(ob);
-  BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
+    BKE_particlesystem_reset_all(ob);
+    BKE_ptcache_object_reset(scene, ob, PTCACHE_RESET_OUTDATED);
 
-  /* Update dependency graph, so modifiers that depend on dyntopo being enabled
-   * are re-evaluated and the PBVH is re-created. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  BKE_scene_graph_update_tagged(depsgraph, bmain);
+    /* Update dependency graph, so modifiers that depend on dyntopo being enabled
+     * are re-evaluated and the PBVH is re-created. */
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    BKE_scene_graph_update_tagged(depsgraph, bmain);
+  }
 }
 
 void SCULPT_dynamic_topology_disable(bContext *C, SculptUndoNode *unode)

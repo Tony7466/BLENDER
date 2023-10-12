@@ -69,17 +69,17 @@ void BM_idmap_release_id(BMIdMap *idmap, int id, bool clear_id = true);
 const char *BM_idmap_attr_name_get(int htype);
 
 /* Deletes all id attributes. */
-void BM_idmap_clear_attributes(BMesh *bm);
-void BM_idmap_clear_attributes_mesh(Mesh *me);
+void BM_idmap_delete_attributes(BMesh *bm);
+void BM_idmap_delete_attributes_mesh(Mesh *me);
 
 /* Elem -> ID. */
-template<typename T = BMElem> BLI_INLINE int BM_idmap_get_id(BMIdMap *map, T *elem)
+template<typename T = BMElem> inline int BM_idmap_get_id(BMIdMap *map, T *elem)
 {
   return BM_ELEM_CD_GET_INT(elem, map->cd_id_off[(int)elem->head.htype]);
 }
 
 /* ID -> elem. */
-template<typename T = BMElem> BLI_INLINE T *BM_idmap_lookup(BMIdMap *map, int elem)
+template<typename T = BMElem> inline T *BM_idmap_lookup(BMIdMap *map, int elem)
 {
   return elem >= 0 ? reinterpret_cast<T *>(map->map[elem]) : NULL;
 }

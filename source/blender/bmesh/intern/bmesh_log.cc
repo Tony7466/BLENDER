@@ -10,6 +10,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_customdata.h"
+#include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 
 #include "DNA_customdata_types.h"
@@ -311,8 +312,8 @@ struct BMLogSetBase {
   {
     return "";
   }
-  virtual void undo(BMesh * /*bm*/, BMLogCallbacks * /*callbacks*/) {}
-  virtual void redo(BMesh * /*bm*/, BMLogCallbacks * /*callbacks*/) {}
+  virtual void undo(BMesh * /*bm*/) {}
+  virtual void redo(BMesh * /*bm*/) {}
 };
 
 struct BMLogSetDiff : public BMLogSetBase {
@@ -345,44 +346,31 @@ struct BMLogSetDiff : public BMLogSetBase {
   void remove_face(BMesh *bm, BMFace *f);
   void modify_face(BMesh *bm, BMFace *f);
 
-  void undo(BMesh *bm, BMLogCallbacks *callbacks) override;
-  void redo(BMesh *bm, BMLogCallbacks *callbacks) override;
+  void undo(BMesh *bm) override;
+  void redo(BMesh *bm) override;
 
-  void restore_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts, BMLogCallbacks *callbacks);
-  void remove_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts, BMLogCallbacks *callbacks);
-  void swap_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts, BMLogCallbacks *callbacks);
-  void restore_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges, BMLogCallbacks *callbacks);
-  void remove_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges, BMLogCallbacks *callbacks);
-  void swap_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges, BMLogCallbacks *callbacks);
+  void restore_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts);
+  void remove_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts);
+  void swap_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts);
+  void restore_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges);
+  void remove_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges);
+  void swap_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges);
 
-  void restore_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces, BMLogCallbacks *callbacks);
-  void remove_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces, BMLogCallbacks *callbacks);
-  void swap_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces, BMLogCallbacks *callbacks);
+  void restore_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces);
+  void remove_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces);
+  void swap_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces);
 };
 
 struct BMLogSetFullMesh : public BMLogSetBase {
   BMLogSetFullMesh(BMesh *bm, BMLogEntry *entry, BMIdMap *idmap)
       : BMLogSetBase(entry, LOG_SET_FULL)
   {
-    printf("Log full mesh\n");
-
     /* Validate id map. */
     BM_idmap_check_ids(idmap);
 
-    /* Ensure we write idmap attrs. */
-    set_idlayer_temporary_flag(&bm->vdata, BM_VERT, false);
-    set_idlayer_temporary_flag(&bm->edata, BM_EDGE, false);
-    set_idlayer_temporary_flag(&bm->pdata, BM_FACE, false);
-
-    BMeshToMeshParams params = {};
-    params.update_shapekey_indices = false;
-    params.calc_object_remap = false;
-
-    mesh = BKE_mesh_from_bmesh_nomain(bm, &params, nullptr);
-
-    set_idlayer_temporary_flag(&bm->vdata, BM_VERT, true);
-    set_idlayer_temporary_flag(&bm->edata, BM_EDGE, true);
-    set_idlayer_temporary_flag(&bm->pdata, BM_FACE, true);
+    BMeshToMeshParams params{};
+    mesh = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
+    BM_mesh_bm_to_me(nullptr, bm, mesh, &params);
   }
 
   ~BMLogSetFullMesh()
@@ -400,20 +388,16 @@ struct BMLogSetFullMesh : public BMLogSetBase {
 
   void swap(BMesh *bm)
   {
-    CustomData_MeshMasks cd_mask_extra = {0, 0, 0, 0, 0};
+    CustomData_MeshMasks cd_mask_extra{};
 
-    BMeshToMeshParams params = {};
-    params.update_shapekey_indices = false;
-    params.calc_object_remap = false;
-
-    /* Ensure we write idmap attrs. */
-    set_idlayer_temporary_flag(&bm->vdata, BM_VERT, false);
-    set_idlayer_temporary_flag(&bm->edata, BM_EDGE, false);
-    set_idlayer_temporary_flag(&bm->pdata, BM_FACE, false);
+    BMeshToMeshParams params{};
 
     /* Don't swap in a new mesh if bmesh is empty, happens during undo. */
-    Mesh *current_mesh = bm->totvert > 0 ? BKE_mesh_from_bmesh_nomain(bm, &params, nullptr) :
-                                           nullptr;
+    Mesh *current_mesh = nullptr;
+    if (bm->totvert > 0) {
+      current_mesh = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
+      BM_mesh_bm_to_me(nullptr, bm, current_mesh, &params);
+    }
 
     int shapenr = bm->shapenr;
 
@@ -430,7 +414,7 @@ struct BMLogSetFullMesh : public BMLogSetBase {
 
     /* Regenerate ID map. */
     BMIdMap *idmap = entry_get_idmap(entry);
-    BM_idmap_check_ids(idmap); /* Note: this will properly reset CD_FLAG_TEMPORARY. */
+    BM_idmap_check_ids(idmap);
 
     bm->shapenr = shapenr;
 
@@ -447,40 +431,17 @@ struct BMLogSetFullMesh : public BMLogSetBase {
     }
   }
 
-  void undo(BMesh *bm, BMLogCallbacks *callbacks) override
+  void undo(BMesh *bm) override
   {
     swap(bm);
-
-    if (callbacks && callbacks->on_full_mesh_load) {
-      callbacks->on_full_mesh_load(callbacks->userdata);
-    }
   }
 
-  void redo(BMesh *bm, BMLogCallbacks *callbacks) override
+  void redo(BMesh *bm) override
   {
     swap(bm);
-    if (callbacks && callbacks->on_full_mesh_load) {
-      callbacks->on_full_mesh_load(callbacks->userdata);
-    }
   }
 
   Mesh *mesh = nullptr;
-
- private:
-  void set_idlayer_temporary_flag(CustomData *data, char htype, bool value)
-  {
-    const char *name = BM_idmap_attr_name_get(htype);
-
-    int layer_i = CustomData_get_named_layer(data, CD_PROP_INT32, name);
-    if (layer_i != -1) {
-      if (value) {
-        data->layers[layer_i].flag |= CD_FLAG_TEMPORARY;
-      }
-      else {
-        data->layers[layer_i].flag &= ~CD_FLAG_TEMPORARY;
-      }
-    }
-  }
 };
 
 static const char *get_elem_htype_str(int htype)
@@ -993,17 +954,17 @@ struct BMLogEntry {
     current_diff_set(bm)->modify_face(bm, f);
   }
 
-  void undo(BMesh *bm, BMLogCallbacks *callbacks)
+  void undo(BMesh *bm)
   {
     for (int i = sets.size() - 1; i >= 0; i--) {
-      sets[i]->undo(bm, callbacks);
+      sets[i]->undo(bm);
     }
   }
 
-  void redo(BMesh *bm, BMLogCallbacks *callbacks)
+  void redo(BMesh *bm)
   {
     for (int i = 0; i < sets.size(); i++) {
-      sets[i]->redo(bm, callbacks);
+      sets[i]->redo(bm);
     }
   }
 };
@@ -1172,7 +1133,7 @@ struct BMLog {
     }
   }
 
-  void undo(BMesh *bm, BMLogCallbacks *callbacks)
+  void undo(BMesh *bm)
   {
     if (!current_entry) {
       current_entry = first_entry;
@@ -1181,11 +1142,11 @@ struct BMLog {
       }
     }
 
-    current_entry->undo(bm, callbacks);
+    current_entry->undo(bm);
     current_entry = current_entry->prev;
   }
 
-  void redo(BMesh *bm, BMLogCallbacks *callbacks)
+  void redo(BMesh *bm)
   {
     if (!current_entry) {
       current_entry = first_entry;
@@ -1195,7 +1156,7 @@ struct BMLog {
     }
 
     if (current_entry) {
-      current_entry->redo(bm, callbacks);
+      current_entry->redo(bm);
     }
   }
 };
@@ -1358,9 +1319,7 @@ void BMLogSetDiff::modify_face(BMesh *bm, BMFace *f)
   }
 }
 
-void BMLogSetDiff::swap_verts(BMesh *bm,
-                              blender::Map<int, BMLogVert *> verts,
-                              BMLogCallbacks *callbacks)
+void BMLogSetDiff::swap_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts)
 {
   void *old_customdata = bm->vdata.pool ? BLI_mempool_alloc(bm->vdata.pool) : nullptr;
 
@@ -1382,10 +1341,6 @@ void BMLogSetDiff::swap_verts(BMesh *bm,
 
     /* Ensure id wasn't mangled in customdata swap. */
     BM_ELEM_CD_SET_INT(v, cd_id, lv->id);
-
-    if (callbacks && callbacks->on_vert_change) {
-      callbacks->on_vert_change(v, callbacks->userdata, old_customdata);
-    }
   }
 
   if (old_customdata) {
@@ -1393,9 +1348,7 @@ void BMLogSetDiff::swap_verts(BMesh *bm,
   }
 }
 
-void BMLogSetDiff::restore_verts(BMesh *bm,
-                                 blender::Map<int, BMLogVert *> verts,
-                                 BMLogCallbacks *callbacks)
+void BMLogSetDiff::restore_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts)
 {
   for (BMLogVert *lv : verts.values()) {
     BMVert *v = BM_vert_create(bm, lv->co, nullptr, BM_CREATE_NOP);
@@ -1405,19 +1358,13 @@ void BMLogSetDiff::restore_verts(BMesh *bm,
 
     CustomData_bmesh_copy_data(&entry->vdata, &bm->vdata, lv->customdata, &v->head.data);
     entry->assign_elem_id<BMVert>(bm, v, lv->id, true);
-
-    if (callbacks && callbacks->on_vert_add) {
-      callbacks->on_vert_add(v, callbacks->userdata);
-    }
   }
 
   bm->elem_index_dirty |= BM_VERT | BM_EDGE;
   bm->elem_table_dirty |= BM_VERT | BM_EDGE;
 }
 
-void BMLogSetDiff::remove_verts(BMesh *bm,
-                                blender::Map<int, BMLogVert *> verts,
-                                BMLogCallbacks *callbacks)
+void BMLogSetDiff::remove_verts(BMesh *bm, blender::Map<int, BMLogVert *> verts)
 {
   for (BMLogVert *lv : verts.values()) {
     BMVert *v = entry->get_elem_from_id<BMVert>(lv->id);
@@ -1425,10 +1372,6 @@ void BMLogSetDiff::remove_verts(BMesh *bm,
     if (!v) {
       printf("%s: Failed to find vertex %d\b", __func__, lv->id);
       continue;
-    }
-
-    if (callbacks && callbacks->on_vert_kill) {
-      callbacks->on_vert_kill(v, callbacks->userdata);
     }
 
     BM_idmap_release(entry->idmap, v, false);
@@ -1439,9 +1382,7 @@ void BMLogSetDiff::remove_verts(BMesh *bm,
   bm->elem_table_dirty |= BM_VERT | BM_EDGE;
 }
 
-void BMLogSetDiff::restore_edges(BMesh *bm,
-                                 blender::Map<int, BMLogEdge *> edges,
-                                 BMLogCallbacks *callbacks)
+void BMLogSetDiff::restore_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges)
 {
   for (BMLogEdge *le : edges.values()) {
     BMVert *v1 = entry->get_elem_from_id<BMVert>(le->v1);
@@ -1463,16 +1404,10 @@ void BMLogSetDiff::restore_edges(BMesh *bm,
     CustomData_bmesh_copy_data(&entry->edata, &bm->edata, le->customdata, &e->head.data);
 
     entry->assign_elem_id<BMEdge>(bm, e, le->id, true);
-
-    if (callbacks && callbacks->on_edge_add) {
-      callbacks->on_edge_add(e, callbacks->userdata);
-    }
   }
 }
 
-void BMLogSetDiff::remove_edges(BMesh *bm,
-                                blender::Map<int, BMLogEdge *> edges,
-                                BMLogCallbacks *callbacks)
+void BMLogSetDiff::remove_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges)
 {
   for (BMLogEdge *le : edges.values()) {
     BMEdge *e = entry->get_elem_from_id<BMEdge>(le->id);
@@ -1482,18 +1417,12 @@ void BMLogSetDiff::remove_edges(BMesh *bm,
       continue;
     }
 
-    if (callbacks && callbacks->on_edge_kill) {
-      callbacks->on_edge_kill(e, callbacks->userdata);
-    }
-
     BM_idmap_release(entry->idmap, e, true);
     BM_edge_kill(bm, e);
   }
 }
 
-void BMLogSetDiff::swap_edges(BMesh *bm,
-                              blender::Map<int, BMLogEdge *> edges,
-                              BMLogCallbacks *callbacks)
+void BMLogSetDiff::swap_edges(BMesh *bm, blender::Map<int, BMLogEdge *> edges)
 {
   void *old_customdata = entry->edata.pool ? BLI_mempool_alloc(bm->edata.pool) : nullptr;
   const int cd_id = entry->idmap->cd_id_off[BM_EDGE];
@@ -1514,10 +1443,6 @@ void BMLogSetDiff::swap_edges(BMesh *bm,
 
     /* Ensure id wasn't mangled in customdata swap. */
     BM_ELEM_CD_SET_INT(e, cd_id, le->id);
-
-    if (callbacks && callbacks->on_edge_change) {
-      callbacks->on_edge_change(e, callbacks->userdata, old_customdata);
-    }
   }
 
   if (old_customdata) {
@@ -1525,9 +1450,7 @@ void BMLogSetDiff::swap_edges(BMesh *bm,
   }
 }
 
-void BMLogSetDiff::restore_faces(BMesh *bm,
-                                 blender::Map<int, BMLogFace *> faces,
-                                 BMLogCallbacks *callbacks)
+void BMLogSetDiff::restore_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces)
 {
   Vector<BMVert *, 16> verts;
 
@@ -1567,19 +1490,13 @@ void BMLogSetDiff::restore_faces(BMesh *bm,
         i++;
       } while ((l = l->next) != f->l_first);
     }
-
-    if (callbacks && callbacks->on_face_add) {
-      callbacks->on_face_add(f, callbacks->userdata);
-    }
   }
 
   bm->elem_index_dirty |= BM_FACE;
   bm->elem_table_dirty |= BM_FACE;
 }
 
-void BMLogSetDiff::remove_faces(BMesh *bm,
-                                blender::Map<int, BMLogFace *> faces,
-                                BMLogCallbacks *callbacks)
+void BMLogSetDiff::remove_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces)
 {
   for (BMLogFace *lf : faces.values()) {
     BMFace *f = entry->get_elem_from_id<BMFace>(lf->id);
@@ -1587,10 +1504,6 @@ void BMLogSetDiff::remove_faces(BMesh *bm,
     if (!f) {
       printf("%s: error finding face %d\n", __func__, lf->id);
       continue;
-    }
-
-    if (callbacks && callbacks->on_face_kill) {
-      callbacks->on_face_kill(f, callbacks->userdata);
     }
 
     BM_idmap_release(entry->idmap, f, true);
@@ -1601,9 +1514,7 @@ void BMLogSetDiff::remove_faces(BMesh *bm,
   bm->elem_table_dirty |= BM_FACE;
 }
 
-void BMLogSetDiff::swap_faces(BMesh *bm,
-                              blender::Map<int, BMLogFace *> faces,
-                              BMLogCallbacks *callbacks)
+void BMLogSetDiff::swap_faces(BMesh *bm, blender::Map<int, BMLogFace *> faces)
 {
   void *old_customdata = entry->pdata.pool ? BLI_mempool_alloc(bm->pdata.pool) : nullptr;
 
@@ -1625,10 +1536,6 @@ void BMLogSetDiff::swap_faces(BMesh *bm,
 
     /* Ensure id wasn't mangled in customdata swap. */
     BM_ELEM_CD_SET_INT(f, cd_id, lf->id);
-
-    if (callbacks && callbacks->on_face_change) {
-      callbacks->on_face_change(f, callbacks->userdata, old_customdata, lf->flag);
-    }
   }
 
   if (old_customdata) {
@@ -1636,48 +1543,34 @@ void BMLogSetDiff::swap_faces(BMesh *bm,
   }
 }
 
-void BMLogSetDiff::undo(BMesh *bm, BMLogCallbacks *callbacks)
+void BMLogSetDiff::undo(BMesh *bm)
 {
-  if (callbacks && callbacks->on_mesh_customdata_change) {
-    callbacks->on_mesh_customdata_change(&entry->vdata, BM_VERT, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->edata, BM_EDGE, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->ldata, BM_LOOP, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->pdata, BM_FACE, callbacks->userdata);
-  }
+  remove_faces(bm, added_faces);
+  remove_edges(bm, added_edges);
+  remove_verts(bm, added_verts);
 
-  remove_faces(bm, added_faces, callbacks);
-  remove_edges(bm, added_edges, callbacks);
-  remove_verts(bm, added_verts, callbacks);
+  restore_verts(bm, removed_verts);
+  restore_edges(bm, removed_edges);
+  restore_faces(bm, removed_faces);
 
-  restore_verts(bm, removed_verts, callbacks);
-  restore_edges(bm, removed_edges, callbacks);
-  restore_faces(bm, removed_faces, callbacks);
-
-  swap_faces(bm, modified_faces, callbacks);
-  swap_edges(bm, modified_edges, callbacks);
-  swap_verts(bm, modified_verts, callbacks);
+  swap_faces(bm, modified_faces);
+  swap_edges(bm, modified_edges);
+  swap_verts(bm, modified_verts);
 }
 
-void BMLogSetDiff::redo(BMesh *bm, BMLogCallbacks *callbacks)
+void BMLogSetDiff::redo(BMesh *bm)
 {
-  if (callbacks && callbacks->on_mesh_customdata_change) {
-    callbacks->on_mesh_customdata_change(&entry->vdata, BM_VERT, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->edata, BM_EDGE, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->ldata, BM_LOOP, callbacks->userdata);
-    callbacks->on_mesh_customdata_change(&entry->pdata, BM_FACE, callbacks->userdata);
-  }
+  remove_faces(bm, removed_faces);
+  remove_edges(bm, removed_edges);
+  remove_verts(bm, removed_verts);
 
-  remove_faces(bm, removed_faces, callbacks);
-  remove_edges(bm, removed_edges, callbacks);
-  remove_verts(bm, removed_verts, callbacks);
+  restore_verts(bm, added_verts);
+  restore_edges(bm, added_edges);
+  restore_faces(bm, added_faces);
 
-  restore_verts(bm, added_verts, callbacks);
-  restore_edges(bm, added_edges, callbacks);
-  restore_faces(bm, added_faces, callbacks);
-
-  swap_faces(bm, modified_faces, callbacks);
-  swap_edges(bm, modified_edges, callbacks);
-  swap_verts(bm, modified_verts, callbacks);
+  swap_faces(bm, modified_faces);
+  swap_edges(bm, modified_edges);
+  swap_verts(bm, modified_verts);
 }
 
 static BMIdMap *entry_get_idmap(BMLogEntry *entry)
@@ -1709,7 +1602,7 @@ bool BM_log_is_dead(BMLog *log)
   return log->dead;
 }
 
-bool BM_log_free(BMLog *log)
+bool BM_log_free(BMesh *bm, BMLog *log)
 {
   BMLogEntry *entry = log->first_entry;
 
@@ -1717,6 +1610,9 @@ bool BM_log_free(BMLog *log)
     entry->log = nullptr;
     entry = entry->next;
   }
+
+  /* Delete ID attribute layers. */
+  BM_idmap_delete_attributes(bm);
 
   MEM_delete<BMLog>(log);
   return true;
@@ -1844,14 +1740,14 @@ uint BM_log_face_id_get(BMesh * /*bm*/, BMLog *log, BMFace *f)
   return BM_idmap_get_id(log->idmap, f);
 }
 
-void BM_log_undo(BMesh *bm, BMLog *log, BMLogCallbacks *callbacks)
+void BM_log_undo(BMesh *bm, BMLog *log)
 {
-  log->undo(bm, callbacks);
+  log->undo(bm);
 }
 
-void BM_log_redo(BMesh *bm, BMLog *log, BMLogCallbacks *callbacks)
+void BM_log_redo(BMesh *bm, BMLog *log)
 {
-  log->redo(bm, callbacks);
+  log->redo(bm);
 }
 
 void BM_log_undo_skip(BMesh * /*bm*/, BMLog *log)

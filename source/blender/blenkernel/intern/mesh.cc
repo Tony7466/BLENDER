@@ -1119,9 +1119,7 @@ Mesh *BKE_mesh_from_bmesh_nomain(BMesh *bm,
   BLI_assert(params->calc_object_remap == false);
   Mesh *mesh = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
   BM_mesh_bm_to_me(nullptr, bm, mesh, params);
-  if (me_settings) { /* BMLog calls this with me_settings as null. */
-    BKE_mesh_copy_parameters_for_eval(mesh, me_settings);
-  }
+  BKE_mesh_copy_parameters_for_eval(mesh, me_settings);
   return mesh;
 }
 
