@@ -249,6 +249,8 @@ typedef struct FontMetrics {
   short x_height;
   /** Font units from baseline to top of capital letters, specifically "H". */
   short cap_height;
+  /** Ratio width to heigh of lowercase "O". Reliable indication of font proportion. */
+  float o_proportion;
   /** Font unit maximum horizontal advance for all glyphs in font. Can help with wrapping. */
   short max_advance_width;
   /** As above but only for vertical layout fonts, otherwise is set to line_height value. */

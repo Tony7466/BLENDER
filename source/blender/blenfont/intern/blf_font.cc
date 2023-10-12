@@ -1456,6 +1456,11 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
     }
   }
 
+  FT_UInt gi = FT_Get_Char_Index(face, uint('o'));
+  if (gi && FT_Load_Glyph(face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
+    metrics->o_proportion = float(face->glyph->metrics.width) / float(face->glyph->metrics.height);
+  }
+
   if (metrics->ascender == 0) {
     /* Set a sane value for ascender if not set in the font. */
     metrics->ascender = short(float(metrics->units_per_EM) * 0.8f);
@@ -1596,6 +1601,7 @@ bool blf_ensure_face(FontBLF *font)
     FT_Get_MM_Var(font->face, &(font->variations));
   }
 
+  blf_ensure_size(font);
   blf_font_metrics(font->face, &font->metrics);
 
   /* Save TrueType table with bits to quickly test most unicode block coverage. */
