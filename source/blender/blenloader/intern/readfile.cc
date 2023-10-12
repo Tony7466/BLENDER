@@ -1166,8 +1166,6 @@ static FileData *blo_filedata_from_file_descriptor(const char *filepath,
   FileReader *rawfile = BLI_filereader_new_file(filedes);
   FileReader *file = nullptr;
 
-  printf("AaAa\n");
-
   errno = 0;
   /* If opening the file failed or we can't read the header, give up. */
   if (rawfile == nullptr || rawfile->read(rawfile, header, sizeof(header)) != sizeof(header)) {
@@ -1211,8 +1209,6 @@ static FileData *blo_filedata_from_file_descriptor(const char *filepath,
     }
   }
 
-  printf("AaAb\n");
-
   /* Clean up `rawfile` if it wasn't taken over. */
   if (rawfile != nullptr) {
     rawfile->close(rawfile);
@@ -1221,11 +1217,9 @@ static FileData *blo_filedata_from_file_descriptor(const char *filepath,
     BKE_reportf(reports->reports, RPT_WARNING, "Unrecognized file format '%s'", filepath);
     return nullptr;
   }
-  printf("AaAc\n");
 
   FileData *fd = filedata_new(reports);
   fd->file = file;
-  printf("AaAd\n");
 
   return fd;
 }
@@ -1233,7 +1227,6 @@ static FileData *blo_filedata_from_file_descriptor(const char *filepath,
 static FileData *blo_filedata_from_file_open(const char *filepath, BlendFileReadReport *reports)
 {
   errno = 0;
-  printf("AaA\n");
   const int file = BLI_open(filepath, O_BINARY | O_RDONLY, 0);
   if (file == -1) {
     BKE_reportf(reports->reports,
@@ -1243,15 +1236,12 @@ static FileData *blo_filedata_from_file_open(const char *filepath, BlendFileRead
                 errno ? strerror(errno) : TIP_("unknown error reading file"));
     return nullptr;
   }
-  printf("AaB\n");
   return blo_filedata_from_file_descriptor(filepath, reports, file);
 }
 
 FileData *blo_filedata_from_file(const char *filepath, BlendFileReadReport *reports)
 {
-  printf("Aa\n");
   FileData *fd = blo_filedata_from_file_open(filepath, reports);
-  printf("Ab\n");
   if (fd != nullptr) {
     /* needed for library_append and read_libraries */
     STRNCPY(fd->relabase, filepath);

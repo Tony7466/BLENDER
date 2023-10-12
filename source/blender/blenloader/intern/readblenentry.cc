@@ -411,14 +411,12 @@ BlendFileData *BLO_read_from_file(const char *filepath,
   BlendFileData *bfd = nullptr;
   FileData *fd;
 
-  printf("A\n");
   fd = blo_filedata_from_file(filepath, reports);
   if (fd) {
     fd->skip_flags = skip_flags;
     bfd = blo_read_file_internal(fd, filepath);
     blo_filedata_free(fd);
   }
-  printf("B\n");
 
   return bfd;
 }
