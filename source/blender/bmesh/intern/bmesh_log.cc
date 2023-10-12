@@ -34,6 +34,7 @@
 #include "bmesh_log.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -147,117 +148,6 @@ template<typename T> struct BMLogElem {
   }
 };
 
-template<typename T> struct LogElemAlloc {
-  BLI_mempool *pool;
-
-  class iterator {
-    LogElemAlloc<T> *alloc;
-    BLI_mempool_iter iter;
-    void *elem = nullptr, *first;
-
-   public:
-    iterator(LogElemAlloc<T> *_alloc) : alloc(_alloc)
-    {
-      BLI_mempool_iternew(_alloc->pool, &iter);
-      elem = first = BLI_mempool_iterstep(&iter);
-    }
-
-    iterator(const iterator &b) : alloc(b.alloc), elem(b.elem), first(b.first)
-    {
-      iter = b.iter;
-    }
-
-    iterator &operator++()
-    {
-      elem = BLI_mempool_iterstep(&iter);
-
-      return *this;
-    }
-
-    T &operator*()
-    {
-      return *reinterpret_cast<T *>(elem);
-    }
-
-    iterator begin()
-    {
-      iterator start(*this);
-      start.elem = first;
-      return start;
-    }
-
-    iterator end()
-    {
-      iterator end = iterator(*this);
-      end.elem = nullptr;
-
-      return end;
-    }
-
-    bool operator==(const iterator &b)
-    {
-      return elem == b.elem;
-    }
-
-    bool operator!=(const iterator &b)
-    {
-      return elem != b.elem;
-    }
-  };
-
-  iterator elements()
-  {
-    return iterator(this);
-  }
-
-  LogElemAlloc()
-  {
-    /* We need an iterable pool to call individual destructors in ~LogElemAlloc(). */
-    pool = BLI_mempool_create(sizeof(T), 0, 256, BLI_MEMPOOL_ALLOW_ITER);
-  }
-
-  LogElemAlloc(const LogElemAlloc &b) = delete;
-
-  LogElemAlloc(LogElemAlloc &&b)
-  {
-    pool = b.pool;
-    b.pool = nullptr;
-  }
-
-  void operator=(LogElemAlloc &&b)
-  {
-    pool = b.pool;
-    b.pool = nullptr;
-  }
-
-  ~LogElemAlloc()
-  {
-    if (pool) {
-      BLI_mempool_iter iter;
-      BLI_mempool_iternew(pool, &iter);
-      while (void *entry = BLI_mempool_iterstep(&iter)) {
-        T *ptr = static_cast<T *>(entry);
-        ptr->~T();
-      }
-
-      BLI_mempool_destroy(pool);
-    }
-  }
-
-  T *alloc()
-  {
-    void *mem = BLI_mempool_alloc(pool);
-    return new (mem) T();
-  }
-
-  void free(T *elem)
-  {
-    elem->~T();
-
-    BLI_mempool_free(pool, static_cast<void *>(elem));
-  }
-};
-
 struct BMLogVert : public BMLogElem<BMVert> {
   float3 co;
   float3 no;
@@ -269,8 +159,8 @@ struct BMLogEdge : public BMLogElem<BMEdge> {
 };
 
 struct BMLogFace : public BMLogElem<BMFace> {
-  Vector<int, 3> verts;
-  Vector<void *, 3> loop_customdata;
+  std::array<int, 3> verts;
+  std::array<void *, 3> loop_customdata;
 
   void free(CustomData *domain, CustomData *loop_domain)
   {
@@ -468,11 +358,15 @@ struct BMLogEntry {
   BMLogEntry *next = nullptr, *prev = nullptr;
 
   Vector<BMLogSetBase *> sets;
-  LogElemAlloc<BMLogVert> vpool;
-  LogElemAlloc<BMLogEdge> epool;
-  LogElemAlloc<BMLogFace> fpool;
+  BLI_mempool *vpool = nullptr;
+  BLI_mempool *epool = nullptr;
+  BLI_mempool *fpool = nullptr;
 
-  CustomData vdata, edata, ldata, pdata;
+  CustomData vdata;
+  CustomData edata;
+  CustomData ldata;
+  CustomData pdata;
+
   BMIdMap *idmap = nullptr;
 
   int cd_mask_offset = -1;
@@ -489,6 +383,10 @@ struct BMLogEntry {
              CustomData *src_pdata)
       : idmap(_idmap)
   {
+    vpool = BLI_mempool_create(sizeof(BMLogVert), 0, 512, BLI_MEMPOOL_NOP);
+    epool = BLI_mempool_create(sizeof(BMLogEdge), 0, 512, BLI_MEMPOOL_NOP);
+    fpool = BLI_mempool_create(sizeof(BMLogFace), 0, 512, BLI_MEMPOOL_NOP);
+
     customdata_copy_all_layout(src_vdata, &vdata);
     customdata_copy_all_layout(src_edata, &edata);
     customdata_copy_all_layout(src_ldata, &ldata);
@@ -558,15 +456,29 @@ struct BMLogEntry {
       }
     }
 
-    for (BMLogVert &vert : vpool.elements()) {
-      vert.free(&vdata);
+    BLI_mempool_iter iter;
+
+    BLI_mempool_iternew(vpool, &iter);
+    BMLogVert *vert = static_cast<BMLogVert *>(BLI_mempool_iterstep(&iter));
+    for (; vert; vert = static_cast<BMLogVert *>(BLI_mempool_iterstep(&iter))) {
+      vert->free(&vdata);
     }
-    for (BMLogEdge &edge : epool.elements()) {
-      edge.free(&edata);
+
+    BLI_mempool_iternew(epool, &iter);
+    BMLogEdge *edge = static_cast<BMLogEdge *>(BLI_mempool_iterstep(&iter));
+    for (; edge; edge = static_cast<BMLogEdge *>(BLI_mempool_iterstep(&iter))) {
+      edge->free(&edata);
     }
-    for (BMLogFace &face : fpool.elements()) {
-      face.free(&pdata, &ldata);
+
+    BLI_mempool_iternew(fpool, &iter);
+    BMLogFace *face = static_cast<BMLogFace *>(BLI_mempool_iterstep(&iter));
+    for (; face; face = static_cast<BMLogFace *>(BLI_mempool_iterstep(&iter))) {
+      face->free(&pdata, &ldata);
     }
+
+    BLI_mempool_destroy(vpool);
+    BLI_mempool_destroy(epool);
+    BLI_mempool_destroy(fpool);
 
     if (vdata.pool) {
       BLI_mempool_destroy(vdata.pool);
@@ -778,10 +690,20 @@ struct BMLogEntry {
     std::swap(f->head.hflag, lf->flag);
   }
 
+  template<typename T> T *alloc_logelem(BLI_mempool *pool)
+  {
+    return static_cast<T *>(BLI_mempool_calloc(pool));
+  }
+
+  template<typename T> void free_logelem(BLI_mempool *pool, T *elem)
+  {
+    BLI_mempool_free(pool, static_cast<void *>(elem));
+  }
+
   BMLogVert *alloc_logvert(BMesh *bm, BMVert *v)
   {
     int id = get_elem_id<BMVert>(v);
-    BMLogVert *lv = vpool.alloc();
+    BMLogVert *lv = alloc_logelem<BMLogVert>(vpool);
 
     lv->id = id;
 
@@ -796,7 +718,7 @@ struct BMLogEntry {
       BLI_mempool_free(vdata.pool, lv->customdata);
     }
 
-    vpool.free(lv);
+    free_logelem(vpool, lv);
   }
 
   void load_vert(BMesh *bm, BMVert *v, BMLogVert *lv)
@@ -812,7 +734,7 @@ struct BMLogEntry {
 
   BMLogEdge *alloc_logedge(BMesh *bm, BMEdge *e)
   {
-    BMLogEdge *le = epool.alloc();
+    BMLogEdge *le = alloc_logelem<BMLogEdge>(epool);
 
     le->id = get_elem_id<BMEdge>(e);
     le->v1 = get_elem_id<BMVert>(e->v1);
@@ -835,12 +757,12 @@ struct BMLogEntry {
       BLI_mempool_free(edata.pool, le->customdata);
     }
 
-    epool.free(le);
+    free_logelem(epool, le);
   }
 
   BMLogFace *alloc_logface(BMesh *bm, BMFace *f)
   {
-    BMLogFace *lf = fpool.alloc();
+    BMLogFace *lf = alloc_logelem<BMLogFace>(fpool);
 
     lf->id = get_elem_id<BMFace>(f);
     lf->flag = f->head.hflag;
@@ -848,16 +770,18 @@ struct BMLogEntry {
     copy_custom_data(&bm->pdata, &pdata, f->head.data, &lf->customdata);
 
     BMLoop *l = f->l_first;
+    int i = 0;
     do {
-      lf->verts.append(get_elem_id<BMVert>(l->v));
+      lf->verts[i] = get_elem_id<BMVert>(l->v);
       void *loop_customdata = nullptr;
 
       if (l->head.data) {
         copy_custom_data(&bm->ldata, &ldata, l->head.data, &loop_customdata);
       }
 
-      lf->loop_customdata.append(loop_customdata);
-    } while ((l = l->next) != f->l_first);
+      lf->loop_customdata[i] = loop_customdata;
+      i++;
+    } while (i < 3 && (l = l->next) != f->l_first);
 
     return lf;
   }
@@ -896,7 +820,7 @@ struct BMLogEntry {
       BLI_mempool_free(pdata.pool, lf->customdata);
     }
 
-    fpool.free(lf);
+    free_logelem(fpool, lf);
   }
 
   void add_vert(BMesh *bm, BMVert *v)
