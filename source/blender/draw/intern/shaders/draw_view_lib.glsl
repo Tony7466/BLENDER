@@ -25,12 +25,21 @@ vec3 drw_view_position()
 }
 
 /**
- * Returns the world view vector `V` (going towards the viewer)
+ * Returns the world incident vector `V` (going towards the viewer)
  * from the world position `P` and the current view.
  */
-vec3 drw_view_vector_get(vec3 P)
+vec3 drw_world_incident_vector(vec3 P)
 {
   return drw_view_is_perspective() ? normalize(drw_view_position() - P) : drw_view_forward();
+}
+
+/**
+ * Returns the view incident vector `vV` (going towards the viewer)
+ * from the view position `vP` and the current view.
+ */
+vec3 drw_view_incident_vector(vec3 vP)
+{
+  return drw_view_is_perspective() ? normalize(vP) : vec3(0.0, 0.0, -1.0);
 }
 
 /**

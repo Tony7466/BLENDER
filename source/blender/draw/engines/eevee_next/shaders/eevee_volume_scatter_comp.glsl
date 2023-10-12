@@ -72,7 +72,7 @@ void main()
                                         uniform_buf.volumes.inv_tex_size);
   vec3 vP = drw_point_screen_to_view(volume_screen);
   vec3 P = drw_point_view_to_world(vP);
-  vec3 V = drw_view_vector_get(P);
+  vec3 V = drw_world_incident_vector(P);
 
   vec2 phase = imageLoad(in_phase_img, froxel).rg;
   /* Divide by phase total weight, to compute the mean anisotropy. */
