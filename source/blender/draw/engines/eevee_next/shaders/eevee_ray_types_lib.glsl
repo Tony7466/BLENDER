@@ -2,8 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 
 /**
  * General purpose 3D ray.
@@ -59,8 +58,8 @@ void raytrace_screenspace_ray_finalize(inout ScreenSpaceRay ray, vec2 pixel_size
 ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, vec2 pixel_size)
 {
   ScreenSpaceRay ssray;
-  ssray.origin.xyz = project_point(ProjectionMatrix, ray.origin);
-  ssray.direction.xyz = project_point(ProjectionMatrix, ray.origin + ray.direction * ray.max_time);
+  ssray.origin.xyz = drw_point_view_to_ndc(ray.origin);
+  ssray.direction.xyz = drw_point_view_to_ndc(ray.origin + ray.direction * ray.max_time);
 
   raytrace_screenspace_ray_finalize(ssray, pixel_size);
   return ssray;
@@ -69,12 +68,12 @@ ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, vec2 pixel_size)
 ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, vec2 pixel_size, float thickness)
 {
   ScreenSpaceRay ssray;
-  ssray.origin.xyz = project_point(ProjectionMatrix, ray.origin);
-  ssray.direction.xyz = project_point(ProjectionMatrix, ray.origin + ray.direction * ray.max_time);
+  ssray.origin.xyz = drw_point_view_to_ndc(ray.origin);
+  ssray.direction.xyz = drw_point_view_to_ndc(ray.origin + ray.direction * ray.max_time);
   /* Interpolate thickness in screen space.
    * Calculate thickness further away to avoid near plane clipping issues. */
-  ssray.origin.w = get_depth_from_view_z(ray.origin.z - thickness);
-  ssray.direction.w = get_depth_from_view_z(ray.origin.z + ray.direction.z - thickness);
+  ssray.origin.w = drw_depth_view_to_screen(ray.origin.z - thickness);
+  ssray.direction.w = drw_depth_view_to_screen(ray.origin.z + ray.direction.z - thickness);
   ssray.origin.w = ssray.origin.w * 2.0 - 1.0;
   ssray.direction.w = ssray.direction.w * 2.0 - 1.0;
 

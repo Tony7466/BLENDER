@@ -36,12 +36,12 @@ void main()
     return;
   }
 
-  vec3 P = get_world_space_from_depth(uv, depth);
+  vec3 P = drw_point_screen_to_world(vec3(uv, depth));
+  vec3 V = drw_world_incident_vector(P);
+
   Ray ray;
   ray.origin = P;
   ray.direction = ray_data.xyz;
-
-  vec3 V = cameraVec(P);
 
   /* Using ray direction as geometric normal to bias the sampling position.
    * This is faster than loading the gbuffer again and averages between reflected and normal

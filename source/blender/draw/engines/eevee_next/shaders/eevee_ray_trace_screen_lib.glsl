@@ -17,7 +17,7 @@
 /* Inputs expected to be in view-space. */
 void raytrace_clip_ray_to_near_plane(inout Ray ray)
 {
-  float near_dist = get_view_z_from_depth(0.0);
+  float near_dist = drw_view_near();
   if ((ray.origin.z + ray.direction.z * ray.max_time) > near_dist) {
     ray.max_time = abs((near_dist - ray.origin.z) / ray.direction.z);
   }
@@ -76,7 +76,7 @@ METAL_ATTR ScreenTraceHitData raytrace_screen(RayTraceData rt_data,
   if (!allow_self_intersection && ssray.max_time < 1.1) {
     /* Still output the clipped ray. */
     vec3 hit_ssP = ssray.origin.xyz + ssray.direction.xyz * ssray.max_time;
-    vec3 hit_P = get_world_space_from_depth(hit_ssP.xy, saturate(hit_ssP.z));
+    vec3 hit_P = drw_point_screen_to_world(vec3(hit_ssP.xy, saturate(hit_ssP.z)));
     ray.direction = hit_P - ray.origin;
 
     ScreenTraceHitData no_hit;
@@ -88,7 +88,7 @@ METAL_ATTR ScreenTraceHitData raytrace_screen(RayTraceData rt_data,
   ssray.max_time = max(1.1, ssray.max_time);
 
   float prev_delta = 0.0, prev_time = 0.0;
-  float depth_sample = get_depth_from_view_z(ray.origin.z);
+  float depth_sample = drw_depth_view_to_screen(ray.origin.z);
   float delta = depth_sample - ssray.origin.z;
 
   float lod_fac = saturate(fast_sqrt(roughness) * 2.0 - 0.4);

@@ -24,6 +24,24 @@ vec3 drw_view_position()
   return drw_view.viewinv[3].xyz;
 }
 
+/* Returns the projection matrix far clip distance. */
+float drw_view_far()
+{
+  if (drw_view_is_perspective()) {
+    return -drw_view.winmat[3][2] / (drw_view.winmat[2][2] + 1.0);
+  }
+  return -(drw_view.winmat[3][2] - 1.0) / drw_view.winmat[2][2];
+}
+
+/* Returns the projection matrix near clip distance. */
+float drw_view_near()
+{
+  if (drw_view_is_perspective()) {
+    return -drw_view.winmat[3][2] / (drw_view.winmat[2][2] - 1.0);
+  }
+  return -(drw_view.winmat[3][2] + 1.0) / drw_view.winmat[2][2];
+}
+
 /**
  * Returns the world incident vector `V` (going towards the viewer)
  * from the world position `P` and the current view.

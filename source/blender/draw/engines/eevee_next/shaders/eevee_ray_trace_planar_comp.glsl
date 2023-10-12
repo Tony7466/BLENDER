@@ -39,8 +39,8 @@ void main()
   float depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
-  vec3 P = get_world_space_from_depth(uv, depth);
-  vec3 V = cameraVec(P);
+  vec3 P = drw_point_screen_to_world(vec3(uv, depth));
+  vec3 V = drw_world_incident_vector(P);
 
   int planar_id = lightprobe_planar_select(P, V, ray_data.xyz);
   if (planar_id == -1) {
