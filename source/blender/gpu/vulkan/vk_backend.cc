@@ -95,10 +95,14 @@ void VKBackend::detect_workarounds(VKDevice &device)
     return;
   }
 
+#if 0
   workarounds.shader_output_layer =
       !device.physical_device_vulkan_12_features_get().shaderOutputLayer;
   workarounds.shader_output_viewport_index =
       !device.physical_device_vulkan_12_features_get().shaderOutputViewportIndex;
+#else
+  workarounds.shader_output_layer = workarounds.shader_output_viewport_index = true;
+#endif
 
   /* AMD GPUs don't support texture formats that use are aligned to 24 or 48 bits. */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
