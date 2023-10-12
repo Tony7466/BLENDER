@@ -203,7 +203,6 @@ static void node_geo_exec(GeoNodeExecParams params)
             pointcloud_by_layer[layer_index] = pointcloud;
           }
           if (!pointcloud_by_layer.is_empty()) {
-            /* TODO: Need to propagate layer attributes to the instances. */
             bke::Instances *pointcloud_instances = new bke::Instances();
             for (PointCloud *pointcloud : pointcloud_by_layer) {
               if (!pointcloud) {
@@ -220,37 +219,7 @@ static void node_geo_exec(GeoNodeExecParams params)
               pointcloud_instances->add_instance(handle, float4x4::identity());
             }
             geometry_set.replace_instances(pointcloud_instances);
-
-            Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-            geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::GreasePencil},
-                                                           GeometryComponent::Type::Instance,
-                                                           false,
-                                                           propagation_info,
-                                                           attributes_to_propagate);
-
-            const GeometryComponent &src_component = *geometry_set.get_component(
-                GeometryComponent::Type::GreasePencil);
-            const bke::AttributeAccessor &src_attributes = *src_component.attributes();
-
-            InstancesComponent &instances_component =
-                geometry_set.get_component_for_write<InstancesComponent>();
-            bke::Instances *dst_component = instances_component.get_for_write();
-            bke::MutableAttributeAccessor dst_attributes = dst_component->attributes_for_write();
-            for (const auto item : attributes_to_propagate.items()) {
-              const AttributeIDRef &id = item.key;
-              const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_LAYER);
-              if (!src) {
-                /* Domain interpolation can fail if the source domain is empty. */
-                continue;
-              }
-
-              const eCustomDataType type = bke::cpp_type_to_custom_data_type(src.varray.type());
-              BLI_assert(src.varray.size() == dst_component->instances_num() && src.sharing_info &&
-                         src.varray.is_span());
-              const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
-                                                  *src.sharing_info);
-              dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, type, init);
-            }
+            geometry_set.propagate_attributes_from_layer_to_instances(propagation_info);
           }
           geometry_set.replace_grease_pencil(nullptr);
         }
@@ -302,7 +271,6 @@ static void node_geo_exec(GeoNodeExecParams params)
             pointcloud_by_layer[layer_index] = pointcloud;
           }
           if (!pointcloud_by_layer.is_empty()) {
-            /* TODO: Need to propagate layer attributes to the instances. */
             bke::Instances *pointcloud_instances = new bke::Instances();
             for (PointCloud *pointcloud : pointcloud_by_layer) {
               if (!pointcloud) {
@@ -319,6 +287,7 @@ static void node_geo_exec(GeoNodeExecParams params)
               pointcloud_instances->add_instance(handle, float4x4::identity());
             }
             geometry_set.replace_instances(pointcloud_instances);
+            geometry_set.propagate_attributes_from_layer_to_instances(propagation_info);
           }
           geometry_set.replace_grease_pencil(nullptr);
         }
@@ -364,7 +333,6 @@ static void node_geo_exec(GeoNodeExecParams params)
             pointcloud_by_layer[layer_index] = pointcloud;
           }
           if (!pointcloud_by_layer.is_empty()) {
-            /* TODO: Need to propagate layer attributes to the instances. */
             bke::Instances *pointcloud_instances = new bke::Instances();
             for (PointCloud *pointcloud : pointcloud_by_layer) {
               if (!pointcloud) {
@@ -381,6 +349,7 @@ static void node_geo_exec(GeoNodeExecParams params)
               pointcloud_instances->add_instance(handle, float4x4::identity());
             }
             geometry_set.replace_instances(pointcloud_instances);
+            geometry_set.propagate_attributes_from_layer_to_instances(propagation_info);
           }
           geometry_set.replace_grease_pencil(nullptr);
         }

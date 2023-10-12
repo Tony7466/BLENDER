@@ -605,6 +605,39 @@ void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
   }
 }
 
+void GeometrySet::propagate_attributes_from_layer_to_instances(
+    const AnonymousAttributePropagationInfo &propagation_info)
+{
+  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  this->gather_attributes_for_propagation({GeometryComponent::Type::GreasePencil},
+                                          GeometryComponent::Type::Instance,
+                                          false,
+                                          propagation_info,
+                                          attributes_to_propagate);
+
+  const GeometryComponent &src_component = *this->get_component(
+      GeometryComponent::Type::GreasePencil);
+  const bke::AttributeAccessor &src_attributes = *src_component.attributes();
+
+  InstancesComponent &instances_component = this->get_component_for_write<InstancesComponent>();
+  bke::Instances *dst_component = instances_component.get_for_write();
+  bke::MutableAttributeAccessor dst_attributes = dst_component->attributes_for_write();
+
+  for (const auto item : attributes_to_propagate.items()) {
+    const AttributeIDRef &id = item.key;
+    const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_LAYER);
+    if (!src) {
+      /* Domain interpolation can fail if the source domain is empty. */
+      continue;
+    }
+    const eCustomDataType type = bke::cpp_type_to_custom_data_type(src.varray.type());
+    BLI_assert(src.varray.size() == dst_component->instances_num() && src.sharing_info &&
+               src.varray.is_span());
+    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
+    dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, type, init);
+  }
+}
+
 void GeometrySet::gather_attributes_for_propagation(
     const Span<GeometryComponent::Type> component_types,
     const GeometryComponent::Type dst_component_type,
