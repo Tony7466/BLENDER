@@ -110,7 +110,7 @@ void main()
 
   Surfel surfel = surfel_buf[surfel_index];
 
-  vec3 sky_L = drw_view_vector_get(surfel.position);
+  vec3 sky_L = drw_world_incident_vector(surfel.position);
 
   if (surfel.next > -1) {
     Surfel surfel_next = surfel_buf[surfel.next];

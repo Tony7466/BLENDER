@@ -117,7 +117,7 @@ void main()
     surfel_prev = surfel_next;
   }
 
-  vec3 sky_L = cameraVec(P);
+  vec3 sky_L = drw_world_incident_vector(P);
 
   SphericalHarmonicL1 sh;
   sh.L0.M0 = imageLoad(irradiance_L0_img, grid_coord);
