@@ -52,10 +52,10 @@
 #include "BKE_mball.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BLO_read_write.hh"
 

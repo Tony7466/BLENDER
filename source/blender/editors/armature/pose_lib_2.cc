@@ -9,6 +9,8 @@
 #include <cmath>
 #include <cstring>
 
+#include "AS_asset_representation.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_string.h"
@@ -23,11 +25,11 @@
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pose_backup.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -44,6 +46,7 @@
 #include "ED_util.hh"
 
 #include "ANIM_bone_collections.h"
+#include "ANIM_keyframing.hh"
 
 #include "armature_intern.h"
 
@@ -114,7 +117,7 @@ static void poselib_backup_posecopy(PoseBlendData *pbd)
 /* Auto-key/tag bones affected by the pose Action. */
 static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
 {
-  if (!autokeyframe_cfra_can_key(scene, &pbd->ob->id)) {
+  if (!blender::animrig::autokeyframe_cfra_can_key(scene, &pbd->ob->id)) {
     return;
   }
 
@@ -152,7 +155,7 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
   }
 
   /* Perform actual auto-keying. */
-  ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+  ANIM_apply_keyingset(C, &dsources, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
   BLI_freelistN(&dsources);
 
   /* send notifiers for this */
@@ -285,14 +288,11 @@ static void poselib_tempload_exit(PoseBlendData *pbd)
 
 static bAction *poselib_blend_init_get_action(bContext *C, wmOperator *op)
 {
-  bool asset_handle_valid;
-  const AssetHandle asset_handle = CTX_wm_asset_handle(C, &asset_handle_valid);
-  /* Poll callback should check. */
-  BLI_assert(asset_handle_valid);
+  const AssetRepresentationHandle *asset = CTX_wm_asset(C);
 
   PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
 
-  pbd->temp_id_consumer = ED_asset_temp_id_consumer_create(&asset_handle);
+  pbd->temp_id_consumer = ED_asset_temp_id_consumer_create(asset);
   return (bAction *)ED_asset_temp_id_consumer_ensure_local_id(
       pbd->temp_id_consumer, ID_AC, CTX_data_main(C), op->reports);
 }
@@ -551,11 +551,9 @@ static int poselib_blend_exec(bContext *C, wmOperator *op)
 
 static bool poselib_asset_in_context(bContext *C)
 {
-  bool asset_handle_valid;
   /* Check whether the context provides the asset data needed to add a pose. */
-  const AssetHandle asset_handle = CTX_wm_asset_handle(C, &asset_handle_valid);
-
-  return asset_handle_valid && (ED_asset_handle_get_id_type(&asset_handle) == ID_AC);
+  const AssetRepresentationHandle *asset = CTX_wm_asset(C);
+  return asset && (asset->get_id_type() == ID_AC);
 }
 
 /* Poll callback for operators that require existing PoseLib data (with poses) to work. */

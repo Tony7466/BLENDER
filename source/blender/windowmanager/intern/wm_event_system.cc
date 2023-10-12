@@ -41,7 +41,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
@@ -64,8 +64,6 @@
 
 #include "UI_interface.hh"
 
-#include "PIL_time.h"
-
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.h"
@@ -78,8 +76,8 @@
 #include "wm_window.hh"
 #include "wm_window_private.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 
@@ -96,6 +94,11 @@
  * through these events when called, see: #65479.
  */
 #define USE_GIZMO_MOUSE_PRIORITY_HACK
+
+#ifdef WITH_INPUT_IME
+BLI_STATIC_ASSERT(sizeof(GHOST_TEventImeData) == sizeof(wmIMEData),
+                  "These structs must match exactly!");
+#endif
 
 /**
  * Return value of handler-operator call.
@@ -126,7 +129,9 @@ static wmEvent *wm_event_add_mousemove_to_head(wmWindow *win);
 static void wm_operator_free_for_fileselect(wmOperator *file_operator);
 
 static void wm_event_state_update_and_click_set_ex(wmEvent *event,
+                                                   uint64_t event_time_ms,
                                                    wmEvent *event_state,
+                                                   uint64_t *event_state_prev_press_time_ms_p,
                                                    const bool is_keyboard,
                                                    const bool check_double_click);
 
@@ -175,7 +180,15 @@ wmEvent *WM_event_add_simulate(wmWindow *win, const wmEvent *event_to_add)
     copy_v2_v2_int(event->prev_xy, win->eventstate->xy);
   }
   else if (ISKEYBOARD_OR_BUTTON(event->type)) {
-    wm_event_state_update_and_click_set_ex(event, win->eventstate, ISKEYBOARD(event->type), false);
+    /* Dummy time for simulated events. */
+    const uint64_t event_time_ms = UINT64_MAX;
+    uint64_t eventstate_prev_press_time_ms = 0;
+    wm_event_state_update_and_click_set_ex(event,
+                                           event_time_ms,
+                                           win->eventstate,
+                                           &eventstate_prev_press_time_ms,
+                                           ISKEYBOARD(event->type),
+                                           false);
   }
   return event;
 }
@@ -2477,7 +2490,8 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
         if (retval & (OPERATOR_CANCELLED | OPERATOR_FINISHED)) {
           wm_operator_reports(C, op, retval, false);
 
-          if (op->type->modalkeymap) {
+          wmOperator *op_test = handler->op->opm ? handler->op->opm : handler->op;
+          if (op_test->type->modalkeymap) {
             WM_window_status_area_tag_redraw(win);
           }
         }
@@ -2738,7 +2752,10 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
             wm_window_make_drawable(wm, root_win);
             /* Ensure correct cursor position, otherwise, popups may close immediately after
              * opening (#UI_BLOCK_MOVEMOUSE_QUIT). */
-            wm_cursor_position_get(root_win, &eventstate->xy[0], &eventstate->xy[1]);
+            int xy[2];
+            if (wm_cursor_position_get(root_win, &xy[0], &xy[1])) {
+              copy_v2_v2_int(eventstate->xy, xy);
+            }
             wm->winactive = root_win; /* Reports use this... */
           }
           else if (file_area->full) {
@@ -5231,7 +5248,9 @@ static wmWindow *wm_event_cursor_other_windows(wmWindowManager *wm, wmWindow *wi
   return nullptr;
 }
 
-static bool wm_event_is_double_click(const wmEvent *event)
+static bool wm_event_is_double_click(const wmEvent *event,
+                                     const uint64_t event_time_ms,
+                                     const uint64_t event_prev_press_time_ms)
 {
   if ((event->type == event->prev_type) && (event->prev_val == KM_RELEASE) &&
       (event->val == KM_PRESS))
@@ -5240,7 +5259,7 @@ static bool wm_event_is_double_click(const wmEvent *event)
       /* Pass. */
     }
     else {
-      if ((PIL_check_seconds_timer() - event->prev_press_time) * 1000 < U.dbl_click_time) {
+      if ((event_time_ms - event_prev_press_time_ms) < uint64_t(U.dbl_click_time)) {
         return true;
       }
     }
@@ -5258,14 +5277,16 @@ static void wm_event_prev_values_set(wmEvent *event, wmEvent *event_state)
   event->prev_type = event_state->prev_type = event_state->type;
 }
 
-static void wm_event_prev_click_set(wmEvent *event_state)
+static void wm_event_prev_click_set(uint64_t event_time_ms,
+                                    wmEvent *event_state,
+                                    uint64_t *r_event_state_prev_press_time_ms)
 {
-  event_state->prev_press_time = PIL_check_seconds_timer();
   event_state->prev_press_type = event_state->type;
   event_state->prev_press_modifier = event_state->modifier;
   event_state->prev_press_keymodifier = event_state->keymodifier;
   event_state->prev_press_xy[0] = event_state->xy[0];
   event_state->prev_press_xy[1] = event_state->xy[1];
+  *r_event_state_prev_press_time_ms = event_time_ms;
 }
 
 static wmEvent *wm_event_add_mousemove(wmWindow *win, const wmEvent *event)
@@ -5348,7 +5369,9 @@ static wmEvent *wm_event_add_trackpad(wmWindow *win, const wmEvent *event, int d
  * Needed for event simulation where the time of click events is not so predictable.
  */
 static void wm_event_state_update_and_click_set_ex(wmEvent *event,
+                                                   const uint64_t event_time_ms,
                                                    wmEvent *event_state,
+                                                   uint64_t *event_state_prev_press_time_ms_p,
                                                    const bool is_keyboard,
                                                    const bool check_double_click)
 {
@@ -5374,24 +5397,33 @@ static void wm_event_state_update_and_click_set_ex(wmEvent *event,
    * since the `event_state` and the `event` are not kept in sync. */
 
   /* Double click test. */
-  if (check_double_click && wm_event_is_double_click(event)) {
+  if (check_double_click &&
+      wm_event_is_double_click(event, event_time_ms, *event_state_prev_press_time_ms_p))
+  {
     CLOG_INFO(WM_LOG_HANDLERS, 1, "DBL_CLICK: detected");
     event->val = KM_DBL_CLICK;
   }
   else if (event->val == KM_PRESS) {
     if ((event->flag & WM_EVENT_IS_REPEAT) == 0) {
-      wm_event_prev_click_set(event_state);
+      wm_event_prev_click_set(event_time_ms, event_state, event_state_prev_press_time_ms_p);
     }
   }
 }
 
 static void wm_event_state_update_and_click_set(wmEvent *event,
+                                                uint64_t event_time_ms,
                                                 wmEvent *event_state,
+                                                uint64_t *event_state_prev_press_time_ms_p,
                                                 const GHOST_TEventType type)
 {
   const bool is_keyboard = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventKeyUp);
   const bool check_double_click = true;
-  wm_event_state_update_and_click_set_ex(event, event_state, is_keyboard, check_double_click);
+  wm_event_state_update_and_click_set_ex(event,
+                                         event_time_ms,
+                                         event_state,
+                                         event_state_prev_press_time_ms_p,
+                                         is_keyboard,
+                                         check_double_click);
 }
 
 /* Returns true when the two events corresponds to a press of the same key with the same modifiers.
@@ -5441,7 +5473,11 @@ static bool wm_event_is_ignorable_key_press(const wmWindow *win, const wmEvent &
   return wm_event_is_same_key_press(last_event, event);
 }
 
-void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type, void *customdata)
+void wm_event_add_ghostevent(wmWindowManager *wm,
+                             wmWindow *win,
+                             const int type,
+                             const void *customdata,
+                             const uint64_t event_time_ms)
 {
   if (UNLIKELY(G.f & G_FLAG_EVENT_SIMULATE)) {
     return;
@@ -5458,6 +5494,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
    * - Data added to event and \a event_state stays and is handled immediately.
    */
   wmEvent event, *event_state = win->eventstate;
+  uint64_t *event_state_prev_press_time_ms_p = &win->eventstate_prev_press_time_ms;
 
   /* Initialize and copy state (only mouse x y and modifiers). */
   event = *event_state;
@@ -5507,9 +5544,11 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
   switch (type) {
     /* Mouse move, also to inactive window (X11 does this). */
     case GHOST_kEventCursorMove: {
-      GHOST_TEventCursorData *cd = static_cast<GHOST_TEventCursorData *>(customdata);
+      const GHOST_TEventCursorData *cd = static_cast<const GHOST_TEventCursorData *>(customdata);
 
       copy_v2_v2_int(event.xy, &cd->x);
+      wm_cursor_position_from_ghost_screen_coords(win, &event.xy[0], &event.xy[1]);
+
       wm_stereo3d_mouse_offset_apply(win, event.xy);
       wm_tablet_data_from_ghost(&cd->tablet, &event.tablet);
 
@@ -5548,12 +5587,15 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       break;
     }
     case GHOST_kEventTrackpad: {
-      GHOST_TEventTrackpadData *pd = static_cast<GHOST_TEventTrackpadData *>(customdata);
+      const GHOST_TEventTrackpadData *pd = static_cast<const GHOST_TEventTrackpadData *>(
+          customdata);
+
+      int delta[2] = {pd->deltaX, -pd->deltaY};
       switch (pd->subtype) {
         case GHOST_kTrackpadEventMagnify:
           event.type = MOUSEZOOM;
-          pd->deltaX = -pd->deltaX;
-          pd->deltaY = -pd->deltaY;
+          delta[0] = -delta[0];
+          delta[1] = -delta[1];
           break;
         case GHOST_kTrackpadEventSmartMagnify:
           event.type = MOUSESMARTZOOM;
@@ -5567,8 +5609,9 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
           break;
       }
 
-      event.xy[0] = event_state->xy[0] = pd->x;
-      event.xy[1] = event_state->xy[1] = pd->y;
+      copy_v2_v2_int(event.xy, &pd->x);
+      wm_cursor_position_from_ghost_screen_coords(win, &event.xy[0], &event.xy[1]);
+      copy_v2_v2_int(event_state->xy, event.xy);
       event.val = KM_NOTHING;
 
       /* The direction is inverted from the device due to system preferences. */
@@ -5576,13 +5619,13 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
         event.flag |= WM_EVENT_SCROLL_INVERT;
       }
 
-      wm_event_add_trackpad(win, &event, pd->deltaX, -pd->deltaY);
+      wm_event_add_trackpad(win, &event, delta[0], delta[1]);
       break;
     }
     /* Mouse button. */
     case GHOST_kEventButtonDown:
     case GHOST_kEventButtonUp: {
-      GHOST_TEventButtonData *bd = static_cast<GHOST_TEventButtonData *>(customdata);
+      const GHOST_TEventButtonData *bd = static_cast<const GHOST_TEventButtonData *>(customdata);
 
       /* Get value and type from Ghost. */
       event.val = (type == GHOST_kEventButtonDown) ? KM_PRESS : KM_RELEASE;
@@ -5613,7 +5656,11 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       wm_tablet_data_from_ghost(&bd->tablet, &event.tablet);
 
       wm_eventemulation(&event, false);
-      wm_event_state_update_and_click_set(&event, event_state, (GHOST_TEventType)type);
+      wm_event_state_update_and_click_set(&event,
+                                          event_time_ms,
+                                          event_state,
+                                          event_state_prev_press_time_ms_p,
+                                          (GHOST_TEventType)type);
 
       /* Add to other window if event is there (not to both!). */
       wmWindow *win_other = wm_event_cursor_other_windows(wm, win, &event);
@@ -5645,7 +5692,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
     /* Keyboard. */
     case GHOST_kEventKeyDown:
     case GHOST_kEventKeyUp: {
-      GHOST_TEventKeyData *kd = static_cast<GHOST_TEventKeyData *>(customdata);
+      const GHOST_TEventKeyData *kd = static_cast<const GHOST_TEventKeyData *>(customdata);
       event.type = convert_key(kd->key);
       if (UNLIKELY(event.type == EVENT_NONE)) {
         break;
@@ -5694,11 +5741,23 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
                      utf8_buf_len);
         }
 
-        if (BLI_str_utf8_size(event.utf8_buf) == -1) {
+        const int utf8_buf_len = BLI_str_utf8_size_or_error(event.utf8_buf);
+        if (utf8_buf_len == -1) {
           CLOG_ERROR(WM_LOG_EVENTS,
                      "ghost detected an invalid unicode character '%d'",
                      int(uchar(event.utf8_buf[0])));
           event.utf8_buf[0] = '\0';
+        }
+        else {
+#ifndef NDEBUG
+          /* Ensure callers don't accidentally treat this as a "string",
+           * it's not null terminated. */
+          if (utf8_buf_len > 0) {
+            for (int i = utf8_buf_len; i < ARRAY_SIZE(event.utf8_buf); i++) {
+              event.utf8_buf[i] = 0xff;
+            }
+          }
+#endif /* !NDEBUG */
         }
       }
 
@@ -5772,7 +5831,11 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       }
 
       /* It's important `event.modifier` has been initialized first. */
-      wm_event_state_update_and_click_set(&event, event_state, (GHOST_TEventType)type);
+      wm_event_state_update_and_click_set(&event,
+                                          event_time_ms,
+                                          event_state,
+                                          event_state_prev_press_time_ms_p,
+                                          (GHOST_TEventType)type);
 
       /* If test_break set, it catches this. Do not set with modifier presses.
        * Exclude modifiers because MS-Windows uses these to bring up the task manager.
@@ -5793,7 +5856,8 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
     }
 
     case GHOST_kEventWheel: {
-      GHOST_TEventWheelData *wheelData = static_cast<GHOST_TEventWheelData *>(customdata);
+      const GHOST_TEventWheelData *wheelData = static_cast<const GHOST_TEventWheelData *>(
+          customdata);
 
       if (wheelData->z > 0) {
         event.type = WHEELUPMOUSE;
@@ -5803,16 +5867,6 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       }
 
       event.val = KM_PRESS;
-      wm_event_add(win, &event);
-
-      break;
-    }
-    case GHOST_kEventTimer: {
-      event.type = TIMER;
-      event.custom = EVT_DATA_TIMER;
-      event.customdata = customdata;
-      event.val = KM_NOTHING;
-      event.keymodifier = 0;
       wm_event_add(win, &event);
 
       break;
@@ -5830,7 +5884,8 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
     }
 
     case GHOST_kEventNDOFButton: {
-      GHOST_TEventNDOFButtonData *e = static_cast<GHOST_TEventNDOFButtonData *>(customdata);
+      const GHOST_TEventNDOFButtonData *e = static_cast<const GHOST_TEventNDOFButtonData *>(
+          customdata);
 
       event.type = NDOF_BUTTON_INDEX_AS_EVENT(e->button);
 
@@ -5848,7 +5903,11 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       event.custom = 0;
       event.customdata = nullptr;
 
-      wm_event_state_update_and_click_set(&event, event_state, (GHOST_TEventType)type);
+      wm_event_state_update_and_click_set(&event,
+                                          event_time_ms,
+                                          event_state,
+                                          event_state_prev_press_time_ms_p,
+                                          (GHOST_TEventType)type);
 
       wm_event_add(win, &event);
 
@@ -5870,8 +5929,9 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
 #ifdef WITH_INPUT_IME
     case GHOST_kEventImeCompositionStart: {
       event.val = KM_PRESS;
-      win->ime_data = static_cast<wmIMEData *>(customdata);
-      win->ime_data->is_ime_composing = true;
+      win->ime_data = static_cast<const wmIMEData *>(customdata);
+      BLI_assert(win->ime_data != nullptr);
+      win->ime_data_is_composing = true;
       event.type = WM_IME_COMPOSITE_START;
       wm_event_add(win, &event);
       break;
@@ -5884,9 +5944,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
     }
     case GHOST_kEventImeCompositionEnd: {
       event.val = KM_PRESS;
-      if (win->ime_data) {
-        win->ime_data->is_ime_composing = false;
-      }
+      win->ime_data_is_composing = false;
       event.type = WM_IME_COMPOSITE_END;
       wm_event_add(win, &event);
       break;

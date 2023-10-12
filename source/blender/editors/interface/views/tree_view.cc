@@ -26,6 +26,16 @@
 
 namespace blender::ui {
 
+static int unpadded_item_height()
+{
+  return UI_UNIT_Y;
+}
+static int padded_item_height()
+{
+  const uiStyle *style = UI_style_get_dpi();
+  return unpadded_item_height() + style->buttonspacey;
+}
+
 /* ---------------------------------------------------------------------- */
 
 AbstractTreeViewItem &TreeViewItemContainer::add_tree_item(
@@ -232,8 +242,9 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
 
 /* ---------------------------------------------------------------------- */
 
-TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior)
-    : view_(view), behavior_(behavior)
+TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeViewItem &view_item,
+                                               DropBehavior behavior)
+    : view_item_(view_item), behavior_(behavior)
 {
 }
 
@@ -244,12 +255,11 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
     return DropLocation::Into;
   }
 
-  const AbstractTreeViewItem *hovered_item = view_.find_hovered(region, event.xy);
-  if (!hovered_item) {
+  std::optional<rctf> win_rect = view_item_.get_win_rect(region);
+  if (!win_rect) {
+    BLI_assert_unreachable();
     return std::nullopt;
   }
-  std::optional<rctf> win_rect = hovered_item->get_win_rect(region);
-  BLI_assert(win_rect.has_value());
   const float item_height = BLI_rctf_size_y(&*win_rect);
 
   BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::ReorderAndInsert));
@@ -266,8 +276,8 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
     return DropLocation::Before;
   }
   if (event.xy[1] - win_rect->ymin <= segment_height) {
-    if (behavior_ == DropBehavior::ReorderAndInsert && hovered_item->is_collapsible() &&
-        !hovered_item->is_collapsed())
+    if (behavior_ == DropBehavior::ReorderAndInsert && view_item_.is_collapsible() &&
+        !view_item_.is_collapsed())
     {
       /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
        * after. */
@@ -300,6 +310,7 @@ void AbstractTreeViewItem::add_treerow_button(uiBlock &block)
       &block, UI_BTYPE_VIEW_ITEM, 0, "", 0, 0, UI_UNIT_X * 10, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
 
   view_item_but_->view_item = reinterpret_cast<uiViewItemHandle *>(this);
+  view_item_but_->draw_height = unpadded_item_height();
   UI_but_func_set(view_item_but_, tree_row_click_fn, view_item_but_, nullptr);
 }
 
@@ -579,7 +590,7 @@ void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
   uiLayout &parent_layout = current_layout();
 
   uiLayout *box = uiLayoutBox(&parent_layout);
-  uiLayoutColumn(box, false);
+  uiLayoutColumn(box, true);
 
   tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
                          AbstractTreeView::IterOptions::SkipCollapsed |
@@ -616,6 +627,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   if (!item.is_interactive_) {
     uiLayoutSetActive(overlap, false);
   }
+  /* Scale the layout for the padded height. Widgets will be vertically centered then. */
+  uiLayoutSetScaleY(overlap, float(padded_item_height()) / UI_UNIT_Y);
 
   uiLayout *row = uiLayoutRow(overlap, false);
   /* Enable emboss for mouse hover highlight. */

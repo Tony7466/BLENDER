@@ -10,7 +10,7 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
@@ -19,7 +19,7 @@
 #include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_sample.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
@@ -35,7 +35,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GEO_add_curves_on_mesh.hh"
 #include "GEO_reverse_uv_sampler.hh"

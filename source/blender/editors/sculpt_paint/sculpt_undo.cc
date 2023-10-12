@@ -37,7 +37,6 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -58,7 +57,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.hh"
@@ -68,7 +67,7 @@
 /* TODO(sergey): Ideally should be no direct call to such low level things. */
 #include "BKE_subdiv_eval.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -320,28 +319,26 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
     if (BKE_pbvh_node_has_vert_with_normal_update_tag(data->pbvh, node)) {
       BKE_pbvh_node_mark_update(node);
     }
-    int verts_num;
-    BKE_pbvh_node_num_verts(data->pbvh, node, nullptr, &verts_num);
-    const int *vert_indices = BKE_pbvh_node_get_vert_indices(node);
+    const blender::Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
     if (data->modified_mask_verts != nullptr) {
-      for (int i = 0; i < verts_num; i++) {
-        if (data->modified_mask_verts[vert_indices[i]]) {
+      for (const int vert : verts) {
+        if (data->modified_mask_verts[vert]) {
           BKE_pbvh_node_mark_update_mask(node);
           break;
         }
       }
     }
     if (data->modified_color_verts != nullptr) {
-      for (int i = 0; i < verts_num; i++) {
-        if (data->modified_color_verts[vert_indices[i]]) {
+      for (const int vert : verts) {
+        if (data->modified_color_verts[vert]) {
           BKE_pbvh_node_mark_update_color(node);
           break;
         }
       }
     }
     if (data->modified_hidden_verts != nullptr) {
-      for (int i = 0; i < verts_num; i++) {
-        if (data->modified_hidden_verts[vert_indices[i]]) {
+      for (const int vert : verts) {
+        if (data->modified_hidden_verts[vert]) {
           if (data->rebuild) {
             BKE_pbvh_node_mark_update_visibility(node);
           }
@@ -568,16 +565,18 @@ static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode, bool *m
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
+  Mesh *mesh = BKE_object_get_original_mesh(ob);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
-  float *vmask;
   int *index;
 
   if (unode->maxvert) {
     /* Regular mesh restore. */
+    float *vmask = static_cast<float *>(
+        CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+    ss->vmask = vmask;
 
     index = unode->index;
-    vmask = ss->vmask;
 
     for (int i = 0; i < unode->totvert; i++) {
       if (vmask[index[i]] != unode->mask[i]) {
@@ -637,15 +636,6 @@ static bool sculpt_undo_restore_face_sets(bContext *C,
   return modified;
 }
 
-static void sculpt_undo_bmesh_restore_generic_task_cb(void *__restrict userdata,
-                                                      const int n,
-                                                      const TaskParallelTLS *__restrict /*tls*/)
-{
-  PBVHNode **nodes = static_cast<PBVHNode **>(userdata);
-
-  BKE_pbvh_node_mark_redraw(nodes[n]);
-}
-
 static void sculpt_undo_bmesh_restore_generic(SculptUndoNode *unode, Object *ob, SculptSession *ss)
 {
   if (unode->applied) {
@@ -659,14 +649,9 @@ static void sculpt_undo_bmesh_restore_generic(SculptUndoNode *unode, Object *ob,
 
   if (unode->type == SCULPT_UNDO_MASK) {
     Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
-
-    TaskParallelSettings settings;
-    BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
-    BLI_task_parallel_range(0,
-                            nodes.size(),
-                            static_cast<void *>(nodes.data()),
-                            sculpt_undo_bmesh_restore_generic_task_cb,
-                            &settings);
+    for (PBVHNode *node : nodes) {
+      BKE_pbvh_node_mark_redraw(node);
+    }
   }
   else {
     SCULPT_pbvh_clear(ob);
@@ -1054,7 +1039,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
 
     if (update_mask) {
-      BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateMask);
+      BKE_pbvh_update_mask(ss->pbvh);
     }
     if (update_face_sets) {
       DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
@@ -1462,13 +1447,9 @@ static void sculpt_undo_store_hidden(Object *ob, SculptUndoNode *unode)
     /* Already stored during allocation. */
   }
   else {
-    int allvert;
-
-    BKE_pbvh_node_num_verts(pbvh, node, nullptr, &allvert);
-    const int *vert_indices = BKE_pbvh_node_get_vert_indices(node);
-    for (int i = 0; i < allvert; i++) {
-      BLI_BITMAP_SET(unode->vert_hidden, i, hide_vert[vert_indices[i]]);
-    }
+    const blender::Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
+    for (const int i : verts.index_range())
+      BLI_BITMAP_SET(unode->vert_hidden, i, hide_vert[verts[i]]);
   }
 }
 
@@ -1478,7 +1459,7 @@ static void sculpt_undo_store_mask(Object *ob, SculptUndoNode *unode)
   PBVHVertexIter vd;
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, static_cast<PBVHNode *>(unode->node), vd, PBVH_ITER_ALL) {
-    unode->mask[vd.i] = *vd.mask;
+    unode->mask[vd.i] = vd.mask;
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -1659,8 +1640,8 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
     int allvert, allloop;
 
     BKE_pbvh_node_num_verts(ss->pbvh, static_cast<PBVHNode *>(unode->node), nullptr, &allvert);
-    const int *vert_indices = BKE_pbvh_node_get_vert_indices(node);
-    memcpy(unode->index, vert_indices, sizeof(int) * allvert);
+    const blender::Span<int> vert_indices = BKE_pbvh_node_get_vert_indices(node);
+    memcpy(unode->index, vert_indices.data(), sizeof(int) * allvert);
 
     if (unode->loop_index) {
       BKE_pbvh_node_num_loops(ss->pbvh, static_cast<PBVHNode *>(unode->node), &allloop);

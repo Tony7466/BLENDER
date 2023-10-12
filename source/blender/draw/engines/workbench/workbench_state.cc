@@ -8,11 +8,11 @@
 #include "BKE_editmesh.h"
 #include "BKE_mesh_types.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_fluid_types.h"
 #include "ED_paint.hh"
 #include "ED_view3d.hh"
@@ -173,6 +173,8 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
              shading.flag & V3D_SHADING_DEPTH_OF_FIELD;
 
   draw_object_id = draw_outline || draw_curvature;
+
+  overlays_enabled = v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS);
 };
 
 static const CustomData *get_loop_custom_data(const Mesh *mesh)
@@ -205,7 +207,7 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
   sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->rv3d) &&
                 !DRW_state_is_image_render();
   draw_shadow = scene_state.draw_shadows && (ob->dtx & OB_DRAW_NO_SHADOW_CAST) == 0 &&
-                !is_active && !sculpt_pbvh && !DRW_object_use_hide_faces(ob);
+                !sculpt_pbvh && !(is_active && DRW_object_use_hide_faces(ob));
 
   color_type = (eV3DShadingColorType)scene_state.shading.color_type;
 

@@ -659,7 +659,10 @@ void VKShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
   build_shader_module(sources, shaderc_compute_shader, &compute_module_);
 }
 
-void VKShader::warm_cache(int /*limit*/) {}
+void VKShader::warm_cache(int /*limit*/)
+{
+  NOT_YET_IMPLEMENTED
+}
 
 bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 {
@@ -940,14 +943,19 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
 void VKShader::transform_feedback_names_set(Span<const char *> /*name_list*/,
                                             eGPUShaderTFBType /*geom_type*/)
 {
+  NOT_YET_IMPLEMENTED
 }
 
 bool VKShader::transform_feedback_enable(GPUVertBuf *)
 {
+  NOT_YET_IMPLEMENTED
   return false;
 }
 
-void VKShader::transform_feedback_disable() {}
+void VKShader::transform_feedback_disable()
+{
+  NOT_YET_IMPLEMENTED
+}
 
 void VKShader::update_graphics_pipeline(VKContext &context,
                                         const GPUPrimType prim_type,
@@ -1006,7 +1014,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   if (push_constants_storage != VKPushConstants::StorageType::NONE) {
     ss << "\n/* Push Constants. */\n";
     if (push_constants_storage == VKPushConstants::StorageType::PUSH_CONSTANTS) {
-      ss << "layout(push_constant) uniform constants\n";
+      ss << "layout(push_constant, std430) uniform constants\n";
     }
     else if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
       ss << "layout(binding = " << push_constants_layout.descriptor_set_location_get()
@@ -1105,6 +1113,19 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     ss << "layout(early_fragment_tests) in;\n";
   }
   ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
+
+  ss << "\n/* Sub-pass Inputs. */\n";
+  for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    /* Declare global for input. */
+    ss << to_string(input.type) << " " << input.name << ";\n";
+
+    std::stringstream ss_pre;
+    /* Populate the global before main. */
+    ss_pre << "  " << input.name << " = " << to_string(input.type) << "(0);\n";
+
+    pre_main += ss_pre.str();
+  }
+
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
     ss << "layout(location = " << output.index;

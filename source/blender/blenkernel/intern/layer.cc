@@ -29,7 +29,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_ID.h"
 #include "DNA_collection_types.h"
@@ -43,9 +43,9 @@
 #include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_engine.h"
 

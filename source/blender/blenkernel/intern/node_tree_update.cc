@@ -32,7 +32,7 @@
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 using namespace blender::nodes;
 
@@ -588,19 +588,9 @@ class NodeTreeMainUpdater {
       }
     }
     /* Check paired simulation zone nodes. */
-    if (node.type == GEO_NODE_SIMULATION_INPUT) {
-      const NodeGeometrySimulationInput *data = static_cast<const NodeGeometrySimulationInput *>(
-          node.storage);
-      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
-        if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
-          return true;
-        }
-      }
-    }
-    if (node.type == GEO_NODE_REPEAT_INPUT) {
-      const NodeGeometryRepeatInput *data = static_cast<const NodeGeometryRepeatInput *>(
-          node.storage);
-      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
+    if (all_zone_input_node_types().contains(node.type)) {
+      const bNodeZoneType &zone_type = *zone_type_by_node_type(node.type);
+      if (const bNode *output_node = zone_type.get_corresponding_output(ntree, node)) {
         if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
           return true;
         }
@@ -1295,15 +1285,6 @@ void BKE_ntree_update_tag_socket_availability(bNodeTree *ntree, bNodeSocket *soc
 void BKE_ntree_update_tag_node_removed(bNodeTree *ntree)
 {
   add_tree_tag(ntree, NTREE_CHANGED_REMOVED_NODE);
-}
-
-void BKE_ntree_update_tag_node_reordered(bNodeTree *ntree)
-{
-  /* Don't add a tree update tag to avoid reevaluations for trivial operations like selection or
-   * parenting that typically influence the node order. This means the node order can be different
-   * for original and evaluated trees. A different solution might avoid sorting nodes based on UI
-   * states like selection, which would require not tying the node order to the drawing order. */
-  ntree->runtime->topology_cache_mutex.tag_dirty();
 }
 
 void BKE_ntree_update_tag_node_mute(bNodeTree *ntree, bNode *node)
