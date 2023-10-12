@@ -184,6 +184,26 @@ bool is_equal(vec2 a, vec2 b, const float epsilon);
 bool is_equal(vec3 a, vec3 b, const float epsilon);
 bool is_equal(vec4 a, vec4 b, const float epsilon);
 
+/**
+ * Return the maximum component of a vector.
+ */
+float reduce_max(vec2 a);
+float reduce_max(vec3 a);
+float reduce_max(vec4 a);
+int reduce_max(ivec2 a);
+int reduce_max(ivec3 a);
+int reduce_max(ivec4 a);
+
+/**
+ * Return the minimum component of a vector.
+ */
+float reduce_min(vec2 a);
+float reduce_min(vec3 a);
+float reduce_min(vec4 a);
+int reduce_min(ivec2 a);
+int reduce_min(ivec3 a);
+int reduce_min(ivec4 a);
+
 #  endif /* GPU_METAL */
 
 /* ---------------------------------------------------------------------- */
@@ -588,6 +608,56 @@ bool is_equal(vec3 a, vec3 b, const float epsilon)
 bool is_equal(vec4 a, vec4 b, const float epsilon)
 {
   return all(lessThanEqual(abs(a - b), vec4(epsilon)));
+}
+
+float reduce_max(vec2 a)
+{
+  return max(a.x, a.y);
+}
+float reduce_max(vec3 a)
+{
+  return max(a.x, max(a.y, a.z));
+}
+float reduce_max(vec4 a)
+{
+  return max(max(a.x, a.y), max(a.z, a.w));
+}
+int reduce_max(ivec2 a)
+{
+  return max(a.x, a.y);
+}
+int reduce_max(ivec3 a)
+{
+  return max(a.x, max(a.y, a.z));
+}
+int reduce_max(ivec4 a)
+{
+  return max(max(a.x, a.y), max(a.z, a.w));
+}
+
+float reduce_min(vec2 a)
+{
+  return min(a.x, a.y);
+}
+float reduce_min(vec3 a)
+{
+  return min(a.x, min(a.y, a.z));
+}
+float reduce_min(vec4 a)
+{
+  return min(min(a.x, a.y), min(a.z, a.w));
+}
+int reduce_min(ivec2 a)
+{
+  return min(a.x, a.y);
+}
+int reduce_min(ivec3 a)
+{
+  return min(a.x, min(a.y, a.z));
+}
+int reduce_min(ivec4 a)
+{
+  return min(min(a.x, a.y), min(a.z, a.w));
 }
 
 #  define ASSERT_UNIT_EPSILON 0.0002

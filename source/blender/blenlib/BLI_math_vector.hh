@@ -633,6 +633,34 @@ template<typename T> [[nodiscard]] inline int dominant_axis(const VecBase<T, 3> 
 }
 
 /**
+ * \return the maximum component of a vector.
+ */
+template<typename T, int Size> [[nodiscard]] inline int reduce_max(const VecBase<T, Size> &a)
+{
+  T result = a[0];
+  for (int i = 1; i < Size; i++) {
+    if (a[i] > result) {
+      result = a[i];
+    }
+  }
+  return result;
+}
+
+/**
+ * \return the minimum component of a vector.
+ */
+template<typename T, int Size> [[nodiscard]] inline int reduce_min(const VecBase<T, Size> &a)
+{
+  T result = a[0];
+  for (int i = 1; i < Size; i++) {
+    if (a[i] < result) {
+      result = a[i];
+    }
+  }
+  return result;
+}
+
+/**
  * Calculates a perpendicular vector to \a v.
  * \note Returned vector can be in any perpendicular direction.
  * \note Returned vector might not the same length as \a v.
