@@ -13,8 +13,6 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"
 
-#include "BLI_array.hh"
-
 #include "vk_push_constants.hh"
 
 namespace blender::gpu {
@@ -33,6 +31,13 @@ class VKShaderInterface : public ShaderInterface {
   VKPushConstants::Layout push_constants_layout_;
 
   shader::BuiltinBits shader_builtins_;
+
+  std::optional<VkDescriptorSetLayout> subpass_layout_;
+  struct SubpassData {
+    shader::ShaderCreateInfo::Resource resource;
+    VKDescriptorSet::Location location;
+  };
+  Vector<SubpassData> subpass_data_;
 
  public:
   VKShaderInterface() = default;
@@ -60,6 +65,15 @@ class VKShaderInterface : public ShaderInterface {
     return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
   }
 
+  const std::optional<VkDescriptorSetLayout> &subpass_descriptor_set_layout_get() const
+  {
+    return subpass_layout_;
+  }
+  const shader::ShaderCreateInfo::Resource &resource_get(
+      const shader::ShaderCreateInfo::SubpassIn &subpass) const;
+  const VKDescriptorSet::Location &descriptor_set_location(
+      const shader::ShaderCreateInfo::SubpassIn &subpass) const;
+
  private:
   /**
    * Retrieve the shader input for the given resource.
@@ -73,6 +87,10 @@ class VKShaderInterface : public ShaderInterface {
   const VKDescriptorSet::Location descriptor_set_location(const ShaderInput *shader_input) const;
   void descriptor_set_location_update(const ShaderInput *shader_input,
                                       const VKDescriptorSet::Location location);
+
+  void init_subpass(const shader::ShaderCreateInfo &info);
+
+  friend class VKShader;
 };
 
 }  // namespace blender::gpu

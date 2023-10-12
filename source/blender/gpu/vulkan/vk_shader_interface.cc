@@ -96,7 +96,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
   /* Add push constant when using uniform buffer as fallback. */
-  int32_t push_constants_fallback_location = -1;
+  VKDescriptorSet::Location push_constants_fallback_location(VKDescriptorSet::default_set, -1);
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
     input->location = input->binding = -1;
@@ -155,8 +155,9 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Note: input_tot_len is sometimes more than we need. */
   const uint32_t resources_len = input_tot_len;
   descriptor_set_locations_ = Array<VKDescriptorSet::Location>(resources_len);
-  descriptor_set_locations_.fill(-1);
-  uint32_t descriptor_set_location = 0;
+  constexpr VKDescriptorSet::Location default_location(VKDescriptorSet::default_set, -1);
+  descriptor_set_locations_.fill(default_location);
+  VKDescriptorSet::Location descriptor_set_location(VKDescriptorSet::default_set, 0);
   for (ShaderCreateInfo::Resource &res : all_resources) {
     const ShaderInput *input = shader_input_get(res);
     BLI_assert(input);
@@ -165,7 +166,8 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 
   /* Post initializing push constants. */
   /* Determine the binding location of push constants fallback buffer. */
-  int32_t push_constant_descriptor_set_location = -1;
+  VKDescriptorSet::Location push_constant_descriptor_set_location(VKDescriptorSet::default_set,
+                                                                  -1);
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     push_constant_descriptor_set_location = descriptor_set_location++;
     const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME);
@@ -173,6 +175,9 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   }
   push_constants_layout_.init(
       info, *this, push_constants_storage_type, push_constant_descriptor_set_location);
+
+  /* SubpassInputs */
+  init_subpass(info);
 }
 
 static int32_t shader_input_index(const ShaderInput *shader_inputs,
@@ -186,7 +191,7 @@ void VKShaderInterface::descriptor_set_location_update(const ShaderInput *shader
                                                        const VKDescriptorSet::Location location)
 {
   int32_t index = shader_input_index(inputs_, shader_input);
-  BLI_assert(descriptor_set_locations_[index].binding == -1);
+  BLI_assert(descriptor_set_locations_[index].binding() == -1);
   descriptor_set_locations_[index] = location;
 }
 
@@ -239,5 +244,63 @@ const ShaderInput *VKShaderInterface::shader_input_get(
   }
   return nullptr;
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Subpasses
+ * \{ */
+
+void VKShaderInterface::init_subpass(const shader::ShaderCreateInfo &info)
+{
+  if (info.subpass_inputs_.is_empty()) {
+    return;
+  }
+
+  subpass_data_.reserve(info.subpass_inputs_.size());
+  static StringRefNull dummy_name = "dummy_resource_name";
+
+  const bool is_layered_fb = bool(info.builtins_ & shader::BuiltinBits::LAYER);
+  for (const shader::ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    BLI_assert_msg(input.index == subpass_data_.size(),
+                   "Subpass data needs to be sequential indexed (for now).");
+
+    /* Start with invalid value to detect failure cases. */
+    shader::ImageType image_type = shader::ImageType::FLOAT_BUFFER;
+    switch (to_component_type(input.type)) {
+      case shader::Type::FLOAT:
+        image_type = is_layered_fb ? shader::ImageType::FLOAT_2D_ARRAY :
+                                     shader::ImageType::FLOAT_2D;
+        break;
+      case shader::Type::INT:
+        image_type = is_layered_fb ? shader::ImageType::INT_2D_ARRAY : shader::ImageType::INT_2D;
+        break;
+      case shader::Type::UINT:
+        image_type = is_layered_fb ? shader::ImageType::UINT_2D_ARRAY : shader::ImageType::UINT_2D;
+        break;
+      default:
+        break;
+    }
+    SubpassData subpass_data{
+        {shader::ShaderCreateInfo::Resource::BindType::SAMPLER, input.index},
+        {VKDescriptorSet::subpass_set, static_cast<uint32_t>(subpass_data_.size())}};
+    subpass_data.resource.sampler.type = image_type;
+    subpass_data.resource.sampler.sampler = GPUSamplerState::default_sampler();
+    subpass_data.resource.sampler.name = dummy_name;
+    subpass_data_.append(subpass_data);
+  }
+}
+
+const shader::ShaderCreateInfo::Resource &VKShaderInterface::resource_get(
+    const shader::ShaderCreateInfo::SubpassIn &subpass) const
+{
+  return subpass_data_[subpass.index].resource;
+}
+
+const VKDescriptorSet::Location &VKShaderInterface::descriptor_set_location(
+    const shader::ShaderCreateInfo::SubpassIn &subpass) const
+{
+  return subpass_data_[subpass.index].location;
+}
+
+/** \} */
 
 }  // namespace blender::gpu

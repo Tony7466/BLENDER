@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <iostream>
+
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
@@ -28,6 +30,8 @@ class VKVertexBuffer;
 class VKDescriptorSetTracker;
 class VKSampler;
 
+using VKDescriptorSetIndex = uint32_t;
+
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
  *
@@ -37,8 +41,14 @@ class VKSampler;
  * to use 2 descriptor sets per shader. One for each #blender::gpu::shader::Frequency.
  */
 class VKDescriptorSet : NonCopyable {
+  using SetIndex = uint32_t;
 
  public:
+  /** Default set for shader interface resources. */
+  static constexpr SetIndex default_set = 0;
+  /** Set for subpass resources. */
+  static constexpr SetIndex subpass_set = 1;
+
   /**
    * Binding location of a resource in a descriptor set.
    *
@@ -53,27 +63,50 @@ class VKDescriptorSet : NonCopyable {
   struct Location {
    private:
     /**
+     * References to the descriptor set.
+     */
+    uint32_t set_ = 0;
+
+    /**
      * References to a binding in the descriptor set.
      */
-    uint32_t binding;
+    uint32_t binding_ = 0;
 
-    Location(uint32_t binding) : binding(binding) {}
+    constexpr Location(uint32_t set, uint32_t binding) : set_(set), binding_(binding) {}
+
+    Location operator++(int)
+    {
+      Location result(*this);
+      binding_++;
+      return result;
+    }
 
    public:
     Location() = default;
 
     bool operator==(const Location &other) const
     {
-      return binding == other.binding;
+      return set_ == other.set_ && binding_ == other.binding_;
     }
 
-    operator uint32_t() const
+    uint32_t set() const
     {
-      return binding;
+      return set_;
+    }
+
+    uint32_t binding() const
+    {
+      return binding_;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Location &location)
+    {
+      return os << "set=" << location.set() << ", binding=" << location.binding();
     }
 
     friend class VKDescriptorSetTracker;
     friend class VKShaderInterface;
+    friend class VKShader;
   };
 
   VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;
@@ -115,7 +148,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
  public:
   struct Binding {
-    VKDescriptorSet::Location location;
+    VKDescriptorSet::Location location = VKDescriptorSet::Location(0, 0);
     VkDescriptorType type;
 
     VkBuffer vk_buffer = VK_NULL_HANDLE;
@@ -125,11 +158,6 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     VKTexture *texture = nullptr;
     VkSampler vk_sampler = VK_NULL_HANDLE;
-
-    Binding()
-    {
-      location.binding = 0;
-    }
 
     bool is_buffer() const
     {

@@ -265,6 +265,9 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if (debugging_tools.is_ignore(callback_data->messageIdNumber)) {
     return VK_FALSE;
   }
+  if (callback_data->messageIdNumber == 0xec321b6c) {
+    return VK_FALSE;
+  }
 
   CLG_Severity severity = CLG_SEVERITY_INFO;
   if (message_severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |

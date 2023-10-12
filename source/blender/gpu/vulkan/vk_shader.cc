@@ -13,6 +13,7 @@
 #include "vk_shader.hh"
 
 #include "vk_backend.hh"
+#include "vk_descriptor_set.hh"
 #include "vk_memory.hh"
 #include "vk_shader_interface.hh"
 #include "vk_shader_log.hh"
@@ -336,7 +337,8 @@ static void print_resource(std::ostream &os,
                            const VKDescriptorSet::Location location,
                            const ShaderCreateInfo::Resource &res)
 {
-  os << "layout(binding = " << uint32_t(location);
+  os << "layout(";
+  os << location;
   if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
     os << ", " << to_string(res.image.format);
   }
@@ -845,7 +847,7 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
     const VKDescriptorSet::Location location, const shader::ShaderCreateInfo::Resource &resource)
 {
   VkDescriptorSetLayoutBinding binding = {};
-  binding.binding = location;
+  binding.binding = location.binding();
   binding.descriptorType = descriptor_type(resource);
   binding.descriptorCount = 1;
   binding.stageFlags = VK_SHADER_STAGE_ALL;
@@ -860,7 +862,7 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
   BLI_assert(push_constants_layout.storage_type_get() ==
              VKPushConstants::StorageType::UNIFORM_BUFFER);
   VkDescriptorSetLayoutBinding binding = {};
-  binding.binding = push_constants_layout.descriptor_set_location_get();
+  binding.binding = push_constants_layout.descriptor_set_location_get().binding();
   binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   binding.descriptorCount = 1;
   binding.stageFlags = VK_SHADER_STAGE_ALL;
@@ -1017,7 +1019,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
       ss << "layout(push_constant, std430) uniform constants\n";
     }
     else if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
-      ss << "layout(binding = " << push_constants_layout.descriptor_set_location_get()
+      ss << "layout(" << push_constants_layout.descriptor_set_location_get()
          << ", std140) uniform constants\n";
     }
     ss << "{\n";
@@ -1069,6 +1071,62 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
   return ss.str();
 }
 
+static const int to_component_count(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::UINT:
+    case Type::INT:
+    case Type::BOOL:
+      return 1;
+    case Type::VEC2:
+    case Type::UVEC2:
+    case Type::IVEC2:
+      return 2;
+    case Type::VEC3:
+    case Type::UVEC3:
+    case Type::IVEC3:
+      return 3;
+    case Type::VEC4:
+    case Type::UVEC4:
+    case Type::IVEC4:
+      return 4;
+    case Type::MAT3:
+      return 9;
+    case Type::MAT4:
+      return 16;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return 1;
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return 2;
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return 3;
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return 4;
+    case Type::CHAR:
+    case Type::SHORT:
+      return 1;
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return 2;
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return 3;
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return 4;
+    case Type::VEC3_101010I2:
+      return 3;
+  }
+  BLI_assert_unreachable();
+  return -1;
+}
+
 std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo &info) const
 {
   std::stringstream ss;
@@ -1113,6 +1171,37 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     ss << "layout(early_fragment_tests) in;\n";
   }
   ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
+
+  ss << "\n/* Sub-pass Inputs. */\n";
+  VKShaderInterface interface;
+  interface.init_subpass(info);
+  for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    std::string image_name = "gpu_subpass_img_";
+    image_name += std::to_string(input.index);
+
+    /* Declare global for input. */
+    ss << to_string(input.type) << " " << input.name << ";\n";
+
+    ShaderCreateInfo::Resource resource = interface.resource_get(input);
+    resource.sampler.name = image_name;
+    const VKDescriptorSet::Location location = interface.descriptor_set_location(input);
+    print_resource(ss, location, resource);
+
+    const bool is_layered_fb = bool(info.builtins_ & shader::BuiltinBits::LAYER);
+    std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
+                                             "ivec2(gl_FragCoord.xy)";
+
+    char swizzle[] = "xyzw";
+    swizzle[to_component_count(input.type)] = '\0';
+
+    std::stringstream ss_pre;
+    /* Populate the global before main using imageLoad. */
+    ss_pre << "  " << input.name << " = texelFetch(" << resource.sampler.name << ", " << texel_co
+           << ", 0)." << swizzle << ";\n";
+
+    pre_main += ss_pre.str();
+  }
+
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
     ss << "layout(location = " << output.index;

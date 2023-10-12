@@ -152,7 +152,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkWriteDescriptorSet write_descriptor = {};
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_descriptor.dstSet = vk_descriptor_set;
-    write_descriptor.dstBinding = binding.location;
+    write_descriptor.dstBinding = binding.location.binding();
     write_descriptor.descriptorCount = 1;
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pBufferInfo = &buffer_infos.last();
@@ -166,7 +166,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkWriteDescriptorSet write_descriptor = {};
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_descriptor.dstSet = vk_descriptor_set;
-    write_descriptor.dstBinding = binding.location;
+    write_descriptor.dstBinding = binding.location.binding();
     write_descriptor.descriptorCount = 1;
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pTexelBufferView = &binding.vk_buffer_view;
@@ -191,7 +191,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkWriteDescriptorSet write_descriptor = {};
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_descriptor.dstSet = vk_descriptor_set;
-    write_descriptor.dstBinding = binding.location;
+    write_descriptor.dstBinding = binding.location.binding();
     write_descriptor.descriptorCount = 1;
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pImageInfo = &image_infos.last();
@@ -220,8 +220,8 @@ void VKDescriptorSetTracker::debug_print() const
 
 void VKDescriptorSetTracker::Binding::debug_print() const
 {
-  std::cout << "VkDescriptorSetTrackker::Binding(type: " << type
-            << ", location:" << location.binding << ")\n";
+  std::cout << "VkDescriptorSetTrackker::Binding(type=" << type << ", set=" << location.set()
+            << ", location=" << location.binding() << ")\n";
 }
 
 }  // namespace blender::gpu

@@ -74,6 +74,53 @@ enum class Type {
   SHORT4
 };
 
+static inline const Type to_component_type(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::VEC2:
+    case Type::VEC3:
+    case Type::VEC4:
+    case Type::MAT3:
+    case Type::MAT4:
+      return Type::FLOAT;
+    case Type::UINT:
+    case Type::UVEC2:
+    case Type::UVEC3:
+    case Type::UVEC4:
+      return Type::UINT;
+    case Type::INT:
+    case Type::IVEC2:
+    case Type::IVEC3:
+    case Type::IVEC4:
+    case Type::BOOL:
+      return Type::INT;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::UCHAR2:
+    case Type::UCHAR3:
+    case Type::UCHAR4:
+    case Type::USHORT:
+    case Type::USHORT2:
+    case Type::USHORT3:
+    case Type::USHORT4:
+      return Type::UINT;
+    case Type::CHAR:
+    case Type::CHAR2:
+    case Type::CHAR3:
+    case Type::CHAR4:
+    case Type::SHORT:
+    case Type::SHORT2:
+    case Type::SHORT3:
+    case Type::SHORT4:
+      return Type::INT;
+    case Type::VEC3_101010I2:
+      return Type::FLOAT;
+  }
+  BLI_assert_unreachable();
+  return Type::FLOAT;
+}
+
 /* All of these functions is a bit out of place */
 static inline Type to_type(const eGPUType type)
 {
