@@ -685,6 +685,7 @@ class GreasePencilEditHints {
 
   /**
    * Array of #GreasePencilDrawingEditHints. There is one edit hint for each evaluated drawing.
+   * Note: The index for each element is the layer index.
    */
   std::optional<Array<GreasePencilDrawingEditHints>> drawing_hints;
 };

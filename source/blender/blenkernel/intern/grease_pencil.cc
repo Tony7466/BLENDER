@@ -1183,7 +1183,8 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
   GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
                                                              GeometryOwnershipType::ReadOnly);
-  /* Support only edit mode for now. */
+  /* Only add the edit hint component in edit mode for now so users can properly select deformed
+   * drawings. */
   if (object->mode == OB_MODE_EDIT) {
     GeometryComponentEditData &edit_component =
         geometry_set.get_component_for_write<GeometryComponentEditData>();
