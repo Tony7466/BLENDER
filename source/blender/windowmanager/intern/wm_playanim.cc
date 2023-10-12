@@ -823,6 +823,12 @@ static void build_pict_list_from_anim(GhostData *ghost_data,
     picture->filepath = BLI_sprintfN("%s : %4.d", filepath_first, pic + 1);
     BLI_addtail(&picsbase, picture);
   }
+
+  const PlayAnimPict *picture = (const PlayAnimPict *)picsbase.last;
+  if (!(picture && picture->anim == anim)) {
+    IMB_close_anim(anim);
+    CLOG_WARN(&LOG, "no frames added for: '%s'", filepath_first);
+  }
 }
 
 static void build_pict_list_from_image_sequence(GhostData *ghost_data,
@@ -941,15 +947,27 @@ static void build_pict_list(GhostData *ghost_data,
    * it's important the frame number increases each time. Otherwise playing `*.png`
    * in a directory will expand into many arguments, each calling this function adding
    * a frame that's set to zero. */
-  const int frame_offset = picsbase.last ? ((PlayAnimPict *)picsbase.last)->frame + 1 : 0;
+  const PlayAnimPict *picture_last = (PlayAnimPict *)picsbase.last;
+  const int frame_offset = picture_last ? (picture_last->frame + 1) : 0;
 
+  bool do_image_load = false;
   if (IMB_isanim(filepath_first)) {
     build_pict_list_from_anim(ghost_data, display_ctx, filepath_first, frame_offset);
+    if (picsbase.last == picture_last) {
+      /* FFMPEG detected JPEG200 as a video which would load with zero duration.
+       * Resolve this by using images as a fallback when a video file has no frames to display. */
+      do_image_load = true;
+    }
   }
   else {
+    do_image_load = true;
+  }
+
+  if (do_image_load) {
     build_pict_list_from_image_sequence(
         ghost_data, display_ctx, filepath_first, frame_offset, totframes, fstep, loading_p);
   }
+
   *loading_p = false;
 }
 
@@ -1816,7 +1834,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
 #ifdef WITH_AUDASPACE
   source = AUD_Sound_file(filepath);
-  {
+  if (!BLI_listbase_is_empty(&picsbase)) {
     anim *anim_movie = ((PlayAnimPict *)picsbase.first)->anim;
     if (anim_movie) {
       short frs_sec = 25;
@@ -2008,8 +2026,6 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     IMB_freeImBuf(ibuf);
   }
 #endif
-
-  BLI_freelistN(&picsbase);
 
 #ifdef USE_FRAME_CACHE_LIMIT
   BLI_freelistN(&g_frame_cache.pics);

@@ -39,6 +39,7 @@
 #include "RNA_prototypes.h"
 
 #include "ANIM_bone_collections.h"
+#include "ANIM_keyframing.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -129,7 +130,7 @@ static void autokeyframe_pose(
     if (IS_AUTOKEY_FLAG(scene, ONLYKEYINGSET) && (active_ks)) {
       /* Run the active Keying Set on the current data-source. */
       ANIM_apply_keyingset(
-          C, &dsources, nullptr, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+          C, &dsources, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
     }
     /* only insert into available channels? */
     else if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL)) {
@@ -145,17 +146,17 @@ static void autokeyframe_pose(
            * NOTE: this will do constraints too, but those are ok to do here too?
            */
           if (STREQ(pchan_name, pchan->name)) {
-            insert_keyframe(bmain,
-                            reports,
-                            id,
-                            act,
-                            ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                            fcu->rna_path,
-                            fcu->array_index,
-                            &anim_eval_context,
-                            eBezTriple_KeyframeType(ts->keyframe_type),
-                            &nla_cache,
-                            flag);
+            blender::animrig::insert_keyframe(bmain,
+                                              reports,
+                                              id,
+                                              act,
+                                              ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                                              fcu->rna_path,
+                                              fcu->array_index,
+                                              &anim_eval_context,
+                                              eBezTriple_KeyframeType(ts->keyframe_type),
+                                              &nla_cache,
+                                              flag);
           }
         }
       }
@@ -197,25 +198,21 @@ static void autokeyframe_pose(
 
       if (do_loc) {
         KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOCATION_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+        ANIM_apply_keyingset(C, &dsources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
       if (do_rot) {
         KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_ROTATION_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+        ANIM_apply_keyingset(C, &dsources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
       if (do_scale) {
         KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_SCALING_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+        ANIM_apply_keyingset(C, &dsources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
     }
     /* insert keyframe in all (transform) channels */
     else {
       KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOC_ROT_SCALE_ID);
-      ANIM_apply_keyingset(
-          C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+      ANIM_apply_keyingset(C, &dsources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
     }
 
     /* free temp info */
