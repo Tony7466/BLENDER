@@ -25,7 +25,7 @@ vec3 drw_view_position()
 }
 
 /**
- * Return the world view vector `V` (going towards the viewer)
+ * Returns the world view vector `V` (going towards the viewer)
  * from the world position `P` and the current view.
  */
 vec3 drw_view_vector_get(vec3 P)
@@ -33,10 +33,40 @@ vec3 drw_view_vector_get(vec3 P)
   return drw_view_is_perspective() ? normalize(drw_view_position() - P) : drw_view_forward();
 }
 
+/**
+ * Transform position on screen UV space [0..1] to Normalized Device Coordinate space [-1..1].
+ */
+vec3 drw_screen_to_ndc(vec3 ss_P)
+{
+  return ss_P * 2.0 - 1.0;
+}
+vec2 drw_screen_to_ndc(vec2 ss_P)
+{
+  return ss_P * 2.0 - 1.0;
+}
+float drw_screen_to_ndc(float ss_P)
+{
+  return ss_P * 2.0 - 1.0;
+}
+
+/**
+ * Transform position in Normalized Device Coordinate [-1..1] to screen UV space [0..1].
+ */
+vec3 drw_ndc_to_screen(vec3 ndc_P)
+{
+  return ndc_P * 0.5 + 0.5;
+}
+vec2 drw_ndc_to_screen(vec2 ndc_P)
+{
+  return ndc_P * 0.5 + 0.5;
+}
+float drw_ndc_to_screen(float ndc_P)
+{
+  return ndc_P * 0.5 + 0.5;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Transform Normal
- *
- * Space conversion helpers for normal vectors.
  * \{ */
 
 vec3 drw_normal_view_to_world(vec3 vN)
@@ -52,12 +82,10 @@ vec3 drw_normal_world_to_view(vec3 N)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Transform Normal
- *
- * Space conversion helpers for points (coordinates).
+/** \name Transform Position
  * \{ */
 
-vec3 drw_point_homogenous_to_ndc(vec4 hs_P)
+vec3 drw_perspective_divide(vec4 hs_P)
 {
   return hs_P.xyz / hs_P.w;
 }
@@ -72,7 +100,7 @@ vec4 drw_point_view_to_homogenous(vec3 vP)
 }
 vec3 drw_point_view_to_ndc(vec3 vP)
 {
-  return drw_point_homogenous_to_ndc(drw_point_view_to_homogenous(vP));
+  return drw_perspective_divide(drw_point_view_to_homogenous(vP));
 }
 
 vec3 drw_point_world_to_view(vec3 P)
@@ -85,7 +113,49 @@ vec4 drw_point_world_to_homogenous(vec3 P)
 }
 vec3 drw_point_world_to_ndc(vec3 P)
 {
-  return drw_point_homogenous_to_ndc(drw_point_world_to_homogenous(P));
+  return drw_perspective_divide(drw_point_world_to_homogenous(P));
+}
+
+vec3 drw_point_ndc_to_view(vec3 ssP)
+{
+  return drw_perspective_divide(drw_view.wininv * vec4(ssP, 1.0));
+}
+vec3 drw_point_ndc_to_world(vec3 ssP)
+{
+  return drw_point_view_to_world(drw_point_ndc_to_view(ssP));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Transform Screen Postions
+ * \{ */
+
+vec3 drw_point_view_to_screen(vec3 vP)
+{
+  return drw_ndc_to_screen(drw_point_view_to_ndc(vP));
+}
+vec3 drw_point_world_to_screen(vec3 vP)
+{
+  return drw_ndc_to_screen(drw_point_world_to_ndc(vP));
+}
+
+vec3 drw_point_screen_to_view(vec3 ssP)
+{
+  return drw_point_ndc_to_view(drw_screen_to_ndc(ssP));
+}
+vec3 drw_point_screen_to_world(vec3 ssP)
+{
+  return drw_point_view_to_world(drw_point_screen_to_view(ssP));
+}
+
+float drw_depth_view_to_screen(float v_depth)
+{
+  return drw_point_view_to_screen(vec3(0.0, 0.0, v_depth)).z;
+}
+float drw_depth_screen_to_view(float ss_depth)
+{
+  return drw_point_screen_to_view(vec3(0.0, 0.0, ss_depth)).z;
 }
 
 /** \} */

@@ -7,7 +7,7 @@
  * - uniform_buf.volumes
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
@@ -35,23 +35,23 @@ float view_z_to_volume_z(float depth)
   return view_z_to_volume_z(near, far, distribution, is_persp, depth);
 }
 
-/* Volume texture normalized coordinates to NDC (special range [0, 1]). */
-vec3 volume_to_ndc(vec3 coord)
+/* Volume texture normalized coordinates to screen UVs (special range [0, 1]). */
+vec3 volume_to_screen(vec3 coord)
 {
   coord.z = volume_z_to_view_z(coord.z);
-  coord.z = get_depth_from_view_z(coord.z);
+  coord.z = drw_depth_view_to_screen(coord.z);
   coord.xy /= uniform_buf.volumes.coord_scale;
   return coord;
 }
 
-vec3 ndc_to_volume(vec3 coord)
+vec3 screen_to_volume(vec3 coord)
 {
   float near = uniform_buf.volumes.depth_near;
   float far = uniform_buf.volumes.depth_far;
   float distribution = uniform_buf.volumes.depth_distribution;
   vec2 coord_scale = uniform_buf.volumes.coord_scale;
   /* Implemented in eevee_shader_shared.cc */
-  return ndc_to_volume(ProjectionMatrix, near, far, distribution, coord_scale, coord);
+  return screen_to_volume(ProjectionMatrix, near, far, distribution, coord_scale, coord);
 }
 
 float volume_phase_function_isotropic()
@@ -143,7 +143,7 @@ vec3 volume_shadow(
     vec3 pos = P + L * t;
 
     vec3 ndc = project_point(ProjectionMatrix, transform_point(ViewMatrix, pos));
-    vec3 volume_co = ndc_to_volume(ndc * 0.5 + 0.5);
+    vec3 volume_co = screen_to_volume(ndc * 0.5 + 0.5);
     /* Let the texture be clamped to edge. This reduce visual glitches. */
     vec3 s_extinction = texture(extinction_tx, volume_co).rgb;
 
@@ -172,7 +172,7 @@ struct VolumeResolveSample {
 
 VolumeResolveSample volume_resolve(vec3 ndc_P, sampler3D transmittance_tx, sampler3D scattering_tx)
 {
-  vec3 coord = ndc_to_volume(ndc_P);
+  vec3 coord = screen_to_volume(ndc_P);
 
   VolumeResolveSample volume;
   volume.scattering = texture(scattering_tx, coord).rgb;
