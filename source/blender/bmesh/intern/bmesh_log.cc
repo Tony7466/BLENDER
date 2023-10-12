@@ -25,6 +25,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_memory_utils.hh"
 #include "BLI_mempool.h"
 #include "BLI_set.hh"
 #include "BLI_vector.hh"
@@ -42,6 +43,7 @@
 #include <type_traits>
 
 using blender::Array;
+using blender::DynamicStackBuffer;
 using blender::float3;
 using blender::IndexRange;
 using blender::Map;
@@ -105,32 +107,31 @@ static void customdata_copy_all_layout(const struct CustomData *source, struct C
   CustomData_update_typemap(dest);
 }
 
-void swap_customdata_block(CustomData *source,
-                           CustomData *dest,
-                           void **src_block,
-                           void **dest_block)
+void swap_customdata_block(CustomData *data_a, CustomData *data_b, void **block_a, void **block_b)
 {
-  if (!source->totsize || !dest->totsize) {
+  if (!data_a->totsize || !data_b->totsize) {
     return;
   }
-  if (!*src_block) {
-    CustomData_bmesh_set_default(source, src_block);
+  if (!*block_a) {
+    CustomData_bmesh_set_default(data_a, block_a);
   }
-  if (!*dest_block) {
-    CustomData_bmesh_set_default(source, dest_block);
+  if (!*block_b) {
+    CustomData_bmesh_set_default(data_a, block_b);
   }
 
-  void *scratch = alloca(dest->totsize);
+  DynamicStackBuffer<128> buffer(data_b->totsize, 4);
+  void *scratch = buffer.buffer();
+  memset(scratch, 0, data_b->totsize);
 
-  CustomData_bmesh_copy_data(source, dest, *src_block, &scratch);
-  CustomData_bmesh_copy_data(dest, source, *dest_block, src_block);
-  CustomData_bmesh_copy_data(source, dest, scratch, dest_block);
+  CustomData_bmesh_copy_data(data_a, data_b, *block_a, &scratch);
+  CustomData_bmesh_copy_data(data_b, data_a, *block_b, block_a);
+  CustomData_bmesh_copy_data(data_a, data_b, scratch, block_b);
 }
 
 template<typename T> struct BMLogElem {
-  int id = BM_ID_NONE;
-  void *customdata = nullptr;
-  char flag = 0;
+  int id;
+  void *customdata;
+  char flag;
 
 #ifdef WITH_ASAN
   bool dead = false;
@@ -383,9 +384,9 @@ struct BMLogEntry {
              CustomData *src_pdata)
       : idmap(_idmap)
   {
-    vpool = BLI_mempool_create(sizeof(BMLogVert), 0, 512, BLI_MEMPOOL_NOP);
-    epool = BLI_mempool_create(sizeof(BMLogEdge), 0, 512, BLI_MEMPOOL_NOP);
-    fpool = BLI_mempool_create(sizeof(BMLogFace), 0, 512, BLI_MEMPOOL_NOP);
+    vpool = BLI_mempool_create(sizeof(BMLogVert), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
+    epool = BLI_mempool_create(sizeof(BMLogEdge), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
+    fpool = BLI_mempool_create(sizeof(BMLogFace), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
 
     customdata_copy_all_layout(src_vdata, &vdata);
     customdata_copy_all_layout(src_edata, &edata);
@@ -426,19 +427,6 @@ struct BMLogEntry {
     }
 
     return nullptr;
-  }
-
-  void copy_custom_data(CustomData *source, CustomData *dest, void *src_block, void **dest_block)
-  {
-    if (!dest->pool) {
-      return;
-    }
-
-    if (!*dest_block) {
-      *dest_block = BLI_mempool_calloc(dest->pool);
-    }
-
-    CustomData_bmesh_copy_data(source, dest, src_block, dest_block);
   }
 
   ~BMLogEntry()
@@ -637,7 +625,7 @@ struct BMLogEntry {
 
   void update_logvert(BMesh *bm, BMVert *v, BMLogVert *lv)
   {
-    copy_custom_data(&bm->vdata, &vdata, v->head.data, &lv->customdata);
+    CustomData_bmesh_copy_data(&bm->vdata, &vdata, v->head.data, &lv->customdata);
 
     lv->co = v->co;
     lv->no = v->no;
@@ -748,7 +736,7 @@ struct BMLogEntry {
   void update_logedge(BMesh *bm, BMEdge *e, BMLogEdge *le)
   {
     le->flag = e->head.hflag;
-    copy_custom_data(&bm->edata, &edata, e->head.data, &le->customdata);
+    CustomData_bmesh_copy_data(&bm->edata, &edata, e->head.data, &le->customdata);
   }
 
   void free_logedge(BMesh * /*bm*/, BMLogEdge *le)
@@ -767,7 +755,7 @@ struct BMLogEntry {
     lf->id = get_elem_id<BMFace>(f);
     lf->flag = f->head.hflag;
 
-    copy_custom_data(&bm->pdata, &pdata, f->head.data, &lf->customdata);
+    CustomData_bmesh_copy_data(&bm->pdata, &pdata, f->head.data, &lf->customdata);
 
     BMLoop *l = f->l_first;
     int i = 0;
@@ -776,7 +764,7 @@ struct BMLogEntry {
       void *loop_customdata = nullptr;
 
       if (l->head.data) {
-        copy_custom_data(&bm->ldata, &ldata, l->head.data, &loop_customdata);
+        CustomData_bmesh_copy_data(&bm->ldata, &ldata, l->head.data, &loop_customdata);
       }
 
       lf->loop_customdata[i] = loop_customdata;
@@ -790,7 +778,7 @@ struct BMLogEntry {
   {
     lf->flag = f->head.hflag;
 
-    copy_custom_data(&bm->pdata, &pdata, f->head.data, &lf->customdata);
+    CustomData_bmesh_copy_data(&bm->pdata, &pdata, f->head.data, &lf->customdata);
 
     if (f->len != lf->verts.size()) {
       printf("%s: error: face length changed.\n", __func__);
@@ -801,7 +789,7 @@ struct BMLogEntry {
     int i = 0;
     do {
       if (l->head.data) {
-        copy_custom_data(&bm->ldata, &ldata, l->head.data, &lf->loop_customdata[i]);
+        CustomData_bmesh_copy_data(&bm->ldata, &ldata, l->head.data, &lf->loop_customdata[i]);
       }
 
       i++;
