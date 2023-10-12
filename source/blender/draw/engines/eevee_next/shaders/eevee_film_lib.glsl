@@ -6,12 +6,12 @@
  * Film accumulation utils functions.
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_camera_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_cryptomatte_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 
 /* Return scene linear Z depth from the camera or radial depth for panoramic cameras. */
 float film_depth_convert_to_scene(float depth)
@@ -20,7 +20,7 @@ float film_depth_convert_to_scene(float depth)
     /* TODO */
     return 1.0;
   }
-  return abs(get_view_z_from_depth(depth));
+  return abs(drw_depth_screen_to_view(depth));
 }
 
 /* Load a texture sample in a specific format. Combined pass needs to use this. */
@@ -119,7 +119,7 @@ void film_sample_accum_mist(FilmSample samp, inout float accum)
   }
   float depth = texelFetch(depth_tx, samp.texel, 0).x;
   vec2 uv = (vec2(samp.texel) + 0.5) / vec2(textureSize(depth_tx, 0).xy);
-  vec3 vP = get_view_space_from_depth(uv, depth);
+  vec3 vP = drw_point_screen_to_view(vec3(uv, depth));
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
   float mist = (is_persp) ? length(vP) : abs(vP.z);
   /* Remap to 0..1 range. */
