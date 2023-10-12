@@ -451,11 +451,12 @@ std::optional<const bke::AttributeAccessor> GeometryDataSource::get_component_at
   if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
     return grease_pencil->attributes();
   }
-  if (const bke::greasepencil::Drawing *drawing =
-          bke::greasepencil::get_eval_grease_pencil_layer_drawing(*grease_pencil,
-                                                                  component_index_))
-  {
-    return drawing->strokes().attributes();
+  if (layer_index_ >= 0 && layer_index_ < grease_pencil->layers().size()) {
+    if (const bke::greasepencil::Drawing *drawing =
+            bke::greasepencil::get_eval_grease_pencil_layer_drawing(*grease_pencil, layer_index_))
+    {
+      return drawing->strokes().attributes();
+    }
   }
   return {};
 }
@@ -599,7 +600,7 @@ std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object 
   SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
   const eAttrDomain domain = (eAttrDomain)sspreadsheet->attribute_domain;
   const auto component_type = bke::GeometryComponent::Type(sspreadsheet->geometry_component_type);
-  const int active_component_index = sspreadsheet->active_component_index;
+  const int active_layer_index = sspreadsheet->active_layer_index;
   bke::GeometrySet geometry_set = spreadsheet_get_display_geometry_set(sspreadsheet, object_eval);
   if (!geometry_set.has(component_type)) {
     return {};
@@ -609,7 +610,7 @@ std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object 
     return std::make_unique<VolumeDataSource>(std::move(geometry_set));
   }
   return std::make_unique<GeometryDataSource>(
-      object_eval, std::move(geometry_set), component_type, domain, active_component_index);
+      object_eval, std::move(geometry_set), component_type, domain, active_layer_index);
 }
 
 }  // namespace blender::ed::spreadsheet

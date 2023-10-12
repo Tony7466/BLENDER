@@ -32,7 +32,7 @@ class GeometryDataSetTreeView;
 
 class GeometryDataSetTreeViewItem : public ui::AbstractTreeViewItem {
   bke::GeometryComponent::Type component_type_;
-  std::optional<int> component_index_;
+  std::optional<int> layer_index_;
   std::optional<eAttrDomain> domain_;
   BIFIconID icon_;
 
@@ -178,7 +178,7 @@ GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
     int component_index,
     StringRef label,
     BIFIconID icon)
-    : component_type_(component_type), component_index_(component_index), icon_(icon)
+    : component_type_(component_type), layer_index_(component_index), icon_(icon)
 {
   label_ = label;
 }
@@ -197,10 +197,7 @@ GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
     eAttrDomain domain,
     StringRef label,
     BIFIconID icon)
-    : component_type_(component_type),
-      component_index_(component_index),
-      domain_(domain),
-      icon_(icon)
+    : component_type_(component_type), layer_index_(component_index), domain_(domain), icon_(icon)
 {
   label_ = label;
 }
@@ -213,8 +210,8 @@ void GeometryDataSetTreeViewItem::on_activate(bContext &C)
   if (domain_) {
     tree_view.sspreadsheet_.attribute_domain = *domain_;
   }
-  if (component_index_) {
-    tree_view.sspreadsheet_.active_component_index = *component_index_;
+  if (layer_index_) {
+    tree_view.sspreadsheet_.active_layer_index = *layer_index_;
   }
   PointerRNA ptr = RNA_pointer_create(&tree_view.screen_.id, &RNA_SpaceSpreadsheet, &sspreadsheet);
   RNA_property_update(&C, &ptr, RNA_struct_find_property(&ptr, "attribute_domain"));
@@ -247,19 +244,19 @@ std::optional<bool> GeometryDataSetTreeViewItem::should_be_active() const
     return false;
   }
 
-  if (!component_index_) {
+  if (!layer_index_) {
     return sspreadsheet.geometry_component_type == uint8_t(component_type_) &&
            sspreadsheet.attribute_domain == *domain_;
   }
 
   return sspreadsheet.geometry_component_type == uint8_t(component_type_) &&
          sspreadsheet.attribute_domain == *domain_ &&
-         sspreadsheet.active_component_index == *component_index_;
+         sspreadsheet.active_layer_index == *layer_index_;
 }
 
 bool GeometryDataSetTreeViewItem::supports_collapsing() const
 {
-  return domain_.has_value() || component_index_.has_value();
+  return domain_.has_value() || layer_index_.has_value();
 }
 
 GeometryDataSetTreeView &GeometryDataSetTreeViewItem::get_tree() const
@@ -284,10 +281,10 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
     return std::nullopt;
   }
 
-  if (component_type_ == bke::GeometryComponent::Type::GreasePencil && component_index_) {
+  if (component_type_ == bke::GeometryComponent::Type::GreasePencil && layer_index_) {
     if (const bke::greasepencil::Drawing *drawing =
             bke::greasepencil::get_eval_grease_pencil_layer_drawing(*geometry.get_grease_pencil(),
-                                                                    *component_index_))
+                                                                    *layer_index_))
     {
       return drawing->strokes().attributes().domain_size(*domain_);
     }

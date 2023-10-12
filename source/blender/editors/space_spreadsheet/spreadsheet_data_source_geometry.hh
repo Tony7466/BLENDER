@@ -43,7 +43,8 @@ class GeometryDataSource : public DataSource {
   const bke::GeometrySet geometry_set_;
   const bke::GeometryComponent *component_;
   eAttrDomain domain_;
-  const int component_index_;
+  /* Layer index for grease pencil component. */
+  int layer_index_;
   ExtraColumns extra_columns_;
 
   /* Some data is computed on the fly only when it is requested. Computing it does not change the
@@ -57,13 +58,13 @@ class GeometryDataSource : public DataSource {
                      bke::GeometrySet geometry_set,
                      const bke::GeometryComponent::Type component_type,
                      const eAttrDomain domain,
-                     const int component_index = -1,
+                     const int layer_index = -1,
                      ExtraColumns extra_columns = {})
       : object_eval_(object_eval),
         geometry_set_(std::move(geometry_set)),
         component_(geometry_set_.get_component(component_type)),
         domain_(domain),
-        component_index_(component_index),
+        layer_index_(layer_index),
         extra_columns_(std::move(extra_columns))
   {
   }
