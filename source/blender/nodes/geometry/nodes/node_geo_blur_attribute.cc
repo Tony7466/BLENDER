@@ -66,9 +66,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 static void build_vert_to_vert_by_edge_map(const Span<int2> edges,
                                            const int verts_num,

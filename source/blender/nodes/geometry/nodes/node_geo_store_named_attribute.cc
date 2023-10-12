@@ -56,9 +56,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -85,10 +83,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GField field = params.extract_input<GField>("Value");
   if (data_type == CD_PROP_FLOAT2) {
-    field = bke::get_implicit_type_conversions().try_convert(std::move(field), CPPType::get<float2>());
+    field = bke::get_implicit_type_conversions().try_convert(std::move(field),
+                                                             CPPType::get<float2>());
   }
   if (data_type == CD_PROP_BYTE_COLOR) {
-    field = bke::get_implicit_type_conversions().try_convert(std::move(field), CPPType::get<ColorGeometry4b>());
+    field = bke::get_implicit_type_conversions().try_convert(std::move(field),
+                                                             CPPType::get<ColorGeometry4b>());
   }
 
   std::atomic<bool> failure = false;

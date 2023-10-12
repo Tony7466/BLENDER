@@ -48,7 +48,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  static const Array<eNodeSocketDatatype> supported_types({SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION});
+  static const Array<eNodeSocketDatatype> supported_types(
+      {SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION});
   DynamicGatherBuilder builder(params, supported_types.as_span());
 
   builder.add_input(SOCK_GEOMETRY, "Mesh");

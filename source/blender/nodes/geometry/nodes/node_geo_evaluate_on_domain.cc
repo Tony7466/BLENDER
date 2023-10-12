@@ -43,9 +43,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom2 = CD_PROP_FLOAT;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
  private:

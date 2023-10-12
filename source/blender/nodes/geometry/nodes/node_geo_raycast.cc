@@ -66,9 +66,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 static void raycast_to_mesh(const IndexMask &mask,
                             const Mesh &mesh,

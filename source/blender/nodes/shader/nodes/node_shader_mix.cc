@@ -41,16 +41,28 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   /* TODO: Note the fact of lack of defaut values for colot inputs! */
   const NodeShaderMix &storage = node_storage(node);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
-  const bool use_vector_factor = data_type == SOCK_VECTOR && storage.factor_mode != NODE_MIX_MODE_UNIFORM;
+  const bool use_vector_factor = data_type == SOCK_VECTOR &&
+                                 storage.factor_mode != NODE_MIX_MODE_UNIFORM;
   b.is_function_node();
 
   if (!use_vector_factor) {
-    b.add_input<decl::Float>("Factor").default_value(0.5f).min(0.0f).max(1.0f).subtype(PROP_FACTOR).no_muted_links();
-  } else {
-    b.add_input<decl::Vector>("Factor").default_value(float3(0.5f)).subtype(PROP_FACTOR).no_muted_links();
+    b.add_input<decl::Float>("Factor")
+        .default_value(0.5f)
+        .min(0.0f)
+        .max(1.0f)
+        .subtype(PROP_FACTOR)
+        .no_muted_links();
+  }
+  else {
+    b.add_input<decl::Vector>("Factor")
+        .default_value(float3(0.5f))
+        .subtype(PROP_FACTOR)
+        .no_muted_links();
   }
 
-  b.add_input(data_type, "A").is_default_link_socket().translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input(data_type, "A")
+      .is_default_link_socket()
+      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
   b.add_input(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
   b.add_output(data_type, "Result");

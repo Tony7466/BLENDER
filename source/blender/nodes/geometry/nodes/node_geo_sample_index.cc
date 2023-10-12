@@ -86,9 +86,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 static bool component_is_available(const GeometrySet &geometry,
                                    const GeometryComponent::Type type,

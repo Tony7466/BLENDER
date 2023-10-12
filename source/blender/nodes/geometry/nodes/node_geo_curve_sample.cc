@@ -30,20 +30,34 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   const GeometryNodeCurveSampleMode mode = (GeometryNodeCurveSampleMode)storage.mode;
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
-  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
+      GeometryComponent::Type::Curve);
   b.add_input(data_type, "Value").hide_value().field_on_all();
   switch (mode) {
     case GEO_NODE_CURVE_SAMPLE_FACTOR:
-      b.add_input<decl::Float>("Factor").min(0.0f).max(1.0f).subtype(PROP_FACTOR).field_on_all().make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; });
+      b.add_input<decl::Float>("Factor")
+          .min(0.0f)
+          .max(1.0f)
+          .subtype(PROP_FACTOR)
+          .field_on_all()
+          .make_available(
+              [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; });
       break;
     case GEO_NODE_CURVE_SAMPLE_LENGTH:
-      b.add_input<decl::Float>("Length").min(0.0f).subtype(PROP_DISTANCE).field_on_all().make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; });
+      b.add_input<decl::Float>("Length")
+          .min(0.0f)
+          .subtype(PROP_DISTANCE)
+          .field_on_all()
+          .make_available(
+              [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; });
       break;
     default:
       BLI_assert_unreachable();
       break;
   }
-  b.add_input<decl::Int>("Curve Index").field_on_all().make_available([](bNode &node) { node_storage(node).use_all_curves = false; });
+  b.add_input<decl::Int>("Curve Index").field_on_all().make_available([](bNode &node) {
+    node_storage(node).use_all_curves = false;
+  });
 
   b.add_output(data_type, "Value").dependent_field({2, 3});
   b.add_output<decl::Vector>("Position").dependent_field({2, 3});
@@ -67,9 +81,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
 
 static void sample_indices_and_lengths(const Span<float> accumulated_lengths,
                                        const Span<float> sample_lengths,
