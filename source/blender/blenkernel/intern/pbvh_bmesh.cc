@@ -2596,6 +2596,11 @@ static bool pbvh_fix_orphan_leaves(PBVH *pbvh)
   return modified;
 }
 
+/* Brings all faces/verts from the children of `node` into `node`,
+ * which becomes a new leaf node.  The children are marked for
+ * deletion with PBVH_Delete and must be destroyed with
+ * `pbvh_bmesh_compact_tree`.
+ */
 void pbvh_bmesh_join_subtree(PBVH *pbvh, PBVHNode *node)
 {
   if (node->flag & PBVH_Leaf) {
