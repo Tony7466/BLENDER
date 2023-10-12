@@ -303,3 +303,4 @@ bool pbvh_bmesh_join_nodes(PBVH *pbvh);
 
 /* Rebuilds leaf nodes that overlap too much. */
 bool pbvh_bmesh_balance_tree(PBVH *pbvh, float overlap_threshold);
+void pbvh_bmesh_join_subtree(PBVH *pbvh, PBVHNode *node);
