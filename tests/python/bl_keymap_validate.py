@@ -102,7 +102,7 @@ def round_float_32(f: float) -> float:
 
 def report_humanly_readable_difference(a: Any, b: Any) -> Optional[str]:
     """
-    Compare strings, return None whrn they match,
+    Compare strings, return None when they match,
     otherwise a humanly readable difference message.
     """
     import unittest
@@ -269,14 +269,12 @@ def main() -> None:
 
     argv = (sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
 
-    # Use `argparse` for full arg parsing, for now this is enough.
-    relaxed = "--relaxed" not in argv
+    # Use `argparse` for full argument parsing, for now this is enough.
+    relaxed = "--relaxed" in argv
 
     # NOTE(@ideasman42): Disable add-on items as they may cause differences in the key-map.
-    # An alternative would be to disable all add-ons, but this is simpler.
-    if kc_addon := bpy.context.window_manager.keyconfigs.addon:
-        kc_addon.keymaps.clear()
-    del kc_addon
+    import addon_utils
+    addon_utils.disable_all()
 
     has_error = False
 

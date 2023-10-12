@@ -155,7 +155,7 @@ void VolumeModule::begin_sync()
 void VolumeModule::sync_object(Object *ob,
                                ObjectHandle & /*ob_handle*/,
                                ResourceHandle res_handle,
-                               MaterialPass *material_pass /*= nullptr*/)
+                               MaterialPass *material_pass /*=nullptr*/)
 {
   float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
@@ -241,6 +241,13 @@ void VolumeModule::end_sync()
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
 
+  if (!inst_.pipelines.world_volume.is_valid()) {
+    prop_scattering_tx_.clear(float4(0.0f));
+    prop_extinction_tx_.clear(float4(0.0f));
+    prop_emission_tx_.clear(float4(0.0f));
+    prop_phase_tx_.clear(float4(0.0f));
+  }
+
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
@@ -254,6 +261,7 @@ void VolumeModule::end_sync()
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
   inst_.lights.bind_resources(&scatter_ps_);
+  inst_.reflection_probes.bind_resources(&scatter_ps_);
   inst_.irradiance_cache.bind_resources(&scatter_ps_);
   inst_.shadows.bind_resources(&scatter_ps_);
   inst_.sampling.bind_resources(&scatter_ps_);

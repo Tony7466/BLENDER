@@ -39,6 +39,7 @@ using bke::GAttributeWriter;
 using bke::GeometryComponent;
 using bke::GeometryComponentEditData;
 using bke::GeometrySet;
+using bke::GreasePencilComponent;
 using bke::GSpanAttributeWriter;
 using bke::InstancesComponent;
 using bke::MeshComponent;
@@ -181,7 +182,7 @@ class GeoNodeExecParams {
 
   geo_eval_log::GeoTreeLogger *get_local_tree_logger() const
   {
-    return this->local_user_data()->tree_logger;
+    return this->local_user_data()->try_get_tree_logger(*this->user_data());
   }
 
   /**

@@ -42,7 +42,8 @@ void main()
 
   if (capture_info_buf.do_surfel_count) {
     /* Generate a surfel only once. This check allow cases where no axis is dominant. */
-    bool is_surface_view_aligned = dominant_axis(g_data.Ng) == dominant_axis(cameraForward);
+    vec3 vNg = normal_world_to_view(g_data.Ng);
+    bool is_surface_view_aligned = dominant_axis(vNg) == 2;
     if (is_surface_view_aligned) {
       uint surfel_id = atomicAdd(capture_info_buf.surfel_len, 1u);
       if (capture_info_buf.do_surfel_output) {
@@ -52,9 +53,10 @@ void main()
         surfel_buf[surfel_id].radiance_direct.front.rgb = g_emission;
         surfel_buf[surfel_id].radiance_direct.front.a = 0.0;
         /* TODO(fclem): 2nd surface evaluation. */
-        surfel_buf[surfel_id].albedo_back = albedo;
-        surfel_buf[surfel_id].radiance_direct.back.rgb = g_emission;
+        surfel_buf[surfel_id].albedo_back = double_sided ? albedo : vec3(0);
+        surfel_buf[surfel_id].radiance_direct.back.rgb = double_sided ? g_emission : vec3(0);
         surfel_buf[surfel_id].radiance_direct.back.a = 0.0;
+        surfel_buf[surfel_id].double_sided = double_sided;
 
         if (!capture_info_buf.capture_emission) {
           surfel_buf[surfel_id].radiance_direct.front.rgb = vec3(0.0);
