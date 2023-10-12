@@ -2,8 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 
 /* Similar to https://atyuwen.github.io/posts/normal-reconstruction/.
@@ -26,7 +25,7 @@ vec3 view_position_derivative_from_depth(
 
   /* Fix issue with depth precision. Take even larger diff. */
   vec4 diff = abs(vec4(depth_center, H.yzw) - H.x);
-  if (max_v4(diff) < 2.4e-7 && all(lessThan(diff.xyz, diff.www))) {
+  if (reduce_max(diff) < 2.4e-7 && all(lessThan(diff.xyz, diff.www))) {
     return 0.25 *
            (drw_point_screen_to_view(vec3(uv3, H.w)) - drw_point_screen_to_view(vec3(uv1, H.x)));
   }

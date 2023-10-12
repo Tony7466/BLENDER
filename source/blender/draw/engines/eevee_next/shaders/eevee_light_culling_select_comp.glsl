@@ -7,8 +7,8 @@
  */
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
-#pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_intersect_lib.glsl)
 
 void main()
 {

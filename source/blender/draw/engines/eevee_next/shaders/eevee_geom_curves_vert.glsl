@@ -8,7 +8,6 @@
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl) /* TODO rename to curve. */
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
 void main()
 {
