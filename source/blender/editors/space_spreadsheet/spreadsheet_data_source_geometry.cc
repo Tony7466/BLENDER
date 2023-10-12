@@ -563,6 +563,11 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
       geometry_set.replace_curves(&const_cast<Curves &>(curves_id),
                                   bke::GeometryOwnershipType::ReadOnly);
     }
+    else if (object_orig->type == OB_GREASE_PENCIL) {
+      const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object_orig->data);
+      geometry_set.replace_grease_pencil(&const_cast<GreasePencil &>(grease_pencil),
+                                         bke::GeometryOwnershipType::ReadOnly);
+    }
   }
   else {
     if (BLI_listbase_is_single(&sspreadsheet->viewer_path.path)) {
