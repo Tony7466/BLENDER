@@ -8,10 +8,10 @@
  * One is for the half-resolution gather passes and the other one for slight in focus regions.
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 /* -------------------------------------------------------------------- */
 /** \name Options.
