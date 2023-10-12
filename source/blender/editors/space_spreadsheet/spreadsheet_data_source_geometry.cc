@@ -542,8 +542,8 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
       if (object_orig->mode == OB_MODE_EDIT) {
         if (const BMEditMesh *em = mesh->edit_mesh) {
           Mesh *new_mesh = (Mesh *)BKE_id_new_nomain(ID_ME, nullptr);
-          /* This is a potentially heavy operation to do on every redraw. The best solution here
-           * is to display the data directly from the bmesh without a conversion, which can be
+          /* This is a potentially heavy operation to do on every redraw. The best solution here is
+           * to display the data directly from the bmesh without a conversion, which can be
            * implemented a bit later. */
           BM_mesh_bm_to_me_for_eval(em->bm, new_mesh, nullptr);
           geometry_set.replace_mesh(new_mesh, bke::GeometryOwnershipType::Owned);
