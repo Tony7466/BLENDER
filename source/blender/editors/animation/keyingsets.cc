@@ -28,6 +28,7 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "ANIM_keyframing.hh"
 #include "ED_keyframing.hh"
 #include "ED_screen.hh"
 
@@ -1039,8 +1040,7 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
   return result;
 }
 
-int ANIM_apply_keyingset(
-    bContext *C, ListBase *dsources, bAction *act, KeyingSet *ks, short mode, float cfra)
+int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short mode, float cfra)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -1142,20 +1142,21 @@ int ANIM_apply_keyingset(
     for (; i < arraylen; i++) {
       /* action to take depends on mode */
       if (mode == MODIFYKEY_MODE_INSERT) {
-        num_channels += insert_keyframe(bmain,
-                                        reports,
-                                        ksp->id,
-                                        act,
-                                        groupname,
-                                        ksp->rna_path,
-                                        i,
-                                        &anim_eval_context,
-                                        eBezTriple_KeyframeType(keytype),
-                                        &nla_cache,
-                                        kflag2);
+        num_channels += blender::animrig::insert_keyframe(bmain,
+                                                          reports,
+                                                          ksp->id,
+                                                          nullptr,
+                                                          groupname,
+                                                          ksp->rna_path,
+                                                          i,
+                                                          &anim_eval_context,
+                                                          eBezTriple_KeyframeType(keytype),
+                                                          &nla_cache,
+                                                          kflag2);
       }
       else if (mode == MODIFYKEY_MODE_DELETE) {
-        num_channels += delete_keyframe(bmain, reports, ksp->id, act, ksp->rna_path, i, cfra);
+        num_channels += blender::animrig::delete_keyframe(
+            bmain, reports, ksp->id, nullptr, ksp->rna_path, i, cfra);
       }
     }
 
