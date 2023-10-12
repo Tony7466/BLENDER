@@ -283,7 +283,7 @@ static bool bpy_run_string_impl(bContext *C,
     if (wm_reports) {
       BKE_reports_move_to_reports(wm_reports, &reports);
     }
-    BKE_reports_finish(&reports);
+    BKE_reports_free(&reports);
   }
   else {
     Py_DECREF(retval);

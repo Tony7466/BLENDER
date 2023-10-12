@@ -197,7 +197,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
     ret = nullptr;
   }
 
-  BKE_reports_finish(&reports);
+  BKE_reports_free(&reports);
 
 finally:
 

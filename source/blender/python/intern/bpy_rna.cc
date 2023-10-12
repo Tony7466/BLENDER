@@ -8793,7 +8793,7 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
       reports_temp.storelevel = reports->storelevel;
       BPy_errors_to_report(&reports_temp);
       BKE_reports_move_to_reports(reports, &reports_temp);
-      BKE_reports_finish(&reports_temp);
+      BKE_reports_free(&reports_temp);
     }
 
     /* Also print in the console for Python. */
@@ -9008,11 +9008,11 @@ static PyObject *pyrna_register_class(PyObject * /*self*/, PyObject *py_class)
       BPy_reports_write_stdout(&reports, error_prefix);
     }
     if (has_error) {
-      BKE_reports_finish(&reports);
+      BKE_reports_free(&reports);
       return nullptr;
     }
   }
-  BKE_reports_finish(&reports);
+  BKE_reports_free(&reports);
 
   /* Python errors validating are not converted into reports so the check above will fail.
    * the cause for returning nullptr will be printed as an error */

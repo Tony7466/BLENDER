@@ -950,7 +950,7 @@ void WM_report(eReportType type, const char *message)
 
   wm_add_reports(&reports);
 
-  BKE_reports_finish(&reports);
+  BKE_reports_free(&reports);
 }
 
 void WM_reportf(eReportType type, const char *format, ...)

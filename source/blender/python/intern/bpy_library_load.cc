@@ -575,7 +575,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
   BKE_blendfile_link_append_context_free(lapp_context);
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
 
-  BKE_reports_finish(&self->reports);
+  BKE_reports_free(&self->reports);
 
   Py_RETURN_NONE;
 }

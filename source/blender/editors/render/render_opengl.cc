@@ -1074,7 +1074,7 @@ static void write_result(TaskPool *__restrict pool, WriteTaskData *task_data)
     }
     BLI_spin_unlock(&oglrender->reports_lock);
   }
-  BKE_reports_finish(&reports);
+  BKE_reports_free(&reports);
   if (!ok) {
     oglrender->pool_ok = false;
   }

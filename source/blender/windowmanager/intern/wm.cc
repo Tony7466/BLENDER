@@ -293,7 +293,7 @@ void WM_operator_free(wmOperator *op)
   }
 
   if (op->reports && (op->reports->flag & RPT_FREE)) {
-    BKE_reports_finish(op->reports);
+    BKE_reports_free(op->reports);
     MEM_freeN(op->reports);
   }
 
@@ -344,7 +344,7 @@ void WM_operator_type_set(wmOperator *op, wmOperatorType *ot)
 
 static void wm_reports_free(wmWindowManager *wm)
 {
-  BKE_reports_finish(&wm->reports);
+  BKE_reports_free(&wm->reports);
   WM_event_timer_remove(wm, nullptr, wm->reports.reporttimer);
 }
 

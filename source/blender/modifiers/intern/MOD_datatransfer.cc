@@ -227,7 +227,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
         ctx->object, (ModifierData *)dtmd, "Enable 'Auto Smooth' in Object Data Properties");
   }
 
-  BKE_reports_finish(&reports);
+  BKE_reports_free(&reports);
 
   return result;
 }

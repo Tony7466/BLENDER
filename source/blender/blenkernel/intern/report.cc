@@ -66,7 +66,7 @@ void BKE_reports_init(ReportList *reports, int flag)
   reports->lock = MEM_new<std::mutex>(__func__);
 }
 
-void BKE_reports_finish(ReportList *reports)
+void BKE_reports_free(ReportList *reports)
 {
   if (!reports) {
     return;
@@ -74,7 +74,7 @@ void BKE_reports_finish(ReportList *reports)
 
   BKE_reports_clear(reports);
 
-  MEM_delete(static_cast<std::mutex *>(reports->lock));
+  MEM_delete(reports->lock);
   reports->lock = nullptr;
 }
 

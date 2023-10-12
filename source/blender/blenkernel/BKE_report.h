@@ -41,7 +41,7 @@ void BKE_reports_init(ReportList *reports, int flag);
  * \note: Not thread-safe, should only be called from the same 'owner' thread of the report list as
  * the one who created/initialized it, once no other concurrent access is possible.
  */
-void BKE_reports_finish(ReportList *reports);
+void BKE_reports_free(ReportList *reports);
 
 /**
  * Only frees the list of reports in given \a reports. Use #BKE_reports_finish to fully cleanup all
