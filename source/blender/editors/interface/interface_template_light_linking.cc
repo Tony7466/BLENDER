@@ -70,6 +70,9 @@ class CollectionDropTarget {
   }
 };
 
+/**
+ * Drop target for the view (when dropping into empty space of the view), not for an item.
+ */
 class InsertCollectionDropTarget : public DropTargetInterface {
   CollectionDropTarget collection_target_;
 
