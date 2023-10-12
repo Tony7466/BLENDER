@@ -275,7 +275,7 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
     if (const GreasePencil *grease_pencil =
             static_cast<const bke::GreasePencilComponent &>(*component_).get())
     {
-      if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER && STREQ(column_id.name, "Name")) {
+      if (domain_ == ATTR_DOMAIN_LAYER && STREQ(column_id.name, "Name")) {
         const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
         return std::make_unique<ColumnValues>(
             column_id.name, VArray<std::string>::ForFunc(domain_num, [layers](int64_t index) {
@@ -448,7 +448,7 @@ std::optional<const bke::AttributeAccessor> GeometryDataSource::get_component_at
   if (!grease_pencil) {
     return {};
   }
-  if (domain_ == ATTR_DOMAIN_GREASE_PENCIL_LAYER) {
+  if (domain_ == ATTR_DOMAIN_LAYER) {
     return grease_pencil->attributes();
   }
   if (layer_index_ >= 0 && layer_index_ < grease_pencil->layers().size()) {
