@@ -54,6 +54,7 @@ GPU_SHADER_CREATE_INFO(draw_view)
 
 GPU_SHADER_CREATE_INFO(draw_view_culling)
     .uniform_buf(DRW_VIEW_CULLING_UBO_SLOT, "ViewCullingData", "drw_view_culling_[DRW_VIEW_LEN]")
+    .define("DRW_VIEW_CULLING_INFO")
     .define("drw_view_culling", "drw_view_culling_[drw_view_id]")
     .typedef_source("draw_shader_shared.h");
 
@@ -62,7 +63,6 @@ GPU_SHADER_CREATE_INFO(draw_modelmat)
                  "ObjectMatrices",
                  "drw_matrices[DRW_RESOURCE_CHUNK_LEN]",
                  Frequency::BATCH)
-    .define("DRAW_MODELMAT_CREATE_INFO")
     .define("ModelMatrix", "(drw_matrices[resource_id].model)")
     .define("ModelMatrixInverse", "(drw_matrices[resource_id].model_inverse)")
     .additional_info("draw_view");
@@ -281,6 +281,7 @@ GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_
 GPU_SHADER_CREATE_INFO(draw_modelmat_new_common)
     .typedef_source("draw_shader_shared.h")
     .storage_buf(DRW_OBJ_MAT_SLOT, Qualifier::READ, "ObjectMatrices", "drw_matrix_buf[]")
+    .define("DRAW_MODELMAT_CREATE_INFO")
     .define("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
     .define("drw_ModelMatrix", "drw_matrix_buf[resource_id].model")
     /* TODO For compatibility with old shaders. To be removed. */

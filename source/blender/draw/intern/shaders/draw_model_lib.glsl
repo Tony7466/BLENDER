@@ -30,11 +30,11 @@
 
 mat4x4 drw_modelmat()
 {
-  return drw_matrices[resource_id].model;
+  return drw_matrix_buf[resource_id].model;
 }
 mat4x4 drw_modelinv()
 {
-  return drw_matrices[resource_id].model_inverse;
+  return drw_matrix_buf[resource_id].model_inverse;
 }
 
 /**
@@ -92,7 +92,7 @@ vec3 drw_normal_view_to_object(vec3 vN)
 
 vec3 drw_point_object_to_world(vec3 lP)
 {
-  return (drw_modelmat() * vec4(p, 1.0)).xyz;
+  return (drw_modelmat() * vec4(lP, 1.0)).xyz;
 }
 vec3 drw_point_world_to_object(vec3 P)
 {
@@ -101,7 +101,7 @@ vec3 drw_point_world_to_object(vec3 P)
 
 vec3 drw_point_object_to_view(vec3 lP)
 {
-  return (drw_view.viewmat * (drw_modelmat() * vec4(p, 1.0))).xyz;
+  return (drw_view.viewmat * (drw_modelmat() * vec4(lP, 1.0))).xyz;
 }
 vec3 drw_point_view_to_object(vec3 vP)
 {
@@ -110,11 +110,11 @@ vec3 drw_point_view_to_object(vec3 vP)
 
 vec4 drw_point_object_to_homogenous(vec3 lP)
 {
-  return (drw_view.winmat * (drw_view.viewmat * (drw_modelmat() * vec4(p, 1.0))));
+  return (drw_view.winmat * (drw_view.viewmat * (drw_modelmat() * vec4(lP, 1.0))));
 }
 vec3 drw_point_object_to_ndc(vec3 lP)
 {
-  return drw_point_homogenous_to_ndc(drw_point_object_to_homogenous(lP));
+  return drw_perspective_divide(drw_point_object_to_homogenous(lP));
 }
 
 /** \} */
