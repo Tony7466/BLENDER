@@ -204,6 +204,23 @@ int reduce_min(ivec2 a);
 int reduce_min(ivec3 a);
 int reduce_min(ivec4 a);
 
+/**
+ * Return the sum of the components of a vector.
+ */
+float reduce_add(vec2 a);
+float reduce_add(vec3 a);
+float reduce_add(vec4 a);
+int reduce_add(ivec2 a);
+int reduce_add(ivec3 a);
+int reduce_add(ivec4 a);
+
+/**
+ * Return the average of the components of a vector.
+ */
+float average(vec2 a);
+float average(vec3 a);
+float average(vec4 a);
+
 #  endif /* GPU_METAL */
 
 /* ---------------------------------------------------------------------- */
@@ -658,6 +675,44 @@ int reduce_min(ivec3 a)
 int reduce_min(ivec4 a)
 {
   return min(min(a.x, a.y), min(a.z, a.w));
+}
+
+float reduce_add(vec2 a)
+{
+  return a.x + a.y;
+}
+float reduce_add(vec3 a)
+{
+  return a.x + a.y + a.z;
+}
+float reduce_add(vec4 a)
+{
+  return a.x + a.y + a.z + a.w;
+}
+int reduce_add(ivec2 a)
+{
+  return a.x + a.y;
+}
+int reduce_add(ivec3 a)
+{
+  return a.x + a.y + a.z;
+}
+int reduce_add(ivec4 a)
+{
+  return a.x + a.y + a.z + a.w;
+}
+
+float average(vec2 a)
+{
+  return reduce_add(a) * (1.0 / 2.0);
+}
+float average(vec3 a)
+{
+  return reduce_add(a) * (1.0 / 3.0);
+}
+float average(vec4 a)
+{
+  return reduce_add(a) * (1.0 / 4.0);
 }
 
 #  define ASSERT_UNIT_EPSILON 0.0002

@@ -661,6 +661,26 @@ template<typename T, int Size> [[nodiscard]] inline int reduce_min(const VecBase
 }
 
 /**
+ * \return the sum of the components of a vector.
+ */
+template<typename T, int Size> [[nodiscard]] inline int reduce_add(const VecBase<T, Size> &a)
+{
+  T result = a[0];
+  for (int i = 1; i < Size; i++) {
+    result += a[i];
+  }
+  return result;
+}
+
+/**
+ * \return the average of the components of a vector.
+ */
+template<typename T, int Size> [[nodiscard]] inline int average(const VecBase<T, Size> &a)
+{
+  return reduce_add(a) * (T(1) / T(Size));
+}
+
+/**
  * Calculates a perpendicular vector to \a v.
  * \note Returned vector can be in any perpendicular direction.
  * \note Returned vector might not the same length as \a v.
