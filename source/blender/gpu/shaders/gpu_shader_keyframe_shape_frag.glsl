@@ -34,7 +34,7 @@ void main()
 
   /* Asterisk outline */
   if (test(GPU_KEYFRAME_SHAPE_ASTERISK)) {
-    float s1 = radii[0];
+    float s1 = radii[1];
     float s2 = s1 * 0.35;
     float horizontal_bar_dist = max(absPos.x - s1, absPos.y - s2);
     float angle = radians(-60);
