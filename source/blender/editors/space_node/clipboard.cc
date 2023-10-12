@@ -220,11 +220,19 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
       bNode *new_node = bke::node_copy_with_mapping(
           &tree, node, LIB_ID_COPY_DEFAULT, true, socket_map);
       /* Reset socket shape in case a node is copied to a different tree type. */
+      auto get_shape = [&](const eNodeSocketDatatype datatype) {
+        switch (datatype) {
+          case SOCK_ENUM:
+            return SOCK_DISPLAY_SHAPE_SQUARE;
+          default:
+            return SOCK_DISPLAY_SHAPE_CIRCLE;
+        }
+      };
       LISTBASE_FOREACH (bNodeSocket *, socket, &new_node->inputs) {
-        socket->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
+        socket->display_shape = get_shape(eNodeSocketDatatype(socket->type));
       }
       LISTBASE_FOREACH (bNodeSocket *, socket, &new_node->outputs) {
-        socket->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
+        socket->display_shape = get_shape(eNodeSocketDatatype(socket->type));
       }
       node_map.add_new(&node, new_node);
     }

@@ -22,7 +22,8 @@ using nodes::SocketDeclaration;
 
 static bool is_field_socket_type(eNodeSocketDatatype type)
 {
-  return ELEM(type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION, SOCK_ENUM);
+  return ELEM(
+      type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION, SOCK_ENUM);
 }
 
 static bool is_field_socket_type(const bNodeSocket &socket)
@@ -651,30 +652,43 @@ static void determine_group_output_states(
 static void update_socket_shapes(const bNodeTree &tree,
                                  const Span<SocketFieldState> field_state_by_socket_id)
 {
-  const eNodeSocketDisplayShape requires_data_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
-  const eNodeSocketDisplayShape data_but_can_be_field_shape = SOCK_DISPLAY_SHAPE_DIAMOND_DOT;
-  const eNodeSocketDisplayShape is_field_shape = SOCK_DISPLAY_SHAPE_DIAMOND;
-
-  auto get_shape_for_state = [&](const SocketFieldState &state) {
-    if (state.is_always_single) {
-      return requires_data_shape;
+  auto get_shape_for_state = [&](const eNodeSocketDatatype datatype,
+                                 const SocketFieldState &state) {
+    switch (datatype) {
+      case SOCK_ENUM:
+        if (state.is_always_single) {
+          return SOCK_DISPLAY_SHAPE_SQUARE;
+        }
+        if (!state.is_single) {
+          return SOCK_DISPLAY_SHAPE_SQUARE;
+        }
+        if (state.requires_single) {
+          return SOCK_DISPLAY_SHAPE_SQUARE;
+        }
+        return SOCK_DISPLAY_SHAPE_SQUARE_DOT;
+      default:
+        if (state.is_always_single) {
+          return SOCK_DISPLAY_SHAPE_CIRCLE;
+        }
+        if (!state.is_single) {
+          return SOCK_DISPLAY_SHAPE_DIAMOND;
+        }
+        if (state.requires_single) {
+          return SOCK_DISPLAY_SHAPE_DIAMOND;
+        }
+        return SOCK_DISPLAY_SHAPE_DIAMOND_DOT;
     }
-    if (!state.is_single) {
-      return is_field_shape;
-    }
-    if (state.requires_single) {
-      return requires_data_shape;
-    }
-    return data_but_can_be_field_shape;
   };
 
   for (const bNodeSocket *socket : tree.all_input_sockets()) {
     const SocketFieldState &state = field_state_by_socket_id[socket->index_in_tree()];
-    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(state);
+    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(
+        eNodeSocketDatatype(socket->type), state);
   }
   for (const bNodeSocket *socket : tree.all_sockets()) {
     const SocketFieldState &state = field_state_by_socket_id[socket->index_in_tree()];
-    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(state);
+    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(
+        eNodeSocketDatatype(socket->type), state);
   }
 }
 
