@@ -123,14 +123,12 @@ vec3 volume_shadow(
 
   if (is_directional) {
     /* For sun light we scan the whole frustum. So we need to get the correct endpoints. */
-    vec3 ndcP = project_point(ProjectionMatrix, transform_point(ViewMatrix, P));
-    vec3 ndcL = project_point(ProjectionMatrix, transform_point(ViewMatrix, P + lv.L * lv.dist)) -
-                ndcP;
+    vec3 ndcP = drw_point_world_to_ndc(P);
+    vec3 ndcL = drw_point_world_to_ndc(P + lv.L * lv.dist) - ndcP;
 
     vec3 frustum_isect = ndcP + ndcL * line_unit_box_intersect_dist_safe(ndcP, ndcL);
 
-    vec4 L_hom = ViewMatrixInverse * (ProjectionMatrixInverse * vec4(frustum_isect, 1.0));
-    L = (L_hom.xyz / L_hom.w) - P;
+    L = drw_point_screen_to_world(frustum_isect) - P;
     L /= uniform_buf.volumes.shadow_steps;
     dd = length(L);
   }
@@ -142,8 +140,8 @@ vec3 volume_shadow(
   {
     vec3 pos = P + L * t;
 
-    vec3 ndc = project_point(ProjectionMatrix, transform_point(ViewMatrix, pos));
-    vec3 volume_co = screen_to_volume(ndc * 0.5 + 0.5);
+    vec3 ndc = drw_point_world_to_ndc(pos);
+    vec3 volume_co = screen_to_volume(drw_ndc_to_screen(ndc));
     /* Let the texture be clamped to edge. This reduce visual glitches. */
     vec3 s_extinction = texture(extinction_tx, volume_co).rgb;
 
