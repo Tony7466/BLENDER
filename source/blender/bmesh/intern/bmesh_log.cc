@@ -47,7 +47,7 @@ using blender::Set;
 using blender::Vector;
 
 /* Avoid C++ runtime type ids. */
-enum BMLogSetType { LOG_SET_DIFF, LOG_SET_FULL };
+enum class BMLogSetType { LOG_SET_DIFF, LOG_SET_FULL };
 
 /* `customdata_layout_is_same` and `customdata_copy_all_layout` are
  *  used internally by BMLog and probably don't have much use elsewhere.
@@ -317,7 +317,7 @@ struct BMLogSetBase {
 };
 
 struct BMLogSetDiff : public BMLogSetBase {
-  BMLogSetDiff(BMLogEntry *entry) : BMLogSetBase(entry, LOG_SET_DIFF) {}
+  BMLogSetDiff(BMLogEntry *entry) : BMLogSetBase(entry, BMLogSetType::LOG_SET_DIFF) {}
 
   Map<int, BMLogVert *> modified_verts;
   Map<int, BMLogEdge *> modified_edges;
@@ -363,7 +363,7 @@ struct BMLogSetDiff : public BMLogSetBase {
 
 struct BMLogSetFullMesh : public BMLogSetBase {
   BMLogSetFullMesh(BMesh *bm, BMLogEntry *entry, BMIdMap *idmap)
-      : BMLogSetBase(entry, LOG_SET_FULL)
+      : BMLogSetBase(entry, BMLogSetType::LOG_SET_FULL)
   {
     /* Validate id map. */
     BM_idmap_check_ids(idmap);
@@ -522,7 +522,7 @@ struct BMLogEntry {
     for (int i = sets.size() - 1; i >= 0; i--) {
       BMLogSetBase *set = sets[i];
 
-      if (set->type != LOG_SET_DIFF) {
+      if (set->type != BMLogSetType::LOG_SET_DIFF) {
         continue;
       }
 
@@ -561,10 +561,10 @@ struct BMLogEntry {
 
     for (BMLogSetBase *set : sets) {
       switch (set->type) {
-        case LOG_SET_DIFF:
+        case BMLogSetType::LOG_SET_DIFF:
           delete static_cast<BMLogSetDiff *>(set);
           break;
-        case LOG_SET_FULL:
+        case BMLogSetType::LOG_SET_FULL:
           delete static_cast<BMLogSetFullMesh *>(set);
           break;
       }
@@ -606,7 +606,7 @@ struct BMLogEntry {
 
     for (BMLogSetBase *set : sets) {
       switch (set->type) {
-        case LOG_SET_DIFF: {
+        case BMLogSetType::LOG_SET_DIFF: {
           BMLogSetDiff *diff = static_cast<BMLogSetDiff *>(set);
 
           av += diff->added_verts.size();
@@ -622,7 +622,7 @@ struct BMLogEntry {
           df += diff->removed_faces.size();
           break;
         }
-        case LOG_SET_FULL:
+        case BMLogSetType::LOG_SET_FULL:
           totmesh++;
           break;
       }
@@ -706,10 +706,10 @@ struct BMLogEntry {
   void push_set(BMesh *bm, BMLogSetType type)
   {
     switch (type) {
-      case LOG_SET_DIFF:
+      case BMLogSetType::LOG_SET_DIFF:
         sets.append(static_cast<BMLogSetBase *>(new BMLogSetDiff(this)));
         break;
-      case LOG_SET_FULL:
+      case BMLogSetType::LOG_SET_FULL:
         sets.append(static_cast<BMLogSetBase *>(new BMLogSetFullMesh(bm, this, idmap)));
         break;
     }
@@ -717,8 +717,8 @@ struct BMLogEntry {
 
   BMLogSetDiff *current_diff_set(BMesh *bm)
   {
-    if (sets.size() == 0 || sets[sets.size() - 1]->type != LOG_SET_DIFF) {
-      push_set(bm, LOG_SET_DIFF);
+    if (sets.size() == 0 || sets[sets.size() - 1]->type != BMLogSetType::LOG_SET_DIFF) {
+      push_set(bm, BMLogSetType::LOG_SET_DIFF);
     }
 
     return static_cast<BMLogSetDiff *>(sets[sets.size() - 1]);
@@ -727,7 +727,7 @@ struct BMLogEntry {
   BMLogSetDiff *first_diff_set(BMesh *bm)
   {
     for (BMLogSetBase *set : sets) {
-      if (set->type == LOG_SET_DIFF) {
+      if (set->type == BMLogSetType::LOG_SET_DIFF) {
         return static_cast<BMLogSetDiff *>(set);
       }
     }
@@ -1123,7 +1123,7 @@ struct BMLog {
   void full_mesh(BMesh *bm)
   {
     ensure_entry(bm);
-    current_entry->push_set(bm, LOG_SET_FULL);
+    current_entry->push_set(bm, BMLogSetType::LOG_SET_FULL);
   }
 
   void skip(int dir)
@@ -1624,7 +1624,7 @@ BMLogEntry *BM_log_entry_add_delta_set(BMesh *bm, BMLog *log)
     log->push_entry(bm);
   }
   else {
-    log->current_entry->push_set(bm, LOG_SET_DIFF);
+    log->current_entry->push_set(bm, BMLogSetType::LOG_SET_DIFF);
   }
 
   return log->current_entry;
@@ -1632,7 +1632,7 @@ BMLogEntry *BM_log_entry_add_delta_set(BMesh *bm, BMLog *log)
 
 BMLogEntry *BM_log_entry_add(BMesh *bm, BMLog *log)
 {
-  log->push_entry(bm)->push_set(bm, LOG_SET_DIFF);
+  log->push_entry(bm)->push_set(bm, BMLogSetType::LOG_SET_DIFF);
   return log->current_entry;
 }
 
