@@ -14,6 +14,8 @@
 #include "UI_resources.hh"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
 #include "node_geometry_util.hh"
@@ -50,20 +52,20 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void add_instances_from_component(
     bke::Instances &dst_component,
-    const GeometryComponent &src_component,
+    const AttributeAccessor &src_attributes,
     const GeometrySet &instance,
+    const fn::FieldContext &field_context,
     const GeoNodeExecParams &params,
     const Map<AttributeIDRef, AttributeKind> &attributes_to_propagate)
 {
   const eAttrDomain domain = ATTR_DOMAIN_POINT;
-  const int domain_num = src_component.attribute_domain_size(domain);
+  const int domain_num = src_attributes.domain_size(domain);
 
   VArray<bool> pick_instance;
   VArray<int> indices;
   VArray<float3> rotations;
   VArray<float3> scales;
 
-  const bke::GeometryFieldContext field_context{src_component, domain};
   const Field<bool> selection_field = params.get_input<Field<bool>>("Selection");
   fn::FieldEvaluator evaluator{field_context, domain_num};
   evaluator.set_selection(selection_field);
@@ -79,7 +81,6 @@ static void add_instances_from_component(
   if (selection.is_empty()) {
     return;
   }
-  const AttributeAccessor src_attributes = *src_component.attributes();
 
   /* The initial size of the component might be non-zero when this function is called for multiple
    * component types. */
@@ -216,9 +217,35 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
+        const GeometryComponent &component = *geometry_set.get_component(type);
+        const bke::GeometryFieldContext field_context{component, ATTR_DOMAIN_POINT};
         add_instances_from_component(*dst_instances,
-                                     *geometry_set.get_component(type),
+                                     *component.attributes(),
                                      instance,
+                                     field_context,
+                                     params,
+                                     attributes_to_propagate);
+      }
+    }
+    if (geometry_set.has_grease_pencil()) {
+      using namespace bke::greasepencil;
+      const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+      for (const int layer_index : grease_pencil.layers().index_range()) {
+        const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil, layer_index);
+        if (drawing == nullptr) {
+          continue;
+        }
+        const bke::CurvesGeometry &src_curves = drawing->strokes();
+        if (src_curves.curves_num() == 0) {
+          continue;
+        }
+        /* TODO: Attributes are not propagating from either the layer, the curves or the points. */
+        const bke::GreasePencilLayerFieldContext field_context(
+            grease_pencil, ATTR_DOMAIN_POINT, layer_index);
+        add_instances_from_component(*dst_instances,
+                                     src_curves.attributes(),
+                                     instance,
+                                     field_context,
                                      params,
                                      attributes_to_propagate);
       }
