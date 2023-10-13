@@ -29,7 +29,7 @@ void main()
   float noise_offset = sampling_rng_1D_get(SAMPLING_TRANSPARENCY);
   float random_threshold = transparency_hashed_alpha_threshold(1.0, noise_offset, g_data.P);
 
-  float transparency = avg(g_transmittance);
+  float transparency = average(g_transmittance);
   if (transparency > random_threshold) {
     discard;
     return;

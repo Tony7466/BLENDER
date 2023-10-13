@@ -76,7 +76,7 @@ vec3 volume_light(LightData light, const bool is_directional, LightVector lv)
     float light_clamp = uniform_buf.volumes.light_clamp;
     if (light_clamp != 0.0) {
       /* 0.0 light clamp means it's disabled. */
-      float max_power = max_v3(light.color) * light.power[LIGHT_VOLUME];
+      float max_power = reduce_max(light.color) * light.power[LIGHT_VOLUME];
       if (max_power > 0.0) {
         /* The limit of the power attenuation function when the distance to the light goes to 0 is
          * `2 / r^2` where r is the light radius. We need to find the right radius that emits at
@@ -93,7 +93,7 @@ vec3 volume_light(LightData light, const bool is_directional, LightVector lv)
      * http://www.cemyuksel.com/research/pointlightattenuation/
      */
     float d = lv.dist;
-    float d_sqr = sqr(d);
+    float d_sqr = square(d);
     float r_sqr = volume_radius_squared;
 
     /* Using reformulation that has better numerical precision. */

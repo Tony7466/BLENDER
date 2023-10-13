@@ -29,7 +29,7 @@ GlobalData init_globals(vec3 wP)
   surf.barycentric_dists = vec3(0.0);
   surf.ray_type = RAY_TYPE_CAMERA;
   surf.ray_depth = 0.0;
-  surf.ray_length = distance(surf.P, cameraPos);
+  surf.ray_length = distance(surf.P, drw_view_position());
   return surf;
 }
 

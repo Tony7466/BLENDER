@@ -21,7 +21,7 @@ vec4 closure_to_rgba(Closure cl)
 {
   vec4 out_color;
   out_color.rgb = g_emission;
-  out_color.a = saturate(1.0 - avg(g_transmittance));
+  out_color.a = saturate(1.0 - average(g_transmittance));
 
   /* Reset for the next closure tree. */
   closure_weights_reset();
@@ -146,5 +146,5 @@ void main()
   out_radiance.rgb *= 1.0 - g_holdout;
 
   out_transmittance.rgb = g_transmittance;
-  out_transmittance.a = saturate(avg(g_transmittance));
+  out_transmittance.a = saturate(average(g_transmittance));
 }

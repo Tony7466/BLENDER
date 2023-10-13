@@ -12,6 +12,9 @@
  * Many modifications were made for our own usage.
  */
 
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 
 /* Inputs expected to be in view-space. */
@@ -91,7 +94,7 @@ METAL_ATTR ScreenTraceHitData raytrace_screen(RayTraceData rt_data,
   float depth_sample = drw_depth_view_to_screen(ray.origin.z);
   float delta = depth_sample - ssray.origin.z;
 
-  float lod_fac = saturate(fast_sqrt(roughness) * 2.0 - 0.4);
+  float lod_fac = saturate(sqrt_fast(roughness) * 2.0 - 0.4);
 
   /* Cross at least one pixel. */
   float t = 1.001, time = 1.001;
@@ -142,7 +145,7 @@ METAL_ATTR ScreenTraceHitData raytrace_screen(RayTraceData rt_data,
   ScreenTraceHitData result;
   result.valid = hit;
   result.ss_hit_P = ssray.origin.xyz + ssray.direction.xyz * time;
-  result.v_hit_P = project_point(drw_view.wininv, result.ss_hit_P * 2.0 - 1.0);
+  result.v_hit_P = drw_point_screen_to_view(result.ss_hit_P);
   /* Convert to world space ray time. */
   result.time = length(result.v_hit_P - ray.origin) / length(ray.direction);
 
@@ -211,7 +214,7 @@ ScreenTraceHitData raytrace_planar(RayTraceData rt_data,
   result.ss_hit_P = ssray.origin.xyz + ssray.direction.xyz * time;
   /* TODO(@fclem): This uses the main view's projection matrix, not the planar's one.
    * This works fine for reflection, but this prevent the use of any other projection capture. */
-  result.v_hit_P = project_point(drw_view.wininv, result.ss_hit_P * 2.0 - 1.0);
+  result.v_hit_P = drw_point_screen_to_view(result.ss_hit_P);
   /* Convert to world space ray time. */
   result.time = length(result.v_hit_P - ray.origin) / length(ray.direction);
   return result;

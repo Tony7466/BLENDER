@@ -19,8 +19,8 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
   vec3 t_mins = (aabb_min - ray_origin) / ray_direction;
   vec3 t_maxs = (aabb_max - ray_origin) / ray_direction;
 
-  float t_min = max_v3(min(t_mins, t_maxs));
-  float t_max = min_v3(max(t_mins, t_maxs));
+  float t_min = reduce_max(min(t_mins, t_maxs));
+  float t_max = reduce_min(max(t_mins, t_maxs));
 
   /* AABB is in the opposite direction. */
   if (t_max < 0.0) {
@@ -68,10 +68,10 @@ void step_bounding_sphere(vec3 vs_near_plane,
   for (int x = -1; x <= 1; x += 2) {
     for (int y = -1; y <= 1; y += 2) {
       vec3 near_corner = near_center + (near_pixel_size * 0.5 * vec3(x, y, 0));
-      sphere_radius = max(sphere_radius, len_squared(near_corner - sphere_center));
+      sphere_radius = max(sphere_radius, length_squared(near_corner - sphere_center));
 
       vec3 far_corner = far_center + (far_pixel_size * 0.5 * vec3(x, y, 0));
-      sphere_radius = max(sphere_radius, len_squared(far_corner - sphere_center));
+      sphere_radius = max(sphere_radius, length_squared(far_corner - sphere_center));
     }
   }
 

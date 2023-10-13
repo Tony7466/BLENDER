@@ -27,7 +27,7 @@ void main()
    * Apply a bias to avoid self-shadow issues. */
   /* TODO(fclem): remove multiplication here. Here only for keeping the size correct for now. */
   float actual_radius = point_cloud_interp.radius * 0.01;
-  interp.P -= cameraVec(interp.P) * actual_radius;
+  interp.P -= drw_world_incident_vector(interp.P) * actual_radius;
 #endif
 
 #ifdef MAT_VELOCITY

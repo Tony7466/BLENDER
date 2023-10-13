@@ -134,7 +134,7 @@ void main()
     sample_count = max(sample_count, 5u);
   }
   /* NOTE: Roughness is squared now. */
-  closure.roughness = max(1e-3, sqr(closure.roughness));
+  closure.roughness = max(1e-3, square(closure.roughness));
 #endif
 
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel_fullres), UTIL_BLUE_NOISE_LAYER).ba;
@@ -178,7 +178,7 @@ void main()
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
 
-    rgb_moment += sqr(ray_radiance.rgb) * weight;
+    rgb_moment += square(ray_radiance.rgb) * weight;
   }
   float inv_weight = safe_rcp(weight_accum);
 
@@ -187,8 +187,8 @@ void main()
   vec3 rgb_mean = radiance_accum;
   rgb_moment *= inv_weight;
 
-  vec3 rgb_variance = abs(rgb_moment - sqr(rgb_mean));
-  float hit_variance = max_v3(rgb_variance);
+  vec3 rgb_variance = abs(rgb_moment - square(rgb_mean));
+  float hit_variance = reduce_max(rgb_variance);
 
   float scene_z = drw_depth_screen_to_view(texelFetch(depth_tx, texel_fullres, 0).r);
   float hit_depth = drw_depth_view_to_screen(scene_z - closest_hit_time);

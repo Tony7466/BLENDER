@@ -331,7 +331,7 @@ static inline float film_filter_weight(float filter_radius, float sample_distanc
   float weight = expf(fac * r);
 #else
   /* Blackman-Harris filter. */
-  float r = M_2PI * saturate(0.5 + sqrtf(sample_distance_sqr) / (2.0 * filter_radius));
+  float r = M_TAU * saturate(0.5 + sqrtf(sample_distance_sqr) / (2.0 * filter_radius));
   float weight = 0.35875 - 0.48829 * cosf(r) + 0.14128 * cosf(2.0 * r) - 0.01168 * cosf(3.0 * r);
 #endif
   return weight;

@@ -41,7 +41,7 @@ void main()
 
   if (capture_info_buf.do_surfel_count) {
     /* Generate a surfel only once. This check allow cases where no axis is dominant. */
-    vec3 vNg = normal_world_to_view(g_data.Ng);
+    vec3 vNg = drw_normal_world_to_view(g_data.Ng);
     bool is_surface_view_aligned = dominant_axis(vNg) == 2;
     if (is_surface_view_aligned) {
       uint surfel_id = atomicAdd(capture_info_buf.surfel_len, 1u);

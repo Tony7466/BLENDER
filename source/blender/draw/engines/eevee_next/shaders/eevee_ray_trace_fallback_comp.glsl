@@ -50,7 +50,7 @@ void main()
   /* Set point really far for correct reprojection of background. */
   float hit_time = 1000.0;
 
-  float luma = max(1e-8, max_v3(radiance));
+  float luma = max(1e-8, reduce_max(radiance));
   radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
 
   imageStore(ray_time_img, texel, vec4(hit_time));

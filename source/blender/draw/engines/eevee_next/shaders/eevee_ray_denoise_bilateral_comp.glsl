@@ -29,7 +29,7 @@ float bilateral_depth_weight(vec3 center_N, vec3 center_P, vec3 sample_P)
   float depth_delta = dot(center_plane_eq, vec4(sample_P, 1.0));
   /* TODO(fclem): Scene parameter. This is dependent on scene scale. */
   const float scale = 10000.0;
-  float weight = exp2(-scale * sqr(depth_delta));
+  float weight = exp2(-scale * square(depth_delta));
   return weight;
 }
 
