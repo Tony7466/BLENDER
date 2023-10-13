@@ -38,13 +38,13 @@ void BKE_reports_init(ReportList *reports, int flag);
  * Also calls #BKE_reports_clear. The given `reports` should not be used anymore unless it is
  * re-initialized first.
  *
- * \note: Not thread-safe, should only be called from the same 'owner' thread of the report list as
- * the one who created/initialized it, once no other concurrent access is possible.
+ * \note: Not thread-safe, should only be called from the current owner of the report list, once
+ * no other concurrent access is possible.
  */
 void BKE_reports_free(ReportList *reports);
 
 /**
- * Only frees the list of reports in given \a reports. Use #BKE_reports_finish to fully cleanup all
+ * Only frees the list of reports in given \a reports. Use #BKE_reports_free to fully cleanup all
  * allocated resources.
  *
  * To make displayed reports disappear, either remove window-manager reports
