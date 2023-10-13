@@ -70,6 +70,9 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"save_post", "on saving a blend file (after). " FILEPATH_SAVE_ARG},
     {"save_post_fail", "on failure to save a blend file (after). " FILEPATH_SAVE_ARG},
 
+    {"asset_drop_pre", "on dropping an asset from the asset browser (before). " FILEPATH_LOAD_ARG},
+    {"asset_drop_post", "on dropping an asset from the asset browser (after). "},
+
     {"undo_pre", "on loading an undo step (before)"},
     {"undo_post", "on loading an undo step (after)"},
     {"redo_pre", "on loading a redo step (before)"},

@@ -27,6 +27,7 @@
 
 #include "BIF_glutil.hh"
 
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -629,28 +630,31 @@ ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const in
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *view3d = CTX_wm_view3d(C);
 
+  BKE_callback_exec_string(bmain, BKE_CB_EVT_ASSET_DROP_PRE, blend_path.c_str());
+
+  ID *id = nullptr;
   switch (eAssetImportMethod(asset_drag->import_method)) {
     case ASSET_IMPORT_LINK:
-      return WM_file_link_datablock(bmain,
+      id = WM_file_link_datablock(bmain,
+                                  scene,
+                                  view_layer,
+                                  view3d,
+                                  blend_path.c_str(),
+                                  idtype,
+                                  name,
+                                  flag | (use_relative_path ? FILE_RELPATH : 0));
+    case ASSET_IMPORT_APPEND:
+      id = WM_file_append_datablock(bmain,
                                     scene,
                                     view_layer,
                                     view3d,
                                     blend_path.c_str(),
                                     idtype,
                                     name,
-                                    flag | (use_relative_path ? FILE_RELPATH : 0));
-    case ASSET_IMPORT_APPEND:
-      return WM_file_append_datablock(bmain,
-                                      scene,
-                                      view_layer,
-                                      view3d,
-                                      blend_path.c_str(),
-                                      idtype,
-                                      name,
-                                      flag | BLO_LIBLINK_APPEND_RECURSIVE |
-                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR);
+                                    flag | BLO_LIBLINK_APPEND_RECURSIVE |
+                                        BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR);
     case ASSET_IMPORT_APPEND_REUSE:
-      return WM_file_append_datablock(
+      id = WM_file_append_datablock(
           G_MAIN,
           scene,
           view_layer,
@@ -662,8 +666,8 @@ ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const in
               BLO_LIBLINK_APPEND_LOCAL_ID_REUSE | (use_relative_path ? FILE_RELPATH : 0));
   }
 
-  BLI_assert_unreachable();
-  return nullptr;
+  BKE_callback_exec_id(bmain, id, BKE_CB_EVT_ASSET_DROP_POST);
+  return id;
 }
 
 bool WM_drag_asset_will_import_linked(const wmDrag *drag)
