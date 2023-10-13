@@ -1059,10 +1059,10 @@ static void shader_node_disconnect_inactive_mix_branch(bNodeTree *ntree,
       }
     }
 
-    if (factor == 1.0f) {
+    if (factor == 1.0f && a_socket.link) {
       nodeRemLink(ntree, a_socket.link);
     }
-    else if (factor == 0.0f) {
+    else if (factor == 0.0f && b_socket.link) {
       nodeRemLink(ntree, b_socket.link);
     }
   }
@@ -1073,9 +1073,8 @@ static void ntree_shader_disconnect_inactive_mix_branches(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->typeinfo->type == SH_NODE_MIX_SHADER) {
       bNodeSocket &factor = *blender::bke::node_find_enabled_input_socket(*node, "Fac");
-      bNodeSocket &a = *blender::bke::node_find_enabled_input_socket(*node, "Shader");
-      bNodeSocket &b = *blender::bke::node_find_enabled_input_socket(*node, "Shader_001");
-      printf("%s: %p, %p:%p;\n", __func__, &factor, &a, &b);
+      bNodeSocket &a = *nodeFindSocket(node, SOCK_IN, "Shader");
+      bNodeSocket &b = *nodeFindSocket(node, SOCK_IN, "Shader_001");
       shader_node_disconnect_inactive_mix_branch(ntree, factor, a, b, true);
     }
     else if (node->typeinfo->type == SH_NODE_MIX) {
