@@ -30,14 +30,14 @@ struct VKWorkarounds {
   bool not_aligned_pixel_formats = false;
 
   /**
-   * Workaround for devices that don't support
-   * #VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex enabled.
    */
   bool shader_output_viewport_index = false;
 
   /**
-   * Workaround for devices that don't support
-   * #VkPhysicalDeviceVulkan12Features::shaderOutputLayer
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputLayer enabled.
    */
   bool shader_output_layer = false;
 };
