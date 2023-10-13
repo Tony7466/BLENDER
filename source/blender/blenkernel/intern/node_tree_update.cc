@@ -810,7 +810,8 @@ class NodeTreeMainUpdater {
     }
   }
 
-  void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src) {
+  void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src)
+  {
     if (src.enum_ref.is_undefined()) {
       /* Undefined if any source enum ref is undefined. */
       dst.enum_ref = NodeEnumDefinitionRef::undefined();
@@ -876,8 +877,7 @@ class NodeTreeMainUpdater {
           bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
           const bNodeSocket &output = *node->output_sockets()[socket_i];
           BLI_assert(STREQ(iosocket.identifier, output.identifier));
-          if (!output.is_available() || output.type != SOCK_ENUM)
-          {
+          if (!output.is_available() || output.type != SOCK_ENUM) {
             continue;
           }
           update_socket_enum_definition(*static_cast<bNodeSocketValueEnum *>(iosocket.socket_data),
@@ -924,9 +924,19 @@ class NodeTreeMainUpdater {
       toposort_indices[node.index()] = i;
     }
 
+    /* Tests if enum references are undefined. */
+    const auto is_undefined_enum_ref = [](const bNodeSocket &socket) -> bool {
+      return socket.type == SOCK_ENUM &&
+             socket.default_value_typed<bNodeSocketValueEnum>()->enum_ref.is_undefined();
+    };
+
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
       link->flag |= NODE_LINK_VALID;
       if (!link->fromsock->is_available() || !link->tosock->is_available()) {
+        link->flag &= ~NODE_LINK_VALID;
+        continue;
+      }
+      if (is_undefined_enum_ref(*link->fromsock) || is_undefined_enum_ref(*link->tosock)) {
         link->flag &= ~NODE_LINK_VALID;
         continue;
       }
