@@ -5933,11 +5933,8 @@ const char *ui_but_placeholder_get(uiBut *but)
         placeholder = RNA_struct_ui_name(type);
       }
     }
-    else if (but->type == UI_BTYPE_TEXT) {
-      const char *identifier = RNA_property_identifier(but->rnaprop);
-      if (STR_ELEM(identifier, "search_filter", "filter_text", "filter_search", "addon_search")) {
-        placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, "Search");
-      }
+    else if (but->type == UI_BTYPE_TEXT && but->icon == ICON_VIEWZOOM) {
+      placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, "Search");
     }
   }
 
