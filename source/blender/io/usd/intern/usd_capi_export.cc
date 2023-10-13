@@ -226,7 +226,7 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   Main *bmain = DEG_get_bmain(depsgraph);
   
   SubdivModifierDisabler mod_disabler(depsgraph, params);
-  if ((params.export_subdiv == USD_SUBDIV_BESTMATCH) || (params.export_subdiv == USD_SUBDIV_NONE)) {
+  if ((params.export_subdiv == USD_SUBDIV_BEST_MATCH) || (params.export_subdiv == USD_SUBDIV_IGNORE)) {
     mod_disabler.disable_modifiers();
     BKE_scene_graph_update_tagged(depsgraph, bmain);
   }

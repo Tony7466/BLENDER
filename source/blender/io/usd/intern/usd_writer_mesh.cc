@@ -57,18 +57,43 @@ bool USDGenericMeshWriter::is_supported(const HierarchyContext *context) const
   return true;
 }
 
+static const SubsurfModifierData *get_subsurf_modifier(eEvaluationMode eval_mode, Object *obj)
+{
+  BLI_assert(obj);
+
+  /* Return the subdiv modifier if it is the last modifier and has
+   * the required mode enabled. */
+
+  ModifierData *md = (ModifierData *)(obj->modifiers.last);
+
+  if (!md) {
+    return nullptr;
+  }
+
+  /* Determine if the modifier is enabled for the current evaluation mode. */
+  ModifierMode mod_mode = (eval_mode == DAG_EVAL_RENDER) ? eModifierMode_Render :
+                                                           eModifierMode_Realtime;
+
+  if ((md->mode & mod_mode) != mod_mode) {
+    return nullptr;
+  }
+
+  if (md->type == eModifierType_Subsurf) {
+    return reinterpret_cast<SubsurfModifierData *>(md);
+  }
+
+  return nullptr;
+}
+
 void USDGenericMeshWriter::do_write(HierarchyContext &context)
 {
   Object *object_eval = context.object;
   bool needsfree = false;
   Mesh *mesh = get_export_mesh(object_eval, needsfree);
   
-  /* Only fetch the subdiv modifier if it is the last modifier. */
-  SubsurfModifierData *subsurfData = nullptr;
-  ModifierData *md = (ModifierData *)(object_eval->modifiers.last);
-  if (md && (md->type == eModifierType_Subsurf)) {
-    subsurfData = (SubsurfModifierData *)(md);
-  }
+  /* Only fetch the subdiv modifier if it is the last modifier, */
+  /* and is enabled for the selected evaluation mode. */
+  const SubsurfModifierData *subsurfData = get_subsurf_modifier(usd_export_context_.export_params.evaluation_mode, object_eval);
 
   if (mesh == nullptr) {
     return;
@@ -384,7 +409,7 @@ struct USDMeshData {
   pxr::VtFloatArray corner_sharpnesses;
 };
 
-void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, SubsurfModifierData* subsurfData)
+void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, const SubsurfModifierData *subsurfData)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
@@ -473,10 +498,6 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, Sub
   }
 
   write_custom_data(mesh, usd_mesh);
-
-  if (usd_export_context_.export_params.export_normals) {
-    write_normals(mesh, usd_mesh);
-  }
   write_surface_velocity(mesh, usd_mesh);
 
   /* TODO(Sybren): figure out what happens when the face groups change. */
@@ -485,19 +506,26 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, Sub
   }
 
   /* Default to setting the subdivision scheme to None. */
-  usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
+  pxr::TfToken subdiv_scheme = pxr::UsdGeomTokens->none;
   
   if (subsurfData) {
     if (subsurfData->subdivType == SUBSURF_TYPE_CATMULL_CLARK) {
-      if (usd_export_context_.export_params.export_subdiv == USD_SUBDIV_BESTMATCH) {
+      if (usd_export_context_.export_params.export_subdiv == USD_SUBDIV_BEST_MATCH) {
         /* If a subdivision modifier exists, and it uses Catmull-Clark, then apply Catmull-Clark SubD scheme. */
-        usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->catmullClark);
+        subdiv_scheme = pxr::UsdGeomTokens->catmullClark;
       }
     } else {
       /* "Simple" is currently the only other subdivision type provided by Blender, */
       /* and we do not yet provide a corresponding representation for USD export. */
-      WM_reportf(RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh at render quality");
+      WM_reportf(RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh");
     }
+  }
+  
+  usd_mesh.CreateSubdivisionSchemeAttr().Set(subdiv_scheme);
+  
+  if (usd_export_context_.export_params.export_normals &&
+      subdiv_scheme == pxr::UsdGeomTokens->none) {
+    write_normals(mesh, usd_mesh);
   }
     
   if (usd_export_context_.export_params.export_materials) {

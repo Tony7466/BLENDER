@@ -71,9 +71,9 @@ SubdivModifierDisabler::~SubdivModifierDisabler()
 
 void SubdivModifierDisabler::disable_modifiers()
 {
-  /* If subdivision should be pre-baked,
+  /* If subdivision should be applied (tessellate the mesh),
    * then do not disable the subdiv modifiers. */
-  if (export_params_.export_subdiv == USD_SUBDIV_BAKED) {
+  if (export_params_.export_subdiv == USD_SUBDIV_TESSELLATE) {
     return;
   }
 

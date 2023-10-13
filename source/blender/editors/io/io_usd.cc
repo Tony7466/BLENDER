@@ -92,18 +92,18 @@ const EnumPropertyItem rna_enum_usd_tex_name_collision_mode_items[] = {
 };
 
 const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
-    {USD_SUBDIV_NONE,
-     "SUBDIV_NONE",
+    {USD_SUBDIV_IGNORE,
+     "IGNORE",
      0,
-     "None - Base mesh only",
-     "Export base mesh without subdivision"},
-    {USD_SUBDIV_BAKED,
-     "SUBDIV_BAKED",
+     "Ignore",
+     "SubD scheme = None, export base mesh without subdivision"},
+    {USD_SUBDIV_TESSELLATE,
+     "TESSELATE",
      0,
-     "None - Subdivided mesh",
-     "Export subdivided mesh"},
-    {USD_SUBDIV_BESTMATCH,
-     "SUBDIV_BESTMATCH",
+     "Tessellate",
+     "SubD scheme = None, export subdivided mesh"},
+    {USD_SUBDIV_BEST_MATCH,
+     "BEST_MATCH",
      0,
      "Best Match",
      "Export base mesh with Catmull-Clark subdivision scheme when possible.  "
@@ -361,7 +361,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                   "export_subdiv",
                   rna_enum_usd_export_subdiv_mode_items,
-                  USD_SUBDIV_BESTMATCH,
+                  USD_SUBDIV_BEST_MATCH,
                   "SubD Scheme", /* shortening "Subdivison surface" to "SubD" so this fits in the UI */
                   "Choose how subdivision modifiers will be mapped to the USD subdivision scheme during export");
 

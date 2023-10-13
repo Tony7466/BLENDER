@@ -41,10 +41,10 @@ typedef enum eUSDTexNameCollisionMode {
 } eUSDTexNameCollisionMode;
 
 typedef enum eSubdivExportMode {
-  USD_SUBDIV_NONE = 0,      /* Subdivision scheme = None, export base mesh without subdivision. */
-  USD_SUBDIV_BAKED = 1,     /* Subdivision scheme = None, export subdivided mesh. */
-  USD_SUBDIV_BESTMATCH = 2, /* Apply the USD subdivision scheme that is the closest match to what Blender is using. */
-                            /* Reverts to USD_SUBDIV_BAKED behavior if the subdivision method is not supported. */
+  USD_SUBDIV_IGNORE = 0,     /* Subdivision scheme = None, export base mesh without subdivision. */
+  USD_SUBDIV_TESSELLATE = 1, /* Subdivision scheme = None, export subdivided mesh. */
+  USD_SUBDIV_BEST_MATCH = 2, /* Apply the USD subdivision scheme that is the closest match to what Blender is using. */
+                             /* Reverts to USD_SUBDIV_BAKED behavior if the subdivision method is not supported. */
 } eSubdivExportMode;
 
 struct USDExportParams {
@@ -54,7 +54,7 @@ struct USDExportParams {
   bool export_normals = true;
   bool export_mesh_colors = true;
   bool export_materials = true;
-  eSubdivExportMode export_subdiv = USD_SUBDIV_BESTMATCH;
+  eSubdivExportMode export_subdiv = USD_SUBDIV_BEST_MATCH;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
   bool use_instancing = false;
