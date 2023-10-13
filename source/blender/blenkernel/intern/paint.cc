@@ -1711,27 +1711,6 @@ static void sculpt_update_object(
     ss->multires.level = 0;
     ss->vmask = static_cast<float *>(
         CustomData_get_layer_for_write(&me->vert_data, CD_PAINT_MASK, me->totvert));
-
-    CustomDataLayer *layer;
-    eAttrDomain domain;
-    if (BKE_pbvh_get_color_layer(me, &layer, &domain)) {
-      if (layer->type == CD_PROP_COLOR) {
-        ss->vcol = static_cast<MPropCol *>(layer->data);
-      }
-      else {
-        ss->mcol = static_cast<MLoopCol *>(layer->data);
-      }
-
-      ss->vcol_domain = domain;
-      ss->vcol_type = static_cast<eCustomDataType>(layer->type);
-    }
-    else {
-      ss->vcol = nullptr;
-      ss->mcol = nullptr;
-
-      ss->vcol_type = (eCustomDataType)-1;
-      ss->vcol_domain = ATTR_DOMAIN_POINT;
-    }
   }
 
   /* Sculpt Face Sets. */
@@ -1933,10 +1912,6 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   BKE_id_attributes_default_color_set(&orig_me->id, unique_name);
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
-
-  if (object->sculpt && object->sculpt->pbvh) {
-    BKE_pbvh_update_active_vcol(object->sculpt->pbvh, orig_me);
-  }
 }
 
 void BKE_sculpt_update_object_for_edit(
@@ -2255,7 +2230,6 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
       }
     }
 
-    BKE_pbvh_update_active_vcol(pbvh, BKE_object_get_original_mesh(ob));
     BKE_pbvh_pmap_set(pbvh, ob->sculpt->pmap);
 
     return pbvh;
@@ -2824,12 +2798,6 @@ static void sculpt_attribute_update_refs(Object *ob)
     if (ss->bm) {
       sculptsession_bmesh_attr_update_internal(ob);
     }
-  }
-
-  Mesh *me = BKE_object_get_original_mesh(ob);
-
-  if (ss->pbvh) {
-    BKE_pbvh_update_active_vcol(ss->pbvh, me);
   }
 }
 

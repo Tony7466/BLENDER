@@ -205,9 +205,6 @@ struct PBVH {
 
   blender::GroupedSpan<int> pmap;
 
-  CustomDataLayer *color_layer;
-  eAttrDomain color_domain;
-
   bool is_drawing;
 
   /* Used by DynTopo to invalidate the draw cache. */

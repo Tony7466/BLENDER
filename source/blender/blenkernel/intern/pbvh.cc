@@ -901,8 +901,6 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
   /* Clear the bitmap so it can be used as an update tag later on. */
   pbvh->vert_bitmap.fill(false);
 
-  BKE_pbvh_update_active_vcol(pbvh, mesh);
-
 #ifdef VALIDATE_UNIQUE_NODE_FACES
   pbvh_validate_node_prims(pbvh);
 #endif
@@ -1410,14 +1408,6 @@ static void pbvh_update_BB_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
       node_update_bounds(*pbvh, *node, PBVHNodeFlags(flag));
     }
   });
-}
-
-bool BKE_pbvh_get_color_layer(Mesh *me, CustomDataLayer **r_layer, eAttrDomain *r_domain)
-{
-  *r_layer = BKE_id_attribute_search(
-      &me->id, me->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
-  *r_domain = *r_layer ? BKE_id_attribute_domain(&me->id, *r_layer) : ATTR_DOMAIN_POINT;
-  return *r_layer != nullptr;
 }
 
 static void node_update_draw_buffers(const Mesh &mesh, PBVH &pbvh, PBVHNode &node)
@@ -3274,11 +3264,6 @@ void BKE_pbvh_node_num_loops(PBVH *pbvh, PBVHNode *node, int *r_totloop)
   if (r_totloop) {
     *r_totloop = node->loop_indices.size();
   }
-}
-
-void BKE_pbvh_update_active_vcol(PBVH *pbvh, Mesh *mesh)
-{
-  BKE_pbvh_get_color_layer(mesh, &pbvh->color_layer, &pbvh->color_domain);
 }
 
 void BKE_pbvh_pmap_set(PBVH *pbvh, const blender::GroupedSpan<int> pmap)

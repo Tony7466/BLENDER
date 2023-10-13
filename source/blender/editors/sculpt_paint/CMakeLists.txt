@@ -82,6 +82,7 @@ set(SRC
   sculpt_multiplane_scrape.cc
   sculpt_ops.cc
   sculpt_paint_color.cc
+  sculpt_paint_color_storage.cc
   sculpt_paint_image.cc
   sculpt_pose.cc
   sculpt_smooth.cc

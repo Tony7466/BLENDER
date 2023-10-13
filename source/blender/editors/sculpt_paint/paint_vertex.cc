@@ -2014,9 +2014,9 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   Object *ob = CTX_data_active_object(C);
 
-  if (SCULPT_has_loop_colors(ob) && ob->sculpt->pbvh) {
-    BKE_pbvh_ensure_node_loops(ob->sculpt->pbvh);
-  }
+  // if (SCULPT_has_loop_colors(ob) && ob->sculpt->pbvh) {
+  //   BKE_pbvh_ensure_node_loops(ob->sculpt->pbvh);
+  // }
 
   SCULPT_undo_push_begin_ex(ob, "Vertex Paint");
 

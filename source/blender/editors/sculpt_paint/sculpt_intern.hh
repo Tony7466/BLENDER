@@ -889,16 +889,25 @@ const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex);
 void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float no[3]);
 
 float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex);
+
+struct SculptColorWriteInfo {
+  float (*layer)[4] = nullptr;
+  int bm_offset = -1;
+};
+SculptColorWriteInfo SCULPT_color_get_for_write(SculptSession *ss);
+void SCULPT_store_colors(SculptSession *ss,
+                         blender::Span<int> indices,
+                         blender::MutableSpan<blender::float4> r_colors);
+void SCULPT_store_colors_vertex(SculptSession *ss,
+                                blender::Span<int> indices,
+                                blender::MutableSpan<blender::float4> r_colors);
+void SCULPT_swap_colors(SculptSession *ss,
+                        blender::Span<int> indices,
+                        blender::MutableSpan<blender::float4> r_colors);
 void SCULPT_vertex_color_get(const SculptSession *ss, PBVHVertRef vertex, float r_color[4]);
 void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float color[4]);
 
 bool SCULPT_vertex_is_occluded(SculptSession *ss, PBVHVertRef vertex, bool original);
-
-/** Returns true if a color attribute exists in the current sculpt session. */
-bool SCULPT_has_colors(const SculptSession *ss);
-
-/** Returns true if the active color attribute is on loop (ATTR_DOMAIN_CORNER) domain. */
-bool SCULPT_has_loop_colors(const Object *ob);
 
 const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, PBVHVertRef vertex);
 void SCULPT_vertex_persistent_normal_get(SculptSession *ss, PBVHVertRef vertex, float no[3]);

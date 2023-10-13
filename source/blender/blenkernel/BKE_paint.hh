@@ -577,11 +577,6 @@ struct SculptSession {
   int totvert, faces_num;
 
   KeyBlock *shapekey_active;
-  MPropCol *vcol;
-  MLoopCol *mcol;
-
-  eAttrDomain vcol_domain;
-  eCustomDataType vcol_type;
 
   const float *vmask;
 

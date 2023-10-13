@@ -175,39 +175,6 @@ const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex)
   return nullptr;
 }
 
-bool SCULPT_has_loop_colors(const Object *ob)
-{
-  using namespace blender;
-  Mesh *me = BKE_object_get_original_mesh(ob);
-  const std::optional<bke::AttributeMetaData> meta_data = me->attributes().lookup_meta_data(
-      me->active_color_attribute);
-  if (!meta_data) {
-    return false;
-  }
-  if (meta_data->domain != ATTR_DOMAIN_CORNER) {
-    return false;
-  }
-  if (!(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL)) {
-    return false;
-  }
-  return true;
-}
-
-bool SCULPT_has_colors(const SculptSession *ss)
-{
-  return ss->vcol || ss->mcol;
-}
-
-void SCULPT_vertex_color_get(const SculptSession *ss, PBVHVertRef vertex, float r_color[4])
-{
-  BKE_pbvh_vertex_color_get(ss->pbvh, vertex, r_color);
-}
-
-void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float color[4])
-{
-  BKE_pbvh_vertex_color_set(ss->pbvh, vertex, color);
-}
-
 void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float no[3])
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
@@ -1534,14 +1501,29 @@ static void paint_mesh_restore_node(Object *ob,
       break;
     }
     case SCULPT_UNDO_COLOR: {
-      SculptOrigVertData orig_vert_data;
-      SCULPT_orig_vert_data_unode_init(&orig_vert_data, ob, unode);
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-        SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
-        SCULPT_vertex_color_set(ss, vd.vertex, orig_vert_data.col);
+      switch (BKE_pbvh_type(ss->pbvh)) {
+        case PBVH_FACES: {
+          Mesh &mesh = *static_cast<Mesh *>(ob->data);
+          SculptColorWriteInfo color_write = SCULPT_color_get_for_write(ss);
+          const Span<int> verts = BKE_pbvh_node_get_unique_vert_indices(node);
+          for (const int i : verts.index_range()) {
+            copy_v4_v4(color_write.layer[verts[i]], unode->col[i]);
+          }
+          break;
+        }
+        case PBVH_BMESH: {
+          PBVHVertexIter vd;
+          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+            copy_v4_v4(BM_ELEM_CD_GET_FLOAT_P(vd.bm_vert, mask_write.bm_offset), unode->col[vd.i]);
+          }
+          BKE_pbvh_vertex_iter_end;
+          break;
+        }
+        case PBVH_GRIDS: {
+          BLI_assert_unreachable();
+          break;
+        }
       }
-      BKE_pbvh_vertex_iter_end;
       BKE_pbvh_node_mark_update_color(node);
       break;
     }
