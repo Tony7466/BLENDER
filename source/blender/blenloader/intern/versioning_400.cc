@@ -1049,6 +1049,38 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
+static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
+                                                                 const char *separator)
+{
+  LISTBASE_FOREACH (bNodeSocket *, socket, &sockets) {
+    if (socket->is_available()) {
+      if (char *pos = strstr(socket->identifier, separator)) {
+        /* End the identifier at the separator so that the old suffix is ignored. */
+        *pos = '\0';
+      }
+    }
+    else {
+      /* Rename existing identifiers so that they don't conflict with the renamed one. Those will
+       * be removed after versioning code. */
+      BLI_strncat(socket->identifier, "_deprecated", sizeof(socket->identifier));
+    }
+  }
+}
+
+static void versioning_node_dynamic_socket(bNodeTree &ntree,
+                                           const int type,
+                                           const char *input_separator,
+                                           const char *output_separator)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    if (node->type != type) {
+      continue;
+    }
+    version_socket_identifier_suffixes_for_dynamic_types(node->inputs, input_separator);
+    version_socket_identifier_suffixes_for_dynamic_types(node->outputs, output_separator);
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1676,6 +1708,31 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Fix node group socket order by sorting outputs and inputs. */
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       versioning_node_group_sort_sockets_recursive(ntree->tree_interface.root_panel);
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34) && false) {
+    /* Fix node group socket order by sorting outputs and inputs. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_CURVE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_AT_INDEX, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_RAYCAST, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_INDEX, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_NEAREST_SURFACE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_UV_SURFACE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_VIEWER, "_", "_");
+
+      versioning_node_dynamic_socket(*ntree, FN_NODE_COMPARE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, FN_NODE_RANDOM_VALUE, "_", "_");
+
+      versioning_node_dynamic_socket(*ntree, SH_NODE_MIX, "_", "_");
     }
   }
 
