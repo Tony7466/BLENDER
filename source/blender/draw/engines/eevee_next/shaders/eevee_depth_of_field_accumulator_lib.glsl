@@ -80,7 +80,7 @@ struct DofGatherData {
         weight(in_weight),
         dist(in_dist),
         coc(in_coc),
-        coc_square(in_coc_sqr),
+        coc_sqr(in_coc_sqr),
         transparency(in_transparency),
         layer_opacity(in_layer_opacity)
   {
