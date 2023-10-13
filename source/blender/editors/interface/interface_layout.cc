@@ -4936,12 +4936,17 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutPanel(uiLayout *layout,
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
                         const char *name,
                         PointerRNA *open_prop_owner,
                         const char *open_prop_name)
 {
-  const bool is_open = RNA_boolean_get(open_prop_owner, open_prop_name);
+  const ARegion *region = CTX_wm_region(C);
+
+  const bool is_real_open = RNA_boolean_get(open_prop_owner, open_prop_name);
+  const bool search_filter_active = region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE;
+  const bool is_open = is_real_open || search_filter_active;
 
   {
     uiLayoutItemPanelHeader *header_litem = MEM_cnew<uiLayoutItemPanelHeader>(__func__);

@@ -2279,7 +2279,8 @@ bool uiLayoutGetPropDecorate(uiLayout *layout);
 /* Layout create functions. */
 
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
-uiLayout *uiLayoutPanel(uiLayout *layout,
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
                         const char *name,
                         PointerRNA *open_prop_owner,
                         const char *open_prop_name);

@@ -339,7 +339,7 @@ static void shading_panel_draw(uiLayout *layout, PointerRNA *ptr)
   uiItemR(layout, ptr, "face_strength_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void panel_draw(const bContext * /*C*/, Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *col, *sub;
   uiLayout *layout = panel->layout;
@@ -380,14 +380,16 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Profile", ptr, "show_subpanel_expanded_1")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Profile", ptr, "show_subpanel_expanded_1")) {
     profile_panel_draw(panel_layout, ptr);
   }
-  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Geometry", ptr, "show_subpanel_expanded_2"))
-  {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Geometry", ptr, "show_subpanel_expanded_2")) {
     geometry_panel_draw(panel_layout, ptr);
   }
-  if (uiLayout *panel_layout = uiLayoutPanel(layout, "Shading", ptr, "show_subpanel_expanded_3")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Shading", ptr, "show_subpanel_expanded_3")) {
     shading_panel_draw(panel_layout, ptr);
   }
 }
