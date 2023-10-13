@@ -45,7 +45,7 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
       b.add_input<decl::Float>(name, identifier).supports_field();
       break;
     case SOCK_VECTOR:
-      b.add_input<decl::Float>(name, identifier).supports_field();
+      b.add_input<decl::Vector>(name, identifier).supports_field();
       break;
     case SOCK_RGBA:
       b.add_input<decl::Color>(name, identifier)
@@ -105,7 +105,7 @@ static void add_output(NodeDeclarationBuilder &b, const eNodeSocketDatatype type
       b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
       break;
     case SOCK_VECTOR:
-      b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
+      b.add_output<decl::Vector>(name).dependent_field().reference_pass_all();
       break;
     case SOCK_RGBA:
       b.add_output<decl::Color>(name);
