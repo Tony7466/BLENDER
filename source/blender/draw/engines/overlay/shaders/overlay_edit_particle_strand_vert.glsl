@@ -7,13 +7,11 @@
 
 #define no_active_weight 666.0
 
-#define base_color (replaceColor == 0.0 ? colorWire : replaceColor)
-
 vec3 weight_to_rgb(float t)
 {
   if (t == no_active_weight) {
     /* No weight. */
-    return base_color.rgb;
+    return colorWire.rgb;
   }
   if (t > 1.0 || t < 0.0) {
     /* Error color */
@@ -33,7 +31,7 @@ void main()
     finalColor = vec4(weight_to_rgb(selection), 1.0);
   }
   else {
-    finalColor = mix(base_color, colorVertexSelect, selection);
+    finalColor = mix(colorWire, colorVertexSelect, selection);
   }
 
   view_clipping_distances(world_pos);

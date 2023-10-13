@@ -399,9 +399,6 @@ typedef struct GreasePencil {
   int drawing_array_num;
   char _pad[4];
 
-  /* Color for line (edit mode). */
-  float line_color[4];
-
   /* Root group of the layer tree. */
   GreasePencilLayerTreeGroup *root_group_ptr;
 

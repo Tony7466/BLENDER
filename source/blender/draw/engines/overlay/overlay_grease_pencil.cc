@@ -36,16 +36,12 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
 void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
   DRWShadingGroup *lines_grp = pd->edit_grease_pencil_wires_grp;
   if (lines_grp) {
-    DRWShadingGroup *grp = DRW_shgroup_create_sub(lines_grp);
-    DRW_shgroup_uniform_vec4_copy(grp, "replaceColor", grease_pencil.line_color);
-
     GPUBatch *geom_lines = DRW_cache_grease_pencil_edit_lines_get(ob, pd->cfra);
 
-    DRW_shgroup_call_no_cull(grp, geom_lines, ob);
+    DRW_shgroup_call_no_cull(lines_grp, geom_lines, ob);
   }
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
