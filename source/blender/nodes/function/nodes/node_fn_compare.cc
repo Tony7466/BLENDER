@@ -38,8 +38,8 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   const bool type_is_floating = !ELEM(data_type, SOCK_INT, SOCK_STRING);
   const bool is_vector = data_type == SOCK_VECTOR;
 
-  b.add_output(data_type, "A").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_output(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input(data_type, "A").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
   if (is_vector && mode == NODE_COMPARE_MODE_DOT_PRODUCT) {
     b.add_input<decl::Float>("C").default_value(0.9f);

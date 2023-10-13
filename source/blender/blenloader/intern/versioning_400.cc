@@ -1711,8 +1711,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34) && false) {
-    /* Fix node group socket order by sorting outputs and inputs. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
