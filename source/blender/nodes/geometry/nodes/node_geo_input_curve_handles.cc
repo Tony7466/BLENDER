@@ -20,20 +20,22 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>("Right").field_source_reference_all();
 }
 
-class HandlePositionFieldInput final : public bke::CurvesFieldInput {
+class HandlePositionFieldInput final : public bke::GeometryFieldInput {
   Field<bool> relative_;
   bool left_;
 
  public:
   HandlePositionFieldInput(Field<bool> relative, bool left)
-      : bke::CurvesFieldInput(CPPType::get<float3>(), "Handle"), relative_(relative), left_(left)
+      : bke::GeometryFieldInput(CPPType::get<float3>(), "Handle"), relative_(relative), left_(left)
   {
   }
 
-  GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+  GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final
   {
+    const bke::CurvesGeometry &curves = *context.curves_or_strokes();
+    const eAttrDomain domain = context.domain();
+
     const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
     fn::FieldEvaluator evaluator(field_context, &mask);
     evaluator.add(relative_);
