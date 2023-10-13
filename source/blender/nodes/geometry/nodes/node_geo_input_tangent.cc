@@ -90,17 +90,18 @@ static VArray<float3> construct_curve_tangent_gvarray(const bke::CurvesGeometry 
   return nullptr;
 }
 
-class TangentFieldInput final : public bke::CurvesFieldInput {
+class TangentFieldInput final : public bke::GeometryFieldInput {
  public:
-  TangentFieldInput() : bke::CurvesFieldInput(CPPType::get<float3>(), "Tangent node")
+  TangentFieldInput() : bke::GeometryFieldInput(CPPType::get<float3>(), "Tangent node")
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+  GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask & /*mask*/) const final
   {
+    const bke::CurvesGeometry &curves = *context.curves_or_strokes();
+    const eAttrDomain domain = context.domain();
     return construct_curve_tangent_gvarray(curves, domain);
   }
 
@@ -115,7 +116,8 @@ class TangentFieldInput final : public bke::CurvesFieldInput {
     return dynamic_cast<const TangentFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/) const final
+  virtual std::optional<eAttrDomain> preferred_domain(
+      const bke::CurvesGeometry & /*curves*/) const final
   {
     return ATTR_DOMAIN_POINT;
   }
