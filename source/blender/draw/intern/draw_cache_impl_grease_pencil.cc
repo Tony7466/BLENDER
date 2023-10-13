@@ -412,6 +412,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil,
     MutableSpan<float> selection_slice = edit_points_selection.slice(drawing_start_offset,
                                                                      curves.points_num());
     selection_float.materialize(selection_slice);
+    drawing_start_offset += curves.points_num();
 
     auto populate_point = [&](IndexRange verts_range,
                               int curve_i,
@@ -499,7 +500,6 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil,
         verts_slice.last().mat = -1;
       }
     });
-    drawing_start_offset += curves.points_num();
   }
 
   if (lines) {
