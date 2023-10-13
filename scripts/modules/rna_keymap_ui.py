@@ -411,7 +411,7 @@ def draw_keymaps(context, layout):
     rowsubsub = rowsub.row(align=True)
     if not ok:
         rowsubsub.alert = True
-    search_placeholder = "Search"
+    search_placeholder = ""
     if spref.filter_type == 'NAME':
         search_placeholder = iface_("Search by Name")
     elif spref.filter_type == 'KEY':
