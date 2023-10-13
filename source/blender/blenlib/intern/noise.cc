@@ -532,6 +532,7 @@ float perlin(float4 position)
 
 /* Fractal perlin noise. */
 
+/* fBM = Fractal Brownian Motion */
 template<typename T>
 float perlin_fbm(
     T p, const float detail, const float roughness, const float lacunarity, const bool normalize)
@@ -560,7 +561,7 @@ float perlin_fbm(
   }
 }
 
-/* Explicilt instantiation for Wave Texture. */
+/* Explicit instantiation for Wave Texture. */
 template float perlin_fbm<float3>(float3 p,
                                   const float detail,
                                   const float roughness,

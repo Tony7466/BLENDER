@@ -221,14 +221,14 @@ class NoiseFunction : public mf::MultiFunction {
     const VArray<float> &detail = params.readonly_single_input<float>(param++, "Detail");
     const VArray<float> &roughness = params.readonly_single_input<float>(param++, "Roughness");
     const VArray<float> &lacunarity = params.readonly_single_input<float>(param++, "Lacunarity");
-    /* Initialize to any other variable when unused to avoid unnecessary conditionals */
+    /* Initialize to any other variable when unused to avoid unnecessary conditionals. */
     const VArray<float> &offset = ELEM(type_,
                                        SHD_NOISE_RIDGED_MULTIFRACTAL,
                                        SHD_NOISE_HYBRID_MULTIFRACTAL,
                                        SHD_NOISE_HETERO_TERRAIN) ?
                                       params.readonly_single_input<float>(param++, "Offset") :
                                       scale;
-    /* Initialize to any other variable when unused to avoid unnecessary conditionals */
+    /* Initialize to any other variable when unused to avoid unnecessary conditionals. */
     const VArray<float> &gain = ELEM(type_,
                                      SHD_NOISE_RIDGED_MULTIFRACTAL,
                                      SHD_NOISE_HYBRID_MULTIFRACTAL) ?

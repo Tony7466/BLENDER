@@ -422,8 +422,7 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute"))
-        {
+                     "GeometryNodeInputNamedAttribute")) {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -597,54 +596,57 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 static void versioning_update_noise_texture_node(bNodeTree *ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_TEX_NOISE) {
-      (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
+    if (node->type != SH_NODE_TEX_NOISE) {
+      continue;
+    }
 
-      bNodeSocket *sockRoughness = nodeFindSocket(node, SOCK_IN, "Roughness");
-      if (sockRoughness == nullptr) {
-        /* Noise Texture node was created before the Roughness input was added. */
-        continue;
+    (static_cast<NodeTexNoise *>(node->storage))->type = SHD_NOISE_FBM;
+
+    bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+    if (roughness_socket == nullptr) {
+      /* Noise Texture node was created before the Roughness input was added. */
+      continue;
+    }
+
+    float *roughness = version_cycles_node_socket_float_value(roughness_socket);
+
+    bNodeLink *roughness_link = nullptr;
+    bNode *roughness_from_node = nullptr;
+    bNodeSocket *roughness_from_socket = nullptr;
+
+    LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+      /* Find links, nodes and sockets. */
+      if (link->tosock == roughness_socket) {
+        roughness_link = link;
+        roughness_from_node = link->fromnode;
+        roughness_from_socket = link->fromsock;
       }
+    }
 
-      float *roughness = version_cycles_node_socket_float_value(sockRoughness);
+    if (roughness_link != nullptr) {
+      /* Add Clamp node before Roughness input. */
 
-      bNodeLink *roughnessLink = nullptr;
-      bNode *roughnessFromNode = nullptr;
-      bNodeSocket *roughnessFromSock = nullptr;
+      bNode *clamp_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
+      clamp_node->parent = node->parent;
+      clamp_node->custom1 = NODE_CLAMP_MINMAX;
+      clamp_node->locx = node->locx;
+      clamp_node->locy = node->locy - 300.0f;
+      clamp_node->flag |= NODE_HIDDEN;
+      bNodeSocket *clamp_socket_value = nodeFindSocket(clamp_node, SOCK_IN, "Value");
+      bNodeSocket *clamp_socket_min = nodeFindSocket(clamp_node, SOCK_IN, "Min");
+      bNodeSocket *clamp_socket_max = nodeFindSocket(clamp_node, SOCK_IN, "Max");
+      bNodeSocket *clamp_socket_out = nodeFindSocket(clamp_node, SOCK_OUT, "Result");
 
-      LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-        /* Find links, nodes and sockets. */
-        if ((link->tonode == node) && (STREQ(link->tosock->identifier, "Roughness"))) {
-          roughnessLink = link;
-          roughnessFromNode = link->fromnode;
-          roughnessFromSock = link->fromsock;
-        }
-      }
+      *version_cycles_node_socket_float_value(clamp_socket_min) = 0.0f;
+      *version_cycles_node_socket_float_value(clamp_socket_max) = 1.0f;
 
-      if (roughnessLink != nullptr) {
-        /* Add Clamp node before Roughness input. */
-
-        bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
-        clampNode->parent = node->parent;
-        clampNode->custom1 = NODE_CLAMP_MINMAX;
-        clampNode->locx = node->locx;
-        clampNode->locy = node->locy - 300.0f;
-        clampNode->flag |= NODE_HIDDEN;
-        bNodeSocket *clampSockValue = nodeFindSocket(clampNode, SOCK_IN, "Value");
-        bNodeSocket *clampSockMin = nodeFindSocket(clampNode, SOCK_IN, "Min");
-        bNodeSocket *clampSockMax = nodeFindSocket(clampNode, SOCK_IN, "Max");
-        bNodeSocket *clampSockOut = nodeFindSocket(clampNode, SOCK_OUT, "Result");
-
-        *version_cycles_node_socket_float_value(clampSockMin) = 0.0f;
-        *version_cycles_node_socket_float_value(clampSockMax) = 1.0f;
-
-        nodeRemLink(ntree, roughnessLink);
-        nodeAddLink(ntree, roughnessFromNode, roughnessFromSock, clampNode, clampSockValue);
-        nodeAddLink(ntree, clampNode, clampSockOut, node, sockRoughness);
-      }
-      else {
-        *roughness = std::clamp(*roughness, 0.0f, 1.0f);
-      }
+      nodeRemLink(ntree, roughness_link);
+      nodeAddLink(
+          ntree, roughness_from_node, roughness_from_socket, clamp_node, clamp_socket_value);
+      nodeAddLink(ntree, clamp_node, clamp_socket_out, node, roughness_socket);
+    }
+    else {
+      *roughness = std::clamp(*roughness, 0.0f, 1.0f);
     }
   }
 
@@ -655,290 +657,314 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 {
   version_node_input_socket_name(ntree, SH_NODE_TEX_MUSGRAVE_DEPRECATED, "Dimension", "Roughness");
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_TEX_MUSGRAVE_DEPRECATED) {
-      STRNCPY(node->idname, "ShaderNodeTexNoise");
-      node->type = SH_NODE_TEX_NOISE;
-      NodeTexNoise *data = MEM_cnew<NodeTexNoise>(__func__);
-      data->base = (static_cast<NodeTexMusgrave *>(node->storage))->base;
-      data->dimensions = (static_cast<NodeTexMusgrave *>(node->storage))->dimensions;
-      data->normalize = false;
-      data->type = (static_cast<NodeTexMusgrave *>(node->storage))->musgrave_type;
-      MEM_freeN(node->storage);
-      node->storage = data;
+    if (node->type != SH_NODE_TEX_MUSGRAVE_DEPRECATED) {
+      continue;
+    }
 
-      bNodeLink *detailLink = nullptr;
-      bNode *detailFromNode = nullptr;
-      bNodeSocket *detailFromSock = nullptr;
+    STRNCPY(node->idname, "ShaderNodeTexNoise");
+    node->type = SH_NODE_TEX_NOISE;
+    NodeTexNoise *data = MEM_cnew<NodeTexNoise>(__func__);
+    data->base = (static_cast<NodeTexMusgrave *>(node->storage))->base;
+    data->dimensions = (static_cast<NodeTexMusgrave *>(node->storage))->dimensions;
+    data->normalize = false;
+    data->type = (static_cast<NodeTexMusgrave *>(node->storage))->musgrave_type;
+    MEM_freeN(node->storage);
+    node->storage = data;
 
-      bNodeLink *roughnessLink = nullptr;
-      bNode *roughnessFromNode = nullptr;
-      bNodeSocket *roughnessFromSock = nullptr;
+    bNodeLink *detail_link = nullptr;
+    bNode *detail_from_node = nullptr;
+    bNodeSocket *detail_from_socket = nullptr;
 
-      bNodeLink *lacunarityLink = nullptr;
-      bNode *lacunarityFromNode = nullptr;
-      bNodeSocket *lacunarityFromSock = nullptr;
+    bNodeLink *roughness_link = nullptr;
+    bNode *roughness_from_node = nullptr;
+    bNodeSocket *roughness_from_socket = nullptr;
 
-      LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-        /* Find links, nodes and sockets. */
-        if (link->tonode == node) {
-          if (STREQ(link->tosock->identifier, "Detail")) {
-            detailLink = link;
-            detailFromNode = link->fromnode;
-            detailFromSock = link->fromsock;
-          }
-          if (STREQ(link->tosock->identifier, "Roughness")) {
-            roughnessLink = link;
-            roughnessFromNode = link->fromnode;
-            roughnessFromSock = link->fromsock;
-          }
-          if (STREQ(link->tosock->identifier, "Lacunarity")) {
-            lacunarityLink = link;
-            lacunarityFromNode = link->fromnode;
-            lacunarityFromSock = link->fromsock;
-          }
+    bNodeLink *lacunarity_link = nullptr;
+    bNode *lacunarity_from_node = nullptr;
+    bNodeSocket *lacunarity_from_socket = nullptr;
+
+    LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+      /* Find links, nodes and sockets. */
+      if (link->tonode == node) {
+        if (STREQ(link->tosock->identifier, "Detail")) {
+          detail_link = link;
+          detail_from_node = link->fromnode;
+          detail_from_socket = link->fromsock;
+        }
+        if (STREQ(link->tosock->identifier, "Roughness")) {
+          roughness_link = link;
+          roughness_from_node = link->fromnode;
+          roughness_from_socket = link->fromsock;
+        }
+        if (STREQ(link->tosock->identifier, "Lacunarity")) {
+          lacunarity_link = link;
+          lacunarity_from_node = link->fromnode;
+          lacunarity_from_socket = link->fromsock;
         }
       }
+    }
 
-      uint8_t noise_type = (static_cast<NodeTexNoise *>(node->storage))->type;
-      float locyoffset = 0.0f;
+    uint8_t noise_type = (static_cast<NodeTexNoise *>(node->storage))->type;
+    float locy_offset = 0.0f;
 
-      bNodeSocket *sockFac = nodeFindSocket(node, SOCK_OUT, "Fac");
-      /* Clear label because Musgrave output socket label is set to "Height" instead of "Fac". */
-      sockFac->label[0] = '\0';
+    bNodeSocket *fac_socket = nodeFindSocket(node, SOCK_OUT, "Fac");
+    /* Clear label because Musgrave output socket label is set to "Height" instead of "Fac". */
+    fac_socket->label[0] = '\0';
 
-      bNodeSocket *sockDetail = nodeFindSocket(node, SOCK_IN, "Detail");
-      float *detail = version_cycles_node_socket_float_value(sockDetail);
+    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
+    float *detail = version_cycles_node_socket_float_value(detail_socket);
 
-      if (detailLink != nullptr) {
-        locyoffset -= 40.0f;
+    if (detail_link != nullptr) {
+      locy_offset -= 40.0f;
 
-        /* Add Subtract Math node before Detail input. */
+      /* Add Subtract Math node before Detail input. */
 
-        bNode *subNode1 = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-        subNode1->parent = node->parent;
-        subNode1->custom1 = NODE_MATH_SUBTRACT;
-        subNode1->locx = node->locx;
-        subNode1->locy = node->locy - 300.0f;
-        subNode1->flag |= NODE_HIDDEN;
-        bNodeSocket *subSock1A = static_cast<bNodeSocket *>(BLI_findlink(&subNode1->inputs, 0));
-        bNodeSocket *subSock1B = static_cast<bNodeSocket *>(BLI_findlink(&subNode1->inputs, 1));
-        bNodeSocket *subSock1Out = nodeFindSocket(subNode1, SOCK_OUT, "Value");
+      bNode *sub1_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      sub1_node->parent = node->parent;
+      sub1_node->custom1 = NODE_MATH_SUBTRACT;
+      sub1_node->locx = node->locx;
+      sub1_node->locy = node->locy - 300.0f;
+      sub1_node->flag |= NODE_HIDDEN;
+      bNodeSocket *sub1_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 0));
+      bNodeSocket *sub1_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 1));
+      bNodeSocket *sub1_socket_out = nodeFindSocket(sub1_node, SOCK_OUT, "Value");
 
-        *version_cycles_node_socket_float_value(subSock1B) = 1.0f;
+      *version_cycles_node_socket_float_value(sub1_socket_B) = 1.0f;
 
-        nodeRemLink(ntree, detailLink);
-        nodeAddLink(ntree, detailFromNode, detailFromSock, subNode1, subSock1A);
-        nodeAddLink(ntree, subNode1, subSock1Out, node, sockDetail);
+      nodeRemLink(ntree, detail_link);
+      nodeAddLink(ntree, detail_from_node, detail_from_socket, sub1_node, sub1_socket_A);
+      nodeAddLink(ntree, sub1_node, sub1_socket_out, node, detail_socket);
 
-        if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
-            (noise_type == SHD_NOISE_HETERO_TERRAIN))
-        {
-          locyoffset -= 40.0f;
+      if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
+          (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
+        locy_offset -= 40.0f;
 
-          /* Add Greater Than Math node before Subtract Math node. */
+        /* Add Greater Than Math node before Subtract Math node. */
 
-          bNode *greaterNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-          greaterNode->parent = node->parent;
-          greaterNode->custom1 = NODE_MATH_GREATER_THAN;
-          greaterNode->locx = node->locx;
-          greaterNode->locy = node->locy - 340.0f;
-          greaterNode->flag |= NODE_HIDDEN;
-          bNodeSocket *greaterSockA = static_cast<bNodeSocket *>(
-              BLI_findlink(&greaterNode->inputs, 0));
-          bNodeSocket *greaterSockB = static_cast<bNodeSocket *>(
-              BLI_findlink(&greaterNode->inputs, 1));
-          bNodeSocket *greaterSockOut = nodeFindSocket(greaterNode, SOCK_OUT, "Value");
+        bNode *greater_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        greater_node->parent = node->parent;
+        greater_node->custom1 = NODE_MATH_GREATER_THAN;
+        greater_node->locx = node->locx;
+        greater_node->locy = node->locy - 340.0f;
+        greater_node->flag |= NODE_HIDDEN;
+        bNodeSocket *greater_socket_A = static_cast<bNodeSocket *>(
+            BLI_findlink(&greater_node->inputs, 0));
+        bNodeSocket *greater_socket_B = static_cast<bNodeSocket *>(
+            BLI_findlink(&greater_node->inputs, 1));
+        bNodeSocket *greater_socket_out = nodeFindSocket(greater_node, SOCK_OUT, "Value");
 
-          *version_cycles_node_socket_float_value(greaterSockB) = 1.0f;
+        *version_cycles_node_socket_float_value(greater_socket_B) = 1.0f;
 
-          nodeAddLink(ntree, detailFromNode, detailFromSock, greaterNode, greaterSockA);
-          nodeAddLink(ntree, greaterNode, greaterSockOut, subNode1, subSock1B);
+        nodeAddLink(ntree, detail_from_node, detail_from_socket, greater_node, greater_socket_A);
+        nodeAddLink(ntree, greater_node, greater_socket_out, sub1_node, sub1_socket_B);
+      }
+      else {
+        /* Add Clamp node and Multiply Math node behind Fac output. */
+
+        bNode *clamp_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
+        clamp_node->parent = node->parent;
+        clamp_node->custom1 = NODE_CLAMP_MINMAX;
+        clamp_node->locx = node->locx;
+        clamp_node->locy = node->locy + 40.0f;
+        clamp_node->flag |= NODE_HIDDEN;
+        bNodeSocket *clamp_socket_value = nodeFindSocket(clamp_node, SOCK_IN, "Value");
+        bNodeSocket *clamp_socket_min = nodeFindSocket(clamp_node, SOCK_IN, "Min");
+        bNodeSocket *clamp_socket_max = nodeFindSocket(clamp_node, SOCK_IN, "Max");
+        bNodeSocket *clamp_socket_out = nodeFindSocket(clamp_node, SOCK_OUT, "Result");
+
+        bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        mul_node->parent = node->parent;
+        mul_node->custom1 = NODE_MATH_MULTIPLY;
+        mul_node->locx = node->locx;
+        mul_node->locy = node->locy + 80.0f;
+        mul_node->flag |= NODE_HIDDEN;
+        bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 0));
+        bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 1));
+        bNodeSocket *mul_socket_out = nodeFindSocket(mul_node, SOCK_OUT, "Value");
+
+        *version_cycles_node_socket_float_value(clamp_socket_min) = 0.0f;
+        *version_cycles_node_socket_float_value(clamp_socket_max) = 1.0f;
+
+        if (noise_type == SHD_NOISE_MULTIFRACTAL) {
+          /* Add Subtract Math node and Add Math node after Multiply Math node. */
+
+          bNode *sub2_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          sub2_node->parent = node->parent;
+          sub2_node->custom1 = NODE_MATH_SUBTRACT;
+          sub2_node->custom2 = SHD_MATH_CLAMP;
+          sub2_node->locx = node->locx;
+          sub2_node->locy = node->locy + 120.0f;
+          sub2_node->flag |= NODE_HIDDEN;
+          bNodeSocket *sub2_socket_A = static_cast<bNodeSocket *>(
+              BLI_findlink(&sub2_node->inputs, 0));
+          bNodeSocket *sub2_socket_B = static_cast<bNodeSocket *>(
+              BLI_findlink(&sub2_node->inputs, 1));
+          bNodeSocket *sub2_socket_out = nodeFindSocket(sub2_node, SOCK_OUT, "Value");
+
+          bNode *add_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          add_node->parent = node->parent;
+          add_node->custom1 = NODE_MATH_ADD;
+          add_node->locx = node->locx;
+          add_node->locy = node->locy + 160.0f;
+          add_node->flag |= NODE_HIDDEN;
+          bNodeSocket *add_socket_A = static_cast<bNodeSocket *>(
+              BLI_findlink(&add_node->inputs, 0));
+          bNodeSocket *add_socket_B = static_cast<bNodeSocket *>(
+              BLI_findlink(&add_node->inputs, 1));
+          bNodeSocket *add_socket_out = nodeFindSocket(add_node, SOCK_OUT, "Value");
+
+          *version_cycles_node_socket_float_value(sub2_socket_A) = 1.0f;
+
+          LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+            if (link->fromsock == fac_socket) {
+              nodeAddLink(ntree, add_node, add_socket_out, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+
+          nodeAddLink(ntree, mul_node, mul_socket_out, add_node, add_socket_A);
+          nodeAddLink(ntree, detail_from_node, detail_from_socket, sub2_node, sub2_socket_B);
+          nodeAddLink(ntree, sub2_node, sub2_socket_out, add_node, add_socket_B);
         }
         else {
-          /* Add Clamp node and Multiply Math node behind Fac output. */
+          LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+            if (link->fromsock == fac_socket) {
+              nodeAddLink(ntree, mul_node, mul_socket_out, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+        }
 
-          bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
-          clampNode->parent = node->parent;
-          clampNode->custom1 = NODE_CLAMP_MINMAX;
-          clampNode->locx = node->locx;
-          clampNode->locy = node->locy + 40.0f;
-          clampNode->flag |= NODE_HIDDEN;
-          bNodeSocket *clampSockValue = nodeFindSocket(clampNode, SOCK_IN, "Value");
-          bNodeSocket *clampSockMin = nodeFindSocket(clampNode, SOCK_IN, "Min");
-          bNodeSocket *clampSockMax = nodeFindSocket(clampNode, SOCK_IN, "Max");
-          bNodeSocket *clampSockOut = nodeFindSocket(clampNode, SOCK_OUT, "Result");
+        nodeAddLink(ntree, node, fac_socket, mul_node, mul_socket_A);
+        nodeAddLink(ntree, detail_from_node, detail_from_socket, clamp_node, clamp_socket_value);
+        nodeAddLink(ntree, clamp_node, clamp_socket_out, mul_node, mul_socket_B);
+      }
+    }
+    else {
+      if (*detail < 1.0f) {
+        if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
+            (noise_type != SHD_NOISE_HETERO_TERRAIN)) {
+          /* Add Multiply Math node behind Fac output. */
 
-          bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-          mulNode->parent = node->parent;
-          mulNode->custom1 = NODE_MATH_MULTIPLY;
-          mulNode->locx = node->locx;
-          mulNode->locy = node->locy + 80.0f;
-          mulNode->flag |= NODE_HIDDEN;
-          bNodeSocket *mulSockA = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 0));
-          bNodeSocket *mulSockB = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 1));
-          bNodeSocket *mulSockOut = nodeFindSocket(mulNode, SOCK_OUT, "Value");
+          bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          mul_node->parent = node->parent;
+          mul_node->custom1 = NODE_MATH_MULTIPLY;
+          mul_node->locx = node->locx;
+          mul_node->locy = node->locy + 40.0f;
+          mul_node->flag |= NODE_HIDDEN;
+          bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(
+              BLI_findlink(&mul_node->inputs, 0));
+          bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(
+              BLI_findlink(&mul_node->inputs, 1));
+          bNodeSocket *mul_socket_out = nodeFindSocket(mul_node, SOCK_OUT, "Value");
 
-          *version_cycles_node_socket_float_value(clampSockMin) = 0.0f;
-          *version_cycles_node_socket_float_value(clampSockMax) = 1.0f;
+          *version_cycles_node_socket_float_value(mul_socket_B) = *detail;
 
           if (noise_type == SHD_NOISE_MULTIFRACTAL) {
-            /* Add Add Math node and Subtract Math node after Multiply Math node. */
+            /* Add Add Math node after Multiply Math node. */
 
-            bNode *subNode2 = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-            subNode2->parent = node->parent;
-            subNode2->custom1 = NODE_MATH_SUBTRACT;
-            subNode2->custom2 = SHD_MATH_CLAMP;
-            subNode2->locx = node->locx;
-            subNode2->locy = node->locy + 120.0f;
-            subNode2->flag |= NODE_HIDDEN;
-            bNodeSocket *subSock2A = static_cast<bNodeSocket *>(
-                BLI_findlink(&subNode2->inputs, 0));
-            bNodeSocket *subSock2B = static_cast<bNodeSocket *>(
-                BLI_findlink(&subNode2->inputs, 1));
-            bNodeSocket *subSock2Out = nodeFindSocket(subNode2, SOCK_OUT, "Value");
+            bNode *add_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+            add_node->parent = node->parent;
+            add_node->custom1 = NODE_MATH_ADD;
+            add_node->locx = node->locx;
+            add_node->locy = node->locy + 80.0f;
+            add_node->flag |= NODE_HIDDEN;
+            bNodeSocket *add_socket_A = static_cast<bNodeSocket *>(
+                BLI_findlink(&add_node->inputs, 0));
+            bNodeSocket *add_socket_B = static_cast<bNodeSocket *>(
+                BLI_findlink(&add_node->inputs, 1));
+            bNodeSocket *add_socket_out = nodeFindSocket(add_node, SOCK_OUT, "Value");
 
-            bNode *addNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-            addNode->parent = node->parent;
-            addNode->custom1 = NODE_MATH_ADD;
-            addNode->locx = node->locx;
-            addNode->locy = node->locy + 160.0f;
-            addNode->flag |= NODE_HIDDEN;
-            bNodeSocket *addSockA = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 0));
-            bNodeSocket *addSockB = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 1));
-            bNodeSocket *addSockOut = nodeFindSocket(addNode, SOCK_OUT, "Value");
-
-            *version_cycles_node_socket_float_value(subSock2A) = 1.0f;
+            *version_cycles_node_socket_float_value(add_socket_B) = 1.0f - *detail;
 
             LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-              if (link->fromsock == sockFac) {
-                nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
+              if (link->fromsock == fac_socket) {
+                nodeAddLink(ntree, add_node, add_socket_out, link->tonode, link->tosock);
                 nodeRemLink(ntree, link);
               }
             }
 
-            nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
-            nodeAddLink(ntree, detailFromNode, detailFromSock, subNode2, subSock2B);
-            nodeAddLink(ntree, subNode2, subSock2Out, addNode, addSockB);
+            nodeAddLink(ntree, mul_node, mul_socket_out, add_node, add_socket_A);
           }
           else {
             LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-              if (link->fromsock == sockFac) {
-                nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
+              if (link->fromsock == fac_socket) {
+                nodeAddLink(ntree, mul_node, mul_socket_out, link->tonode, link->tosock);
                 nodeRemLink(ntree, link);
               }
             }
           }
 
-          nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
-          nodeAddLink(ntree, detailFromNode, detailFromSock, clampNode, clampSockValue);
-          nodeAddLink(ntree, clampNode, clampSockOut, mulNode, mulSockB);
+          nodeAddLink(ntree, node, fac_socket, mul_node, mul_socket_A);
+
+          *detail = 0.0f;
         }
       }
       else {
-        if (*detail < 1.0f) {
-          if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-              (noise_type != SHD_NOISE_HETERO_TERRAIN))
-          {
-            /* Add Multiply Math node behind Fac output. */
-
-            bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-            mulNode->parent = node->parent;
-            mulNode->custom1 = NODE_MATH_MULTIPLY;
-            mulNode->locx = node->locx;
-            mulNode->locy = node->locy + 40.0f;
-            mulNode->flag |= NODE_HIDDEN;
-            bNodeSocket *mulSockA = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 0));
-            bNodeSocket *mulSockB = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 1));
-            bNodeSocket *mulSockOut = nodeFindSocket(mulNode, SOCK_OUT, "Value");
-
-            *version_cycles_node_socket_float_value(mulSockB) = *detail;
-
-            if (noise_type == SHD_NOISE_MULTIFRACTAL) {
-              /* Add Add Math node after Multiply Math node. */
-
-              bNode *addNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-              addNode->parent = node->parent;
-              addNode->custom1 = NODE_MATH_ADD;
-              addNode->locx = node->locx;
-              addNode->locy = node->locy + 80.0f;
-              addNode->flag |= NODE_HIDDEN;
-              bNodeSocket *addSockA = static_cast<bNodeSocket *>(
-                  BLI_findlink(&addNode->inputs, 0));
-              bNodeSocket *addSockB = static_cast<bNodeSocket *>(
-                  BLI_findlink(&addNode->inputs, 1));
-              bNodeSocket *addSockOut = nodeFindSocket(addNode, SOCK_OUT, "Value");
-
-              *version_cycles_node_socket_float_value(addSockB) = 1.0f - *detail;
-
-              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-                if (link->fromsock == sockFac) {
-                  nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
-                  nodeRemLink(ntree, link);
-                }
-              }
-
-              nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
-            }
-            else {
-              LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-                if (link->fromsock == sockFac) {
-                  nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
-                  nodeRemLink(ntree, link);
-                }
-              }
-            }
-
-            nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
-
-            *detail = 0.0f;
-          }
-        }
-        else {
-          *detail -= 1.0f;
-        }
+        *detail -= 1.0f;
       }
+    }
 
-      bNodeSocket *sockRoughness = nodeFindSocket(node, SOCK_IN, "Roughness");
-      float *roughness = version_cycles_node_socket_float_value(sockRoughness);
-      bNodeSocket *sockLacunarity = nodeFindSocket(node, SOCK_IN, "Lacunarity");
-      float *lacunarity = version_cycles_node_socket_float_value(sockLacunarity);
+    bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+    float *roughness = version_cycles_node_socket_float_value(roughness_socket);
+    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
+    float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
 
-      /* Add Power Math node Multiply Math node before Roughness and Lacunarity input. */
+    if (roughness_link != nullptr) {
+      /* Add Multiply Math node and Power Math node before Roughness input. */
 
-      bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-      mulNode->parent = node->parent;
-      mulNode->custom1 = NODE_MATH_MULTIPLY;
-      mulNode->locx = node->locx;
-      mulNode->locy = node->locy - 340.0f + locyoffset;
-      mulNode->flag |= NODE_HIDDEN;
-      bNodeSocket *mulSockA = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 0));
-      bNodeSocket *mulSockB = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 1));
-      bNodeSocket *mulSockOut = nodeFindSocket(mulNode, SOCK_OUT, "Value");
+      bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      mul_node->parent = node->parent;
+      mul_node->custom1 = NODE_MATH_MULTIPLY;
+      mul_node->locx = node->locx;
+      mul_node->locy = node->locy - 340.0f + locy_offset;
+      mul_node->flag |= NODE_HIDDEN;
+      bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 0));
+      bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 1));
+      bNodeSocket *mul_socket_out = nodeFindSocket(mul_node, SOCK_OUT, "Value");
 
-      bNode *powNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-      powNode->parent = node->parent;
-      powNode->custom1 = NODE_MATH_POWER;
-      powNode->locx = node->locx;
-      powNode->locy = node->locy - 300.0f + locyoffset;
-      powNode->flag |= NODE_HIDDEN;
-      bNodeSocket *powSockA = static_cast<bNodeSocket *>(BLI_findlink(&powNode->inputs, 0));
-      bNodeSocket *powSockB = static_cast<bNodeSocket *>(BLI_findlink(&powNode->inputs, 1));
-      bNodeSocket *powSockOut = nodeFindSocket(powNode, SOCK_OUT, "Value");
+      bNode *pow_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      pow_node->parent = node->parent;
+      pow_node->custom1 = NODE_MATH_POWER;
+      pow_node->locx = node->locx;
+      pow_node->locy = node->locy - 300.0f + locy_offset;
+      pow_node->flag |= NODE_HIDDEN;
+      bNodeSocket *pow_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 0));
+      bNodeSocket *pow_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 1));
+      bNodeSocket *pow_socket_out = nodeFindSocket(pow_node, SOCK_OUT, "Value");
 
-      *version_cycles_node_socket_float_value(mulSockA) = *roughness;
-      *version_cycles_node_socket_float_value(mulSockB) = -1.0f;
-      *version_cycles_node_socket_float_value(powSockA) = *lacunarity;
+      *version_cycles_node_socket_float_value(mul_socket_B) = -1.0f;
+      *version_cycles_node_socket_float_value(pow_socket_A) = *lacunarity;
 
-      if (roughnessLink != nullptr) {
-        nodeRemLink(ntree, roughnessLink);
-        nodeAddLink(ntree, roughnessFromNode, roughnessFromSock, mulNode, mulSockA);
+      nodeRemLink(ntree, roughness_link);
+      nodeAddLink(ntree, roughness_from_node, roughness_from_socket, mul_node, mul_socket_A);
+      if (lacunarity_link != nullptr) {
+        nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, pow_node, pow_socket_A);
       }
-      if (lacunarityLink != nullptr) {
-        nodeRemLink(ntree, lacunarityLink);
-        nodeAddLink(ntree, lacunarityFromNode, lacunarityFromSock, powNode, powSockA);
-      }
-      nodeAddLink(ntree, mulNode, mulSockOut, powNode, powSockB);
-      nodeAddLink(ntree, powNode, powSockOut, node, sockRoughness);
+      nodeAddLink(ntree, mul_node, mul_socket_out, pow_node, pow_socket_B);
+      nodeAddLink(ntree, pow_node, pow_socket_out, node, roughness_socket);
+    }
+    else if ((lacunarity_link != nullptr) && (roughness_link == nullptr)) {
+      /* Add Power Math node before Roughness input. */
+
+      bNode *pow_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      pow_node->parent = node->parent;
+      pow_node->custom1 = NODE_MATH_POWER;
+      pow_node->locx = node->locx;
+      pow_node->locy = node->locy - 300.0f + locy_offset;
+      pow_node->flag |= NODE_HIDDEN;
+      bNodeSocket *pow_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 0));
+      bNodeSocket *pow_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 1));
+      bNodeSocket *pow_socket_out = nodeFindSocket(pow_node, SOCK_OUT, "Value");
+
+      *version_cycles_node_socket_float_value(pow_socket_A) = *lacunarity;
+      *version_cycles_node_socket_float_value(pow_socket_B) = -(*roughness);
+
+      nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, pow_node, pow_socket_A);
+      nodeAddLink(ntree, pow_node, pow_socket_out, node, roughness_socket);
+    }
+    else {
+      *roughness = std::pow(*lacunarity, -(*roughness));
     }
   }
 
@@ -1593,8 +1619,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 14)) {
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options"))
-    {
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.reflection_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
         scene->eevee.reflection_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
@@ -1824,8 +1849,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0))
-              {
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -1841,8 +1865,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
-          {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
             sockets_to_split.append(&socket);
           }
         }
