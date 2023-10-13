@@ -891,7 +891,7 @@ void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float
 float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex);
 
 struct SculptColorWriteInfo {
-  float (*layer)[4] = nullptr;
+  blender::GMutableSpan layer;
   int bm_offset = -1;
 };
 SculptColorWriteInfo SCULPT_color_get_for_write(SculptSession *ss);

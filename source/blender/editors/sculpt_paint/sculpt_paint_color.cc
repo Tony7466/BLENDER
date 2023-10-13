@@ -249,7 +249,8 @@ void SCULPT_do_paint_brush(PaintModeSettings *paint_mode_settings,
   Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;
 
-  if (!SCULPT_has_colors(ss)) {
+  SculptColorWriteInfo color_write = SCULPT_color_get_for_write(ss);
+  if (color_write.layer.is_empty()) {
     return;
   }
 

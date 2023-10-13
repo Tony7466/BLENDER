@@ -538,14 +538,14 @@ static bool sculpt_undo_restore_color(bContext *C, SculptUndoNode *unode, bool *
   /* NOTE: even with loop colors we still store derived
    * vertex colors for original data lookup. */
   if (!unode->col.is_empty() && unode->loop_col.is_empty()) {
-    SCULPT_swap_colors(ss->pbvh, unode->index, unode->col);
+    SCULPT_swap_colors(ss, unode->index, unode->col);
     modified = true;
   }
 
   Mesh *me = BKE_object_get_original_mesh(ob);
 
   if (!unode->loop_col.is_empty() && unode->maxloop == me->totloop) {
-    SCULPT_swap_colors(ss->pbvh, unode->loop_index, unode->loop_col);
+    SCULPT_swap_colors(ss, unode->loop_index, unode->loop_col);
 
     modified = true;
   }
@@ -1422,10 +1422,10 @@ static void sculpt_undo_store_color(Object *ob, SculptUndoNode *unode)
 
   /* NOTE: even with loop colors we still store (derived)
    * vertex colors for original data lookup. */
-  SCULPT_store_colors_vertex(ss->pbvh, unode->index, unode->col);
+  SCULPT_store_colors_vertex(ss, unode->index, unode->col);
 
   if (!unode->loop_col.is_empty() && unode->totloop) {
-    SCULPT_store_colors(ss->pbvh, unode->loop_index, unode->loop_col);
+    SCULPT_store_colors(ss, unode->loop_index, unode->loop_col);
   }
 }
 
