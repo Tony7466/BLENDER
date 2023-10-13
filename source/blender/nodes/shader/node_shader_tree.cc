@@ -1020,6 +1020,74 @@ static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_n
   }
 }
 
+static void shader_node_disconnect_input(bNodeTree *ntree, bNode *node, int index)
+{
+  bNodeLink *link = ntree_shader_node_input_get(node, index)->link;
+  if (link) {
+    nodeRemLink(ntree, link);
+  }
+}
+
+static void shader_node_disconnect_inactive_mix_branch(bNodeTree *ntree,
+                                                       bNodeSocket &factor_socket,
+                                                       bNodeSocket &a_socket,
+                                                       bNodeSocket &b_socket,
+                                                       bool clamp_factor)
+{
+  if (factor_socket.link == nullptr) {
+    float factor = 0.5;
+
+    if (factor_socket.type == SOCK_FLOAT) {
+      factor = factor_socket.default_value_typed<bNodeSocketValueFloat>()->value;
+      if (clamp_factor) {
+        factor = clamp_f(factor, 0.0f, 1.0f);
+      }
+    }
+    else if (factor_socket.type == SOCK_VECTOR) {
+      const float *vfactor = factor_socket.default_value_typed<bNodeSocketValueVector>()->value;
+      float vfactor_copy[3];
+      for (int i = 0; i < 3; i++) {
+        if (clamp_factor) {
+          vfactor_copy[i] = clamp_f(vfactor[i], 0.0f, 1.0f);
+        }
+        else {
+          vfactor_copy[i] = vfactor[i];
+        }
+      }
+      if (vfactor_copy[0] == vfactor_copy[1] && vfactor_copy[0] == vfactor_copy[2]) {
+        factor = vfactor_copy[0];
+      }
+    }
+
+    if (factor == 1.0f) {
+      nodeRemLink(ntree, a_socket.link);
+    }
+    else if (factor == 0.0f) {
+      nodeRemLink(ntree, b_socket.link);
+    }
+  }
+}
+
+static void ntree_shader_disconnect_inactive_mix_branches(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->typeinfo->type == SH_NODE_MIX_SHADER) {
+      bNodeSocket &factor = *blender::bke::node_find_enabled_input_socket(*node, "Fac");
+      bNodeSocket &a = *blender::bke::node_find_enabled_input_socket(*node, "Shader");
+      bNodeSocket &b = *blender::bke::node_find_enabled_input_socket(*node, "Shader_001");
+      printf("%s: %p, %p:%p;\n", __func__, &factor, &a, &b);
+      shader_node_disconnect_inactive_mix_branch(ntree, factor, a, b, true);
+    }
+    else if (node->typeinfo->type == SH_NODE_MIX) {
+      bNodeSocket &factor = *blender::bke::node_find_enabled_input_socket(*node, "Factor");
+      bNodeSocket &a = *blender::bke::node_find_enabled_input_socket(*node, "A");
+      bNodeSocket &b = *blender::bke::node_find_enabled_input_socket(*node, "B");
+      const NodeShaderMix &storage = *static_cast<NodeShaderMix *>(node->storage);
+      shader_node_disconnect_inactive_mix_branch(ntree, factor, a, b, storage.clamp_factor);
+    }
+  }
+}
+
 static bool ntree_branch_node_tag(bNode *fromnode, bNode *tonode, void * /*userdata*/)
 {
   fromnode->runtime->tmp_flag = 1;
@@ -1032,6 +1100,8 @@ static bool ntree_branch_node_tag(bNode *fromnode, bNode *tonode, void * /*userd
  * first executed SSS node gets a SSS profile. */
 static void ntree_shader_pruned_unused(bNodeTree *ntree, bNode *output_node)
 {
+  ntree_shader_disconnect_inactive_mix_branches(ntree);
+
   bool changed = false;
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
