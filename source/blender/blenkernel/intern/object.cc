@@ -676,17 +676,10 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
    * so for now play safe. */
   ob->proxy_from = nullptr;
 
-  const bool is_undo = BLO_read_data_is_undo(reader);
   if (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT)) {
     /* Do not allow any non-object mode for linked data.
      * See #34776, #42780, #81027 for more information. */
     ob->mode &= ~OB_MODE_ALL_MODE_DATA;
-  }
-  else if (is_undo) {
-    /* For undo we want to stay in object mode during undo presses, so keep some edit modes
-     * disabled.
-     * TODO: Check if we should not disable more edit modes here? */
-    ob->mode &= ~(OB_MODE_EDIT | OB_MODE_PARTICLE_EDIT);
   }
 
   BLO_read_data_address(reader, &ob->pose);
