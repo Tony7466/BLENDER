@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup edanimation
  */
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -26,21 +26,22 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_keyframing.h"
-#include "ED_screen.h"
+#include "ANIM_keyframing.hh"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
 #include "anim_intern.h"
 
@@ -63,7 +64,7 @@ static bool keyingset_poll_active_edit(bContext *C)
   Scene *scene = CTX_data_scene(C);
 
   if (scene == nullptr) {
-    return 0;
+    return false;
   }
 
   /* there must be an active KeyingSet (and KeyingSets) */
@@ -77,10 +78,10 @@ static bool keyingset_poll_activePath_edit(bContext *C)
   KeyingSet *ks;
 
   if (scene == nullptr) {
-    return 0;
+    return false;
   }
   if (scene->active_keyingset <= 0) {
-    return 0;
+    return false;
   }
 
   ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
@@ -299,7 +300,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
 
     keyingflag |= ANIM_get_keyframing_flags(scene, false);
 
-    if (IS_AUTOKEY_FLAG(scene, XYZ2RGB)) {
+    if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
       keyingflag |= INSERTKEY_XYZ2RGB;
     }
 
@@ -369,7 +370,7 @@ void ANIM_OT_keyingset_button_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Add all elements of the array to a Keying Set");
+  RNA_def_boolean(ot->srna, "all", true, "All", "Add all elements of the array to a Keying Set");
 }
 
 /* Remove from KeyingSet Button Operator ------------------------ */
@@ -384,7 +385,7 @@ static int remove_keyingset_button_exec(bContext *C, wmOperator *op)
   bool changed = false;
   int index = 0;
 
-  if (UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
+  if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
@@ -503,7 +504,7 @@ void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
 
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
-      ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
   RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
   // RNA_def_property_flag(prop, PROP_HIDDEN);
 }
@@ -704,10 +705,12 @@ KeyingSet *ANIM_get_keyingset_for_autokeying(const Scene *scene, const char *tra
    * - use the active KeyingSet if defined (and user wants to use it for all autokeying),
    *   or otherwise key transforms only
    */
-  if (IS_AUTOKEY_FLAG(scene, ONLYKEYINGSET) && (scene->active_keyingset)) {
+  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) &&
+      (scene->active_keyingset))
+  {
     return ANIM_scene_get_active_keyingset(scene);
   }
-  if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL)) {
+  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAIL)) {
     return ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_AVAILABLE_ID);
   }
   return ANIM_builtin_keyingset_get_named(nullptr, transformKSName);
@@ -724,7 +727,6 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
   }
 
   Scene *scene = C ? CTX_data_scene(C) : nullptr;
-  KeyingSet *ks;
 
   /* Active Keying Set. */
   if (!use_poll || (scene && scene->active_keyingset)) {
@@ -736,7 +738,7 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
 
   /* User-defined Keying Sets. */
   if (scene && scene->keyingsets.first) {
-    for (ks = static_cast<KeyingSet *>(scene->keyingsets.first); ks; ks = ks->next) {
+    LISTBASE_FOREACH (KeyingSet *, ks, &scene->keyingsets) {
       if (use_poll && !ANIM_keyingset_context_ok_poll((bContext *)C, ks)) {
         continue;
       }
@@ -748,7 +750,7 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
   }
 
   /* Builtin Keying Sets. */
-  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ks->next) {
+  LISTBASE_FOREACH (KeyingSet *, ks, &builtin_keyingsets) {
     if (use_poll && !ANIM_keyingset_context_ok_poll((bContext *)C, ks)) {
       continue;
     }
@@ -793,7 +795,7 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
   int i = 0;
 
   if (C == nullptr) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* active Keying Set
@@ -889,7 +891,7 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks)
 
     /* get the associated 'type info' for this KeyingSet */
     if (ksi == nullptr) {
-      return 0;
+      return false;
     }
     /* TODO: check for missing callbacks! */
 
@@ -907,7 +909,7 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks)
  * - do not allow this to be accessed from outside for now
  */
 struct tRKS_DSource {
-  struct tRKS_DSource *next, *prev;
+  tRKS_DSource *next, *prev;
   PointerRNA ptr; /* the whole point of this exercise! */
 };
 
@@ -920,9 +922,7 @@ static void RKS_ITER_overrides_list(KeyingSetInfo *ksi,
                                     KeyingSet *ks,
                                     ListBase *dsources)
 {
-  tRKS_DSource *ds;
-
-  for (ds = static_cast<tRKS_DSource *>(dsources->first); ds; ds = ds->next) {
+  LISTBASE_FOREACH (tRKS_DSource *, ds, dsources) {
     /* run generate callback on this data */
     ksi->generate(ksi, C, ks, &ds->ptr);
   }
@@ -949,10 +949,10 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
 
   /* depending on what data we have, create using ID or full pointer call */
   if (srna && data) {
-    RNA_pointer_create(id, srna, data, &ds->ptr);
+    ds->ptr = RNA_pointer_create(id, srna, data);
   }
   else {
-    RNA_id_pointer_create(id, &ds->ptr);
+    ds->ptr = RNA_id_pointer_create(id);
   }
 }
 
@@ -1042,13 +1042,11 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
   return result;
 }
 
-int ANIM_apply_keyingset(
-    bContext *C, ListBase *dsources, bAction *act, KeyingSet *ks, short mode, float cfra)
+int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short mode, float cfra)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ReportList *reports = CTX_wm_reports(C);
-  KS_Path *ksp;
   ListBase nla_cache = {nullptr, nullptr};
   const eInsertKeyFlags base_kflags = ANIM_get_keyframing_flags(scene, true);
   const char *groupname = nullptr;
@@ -1082,7 +1080,7 @@ int ANIM_apply_keyingset(
   }
 
   /* apply the paths as specified in the KeyingSet now */
-  for (ksp = static_cast<KS_Path *>(ks->paths.first); ksp; ksp = ksp->next) {
+  LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
     int arraylen, i;
     eInsertKeyFlags kflag2;
 
@@ -1121,10 +1119,10 @@ int ANIM_apply_keyingset(
 
     /* get length of array if whole array option is enabled */
     if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
-      PointerRNA id_ptr, ptr;
+      PointerRNA ptr;
       PropertyRNA *prop;
 
-      RNA_id_pointer_create(ksp->id, &id_ptr);
+      PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
       if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
         arraylen = RNA_property_array_length(&ptr, prop);
         /* start from start of array, instead of the previously specified index - #48020 */
@@ -1146,20 +1144,21 @@ int ANIM_apply_keyingset(
     for (; i < arraylen; i++) {
       /* action to take depends on mode */
       if (mode == MODIFYKEY_MODE_INSERT) {
-        num_channels += insert_keyframe(bmain,
-                                        reports,
-                                        ksp->id,
-                                        act,
-                                        groupname,
-                                        ksp->rna_path,
-                                        i,
-                                        &anim_eval_context,
-                                        eBezTriple_KeyframeType(keytype),
-                                        &nla_cache,
-                                        kflag2);
+        num_channels += blender::animrig::insert_keyframe(bmain,
+                                                          reports,
+                                                          ksp->id,
+                                                          nullptr,
+                                                          groupname,
+                                                          ksp->rna_path,
+                                                          i,
+                                                          &anim_eval_context,
+                                                          eBezTriple_KeyframeType(keytype),
+                                                          &nla_cache,
+                                                          kflag2);
       }
       else if (mode == MODIFYKEY_MODE_DELETE) {
-        num_channels += delete_keyframe(bmain, reports, ksp->id, act, ksp->rna_path, i, cfra);
+        num_channels += blender::animrig::delete_keyframe(
+            bmain, reports, ksp->id, nullptr, ksp->rna_path, i, cfra);
       }
     }
 

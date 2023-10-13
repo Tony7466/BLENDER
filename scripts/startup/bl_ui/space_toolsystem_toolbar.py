@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -1742,6 +1742,15 @@ class _defs_paint_grease_pencil:
             data_block='DRAW',
         )
 
+    @ToolDef.from_fn
+    def erase():
+        return dict(
+            idname="builtin_brush.Erase",
+            label="Erase",
+            icon="brush.gpencil_draw.erase",
+            data_block='ERASE',
+        )
+
 
 class _defs_image_generic:
 
@@ -2544,18 +2553,6 @@ class _defs_sequencer_generic:
         )
 
     @ToolDef.from_fn
-    def retime():
-        return dict(
-            idname="builtin.retime",
-            label="Retime",
-            icon="ops.sequencer.retime",
-            widget="SEQUENCER_GGT_gizmo_retime",
-            operator=None,
-            keymap=None,
-            options={'KEYMAP_FALLBACK'},
-        )
-
-    @ToolDef.from_fn
     def sample():
         return dict(
             idname="builtin.sample",
@@ -3105,6 +3102,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_view3d_generic.cursor,
             None,
             _defs_paint_grease_pencil.draw,
+            _defs_paint_grease_pencil.erase,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
@@ -3244,7 +3242,6 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         'SEQUENCER': [
             *_tools_select,
             _defs_sequencer_generic.blade,
-            _defs_sequencer_generic.retime,
         ],
         'SEQUENCER_PREVIEW': [
             *_tools_select,

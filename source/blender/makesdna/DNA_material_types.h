@@ -12,10 +12,6 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18
 #endif
@@ -346,6 +342,7 @@ enum {
   MA_BL_SS_REFRACTION = (1 << 1),
   MA_BL_CULL_BACKFACE = (1 << 2),
   MA_BL_TRANSLUCENCY = (1 << 3),
+  MA_BL_CULL_BACKFACE_PROBE = (1 << 4),
 };
 
 /** #Material::blend_shadow */
@@ -382,7 +379,3 @@ enum {
   GP_MATERIAL_FOLLOW_OBJ = 1,
   GP_MATERIAL_FOLLOW_FIXED = 2,
 };
-
-#ifdef __cplusplus
-}
-#endif

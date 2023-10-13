@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Adapted from :
@@ -6,6 +9,10 @@
  * ACM Transactions on Graphics (Proceedings of ACM SIGGRAPH 2016) 35(4), 2016.
  * Project page: https://eheitzresearch.wordpress.com/415-2/
  */
+
+#define LTC_LAMBERT_MAT vec4(1.0, 0.0, 0.0, 1.0)
+#define LTC_GGX_MAT(cos_theta, roughness) \
+  utility_tx_sample_lut(utility_tx, cos_theta, roughness, UTIL_LTC_MAT_LAYER)
 
 /* Diffuse *clipped* sphere integral. */
 float ltc_diffuse_sphere_integral(sampler2DArray utility_tx, float avg_dir_z, float form_factor)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,6 +46,18 @@ void gather(const GVArray &src,
 void gather(const GSpan src, const IndexMask &indices, GMutableSpan dst, const int64_t grain_size)
 {
   gather(GVArray::ForSpan(src), indices, dst, grain_size);
+}
+
+void copy_group_to_group(const OffsetIndices<int> src_offsets,
+                         const OffsetIndices<int> dst_offsets,
+                         const IndexMask &selection,
+                         const GSpan src,
+                         GMutableSpan dst)
+{
+  /* Each group might be large, so a threaded copy might make sense here too. */
+  selection.foreach_index(GrainSize(512), [&](const int i) {
+    dst.slice(dst_offsets[i]).copy_from(src.slice(src_offsets[i]));
+  });
 }
 
 void count_indices(const Span<int> indices, MutableSpan<int> counts)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,9 @@
 #include "DNA_space_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_report.h"
@@ -24,11 +26,13 @@
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
-#include "UI_view2d.h"
+#include "ANIM_keyframing.hh"
 
-#include "RNA_access.h"
+#include "UI_view2d.hh"
+
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "transform.hh"
@@ -163,9 +167,8 @@ static bool autokeyframe_sequencer_image(bContext *C,
                                          StripTransform *transform,
                                          const int tmode)
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
-  RNA_pointer_create(&scene->id, &RNA_SequenceTransform, transform, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&scene->id, &RNA_SequenceTransform, transform);
 
   const bool around_cursor = scene->toolsettings->sequencer_tool_settings->pivot_point ==
                              V3D_AROUND_CURSOR;
@@ -176,19 +179,24 @@ static bool autokeyframe_sequencer_image(bContext *C,
   bool changed = false;
   if (do_rot) {
     prop = RNA_struct_find_property(&ptr, "rotation");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
   if (do_loc) {
     prop = RNA_struct_find_property(&ptr, "offset_x");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
     prop = RNA_struct_find_property(&ptr, "offset_y");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
   if (do_scale) {
     prop = RNA_struct_find_property(&ptr, "scale_x");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
     prop = RNA_struct_find_property(&ptr, "scale_y");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
 
   return changed;
@@ -246,7 +254,7 @@ static void recalcData_sequencer_image(TransInfo *t)
       transform->rotation = tdseq->orig_rotation - t->values_final[0];
     }
 
-    if ((t->animtimer) && IS_AUTOKEY_ON(t->scene)) {
+    if ((t->animtimer) && blender::animrig::is_autokey_on(t->scene)) {
       animrecord_check_state(t, &t->scene->id);
       autokeyframe_sequencer_image(t->context, t->scene, transform, t->mode);
     }
@@ -274,7 +282,7 @@ static void special_aftertrans_update__sequencer_image(bContext * /*C*/, TransIn
       continue;
     }
 
-    if (IS_AUTOKEY_ON(t->scene)) {
+    if (blender::animrig::is_autokey_on(t->scene)) {
       autokeyframe_sequencer_image(t->context, t->scene, transform, t->mode);
     }
   }
@@ -282,7 +290,7 @@ static void special_aftertrans_update__sequencer_image(bContext * /*C*/, TransIn
 
 TransConvertTypeInfo TransConvertType_SequencerImage = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransSeqImageData,
-    /*recalcData*/ recalcData_sequencer_image,
+    /*create_trans_data*/ createTransSeqImageData,
+    /*recalc_data*/ recalcData_sequencer_image,
     /*special_aftertrans_update*/ special_aftertrans_update__sequencer_image,
 };
