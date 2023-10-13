@@ -30,6 +30,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_threads.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 
@@ -943,6 +944,8 @@ static void wm_add_reports(ReportList *reports)
 
 void WM_report(eReportType type, const char *message)
 {
+  BLI_assert_msg(BLI_thread_is_main(), "WM_report should only be called from the main thread");
+
   ReportList reports;
   BKE_reports_init(&reports, RPT_STORE | RPT_PRINT);
   BKE_report_print_level_set(&reports, RPT_WARNING);

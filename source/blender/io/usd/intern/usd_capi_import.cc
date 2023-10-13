@@ -21,6 +21,7 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
+#include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_world.h"
 
@@ -157,6 +158,8 @@ static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
   data->archive = nullptr;
   data->start_time = timeit::Clock::now();
 
+  data->params.worker_status = worker_status;
+
   WM_set_locked_interface(data->wm, true);
   G.is_break = false;
 
@@ -221,7 +224,10 @@ static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
                                   pxr::UsdStage::OpenMasked(data->filepath, pop_mask);
 
   if (!stage) {
-    WM_reportf(RPT_ERROR, "USD Import: unable to open stage to read %s", data->filepath);
+    BKE_reportf(worker_status->reports,
+                RPT_ERROR,
+                "USD Import: unable to open stage to read %s",
+                data->filepath);
     data->import_ok = false;
     data->error_code = USD_ARCHIVE_FAIL;
     return;
@@ -392,7 +398,9 @@ static void import_endjob(void *customdata)
       data->import_ok = !data->was_canceled;
       break;
     case USD_ARCHIVE_FAIL:
-      WM_report(RPT_ERROR, "Could not open USD archive for reading, see console for detail");
+      BKE_report(data->params.worker_status->reports,
+                 RPT_ERROR,
+                 "Could not open USD archive for reading, see console for detail");
       break;
   }
 
@@ -459,6 +467,8 @@ bool USD_import(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
+    /* NOTE: Since the `worker_status.reports` pointer is `nullptr` here, BKE_report API will only
+     * print to console. */
     wmJobWorkerStatus worker_status = {};
     import_startjob(job, &worker_status);
     import_endjob(job);
