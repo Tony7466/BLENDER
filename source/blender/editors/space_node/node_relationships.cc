@@ -50,6 +50,7 @@
 #include "BLT_translation.h"
 
 #include "NOD_node_declaration.hh"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
@@ -467,22 +468,23 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
     /* In viewer nodes in the compositor, only the first input should be linked to. */
     return (bNodeSocket *)viewer_node.inputs.first;
   }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(src_socket.type);
   /* For the geometry nodes viewer, find the socket with the correct type. */
-  LISTBASE_FOREACH (bNodeSocket *, viewer_socket, &viewer_node.inputs) {
-    if (viewer_socket->type == src_socket.type) {
-      if (viewer_socket->type == SOCK_GEOMETRY) {
-        return viewer_socket;
-      }
-      NodeGeometryViewer *storage = (NodeGeometryViewer *)viewer_node.storage;
-      const eCustomDataType data_type = socket_type_to_custom_data_type(
-          (eNodeSocketDatatype)src_socket.type);
-      BLI_assert(data_type != CD_AUTO_FROM_NAME);
-      storage->data_type = data_type;
-      viewer_node.typeinfo->updatefunc(&ntree, &viewer_node);
-      return viewer_socket;
-    }
+  if (socket_type == SOCK_GEOMETRY) {
+    return bke::node_find_enabled_input_socket(viewer_node, "Geometry");
   }
-  return nullptr;
+  if (!ELEM(
+          socket_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION))
+  {
+    return nullptr;
+  }
+  NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer_node.storage);
+  const eCustomDataType data_type = socket_type_to_custom_data_type(socket_type);
+  BLI_assert(data_type != CD_AUTO_FROM_NAME);
+  storage.data_type = data_type;
+  ntree.ensure_topology_cache();
+  nodes::update_node_declaration_and_sockets(ntree, viewer_node);
+  return bke::node_find_enabled_input_socket(viewer_node, "Value");
 }
 
 static bool is_viewer_node(const bNode &node)

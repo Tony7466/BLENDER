@@ -466,6 +466,13 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
   }
 }
 
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
+                                                                const StringRef name,
+                                                                const StringRef identifier)
+{
+  return this->add_input(bke::custom_data_to_socket_type_type(data_type), name, identifier);
+}
+
 BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
     const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
 {
@@ -498,6 +505,13 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
       BLI_assert_unreachable();
       return this->add_output<decl::Float>("", "");
   }
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
+                                                                 const StringRef name,
+                                                                 const StringRef identifier)
+{
+  return this->add_output(bke::custom_data_to_socket_type_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()
@@ -562,13 +576,6 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::reference_pass(
   return *this;
 }
 
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
-                                                                const StringRef name,
-                                                                const StringRef identifier)
-{
-  return this->add_input(bke::custom_data_to_socket_type_type(data_type), name, identifier);
-}
-
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<int> indices)
 {
   aal::RelationsInNode &relations = node_decl_builder_->get_anonymous_attribute_relations();
@@ -593,11 +600,15 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<
   return *this;
 }
 
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
-                                                                 const StringRef name,
-                                                                 const StringRef identifier)
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::short_label(std::string value)
 {
-  return this->add_output(bke::custom_data_to_socket_type_type(data_type), name, identifier);
+  if (decl_in_base_) {
+    decl_in_base_->description = std::move(value);
+  }
+  if (decl_out_base_) {
+    decl_out_base_->description = std::move(value);
+  }
+  return *this;
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::description(std::string value)
