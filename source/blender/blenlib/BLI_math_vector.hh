@@ -635,7 +635,7 @@ template<typename T> [[nodiscard]] inline int dominant_axis(const VecBase<T, 3> 
 /**
  * \return the maximum component of a vector.
  */
-template<typename T, int Size> [[nodiscard]] inline int reduce_max(const VecBase<T, Size> &a)
+template<typename T, int Size> [[nodiscard]] inline T reduce_max(const VecBase<T, Size> &a)
 {
   T result = a[0];
   for (int i = 1; i < Size; i++) {
@@ -649,7 +649,7 @@ template<typename T, int Size> [[nodiscard]] inline int reduce_max(const VecBase
 /**
  * \return the minimum component of a vector.
  */
-template<typename T, int Size> [[nodiscard]] inline int reduce_min(const VecBase<T, Size> &a)
+template<typename T, int Size> [[nodiscard]] inline T reduce_min(const VecBase<T, Size> &a)
 {
   T result = a[0];
   for (int i = 1; i < Size; i++) {
@@ -663,7 +663,7 @@ template<typename T, int Size> [[nodiscard]] inline int reduce_min(const VecBase
 /**
  * \return the sum of the components of a vector.
  */
-template<typename T, int Size> [[nodiscard]] inline int reduce_add(const VecBase<T, Size> &a)
+template<typename T, int Size> [[nodiscard]] inline T reduce_add(const VecBase<T, Size> &a)
 {
   T result = a[0];
   for (int i = 1; i < Size; i++) {
@@ -675,7 +675,7 @@ template<typename T, int Size> [[nodiscard]] inline int reduce_add(const VecBase
 /**
  * \return the average of the components of a vector.
  */
-template<typename T, int Size> [[nodiscard]] inline int average(const VecBase<T, Size> &a)
+template<typename T, int Size> [[nodiscard]] inline T average(const VecBase<T, Size> &a)
 {
   return reduce_add(a) * (T(1) / T(Size));
 }
