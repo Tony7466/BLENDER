@@ -1329,8 +1329,6 @@ std::string VKShader::workaround_geometry_shader_source_create(
     ss << "  EmitVertex();\n";
   }
   ss << "}\n";
-  std::cout << "----------\n" << name_get() << "\n";
-  std::cout << ss.str();
   return ss.str();
 }
 
