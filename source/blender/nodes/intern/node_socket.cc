@@ -455,17 +455,21 @@ static const char *get_current_socket_identifier_for_future_socket(
 static void do_forward_compat_versioning(bNode &node, const NodeDeclaration &node_decl)
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
-    if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
-            node, *socket, node_decl.inputs))
-    {
-      STRNCPY(socket->identifier, new_identifier);
+    if (socket->is_available()) {
+      if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
+              node, *socket, node_decl.inputs))
+      {
+        STRNCPY(socket->identifier, new_identifier);
+      }
     }
   }
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
-    if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
-            node, *socket, node_decl.outputs))
-    {
-      STRNCPY(socket->identifier, new_identifier);
+    if (socket->is_available()) {
+      if (const char *new_identifier = get_current_socket_identifier_for_future_socket(
+              node, *socket, node_decl.outputs))
+      {
+        STRNCPY(socket->identifier, new_identifier);
+      }
     }
   }
 }
