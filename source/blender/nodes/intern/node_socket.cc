@@ -277,7 +277,7 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
 }
 
 /**
- *  Not great to have this here, but this is only for forward compatibility, so this code shouldn't
+ * Not great to have this here, but this is only for forward compatibility, so this code shouldn't
  * in the `main` branch.
  */
 static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclaration &socket_decl)
@@ -355,9 +355,16 @@ static const char *get_identifier_from_decl(const Span<const char *> identifier_
 }
 
 /**
- * This is used for forward compatibility. It can change identifiers of sockets created in the
- * future to socket identifiers that are known in this version. That only works for a few
- * hard-coded sockets of course.
+ * Currently, nodes that support different socket types have sockets for all supported types with
+ * different identifiers (e.g. `Attribute`, `Attribute_001`, `Attribute_002`, ...). In the future,
+ * we will hopefully have a better way to handle this that does not require all the sockets of
+ * different types to exist at the same time. Instead we want that there is only a single socket
+ * that can change its type while the identifier stays the same.
+ *
+ * This function prepares us for that future. It returns the identifier that we use for a socket
+ * now based on the "base socket name" (e.g. `Attribute`) and its socket type. It allows us to
+ * change the socket identifiers in the future without breaking forward compatibility for the nodes
+ * handled here.
  */
 static const char *get_current_socket_identifier_for_future_socket(
     const bNode &node,
