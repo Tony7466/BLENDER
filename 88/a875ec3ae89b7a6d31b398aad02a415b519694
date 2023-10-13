@@ -1,1 +1,2 @@
 Referenced by issue #113309, Keymap: Context operators are broken when running Reload Scripts
+Referenced by commit 08e5f94a70dc089703fe26e67c04fab94bee9d5c, Fix #113309: Broken key-map after "Reload Scripts"
