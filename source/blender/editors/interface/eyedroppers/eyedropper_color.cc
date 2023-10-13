@@ -241,6 +241,13 @@ static bool eyedropper_cryptomatte_sample_image_fl(const bNode *node,
   return success;
 }
 
+/* TODO(Harley): Although the following works when the target and source windows differ, it does
+ * not show the object name at the mouse position in that case. This is because Eyedropper uses a
+ * drawing callback for this - draw_handle_sample_text - that is per-window. A likely way to
+ * approach this is to store the cb_win in eyedropper and change the callback when needed. Or
+ * perhaps change it to a region draw callback: ED_region_draw_cb_activate. There is also a
+ * cursor API that might work. */
+
 static bool eyedropper_cryptomatte_sample_fl(bContext *C,
                                              Eyedropper *eye,
                                              const int event_xy[2],
