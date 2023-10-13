@@ -68,7 +68,7 @@ def geometry_modifier_poll(context):
     ob = context.object
 
     # Test object support for geometry node modifier
-    if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES'}:
+    if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES', 'GREASEPENCIL'}:
         return False
 
     return True
@@ -427,6 +427,7 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, ZoneMoveItemOperato
     bl_idname = "node.simulation_zone_item_move"
     bl_label = "Move State Item"
     bl_options = {'REGISTER', 'UNDO'}
+
 
 class RepeatZoneOperator(ZoneOperator):
     input_node_type = 'GeometryNodeRepeatInput'

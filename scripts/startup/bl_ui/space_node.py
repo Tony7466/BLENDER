@@ -232,6 +232,12 @@ class NODE_MT_add(bpy.types.Menu):
         import nodeitems_utils
 
         layout = self.layout
+
+        if layout.operator_context == 'EXEC_REGION_WIN':
+            layout.operator_context = 'INVOKE_REGION_WIN'
+            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = "NODE_MT_add"
+            layout.separator()
+
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         snode = context.space_data
@@ -999,6 +1005,7 @@ def draw_socket_item_in_list(uilist, layout, item, icon):
     elif uilist.layout_type == 'GRID':
         layout.alignment = 'CENTER'
         layout.template_node_socket(color=item.color)
+
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
