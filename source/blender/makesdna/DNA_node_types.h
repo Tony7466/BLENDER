@@ -1284,9 +1284,9 @@ typedef struct NodeTexVoronoi {
 } NodeTexVoronoi;
 
 typedef struct NodeTexMusgrave {
-  NodeTexBase base DNA_DEPRECATED;
-  int musgrave_type DNA_DEPRECATED;
-  int dimensions DNA_DEPRECATED;
+  NodeTexBase base;
+  int musgrave_type;
+  int dimensions;
 } NodeTexMusgrave;
 
 typedef struct NodeTexWave {
@@ -2026,15 +2026,6 @@ enum {
   SHD_VORONOI_N_SPHERE_RADIUS = 4,
 };
 
-/* Deprecated Musgrave Texture. Keep for Versioning */
-enum {
-  SHD_MUSGRAVE_MULTIFRACTAL = 0,
-  SHD_MUSGRAVE_FBM = 1,
-  SHD_MUSGRAVE_HYBRID_MULTIFRACTAL = 2,
-  SHD_MUSGRAVE_RIDGED_MULTIFRACTAL = 3,
-  SHD_MUSGRAVE_HETERO_TERRAIN = 4,
-};
-
 /* Noise Texture */
 enum {
   SHD_NOISE_MULTIFRACTAL = 0,
@@ -2042,6 +2033,15 @@ enum {
   SHD_NOISE_HYBRID_MULTIFRACTAL = 2,
   SHD_NOISE_RIDGED_MULTIFRACTAL = 3,
   SHD_NOISE_HETERO_TERRAIN = 4,
+};
+
+/* Musgrave Texture */
+enum {
+  SHD_MUSGRAVE_MULTIFRACTAL = 0,
+  SHD_MUSGRAVE_FBM = 1,
+  SHD_MUSGRAVE_HYBRID_MULTIFRACTAL = 2,
+  SHD_MUSGRAVE_RIDGED_MULTIFRACTAL = 3,
+  SHD_MUSGRAVE_HETERO_TERRAIN = 4,
 };
 
 /* wave texture */
