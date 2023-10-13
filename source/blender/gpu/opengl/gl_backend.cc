@@ -8,7 +8,7 @@
 
 #include "BKE_global.h"
 #if defined(WIN32)
-#include "BLI_winstuff.h"
+#  include "BLI_winstuff.h"
 #endif
 
 #include "gpu_capabilities_private.hh"
@@ -138,8 +138,7 @@ void GLBackend::platform_init()
   else {
 #if defined(WIN32)
     long long driverVersion = 0;
-    if (device & GPU_DEVICE_QUALCOMM)
-    {
+    if (device & GPU_DEVICE_QUALCOMM) {
       if (BLI_windows_get_directx_driver_version(L"Qualcomm(R) Adreno(TM)", &driverVersion)) {
         /* Parse out the driver version in format x.x.x.x */
         WORD ver0 = (driverVersion >> 48) & 0xffff;
@@ -152,14 +151,11 @@ void GLBackend::platform_init()
          * are only available on 8cx gen3 devices or newer */
         if (ver0 < 30 || (ver0 == 30 && ver1 == 0 && ver2 < 3820)) {
           std::cout
-              << "=====================================" << std::endl
-              << "Qualcomm drivers older than 30.0.3820.x are not capable of running Blender 4.0"
-              << std::endl
-              << "If your device is older than an 8cx Gen3, you must use a 3.x LTS release."
-              << std::endl
-              << "If you have an 8cx Gen3 or newer device, a driver update may be available."
-              << std::endl
-              << "=====================================" << std::endl;
+              << "=====================================\n"
+              << "Qualcomm drivers older than 30.0.3820.x are not capable of running Blender 4.0\n"
+              << "If your device is older than an 8cx Gen3, you must use a 3.x LTS release.\n"
+              << "If you have an 8cx Gen3 or newer device, a driver update may be available.\n"
+              << "=====================================\n";
           support_level = GPU_SUPPORT_LEVEL_UNSUPPORTED;
         }
       }
@@ -484,8 +480,7 @@ static void detect_workarounds()
 
   /* Right now draw shader parameters are broken on Qualcomm devices
    * regardless of driver version */
-  if(GPU_type_matches(GPU_DEVICE_QUALCOMM, GPU_OS_WIN, GPU_DRIVER_ANY))
-  {
+  if (GPU_type_matches(GPU_DEVICE_QUALCOMM, GPU_OS_WIN, GPU_DRIVER_ANY)) {
     GCaps.shader_draw_parameters_support = false;
     GLContext::shader_draw_parameters_support = false;
   }
