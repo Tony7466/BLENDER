@@ -453,7 +453,7 @@ void BLI_windows_get_default_root_dir(char root[4])
   }
 }
 
-bool BLI_windows_get_directx_driver_version(long long *driverVersion, const wchar_t *deviceSubString)
+bool BLI_windows_get_directx_driver_version(const wchar_t *deviceSubString, long long *r_driverVersion)
 {
   IDXGIFactory* pFactory = NULL;
   IDXGIAdapter* pAdapter = NULL;
@@ -469,7 +469,7 @@ bool BLI_windows_get_directx_driver_version(long long *driverVersion, const wcha
         {
           if(wcsstr(desc.Description, deviceSubString))
           {
-            *driverVersion = version.QuadPart;
+            *r_driverVersion = version.QuadPart;
 
             IDXGIAdapter_Release(pAdapter);
             IDXGIFactory_Release(pFactory);

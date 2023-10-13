@@ -140,7 +140,7 @@ void GLBackend::platform_init()
     long long driverVersion = 0;
     if (device & GPU_DEVICE_QUALCOMM)
     {
-      if (BLI_windows_get_directx_driver_version(&driverVersion, L"Qualcomm(R) Adreno(TM)")) {
+      if (BLI_windows_get_directx_driver_version(L"Qualcomm(R) Adreno(TM)", &driverVersion)) {
         /* Parse out the driver version in format x.x.x.x */
         WORD ver0 = (driverVersion >> 48) & 0xffff;
         WORD ver1 = (driverVersion >> 32) & 0xffff;
@@ -481,7 +481,7 @@ static void detect_workarounds()
   if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY)) {
     GCaps.transform_feedback_support = false;
   }
-  
+
   /* Right now draw shader parameters are broken on Qualcomm devices
    * regardless of driver version */
   if(GPU_type_matches(GPU_DEVICE_QUALCOMM, GPU_OS_WIN, GPU_DRIVER_ANY))
