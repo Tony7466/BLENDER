@@ -33,7 +33,7 @@ NODE_STORAGE_FUNCS(NodeGeometryDuplicateElements);
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::Bool>("Selection").hide_value().default_value(true).field_on_all();
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Int>("Amount").min(0).default_value(1).field_on_all().description(
       "The number of duplicates to create for each element");
 
@@ -291,7 +291,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
     return;
   }
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
   const Curves &curves_id = *geometry_set.get_curves();
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();

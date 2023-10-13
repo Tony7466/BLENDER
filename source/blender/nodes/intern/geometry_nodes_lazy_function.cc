@@ -1573,7 +1573,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     RepeatEvalStorage &eval_storage = *static_cast<RepeatEvalStorage *>(context.storage);
 
     const int iterations_usage_index = zone_info_.indices.outputs.input_usages[0];
-    if (params.output_was_set(iterations_usage_index)) {
+    if (!params.output_was_set(iterations_usage_index)) {
       /* The iterations input is always used. */
       params.set_output(iterations_usage_index, true);
     }
@@ -1617,12 +1617,14 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         0, params.get_input<ValueOrField<int>>(zone_info_.indices.inputs.main[0]).as_value());
 
     /* Show a warning when the inspection index is out of range. */
-    if (node_storage.inspection_index < 0 || node_storage.inspection_index >= iterations) {
-      if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
-              user_data)) {
-        tree_logger->node_warnings.append(
-            {repeat_output_bnode_.identifier,
-             {NodeWarningType::Info, N_("Inspection index is out of range")}});
+    if (node_storage.inspection_index > 0) {
+      if (node_storage.inspection_index >= iterations) {
+        if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
+                user_data)) {
+          tree_logger->node_warnings.append(
+              {repeat_output_bnode_.identifier,
+               {NodeWarningType::Info, N_("Inspection index is out of range")}});
+        }
       }
     }
 
@@ -3759,7 +3761,7 @@ struct GeometryNodesLazyFunctionBuilder {
     if (socket_decl->input_field_type != InputSocketFieldType::Implicit) {
       return false;
     }
-    const ImplicitInputValueFn *implicit_input_fn = socket_decl->implicit_input_fn();
+    const ImplicitInputValueFn *implicit_input_fn = socket_decl->implicit_input_fn.get();
     if (implicit_input_fn == nullptr) {
       return false;
     }

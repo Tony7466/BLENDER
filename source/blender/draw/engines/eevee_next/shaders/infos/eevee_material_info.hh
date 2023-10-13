@@ -151,11 +151,11 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
     .fragment_source("eevee_surf_deferred_frag.glsl")
     .additional_info("eevee_global_ubo",
                      "eevee_utility_texture",
-                     "eevee_sampling_data",
-                     "eevee_hiz_data",
                      /* Added at runtime because of test shaders not having `node_tree`. */
-                     //  "eevee_render_pass_out",
-                     "eevee_cryptomatte_out");
+                     // "eevee_render_pass_out",
+                     // "eevee_cryptomatte_out",
+                     "eevee_sampling_data",
+                     "eevee_hiz_data");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     /* Early fragment test is needed for render passes support for forward surfaces. */
@@ -164,8 +164,10 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .fragment_source("eevee_surf_forward_frag.glsl")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .additional_info("eevee_global_ubo",
                      "eevee_light_data",
+                     "eevee_lightprobe_data",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_shadow_data",
@@ -180,6 +182,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_capture)
     .define("MAT_CAPTURE")
     .storage_buf(SURFEL_BUF_SLOT, Qualifier::WRITE, "Surfel", "surfel_buf[]")
     .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ_WRITE, "CaptureInfoData", "capture_info_buf")
+    .push_constant(Type::BOOL, "is_double_sided")
     .fragment_source("eevee_surf_capture_frag.glsl")
     .additional_info("eevee_global_ubo", "eevee_utility_texture");
 
@@ -193,8 +196,9 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
     .additional_info("eevee_global_ubo",
-                     "eevee_render_pass_out",
-                     "eevee_cryptomatte_out",
+                     /* Optionally added depending on the material. */
+                     //  "eevee_render_pass_out",
+                     //  "eevee_cryptomatte_out",
                      "eevee_utility_texture");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)

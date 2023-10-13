@@ -708,6 +708,13 @@ enum eLightType : uint32_t {
   LIGHT_ELLIPSE = 21u
 };
 
+enum LightingType : uint32_t {
+  LIGHT_DIFFUSE = 0u,
+  LIGHT_SPECULAR = 1u,
+  LIGHT_TRANSMIT = 2u,
+  LIGHT_VOLUME = 3u,
+};
+
 static inline bool is_area_light(eLightType type)
 {
   return type >= LIGHT_RECT;
@@ -742,6 +749,14 @@ struct LightData {
 #  define _back object_mat[2].xyz
 #  define _position object_mat[3].xyz
 #endif
+  /** Power depending on shader type. Referenced by LightingType. */
+  float4 power;
+  /** Light Color. */
+  packed_float3 color;
+  /** Light Type. */
+  eLightType type;
+  /** Inverse spot size (in X and Y axes). Aligned to size of float2. */
+  float2 spot_size_inv;
   /** Punctual : Influence radius (inverted and squared) adjusted for Surface / Volume power. */
   float influence_radius_invsqr_surface;
   float influence_radius_invsqr_volume;
@@ -749,22 +764,10 @@ struct LightData {
   float influence_radius_max;
   /** Special radius factor for point lighting. */
   float radius_squared;
-  /** NOTE: It is ok to use float3 here. A float is declared right after it.
-   * float3 is also aligned to 16 bytes. */
-  packed_float3 color;
-  /** Light Type. */
-  eLightType type;
-  /** Spot size. Aligned to size of float2. */
-  float2 spot_size_inv;
   /** Spot angle tangent. */
   float spot_tan;
   /** Reuse for directional LOD bias. */
 #define _clipmap_lod_bias spot_tan
-  /** Power depending on shader type. */
-  float diffuse_power;
-  float specular_power;
-  float volume_power;
-  float transmit_power;
 
   /** --- Shadow Data --- */
   /** Near clip distances. Float stored as int for atomic operations. */
@@ -1033,6 +1036,11 @@ struct Surfel {
   packed_float3 albedo_back;
   /** Cluster this surfel is assigned to. */
   int cluster_id;
+  /** True if the light can bounce or be emitted by the surfel back face. */
+  bool1 double_sided;
+  int _pad0;
+  int _pad1;
+  int _pad2;
   /** Surface radiance: Emission + Direct Lighting. */
   SurfelRadiance radiance_direct;
   /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
@@ -1086,6 +1094,9 @@ struct CaptureInfoData {
   bool1 capture_indirect;
   bool1 capture_emission;
   int _pad0;
+  /* World light probe atlas coordinate. */
+  /* TODO(fclem): Remove this silly aliasing. */
+  int4 world_atlas_coord;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
@@ -1278,41 +1289,80 @@ static inline float3 burley_eval(float3 d, float r)
 /** \name Reflection Probes
  * \{ */
 
-/** Mapping data to locate a reflection probe in texture. */
-struct ReflectionProbeData {
-  /**
-   * Position of the light probe in world space.
-   * World probe uses origin.
-   *
-   * 4th component is not used.
-   */
-  float4 pos;
+struct ReflectionProbeLowFreqLight {
+  packed_float3 direction;
+  float ambient;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeLowFreqLight, 16)
 
+enum LightProbeShape : uint32_t {
+  SHAPE_ELIPSOID = 0u,
+  SHAPE_CUBOID = 1u,
+};
+
+struct ReflectionProbeAtlasCoordinate {
   /** On which layer of the texture array is this reflection probe stored. */
   int layer;
-
   /**
    * Subdivision of the layer. 0 = no subdivision and resolution would be
    * ReflectionProbeModule::MAX_RESOLUTION.
    */
   int layer_subdivision;
-
   /**
    * Which area of the subdivided layer is the reflection probe located.
    *
    * A layer has (2^layer_subdivision)^2 areas.
    */
   int area_index;
+  int _pad1;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeAtlasCoordinate, 16)
+
+/** Mapping data to locate a reflection probe in texture. */
+struct ReflectionProbeData {
+  /** Transform to probe local position with non-uniform scaling. */
+  float3x4 world_to_probe_transposed;
+
+  packed_float3 location;
+  float _pad2;
+
+  /** Shape of the parallax projection. */
+  LightProbeShape parallax_shape;
+  LightProbeShape influence_shape;
+  float parallax_distance;
+  /** Influence factor based on the distance to the parallax shape. */
+  float influence_scale;
+  float influence_bias;
+  /** LOD factor for mipmap selection. */
+  float lod_factor;
+  float _pad0;
+  float _pad1;
+
+  ReflectionProbeAtlasCoordinate atlas_coord;
 
   /**
-   * LOD factor for mipmap selection.
+   * Irradiance at the probe location encoded as spherical harmonics.
+   * Only contain the average luminance. Used for cube-map normalization.
    */
-  float lod_factor;
+  ReflectionProbeLowFreqLight low_freq_light;
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
+struct ProbePlanarData {
+  /** Matrices used to render the planar capture. */
+  float4x4 viewmat;
+  float4x4 winmat;
+  /** Transform world to local position with influence distance as Z scale. */
+  float3x4 world_to_object_transposed;
+  /** World space plane normal. */
+  packed_float3 normal;
+  /** Layer in the planar capture textures used by this probe. */
+  int layer_id;
+};
+BLI_STATIC_ASSERT_ALIGN(ProbePlanarData, 16)
+
 struct ClipPlaneData {
-  /** World space clip plane equation. Used to render planar lightprobes. */
+  /** World space clip plane equation. Used to render planar light-probes. */
   float4 plane;
 };
 BLI_STATIC_ASSERT_ALIGN(ClipPlaneData, 16)
@@ -1434,6 +1484,7 @@ using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using SubsurfaceTileBuf = RayTraceTileBuf;
 using ReflectionProbeDataBuf =
     draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
+using ProbePlanarDataBuf = draw::UniformArrayBuffer<ProbePlanarData, PLANAR_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
