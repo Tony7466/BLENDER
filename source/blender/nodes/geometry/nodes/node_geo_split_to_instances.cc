@@ -333,10 +333,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   AnonymousAttributeIDPtr dst_group_id_attribute_id =
       params.get_output_anonymous_attribute_id_if_needed("Group ID");
-  SpanAttributeWriter<int> dst_group_id;
   if (dst_group_id_attribute_id) {
-    dst_group_id = dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
-        *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
+    SpanAttributeWriter<int> dst_group_id =
+        dst_instances->attributes_for_write().lookup_or_add_for_write_span<int>(
+            *dst_group_id_attribute_id, ATTR_DOMAIN_INSTANCE);
     std::copy(geometry_by_group_id.keys().begin(),
               geometry_by_group_id.keys().end(),
               dst_group_id.span.begin());
@@ -344,8 +344,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   dst_instances->transforms().fill(float4x4::identity());
-  MutableSpan<int> dst_instance_handles = dst_instances->reference_handles();
-  std::iota(dst_instance_handles.begin(), dst_instance_handles.end(), 0);
+  array_utils::fill_index_range(dst_instances->reference_handles());
 
   for (auto item : geometry_by_group_id.items()) {
     std::unique_ptr<GeometrySet> &group_geometry = item.value;
