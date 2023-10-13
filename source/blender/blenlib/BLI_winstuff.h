@@ -86,6 +86,7 @@ const char *dirname(char *path);
 bool BLI_windows_is_store_install(void);
 bool BLI_windows_register_blend_extension(bool all_users);
 bool BLI_windows_unregister_blend_extension(bool all_users);
+bool BLI_windows_get_directx_driver_version(long long *driverVersion, const wchar_t *deviceString);
 
 /**
  * Set the `root_dir` to the default root directory on MS-Windows,
