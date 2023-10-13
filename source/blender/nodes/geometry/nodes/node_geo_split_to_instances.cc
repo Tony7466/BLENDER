@@ -32,7 +32,7 @@ static void node_declare(NodeDeclarationBuilder &b)
                        GeometryComponent::Type::PointCloud,
                        GeometryComponent::Type::Curve,
                        GeometryComponent::Type::Instance});
-  b.add_input<decl::Bool>("Selection").supports_field().hide_value().default_value(true);
+  b.add_input<decl::Bool>("Selection").default_value(true).supports_field().hide_value();
   b.add_input<decl::Int>("Group ID").supports_field().hide_value();
   b.add_output<decl::Geometry>("Instances")
       .propagate_all()
