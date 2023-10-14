@@ -562,23 +562,6 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \name Delete Operator
  * \{ */
 
-enum class DeleteMode {
-  /* Delete selected stroke points. */
-  POINTS,
-  /* Delete selected strokes. */
-  STROKES,
-};
-
-static const EnumPropertyItem prop_delete_types[] = {
-    {int(DeleteMode::POINTS),
-     "POINTS",
-     0,
-     "Points",
-     "Delete selected points and split strokes into segments"},
-    {int(DeleteMode::STROKES), "STROKES", 0, "Strokes", "Delete selected strokes"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &curves,
                                                    const VArray<bool> selection)
 {
@@ -677,14 +660,14 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   return dst_curves;
 }
 
-static int grease_pencil_delete_exec(bContext *C, wmOperator *op)
+static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const DeleteMode mode = DeleteMode(RNA_enum_get(op->ptr, "type"));
+  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
@@ -698,21 +681,18 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator *op)
         }
 
         /* When deleting strokes, ensure the entirety of each curve is selected. */
-        if (mode == DeleteMode::STROKES) {
+        if (domain == ATTR_DOMAIN_CURVE) {
           blender::ed::curves::select_linked(curves);
         }
-
-        const eAttrDomain domain = (mode == DeleteMode::STROKES) ? ATTR_DOMAIN_CURVE :
-                                                                   ATTR_DOMAIN_POINT;
 
         const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
             ".selection", domain, true);
 
-        if (mode == DeleteMode::STROKES) {
+        if (domain == ATTR_DOMAIN_CURVE) {
           IndexMaskMemory memory;
           curves.remove_curves(IndexMask::from_bools(selection, memory));
         }
-        else if (mode == DeleteMode::POINTS) {
+        else if (domain == ATTR_DOMAIN_POINT) {
           curves = remove_points_and_split(curves, selection);
         }
         drawing.tag_topology_changed();
@@ -728,8 +708,6 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* Identifiers. */
   ot->name = "Delete";
   ot->idname = "GREASE_PENCIL_OT_delete";
@@ -741,15 +719,6 @@ static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
   ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* Simplify parameters. */
-  ot->prop = prop = RNA_def_enum(ot->srna,
-                                 "type",
-                                 prop_delete_types,
-                                 0,
-                                 "Type",
-                                 "Method used for deleting Grease Pencil data");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */

@@ -4862,7 +4862,7 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator_enum("grease_pencil.delete", "type")
+        layout.operator("grease_pencil.delete")
         
         layout.separator()
 
