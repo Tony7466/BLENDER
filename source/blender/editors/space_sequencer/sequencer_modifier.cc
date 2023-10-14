@@ -11,7 +11,7 @@
 
 #include "DNA_scene_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BKE_context.h"
 
@@ -372,7 +372,7 @@ void SEQUENCER_OT_strip_modifier_equalizer_redefine(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Redefine equalizer graphs";
+  ot->name = "Redefine Equalizer Graphs";
   ot->idname = "SEQUENCER_OT_strip_modifier_equalizer_redefine";
   ot->description = "Redefine equalizer graphs";
 

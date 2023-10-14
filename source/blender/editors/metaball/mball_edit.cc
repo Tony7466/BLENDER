@@ -30,9 +30,9 @@
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_mball.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_select.h"
 
@@ -240,7 +240,7 @@ static void mball_select_similar_type_get(
         case SIMMBALL_STIFFNESS: {
           tree_entry[0] = ml->s;
           break;
-        } break;
+        }
         case SIMMBALL_ROTATION: {
           float dir[3] = {1.0f, 0.0f, 0.0f};
           float rmat[3][3];

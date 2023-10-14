@@ -35,7 +35,6 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -62,19 +61,19 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_packedFile.h"
 #include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
 #include "BLO_readfile.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_info.hh"
@@ -98,6 +97,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
 
@@ -431,7 +431,7 @@ static void id_search_cb(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  blender::string_search::StringSearch<ID> search;
+  blender::ui::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
@@ -1025,7 +1025,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
           template_id_liboverride_hierarchy_make(C, bmain, template_ui, &idptr, &undo_push_label);
         }
         else {
-          BKE_lib_override_library_make_local(id);
+          BKE_lib_override_library_make_local(bmain, id);
           /* Reassign to get proper updates/notifiers. */
           idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
           RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
@@ -4592,7 +4592,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   CurveMap *cm = &cumap->cm[cumap->cur];
   uiBut *bt;
   const float dx = UI_UNIT_X;
-  int bg = -1;
+  eButGradientType bg = UI_GRAD_NONE;
 
   uiBlock *block = uiLayoutGetBlock(layout);
 
@@ -4779,7 +4779,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   row = uiLayoutRow(layout, false);
   uiButCurveMapping *curve_but = (uiButCurveMapping *)uiDefBut(
       block, UI_BTYPE_CURVE, 0, "", 0, 0, size, 8.0f * UI_UNIT_X, cumap, 0.0f, 1.0f, -1, 0, "");
-  curve_but->gradient_type = eButGradientType(bg);
+  curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
   int i;
@@ -7192,9 +7192,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
   /* Filename. */
   UI_tooltip_text_field_add(
       tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-
-  /* Add pad variable to the very next field only. */
-  bool pad = true;
+  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   /* Blender version. */
   char version_st[128] = {0};
@@ -7218,8 +7216,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
                               BLI_sprintfN("Blender: %s", version_st),
                               nullptr,
                               UI_TIP_STYLE_NORMAL,
-                              UI_TIP_LC_NORMAL, pad);
-    pad = false;
+                              UI_TIP_LC_NORMAL);
   }
 
   BLI_stat_t status;
@@ -7237,8 +7234,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
         BLI_sprintfN("%s: %s%s %s", N_("Modified"), day_string.c_str(), date_st, time_st),
         nullptr,
         UI_TIP_STYLE_NORMAL,
-        UI_TIP_LC_NORMAL, pad);
-    pad = false;
+        UI_TIP_LC_NORMAL);
 
     if (status.st_size > 0) {
       char size[16];
@@ -7264,8 +7260,10 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
   }
 
   if (thumb) {
-    float scale = (256.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    float scale = (64.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
     short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_image_field_add(tip, thumb, size);
     IMB_freeImBuf(thumb);
   }

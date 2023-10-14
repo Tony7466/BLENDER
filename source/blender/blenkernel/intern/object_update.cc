@@ -43,7 +43,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
@@ -52,9 +52,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_light_linking.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace deg = blender::deg;
 
