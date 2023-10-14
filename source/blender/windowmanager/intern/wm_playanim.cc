@@ -176,6 +176,11 @@ struct GhostData {
   eWS_Qual qual;
 };
 
+struct PlayArgs {
+  int argc;
+  char **argv;
+};
+
 /**
  * The minimal context necessary for displaying an image.
  * Used while displaying images both on load and while playing.
@@ -247,7 +252,8 @@ struct PlayState {
   int font_size;
 
   /** Restarts player for file drop (drag & drop). */
-  char dropped_file[FILE_MAX];
+  int argc_next;
+  char **argv_next;
 
   /** Force update when scrubbing with the cursor. */
   bool need_frame_update;
@@ -841,13 +847,15 @@ static void build_pict_list_from_image_sequence(GhostData *ghost_data,
                                                 const int fstep,
                                                 const bool *loading_p)
 {
-/* Load images into cache until the cache is full,
- * this resolves choppiness for images that are slow to load, see: #81751. */
+  /* Load images into cache until the cache is full,
+   * this resolves choppiness for images that are slow to load, see: #81751. */
+  bool fill_cache = (
 #ifdef USE_FRAME_CACHE_LIMIT
-  bool fill_cache = true;
+      true
 #else
-  bool fill_cache = false;
+      false
 #endif
+  );
 
   int fp_framenr;
   struct {
@@ -986,28 +994,27 @@ static void update_sound_fps()
 #endif
 }
 
-static void tag_change_frame(PlayState *ps, int cx)
+static void playanim_change_frame_tag(PlayState *ps, int cx)
 {
   ps->need_frame_update = true;
   ps->frame_cursor_x = cx;
 }
 
-static void change_frame(PlayState *ps)
+static void playanim_change_frame(PlayState *ps)
 {
   if (!ps->need_frame_update) {
     return;
   }
-
-  int sizex, sizey;
-  int i, i_last;
-
   if (BLI_listbase_is_empty(&picsbase)) {
     return;
   }
 
+  int sizex, sizey;
   playanim_window_get_size(ps->ghost_data.window, &sizex, &sizey);
-  i_last = ((PlayAnimPict *)picsbase.last)->frame;
-  i = (i_last * ps->frame_cursor_x) / sizex;
+  const int i_last = ((PlayAnimPict *)picsbase.last)->frame;
+  /* Without this the indicator location isn't closest to the cursor.  */
+  const int correct_rounding = (sizex / i_last) / 2;
+  int i = (i_last * (ps->frame_cursor_x + correct_rounding)) / sizex;
   CLAMP(i, 0, i_last);
 
 #ifdef WITH_AUDASPACE
@@ -1409,7 +1416,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         if (type == GHOST_kEventButtonDown) {
           if (inside_window) {
             ps->ghost_data.qual |= WS_QUAL_LMOUSE;
-            tag_change_frame(ps, cx);
+            playanim_change_frame_tag(ps, cx);
           }
         }
         else {
@@ -1458,7 +1465,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           }
         }
 
-        tag_change_frame(ps, cx);
+        playanim_change_frame_tag(ps, cx);
       }
       break;
     }
@@ -1506,14 +1513,14 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 
       if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
         const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
-        int a;
-
-        for (a = 0; a < stra->count; a++) {
-          STRNCPY(ps->dropped_file, (char *)stra->strings[a]);
-          ps->go = false;
-          printf("drop file %s\n", stra->strings[a]);
-          break; /* only one drop element supported now */
+        ps->argc_next = stra->count;
+        ps->argv_next = static_cast<char **>(
+            MEM_mallocN(sizeof(char **) * ps->argc_next, __func__));
+        for (int i = 0; i < stra->count; i++) {
+          ps->argv_next[i] = BLI_strdup(reinterpret_cast<const char *>(stra->strings[i]));
         }
+        ps->go = false;
+        printf("dropped %s, %d file(s)\n", ps->argv_next[0], ps->argc_next);
       }
       break;
     }
@@ -1627,18 +1634,15 @@ static bool playanim_window_font_scale_from_dpi(PlayState *ps)
 }
 
 /**
- * \return The a path used to restart the animation player or nullptr to exit.
+ * \return True when `args_next` is filled with arguments used to re-run this function
+ * (used for drag & drop).
  */
-static char *wm_main_playanim_intern(int argc, const char **argv)
+static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_next)
 {
   ImBuf *ibuf = nullptr;
-  static char filepath[FILE_MAX]; /* abused to return dropped file path */
-  int i;
-  /* This was done to disambiguate the name for use under c++. */
-  int start_x = 0, start_y = 0;
+  int window_pos[2] = {0, 0};
   int sfra = -1;
   int efra = -1;
-  int totblock;
 
   PlayState ps{};
 
@@ -1654,7 +1658,8 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   ps.loading = false;
   ps.picture = nullptr;
   ps.indicator = false;
-  ps.dropped_file[0] = 0;
+  ps.argc_next = 0;
+  ps.argv_next = nullptr;
   ps.zoom = 1.0f;
   ps.draw_flip[0] = false;
   ps.draw_flip[1] = false;
@@ -1669,17 +1674,16 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
                                                  &ps.display_ctx.display_settings);
   ps.display_ctx.ui_scale = 1.0f;
 
-  /* Skip the first argument which is assumed to be '-a' (used to launch this player). */
-  while (argc > 1) {
-    if (argv[1][0] == '-') {
-      switch (argv[1][1]) {
+  while (argc > 0) {
+    if (argv[0][0] == '-') {
+      switch (argv[0][1]) {
         case 'm':
           fromdisk = true;
           break;
         case 'p':
-          if (argc > 3) {
-            start_x = atoi(argv[2]);
-            start_y = atoi(argv[3]);
+          if (argc > 2) {
+            window_pos[0] = atoi(argv[1]);
+            window_pos[1] = atoi(argv[2]);
             argc -= 2;
             argv += 2;
           }
@@ -1688,9 +1692,9 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           }
           break;
         case 'f':
-          if (argc > 3) {
-            double fps = atof(argv[2]);
-            double fps_base = atof(argv[3]);
+          if (argc > 2) {
+            double fps = atof(argv[1]);
+            double fps_base = atof(argv[2]);
             if (fps == 0.0) {
               fps = 1;
               printf(
@@ -1706,19 +1710,19 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           }
           break;
         case 's':
-          sfra = atoi(argv[2]);
+          sfra = atoi(argv[1]);
           CLAMP(sfra, 1, MAXFRAME);
           argc--;
           argv++;
           break;
         case 'e':
-          efra = atoi(argv[2]);
+          efra = atoi(argv[1]);
           CLAMP(efra, 1, MAXFRAME);
           argc--;
           argv++;
           break;
         case 'j':
-          ps.fstep = atoi(argv[2]);
+          ps.fstep = atoi(argv[1]);
           CLAMP(ps.fstep, 1, MAXFRAME);
           swaptime *= ps.fstep;
           argc--;
@@ -1726,7 +1730,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           break;
         case 'c': {
 #ifdef USE_FRAME_CACHE_LIMIT
-          const int memory_in_mb = max_ii(0, atoi(argv[2]));
+          const int memory_in_mb = max_ii(0, atoi(argv[1]));
           g_frame_cache.memory_limit = size_t(memory_in_mb) * (1024 * 1024);
 #endif
           argc--;
@@ -1734,7 +1738,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           break;
         }
         default:
-          printf("unknown option '%c': skipping\n", argv[1][1]);
+          printf("unknown option '%c': skipping\n", argv[0][1]);
           break;
       }
       argc--;
@@ -1745,13 +1749,12 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     }
   }
 
-  if (argc > 1) {
-    STRNCPY(filepath, argv[1]);
-  }
-  else {
+  if (argc == 0) {
     printf("%s: no filepath argument given\n", __func__);
     exit(EXIT_FAILURE);
   }
+
+  const char *filepath = argv[0];
 
   if (IMB_isanim(filepath)) {
     /* OCIO_TODO: support different input color spaces */
@@ -1795,8 +1798,12 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
     GHOST_AddEventConsumer(ps.ghost_data.system, ghost_event_consumer);
 
-    ps.ghost_data.window = playanim_window_open(
-        ps.ghost_data.system, "Blender Animation Player", start_x, start_y, ibuf->x, ibuf->y);
+    ps.ghost_data.window = playanim_window_open(ps.ghost_data.system,
+                                                "Blender Animation Player",
+                                                window_pos[0],
+                                                window_pos[1],
+                                                ibuf->x,
+                                                ibuf->y);
   }
 
   // GHOST_ActivateWindowDrawingContext(ps.ghost_data.window);
@@ -1830,10 +1837,19 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   GHOST_SwapWindowBuffers(ps.ghost_data.window);
 
+  /* One of the frames was invalid or not passed in. */
   if (sfra == -1 || efra == -1) {
-    /* one of the frames was invalid, just use all images */
     sfra = 1;
-    efra = MAXFRAME;
+    if (argc == 1) {
+      /* A single file was passed in, attempt to load all images from an image sequence.
+       * (if it is an image sequence). */
+      efra = MAXFRAME;
+    }
+    else {
+      /* Multiple files passed in, show each file without expanding image sequences.
+       * This occurs when dropping multiple files. */
+      efra = 1;
+    }
   }
 
   build_pict_list(
@@ -1856,8 +1872,8 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   }
 #endif
 
-  for (i = 2; i < argc; i++) {
-    STRNCPY(filepath, argv[i]);
+  for (int i = 1; i < argc; i++) {
+    filepath = argv[i];
     build_pict_list(
         &ps.ghost_data, &ps.display_ctx, filepath, (efra - sfra) + 1, ps.fstep, &ps.loading);
   }
@@ -1964,7 +1980,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
       if (ps.go == false) {
         break;
       }
-      change_frame(&ps);
+      playanim_change_frame(&ps);
       if (!has_event) {
         PIL_sleep_ms(1);
       }
@@ -2053,8 +2069,8 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   g_audaspace.source = nullptr;
 #endif
 
-  /* we still miss freeing a lot!,
-   * but many areas could skip initialization too for anim play */
+  /* We still miss freeing a lot!
+   * But many areas could skip initialization too for anim play. */
 
   DEG_free_node_types();
 
@@ -2072,32 +2088,30 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   GHOST_DisposeWindow(ps.ghost_data.system, ps.ghost_data.window);
 
   /* early exit, IMB and BKE should be exited only in end */
-  if (ps.dropped_file[0]) {
-    STRNCPY(filepath, ps.dropped_file);
-    return filepath;
+  if (ps.argv_next) {
+    args_next->argc = ps.argc_next;
+    args_next->argv = ps.argv_next;
+    return true;
   }
 
   GHOST_DisposeSystem(ps.ghost_data.system);
 
   IMB_exit();
 
-  totblock = MEM_get_memory_blocks_in_use();
-  if (totblock != 0) {
-/* prints many bAKey, bArgument's which are tricky to fix */
 #if 0
+  const int totblock = MEM_get_memory_blocks_in_use();
+  if (totblock != 0) {
+    /* Prints many bAKey, bArgument's which are tricky to fix. */
     printf("Error Totblock: %d\n", totblock);
     MEM_printmemlist();
-#endif
   }
+#endif
 
-  return nullptr;
+  return false;
 }
 
 void WM_main_playanim(int argc, const char **argv)
 {
-  const char *argv_next[2];
-  bool looping = true;
-
 #ifdef WITH_AUDASPACE
   {
     AUD_DeviceSpecs specs;
@@ -2114,21 +2128,27 @@ void WM_main_playanim(int argc, const char **argv)
   }
 #endif
 
-  while (looping) {
-    const char *filepath = wm_main_playanim_intern(argc, argv);
+  PlayArgs args_next = {0};
+  do {
+    PlayArgs args_free = args_next;
+    args_next = {0};
 
-    if (filepath) { /* use simple args */
-      argv_next[0] = argv[0];
-      argv_next[1] = filepath;
-      argc = 2;
-
-      /* continue with new args */
-      argv = argv_next;
+    if (wm_main_playanim_intern(argc, argv, &args_next)) {
+      argc = args_next.argc;
+      argv = const_cast<const char **>(args_next.argv);
     }
     else {
-      looping = false;
+      argc = 0;
+      argv = nullptr;
     }
-  }
+
+    if (args_free.argv) {
+      for (int i = 0; i < args_free.argc; i++) {
+        MEM_freeN(args_free.argv[i]);
+      }
+      MEM_freeN(args_free.argv);
+    }
+  } while (argv != nullptr);
 
 #ifdef WITH_AUDASPACE
   AUD_exit(g_audaspace.audio_device);
