@@ -688,7 +688,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
