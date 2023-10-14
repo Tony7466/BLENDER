@@ -1757,7 +1757,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
     {sizeof(MRecast), "MRecast", 1, N_("Recast"), nullptr, nullptr, nullptr, nullptr},
     /* 25: CD_MPOLY */ /* DEPRECATED */
     {sizeof(MPoly), "MPoly", 1, N_("NGon Face"), nullptr, nullptr, nullptr, nullptr, nullptr},
-    /* 26: CD_MLOOP */ /* DEPRECATED*/
+    /* 26: CD_MLOOP */ /* DEPRECATED */
     {sizeof(MLoop),
      "MLoop",
      1,
@@ -2411,6 +2411,26 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
     layer.data = copy_layer_data(type, old_data, totelem);
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
+  }
+}
+
+[[maybe_unused]] static bool layer_is_mutable(CustomDataLayer &layer)
+{
+  if (layer.sharing_info == nullptr) {
+    return true;
+  }
+  return layer.sharing_info->is_mutable();
+}
+
+void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem)
+{
+  ensure_layer_data_is_mutable(*layer, totelem);
+}
+
+void CustomData_ensure_layers_are_mutable(struct CustomData *data, int totelem)
+{
+  for (const int i : IndexRange(data->totlayer)) {
+    ensure_layer_data_is_mutable(data->layers[i], totelem);
   }
 }
 
@@ -3287,6 +3307,8 @@ void CustomData_copy_data_layer(const CustomData *source,
 {
   const LayerTypeInfo *typeInfo;
 
+  BLI_assert(layer_is_mutable(dest->layers[dst_layer_index]));
+
   const void *src_data = source->layers[src_layer_index].data;
   void *dst_data = dest->layers[dst_layer_index].data;
 
@@ -3402,6 +3424,7 @@ void CustomData_free_elem(CustomData *data, const int index, const int count)
 
     if (typeInfo->free) {
       size_t offset = size_t(index) * typeInfo->size;
+      BLI_assert(layer_is_mutable(data->layers[i]));
 
       typeInfo->free(POINTER_OFFSET(data->layers[i].data, offset), count, typeInfo->size);
     }

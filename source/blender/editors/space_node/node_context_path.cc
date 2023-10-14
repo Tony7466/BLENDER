@@ -14,9 +14,9 @@
 #include "BKE_context.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -56,7 +56,7 @@ static void context_path_add_node_tree_and_node_groups(const SpaceNode &snode,
                                                        const bool skip_base = false)
 {
   LISTBASE_FOREACH (const bNodeTreePath *, path_item, &snode.treepath) {
-    if (skip_base && path_item == snode.treepath.first) {
+    if (!(skip_base && path_item == snode.treepath.first)) {
       ui::context_path_add_generic(path, RNA_NodeTree, path_item->nodetree, ICON_NODETREE);
     }
   }

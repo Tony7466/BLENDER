@@ -26,7 +26,7 @@
 
 #include "BKE_context.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -344,6 +344,13 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
      * to be within the window bounds may move it away from the mouse,
      * This ensures we set an item to be active. */
     if (but_activate) {
+      ARegion *region = CTX_wm_region(C);
+      if (region && region->regiontype == RGN_TYPE_TOOLS && but_activate->block &&
+          (but_activate->block->flag & UI_BLOCK_POPUP_HOLD))
+      {
+        /* In Toolbars, highlight the button with select color. */
+        but_activate->flag |= UI_SELECT_DRAW;
+      }
       ui_but_activate_over(C, handle->region, but_activate);
     }
 
@@ -397,6 +404,10 @@ static uiPopupBlockHandle *ui_popup_menu_create(
   if (but) {
     pup->slideout = ui_block_is_menu(but->block);
     pup->but = but;
+
+    if (but->type == UI_BTYPE_PULLDOWN) {
+      ED_workspace_status_text(C, TIP_("Press spacebar to search..."));
+    }
   }
 
   if (!but) {
@@ -555,6 +566,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
     return;
   }
 
+  BKE_reports_lock(reports);
+
   LISTBASE_FOREACH (Report *, report, &reports->list) {
     int icon;
     const char *msg, *msg_next;
@@ -590,6 +603,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
     } while ((msg = msg_next) && *msg);
   }
 
+  BKE_reports_unlock(reports);
+
   if (pup) {
     UI_popup_menu_end(C, pup);
   }
@@ -608,7 +623,15 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
         ui_item_menutype_func(C, layout, mt);
       });
 
+  STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
+
+  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+    ED_workspace_status_text(C, TIP_("Type to search..."));
+  }
+  else if (mt->idname[0]) {
+    ED_workspace_status_text(C, TIP_("Press spacebar to search..."));
+  }
 }
 
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)

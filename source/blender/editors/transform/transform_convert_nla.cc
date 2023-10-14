@@ -271,8 +271,8 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 
     /** Remove bottom tracks that weren't necessary. */
     LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
-      /** Library override tracks are the first N tracks. They're never temporary and determine
-       * where we start removing temporaries.*/
+      /* Library override tracks are the first N tracks. They're never temporary and determine
+       * where we start removing temporaries. */
       if ((track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
         continue;
       }
@@ -368,8 +368,6 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
   NlaStrip *prev = BKE_nlastrip_prev_in_track(strip, true);
   NlaStrip *next = BKE_nlastrip_next_in_track(strip, true);
 
-  PointerRNA strip_ptr;
-
   for (short iter = 0; iter <= iter_max; iter++) {
     const bool p_exceeded = (prev != nullptr) && (tdn->h1[0] < prev->end);
     const bool n_exceeded = (next != nullptr) && (tdn->h2[0] > next->start);
@@ -410,7 +408,7 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
 
   /* Use RNA to write the values to ensure that constraints on these are obeyed
    * (e.g. for transition strips, the values are taken from the neighbors). */
-  RNA_pointer_create(nullptr, &RNA_NlaStrip, strip, &strip_ptr);
+  PointerRNA strip_ptr = RNA_pointer_create(nullptr, &RNA_NlaStrip, strip);
 
   switch (t->mode) {
     case TFM_TIME_EXTEND:
@@ -488,7 +486,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
       if (strip->type == NLASTRIP_TYPE_TRANSITION) {
         continue;
       }
-      if (strip->flag & NLASTRIP_FLAG_SELECT == 0) {
+      if ((strip->flag & NLASTRIP_FLAG_SELECT) == 0) {
         continue;
       }
       if (FrameOnMouseSide(t->frame_side, strip->start, float(scene->r.cfra))) {
@@ -539,7 +537,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
         if (strip->type == NLASTRIP_TYPE_TRANSITION) {
           continue;
         }
-        if (strip->flag & NLASTRIP_FLAG_SELECT == 0) {
+        if ((strip->flag & NLASTRIP_FLAG_SELECT) == 0) {
           continue;
         }
 
@@ -654,7 +652,7 @@ static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
   if (t->state == TRANS_CANCEL) {
     return;
   }
-  if (t->tsnap.flag & SCE_SNAP == 0) {
+  if ((t->tsnap.flag & SCE_SNAP) == 0) {
     return;
   }
 
@@ -662,9 +660,28 @@ static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
   if (t->modifiers & MOD_SNAP_INVERT) {
     invert_snap(snap_mode);
   }
-  TransData *td = tc->data;
-  for (int i = 0; i < tc->data_len; i++, td++) {
-    transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
+
+  float offset = 0;
+  float smallest_snap_delta = FLT_MAX;
+
+  /* In order to move the strip in a block and not each end individually,
+   * find the minimal snap offset first and then shift the whole strip by that amount. */
+  for (int i = 0; i < tc->data_len; i++) {
+    TransData td = tc->data[i];
+    float snap_value;
+    transform_snap_anim_flush_data(t, &td, snap_mode, &snap_value);
+
+    /* The snap_delta measures how far from the unsnapped position the value has moved. */
+    const float snap_delta = *td.loc - snap_value;
+    if (fabs(snap_delta) < fabs(smallest_snap_delta)) {
+      offset = snap_value - td.iloc[0];
+      smallest_snap_delta = snap_delta;
+    }
+  }
+
+  for (int i = 0; i < tc->data_len; i++) {
+    TransData td = tc->data[i];
+    *td.loc = td.iloc[0] + offset;
   }
 }
 

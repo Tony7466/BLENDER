@@ -292,13 +292,19 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
     options.languageVersion = MTLLanguageVersion2_2;
     options.fastMathEnabled = YES;
 
-#if defined(MAC_OS_X_VERSION_11_0) && __MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_11_0
     if (@available(macOS 11.00, *)) {
       /* Raster order groups for tile data in struct require Metal 2.3.
        * Retaining Metal 2.2. for old shaders to maintain backwards
        * compatibility for existing features. */
-      if (info->fragment_tile_inputs_.size() > 0) {
+      if (info->subpass_inputs_.size() > 0) {
         options.languageVersion = MTLLanguageVersion2_3;
+      }
+    }
+#if defined(MAC_OS_VERSION_14_0)
+    if (@available(macOS 14.00, *)) {
+      /* Texture atomics require Metal 3.1. */
+      if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC)) {
+        options.languageVersion = MTLLanguageVersion3_1;
       }
     }
 #endif

@@ -121,7 +121,7 @@ void ShaderCreateInfo::finalize()
     fragment_outputs_.extend_non_duplicates(info.fragment_outputs_);
     vertex_out_interfaces_.extend_non_duplicates(info.vertex_out_interfaces_);
     geometry_out_interfaces_.extend_non_duplicates(info.geometry_out_interfaces_);
-    fragment_tile_inputs_.extend_non_duplicates(info.fragment_tile_inputs_);
+    subpass_inputs_.extend_non_duplicates(info.subpass_inputs_);
 
     validate_vertex_attributes(&info);
 
@@ -141,6 +141,7 @@ void ShaderCreateInfo::finalize()
       depth_write_ = info.depth_write_;
     }
 
+    /* Inherit builtin bits from additional info. */
     builtins_ |= info.builtins_;
 
     validate_merge(info);
@@ -179,9 +180,13 @@ void ShaderCreateInfo::finalize()
       assert_no_overlap(compute_source_.is_empty(), "Compute source already existing");
       compute_source_ = info.compute_source_;
     }
+  }
 
-    /* Inherit builtin bits from additional info. */
-    builtins_ |= info.builtins_;
+  if (!geometry_source_.is_empty() && bool(builtins_ & BuiltinBits::LAYER)) {
+    std::cout << name_
+              << ": Validation failed. BuiltinBits::LAYER shouldn't be used with geometry shaders."
+              << std::endl;
+    BLI_assert(0);
   }
 
   if (auto_resource_location_) {
@@ -238,7 +243,37 @@ std::string ShaderCreateInfo::check_error() const
     }
   }
 
-#ifdef DEBUG
+  if (!this->geometry_source_.is_empty()) {
+    if (bool(this->builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses barycentric coordinates. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::VIEWPORT_INDEX)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses multi-viewport. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::LAYER)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses layer output. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+  }
+
+#ifndef NDEBUG
+  if (bool(this->builtins_ &
+           (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
+  {
+    for (const StageInterfaceInfo *interface : this->vertex_out_interfaces_) {
+      if (interface->instance_name.is_empty()) {
+        error += "Shader " + this->name_ + " uses interface " + interface->name +
+                 " that doesn't contain an instance name, but is required for the fallback "
+                 "geometry shader.\n";
+      }
+    }
+  }
+
   if (!this->is_vulkan_compatible()) {
     error += this->name_ +
              " contains a stage interface using an instance name and mixed interpolation modes. "
@@ -365,14 +400,14 @@ void gpu_shader_create_info_init()
   g_interfaces = new InterfaceDictionnary();
 
 #define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
-  auto *ptr_##_interface = new StageInterfaceInfo(#_interface, _inst_name); \
-  auto &_interface = *ptr_##_interface; \
+  StageInterfaceInfo *ptr_##_interface = new StageInterfaceInfo(#_interface, _inst_name); \
+  StageInterfaceInfo &_interface = *ptr_##_interface; \
   g_interfaces->add_new(#_interface, ptr_##_interface); \
   _interface
 
 #define GPU_SHADER_CREATE_INFO(_info) \
-  auto *ptr_##_info = new ShaderCreateInfo(#_info); \
-  auto &_info = *ptr_##_info; \
+  ShaderCreateInfo *ptr_##_info = new ShaderCreateInfo(#_info); \
+  ShaderCreateInfo &_info = *ptr_##_info; \
   g_create_infos->add_new(#_info, ptr_##_info); \
   _info
 
@@ -518,7 +553,7 @@ bool gpu_shader_create_info_compile_all()
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
           (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
-          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage()))
+          (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
       {
         skipped++;
         continue;

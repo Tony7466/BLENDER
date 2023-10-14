@@ -16,8 +16,8 @@ struct ID;
 struct ImBuf;
 struct PreviewImage;
 
-void BKE_preview_images_init(void);
-void BKE_preview_images_free(void);
+void BKE_preview_images_init();
+void BKE_preview_images_free();
 
 /**
  * Free the preview image for use in list.
@@ -28,6 +28,9 @@ void BKE_previewimg_freefunc(void *link);
  * Free the preview image.
  */
 void BKE_previewimg_free(PreviewImage **prv);
+
+/** Must be called after reading a preview image from file. */
+void BKE_previewimg_runtime_data_clear(PreviewImage *prv);
 
 /**
  * Clear the preview image or icon, but does not free it.
@@ -60,7 +63,7 @@ void BKE_previewimg_id_free(ID *id);
 /**
  * Create a new preview image.
  */
-PreviewImage *BKE_previewimg_create(void);
+PreviewImage *BKE_previewimg_create();
 
 /**
  * Create a copy of the preview image.

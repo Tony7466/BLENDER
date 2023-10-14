@@ -87,9 +87,10 @@
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
+#include "NOD_zone_socket_items.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "BLO_read_write.hh"
 
@@ -782,20 +783,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       }
     }
     if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      const NodeGeometrySimulationOutput &storage =
-          *static_cast<const NodeGeometrySimulationOutput *>(node->storage);
-      BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
-      for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
+      blender::nodes::SimulationItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_REPEAT_OUTPUT) {
-      const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
-          node->storage);
-      BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
-      for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
+      blender::nodes::RepeatItemsAccessor::blend_write(writer, *node);
     }
   }
 
@@ -987,21 +978,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_SIMULATION_OUTPUT: {
-          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
+          blender::nodes::SimulationItemsAccessor::blend_read_data(reader, *node);
           break;
         }
         case GEO_NODE_REPEAT_OUTPUT: {
-          NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
+          blender::nodes::RepeatItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
@@ -1094,14 +1075,17 @@ static void ntree_blend_read_after_liblink(BlendLibReader *reader, ID *id)
   }
 }
 
-static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
+void node_update_asset_metadata(bNodeTree &node_tree)
 {
-  bNodeTree &node_tree = *static_cast<bNodeTree *>(asset_ptr);
+  AssetMetaData *asset_data = node_tree.id.asset_data;
+  if (!asset_data) {
+    return;
+  }
 
   BKE_asset_metadata_idprop_ensure(asset_data, idprop::create("type", node_tree.type).release());
   auto inputs = idprop::create_group("inputs");
   auto outputs = idprop::create_group("outputs");
-  node_tree.ensure_topology_cache();
+  node_tree.ensure_interface_cache();
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_inputs()) {
     auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
@@ -1119,10 +1103,21 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
   }
 }
 
+static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_data*/)
+{
+  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
+}
+
+static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
+{
+  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
+}
+
 }  // namespace blender::bke
 
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
+    /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {
@@ -1236,8 +1231,7 @@ static void node_init(const bContext *C, bNodeTree *ntree, bNode *node)
   }
 
   if (ntype->initfunc_api) {
-    PointerRNA ptr;
-    RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
 
     /* XXX WARNING: context can be nullptr in case nodes are added in do_versions.
      * Delayed init is not supported for nodes with context-based `initfunc_api` at the moment. */
@@ -2522,8 +2516,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   /* Only call copy function when a copy is made for the main database, not
    * for cases like the dependency graph and localization. */
   if (node_dst->typeinfo->copyfunc_api && !(flag & LIB_ID_CREATE_NO_MAIN)) {
-    PointerRNA ptr;
-    RNA_pointer_create(reinterpret_cast<ID *>(dst_tree), &RNA_Node, node_dst, &ptr);
+    PointerRNA ptr = RNA_pointer_create(reinterpret_cast<ID *>(dst_tree), &RNA_Node, node_dst);
 
     node_dst->typeinfo->copyfunc_api(&ptr, &node_src);
   }
@@ -2544,6 +2537,11 @@ static void *node_static_value_storage_for(bNode &node, const bNodeSocket &socke
   switch (node.type) {
     case FN_NODE_INPUT_BOOL:
       return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
+    case SH_NODE_VALUE:
+      /* The value is stored in the default value of the first output socket. */
+      return &static_cast<bNodeSocket *>(node.outputs.first)
+                  ->default_value_typed<bNodeSocketValueFloat>()
+                  ->value;
     case FN_NODE_INPUT_INT:
       return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
     case FN_NODE_INPUT_VECTOR:
@@ -2582,8 +2580,9 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueObject>()->value;
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
-    case SOCK_STRING:
     case SOCK_ROTATION:
+      return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
+    case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
     case SOCK_CUSTOM:
@@ -3309,8 +3308,7 @@ void nodeRemoveNode(Main *bmain, bNodeTree *ntree, bNode *node, const bool do_id
   if (do_id_user) {
     /* Free callback for NodeCustomGroup. */
     if (node->typeinfo->freefunc_api) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
 
       node->typeinfo->freefunc_api(&ptr);
     }
@@ -4002,6 +4000,17 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
   }
 
   BLI_strncpy(label, IFACE_(node->typeinfo->ui_name), label_maxncpy);
+}
+
+const char *nodeSocketShortLabel(const bNodeSocket *sock)
+{
+  if (sock->runtime->declaration != nullptr) {
+    blender::StringRefNull short_label = sock->runtime->declaration->short_label;
+    if (!short_label.is_empty()) {
+      return sock->runtime->declaration->short_label.data();
+    }
+  }
+  return nullptr;
 }
 
 const char *nodeSocketLabel(const bNodeSocket *sock)

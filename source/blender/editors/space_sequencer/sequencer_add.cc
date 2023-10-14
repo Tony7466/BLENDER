@@ -66,11 +66,11 @@
 #  include <AUD_Sequence.h>
 #endif
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct SequencerAddData {
   ImageFormatData im_format;
@@ -1023,7 +1023,6 @@ static void sequencer_add_draw(bContext * /*C*/, wmOperator *op)
   uiLayout *layout = op->layout;
   SequencerAddData *sad = static_cast<SequencerAddData *>(op->customdata);
   ImageFormatData *imf = &sad->im_format;
-  PointerRNA imf_ptr;
 
   /* Main draw call. */
   uiDefAutoButsRNA(layout,
@@ -1035,7 +1034,7 @@ static void sequencer_add_draw(bContext * /*C*/, wmOperator *op)
                    false);
 
   /* Image template. */
-  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, imf, &imf_ptr);
+  PointerRNA imf_ptr = RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, imf);
 
   /* Multiview template. */
   if (RNA_boolean_get(op->ptr, "show_multiview")) {
@@ -1483,7 +1482,7 @@ static int sequencer_add_effect_strip_invoke(bContext *C,
 }
 
 static std::string sequencer_add_effect_strip_desc(bContext * /*C*/,
-                                                   wmOperatorType * /*op*/,
+                                                   wmOperatorType * /*ot*/,
                                                    PointerRNA *ptr)
 {
   const int type = RNA_enum_get(ptr, "type");
