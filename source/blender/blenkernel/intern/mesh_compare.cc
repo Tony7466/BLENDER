@@ -139,8 +139,8 @@ template<typename T> static void sort_indices(MutableSpan<int> indices, const Sp
       return false;
     }
     if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>) {
-      const float4 value1 = static_cast<float4>(value1);
-      const float4 value2 = static_cast<float4>(value2);
+      const float4 value1 = float4(value1);
+      const float4 value2 = float4(value2);
       for (int i = 0; i < 4; i++) {
         if (compare_threshold_relative(value1[i], value2[i], FLT_EPSILON * 60)) {
           return value1[i] < value2[i];
@@ -270,8 +270,8 @@ template<typename T> static bool values_different(const T value1, const T value2
     return false;
   }
   if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>) {
-    const float4 value1_f = static_cast<float4>(value1);
-    const float4 value2_f = static_cast<float4>(value2);
+    const float4 value1_f = float4(value1);
+    const float4 value2_f = float4(value2);
     for (int i = 0; i < 4; i++) {
       if (compare_threshold_relative(value1_f[i], value2_f[i], FLT_EPSILON * 60)) {
         return true;
