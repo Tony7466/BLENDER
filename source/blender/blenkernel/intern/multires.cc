@@ -36,11 +36,11 @@
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "CCGSubSurf.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 
