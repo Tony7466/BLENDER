@@ -112,8 +112,8 @@ static void convert_to_z_up(pxr::UsdStageRefPtr stage, ImportSettings *r_setting
 }
 
 /**
-   * Find the lowest level of Blender generated roots
-   * so that round tripping an export can be more invisible
+ * Find the lowest level of Blender generated roots
+ * so that round tripping an export can be more invisible
  */
 static void find_prefix_to_skip(pxr::UsdStageRefPtr stage, ImportSettings *r_settings)
 {
@@ -127,7 +127,7 @@ static void find_prefix_to_skip(pxr::UsdStageRefPtr stage, ImportSettings *r_set
   while (true) {
 
     uint32_t child_count = 0;
-    for (auto child:prim.GetChildren()) {
+    for (auto child : prim.GetChildren()) {
       if (child_count == 0) {
         prim = child.GetPrim();
       }
@@ -136,8 +136,8 @@ static void find_prefix_to_skip(pxr::UsdStageRefPtr stage, ImportSettings *r_set
 
     if (child_count != 1) {
       /* Our blender write out only supports a single root chain,
-        * so whenever we encounter more than one child, we should
-        * early exit */
+       * so whenever we encounter more than one child, we should
+       * early exit */
       break;
     }
 

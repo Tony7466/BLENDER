@@ -114,10 +114,10 @@ static void process_prim_path(char *prim_path)
 
   /* If a prim path doesn't start with a "/" it
    * is invalid when creating the prim. */
-   if (prim_path[0] != '/') {
-      auto new_path = "/" + std::string(prim_path);
-      snprintf(prim_path, FILE_MAX, "%s", new_path.c_str());
-   }
+  if (prim_path[0] != '/') {
+    auto new_path = "/" + std::string(prim_path);
+    snprintf(prim_path, FILE_MAX, "%s", new_path.c_str());
+  }
 }
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
