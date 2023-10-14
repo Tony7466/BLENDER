@@ -1077,9 +1077,6 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
         col = flow.column()
         col.prop(font_style, "points")
         col.prop(font_style, "character_weight", text="Weight")
-        col.prop(font_style, "character_slant", text="Slant")
-        col.prop(font_style, "character_width", text="Width")
-        col.prop(font_style, "character_spacing", text="Spacing")
 
         col = flow.column(align=True)
         col.prop(font_style, "shadow_offset_x", text="Shadow Offset X")
@@ -2560,7 +2557,6 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_new_point_cloud_type"}, ("blender/blender/issues/75717", "#75717")),
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
-                ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/106254", "#106254")),

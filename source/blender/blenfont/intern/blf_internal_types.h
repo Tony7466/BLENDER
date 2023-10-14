@@ -249,6 +249,8 @@ typedef struct FontMetrics {
   short x_height;
   /** Font units from baseline to top of capital letters, specifically "H". */
   short cap_height;
+  /** Ratio width to heigh of lowercase "O". Reliable indication of font proportion. */
+  float o_proportion;
   /** Font unit maximum horizontal advance for all glyphs in font. Can help with wrapping. */
   short max_advance_width;
   /** As above but only for vertical layout fonts, otherwise is set to line_height value. */
@@ -325,7 +327,7 @@ typedef struct FontBLF {
 
   /**
    * Multiplied this matrix with the current one before draw the text!
-   * see #blf_draw_gl__start.
+   * see #blf_draw_gpu__start.
    */
   float m[16];
 
@@ -374,6 +376,7 @@ typedef struct FontBLF {
   /** Copy of the font->face->face_flags, in case we don't have a face loaded. */
   FT_Long face_flags;
 
+  /** Details about the font's design and style and sizes (in unsized font units). */
   FontMetrics metrics;
 
   /** Data for buffer usage (drawing into a texture buffer) */
