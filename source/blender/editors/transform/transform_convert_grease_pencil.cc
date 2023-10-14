@@ -101,13 +101,13 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
             value_attribute = &opacities;
           }
 
-          curvePopulateTransDataStructs(tc,
-                                        curves,
-                                        value_attribute,
-                                        selected_indices,
-                                        use_proportional_edit,
-                                        use_connected_only,
-                                        layer_points_offset);
+          curve_populate_trans_data_structs(tc,
+                                            curves,
+                                            value_attribute,
+                                            selected_indices,
+                                            use_proportional_edit,
+                                            use_connected_only,
+                                            layer_points_offset);
 
           if (use_proportional_edit) {
             layer_points_offset += curves.point_num;

@@ -95,13 +95,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
-    curvePopulateTransDataStructs(tc,
-                                  curves,
-                                  nullptr /* Currently no attributes. */,
-                                  selection_per_object[i],
-                                  use_proportional_edit,
-                                  use_connected_only,
-                                  0 /* No data offset for curves. */);
+    curve_populate_trans_data_structs(tc,
+                                      curves,
+                                      nullptr /* Currently no attributes. */,
+                                      selection_per_object[i],
+                                      use_proportional_edit,
+                                      use_connected_only,
+                                      0 /* No data offset for curves. */);
   }
 }
 
@@ -120,13 +120,13 @@ static void recalcData_curves(TransInfo *t)
 
 }  // namespace blender::ed::transform::curves
 
-void curvePopulateTransDataStructs(TransDataContainer &tc,
-                                   blender::bke::CurvesGeometry &curves,
-                                   blender::MutableSpan<float> *value_attribute,
-                                   const blender::IndexMask &selected_indices,
-                                   const bool use_proportional_edit,
-                                   const bool use_connected_only,
-                                   const int data_offset)
+void curve_populate_trans_data_structs(TransDataContainer &tc,
+                                       blender::bke::CurvesGeometry &curves,
+                                       blender::MutableSpan<float> *value_attribute,
+                                       const blender::IndexMask &selected_indices,
+                                       const bool use_proportional_edit,
+                                       const bool use_connected_only,
+                                       const int data_offset)
 {
   using namespace blender;
 

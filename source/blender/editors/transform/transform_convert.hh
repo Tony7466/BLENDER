@@ -115,13 +115,13 @@ void animrecord_check_state(TransInfo *t, ID *id);
 /**
  * Used for both curves and grease pencil objects.
  */
-void curvePopulateTransDataStructs(TransDataContainer &tc,
-                                   blender::bke::CurvesGeometry &curves,
-                                   blender::MutableSpan<float> *value_attribute,
-                                   const blender::IndexMask &selected_indices,
-                                   const bool use_proportional_edit,
-                                   const bool use_connected_only,
-                                   const int data_offset);
+void curve_populate_trans_data_structs(TransDataContainer &tc,
+                                       blender::bke::CurvesGeometry &curves,
+                                       blender::MutableSpan<float> *value_attribute,
+                                       const blender::IndexMask &selected_indices,
+                                       const bool use_proportional_edit,
+                                       const bool use_connected_only,
+                                       const int data_offset);
 
 /* `transform_convert_action.cc` */
 
