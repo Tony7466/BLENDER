@@ -121,7 +121,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const blender::IndexMask &selected_indices,
                                        bool use_proportional_edit,
                                        bool use_connected_only,
-                                       int data_offset);
+                                       int trans_data_offset);
 
 /* `transform_convert_action.cc` */
 

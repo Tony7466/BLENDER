@@ -126,7 +126,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const blender::IndexMask &selected_indices,
                                        bool use_proportional_edit,
                                        bool use_connected_only,
-                                       int data_offset)
+                                       int trans_data_offset)
 {
   using namespace blender;
 
@@ -146,7 +146,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         const bool has_any_selected = ed::curves::has_anything_selected(selection, points);
         if (!has_any_selected && use_connected_only) {
           for (const int point_i : points) {
-            TransData &td = tc.data[point_i + data_offset];
+            TransData &td = tc.data[point_i + trans_data_offset];
             td.flag |= TD_SKIP;
           }
           continue;
@@ -157,7 +157,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
 
         for (const int i : IndexRange(points.size())) {
           const int point_i = points[i];
-          TransData &td = tc.data[point_i + data_offset];
+          TransData &td = tc.data[point_i + trans_data_offset];
           float3 *elem = &positions[point_i];
 
           copy_v3_v3(td.iloc, *elem);
@@ -186,7 +186,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
           blender::ed::transform::curves::calculate_curve_point_distances_for_proportional_editing(
               positions.slice(points), closest_distances.as_mutable_span());
           for (const int i : IndexRange(points.size())) {
-            TransData &td = tc.data[points[i] + data_offset];
+            TransData &td = tc.data[points[i] + trans_data_offset];
             td.dist = closest_distances[i];
           }
         }
@@ -196,7 +196,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   else {
     threading::parallel_for(selected_indices.index_range(), 1024, [&](const IndexRange range) {
       for (const int selection_i : range) {
-        TransData *td = &tc.data[selection_i + data_offset];
+        TransData *td = &tc.data[selection_i + trans_data_offset];
         const int point_i = selected_indices[selection_i];
         float3 *elem = &positions[point_i];
 
