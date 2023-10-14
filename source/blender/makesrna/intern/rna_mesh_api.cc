@@ -24,6 +24,7 @@
 
 #  include "BKE_anim_data.h"
 #  include "BKE_mesh.hh"
+#  include "BKE_mesh_compare.hh"
 #  include "BKE_mesh_mapping.hh"
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_mesh_tangent.hh"
@@ -37,13 +38,14 @@
 
 static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {
-  const char *ret = BKE_mesh_cmp(mesh, mesh2, threshold);
+  using namespace blender::bke::mesh;
+  const std::optional<MeshMismatch> mismatch = meshes_isomorphic(*mesh, *mesh2, threshold);
 
-  if (!ret) {
-    ret = "Same";
+  if (!mismatch) {
+    return "Same";
   }
 
-  return ret;
+  return mismatch_to_string(mismatch.value());
 }
 
 static void rna_Mesh_create_normals_split(Mesh *mesh)

@@ -31,6 +31,8 @@ const char *mismatch_to_string(const MeshMismatch &mismatch);
  *
  * \warning This assumes that the mesh is of decent quality: no zero-size edges or faces.
  */
-std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1, const Mesh &mesh2);
+std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
+                                              const Mesh &mesh2,
+                                              const float threshold);
 
 }  // namespace blender::bke::mesh

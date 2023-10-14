@@ -8,15 +8,11 @@ namespace blender {
 
 bool operator==(const OrderedEdge &e1, const OrderedEdge &e2)
 {
-  BLI_assert(e1.v_low < e1.v_high);
-  BLI_assert(e2.v_low < e2.v_high);
   return e1.v_low == e2.v_low && e1.v_high == e2.v_high;
 }
 
 bool operator!=(const OrderedEdge &e1, const OrderedEdge &e2)
 {
-  BLI_assert(e1.v_low < e1.v_high);
-  BLI_assert(e2.v_low < e2.v_high);
   return !(e1 == e2);
 }
 
