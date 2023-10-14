@@ -761,11 +761,25 @@ void DeferredPipeline::render(View &main_view,
 
 void VolumePipeline::sync()
 {
-  volume_ps_.init();
-  volume_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  inst_.bind_uniform_data(&volume_ps_);
-  inst_.volume.bind_properties_buffers(volume_ps_);
-  inst_.sampling.bind_resources(volume_ps_);
+  {
+    draw::PassMain &pass = occupancy_ps_;
+    pass.init();
+    inst_.bind_uniform_data(&pass);
+    inst_.volume.bind_properties_buffers(pass);
+  }
+  {
+    draw::PassMain &pass = volume_ps_;
+    pass.init();
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    inst_.bind_uniform_data(&pass);
+    inst_.volume.bind_properties_buffers(pass);
+    inst_.sampling.bind_resources(pass);
+  }
+}
+
+PassMain::Sub *VolumePipeline::volume_occupancy_add(GPUMaterial *gpumat)
+{
+  return &occupancy_ps_.sub(GPU_material_get_name(gpumat));
 }
 
 PassMain::Sub *VolumePipeline::volume_material_add(GPUMaterial *gpumat)
@@ -775,6 +789,7 @@ PassMain::Sub *VolumePipeline::volume_material_add(GPUMaterial *gpumat)
 
 void VolumePipeline::render(View &view)
 {
+  inst_.manager->submit(occupancy_ps_, view);
   inst_.manager->submit(volume_ps_, view);
 }
 

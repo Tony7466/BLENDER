@@ -32,7 +32,8 @@ enum eMaterialPipeline {
   MAT_PIPE_DEFERRED_PREPASS_VELOCITY,
   MAT_PIPE_FORWARD_PREPASS,
   MAT_PIPE_FORWARD_PREPASS_VELOCITY,
-  MAT_PIPE_VOLUME,
+  MAT_PIPE_VOLUME_PREPASS,
+  MAT_PIPE_VOLUME_OCCUPANCY,
   MAT_PIPE_SHADOW,
   MAT_PIPE_CAPTURE,
   MAT_PIPE_PLANAR_PREPASS,
@@ -227,8 +228,16 @@ struct MaterialPass {
 
 struct Material {
   bool is_alpha_blend_transparent;
-  MaterialPass shadow, shading, prepass, capture, reflection_probe_prepass,
-      reflection_probe_shading, planar_probe_prepass, planar_probe_shading, volume;
+  MaterialPass shadow;
+  MaterialPass shading;
+  MaterialPass prepass;
+  MaterialPass capture;
+  MaterialPass reflection_probe_prepass;
+  MaterialPass reflection_probe_shading;
+  MaterialPass planar_probe_prepass;
+  MaterialPass planar_probe_shading;
+  MaterialPass volume_occupancy;
+  MaterialPass volume_prepass;
 };
 
 struct MaterialArray {

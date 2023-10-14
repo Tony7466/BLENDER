@@ -306,6 +306,13 @@ GPU_SHADER_CREATE_INFO(eevee_volume_world)
     .define("MAT_GEOM_VOLUME_WORLD")
     .additional_info("eevee_volume_material_common");
 
+GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
+    .define("MAT_OCCUPANCY")
+    .builtins(BuiltinBits::TEXTURE_ATOMIC)
+    .image(VOLUME_OCCUPANCY_SLOT, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_3D, "occupancy_img")
+    .fragment_source("eevee_surf_occupancy_frag.glsl")
+    .additional_info("eevee_global_ubo");
+
 #if 0 /* TODO */
 GPU_SHADER_INTERFACE_INFO(eevee_volume_iface, "interp")
     .smooth(Type::VEC3, "P_start")
@@ -356,6 +363,7 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     EEVEE_MAT_GEOM_VARIATIONS(name##_deferred, "eevee_surf_deferred", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
+    EEVEE_MAT_GEOM_VARIATIONS(name##_occupancy, "eevee_surf_occupancy", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_atomic, "eevee_surf_shadow_atomic", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr", __VA_ARGS__)
 

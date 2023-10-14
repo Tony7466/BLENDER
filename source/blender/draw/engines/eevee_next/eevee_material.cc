@@ -241,10 +241,11 @@ Material &MaterialModule::material_sync(Object *ob,
                                         bool has_motion)
 {
   if (geometry_type == MAT_GEOM_VOLUME_OBJECT) {
-    MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME);
+    MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME_PREPASS);
     return material_map_.lookup_or_add_cb(material_key, [&]() {
       Material mat = {};
-      mat.volume = material_pass_get(ob, blender_mat, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
+      mat.volume_prepass = material_pass_get(
+          ob, blender_mat, MAT_PIPE_VOLUME_PREPASS, MAT_GEOM_VOLUME_OBJECT);
       return mat;
     });
   }
@@ -271,7 +272,8 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.reflection_probe_shading = MaterialPass();
       mat.planar_probe_prepass = MaterialPass();
       mat.planar_probe_shading = MaterialPass();
-      mat.volume = MaterialPass();
+      mat.volume_occupancy = MaterialPass();
+      mat.volume_prepass = MaterialPass();
     }
     else {
       /* Order is important for transparent. */
@@ -297,10 +299,14 @@ Material &MaterialModule::material_sync(Object *ob,
       }
 
       if (GPU_material_has_volume_output(mat.shading.gpumat)) {
-        mat.volume = material_pass_get(ob, blender_mat, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
+        mat.volume_occupancy = material_pass_get(
+            ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME_OBJECT);
+        mat.volume_prepass = material_pass_get(
+            ob, blender_mat, MAT_PIPE_VOLUME_PREPASS, MAT_GEOM_VOLUME_OBJECT);
       }
       else {
-        mat.volume = MaterialPass();
+        mat.volume_occupancy = MaterialPass();
+        mat.volume_prepass = MaterialPass();
       }
     }
 

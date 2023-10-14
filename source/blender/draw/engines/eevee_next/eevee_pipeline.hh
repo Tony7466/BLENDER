@@ -278,11 +278,13 @@ class VolumePipeline {
  private:
   Instance &inst_;
 
+  PassMain occupancy_ps_ = {"Volume.Occupancy"};
   PassMain volume_ps_ = {"Volume.Objects"};
 
  public:
   VolumePipeline(Instance &inst) : inst_(inst){};
 
+  PassMain::Sub *volume_occupancy_add(GPUMaterial *gpumat);
   PassMain::Sub *volume_material_add(GPUMaterial *gpumat);
 
   void sync();
@@ -562,7 +564,9 @@ class PipelineModule {
           return forward.material_transparent_add(ob, blender_mat, gpumat);
         }
         return forward.material_opaque_add(blender_mat, gpumat);
-      case MAT_PIPE_VOLUME:
+      case MAT_PIPE_VOLUME_OCCUPANCY:
+        return volume.volume_occupancy_add(gpumat);
+      case MAT_PIPE_VOLUME_PREPASS:
         return volume.volume_material_add(gpumat);
       case MAT_PIPE_SHADOW:
         return shadow.surface_material_add(gpumat);

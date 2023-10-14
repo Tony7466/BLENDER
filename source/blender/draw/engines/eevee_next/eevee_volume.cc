@@ -167,7 +167,7 @@ void VolumeModule::sync_object(Object *ob,
   if (material_pass == nullptr) {
     Material material = inst_.materials.material_get(
         ob, false, VOLUME_MATERIAL_NR, MAT_GEOM_VOLUME_OBJECT);
-    material_pass = &material.volume;
+    material_pass = &material.volume_prepass;
   }
 
   /* If shader failed to compile or is currently compiling. */
@@ -218,6 +218,7 @@ void VolumeModule::sync_object(Object *ob,
 void VolumeModule::end_sync()
 {
   if (!enabled_) {
+    occupancy_tx_.free();
     prop_scattering_tx_.free();
     prop_extinction_tx_.free();
     prop_emission_tx_.free();
@@ -232,6 +233,11 @@ void VolumeModule::end_sync()
 
     return;
   }
+
+  int occupancy_layers = divide_ceil_u(data_.tex_size.z, 32u);
+  eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                     GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
+  occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                            GPU_TEXTURE_USAGE_ATTACHMENT;
@@ -305,6 +311,7 @@ void VolumeModule::draw_prepass(View &view)
   if (!enabled_) {
     return;
   }
+  occupancy_tx_.clear(uint4(0));
 
   inst_.pipelines.world_volume.render(view);
   inst_.pipelines.volume.render(view);

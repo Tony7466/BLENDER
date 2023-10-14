@@ -49,6 +49,13 @@ class VolumeModule {
 
   VolumesInfoData &data_;
 
+  /**
+   * Occupancy map that allows to fill froxels that are inside the geometry.
+   * It is filled during a pre-pass using atomic operations.
+   * Using a 3D bitfield, we only allocate one bit per froxel.
+   */
+  Texture occupancy_tx_ = {"occupancy_tx_"};
+
   /* Material Parameters */
   Texture prop_scattering_tx_;
   Texture prop_extinction_tx_;
@@ -114,6 +121,7 @@ class VolumeModule {
     pass.bind_image(VOLUME_PROP_EXTINCTION_IMG_SLOT, &prop_extinction_tx_);
     pass.bind_image(VOLUME_PROP_EMISSION_IMG_SLOT, &prop_emission_tx_);
     pass.bind_image(VOLUME_PROP_PHASE_IMG_SLOT, &prop_phase_tx_);
+    pass.bind_image(VOLUME_OCCUPANCY_SLOT, &occupancy_tx_);
   }
 
   bool needs_shadow_tagging()
