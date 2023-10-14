@@ -388,7 +388,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_EDGE_WIDTH:
           cp = &ts->edge_width;
           break;
-        case TH_EDGE_SELECTION:
+        case TH_EDGE_SELECT:
           cp = ts->edge_select;
           break;
         case TH_EDGE_MODE_SELECTION:
@@ -415,7 +415,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_FACE:
           cp = ts->face;
           break;
-        case TH_FACE_SELECTION:
+        case TH_FACE_SELECT:
           cp = ts->face_select;
           break;
         case TH_FACE_MODE_SELECTION:

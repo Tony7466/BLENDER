@@ -108,7 +108,7 @@ struct ThemeColorData {
   float4 color_vertex_unreferenced;
   float4 color_vertex_missing_data;
   float4 color_edit_mesh_active;
-  float4 color_edge_selection;
+  float4 color_edge_select; /* Stands for edge selection, not edge select mode. */
   float4 color_edge_mode_selection;
   float4 color_edge_seam;
   float4 color_edge_sharp;
@@ -117,7 +117,7 @@ struct ThemeColorData {
   float4 color_edge_face_select;
   float4 color_edge_freestyle;
   float4 color_face;
-  float4 color_face_selection;
+  float4 color_face_select; /* Stands for face selection, not face select mode. */
   float4 color_face_mode_selection;
   float4 color_face_freestyle;
   float4 color_gpencil_vertex;

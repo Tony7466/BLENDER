@@ -40,7 +40,7 @@ struct GlobalsUboStorage {
   float4 color_vertex_unreferenced;
   float4 color_vertex_missing_data;
   float4 color_edit_mesh_active;
-  float4 color_edge_selection;
+  float4 color_edge_select; /* Stands for edge selection, not edge select mode. */
   float4 color_edge_mode_selection;
   float4 color_edge_seam;
   float4 color_edge_sharp;
@@ -49,7 +49,7 @@ struct GlobalsUboStorage {
   float4 color_edge_face_select;
   float4 color_edge_freestyle;
   float4 color_face;
-  float4 color_face_selection;
+  float4 color_face_select; /* Stands for face selection, not face select mode. */
   float4 color_face_mode_selection;
   float4 color_face_retopology;
   float4 color_face_freestyle;
@@ -161,7 +161,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define colorVertexUnreferenced globalsBlock.color_vertex_unreferenced
 #  define colorVertexMissingData globalsBlock.color_vertex_missing_data
 #  define colorEditMeshActive globalsBlock.color_edit_mesh_active
-#  define colorEdgeSelection globalsBlock.color_edge_selection
+#  define colorEdgeSelection globalsBlock.color_edge_select
 #  define colorEdgeModeSelection globalsBlock.color_edge_mode_selection
 #  define colorEdgeSeam globalsBlock.color_edge_seam
 #  define colorEdgeSharp globalsBlock.color_edge_sharp
@@ -170,7 +170,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define colorEdgeFaceSelect globalsBlock.color_edge_face_select
 #  define colorEdgeFreestyle globalsBlock.color_edge_freestyle
 #  define colorFace globalsBlock.color_face
-#  define colorFaceSelection globalsBlock.color_face_selection
+#  define colorFaceSelect globalsBlock.color_face_select
 #  define colorFaceModeSelection globalsBlock.color_face_mode_selection
 #  define colorFaceRetopology globalsBlock.color_face_retopology
 #  define colorFaceFreestyle globalsBlock.color_face_freestyle

@@ -55,7 +55,7 @@ vec4 EDIT_MESH_face_color(uint face_flag)
   bool face_freestyle = (face_flag & FACE_FREESTYLE) != 0u;
   bool face_selected = (face_flag & FACE_SELECTED) != 0u;
   bool face_active = (face_flag & FACE_ACTIVE) != 0u;
-  vec4 selected_face_col = (selectFace) ? colorFaceModeSelection : colorFaceSelection;
+  vec4 selected_face_col = (selectFace) ? colorFaceModeSelection : colorFaceSelect;
   vec4 color = colorFace;
   color = (retopologyOffset > 0.0) ? colorFaceRetopology : color;
   color = (face_freestyle) ? colorFaceFreestyle : color;
