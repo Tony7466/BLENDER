@@ -2032,7 +2032,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       }
     }
 
-    /* text cursor */
+    /* Text cursor position. */
     but_pos_ofs = but->pos;
 
 #ifdef WITH_INPUT_IME
@@ -2042,6 +2042,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
 #endif
 
+    /* Draw text cursor (caret). */
     if (but->pos >= but->ofs) {
       int t = 0;
 
@@ -2050,43 +2051,42 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         rcti bounds;
 
         /* Find right edge of previous character if available. */
-        int prev_pos = 0;
+        int prev_right_edge = 0;
         bool has_prev = false;
         if (pos > 0) {
           if (BLF_str_offset_to_glyph_bounds(
                   fstyle->uifont_id, drawstr + but->ofs, pos - 1, &bounds) &&
               !BLI_rcti_is_empty(&bounds))
           {
-            prev_pos = bounds.xmax;
+            prev_right_edge = bounds.xmax;
             has_prev = true;
           }
         }
 
         /* Find left edge of next character if available. */
-        int next_pos = 0;
+        int next_left_edge = 0;
         bool has_next = false;
-        if (pos < strlen(drawstr))
-        {
+        if (pos < strlen(drawstr)) {
           if (BLF_str_offset_to_glyph_bounds(
                   fstyle->uifont_id, drawstr + but->ofs, pos, &bounds) &&
               !BLI_rcti_is_empty(&bounds))
           {
-            next_pos = bounds.xmin;
+            next_left_edge = bounds.xmin;
             has_next = true;
           }
         }
 
-        if (has_next && !has_prev)        {
+        if (has_next && !has_prev) {
           /* Left of the first character. */
-          t = next_pos - U.pixelsize;
+          t = next_left_edge - U.pixelsize;
         }
         else if (has_prev && !has_next) {
           /* Right of the last character. */
-          t = prev_pos + U.pixelsize;
+          t = prev_right_edge + U.pixelsize;
         }
         else if (has_prev && has_next) {
           /* Middle of the string, so in between. */
-          t = (prev_pos + next_pos) / 2;
+          t = (prev_right_edge + next_left_edge) / 2;
         }
       }
 
