@@ -41,7 +41,7 @@ DefaultSurfaceNodeTree::DefaultSurfaceNodeTree()
   roughness_socket_ =
       (bNodeSocketValueFloat *)nodeFindSocket(bsdf, SOCK_IN, "Roughness")->default_value;
   specular_socket_ =
-      (bNodeSocketValueFloat *)nodeFindSocket(bsdf, SOCK_IN, "Specular")->default_value;
+      (bNodeSocketValueFloat *)nodeFindSocket(bsdf, SOCK_IN, "Specular IOR Level")->default_value;
   ntree_ = ntree;
 }
 
@@ -150,6 +150,7 @@ MaterialModule::~MaterialModule()
 void MaterialModule::begin_sync()
 {
   queued_shaders_count = 0;
+  queued_optimize_shaders_count = 0;
 
   material_map_.clear();
   shader_map_.clear();
@@ -159,7 +160,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
                                                ::Material *blender_mat,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
-                                               bool probe_capture)
+                                               eMaterialProbe probe_capture)
 {
   bNodeTree *ntree = (blender_mat->use_nodes && blender_mat->nodetree != nullptr) ?
                          blender_mat->nodetree :
@@ -172,8 +173,14 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       blender_mat, ntree, pipeline_type, geometry_type, use_deferred_compilation);
 
   switch (GPU_material_status(matpass.gpumat)) {
-    case GPU_MAT_SUCCESS:
+    case GPU_MAT_SUCCESS: {
+      /* Determine optimization status for remaining compilations counter. */
+      int optimization_status = GPU_material_optimization_status(matpass.gpumat);
+      if (optimization_status == GPU_MAT_OPTIMIZATION_QUEUED) {
+        queued_optimize_shaders_count++;
+      }
       break;
+    }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
       blender_mat = (geometry_type == MAT_GEOM_VOLUME_OBJECT) ? BKE_material_default_volume() :
@@ -260,8 +267,10 @@ Material &MaterialModule::material_sync(Object *ob,
        * to avoid this shader compilation in another context. */
       mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
       mat.capture = material_pass_get(ob, blender_mat, MAT_PIPE_CAPTURE, geometry_type);
-      mat.probe_prepass = MaterialPass();
-      mat.probe_shading = MaterialPass();
+      mat.reflection_probe_prepass = MaterialPass();
+      mat.reflection_probe_shading = MaterialPass();
+      mat.planar_probe_prepass = MaterialPass();
+      mat.planar_probe_shading = MaterialPass();
       mat.volume = MaterialPass();
     }
     else {
@@ -269,14 +278,22 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.prepass = material_pass_get(ob, blender_mat, prepass_pipe, geometry_type);
       mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
       mat.capture = MaterialPass();
-      mat.probe_prepass = MaterialPass();
-      mat.probe_shading = MaterialPass();
+      mat.reflection_probe_prepass = MaterialPass();
+      mat.reflection_probe_shading = MaterialPass();
+      mat.planar_probe_prepass = MaterialPass();
+      mat.planar_probe_shading = MaterialPass();
 
-      if (inst_.do_probe_sync()) {
-        mat.probe_prepass = material_pass_get(
-            ob, blender_mat, MAT_PIPE_DEFERRED_PREPASS, geometry_type, true);
-        mat.probe_shading = material_pass_get(
-            ob, blender_mat, MAT_PIPE_DEFERRED, geometry_type, true);
+      if (inst_.do_reflection_probe_sync()) {
+        mat.reflection_probe_prepass = material_pass_get(
+            ob, blender_mat, MAT_PIPE_DEFERRED_PREPASS, geometry_type, MAT_PROBE_REFLECTION);
+        mat.reflection_probe_shading = material_pass_get(
+            ob, blender_mat, MAT_PIPE_DEFERRED, geometry_type, MAT_PROBE_REFLECTION);
+      }
+      if (inst_.do_planar_probe_sync()) {
+        mat.planar_probe_prepass = material_pass_get(
+            ob, blender_mat, MAT_PIPE_PLANAR_PREPASS, geometry_type, MAT_PROBE_PLANAR);
+        mat.planar_probe_shading = material_pass_get(
+            ob, blender_mat, MAT_PIPE_DEFERRED, geometry_type, MAT_PROBE_PLANAR);
       }
 
       if (GPU_material_has_volume_output(mat.shading.gpumat)) {

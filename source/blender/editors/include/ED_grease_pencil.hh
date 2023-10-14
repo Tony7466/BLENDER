@@ -12,6 +12,7 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_generic_span.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
 
 #include "ED_keyframes_edit.hh"
@@ -49,16 +50,21 @@ namespace blender::ed::greasepencil {
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
                               const eBezTriple_KeyframeType key_type);
-                              
-/* Creates duplicate frames for each selected frame in the layer. The duplicates are stored in the
- * LayerTransformData structure of the layer runtime data. This function also unselects the
- * selected frames, while keeping the duplicates selected. */
-bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
+
+bool snap_selected_frames(GreasePencil &grease_pencil,
+                          bke::greasepencil::Layer &layer,
+                          Scene &scene,
+                          const eEditKeyframes_Snap mode);
 
 bool mirror_selected_frames(GreasePencil &grease_pencil,
                             bke::greasepencil::Layer &layer,
                             Scene &scene,
                             const eEditKeyframes_Mirror mode);
+
+/* Creates duplicate frames for each selected frame in the layer. The duplicates are stored in the
+ * LayerTransformData structure of the layer runtime data. This function also deselects the
+ * selected frames, while keeping the duplicates selected. */
+bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
 
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
 
@@ -96,6 +102,8 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
 
+float brush_radius_world_space(bContext &C, int x, int y);
+
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
@@ -115,7 +123,18 @@ void gaussian_blur_1D(const GSpan src,
 
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,
-                                       FunctionRef<float(IndexRange, int64_t)> dist_function,
+                                       FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
                                        MutableSpan<bool> dst);
+
+Array<float2> polyline_fit_curve(Span<float2> points,
+                                 float error_threshold,
+                                 const IndexMask &corner_mask);
+
+IndexMask polyline_detect_corners(Span<float2> points,
+                                  float radius_min,
+                                  float radius_max,
+                                  int samples_max,
+                                  float angle_threshold,
+                                  IndexMaskMemory &memory);
 
 }  // namespace blender::ed::greasepencil

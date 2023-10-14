@@ -15,7 +15,7 @@
  * Then the shading pass will shade the areas with stencil not equal 0 differently.
  */
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "DRW_render.h"
 #include "GPU_compute.h"
 
@@ -305,12 +305,12 @@ ShadowPass::~ShadowPass()
   }
 }
 
-PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*= false*/)
+PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*=false*/)
 {
   return passes_[type][manifold][cap];
 }
 
-GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*= false*/)
+GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*=false*/)
 {
   GPUShader *&shader = shaders_[depth_pass][manifold][cap];
 
