@@ -234,13 +234,6 @@ void VolumeModule::end_sync()
     return;
   }
 
-  int occupancy_layers = divide_ceil_u(data_.tex_size.z, 32u);
-  eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |
-                                     GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
-  occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
-  /* Empty framebuffer. */
-  occupancy_fb_.ensure(data_.tex_size.xy());
-
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                            GPU_TEXTURE_USAGE_ATTACHMENT;
 
@@ -248,6 +241,20 @@ void VolumeModule::end_sync()
   prop_extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
+
+  int occupancy_layers = divide_ceil_u(data_.tex_size.z, 32u);
+  eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                     GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
+  occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* Metal requires a dummy attachment. */
+    occupancy_fb_.ensure(GPU_ATTACHMENT_NONE,
+                         GPU_ATTACHMENT_TEXTURE_LAYER(prop_extinction_tx_, 0));
+  }
+  else {
+    /* Empty framebuffer. */
+    occupancy_fb_.ensure(data_.tex_size.xy());
+  }
 
   if (!inst_.pipelines.world_volume.is_valid()) {
     prop_scattering_tx_.clear(float4(0.0f));
@@ -280,6 +287,7 @@ void VolumeModule::end_sync()
   scatter_ps_.bind_image("in_phase_img", &prop_phase_tx_);
   scatter_ps_.bind_image("out_scattering_img", &scatter_tx_);
   scatter_ps_.bind_image("out_extinction_img", &extinction_tx_);
+  scatter_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   /* Sync with the property pass. */
   scatter_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
   scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
@@ -303,6 +311,7 @@ void VolumeModule::end_sync()
   bind_resources(resolve_ps_);
   resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
   resolve_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
+  resolve_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
   /* Sync with the integration pass. */
   resolve_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
