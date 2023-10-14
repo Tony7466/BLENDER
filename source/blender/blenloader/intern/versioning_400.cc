@@ -1685,7 +1685,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 54)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       blender::Map<const bNodeSocket *, int> total_inputs;
       LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
