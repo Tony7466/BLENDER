@@ -95,13 +95,14 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
-    curve_populate_trans_data_structs(tc,
-                                      curves,
-                                      nullptr /* Currently no attributes. */,
-                                      selection_per_object[i],
-                                      use_proportional_edit,
-                                      use_connected_only,
-                                      0 /* No data offset for curves. */);
+    curve_populate_trans_data_structs(
+        tc,
+        curves,
+        nullptr /* Currently no transform for attributes other than position. */,
+        selection_per_object[i],
+        use_proportional_edit,
+        use_connected_only,
+        0 /* No data offset for curves. */);
   }
 }
 
