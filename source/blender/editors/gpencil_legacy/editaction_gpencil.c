@@ -241,6 +241,8 @@ bool ED_gpencil_layer_frames_delete(bGPDlayer *gpl)
   /* check for frames to delete */
   LISTBASE_FOREACH_MUTABLE (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->flag & GP_FRAME_SELECT) {
+      if (gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND)
+        continue;
       BKE_gpencil_layer_frame_delete(gpl, gpf);
       changed = true;
     }
