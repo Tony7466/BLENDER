@@ -280,7 +280,7 @@ static bool values_different(const T value1, const T value2, const float thresho
     }
     return false;
   }
-  if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>) {
+  if constexpr (std::is_same_v<T, math::Quaternion>) {
     const float4 value1_f = float4(value1);
     const float4 value2_f = float4(value2);
     for (int i = 0; i < 4; i++) {
@@ -314,6 +314,8 @@ static bool update_set_ids(MutableSpan<int> set_ids,
                            MutableSpan<int> sorted_to_values2,
                            const float threshold)
 {
+  /* Due to the way the sorting works, there could be a slightly bigger difference. */
+  const float value_threshold = 10 * threshold;
   if (set_ids.is_empty()) {
     return true;
   }
@@ -322,15 +324,22 @@ static bool update_set_ids(MutableSpan<int> set_ids,
   for (const int i : values1.index_range()) {
     const T value1 = values1[sorted_to_values1[i]];
     const T value2 = values2[sorted_to_values2[i]];
-    if (values_different(value1, value2, threshold * 10)) {
+    if (values_different(value1, value2, value_threshold)) {
       /* The sorting is not perfect for vectors of floats, so try to find a match in the same set.
-       */
+       * For others, it should be an exact match. */
+      if constexpr (std::is_same_v<T, float> || std::is_same_v<T, int> ||
+                    std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
+                    std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge> ||
+                    std::is_same_v<T, ColorGeometry4b>)
+      {
+        return false;
+      }
       bool match_found = false;
       for (const int other_i : values1.index_range().drop_front(i + 1)) {
         if (set_ids[other_i] != set_ids[i]) {
           break;
         }
-        if (!values_different(value1, values2[sorted_to_values2[other_i]], threshold)) {
+        if (!values_different(value1, values2[sorted_to_values2[other_i]], value_threshold)) {
           /* This is a match. Update the sorting map. */
           std::swap(sorted_to_values2[i], sorted_to_values2[other_i]);
           match_found = true;
@@ -342,7 +351,7 @@ static bool update_set_ids(MutableSpan<int> set_ids,
         return false;
       }
     }
-    if (values_different(previous, value1, threshold * 10) || set_ids[i] == i) {
+    if (values_different(previous, value1, value_threshold) || set_ids[i] == i) {
       /* Different value, or this was already a different set. */
       set_id = i;
       previous = value1;
@@ -613,8 +622,6 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       /* We only look at attributes of the given domain. */
       continue;
     }
-
-    std::cout << "Sorting " << id.name() << std::endl;
 
     std::optional<MeshMismatch> mismatch = {};
 
