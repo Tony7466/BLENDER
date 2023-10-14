@@ -238,6 +238,8 @@ void VolumeModule::end_sync()
   eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |
                                      GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
   occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
+  /* Empty framebuffer. */
+  occupancy_fb_.ensure(data_.tex_size.xy());
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                            GPU_TEXTURE_USAGE_ATTACHMENT;
@@ -311,9 +313,11 @@ void VolumeModule::draw_prepass(View &view)
   if (!enabled_) {
     return;
   }
-  occupancy_tx_.clear(uint4(0));
 
   inst_.pipelines.world_volume.render(view);
+
+  occupancy_tx_.clear(uint4(0u));
+  occupancy_fb_.bind();
   inst_.pipelines.volume.render(view);
 }
 

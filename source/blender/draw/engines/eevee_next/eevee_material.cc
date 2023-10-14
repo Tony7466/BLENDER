@@ -300,7 +300,7 @@ Material &MaterialModule::material_sync(Object *ob,
 
       if (GPU_material_has_volume_output(mat.shading.gpumat)) {
         mat.volume_occupancy = material_pass_get(
-            ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME_OBJECT);
+            ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
         mat.volume_prepass = material_pass_get(
             ob, blender_mat, MAT_PIPE_VOLUME_PREPASS, MAT_GEOM_VOLUME_OBJECT);
       }

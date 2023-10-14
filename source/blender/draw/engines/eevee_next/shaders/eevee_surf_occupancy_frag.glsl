@@ -24,13 +24,18 @@ void main()
   vec2 uv = gl_FragCoord.xy / vec2(imageSize(occupancy_img).xy);
   vec3 ss_P = vec3(uv, gl_FragCoord.z);
 
-  float volume_z = screen_to_volume(drw_ndc_to_screen(ss_P)).z;
-  /* TODO(fclem): Check if this quatization is good. */
+  float volume_z = screen_to_volume(ss_P).z;
+  /* TODO(fclem): Check if this quantization is good. */
   int volume_bit = int(volume_z * uniform_buf.volumes.tex_size.z);
 
   for (int i = 0; i < imageSize(occupancy_img).z; i++) {
-    uint shift = clamp(volume_bit - i * 32u, 0u, 32u);
-    uint occupancy_bits = 0xFFFFFFFFu << shift;
-    imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits);
+    int shift = volume_bit - i * 32;
+    if (shift < 32) {
+      uint occupancy_bits = 0xFFFFFFFFu;
+      if (shift > 0) {
+        occupancy_bits >>= uint(shift);
+      }
+      imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits);
+    }
   }
 }

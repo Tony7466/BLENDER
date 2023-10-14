@@ -583,6 +583,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
             } break;
           }
           break;
+        case MAT_PIPE_VOLUME_OCCUPANCY:
+          info.additional_info("eevee_surf_occupancy");
+          break;
         case MAT_PIPE_CAPTURE:
           info.additional_info("eevee_surf_capture");
           break;

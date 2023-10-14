@@ -764,6 +764,8 @@ void VolumePipeline::sync()
   {
     draw::PassMain &pass = occupancy_ps_;
     pass.init();
+    /* Double sided without depth test. */
+    pass.state_set(DRW_STATE_WRITE_DEPTH);
     inst_.bind_uniform_data(&pass);
     inst_.volume.bind_properties_buffers(pass);
   }

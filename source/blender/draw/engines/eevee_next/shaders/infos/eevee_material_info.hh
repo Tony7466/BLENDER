@@ -280,6 +280,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_object)
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_phase_img")
+    .image(VOLUME_OCCUPANCY_SLOT, GPU_R32UI, Qualifier::READ, ImageType::UINT_3D, "occupancy_img")
     .additional_info("eevee_volume_material_common", "draw_object_infos_new", "draw_volume_infos");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_world)
@@ -309,26 +310,13 @@ GPU_SHADER_CREATE_INFO(eevee_volume_world)
 GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
     .define("MAT_OCCUPANCY")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
-    .image(VOLUME_OCCUPANCY_SLOT, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_3D, "occupancy_img")
+    .image(VOLUME_OCCUPANCY_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_3D,
+           "occupancy_img")
     .fragment_source("eevee_surf_occupancy_frag.glsl")
     .additional_info("eevee_global_ubo");
-
-#if 0 /* TODO */
-GPU_SHADER_INTERFACE_INFO(eevee_volume_iface, "interp")
-    .smooth(Type::VEC3, "P_start")
-    .smooth(Type::VEC3, "P_end");
-
-GPU_SHADER_CREATE_INFO(eevee_volume_deferred)
-    .sampler(0, ImageType::DEPTH_2D, "depth_max_tx")
-    .vertex_in(0, Type::VEC3, "pos")
-    .vertex_out(eevee_volume_iface)
-    .fragment_out(0, Type::UVEC4, "out_volume_data")
-    .fragment_out(1, Type::VEC4, "out_transparency_data")
-    .additional_info("eevee_shared")
-    .vertex_source("eevee_volume_vert.glsl")
-    .fragment_source("eevee_volume_deferred_frag.glsl")
-    .additional_info("draw_fullscreen");
-#endif
 
 /** \} */
 

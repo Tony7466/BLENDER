@@ -49,6 +49,18 @@ void main()
     return;
   }
 
+#ifdef MAT_GEOM_VOLUME_OBJECT
+  /** Check occupancy map. Discard thread if froxel is empty. */
+  /* Shift for 32bits per layer. Avoid integer modulo and division. */
+  const int shift = 5;
+  const int mask = int(0xFFFFFFFFu << 5u);
+  uint occupancy_bits = imageLoad(occupancy_img, ivec3(froxel.xy, froxel.z >> shift)).r;
+  uint occupancy_bit = occupancy_bits >> (froxel.z & mask);
+  if (occupancy_bit == 0u) {
+    return;
+  }
+#endif
+
   vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
   vec3 ndc_cell = volume_to_screen((vec3(froxel) + jitter) * uniform_buf.volumes.inv_tex_size);
 

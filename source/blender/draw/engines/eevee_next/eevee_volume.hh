@@ -55,6 +55,8 @@ class VolumeModule {
    * Using a 3D bitfield, we only allocate one bit per froxel.
    */
   Texture occupancy_tx_ = {"occupancy_tx_"};
+  /** Empty framebuffer for occupancy pass. */
+  Framebuffer occupancy_fb_ = {"occupancy_fb_"};
 
   /* Material Parameters */
   Texture prop_scattering_tx_;

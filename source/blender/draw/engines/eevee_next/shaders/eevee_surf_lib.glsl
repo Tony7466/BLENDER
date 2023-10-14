@@ -21,7 +21,7 @@ vec3 barycentric_distances_get()
   dists.x = rate_of_change * (1.0 - gpu_BaryCoord.x);
   dists.y = rate_of_change * (1.0 - gpu_BaryCoord.y);
   dists.z = rate_of_change * (1.0 - gpu_BaryCoord.z);
-#  elif
+#  else
   /* NOTE: No need to undo perspective divide since it has not been applied. */
   vec3 pos0 = (ProjectionMatrixInverse * gpu_position_at_vertex(0)).xyz;
   vec3 pos1 = (ProjectionMatrixInverse * gpu_position_at_vertex(1)).xyz;
