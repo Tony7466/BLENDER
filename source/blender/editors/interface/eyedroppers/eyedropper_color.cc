@@ -77,7 +77,7 @@ struct Eyedropper {
   CryptomatteSession *cryptomatte_session;
 };
 
-static void eyedropper_draw_cb(const wmWindow *window, void *arg)
+static void eyedropper_draw_cb(const wmWindow * /*window*/, void *arg)
 {
   Eyedropper *eye = static_cast<Eyedropper *>(arg);
   eyedropper_draw_cursor_text_region(eye->cb_win_mval, eye->sample_text);
