@@ -524,6 +524,8 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_lib.glsl
   engines/eevee_next/shaders/eevee_nodetree_lib.glsl
+  engines/eevee_next/shaders/eevee_occupancy_lib.glsl
+  engines/eevee_next/shaders/eevee_occupancy_test.glsl
   engines/eevee_next/shaders/eevee_octahedron_lib.glsl
   engines/eevee_next/shaders/eevee_ray_denoise_bilateral_comp.glsl
   engines/eevee_next/shaders/eevee_ray_denoise_spatial_comp.glsl

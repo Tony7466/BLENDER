@@ -53,10 +53,14 @@ void main()
   /** Check occupancy map. Discard thread if froxel is empty. */
   /* Shift for 32bits per layer. Avoid integer modulo and division. */
   const int shift = 5;
-  const int mask = int(0xFFFFFFFFu << 5u);
-  uint occupancy_bits = imageLoad(occupancy_img, ivec3(froxel.xy, froxel.z >> shift)).r;
-  uint occupancy_bit = occupancy_bits >> (froxel.z & mask);
-  if (occupancy_bit == 0u) {
+  const int mask = int(~(0xFFFFFFFFu << 5u));
+  /* Divide by 32. */
+  int occupancy_layer = froxel.z >> shift;
+  /* Modulo 32. */
+  uint occupancy_shift = froxel.z & mask;
+
+  uint occupancy_bits = imageLoad(occupancy_img, ivec3(froxel.xy, occupancy_layer)).r;
+  if (((occupancy_bits >> occupancy_shift) & 1u) == 0u) {
     return;
   }
 #endif

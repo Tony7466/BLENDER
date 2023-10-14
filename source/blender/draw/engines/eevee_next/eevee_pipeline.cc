@@ -768,6 +768,7 @@ void VolumePipeline::sync()
     pass.state_set(DRW_STATE_WRITE_DEPTH);
     inst_.bind_uniform_data(&pass);
     inst_.volume.bind_properties_buffers(pass);
+    inst_.sampling.bind_resources(pass);
   }
   {
     draw::PassMain &pass = volume_ps_;

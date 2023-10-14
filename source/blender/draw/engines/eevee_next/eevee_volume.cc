@@ -314,11 +314,13 @@ void VolumeModule::draw_prepass(View &view)
     return;
   }
 
+  DRW_stats_group_start("Volumes");
   inst_.pipelines.world_volume.render(view);
 
   occupancy_tx_.clear(uint4(0u));
   occupancy_fb_.bind();
   inst_.pipelines.volume.render(view);
+  DRW_stats_group_end();
 }
 
 void VolumeModule::draw_compute(View &view)

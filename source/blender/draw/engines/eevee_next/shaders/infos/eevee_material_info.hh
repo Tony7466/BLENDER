@@ -316,7 +316,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
            ImageType::UINT_3D,
            "occupancy_img")
     .fragment_source("eevee_surf_occupancy_frag.glsl")
-    .additional_info("eevee_global_ubo");
+    .additional_info("eevee_global_ubo", "eevee_sampling_data");
 
 /** \} */
 
