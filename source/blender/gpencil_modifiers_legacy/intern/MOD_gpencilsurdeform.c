@@ -958,11 +958,14 @@ static void panel_draw(const bContext *C, Panel *panel)
                   "Layer %s, Number of bound frames: %u",
                   smd->layers[l].layer_info, smd->layers[l].num_of_frames);
       uiItemL(row, label, ICON_INFO);
+      row = uiLayoutRow(col, true);
+      uiItemL(row, "Bound frames are locked", ICON_LOCKED);
     }
     
     
   }
-  else uiItemL(row, "No bound frames", ICON_INFO);
+  else
+    uiItemL(row, "No bound frames", ICON_INFO);
   /*
   row = uiLayoutRow(col, true);
   uiTemplateList(row,
