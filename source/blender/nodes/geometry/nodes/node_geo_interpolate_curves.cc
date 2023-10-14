@@ -14,6 +14,8 @@
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 
+#include "GEO_randomize.hh"
+
 #include "DNA_pointcloud_types.h"
 
 namespace blender::nodes::node_geo_interpolate_curves_cc {
@@ -759,6 +761,8 @@ static GeometrySet generate_interpolated_curves(
     child_curves_id->totcol = guide_curves_id.totcol;
   }
 
+  geometry::debug_randomize_curve_order(&child_curves);
+
   return GeometrySet::from_curves(child_curves_id);
 }
 
@@ -834,7 +838,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                         index_attribute_id,
                                                         weight_attribute_id);
 
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(guide_curves_geometry);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
           guide_curves_geometry.get_component<GeometryComponentEditData>()) {
     new_curves.add(*curve_edit_data);

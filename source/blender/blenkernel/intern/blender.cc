@@ -37,7 +37,7 @@
 #include "BKE_node.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 
 #include "DEG_depsgraph.hh"
@@ -181,7 +181,7 @@ void BKE_blender_globals_init()
 
   BKE_blender_globals_main_replace(BKE_main_new());
 
-  STRNCPY(G.ima, "//");
+  STRNCPY(G.filepath_last_image, "//");
 
 #ifndef WITH_PYTHON_SECURITY /* default */
   G.f |= G_FLAG_SCRIPT_AUTOEXEC;
