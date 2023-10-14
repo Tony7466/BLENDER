@@ -749,14 +749,11 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
       return MeshMismatch::EdgeTopology;
     }
 
-    /* Technically this could happen if the mesh has a lot of overlapping edges. We assume that
-     * the mesh is of good enough quality that this doesn't happen. Otherwise, the logic becomes a
-     * lot more difficult. */
-    if (matching_verts.size() != 1) {
-      // BLI_assert_unreachable();
-    }
-
     /* Update the maps. */
+
+    /* In principle, we should make sure that there is exactly one matching vertex. If the mesh is
+     * of good enough quality, that will always be the case. In other cases we just assume that any
+     * choice will be valid. Otherwise, the logic becomes a lot more difficult. */
     const int set_i = matching_verts.first();
     std::swap(verts.from_sorted2[sorted_i], verts.from_sorted2[verts.set_ids[sorted_i] + set_i]);
     for (const int other_set_i : IndexRange(verts.set_ids[sorted_i], verts.set_sizes[sorted_i])) {
