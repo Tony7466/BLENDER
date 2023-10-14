@@ -547,11 +547,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
 
-  if (smd->layers->frames == NULL)
-  {
-    return;
-  }
-
   Object *ob_target = DEG_get_evaluated_object(depsgraph, smd->target);
   target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
 
@@ -576,6 +571,10 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   if (!layer_found)
     return;
   /*Make it point to the right frame*/
+  if (smd->layers->frames == NULL) {
+    end_stroke_evaluation(smd, gpf);
+    return;
+  }
   rollback_frames(smd, smd->layers);
   if (smd->layers->frames != NULL)
   {
