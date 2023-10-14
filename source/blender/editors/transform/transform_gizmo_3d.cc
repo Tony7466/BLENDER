@@ -819,12 +819,12 @@ static int gizmo_3d_foreach_selected(const bContext *C,
         }
 
         grease_pencil.foreach_editable_drawing(
-            scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+            scene->r.cfra, [&](int layer_index, blender::bke::greasepencil::Drawing &drawing) {
               const bke::CurvesGeometry &curves = drawing.strokes();
 
               const bke::crazyspace::GeometryDeformation deformation =
                   bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                      *depsgraph, *ob, drawing_index);
+                      *depsgraph, *ob, layer_index);
 
               IndexMaskMemory memory;
               const IndexMask selected_points = ed::curves::retrieve_selected_points(curves,

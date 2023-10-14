@@ -47,7 +47,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        scene->r.cfra, [&](int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
           const bke::CurvesGeometry &curves = drawing.strokes();
 
           if (use_proportional_edit) {
@@ -85,7 +85,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     int layer_points_offset = 0;
 
     grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        scene->r.cfra, [&](int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
           const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
@@ -130,7 +130,7 @@ static void recalcData_grease_pencil(TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        scene->r.cfra, [&](int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
           curves.calculate_bezier_auto_handles();
