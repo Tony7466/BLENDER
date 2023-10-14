@@ -68,6 +68,8 @@ struct Eyedropper {
   float accum_col[3];
   int accum_tot;
 
+  wmWindow *cb_win;
+  int cb_win_mval[2];
   void *draw_handle_sample_text;
   char sample_text[MAX_NAME];
 
@@ -78,7 +80,7 @@ struct Eyedropper {
 static void eyedropper_draw_cb(const wmWindow *window, void *arg)
 {
   Eyedropper *eye = static_cast<Eyedropper *>(arg);
-  eyedropper_draw_cursor_text_window(window, eye->sample_text);
+  eyedropper_draw_cursor_text_region(eye->cb_win_mval, eye->sample_text);
 }
 
 static bool eyedropper_init(bContext *C, wmOperator *op)
@@ -108,7 +110,8 @@ static bool eyedropper_init(bContext *C, wmOperator *op)
     eye->crypto_node = (bNode *)eye->ptr.data;
     eye->cryptomatte_session = ntreeCompositCryptomatteSession(CTX_data_scene(C),
                                                                eye->crypto_node);
-    eye->draw_handle_sample_text = WM_draw_cb_activate(CTX_wm_window(C), eyedropper_draw_cb, eye);
+    eye->cb_win = CTX_wm_window(C);
+    eye->draw_handle_sample_text = WM_draw_cb_activate(eye->cb_win, eyedropper_draw_cb, eye);
   }
 
   if (prop_subtype != PROP_COLOR) {
@@ -135,7 +138,7 @@ static void eyedropper_exit(bContext *C, wmOperator *op)
   WM_cursor_modal_restore(window);
 
   if (eye->draw_handle_sample_text) {
-    WM_draw_cb_exit(window, eye->draw_handle_sample_text);
+    WM_draw_cb_exit(eye->cb_win, eye->draw_handle_sample_text);
     eye->draw_handle_sample_text = nullptr;
   }
 
@@ -241,13 +244,6 @@ static bool eyedropper_cryptomatte_sample_image_fl(const bNode *node,
   return success;
 }
 
-/* TODO(Harley): Although the following works when the target and source windows differ, it does
- * not show the object name at the mouse position in that case. This is because Eyedropper uses a
- * drawing callback for this - draw_handle_sample_text - that is per-window. A likely way to
- * approach this is to store the cb_win in eyedropper and change the callback when needed. Or
- * perhaps change it to a region draw callback: ED_region_draw_cb_activate. There is also a
- * cursor API that might work. */
-
 static bool eyedropper_cryptomatte_sample_fl(bContext *C,
                                              Eyedropper *eye,
                                              const int event_xy[2],
@@ -267,6 +263,16 @@ static bool eyedropper_cryptomatte_sample_fl(bContext *C,
   if (win) {
     bScreen *screen = WM_window_get_active_screen(win);
     area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, mval);
+  }
+
+  eye->cb_win_mval[0] = mval[0];
+  eye->cb_win_mval[1] = mval[1];
+
+  if (win && win != eye->cb_win && eye->draw_handle_sample_text) {
+    WM_draw_cb_exit(eye->cb_win, eye->draw_handle_sample_text);
+    eye->cb_win = win;
+    eye->draw_handle_sample_text = WM_draw_cb_activate(eye->cb_win, eyedropper_draw_cb, eye);
+    ED_region_tag_redraw(CTX_wm_region(C));
   }
 
   if (!area || !ELEM(area->spacetype, SPACE_IMAGE, SPACE_NODE, SPACE_CLIP)) {
@@ -312,6 +318,8 @@ static bool eyedropper_cryptomatte_sample_fl(bContext *C,
   if (!node->id) {
     return false;
   }
+
+  ED_region_tag_redraw(region);
 
   /* TODO(jbakker): Migrate this file to cc and use std::string as return param. */
   char prefix[MAX_NAME + 1];
@@ -506,7 +514,6 @@ static int eyedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
     if (eye->draw_handle_sample_text) {
       eyedropper_color_sample_text_update(C, eye, event->xy);
-      ED_region_tag_redraw(CTX_wm_region(C));
     }
   }
 
