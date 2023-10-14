@@ -65,7 +65,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_texture.h"
 
@@ -579,7 +579,7 @@ static bNodeSocket *do_versions_node_group_add_socket_2_56_2(bNodeTree *ngroup,
 
   BLI_addtail(in_out == SOCK_IN ? &ngroup->inputs_legacy : &ngroup->outputs_legacy, gsock);
 
-  BKE_ntree_update_tag_interface(ngroup);
+  ngroup->tree_interface.tag_items_changed();
 
   return gsock;
 }
