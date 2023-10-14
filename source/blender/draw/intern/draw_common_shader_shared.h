@@ -161,7 +161,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define colorVertexUnreferenced globalsBlock.color_vertex_unreferenced
 #  define colorVertexMissingData globalsBlock.color_vertex_missing_data
 #  define colorEditMeshActive globalsBlock.color_edit_mesh_active
-#  define colorEdgeSelection globalsBlock.color_edge_select
+#  define colorEdgeSelect globalsBlock.color_edge_select
 #  define colorEdgeModeSelection globalsBlock.color_edge_mode_selection
 #  define colorEdgeSeam globalsBlock.color_edge_seam
 #  define colorEdgeSharp globalsBlock.color_edge_sharp
