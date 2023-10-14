@@ -671,7 +671,7 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
      * the mesh is of good enough quality that this doesn't happen. Otherwise, the logic becomes a
      * lot more difficult. */
     if (matching_verts.size() != 1) {
-      BLI_assert(false);
+      BLI_assert_unreachable();
     }
 
     /* Update the maps. */
