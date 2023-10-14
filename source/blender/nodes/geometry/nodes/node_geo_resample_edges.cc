@@ -22,6 +22,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Int>("Count").field_on_all();
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
@@ -242,13 +243,15 @@ static void accumulate_face_offsets(const OffsetIndices<int> src_face_offsets,
 
 static Mesh *resample_edges(const Mesh &src_mesh,
                             const VArray<int> &count_varray,
+                            const IndexMask &mask,
                             const AnonymousAttributePropagationInfo &propagation_info)
 {
   /* To avoid allocation of array to accumulate new verts, use edge offset[index] - index. */
-  Array<int> accumulate_edges(src_mesh.totedge + 1);
+  Array<int> accumulate_edges(src_mesh.totedge + 1, 0);
   const OffsetIndices<int> edge_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
-    array_utils::copy(count_varray, accumulate_span);
+    array_utils::copy(count_varray, mask, accumulate_span);
+    parallel_transform(accumulate_span, 2048, [&](int count) { return count + 1; });
     return offset_indices::accumulate_counts_to_offsets(accumulate_edges);
   }();
 
@@ -258,7 +261,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
     array_utils::copy(src_mesh.corner_edges(), accumulate_span);
     devirtualize_varray(count_varray, [&](auto count_varray) {
       parallel_transform(
-          accumulate_span, 2048, [&](int edge_index) { return count_varray[edge_index]; });
+          accumulate_span, 2048, [&](int edge_index) { return count_varray[edge_index] + 1; });
     });
     return offset_indices::accumulate_counts_to_offsets(accumulate_corners);
   }();
@@ -307,12 +310,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
 
+  Field<int> count_field = params.extract_input<Field<int>>("Count");
+  const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+
+  static const auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
   static const auto clamp_fn = mf::build::SI1_SO<int, int>(
-      "Hard Min, Vertex Count to Edges Count",
-      [](const int value) { return math::max(0, value) + 1; },
-      mf::build::exec_presets::AllSpanOrSingle());
-  const Field<int> count_field(
-      FieldOperation::Create(clamp_fn, {params.extract_input<Field<int>>("Count")}));
+      "Hard Min", [](int value) { return math::max(0, value); }, exec_preset);
+  const Field<int> clamped_count_field(FieldOperation::Create(clamp_fn, {std::move(count_field)}));
 
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Mesh");
@@ -324,14 +328,19 @@ static void node_geo_exec(GeoNodeExecParams params)
     const bke::AttributeAccessor attributes = mesh->attributes();
     const bke::MeshFieldContext context(*mesh, ATTR_DOMAIN_EDGE);
     fn::FieldEvaluator evaluator(context, attributes.domain_size(ATTR_DOMAIN_EDGE));
-    evaluator.add(count_field);
+    evaluator.add(clamped_count_field);
+    evaluator.set_selection(selection_field);
     evaluator.evaluate();
+    const IndexMask mask = evaluator.get_evaluated_selection_as_mask();
+    if (mask.is_empty()) {
+      return;
+    }
     const VArray<int> count_varray = evaluator.get_evaluated<int>(0);
     const std::optional<int> count = count_varray.get_if_single();
     if (count.has_value() && *count == 1) {
       return;
     }
-    geometry_set.replace_mesh(resample_edges(*mesh, count_varray, propagation_info));
+    geometry_set.replace_mesh(resample_edges(*mesh, count_varray, mask, propagation_info));
   });
   params.set_output("Mesh", std::move(geometry_set));
 }
