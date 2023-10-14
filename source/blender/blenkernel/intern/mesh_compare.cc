@@ -338,18 +338,6 @@ static bool update_set_ids(MutableSpan<int> set_ids,
         }
       }
       if (!match_found) {
-        std::cout << "Threshold: " << threshold << std::endl;
-        std::cout << "Different VALUES:\n";
-        for (const int j : values1.index_range()) {
-          if (abs(i - j) > 20) {
-            continue;
-          }
-          if (i == j) {
-            std::cout << "DIFFERENCE HERE:\n";
-          }
-          std::cout << values1[sorted_to_values1[j]] << " -- " << values2[sorted_to_values2[j]]
-                    << "\n";
-        }
         /* They should be the same after sorting. */
         return false;
       }
@@ -620,7 +608,6 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
     }
     GAttributeReader reader1 = mesh1_attributes.lookup(id);
     GAttributeReader reader2 = mesh2_attributes.lookup(id);
-    std::cout << "Updated set sizes\n";
 
     if (reader1.domain != domain) {
       /* We only look at attributes of the given domain. */
@@ -795,8 +782,6 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
     return MeshMismatch::NumFaces;
   }
 
-  std::cout << "domain sizes match" << std::endl;
-
   std::optional<MeshMismatch> mismatch = {};
 
   const AttributeAccessor mesh1_attributes = mesh1.attributes();
@@ -805,8 +790,6 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
   if (mismatch) {
     return mismatch;
   }
-
-  std::cout << "attributes are compatible" << std::endl;
 
   IndexMapping verts(mesh1.totvert);
   mismatch = sort_domain_using_attributes(
@@ -818,14 +801,10 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
   /* We need the maps going the other way as well. */
   verts.recalculate_inverse_maps();
 
-  std::cout << "sorted vertices" << std::endl;
-
   IndexMapping edges(mesh1.totedge);
   if (!sort_edges(mesh1.edges(), mesh2.edges(), verts, edges)) {
     return MeshMismatch::EdgeTopology;
   }
-
-  std::cout << "sorted edges" << std::endl;
 
   mismatch = sort_domain_using_attributes(
       mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_EDGE, {".edge_verts"}, edges, threshold);
@@ -836,20 +815,14 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
   /* We need the maps going the other way as well. */
   edges.recalculate_inverse_maps();
 
-  std::cout << "sorted edge domain" << std::endl;
-
   IndexMapping corners(mesh1.totloop);
   if (!sort_corners_based_on_domain(mesh1.corner_verts(), mesh2.corner_verts(), verts, corners)) {
     return MeshMismatch::FaceTopology;
   }
 
-  std::cout << "sorted corner verts" << std::endl;
-
   if (!sort_corners_based_on_domain(mesh1.corner_edges(), mesh2.corner_edges(), edges, corners)) {
     return MeshMismatch::FaceTopology;
   }
-
-  std::cout << "sorted corner edges" << std::endl;
 
   mismatch = sort_domain_using_attributes(mesh1_attributes,
                                           mesh2_attributes,
@@ -864,14 +837,10 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
   /* We need the maps going the other way as well. */
   corners.recalculate_inverse_maps();
 
-  std::cout << "sorted corner domain" << std::endl;
-
   IndexMapping faces(mesh1.faces_num);
   if (!sort_faces_based_on_corners(corners, mesh1.face_offsets(), mesh2.face_offsets(), faces)) {
     return MeshMismatch::FaceTopology;
   }
-
-  std::cout << "sorted faces" << std::endl;
 
   mismatch = sort_domain_using_attributes(
       mesh1_attributes, mesh2_attributes, ATTR_DOMAIN_FACE, {}, faces, threshold);
@@ -879,14 +848,10 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
     return mismatch;
   };
 
-  std::cout << "sorted face domain" << std::endl;
-
   mismatch = construct_vertex_mapping(mesh1, mesh2, verts, edges);
   if (mismatch) {
     return mismatch;
   }
-
-  std::cout << "constructed vertex mapping" << std::endl;
 
   /* Now we double check that the other topology maps agree with this vertex mapping. */
 
