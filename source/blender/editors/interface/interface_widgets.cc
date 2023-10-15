@@ -2910,25 +2910,36 @@ static void widget_menu_back(
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void ui_hsv_cursor(const float x, const float y, const float zoom)
+static void ui_hsv_cursor(
+    const float x, const float y, const float zoom, const float rgb[3], const float hsv[3])
 {
-  const float radius = zoom * 3.0f * U.pixelsize;
-  const uint pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  immUniformColor3f(1.0f, 1.0f, 1.0f);
-  imm_draw_circle_fill_2d(pos, x, y, radius, 8);
+  const float radius = zoom * ((14.0f * UI_SCALE_FAC) + U.pixelsize);
+  float fg = MIN2(1.0f - hsv[2] + 0.2, 0.8f);
+  float bg = hsv[2] / 2.0f;
 
   GPU_blend(GPU_BLEND_ALPHA);
-  GPU_line_smooth(true);
-  immUniformColor3f(0.0f, 0.0f, 0.0f);
-  imm_draw_circle_wire_2d(pos, x, y, radius, 12);
-  GPU_blend(GPU_BLEND_NONE);
-  GPU_line_smooth(false);
+  const uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_program_point_size(true);
+  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
+  immUniformColor3fv(rgb);
+  immUniform1f("outlineWidth", U.pixelsize);
+
+  immUniform4f("outlineColor", 0.0f, 0.0f, 0.0f, bg);
+  immUniform1f("size", radius);
+  immBegin(GPU_PRIM_POINTS, 1);
+  immVertex2f(pos, x, y);
+  immEnd();
+
+  immUniform4f("outlineColor", 1.0f, 1.0f, 1.0f, fg);
+  immUniform1f("size", radius - 1.0f);
+  immBegin(GPU_PRIM_POINTS, 1);
+  immVertex2f(pos, x, y);
+  immEnd();
 
   immUnbindProgram();
+  GPU_program_point_size(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 void ui_hsvcircle_vals_from_pos(
@@ -3072,7 +3083,7 @@ static void ui_draw_but_HSVCIRCLE(uiBut *but, const uiWidgetColors *wcol, const 
   float xpos, ypos;
   ui_hsvcircle_pos_from_vals(cpicker, rect, hsv, &xpos, &ypos);
   const float zoom = 1.0f / but->block->aspect;
-  ui_hsv_cursor(xpos, ypos, zoom);
+  ui_hsv_cursor(xpos, ypos, zoom, rgb, hsv);
 }
 
 /** \} */
@@ -3304,12 +3315,8 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   ui_draw_gradient(rect, hsv_n, hsv_but->gradient_type, 1.0f);
 
   ui_hsvcube_pos_from_vals(hsv_but, rect, hsv_n, &x, &y);
-  CLAMP(x, rect->xmin + 3.0f, rect->xmax - 3.0f);
-  CLAMP(y, rect->ymin + 3.0f, rect->ymax - 3.0f);
 
   const float zoom = 1.0f / but->block->aspect;
-
-  ui_hsv_cursor(x, y, zoom);
 
   /* outline */
   const uint pos = GPU_vertformat_attr_add(
@@ -3318,6 +3325,32 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   immUniformColor3ub(0, 0, 0);
   imm_draw_box_wire_2d(pos, (rect->xmin), (rect->ymin), (rect->xmax), (rect->ymax));
   immUnbindProgram();
+
+  if (BLI_rcti_size_x(rect) / BLI_rcti_size_y(rect) < 3) {
+    float margin = (4.0f * UI_SCALE_FAC);
+    CLAMP(x, rect->xmin + margin, rect->xmax - margin);
+    CLAMP(y, rect->ymin + margin, rect->ymax - margin);
+    ui_hsv_cursor(x, y, zoom, rgb, hsv);
+  }
+  else {
+    rctf rectf;
+    BLI_rctf_rcti_copy(&rectf, rect);
+    float margin = (2.0f * UI_SCALE_FAC);
+    CLAMP(x, rect->xmin + margin, rect->xmax - margin);
+    CLAMP(y, rect->ymin + margin, rect->ymax - margin);
+
+    rectf.ymax += 1;
+    rectf.xmin = x - (4.0f * UI_SCALE_FAC) - U.pixelsize;
+    rectf.xmax = x + (4.0f * UI_SCALE_FAC) + U.pixelsize;
+    float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    UI_draw_roundbox_4fv(&rectf, false, 0, col);
+
+    rectf.xmin += 1.0f;
+    rectf.xmax -= 1.0f;
+    float inner[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float col2[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    UI_draw_roundbox_4fv_ex(&rectf, col2, nullptr, 0.0f, inner, U.pixelsize, 0.0f);
+  }
 }
 
 /* vertical 'value' slider, using new widget code */
@@ -3348,38 +3381,26 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
     v = (v - min) / (max - min);
   }
 
-  widget_init(&wtb);
+  rctf rectf;
+  BLI_rctf_rcti_copy(&rectf, rect);
 
-  /* fully rounded */
-  round_box_edges(&wtb, UI_CNR_ALL, rect, rad);
-
-  /* setup temp colors */
-  uiWidgetColors colors{};
-  colors.outline[0] = 0;
-  colors.outline[1] = 0;
-  colors.outline[2] = 0;
-  colors.outline[3] = 255;
-  colors.inner[0] = 128;
-  colors.inner[1] = 128;
-  colors.inner[2] = 128;
-  colors.inner[3] = 255;
-  colors.shadetop = 127;
-  colors.shadedown = -128;
-  colors.shaded = 1;
-  widgetbase_draw(&wtb, &colors);
-
-  /* We are drawing on top of widget bases. Flush cache. */
-  GPU_blend(GPU_BLEND_ALPHA);
-  UI_widgetbase_draw_cache_flush();
-  GPU_blend(GPU_BLEND_NONE);
+  float inner1[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float inner2[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  float outline[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  UI_draw_roundbox_4fv_ex(&rectf, inner1, inner2, U.pixelsize, outline, 1.0f, 0.0f);
 
   /* cursor */
-  x = rect->xmin + 0.5f * BLI_rcti_size_x(rect);
   y = rect->ymin + v * BLI_rcti_size_y(rect);
-  CLAMP(y, rect->ymin + 3.0f, rect->ymax - 3.0f);
-  const float zoom = 1.0f / but->block->aspect;
 
-  ui_hsv_cursor(x, y, zoom);
+  rectf.ymin = y - (4.0f * UI_SCALE_FAC) - U.pixelsize;
+  rectf.ymax = y + (4.0f * UI_SCALE_FAC) + U.pixelsize;
+  float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  UI_draw_roundbox_4fv(&rectf, false, 0, col);
+
+  rectf.ymin += 1.0f;
+  rectf.ymax -= 1.0f;
+  float col2[4] = {v, v, v, 1.0f};
+  UI_draw_roundbox_4fv_ex(&rectf, col2, nullptr, 0.0f, inner1, U.pixelsize, 0.0f);
 }
 
 /** Separator for menus. */
