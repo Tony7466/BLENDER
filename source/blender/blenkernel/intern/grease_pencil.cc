@@ -1341,6 +1341,10 @@ void set_texture_matrix(blender::bke::CurvesGeometry &curves,
 
   const float4x2 strokemat = get_local_to_stroke_matrix(curves, curve_i);
 
+  /*
+   * WORKAROUND: This algorithm works with floats but is prone to numerical error.
+   * So instead we cast to doubles, do the algorithm and then go back to floats.
+   */
   double4x3 strokemat4x3 = double4x3(strokemat);
 
   /*
