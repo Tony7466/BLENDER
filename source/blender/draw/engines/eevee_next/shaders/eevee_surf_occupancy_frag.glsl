@@ -32,6 +32,10 @@ void main()
   OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);
 
   for (int i = 0; i < imageSize(occupancy_img).z; i++) {
+    /* Negate occupancy bits before XORing so that meshes clipped by the near plane fill the space
+     * betwen the inner part of the mesh and the near plane.
+     * It doesn't change anything for closed meshes. */
+    occupancy_bits.bits[i] = ~occupancy_bits.bits[i];
     if (occupancy_bits.bits[i] != 0u) {
       imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits.bits[i]);
     }
