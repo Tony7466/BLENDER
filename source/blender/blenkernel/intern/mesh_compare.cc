@@ -108,10 +108,11 @@ class IndexMapping {
 };
 
 /**
- * Sort the indices using the values.
+ * Sort the indices using the values. For vectors of floats, the sorting happens based on the given
+ * component.
  */
 template<typename T>
-static void sort_indices(MutableSpan<int> indices, const Span<T> values, const float threshold)
+static void sort_indices(MutableSpan<int> indices, const Span<T> values, const int component_i)
 {
   /* We need to have an appropriate comparison function, depending on the type. */
   std::stable_sort(indices.begin(), indices.end(), [&](int i1, int i2) {
@@ -123,39 +124,15 @@ static void sort_indices(MutableSpan<int> indices, const Span<T> values, const f
       /* These types are already comparable. */
       return value1 < value2;
     }
-    if constexpr (std::is_same_v<T, float2>) {
-      for (int i = 0; i < 2; i++) {
-        if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-          return value1[i] < value2[i];
-        }
-      }
-      return false;
-    }
-    if constexpr (std::is_same_v<T, float3>) {
-      for (int i = 0; i < 3; i++) {
-        if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-          return value1[i] < value2[i];
-        }
-      }
-      return false;
+    if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> ||
+                  std::is_same_v<T, ColorGeometry4f>)
+    {
+      return value1[component_i] < value2[component_i];
     }
     if constexpr (std::is_same_v<T, math::Quaternion>) {
       const float4 value1 = float4(value1);
       const float4 value2 = float4(value2);
-      for (int i = 0; i < 4; i++) {
-        if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-          return value1[i] < value2[i];
-        }
-      }
-      return false;
-    }
-    if constexpr (std::is_same_v<T, ColorGeometry4f>) {
-      for (int i = 0; i < 4; i++) {
-        if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-          return value1[i] < value2[i];
-        }
-      }
-      return false;
+      return value1[component_i] < value2[component_i];
     }
     if constexpr (std::is_same_v<T, int2>) {
       for (int i = 0; i < 2; i++) {
@@ -198,7 +175,7 @@ static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
                                              MutableSpan<int> sorted_to_domain2,
                                              const Span<T> values1,
                                              const Span<T> values2,
-                                             const float threshold)
+                                             const int component_i)
 {
   int i = 0;
   while (i < set_sizes.size()) {
@@ -209,8 +186,8 @@ static void sort_per_set_based_on_attributes(const Span<int> set_sizes,
       continue;
     }
 
-    sort_indices(sorted_to_domain1.slice(IndexRange(i, set_size)), values1, threshold);
-    sort_indices(sorted_to_domain2.slice(IndexRange(i, set_size)), values2, threshold);
+    sort_indices(sorted_to_domain1.slice(IndexRange(i, set_size)), values1, component_i);
+    sort_indices(sorted_to_domain2.slice(IndexRange(i, set_size)), values2, component_i);
     i += set_size;
   }
 }
@@ -251,7 +228,10 @@ static void sort_per_set_with_id_maps(const Span<int> set_sizes,
  * treshold.
  */
 template<typename T>
-static bool values_different(const T value1, const T value2, const float threshold)
+static bool values_different(const T value1,
+                             const T value2,
+                             const float threshold,
+                             const int component_i)
 {
   if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
                 std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge> ||
@@ -264,39 +244,15 @@ static bool values_different(const T value1, const T value2, const float thresho
   if constexpr (std::is_same_v<T, float>) {
     return compare_threshold_relative(value1, value2, threshold);
   }
-  if constexpr (std::is_same_v<T, float2>) {
-    for (int i = 0; i < 2; i++) {
-      if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  if constexpr (std::is_same_v<T, float3>) {
-    for (int i = 0; i < 3; i++) {
-      if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-        return true;
-      }
-    }
-    return false;
+  if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> ||
+                std::is_same_v<T, ColorGeometry4f>)
+  {
+    return compare_threshold_relative(value1[component_i], value2[component_i], threshold);
   }
   if constexpr (std::is_same_v<T, math::Quaternion>) {
     const float4 value1_f = float4(value1);
     const float4 value2_f = float4(value2);
-    for (int i = 0; i < 4; i++) {
-      if (compare_threshold_relative(value1_f[i], value2_f[i], threshold)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  if constexpr (std::is_same_v<T, ColorGeometry4f>) {
-    for (int i = 0; i < 4; i++) {
-      if (compare_threshold_relative(value1[i], value2[i], threshold)) {
-        return true;
-      }
-    }
-    return false;
+    return compare_threshold_relative(value1_f[component_i], value2_f[component_i], threshold);
   }
   BLI_assert_unreachable();
 }
@@ -312,10 +268,11 @@ static bool update_set_ids(MutableSpan<int> set_ids,
                            const Span<T> values2,
                            const Span<int> sorted_to_values1,
                            MutableSpan<int> sorted_to_values2,
-                           const float threshold)
+                           const float threshold,
+                           const int component_i)
 {
   /* Due to the way the sorting works, there could be a slightly bigger difference. */
-  const float value_threshold = 10 * threshold;
+  const float value_threshold = 5 * threshold;
   if (set_ids.is_empty()) {
     return true;
   }
@@ -324,34 +281,14 @@ static bool update_set_ids(MutableSpan<int> set_ids,
   for (const int i : values1.index_range()) {
     const T value1 = values1[sorted_to_values1[i]];
     const T value2 = values2[sorted_to_values2[i]];
-    if (values_different(value1, value2, value_threshold)) {
-      /* The sorting is not perfect for vectors of floats, so try to find a match in the same set.
-       * For others, it should be an exact match. */
-      if constexpr (std::is_same_v<T, float> || std::is_same_v<T, int> ||
-                    std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
-                    std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge> ||
-                    std::is_same_v<T, ColorGeometry4b>)
-      {
-        return false;
-      }
-      bool match_found = false;
-      for (const int other_i : values1.index_range().drop_front(i + 1)) {
-        if (set_ids[other_i] != set_ids[i]) {
-          break;
-        }
-        if (!values_different(value1, values2[sorted_to_values2[other_i]], value_threshold)) {
-          /* This is a match. Update the sorting map. */
-          std::swap(sorted_to_values2[i], sorted_to_values2[other_i]);
-          match_found = true;
-          break;
-        }
-      }
-      if (!match_found) {
-        /* They should be the same after sorting. */
-        return false;
-      }
+    if (values_different(value1, value2, value_threshold, component_i)) {
+      /* They should be the same after sorting. */
+      return false;
     }
-    if (values_different(previous, value1, value_threshold) || set_ids[i] == i) {
+    if ((values_different(previous, value1, value_threshold, component_i) &&
+         values_different(previous, value2, value_threshold, component_i)) ||
+        set_ids[i] == i)
+    {
       /* Different value, or this was already a different set. */
       set_id = i;
       previous = value1;
@@ -455,6 +392,7 @@ static bool sort_edges(const Span<int2> edges1,
                                           ordered_edges2.as_span(),
                                           edges.from_sorted1,
                                           edges.from_sorted2,
+                                          0,
                                           0);
   if (!edges_match) {
     return false;
@@ -540,6 +478,7 @@ static bool sort_faces_based_on_corners(const IndexMapping &corners,
                                             smallest_corner_ids2.as_span(),
                                             faces.from_sorted1,
                                             faces.from_sorted2,
+                                            0,
                                             0);
   if (!faces_line_up) {
     return false;
@@ -630,31 +569,51 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       const VArraySpan<T> values1 = reader1.varray.typed<T>();
       const VArraySpan<T> values2 = reader2.varray.typed<T>();
 
-      sort_per_set_based_on_attributes(
-          maps.set_sizes, maps.from_sorted1, maps.from_sorted2, values1, values2, threshold);
-      const bool attributes_line_up = update_set_ids(
-          maps.set_ids, values1, values2, maps.from_sorted1, maps.from_sorted2, threshold);
-      if (!attributes_line_up) {
-        switch (domain) {
-          case ATTR_DOMAIN_POINT:
-            mismatch = MeshMismatch::VertexAttributes;
-            return;
-          case ATTR_DOMAIN_EDGE:
-            mismatch = MeshMismatch::EdgeAttributes;
-            return;
-          case ATTR_DOMAIN_CORNER:
-            mismatch = MeshMismatch::CornerAttributes;
-            return;
-          case ATTR_DOMAIN_FACE:
-            mismatch = MeshMismatch::FaceAttributes;
-            return;
-          default:
-            BLI_assert_unreachable();
-            break;
-        }
-        return;
+      /* Because sorting of float vectors is not very stable, we do a separate sort per component,
+       * re-computing the set ids each time. */
+      int num_loops = 1;
+      if constexpr (std::is_same_v<T, float2>) {
+        num_loops = 2;
       }
-      update_set_sizes(maps.set_ids, maps.set_sizes);
+      else if constexpr (std::is_same_v<T, float3>) {
+        num_loops = 3;
+      }
+      else if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>)
+      {
+        num_loops = 4;
+      }
+      for (const int component_i : IndexRange(num_loops)) {
+        sort_per_set_based_on_attributes(
+            maps.set_sizes, maps.from_sorted1, maps.from_sorted2, values1, values2, component_i);
+        const bool attributes_line_up = update_set_ids(maps.set_ids,
+                                                       values1,
+                                                       values2,
+                                                       maps.from_sorted1,
+                                                       maps.from_sorted2,
+                                                       threshold,
+                                                       component_i);
+        if (!attributes_line_up) {
+          switch (domain) {
+            case ATTR_DOMAIN_POINT:
+              mismatch = MeshMismatch::VertexAttributes;
+              return;
+            case ATTR_DOMAIN_EDGE:
+              mismatch = MeshMismatch::EdgeAttributes;
+              return;
+            case ATTR_DOMAIN_CORNER:
+              mismatch = MeshMismatch::CornerAttributes;
+              return;
+            case ATTR_DOMAIN_FACE:
+              mismatch = MeshMismatch::FaceAttributes;
+              return;
+            default:
+              BLI_assert_unreachable();
+              break;
+          }
+          return;
+        }
+        update_set_sizes(maps.set_ids, maps.set_sizes);
+      }
     });
 
     if (mismatch) {
