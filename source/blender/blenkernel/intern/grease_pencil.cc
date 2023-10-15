@@ -7,6 +7,7 @@
  */
 
 #include "BKE_anim_data.h"
+#include "BKE_attribute.h"
 #include "BKE_curves.hh"
 #include "BKE_customdata.h"
 #include "BKE_geometry_set.hh"
@@ -23,9 +24,11 @@
 #include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -1204,6 +1207,195 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Grease Pencil texture coordinate functions
+ * \{ */
+
+/*
+ * Returns the matrix that transforms from a 3D point in local-space to a 2D point in
+ * stroke-space for the stroke `curve_i`
+ */
+blender::float4x2 get_local_to_stroke_matrix(const blender::bke::CurvesGeometry &curves,
+                                             int curve_i)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const Span<float3> positions = curves.positions();
+  const IndexRange points = points_by_curve[curve_i];
+  const int totpoints = points.size();
+
+  if (totpoints < 2) {
+    return float4x2::identity();
+  }
+
+  const float3 pt0 = positions[points.first()];
+  const float3 pt1 = positions[points.first() + 1];
+  const float3 pt3 = positions[points[int(totpoints * 0.75f)]];
+
+  /* Local X axis (p0 -> p1) */
+  float3 locx = normalize(pt1 - pt0);
+
+  /* If the first two points are the same use the 1/4 point. */
+  if (totpoints > 3 && length_squared(locx) == 0.0f) {
+    const float3 pt2 = positions[int(totpoints * 0.25f)];
+    locx = normalize(pt2 - pt0);
+  }
+
+  /* Point vector at 3/4 */
+  const float3 v3 = totpoints == 2 ? pt3 * 0.001f : pt3;
+  const float3 loc3 = v3 - pt0;
+
+  /* Vector orthogonal to polygon plane. */
+  const float3 normal = cross(locx, loc3);
+
+  /* Local Y axis (cross to normal/x axis). */
+  const float3 locy = normalize(cross(normal, locx));
+
+  /* If either is zero return. */
+  if (length_squared(locx) == 0.0f || length_squared(locy) == 0.0f) {
+    return float4x2::identity();
+  }
+
+  /* Get local space using first point as origin. */
+  const float4x2 mat = transpose(
+      float2x4(float4(locx, -dot(pt0, locx)), float4(locy, -dot(pt0, locy))));
+
+  return mat;
+}
+
+/*
+ * Returns the matrix that transforms from a 2D point in stroke-space to a 2D point in
+ * texture-space for a stroke `curve_i`
+ */
+blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometry &curves,
+                                               const int curve_i)
+{
+  using namespace blender;
+  const bke::AttributeAccessor attributes = curves.attributes();
+  /* Matrices can not be stored as attributes so must be broke into two parts. */
+
+  /* Default with the 3x2 identity. */
+  const VArray<float3> textmatA = *attributes.lookup_or_default<float3>(
+      "fill_matrixA", ATTR_DOMAIN_CURVE, float3(1.0f, 0.0f, 0.0f));
+  const VArray<float3> textmatB = *attributes.lookup_or_default<float3>(
+      "fill_matrixB", ATTR_DOMAIN_CURVE, float3(0.0f, 1.0f, 0.0f));
+
+  const float3x2 textmat = math::transpose(float2x3(textmatA[curve_i], textmatB[curve_i]));
+
+  return textmat;
+}
+
+void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
+                                  int curve_i,
+                                  const blender::float3x2 textmat)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  MutableAttributeAccessor attributes = curves.attributes_for_write();
+  /* Matrices can not be stored as attributes so must be broke into two parts. */
+
+  SpanAttributeWriter<float3> textmatA = attributes.lookup_or_add_for_write_span<float3>(
+      "fill_matrixA", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float3> textmatB = attributes.lookup_or_add_for_write_span<float3>(
+      "fill_matrixB", ATTR_DOMAIN_CURVE);
+
+  const float2x3 textmatT = math::transpose(textmat);
+  textmatA.span[curve_i] = textmatT[0];
+  textmatB.span[curve_i] = textmatT[1];
+
+  textmatA.finish();
+  textmatB.finish();
+}
+
+blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves, int curve_i)
+{
+  using namespace blender;
+
+  const float4x2 strokemat = get_local_to_stroke_matrix(curves, curve_i);
+  const float3x2 textmat = get_stroke_to_texture_matrix(curves, curve_i);
+
+  float4x3 strokemat4x3 = float4x3(strokemat);
+
+  /* We want the diagonal of ones to start from the bottom right instead top left. */
+  strokemat4x3[2][2] = 0.0f;
+  strokemat4x3[3][2] = 1.0f;
+
+  const float4x2 textspace = textmat * strokemat4x3;
+
+  return textspace;
+}
+
+void set_texture_matrix(blender::bke::CurvesGeometry &curves,
+                        int curve_i,
+                        const blender::float4x2 textspace)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  const float4x2 strokemat = get_local_to_stroke_matrix(curves, curve_i);
+
+  double4x3 strokemat4x3 = double4x3(strokemat);
+
+  /*
+   * We want the diagonal of ones to start from the bottom right instead top left.
+   * i.e.
+   *          # # 0              # # 0
+   * We want  # # 0  Instead of  # # 0
+   *          # # 0              # # 1
+   *          # # 1              # # 0
+   */
+  strokemat4x3[2][2] = 0.0;
+  strokemat4x3[3][2] = 1.0;
+
+  /*
+   * We want to solve for `textmat` in the equation: `textspace = textmat * strokemat4x3`
+   * Because these matrices are not square we can not use a normal inverse.
+   *
+   * This has the form of: `X = A * Y`
+   * `A` can be solve use: `A = X * B`
+   *
+   * Where `B` is the Right-sided inverse, calculated as:
+   *
+   *  |--------------------------|
+   *  | B = T(Y) * (Y * T(Y))^-1 |
+   *  |--------------------------|
+   *
+   * And `T()` is transpose and `()^-1` is the inverse
+   */
+
+  const double3x4 transpose_strokemat = transpose(strokemat4x3);
+  const double3x4 right_inverse = transpose_strokemat * invert(strokemat4x3 * transpose_strokemat);
+
+  const float3x2 textmat = float3x2(double4x2(textspace) * right_inverse);
+
+  set_stroke_to_texture_matrix(curves, curve_i, textmat);
+}
+
+void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
+                              blender::bke::CurvesGeometry &dst,
+                              const Span<int> dst_to_src_curve)
+{
+  for (const int dst_curve_i : dst_to_src_curve.index_range()) {
+    const blender::float4x2 textspace = get_texture_matrix(src, dst_to_src_curve[dst_curve_i]);
+    set_texture_matrix(dst, dst_curve_i, textspace);
+  }
+}
+
+void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
+                              blender::bke::CurvesGeometry &dst,
+                              const blender::IndexMask &indices)
+{
+  indices.foreach_index([&](const int64_t index, const int64_t pos) {
+    const blender::float4x2 textspace = get_texture_matrix(src, index);
+    set_texture_matrix(dst, pos, textspace);
+  });
 }
 
 /** \} */

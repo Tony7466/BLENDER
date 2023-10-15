@@ -336,9 +336,11 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
                               int8_t end_cap,
                               int point_i,
                               int idx,
+                              float4x2 texture_matrix,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
-      copy_v3_v3(s_vert.pos, positions[point_i]);
+      const float3 pos = positions[point_i];
+      copy_v3_v3(s_vert.pos, pos);
       s_vert.radius = radii[point_i] * ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       s_vert.opacity = opacities[point_i] *
                        ((start_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
@@ -350,8 +352,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
       /* TODO: Populate stroke UVs. */
       s_vert.u_stroke = 0;
-      /* TODO: Populate fill UVs. */
-      s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
+      copy_v2_v2(s_vert.uv_fill, texture_matrix * float4(pos, 1.0f));
 
       copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);
       copy_v4_v4(c_vert.fcol, vertex_colors[point_i]);
@@ -372,6 +373,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
         MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
         MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
+        const float4x2 texture_matrix = get_texture_matrix(curves, curve_i);
 
         /* First vertex is not drawn. */
         verts_slice.first().mat = -1;
@@ -396,6 +398,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
                          end_caps[curve_i],
                          points[i],
                          idx,
+                         texture_matrix,
                          verts_slice[idx],
                          cols_slice[idx]);
         }
@@ -408,6 +411,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
                          end_caps[curve_i],
                          points[0],
                          idx,
+                         texture_matrix,
                          verts_slice[idx],
                          cols_slice[idx]);
         }

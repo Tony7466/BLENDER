@@ -92,6 +92,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   Vector<Vector<float2>> screen_space_curve_fitted_coords_;
   Vector<float2> screen_space_smoothed_coords_;
   int64_t active_smooth_index_ = 0;
+  blender::float4x2 texture_space_ = float4x2::identity();
 
   friend struct PaintOperationExecutor;
 
@@ -119,6 +120,7 @@ struct PaintOperationExecutor {
 
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
+  blender::float4x2 texture_space_;
 
   bke::greasepencil::Drawing *drawing_;
 
@@ -150,6 +152,10 @@ struct PaintOperationExecutor {
 
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
+
+    /* TODO: Align with the view or drawing plane. */
+    texture_space_ = math::transpose(
+        float2x4(float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f)));
 
     /* The object should have an active layer. */
     BLI_assert(grease_pencil_->has_active_layer());
@@ -200,6 +206,8 @@ struct PaintOperationExecutor {
     const float start_radius = this->radius_from_input_sample(start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
+
+    self.texture_space_ = texture_space_;
 
     self.screen_space_coords_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -401,6 +409,8 @@ struct PaintOperationExecutor {
     /* Active smoothing is done in a window at the end of the new stroke. */
     this->active_smoothing(
         self, points, points.index_range().drop_front(self.active_smooth_index_));
+
+    set_texture_matrix(curves, curves.curves_num() - 1, texture_space_);
   }
 
   void execute(PaintOperation &self, const InputSample &extension_sample)
@@ -522,6 +532,8 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
     curves.resize(curves.points_num() - points_to_remove, curves.curves_num());
     curves.offsets_for_write().last() = curves.points_num();
   }
+
+  set_texture_matrix(curves, curves.curves_num() - 1, this->texture_space_);
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)

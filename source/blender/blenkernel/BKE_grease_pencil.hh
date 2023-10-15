@@ -780,6 +780,33 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
 
+/*
+ * Returns the matrix that transforms from a 3D point in local-space to a 2D point in
+ * texture-space for the stroke `curve_i`
+ */
+blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves, int curve_i);
+
+/*
+ * Sets the matrix the
+ */
+void set_texture_matrix(blender::bke::CurvesGeometry &curves,
+                        int curve_i,
+                        const blender::float4x2);
+
+/*
+ * Copys the texture matrics from `src` to `dst` for the strokes in `dst_to_src_curve`
+ */
+void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
+                              blender::bke::CurvesGeometry &dst,
+                              const blender::Span<int> dst_to_src_curve);
+void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
+                              blender::bke::CurvesGeometry &dst,
+                              const blender::IndexMask &dst_to_src_curve);
+
+void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
+                                  int curve_i,
+                                  const blender::float3x2 textmat);
+
 int BKE_grease_pencil_object_material_index_get(Object *ob, Material *ma);
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
 Material *BKE_grease_pencil_object_material_new(Main *bmain,
