@@ -172,6 +172,12 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
   matpass.gpumat = inst_.shaders.material_shader_get(
       blender_mat, ntree, pipeline_type, geometry_type, use_deferred_compilation);
 
+  const bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_OCCUPANCY, MAT_PIPE_VOLUME_MATERIAL);
+  const bool is_forward = ELEM(pipeline_type,
+                               MAT_PIPE_FORWARD,
+                               MAT_PIPE_FORWARD_PREPASS,
+                               MAT_PIPE_FORWARD_PREPASS_VELOCITY);
+
   switch (GPU_material_status(matpass.gpumat)) {
     case GPU_MAT_SUCCESS: {
       /* Determine optimization status for remaining compilations counter. */
@@ -183,8 +189,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
-      blender_mat = (geometry_type == MAT_GEOM_VOLUME_OBJECT) ? BKE_material_default_volume() :
-                                                                BKE_material_default_surface();
+      blender_mat = (is_volume) ? BKE_material_default_volume() : BKE_material_default_surface();
       matpass.gpumat = inst_.shaders.material_shader_get(
           blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
       break;
@@ -203,11 +208,6 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     inst_.sampling.reset();
   }
 
-  const bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_OCCUPANCY, MAT_PIPE_VOLUME_MATERIAL);
-  const bool is_forward = ELEM(pipeline_type,
-                               MAT_PIPE_FORWARD,
-                               MAT_PIPE_FORWARD_PREPASS,
-                               MAT_PIPE_FORWARD_PREPASS_VELOCITY);
   const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
   if (is_volume || (is_forward && is_transparent)) {
     /* Sub pass is generated later. */
