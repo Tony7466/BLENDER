@@ -4124,7 +4124,6 @@ std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDat
 
 std::optional<eNodeSocketDatatype> custom_data_type_to_node_data_type(eCustomDataType type)
 {
-
   switch (type) {
     case CD_PROP_FLOAT:
       return SOCK_FLOAT;
