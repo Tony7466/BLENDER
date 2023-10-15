@@ -43,6 +43,7 @@ extern GpencilModifierTypeInfo modifierType_Gpencil_Lineart;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Dash;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Shrinkwrap;
 extern GpencilModifierTypeInfo modifierType_Gpencil_Envelope;
+extern GpencilModifierTypeInfo modifierType_Gpencil_SurDeform;
 
 /* `MOD_gpencil_legacy_util.cc` */
 

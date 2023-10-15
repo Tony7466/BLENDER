@@ -92,7 +92,12 @@ static const EnumPropertyItem rna_enum_keyframe_type_items[] = {
      ICON_KEYTYPE_JITTER_VEC,
      "Jitter",
      "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
-    {0, nullptr, 0, nullptr, nullptr},
+    {BEZT_KEYTYPE_SURDEFBOUND,
+     "SURDEFBOUND",
+     ICON_KEYTYPE_JITTER_VEC,
+     "Surface def bound",
+     "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+    {0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
@@ -122,7 +127,12 @@ static const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
      ICON_KEYTYPE_JITTER_VEC,
      "Jitter",
      "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
-    {0, nullptr, 0, nullptr, nullptr},
+    {BEZT_KEYTYPE_SURDEFBOUND,
+     "SURDEFBOUND",
+     ICON_KEYTYPE_JITTER_VEC,
+     "Surface def bound",
+     "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+    {0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {

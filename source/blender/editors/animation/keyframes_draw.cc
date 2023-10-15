@@ -62,6 +62,9 @@ void draw_keyframe_shape(float x,
     case BEZT_KEYTYPE_KEYFRAME: /* must be full size */
       break;
 
+    case BEZT_KEYTYPE_SURDEFBOUND: /* surface defrom GP bound - full size */
+      break;
+
     case BEZT_KEYTYPE_BREAKDOWN: /* slightly smaller than normal keyframe */
       size *= 0.85f;
       break;
@@ -98,6 +101,9 @@ void draw_keyframe_shape(float x,
         break;
       case BEZT_KEYTYPE_MOVEHOLD: /* similar to traditional keyframes, but different... */
         UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_MOVEHOLD_SELECT : TH_KEYTYPE_MOVEHOLD, fill_col);
+        break;
+      case BEZT_KEYTYPE_SURDEFBOUND: /* surface defrom GP bound */
+        UI_GetThemeColor4ubv(TH_TIME_SCRUB_BACKGROUND, fill_col);
         break;
       case BEZT_KEYTYPE_KEYFRAME: /* traditional yellowish frames (default theme) */
       default:

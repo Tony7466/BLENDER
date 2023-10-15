@@ -24,6 +24,7 @@
 #include "object_intern.h"
 
 #include "MOD_gpencil_legacy_lineart.h"
+#include "MOD_gpencil_surdeform_header.h"
 
 /* ************************** registration **********************************/
 
@@ -161,6 +162,7 @@ void ED_operatortypes_object()
 
   /* grease pencil line art */
   WM_operatortypes_lineart();
+  WM_operatortypes_gpencilsurdeform();
 
   /* Shader FX. */
   WM_operatortype_append(OBJECT_OT_shaderfx_add);
