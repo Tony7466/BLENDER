@@ -663,6 +663,14 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     }
   }
 
+  for (bke::GeometryComponent::Type type : output_geometry.gather_component_types(true, true)) {
+    bke::GeometryComponent &component = output_geometry.get_component_for_write(type);
+    if (std::optional<bke::MutableAttributeAccessor> attributes = component.attributes_for_write())
+    {
+      attributes->remove_anonymous();
+    }
+  }
+
   return output_geometry;
 }
 
