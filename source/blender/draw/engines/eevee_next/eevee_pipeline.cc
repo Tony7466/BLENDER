@@ -17,7 +17,6 @@
 #include "eevee_shadow.hh"
 
 #include "draw_common.hh"
-#include <iostream>
 
 namespace blender::eevee {
 

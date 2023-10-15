@@ -243,12 +243,27 @@ Material &MaterialModule::material_sync(Object *ob,
 {
   if (geometry_type == MAT_GEOM_VOLUME_OBJECT) {
     MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME_MATERIAL);
-    return material_map_.lookup_or_add_cb(material_key, [&]() {
+    Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {
       Material mat = {};
+      mat.volume_occupancy = material_pass_get(
+          ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_MESH);
       mat.volume_material = material_pass_get(
           ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
       return mat;
     });
+
+    /* Volume needs to use one sub pass per object to support layering. */
+    VolumeLayer *layer = inst_.pipelines.volume.register_and_get_layer(ob);
+    if (layer) {
+      mat.volume_occupancy.sub_pass = layer->occupancy_add(mat.volume_occupancy.gpumat);
+      mat.volume_material.sub_pass = layer->material_add(mat.volume_material.gpumat);
+    }
+    else {
+      /* Culled volumes. */
+      mat.volume_occupancy.sub_pass = nullptr;
+      mat.volume_material.sub_pass = nullptr;
+    }
+    return mat;
   }
 
   eMaterialPipeline surface_pipe = (blender_mat->blend_method == MA_BM_BLEND) ? MAT_PIPE_FORWARD :
