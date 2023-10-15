@@ -179,14 +179,17 @@ void blf_glyph_cache_clear(struct FontBLF *font);
  */
 struct GlyphBLF *blf_glyph_ensure(struct FontBLF *font, struct GlyphCacheBLF *gc, uint charcode);
 
-void *blf_glyphslot_ensure_outline(struct FontBLF *font, uint charcode);
-
 #ifdef BLF_SUBPIXEL_AA
 struct GlyphBLF *blf_glyph_ensure_subpixel(struct FontBLF *font,
                                            struct GlyphCacheBLF *gc,
                                            struct GlyphBLF *g,
                                            int32_t pen_x);
 #endif
+
+float blf_character_to_curves(FontBLF *font,
+                              unsigned int unicode,
+                              struct ListBase *nurbsbase,
+                              const float scale);
 
 void blf_glyph_free(struct GlyphBLF *g);
 void blf_glyph_draw(

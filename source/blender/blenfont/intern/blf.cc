@@ -158,15 +158,6 @@ bool BLF_has_glyph(int fontid, uint unicode)
   return false;
 }
 
-void *BLF_get_glyphslot(int fontid, unsigned int unicode)
-{
-  FontBLF *font = blf_get(fontid);
-  if (font) {
-    return blf_glyphslot_ensure_outline(font, unicode);
-  }
-  return nullptr;
-}
-
 void *BLF_get_face(int fontid)
 {
   FontBLF *font = blf_get(fontid);
@@ -175,6 +166,21 @@ void *BLF_get_face(int fontid)
     return font->face;
   }
   return nullptr;
+}
+
+float BLF_character_to_curves(int fontid,
+                              unsigned int unicode,
+                              ListBase *nurbsbase,
+                              const float scale)
+{
+
+
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return 0.0f;
+  }
+
+  return blf_character_to_curves(font, unicode, nurbsbase, scale);
 }
 
 bool BLF_is_loaded(const char *filepath)
