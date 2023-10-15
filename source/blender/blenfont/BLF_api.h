@@ -77,8 +77,7 @@ char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT A
  */
 bool BLF_has_glyph(int fontid, unsigned int unicode) ATTR_WARN_UNUSED_RESULT;
 
-/* Access to internals for vfont. */
-void *BLF_get_face(int fontid) ATTR_WARN_UNUSED_RESULT;
+void BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
 
 float BLF_character_to_curves(int fontid,
                               unsigned int unicode,

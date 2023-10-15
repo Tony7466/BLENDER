@@ -158,14 +158,43 @@ bool BLF_has_glyph(int fontid, uint unicode)
   return false;
 }
 
-void *BLF_get_face(int fontid)
+void BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale)
 {
   FontBLF *font = blf_get(fontid);
-  if (font) {
-    blf_ensure_face(font);
-    return font->face;
+  if (!font) {
+    return;
   }
-  return nullptr;
+
+  blf_ensure_face(font);
+
+  /* This is really ugly for now. Copied without change from vfontdata_freetype.cc */
+
+  /* Blender default BFont is not "complete". */
+  const bool complete_font = (font->face->ascender != 0) && (font->face->descender != 0) &&
+                             (font->face->ascender != font->face->descender);
+
+  if (complete_font) {
+    /* We can get descender as well, but we simple store descender in relation to the ascender.
+     * Also note that descender is stored as a negative number. */
+    *ascend_ratio = float(font->face->ascender) / (font->face->ascender - font->face->descender);
+  }
+  else {
+    *ascend_ratio = 0.8f;
+    *em_ratio = 1.0f;
+  }
+
+  /* Adjust font size */
+  if (font->face->bbox.yMax != font->face->bbox.yMin) {
+    *scale = float(1.0 / double(font->face->bbox.yMax - font->face->bbox.yMin));
+
+    if (complete_font) {
+      *em_ratio = float(font->face->ascender - font->face->descender) /
+                  (font->face->bbox.yMax - font->face->bbox.yMin);
+    }
+  }
+  else {
+    *scale = 1.0f / 1000.0f;
+  }
 }
 
 float BLF_character_to_curves(int fontid,
@@ -173,13 +202,10 @@ float BLF_character_to_curves(int fontid,
                               ListBase *nurbsbase,
                               const float scale)
 {
-
-
   FontBLF *font = blf_get(fontid);
   if (!font) {
     return 0.0f;
   }
-
   return blf_character_to_curves(font, unicode, nurbsbase, scale);
 }
 

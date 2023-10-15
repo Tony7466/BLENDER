@@ -12,9 +12,6 @@
  * Code that uses exotic character maps is present but commented out.
  */
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
 #include "MEM_guardedalloc.h"
 
 #include "BLF_api.h"
@@ -41,47 +38,14 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
     return nullptr;
   }
 
-  FT_Face face = static_cast<FT_Face>(BLF_get_face(fontid));
-  if (!face) {
-    BLF_unload_id(fontid);
-    return nullptr;
-  }
-
   /* allocate blender font */
   VFontData *vfd = static_cast<VFontData *>(MEM_callocN(sizeof(*vfd), "FTVFontData"));
 
   /* Get the font name. */
-  if (face->family_name) {
-    STRNCPY(vfd->name, BLF_display_name(fontid));
-    BLI_str_utf8_invalid_strip(vfd->name, strlen(vfd->name));
-  }
+  STRNCPY(vfd->name, BLF_display_name(fontid));
+  BLI_str_utf8_invalid_strip(vfd->name, ARRAY_SIZE(vfd->name));
 
-  /* Blender default BFont is not "complete". */
-  const bool complete_font = (face->ascender != 0) && (face->descender != 0) &&
-                             (face->ascender != face->descender);
-
-  if (complete_font) {
-    /* We can get descender as well, but we simple store descender in relation to the ascender.
-     * Also note that descender is stored as a negative number. */
-    vfd->ascender = float(face->ascender) / (face->ascender - face->descender);
-  }
-  else {
-    vfd->ascender = 0.8f;
-    vfd->em_height = 1.0f;
-  }
-
-  /* Adjust font size */
-  if (face->bbox.yMax != face->bbox.yMin) {
-    vfd->scale = float(1.0 / double(face->bbox.yMax - face->bbox.yMin));
-
-    if (complete_font) {
-      vfd->em_height = float(face->ascender - face->descender) /
-                       (face->bbox.yMax - face->bbox.yMin);
-    }
-  }
-  else {
-    vfd->scale = 1.0f / 1000.0f;
-  }
+  BLF_get_vfont_metrics(fontid, &vfd->ascender, &vfd->em_height, &vfd->scale);
 
   vfd->characters = BLI_ghash_int_new_ex(__func__, 255);
 
