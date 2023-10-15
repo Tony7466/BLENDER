@@ -104,11 +104,21 @@ class GeoNodeExecParams {
           identifier);
       return value_or_field.as_field();
     }
+    else if constexpr (std::is_same_v<std::decay_t<T>, GField>) {
+      const bNodeSocket &input_socket = node_.input_by_identifier(identifier);
+      const CPPType &value_type = *input_socket.typeinfo->base_cpp_type;
+      GField field;
+      bke::attribute_math::convert_to_static_type(value_type, [&](auto dummy) {
+        using T = decltype(dummy);
+        field = this->extract_input<ValueOrField<T>>(identifier).as_field();
+      });
+      return std::move(field);
+    }
     else {
+      const int index = this->get_input_index(identifier);
 #ifdef DEBUG
       this->check_input_access(identifier, &CPPType::get<T>());
 #endif
-      const int index = this->get_input_index(identifier);
       T value = params_.extract_input<T>(index);
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
