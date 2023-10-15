@@ -315,16 +315,16 @@ void BKE_spacedata_freelist(ListBase *lb)
 static void panel_list_copy(ListBase *newlb, const ListBase *lb)
 {
   BLI_listbase_clear(newlb);
-  BLI_duplicatelist(newlb, lb);
 
-  /* copy panel pointers */
-  Panel *new_panel = static_cast<Panel *>(newlb->first);
-  Panel *panel = static_cast<Panel *>(lb->first);
-  for (; new_panel; new_panel = new_panel->next, panel = panel->next) {
+  LISTBASE_FOREACH (const Panel *, old_panel, lb) {
+    Panel *new_panel = BKE_panel_new(old_panel->type);
+    Panel_Runtime *new_runtime = new_panel->runtime;
+    *new_panel = *old_panel;
+    new_panel->runtime = new_runtime;
     new_panel->activedata = nullptr;
     new_panel->drawname = nullptr;
-    memset(&new_panel->runtime, 0x0, sizeof(new_panel->runtime));
-    panel_list_copy(&new_panel->children, &panel->children);
+    BLI_addtail(newlb, new_panel);
+    panel_list_copy(&new_panel->children, &old_panel->children);
   }
 }
 
@@ -492,7 +492,9 @@ Panel *BKE_panel_new(PanelType *panel_type)
   Panel *panel = MEM_cnew<Panel>(__func__);
   panel->runtime = MEM_new<Panel_Runtime>(__func__);
   panel->type = panel_type;
-  STRNCPY(panel->panelname, panel_type->idname);
+  if (panel_type) {
+    STRNCPY(panel->panelname, panel_type->idname);
+  }
   return panel;
 }
 
