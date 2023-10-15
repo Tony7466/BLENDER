@@ -184,14 +184,15 @@ namespace blender::nodes::node_geo_simulation_input_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *node = b.node_or_null();
   b.add_output<decl::Float>("Delta Time");
-  if (node == nullptr) {
+
+  const bNode *node = b.node_or_null();
+  const bNodeTree *node_tree = b.tree_or_null();
+  if (ELEM(nullptr, node, node_tree)) {
     return;
   }
-  const bNodeTree &node_tree = *b.tree_or_null();
 
-  const bNode *output_node = node_tree.node_by_id(node_storage(*node).output_node_id);
+  const bNode *output_node = node_tree->node_by_id(node_storage(*node).output_node_id);
   if (!output_node) {
     return;
   }

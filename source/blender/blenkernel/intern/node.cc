@@ -1466,7 +1466,6 @@ static void node_free_type(void *nodetype_v)
 
 void nodeRegisterType(bNodeType *nt)
 {
-
   /* debug only: basic verification of registered types */
   BLI_assert(nt->idname[0] != '\0');
   BLI_assert(nt->poll != nullptr);
@@ -3268,6 +3267,8 @@ void node_free_node(bNodeTree *ntree, bNode *node)
   }
 
   if (node->runtime->declaration) {
+    /* Only free if this declaration is not shared with the node type, which can happen if it does
+     * not depend on any context. */
     if (node->runtime->declaration != node->typeinfo->static_declaration) {
       delete node->runtime->declaration;
     }
@@ -3737,7 +3738,7 @@ bool nodeDeclarationEnsureOnOutdatedNode(bNodeTree *ntree, bNode *node)
   }
   if (node->typeinfo->declare) {
     if (node->typeinfo->static_declaration) {
-      if (!node->typeinfo->static_declaration->is_node_dependent) {
+      if (!node->typeinfo->static_declaration->is_context_dependent) {
         node->runtime->declaration = node->typeinfo->static_declaration;
         return true;
       }

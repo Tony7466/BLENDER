@@ -363,11 +363,20 @@ typedef struct bNodeType {
   NodeGeometryExecFunction geometry_node_execute;
 
   /**
-   * Declares which sockets and panels the node has.
+   * Declares which sockets and panels the node has. It has to be able to generate a declaration
+   * with and without a specific node context. If the declaration depends on the node, but the node
+   * is not provided, then the declaration should be generated as much as possible and everything
+   * that depends on the node context should be skipped.
    */
   NodeDeclareFunction declare;
 
-  /* Declaration to be used when it is not dynamic. */
+  /**
+   * Declaration of the node outside of any context. If the node declaration is never dependent on
+   * the node context, this declaration is also shared with the corresponding node instances.
+   * Otherwise, it mainly allows checking what sockets a node will have, without having to create
+   * the node. In this case, the static declaration is mostly just a hint, and does not have to
+   * match with the final node.
+   */
   NodeDeclarationHandle *static_declaration;
 
   /**

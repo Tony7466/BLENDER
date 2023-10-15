@@ -579,7 +579,7 @@ static void refresh_node(bNodeTree &ntree,
 void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
 {
   if (node.typeinfo->declare) {
-    if (node.typeinfo->static_declaration->is_node_dependent) {
+    if (node.typeinfo->static_declaration->is_context_dependent) {
       if (!node.runtime->declaration) {
         node.runtime->declaration = new NodeDeclaration();
       }

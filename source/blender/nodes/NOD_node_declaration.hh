@@ -469,7 +469,10 @@ class NodeDeclaration {
    * outputs | buttons | inputs order. Panels are only supported when using custom socket order. */
   bool use_custom_socket_order = false;
 
-  bool is_node_dependent = false;
+  /**
+   * True if any context was used to build this declaration.
+   */
+  bool is_context_dependent = false;
 
   friend NodeDeclarationBuilder;
 
@@ -506,12 +509,13 @@ class NodeDeclarationBuilder {
 
   const bNode *node_or_null() const
   {
-    declaration_.is_node_dependent = true;
+    declaration_.is_context_dependent = true;
     return node_;
   }
 
   const bNodeTree *tree_or_null() const
   {
+    declaration_.is_context_dependent = true;
     return ntree_;
   }
 

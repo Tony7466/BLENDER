@@ -22,16 +22,16 @@ NODE_STORAGE_FUNCS(NodeGeometryRepeatInput);
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *node = b.node_or_null();
-
   b.add_input<decl::Int>("Iterations").min(0).default_value(1);
-  if (node == nullptr) {
+
+  const bNode *node = b.node_or_null();
+  const bNodeTree *tree = b.tree_or_null();
+  if (ELEM(nullptr, node, tree)) {
     return;
   }
-  const bNodeTree &tree = *b.tree_or_null();
 
   const NodeGeometryRepeatInput &storage = node_storage(*node);
-  const bNode *output_node = tree.node_by_id(storage.output_node_id);
+  const bNode *output_node = tree->node_by_id(storage.output_node_id);
   if (output_node == nullptr) {
     return;
   }
