@@ -21,8 +21,6 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math_geom.h"
-#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
@@ -30,7 +28,6 @@
 #include "BKE_vfont.h"
 #include "BKE_vfontdata.h"
 
-#include "DNA_curve_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_vfont_types.h"
 
@@ -39,23 +36,23 @@ extern int builtin_font_size;
 
 VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 {
-  int font_id = BLF_load_mem("FTVFont", static_cast<const unsigned char *>(pf->data), pf->size);
-  if (font_id == -1) {
+  int fontid = BLF_load_mem("FTVFont", static_cast<const unsigned char *>(pf->data), pf->size);
+  if (fontid == -1) {
     return nullptr;
   }
 
-  FT_Face face = static_cast<FT_Face>(BLF_get_face(font_id));
+  FT_Face face = static_cast<FT_Face>(BLF_get_face(fontid));
   if (!face) {
-    BLF_unload_id(font_id);
+    BLF_unload_id(fontid);
     return nullptr;
   }
 
   /* allocate blender font */
   VFontData *vfd = static_cast<VFontData *>(MEM_callocN(sizeof(*vfd), "FTVFontData"));
 
-  /* Get the name. */
+  /* Get the font name. */
   if (face->family_name) {
-    SNPRINTF(vfd->name, "%s %s", face->family_name, face->style_name);
+    STRNCPY(vfd->name, BLF_display_name(fontid));
     BLI_str_utf8_invalid_strip(vfd->name, strlen(vfd->name));
   }
 
@@ -88,7 +85,7 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 
   vfd->characters = BLI_ghash_int_new_ex(__func__, 255);
 
-  BLF_unload_id(font_id);
+  BLF_unload_id(fontid);
 
   return vfd;
 }

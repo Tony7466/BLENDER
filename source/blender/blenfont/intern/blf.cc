@@ -949,6 +949,16 @@ void BLF_draw_buffer(int fontid, const char *str, const size_t str_len)
   BLF_draw_buffer_ex(fontid, str, str_len, nullptr);
 }
 
+char *BLF_display_name(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return nullptr;
+  }
+
+  return blf_display_name(font);
+}
+
 char *BLF_display_name_from_file(const char *filepath)
 {
   /* While listing font directories this function can be called simultaneously from a greater
