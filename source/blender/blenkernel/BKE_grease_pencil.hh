@@ -23,6 +23,7 @@
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
+#include "DNA_object_types.h" /* #BoundBox. */
 
 struct Main;
 struct Depsgraph;

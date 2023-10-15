@@ -66,8 +66,8 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   const std::optional<BoundBox> bbox = BKE_object_boundbox_get(ob);
   /* Convert bbox to matrix */
   float mat[4][4], size[3], center[3];
-  BKE_boundbox_calc_size_aabb(&*bbox, size);
-  BKE_boundbox_calc_center_aabb(&*bbox, center);
+  BKE_boundbox_calc_size_aabb(&bbox.value(), size);
+  BKE_boundbox_calc_center_aabb(&bbox.value(), center);
   unit_m4(mat);
   copy_v3_v3(mat[3], center);
   /* Avoid division by 0.0 later. */

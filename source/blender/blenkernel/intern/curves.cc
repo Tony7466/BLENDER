@@ -174,7 +174,6 @@ BoundBox BKE_curves_boundbox_get(Object *ob)
 {
   using namespace blender;
   BLI_assert(ob->type == OB_CURVES);
-
   const Curves *curves_id = static_cast<const Curves *>(ob->data);
   const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 

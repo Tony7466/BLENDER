@@ -15,6 +15,7 @@
 #include "BLI_sys_types.h"
 
 #include "DNA_object_enums.h"
+#include "DNA_object_types.h" /* #BoundBox. */
 #include "DNA_userdef_enums.h"
 
 struct Base;

@@ -3559,7 +3559,6 @@ void BKE_boundbox_minmax(const BoundBox *bb,
 
 std::optional<BoundBox> BKE_object_boundbox_get(Object *ob)
 {
-
   switch (ob->type) {
     case OB_MESH:
       return BKE_mesh_boundbox_get(ob);

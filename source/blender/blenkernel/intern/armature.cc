@@ -2964,7 +2964,7 @@ void BKE_pchan_minmax(const Object *ob,
         BKE_object_minmax_empty_drawtype(ob_custom, min, max))
     {
       bb_custom.emplace();
-      BKE_boundbox_init_from_minmax(&*bb_custom, min, max);
+      BKE_boundbox_init_from_minmax(&bb_custom.value(), min, max);
     }
     else {
       bb_custom = BKE_object_boundbox_get(ob_custom);
@@ -2982,7 +2982,7 @@ void BKE_pchan_minmax(const Object *ob,
                  pchan->custom_translation[1],
                  pchan->custom_translation[2]);
     mul_m4_series(mat, ob->object_to_world, tmp, rmat, smat);
-    BKE_boundbox_minmax(&*bb_custom, mat, r_min, r_max);
+    BKE_boundbox_minmax(&bb_custom.value(), mat, r_min, r_max);
   }
   else {
     float vec[3];
