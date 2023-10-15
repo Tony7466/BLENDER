@@ -115,10 +115,10 @@ class GeoNodeExecParams {
       return std::move(field);
     }
     else {
-      const int index = this->get_input_index(identifier);
 #ifdef DEBUG
       this->check_input_access(identifier, &CPPType::get<T>());
 #endif
+      const int index = this->get_input_index(identifier);
       T value = params_.extract_input<T>(index);
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
