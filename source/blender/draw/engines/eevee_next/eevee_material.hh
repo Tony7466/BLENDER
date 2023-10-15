@@ -32,7 +32,7 @@ enum eMaterialPipeline {
   MAT_PIPE_DEFERRED_PREPASS_VELOCITY,
   MAT_PIPE_FORWARD_PREPASS,
   MAT_PIPE_FORWARD_PREPASS_VELOCITY,
-  MAT_PIPE_VOLUME_PREPASS,
+  MAT_PIPE_VOLUME_MATERIAL,
   MAT_PIPE_VOLUME_OCCUPANCY,
   MAT_PIPE_SHADOW,
   MAT_PIPE_CAPTURE,
@@ -68,6 +68,7 @@ static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
 static inline uint64_t shader_uuid_from_material_type(eMaterialPipeline pipeline_type,
                                                       eMaterialGeometry geometry_type)
 {
+  BLI_assert(geometry_type < (1 << 4));
   return geometry_type | (pipeline_type << 4);
 }
 
@@ -228,6 +229,7 @@ struct MaterialPass {
 
 struct Material {
   bool is_alpha_blend_transparent;
+  bool is_volume;
   MaterialPass shadow;
   MaterialPass shading;
   MaterialPass prepass;
@@ -237,7 +239,7 @@ struct Material {
   MaterialPass planar_probe_prepass;
   MaterialPass planar_probe_shading;
   MaterialPass volume_occupancy;
-  MaterialPass volume_prepass;
+  MaterialPass volume_material;
 };
 
 struct MaterialArray {

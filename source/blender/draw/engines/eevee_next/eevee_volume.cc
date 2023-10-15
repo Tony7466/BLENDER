@@ -22,54 +22,9 @@
 
 namespace blender::eevee {
 
-VolumeModule::GridAABB::GridAABB(Object *ob, const Camera &camera, const VolumesInfoData &data)
-{
-  /* Returns the unified volume grid cell corner of a world space coordinate. */
-  auto to_global_grid_coords = [&](float3 wP) -> int3 {
-    const float4x4 &view_matrix = camera.data_get().viewmat;
-    const float4x4 &projection_matrix = camera.data_get().winmat;
-
-    float3 ndc_coords = math::project_point(projection_matrix * view_matrix, wP);
-    ndc_coords = (ndc_coords * 0.5f) + float3(0.5f);
-
-    float3 grid_coords = screen_to_volume(projection_matrix,
-                                          data.depth_near,
-                                          data.depth_far,
-                                          data.depth_distribution,
-                                          data.coord_scale,
-                                          ndc_coords);
-    /* Round to nearest grid corner. */
-    return int3(grid_coords * float3(data.tex_size) + 0.5);
-  };
-
-  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
-  min = int3(INT32_MAX);
-  max = int3(INT32_MIN);
-
-  for (float3 l_corner : bbox.vec) {
-    float3 w_corner = math::transform_point(float4x4(ob->object_to_world), l_corner);
-    /* Note that this returns the nearest cell corner coordinate.
-     * So sub-froxel AABB will effectively return the same coordinate
-     * for each corner (making it empty and skipped) unless it
-     * cover the center of the froxel. */
-    math::min_max(to_global_grid_coords(w_corner), min, max);
-  }
-}
-
-bool VolumeModule::GridAABB::is_empty() const
-{
-  return math::reduce_min(max - min) <= 0;
-}
-
-VolumeModule::GridAABB VolumeModule::GridAABB::intersect(const GridAABB &other) const
-{
-  return {math::min(this->max, other.max), math::max(this->min, other.min)};
-}
-
 void VolumeModule::init()
 {
   enabled_ = false;
-  subpass_aabbs_.clear();
 
   const Scene *scene_eval = inst_.scene;
 
@@ -143,72 +98,10 @@ void VolumeModule::begin_sync()
   enabled_ = inst_.world.has_volume();
 }
 
-void VolumeModule::sync_object(Object *ob,
-                               ObjectHandle & /*ob_handle*/,
-                               ResourceHandle res_handle,
-                               MaterialPass *material_pass /*=nullptr*/)
-{
-  float3 size = math::to_scale(float4x4(ob->object_to_world));
-  /* Check if any of the axes have 0 length. (see #69070) */
-  const float epsilon = 1e-8f;
-  if (size.x < epsilon || size.y < epsilon || size.z < epsilon) {
-    return;
-  }
-
-  if (material_pass == nullptr) {
-    Material material = inst_.materials.material_get(
-        ob, false, VOLUME_MATERIAL_NR, MAT_GEOM_VOLUME_OBJECT);
-    material_pass = &material.volume_prepass;
-  }
-
-  /* If shader failed to compile or is currently compiling. */
-  if (material_pass->gpumat == nullptr) {
-    return;
-  }
-
-  GPUShader *shader = GPU_material_get_shader(material_pass->gpumat);
-  if (shader == nullptr) {
-    return;
-  }
-
-  GridAABB object_aabb(ob, inst_.camera, data_);
-  /* Remember that these are cells corners, so this extents to `tex_size`. */
-  GridAABB view_aabb(int3(0), data_.tex_size);
-  if (object_aabb.intersect(view_aabb).is_empty()) {
-    /* Skip invisible object with respect to raster grid and bounds density. */
-    return;
-  }
-
-  PassMain::Sub *object_pass = volume_sub_pass(
-      *material_pass->sub_pass, inst_.scene, ob, material_pass->gpumat);
-  if (object_pass) {
-    enabled_ = true;
-
-    /* Add a barrier at the start of a subpass or when 2 volumes overlaps. */
-    if (!subpass_aabbs_.contains_as(shader) == false) {
-      object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
-      subpass_aabbs_.add(shader, {object_aabb});
-    }
-    else {
-      Vector<GridAABB> &aabbs = subpass_aabbs_.lookup(shader);
-      for (GridAABB &other_aabb : aabbs) {
-        if (object_aabb.intersect(other_aabb).is_empty() == false) {
-          object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
-          aabbs.clear();
-          break;
-        }
-      }
-      aabbs.append(object_aabb);
-    }
-
-    object_pass->push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    object_pass->push_constant("grid_coords_min", object_aabb.min);
-    object_pass->dispatch(math::divide_ceil(object_aabb.extent(), int3(VOLUME_GROUP_SIZE)));
-  }
-}
-
 void VolumeModule::end_sync()
 {
+  enabled_ = enabled_ || inst_.pipelines.volume.is_enabled();
+
   if (!enabled_) {
     occupancy_tx_.free();
     prop_scattering_tx_.free();
@@ -318,9 +211,10 @@ void VolumeModule::draw_prepass(View &view)
   DRW_stats_group_start("Volumes");
   inst_.pipelines.world_volume.render(view);
 
-  occupancy_tx_.clear(uint4(0u));
-  occupancy_fb_.bind();
-  inst_.pipelines.volume.render(view);
+  if (inst_.pipelines.volume.is_enabled()) {
+    occupancy_fb_.bind();
+    inst_.pipelines.volume.render(view, occupancy_tx_);
+  }
   DRW_stats_group_end();
 }
 

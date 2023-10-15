@@ -461,7 +461,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
 
   std::stringstream vert_gen, frag_gen, comp_gen;
 
-  bool is_compute = pipeline_type == MAT_PIPE_VOLUME_PREPASS;
+  bool is_compute = pipeline_type == MAT_PIPE_VOLUME_MATERIAL;
 
   if (do_vertex_attrib_load) {
     vert_gen << global_vars.str() << attr_load.str();
@@ -616,7 +616,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                eMaterialGeometry geometry_type,
                                                bool deferred_compilation)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME_PREPASS);
+  bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
@@ -628,7 +628,7 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME_PREPASS);
+  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME_MATERIAL);
   bool defer_compilation = is_volume;
 
   eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME_WORLD : MAT_GEOM_WORLD;
@@ -650,7 +650,7 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
 {
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME_PREPASS);
+  bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
   GPUMaterial *gpumat = GPU_material_from_nodetree(nullptr,
                                                    nullptr,

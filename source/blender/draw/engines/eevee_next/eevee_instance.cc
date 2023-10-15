@@ -235,7 +235,7 @@ void Instance::object_sync(Object *ob)
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_VOLUME:
-        volume.sync_object(ob, ob_handle, res_handle);
+        sync.sync_volume(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle);
