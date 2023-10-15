@@ -362,17 +362,13 @@ typedef struct bNodeType {
   /* Execute a geometry node. */
   NodeGeometryExecFunction geometry_node_execute;
 
-  /* Declares which sockets the node has. */
-  NodeDeclareFunction declare;
   /**
-   * Declare which sockets the node has for declarations that aren't static per node type.
-   * In other words, defining this callback means that different nodes of this type can have
-   * different declarations and different sockets.
+   * Declares which sockets and panels the node has.
    */
-  NodeDeclareDynamicFunction declare_dynamic;
+  NodeDeclareFunction declare;
 
   /* Declaration to be used when it is not dynamic. */
-  NodeDeclarationHandle *fixed_declaration;
+  NodeDeclarationHandle *static_declaration;
 
   /**
    * Add to the list of search names and operations gathered by node link drag searching.
