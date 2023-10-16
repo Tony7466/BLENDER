@@ -829,6 +829,11 @@ class NodeTreeMainUpdater {
 
   void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src)
   {
+    if (!dst.enum_ref.is_valid()) {
+      /* Enum ref already has a conflict. */
+      return;
+    }
+
     if (!src.enum_ref.is_valid()) {
       /* Invalid if any source enum ref is invalid. */
       dst.enum_ref.set_invalid();
