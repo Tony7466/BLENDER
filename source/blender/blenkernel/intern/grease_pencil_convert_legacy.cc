@@ -63,6 +63,49 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
   return textmat;
 }
 
+/*
+ * This gets the legacy local-space to stroke-space matrix.
+ */
+blender::float4x2 get_legacy_local_to_stroke_matrix(bGPDstroke *gps)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  const bGPDspoint *points = gps->points;
+  const int totpoints = gps->totpoints;
+
+  if (totpoints < 2) {
+    return float4x2::identity();
+  }
+
+  const bGPDspoint *point0 = &points[0];
+  const bGPDspoint *point1 = &points[1];
+  const bGPDspoint *point3 = &points[int(totpoints * 0.75f)];
+
+  const float3 pt0 = float3(point0->x, point0->y, point0->z);
+  const float3 pt1 = float3(point1->x, point1->y, point1->z);
+  const float3 pt3 = float3(point3->x, point3->y, point3->z);
+
+  /* Local X axis (p0 -> p1) */
+  const float3 locx = normalize(pt1 - pt0);
+
+  /* Point vector at 3/4 */
+  const float3 v3 = totpoints == 2 ? pt3 * 0.001f : pt3;
+  const float3 loc3 = v3 - pt0;
+
+  /* Vector orthogonal to polygon plane. */
+  const float3 normal = cross(locx, loc3);
+
+  /* Local Y axis (cross to normal/x axis). */
+  const float3 locy = normalize(cross(normal, locx));
+
+  /* Get local space using first point as origin. */
+  const float4x2 mat = transpose(
+      float2x4(float4(locx, -dot(pt0, locx)), float4(locy, -dot(pt0, locy))));
+
+  return mat;
+}
+
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
                                                    GreasePencilDrawing &r_drawing)
 {
@@ -143,10 +186,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_fill_colors.span[stroke_i] = ColorGeometry4f(gps->vert_color_fill);
     stroke_materials.span[stroke_i] = gps->mat_nr;
 
-    const float3x2 textmat = convert_texture_to_matrix(
-        float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
-    set_stroke_to_texture_matrix(curves, stroke_i, textmat);
-
     /* Write point attributes. */
     IndexRange stroke_points_range = points_by_curve[stroke_i];
     if (stroke_points_range.size() == 0) {
@@ -188,6 +227,15 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
       stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
     }
+
+    const float3x2 textmat = convert_texture_to_matrix(
+        float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
+
+    const float4x2 strokemat = get_legacy_local_to_stroke_matrix(gps);
+    float4x3 strokemat4x3 = float4x3(strokemat);
+    strokemat4x3[2][2] = 0.0f;
+    strokemat4x3[3][2] = 1.0f;
+    set_texture_matrix(curves, stroke_i, textmat * strokemat4x3);
   }
 
   delta_times.finish();
