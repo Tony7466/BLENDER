@@ -1,1 +1,1 @@
-Referenced by issue #109194, Blender 3.6's window has 1/4 content area, 3/4 transparent area under Linux
+Referenced by issue #109194, Wayland: window decorations don't match window contents
