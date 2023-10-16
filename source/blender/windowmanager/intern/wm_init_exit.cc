@@ -441,8 +441,7 @@ static void wait_for_console_key()
   HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
 
   if (!ELEM(hConsoleInput, nullptr, INVALID_HANDLE_VALUE) &&
-      FlushConsoleInputBuffer(hConsoleInput))
-  {
+      FlushConsoleInputBuffer(hConsoleInput)) {
     for (;;) {
       INPUT_RECORD buffer;
       DWORD ignored;
