@@ -54,6 +54,7 @@ class ObjectModule {
   bool is_render_ = true;
   /** Forward vector used to sort gpencil objects. */
   float3 camera_forward_;
+  float3 camera_pos_;
   /** Scene current frame. */
   float current_frame_ = 0;
 
@@ -91,6 +92,7 @@ class ObjectModule {
   void begin_sync(Depsgraph *depsgraph, const View &main_view)
   {
     camera_forward_ = float3(main_view.viewinv()[2]);
+    camera_pos_ = float3(main_view.viewinv()[3]);
     current_frame_ = DEG_get_ctime(depsgraph);
 
     is_object_fb_needed_ = false;
@@ -103,6 +105,7 @@ class ObjectModule {
   void sync_grease_pencil(Manager &manager,
                           ObjectRef &object_ref,
                           Framebuffer &main_fb,
+                          TextureFromPool &depth_tx,
                           PassSortable &main_ps)
   {
     using namespace blender::bke::greasepencil;
@@ -188,6 +191,14 @@ class ObjectModule {
       object_subpass.draw(geom, handle);
     }
 
+    float4x4 plane_mat = get_object_plane_mat(object);
+    ResourceHandle handle_plane_mat = manager.resource_handle(plane_mat);
+    object_subpass.framebuffer_set(&DRW_viewport_framebuffer_list_get()->depth_only_fb);
+    object_subpass.state_set(DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_DEPTH);
+    object_subpass.shader_set(shaders_.static_shader_get(DEPTH_MERGE));
+    object_subpass.bind_texture("depthBuf", (object_has_vfx) ? nullptr : &depth_tx);
+    object_subpass.draw(DRW_cache_quad_get(), handle_plane_mat);
+
     /* TODO: Do object VFX. */
 #if 0
     if (object_has_vfx) {
@@ -248,6 +259,59 @@ class ObjectModule {
   bool scene_has_visible_gpencil_object() const
   {
     return objects_buf_.size() > 0;
+  }
+
+  float4x4 get_object_plane_mat(Object *object)
+  {
+    float plane_normal[3], plane_mat[4][4];
+    /* Find the normal most likely to represent the gpObject. */
+    /* TODO: This does not work quite well if you use
+     * strokes not aligned with the object axes. Maybe we could try to
+     * compute the minimum axis of all strokes. But this would be more
+     * computationally heavy and should go into the GPData evaluation. */
+    const BoundBox *bbox = BKE_object_boundbox_get(object);
+    /* Convert bbox to matrix */
+    float mat[4][4], size[3], center[3];
+    BKE_boundbox_calc_size_aabb(bbox, size);
+    BKE_boundbox_calc_center_aabb(bbox, center);
+    unit_m4(mat);
+    copy_v3_v3(mat[3], center);
+    /* Avoid division by 0.0 later. */
+    add_v3_fl(size, 1e-8f);
+    rescale_m4(mat, size);
+    /* BBox space to World. */
+    mul_m4_m4m4(mat, object->object_to_world, mat);
+    if (DRW_view_is_persp_get(nullptr)) {
+      /* BBox center to camera vector. */
+      sub_v3_v3v3(plane_normal, camera_pos_, mat[3]);
+    }
+    else {
+      copy_v3_v3(plane_normal, camera_forward_);
+    }
+    /* World to BBox space. */
+    invert_m4(mat);
+    /* Normalize the vector in BBox space. */
+    mul_mat3_m4_v3(mat, plane_normal);
+    normalize_v3(plane_normal);
+
+    transpose_m4(mat);
+    /* mat is now a "normal" matrix which will transform
+     * BBox space normal to world space. */
+    mul_mat3_m4_v3(mat, plane_normal);
+    normalize_v3(plane_normal);
+
+    /* Define a matrix that will be used to render a triangle to merge the depth of the rendered
+     * gpencil object with the rest of the scene. */
+    unit_m4(plane_mat);
+    copy_v3_v3(plane_mat[2], plane_normal);
+    orthogonalize_m4(plane_mat, 2);
+    mul_mat3_m4_v3(object->object_to_world, size);
+    float radius = len_v3(size);
+    mul_m4_v3(object->object_to_world, center);
+    rescale_m4(plane_mat, blender::float3{radius, radius, radius});
+    copy_v3_v3(plane_mat[3], center);
+
+    return float4x4(plane_mat);
   }
 };
 
