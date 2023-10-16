@@ -1374,7 +1374,17 @@ static void std_node_socket_draw(
       break;
     }
     case SOCK_ENUM: {
-      uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+      const bNodeSocketValueEnum *default_value =
+          sock->default_value_typed<bNodeSocketValueEnum>();
+      if (!default_value->enum_ref.is_valid()) {
+        uiItemL(layout, "Enum Conflict", ICON_ERROR);
+      }
+      else if (!default_value->enum_ref.is_set()) {
+        uiItemL(layout, "Enum Undefined", ICON_QUESTION);
+      }
+      else {
+        uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+      }
       break;
     }
     case SOCK_OBJECT: {
