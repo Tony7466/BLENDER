@@ -938,6 +938,11 @@ void UI_but_disable(uiBut *but, const char *disabled_hint);
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
 /**
+ * Set at hint that describes the expected value when empty.
+ */
+void UI_but_placeholder_set(uiBut *but, const char *placeholder_text) ATTR_NONNULL(1);
+
+/**
  * Special button case, only draw it when used actively, for outliner etc.
  *
  * Needed for temporarily rename buttons, such as in outliner or file-select,
@@ -1785,6 +1790,7 @@ typedef enum uiTooltipStyle {
   UI_TIP_STYLE_HEADER,     /* Header text. */
   UI_TIP_STYLE_MONO,       /* Mono-spaced text. */
   UI_TIP_STYLE_IMAGE,      /* Image field. */
+  UI_TIP_STYLE_SPACER,     /* Padding to separate sections. */
 } uiTooltipStyle;
 
 typedef enum uiTooltipColorID {
@@ -2779,7 +2785,8 @@ void uiItemFullR(uiLayout *layout,
                  int value,
                  eUI_Item_Flag flag,
                  const char *name,
-                 int icon);
+                 int icon,
+                 const char *placeholder = nullptr);
 /**
  * Use a wrapper function since re-implementing all the logic in this function would be messy.
  */

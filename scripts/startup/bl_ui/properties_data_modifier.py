@@ -57,13 +57,13 @@ class OBJECT_MT_modifier_add(ModifierAddMenu, Menu):
     def draw(self, context):
         layout = self.layout
         ob_type = context.object.type
-
         geometry_nodes_supported = ob_type in {'MESH', 'CURVE', 'CURVES',
-                                               'FONT', 'SURFACE', 'VOLUME', 'POINTCLOUD', 'GREASEPENCIL'}
+                                               'FONT', 'VOLUME', 'POINTCLOUD', 'GREASEPENCIL'}
 
         if layout.operator_context == 'EXEC_REGION_WIN':
             layout.operator_context = 'INVOKE_REGION_WIN'
-            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = "OBJECT_MT_modifier_add"
+            layout.operator("WM_OT_search_single_menu", text="Search...",
+                            icon='VIEWZOOM').menu_idname = "OBJECT_MT_modifier_add"
             layout.separator()
 
         layout.operator_context = 'EXEC_REGION_WIN'
