@@ -159,24 +159,29 @@ void NodeEnumDefinitionRef::set(bNodeTree &node_tree, bNode &node)
   this->node_identifier = node.identifier;
 }
 
+void NodeEnumDefinitionRef::set_invalid()
+{
+  *this = invalid_ref();
+}
+
 void NodeEnumDefinitionRef::reset()
 {
   this->node_tree = nullptr;
   this->node_identifier = -1;
 }
 
-bool NodeEnumDefinitionRef::is_undefined() const
-{
-  return *this == undefined();
-}
-
-bool NodeEnumDefinitionRef::is_valid() const
+bool NodeEnumDefinitionRef::is_set() const
 {
   if (this->node_tree == nullptr) {
     return false;
   }
   this->node_tree->ensure_topology_cache();
   return this->node_tree->node_by_id(this->node_identifier) != nullptr;
+}
+
+bool NodeEnumDefinitionRef::is_valid() const
+{
+  return *this != invalid_ref();
 }
 
 bool NodeEnumDefinitionRef::operator==(const NodeEnumDefinitionRef &other) const
@@ -189,7 +194,7 @@ bool NodeEnumDefinitionRef::operator!=(const NodeEnumDefinitionRef &other) const
   return this->node_tree != other.node_tree || this->node_identifier != other.node_identifier;
 }
 
-NodeEnumDefinition *NodeEnumDefinitionRef::get() const
+NodeEnumDefinition *NodeEnumDefinitionRef::get_definition() const
 {
   if (this->node_tree == nullptr) {
     return nullptr;

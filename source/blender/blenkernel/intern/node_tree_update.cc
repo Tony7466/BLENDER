@@ -829,17 +829,17 @@ class NodeTreeMainUpdater {
 
   void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src)
   {
-    if (src.enum_ref.is_undefined()) {
-      /* Undefined if any source enum ref is undefined. */
-      dst.enum_ref = NodeEnumDefinitionRef::undefined();
+    if (!src.enum_ref.is_valid()) {
+      /* Invalid if any source enum ref is invalid. */
+      dst.enum_ref.set_invalid();
     }
-    else if (!dst.enum_ref.is_valid()) {
+    else if (!dst.enum_ref.is_set()) {
       /* First connection, set the reference. */
       dst.enum_ref = src.enum_ref;
     }
-    else if (src.enum_ref.is_valid() && dst.enum_ref != src.enum_ref) {
+    else if (src.enum_ref.is_set() && dst.enum_ref != src.enum_ref) {
       /* Error if enum ref does not match other connections. */
-      dst.enum_ref = NodeEnumDefinitionRef::undefined();
+      dst.enum_ref.set_invalid();
     }
   }
 
@@ -851,7 +851,7 @@ class NodeTreeMainUpdater {
     }
     /* Skip destination if it's already undefined (conflicting references). */
     bNodeSocketValueEnum &dst_default_value = *dst.default_value_typed<bNodeSocketValueEnum>();
-    if (dst_default_value.enum_ref.is_undefined()) {
+    if (!dst_default_value.enum_ref.is_valid()) {
       return;
     }
 
@@ -946,9 +946,9 @@ class NodeTreeMainUpdater {
     }
 
     /* Tests if enum references are undefined. */
-    const auto is_undefined_enum_ref = [](const bNodeSocket &socket) -> bool {
+    const auto is_invalid_enum_ref = [](const bNodeSocket &socket) -> bool {
       return socket.type == SOCK_ENUM &&
-             socket.default_value_typed<bNodeSocketValueEnum>()->enum_ref.is_undefined();
+             !socket.default_value_typed<bNodeSocketValueEnum>()->enum_ref.is_valid();
     };
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
@@ -957,7 +957,7 @@ class NodeTreeMainUpdater {
         link->flag &= ~NODE_LINK_VALID;
         continue;
       }
-      if (is_undefined_enum_ref(*link->fromsock) || is_undefined_enum_ref(*link->tosock)) {
+      if (is_invalid_enum_ref(*link->fromsock) || is_invalid_enum_ref(*link->tosock)) {
         link->flag &= ~NODE_LINK_VALID;
         continue;
       }

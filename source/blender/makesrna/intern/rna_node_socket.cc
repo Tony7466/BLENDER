@@ -455,7 +455,7 @@ const EnumPropertyItem *RNA_node_socket_enum_itemf(bContext * /*C*/,
     return rna_enum_dummy_NULL_items;
   }
   const NodeEnumDefinition *enum_def =
-      static_cast<bNodeSocketValueEnum *>(socket->default_value)->enum_ref.get();
+      static_cast<bNodeSocketValueEnum *>(socket->default_value)->enum_ref.get_definition();
   if (!enum_def) {
     *r_free = false;
     return rna_enum_dummy_NULL_items;

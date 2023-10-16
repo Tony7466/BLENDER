@@ -851,19 +851,25 @@ typedef struct NodeEnumDefinitionRef {
   char _pad[4];
 
 #ifdef __cplusplus
-  static inline NodeEnumDefinitionRef undefined()
+  /* Special reference used when the definition cannot be resolved. */
+  static inline NodeEnumDefinitionRef invalid_ref()
   {
     return {nullptr, INT_MAX};
   }
 
   void set(bNodeTree &node_tree, bNode &node);
+  void set_invalid();
   void reset();
-
-  bool is_undefined() const;
+  /* True if the reference has been set. */
+  bool is_set() const;
+  /* True if the enum reference can be resolved.
+   * Otherwise there is a conflict and the reference is invalid. */
   bool is_valid() const;
+  /* Get a pointer to the actual enum definition. */
+  NodeEnumDefinition *get_definition() const;
+
   bool operator==(const NodeEnumDefinitionRef &other) const;
   bool operator!=(const NodeEnumDefinitionRef &other) const;
-  NodeEnumDefinition *get() const;
 #endif
 } NodeEnumDefinitionRef;
 
