@@ -1430,7 +1430,7 @@ PropertyRNA *RNA_def_property(StructOrFunctionRNA *cont_,
   prop->rawtype = RawPropertyType(-1);
 
   if (!ELEM(type, PROP_COLLECTION, PROP_POINTER)) {
-    prop->flag |= PROP_EDITABLE;
+    RNA_def_property_flag(prop, PROP_EDITABLE);
 
     if (type != PROP_STRING) {
 #ifdef RNA_RUNTIME
