@@ -347,8 +347,11 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       break;
     }
     case SOCK_ENUM: {
+      /* This is a weak reference that gets updated at runtime and should be ignored when loading.
+       */
       bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
-      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.enum_ref.node_tree, IDWALK_CB_USER);
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(
+          data, default_value.enum_ref.node_tree, IDWALK_CB_READFILE_IGNORE);
       break;
     }
     case SOCK_FLOAT:
@@ -647,9 +650,10 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
-    case SOCK_ENUM:
+    case SOCK_ENUM: {
       BLO_write_struct(writer, bNodeSocketValueEnum, sock->default_value);
       break;
+    }
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
       break;
@@ -797,9 +801,11 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       blender::nodes::RepeatItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_MENU_SWITCH) {
-      const NodeMenuSwitch &storage = *static_cast<const NodeMenuSwitch *>(
-          node->storage);
-      BLO_write_struct_array(writer, NodeEnumItem, storage.enum_definition.items_num, storage.enum_definition.items_array);
+      const NodeMenuSwitch &storage = *static_cast<const NodeMenuSwitch *>(node->storage);
+      BLO_write_struct_array(writer,
+                             NodeEnumItem,
+                             storage.enum_definition.items_num,
+                             storage.enum_definition.items_array);
       for (const NodeEnumItem &item : storage.enum_definition.items()) {
         BLO_write_string(writer, item.name);
         BLO_write_string(writer, item.description);
@@ -1003,8 +1009,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_MENU_SWITCH: {
-          NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(
-              node->storage);
+          NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
           BLO_read_data_address(reader, &storage.enum_definition.items_array);
           for (const NodeEnumItem &item : storage.enum_definition.items()) {
             BLO_read_data_address(reader, &item.name);
@@ -1740,11 +1745,6 @@ static void socket_id_user_increment(bNodeSocket *sock)
       id_us_plus(reinterpret_cast<ID *>(default_value.value));
       break;
     }
-    case SOCK_ENUM: {
-      bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
-      id_us_plus(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
-      break;
-    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1752,6 +1752,8 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
+      /* Note: Enum socket node tree is a weak reference and not user-counted. */
+    case SOCK_ENUM:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
@@ -1791,11 +1793,6 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
       id_us_min(reinterpret_cast<ID *>(default_value.value));
       return default_value.value != nullptr;
     }
-    case SOCK_ENUM: {
-      bNodeSocketValueEnum &default_value = *sock->default_value_typed<bNodeSocketValueEnum>();
-      id_us_min(reinterpret_cast<ID *>(default_value.enum_ref.node_tree));
-      return default_value.enum_ref.node_tree != nullptr;
-    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1803,6 +1800,8 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
+      /* Note: Enum socket node tree is a weak reference and not user-counted. */
+    case SOCK_ENUM:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:

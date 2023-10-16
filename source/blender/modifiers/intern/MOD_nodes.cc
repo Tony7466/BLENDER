@@ -147,13 +147,6 @@ static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
         }
         break;
       }
-      case SOCK_ENUM: {
-        if (bNodeTree *ntree = ((bNodeSocketValueEnum *)socket->default_value)->enum_ref.node_tree)
-        {
-          ids.add(&ntree->id);
-        }
-        break;
-      }
     }
   }
 }

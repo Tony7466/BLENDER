@@ -78,10 +78,7 @@ template<> void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
 {
   id_us_plus(reinterpret_cast<ID *>(data.value));
 }
-template<> void socket_data_id_user_increment(bNodeSocketValueEnum &data)
-{
-  id_us_plus(reinterpret_cast<ID *>(data.enum_ref.node_tree));
-}
+/* Note: bNodeSocketValueEnum does not do user counting on the node tree reference. */
 
 /** \} */
 
@@ -110,10 +107,7 @@ template<> void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
 {
   id_us_min(reinterpret_cast<ID *>(data.value));
 }
-template<> void socket_data_id_user_decrement(bNodeSocketValueEnum &data)
-{
-  id_us_min(reinterpret_cast<ID *>(data.enum_ref.node_tree));
-}
+/* Note: bNodeSocketValueEnum does not do user counting on the node tree reference. */
 
 /** \} */
 
@@ -382,10 +376,10 @@ void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMater
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-template<>
-void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueEnum &data)
+template<> void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueEnum &data)
 {
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.enum_ref.node_tree, IDWALK_CB_USER);
+  /* This is a weak reference that gets updated at runtime and should be ignored when loading. */
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.enum_ref.node_tree, IDWALK_CB_READFILE_IGNORE);
 }
 
 static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceSocket &socket)
