@@ -54,7 +54,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
@@ -415,7 +415,8 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
         /* find internal links to this output */
         for (bNodeLink *tlink = glinks_first->next; tlink != glinks_last->next;
-             tlink = tlink->next) {
+             tlink = tlink->next)
+        {
           /* only use active output node */
           if (tlink->tonode->type == NODE_GROUP_OUTPUT && (tlink->tonode->flag & NODE_DO_OUTPUT)) {
             if (STREQ(tlink->tosock->identifier, identifier)) {
@@ -734,7 +735,8 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   for (bNode *node : nodes_to_group) {
     const char *disabled_hint = nullptr;
     if (node->typeinfo->poll_instance &&
-        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint)) {
+        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint))
+    {
       if (disabled_hint) {
         BKE_reportf(&reports,
                     RPT_WARNING,

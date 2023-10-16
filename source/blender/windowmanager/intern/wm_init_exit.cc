@@ -120,7 +120,7 @@
 #include "GPU_init_exit.h"
 #include "GPU_material.h"
 
-#include "COM_compositor.h"
+#include "COM_compositor.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -441,7 +441,8 @@ static void wait_for_console_key()
   HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
 
   if (!ELEM(hConsoleInput, nullptr, INVALID_HANDLE_VALUE) &&
-      FlushConsoleInputBuffer(hConsoleInput)) {
+      FlushConsoleInputBuffer(hConsoleInput))
+  {
     for (;;) {
       INPUT_RECORD buffer;
       DWORD ignored;
