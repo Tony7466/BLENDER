@@ -1,1 +1,2 @@
 Referenced by commit c6194afc41a01acaff0bfccd9ff1dc76a5dacdb4, Fix: Workbench: Missing texture flag
+Referenced by issue #113741, Regression: Geometry wireframe overlay does not updated for toggling
