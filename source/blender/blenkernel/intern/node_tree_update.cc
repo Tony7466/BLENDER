@@ -909,6 +909,7 @@ class NodeTreeMainUpdater {
         /* Node groups also expose internal enum definitions. */
         if (node->id) {
           const bNodeTree *group_tree = reinterpret_cast<bNodeTree *>(node->id);
+          group_tree->ensure_interface_cache();
           for (const int socket_i : group_tree->interface_inputs().index_range()) {
             bNodeSocket &input = *node->input_sockets()[socket_i];
             const bNodeTreeInterfaceSocket &iosocket = *group_tree->interface_inputs()[socket_i];
