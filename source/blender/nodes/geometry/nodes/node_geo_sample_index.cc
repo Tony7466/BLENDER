@@ -11,6 +11,8 @@
 
 #include "NOD_socket_search_link.hh"
 
+#include "FN_field_cpp_type.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -324,6 +326,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
   const eAttrDomain domain = eAttrDomain(storage.domain);
   const bool use_clamp = bool(storage.clamp);
+
+  const auto &v1 = CPPType::get<NodeGeometrySampleIndex>();
+  const auto &v2 = fn::ValueOrFieldCPPType::get<NodeGeometrySampleIndex>();
+  BLI_assert((void *)&v1 != (void *)&v2);
 
   GField value_field = get_input_attribute_field(params, data_type);
   ValueOrField<int> index_value_or_field = params.extract_input<ValueOrField<int>>("Index");

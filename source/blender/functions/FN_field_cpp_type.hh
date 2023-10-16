@@ -87,7 +87,7 @@ class ValueOrFieldCPPType {
   }
 
  private:
-  template<typename ValueType> static const ValueOrFieldCPPType &get_impl();
+  template<typename ValueType> static const ValueOrFieldCPPType &get_impl() = delete;
 
   void register_self();
 };
