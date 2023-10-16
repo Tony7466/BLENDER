@@ -951,39 +951,35 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
         if (curves.points_num() == 0) {
           return;
         }
-
         if (!ed::curves::has_anything_selected(curves)) {
           return;
         }
 
         MutableSpan<bool> cyclic = curves.cyclic_for_write();
-        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-            ".selection", ATTR_DOMAIN_POINT, true);
 
-        threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-          for (const int curve_i : range) {
-            if (!ed::curves::has_anything_selected(selection, points_by_curve[curve_i])) {
-              continue;
-            }
+        IndexMaskMemory memory;
+        const IndexMask curve_selection = ed::curves::retrieve_selected_curves(curves, memory);
 
-            if (mode == CyclicalMode::CLOSE) {
-              cyclic[curve_i] = true;
-            }
-            else if (mode == CyclicalMode::OPEN) {
-              cyclic[curve_i] = false;
-            }
-            else if (mode == CyclicalMode::TOGGLE) {
-              cyclic[curve_i] ^= true;
-            }
+        curve_selection.foreach_index([&](const int64_t curve_i) {
+          if (mode == CyclicalMode::CLOSE) {
+            cyclic[curve_i] = true;
+          }
+          else if (mode == CyclicalMode::OPEN) {
+            cyclic[curve_i] = false;
+          }
+          else if (mode == CyclicalMode::TOGGLE) {
+            cyclic[curve_i] ^= true;
           }
         });
 
         if (add_geometry) {
-          IndexMaskMemory memory;
+          const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+          const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+              ".selection", ATTR_DOMAIN_POINT, true);
+          IndexMaskMemory memory2;
           /* Determine which curves are now closed. */
           const IndexMask curves_to_close = IndexMask::from_predicate(
-              curves.curves_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
+              curves.curves_range(), GrainSize(512), memory2, [&](const int64_t curve_i) {
                 const bool selected = ed::curves::has_anything_selected(selection,
                                                                         points_by_curve[curve_i]);
                 return cyclic[curve_i] && selected;
