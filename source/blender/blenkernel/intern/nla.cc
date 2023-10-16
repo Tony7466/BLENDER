@@ -1080,11 +1080,11 @@ void BKE_nlameta_flush_transforms(NlaStrip *mstrip)
         p2 = (strip->end - oStart) / oLen;
       }
       else {
-        /* WORKAROUND: A strip should never be shorter than #NLASTRIP_MIN_LEN_THRESH.
-         * `rna_NlaStrip_frame_start_ui_set` and `rna_NlaStrip_frame_end_ui_set` should ensure this
-         * doesn't occur, but in some cases, it seems to be happening.
-         * Therefore, we must prevent division by zero. */
-
+        /* WORKAROUND: in theory, a strip should never be zero length. However,
+         * zero-length strips are nevertheless showing up here (see issue #113552).
+         * This is a stop-gap fix to handle that and prevent a divide by zero. A
+         * proper fix will need to track down and fix the source(s) of these
+         * zero-length strips. */
         p1 = 0.0f;
         p2 = 1.0f;
       }
