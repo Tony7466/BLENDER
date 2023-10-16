@@ -388,12 +388,7 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
 
 static void wm_jobs_reports_update(wmWindowManager *wm, wmJob *wm_job)
 {
-  /* Move reports to the WM list, and trigger banner show. Essentially copying code in
-   * #wm_add_reports, also similar to how Operators' reports are handled. */
-  if (!BLI_listbase_is_empty(&wm_job->worker_status.reports->list)) {
-    BKE_reports_move_to_reports(&wm->reports, wm_job->worker_status.reports);
-    WM_report_banner_show(wm, nullptr);
-  }
+  WM_reports_add(wm, wm_job->worker_status.reports);
 }
 
 static void *do_job_thread(void *job_v)

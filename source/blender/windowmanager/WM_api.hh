@@ -591,6 +591,15 @@ void WM_report_banner_show(wmWindowManager *wm, wmWindow *win) ATTR_NONNULL(1);
  * Hide all currently displayed banners and abort their timer.
  */
 void WM_report_banners_cancel(Main *bmain);
+/** Add a whole list of reports to the WM ReportList, and show the banner.
+ *
+ * \note In case the given \a reports is a `nullptr`, or has its #RPT_OP_HOLD flag set, this
+ * function does nothing.
+ *
+ * \params reports The #ReportList from which to move reports to the WM one, may be `nullptr`.
+ * \params wm the WindowManager to add given \a reports to. If `nullptr`, the first WM of current
+ * #G_MAIN will be used. */
+void WM_reports_add(wmWindowManager *wm, ReportList *reports);
 void WM_report(eReportType type, const char *message);
 void WM_reportf(eReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(2, 3);
 

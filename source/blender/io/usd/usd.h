@@ -124,12 +124,14 @@ USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_fl
 bool USD_export(struct bContext *C,
                 const char *filepath,
                 const struct USDExportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 bool USD_import(struct bContext *C,
                 const char *filepath,
                 const struct USDImportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 int USD_get_version(void);
 

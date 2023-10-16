@@ -420,7 +420,8 @@ static void set_job_filepath(blender::io::usd::ExportJobData *job, const char *f
 bool USD_export(bContext *C,
                 const char *filepath,
                 const USDExportParams *params,
-                bool as_background_job)
+                bool as_background_job,
+                ReportList *reports)
 {
   if (!blender::io::usd::export_params_valid(*params)) {
     return false;
@@ -468,9 +469,10 @@ bool USD_export(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* NOTE: Since the `worker_status.reports` pointer is `nullptr` here, BKE_report API will only
-     * print to console. */
     wmJobWorkerStatus worker_status = {};
+    /* Use the operator's reports in non-background case. */
+    worker_status.reports = reports;
+
     blender::io::usd::export_startjob(job, &worker_status);
     blender::io::usd::export_endjob(job);
     export_ok = job->export_ok;

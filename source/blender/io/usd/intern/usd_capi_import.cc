@@ -425,7 +425,8 @@ using namespace blender::io::usd;
 bool USD_import(bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
-                bool as_background_job)
+                bool as_background_job,
+                ReportList *reports)
 {
   /* Using new here since `MEM_*` functions do not call constructor to properly initialize data. */
   ImportJobData *job = new ImportJobData();
@@ -467,9 +468,10 @@ bool USD_import(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* NOTE: Since the `worker_status.reports` pointer is `nullptr` here, BKE_report API will only
-     * print to console. */
     wmJobWorkerStatus worker_status = {};
+    /* Use the operator's reports in non-background case. */
+    worker_status.reports = reports;
+
     import_startjob(job, &worker_status);
     import_endjob(job);
     import_ok = job->import_ok;
