@@ -152,11 +152,13 @@ static void add_output(NodeDeclarationBuilder &b, const eNodeSocketDatatype type
   }
 }
 
-static void node_declare_dynamic(const bNodeTree & /*tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 {
-  const NodeMenuSwitch &storage = node_storage(node);
+  const bNode *node = b.node_or_null();
+  if (node == nullptr) {
+    return;
+  }
+  const NodeMenuSwitch &storage = node_storage(*node);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
 
   /* Remove outdated sockets. */
@@ -547,7 +549,7 @@ static void register_node()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MENU_SWITCH, "Menu Switch", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   node_type_storage(&ntype, "NodeMenuSwitch", node_free_storage, node_copy_storage);
