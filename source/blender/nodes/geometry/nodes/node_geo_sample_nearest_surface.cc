@@ -24,16 +24,21 @@ namespace blender::nodes::node_geo_sample_nearest_surface_cc {
 
 using namespace blender::bke::mesh_surface_sample;
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
+  const bNode *node = b.node_or_null();
+
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
-  b.add_input(data_type, "Value").hide_value().field_on_all();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_input(data_type, "Value").hide_value().field_on_all();
+  }
   b.add_input<decl::Vector>("Sample Position").implicit_field(implicit_field_inputs::position);
 
-  b.add_output(data_type, "Value").dependent_field({2});
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_output(data_type, "Value").dependent_field({2});
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -48,15 +53,20 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  static const Array<eNodeSocketDatatype> supported_types(
-      {SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION});
-  DynamicGatherBuilder builder(params, supported_types.as_span());
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
 
-  builder.add_input(SOCK_GEOMETRY, "Mesh");
-  builder.add_dynamic_input("Value");
-  builder.add_input(SOCK_FLOAT, "Sample Position");
-
-  builder.add_dynamic_output("Value");
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (type && *type != CD_PROP_STRING) {
+    /* The input and output sockets have the same name. */
+    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleNearestSurface");
+      node.custom1 = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
+  }
 }
 
 static void get_closest_mesh_looptris(const Mesh &mesh,
@@ -165,7 +175,7 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_SAMPLE_NEAREST_SURFACE, "Sample Nearest Surface", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;

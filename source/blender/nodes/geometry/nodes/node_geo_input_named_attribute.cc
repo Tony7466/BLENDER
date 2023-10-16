@@ -17,16 +17,17 @@ namespace blender::nodes::node_geo_input_named_attribute_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryInputNamedAttribute)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeGeometryInputNamedAttribute &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::String>("Name").is_attribute_name();
 
-  b.add_output(data_type, "Attribute").field_source();
+  if (node != nullptr) {
+    const NodeGeometryInputNamedAttribute &storage = node_storage(*node);
+    const eCustomDataType data_type = eCustomDataType(storage.data_type);
+    b.add_output(data_type, "Attribute").field_source();
+  }
   b.add_output<decl::Bool>("Exists").field_source();
 }
 
@@ -42,7 +43,36 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs);
+
+  const bNodeType &node_type = params.node_type();
+  if (params.in_out() == SOCK_OUT) {
+    const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+        eNodeSocketDatatype(params.other_socket().type));
+    if (type && *type != CD_PROP_STRING) {
+      /* The input and output sockets have the same name. */
+      params.add_item(IFACE_("Attribute"), [node_type, type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node(node_type);
+        node_storage(node).data_type = *type;
+        params.update_and_connect_available_socket(node, "Attribute");
+      });
+      if (params.node_tree().typeinfo->validate_link(
+              SOCK_BOOLEAN, eNodeSocketDatatype(params.other_socket().type)))
+      {
+        params.add_item(
+            IFACE_("Exists"),
+            [node_type](LinkSearchOpParams &params) {
+              bNode &node = params.add_node(node_type);
+              params.update_and_connect_available_socket(node, "Exists");
+            },
+            -1);
+      }
+    }
+  }
+}
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -89,7 +119,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   node_type_storage(&ntype,
                     "NodeGeometryInputNamedAttribute",

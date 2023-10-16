@@ -57,16 +57,17 @@ GVArray EvaluateAtIndexInput::get_varray_for_context(const bke::GeometryFieldCon
 
 namespace blender::nodes::node_geo_evaluate_at_index_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom2);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Int>("Index").min(0).supports_field();
-  b.add_input(data_type, "Value").hide_value().supports_field();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom2);
+    b.add_input(data_type, "Value").hide_value().supports_field();
 
-  b.add_output(data_type, "Value").field_source_reference_all();
+    b.add_output(data_type, "Value").field_source_reference_all();
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -81,7 +82,27 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom2 = CD_PROP_FLOAT;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const bNodeType &node_type = params.node_type();
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (type && *type != CD_PROP_STRING) {
+    params.add_item(IFACE_("Value"), [node_type, type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node(node_type);
+      node.custom2 = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
+    params.add_item(
+        IFACE_("Index"),
+        [node_type, type](LinkSearchOpParams &params) {
+          bNode &node = params.add_node(node_type);
+          node.custom2 = *type;
+          params.update_and_connect_available_socket(node, "Index");
+        },
+        -1);
+  }
+}
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -123,7 +144,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 

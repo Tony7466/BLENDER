@@ -187,9 +187,6 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node);
 
 bNode *nodeGetActivePaintCanvas(bNodeTree *ntree);
 
-eCustomDataType socket_type_to_custom_data_type(eNodeSocketDatatype socket_type);
-eNodeSocketDatatype custom_data_to_socket_type_type(eCustomDataType data_type);
-
 /**
  * \brief Does the given node supports the sub active flag.
  *
@@ -330,6 +327,9 @@ bNodeSocket *node_find_enabled_output_socket(bNode &node, StringRef name);
 extern bNodeTreeType NodeTreeTypeUndefined;
 extern bNodeType NodeTypeUndefined;
 extern bNodeSocketType NodeSocketTypeUndefined;
+
+std::optional<eCustomDataType> socket_type_to_custom_data_type(eNodeSocketDatatype type);
+std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataType type);
 
 /**
  * Contains information about a specific kind of zone (e.g. simulation or repeat zone in geometry

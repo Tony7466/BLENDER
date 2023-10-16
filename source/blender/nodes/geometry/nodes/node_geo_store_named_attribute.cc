@@ -25,17 +25,19 @@ namespace blender::nodes::node_geo_store_named_attribute_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryStoreNamedAttribute)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeGeometryStoreNamedAttribute &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::String>("Name").is_attribute_name();
-  b.add_input(data_type, "Value").field_on_all();
+
+  if (node != nullptr) {
+    const NodeGeometryStoreNamedAttribute &storage = node_storage(*node);
+    const eCustomDataType data_type = eCustomDataType(storage.data_type);
+    b.add_input(data_type, "Value").field_on_all();
+  }
 
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
@@ -56,7 +58,25 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(2));
+  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(1));
+
+  if (params.in_out() == SOCK_IN) {
+    const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+        eNodeSocketDatatype(params.other_socket().type));
+    if (type && *type != CD_PROP_STRING) {
+      /* The input and output sockets have the same name. */
+      params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeStoreNamedAttribute");
+        node_storage(node).data_type = *type;
+        params.update_and_connect_available_socket(node, "Value");
+      });
+    }
+  }
+}
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -178,7 +198,7 @@ static void node_register()
                     node_copy_standard_storage);
   blender::bke::node_type_size(&ntype, 140, 100, 700);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;

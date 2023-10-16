@@ -24,17 +24,18 @@ using namespace blender::bke::mesh_surface_sample;
 
 NODE_STORAGE_FUNCS(NodeGeometryRaycast)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeGeometryRaycast &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Geometry>("Target Geometry")
       .only_realized_data()
       .supported_type(GeometryComponent::Type::Mesh);
-  b.add_input(data_type, "Attribute").hide_value().field_on_all();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    /* TODO: Field interfacind is depend in offsetd of next declrations! */
+    b.add_input(data_type, "Attribute").hide_value().field_on_all();
+  }
 
   b.add_input<decl::Vector>("Source Position").implicit_field(implicit_field_inputs::position);
   b.add_input<decl::Vector>("Ray Direction").default_value({0.0f, 0.0f, -1.0f}).supports_field();
@@ -49,7 +50,10 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   b.add_output<decl::Vector>("Hit Normal").dependent_field({2, 3, 4});
   b.add_output<decl::Float>("Hit Distance").dependent_field({2, 3, 4});
 
-  b.add_output(data_type, "Attribute").dependent_field({2, 3, 4});
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    b.add_output(data_type, "Attribute").dependent_field({2, 3, 4});
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -66,7 +70,24 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(3));
+  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(4));
+
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (type && *type != CD_PROP_STRING) {
+    /* The input and output sockets have the same name. */
+    params.add_item(IFACE_("Attribute"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeRaycast");
+      node_storage(node).data_type = *type;
+      params.update_and_connect_available_socket(node, "Attribute");
+    });
+  }
+}
 
 static void raycast_to_mesh(const IndexMask &mask,
                             const Mesh &mesh,
@@ -292,7 +313,7 @@ static void node_register()
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeGeometryRaycast", node_free_standard_storage, node_copy_standard_storage);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;

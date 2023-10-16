@@ -22,44 +22,50 @@ namespace blender::nodes::node_geo_curve_sample_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryCurveSample)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeGeometryCurveSample &storage = node_storage(node);
-  const GeometryNodeCurveSampleMode mode = (GeometryNodeCurveSampleMode)storage.mode;
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
       GeometryComponent::Type::Curve);
-  b.add_input(data_type, "Value").hide_value().field_on_all();
-  switch (mode) {
-    case GEO_NODE_CURVE_SAMPLE_FACTOR:
-      b.add_input<decl::Float>("Factor")
-          .min(0.0f)
-          .max(1.0f)
-          .subtype(PROP_FACTOR)
-          .field_on_all()
-          .make_available(
-              [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; });
-      break;
-    case GEO_NODE_CURVE_SAMPLE_LENGTH:
-      b.add_input<decl::Float>("Length")
-          .min(0.0f)
-          .subtype(PROP_DISTANCE)
-          .field_on_all()
-          .make_available(
-              [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; });
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    b.add_input(data_type, "Value").hide_value().field_on_all();
+  }
+  if (node != nullptr) {
+    const GeometryNodeCurveSampleMode mode = GeometryNodeCurveSampleMode(node_storage(*node).mode);
+    switch (mode) {
+      case GEO_NODE_CURVE_SAMPLE_FACTOR:
+        b.add_input<decl::Float>("Factor")
+            .min(0.0f)
+            .max(1.0f)
+            .subtype(PROP_FACTOR)
+            .field_on_all()
+            .make_available(
+                [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; });
+        break;
+      case GEO_NODE_CURVE_SAMPLE_LENGTH:
+        b.add_input<decl::Float>("Length")
+            .min(0.0f)
+            .subtype(PROP_DISTANCE)
+            .field_on_all()
+            .make_available(
+                [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; });
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
   b.add_input<decl::Int>("Curve Index").field_on_all().make_available([](bNode &node) {
     node_storage(node).use_all_curves = false;
   });
 
-  b.add_output(data_type, "Value").dependent_field({2, 3});
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    /* TODO: Same as in raycast! */
+    b.add_output(data_type, "Value").dependent_field({2, 3});
+  }
   b.add_output<decl::Vector>("Position").dependent_field({2, 3});
   b.add_output<decl::Vector>("Tangent").dependent_field({2, 3});
   b.add_output<decl::Vector>("Normal").dependent_field({2, 3});
@@ -81,7 +87,23 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(4));
+  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(3));
+
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (type && *type != CD_PROP_STRING) {
+    /* The input and output sockets have the same name. */
+    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleCurve");
+      node_storage(node).data_type = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
+  }
+}
 
 static void sample_indices_and_lengths(const Span<float> accumulated_lengths,
                                        const Span<float> sample_lengths,
@@ -478,7 +500,7 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_CURVE, "Sample Curve", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeGeometryCurveSample", node_free_standard_storage, node_copy_standard_storage);

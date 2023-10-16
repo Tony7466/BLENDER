@@ -22,44 +22,48 @@ namespace blender::nodes::node_geo_accumulate_field_cc {
 
 NODE_STORAGE_FUNCS(NodeAccumulateField)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeAccumulateField &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
-  BaseSocketDeclarationBuilder *value_declaration = nullptr;
-  switch (data_type) {
-    case CD_PROP_FLOAT3:
-      value_declaration = &b.add_input<decl::Vector>("Value").default_value({1.0f, 1.0f, 1.0f});
-      break;
-    case CD_PROP_FLOAT:
-      value_declaration = &b.add_input<decl::Float>("Value").default_value(1.0f);
-      break;
-    case CD_PROP_INT32:
-      value_declaration = &b.add_input<decl::Int>("Value").default_value(1);
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    BaseSocketDeclarationBuilder *value_declaration = nullptr;
+    switch (data_type) {
+      case CD_PROP_FLOAT3:
+        value_declaration = &b.add_input<decl::Vector>("Value").default_value({1.0f, 1.0f, 1.0f});
+        break;
+      case CD_PROP_FLOAT:
+        value_declaration = &b.add_input<decl::Float>("Value").default_value(1.0f);
+        break;
+      case CD_PROP_INT32:
+        value_declaration = &b.add_input<decl::Int>("Value").default_value(1);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+    value_declaration->supports_field().description(N_("The values to be accumulated"));
   }
-  value_declaration->supports_field().description(N_("The values to be accumulated"));
 
   b.add_input<decl::Int>("Group ID", "Group Index")
       .supports_field()
       .description("An index used to group values together for multiple separate accumulations");
 
-  b.add_output(data_type, "Leading")
-      .field_source_reference_all()
-      .description(N_(
-          "The running total of values in the corresponding group, starting at the first value"));
-  b.add_output(data_type, "Trailing")
-      .field_source_reference_all()
-      .description(N_("The running total of values in the corresponding group, starting at zero"));
-  b.add_output(data_type, "Total")
-      .field_source_reference_all()
-      .description(N_("The total of all of the values in the corresponding group"));
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    b.add_output(data_type, "Leading")
+        .field_source_reference_all()
+        .description(N_("The running total of values in the corresponding group, starting at the "
+                        "first value"));
+    b.add_output(data_type, "Trailing")
+        .field_source_reference_all()
+        .description(
+            N_("The running total of values in the corresponding group, starting at zero"));
+    b.add_output(data_type, "Total")
+        .field_source_reference_all()
+        .description(N_("The total of all of the values in the corresponding group"));
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -351,7 +355,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
   node_type_storage(
       &ntype, "NodeAccumulateField", node_free_standard_storage, node_copy_standard_storage);

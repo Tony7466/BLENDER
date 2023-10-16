@@ -23,14 +23,15 @@ namespace blender::nodes::node_geo_sample_uv_surface_cc {
 
 using geometry::ReverseUVSampler;
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
-  b.add_input(data_type, "Value").hide_value().field_on_all();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_input(data_type, "Value").hide_value().field_on_all();
+  }
   b.add_input<decl::Vector>("Source UV Map")
       .hide_value()
       .field_on_all()
@@ -39,7 +40,10 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
       .supports_field()
       .description("The coordinates to sample within the UV map");
 
-  b.add_output(data_type, "Value").dependent_field({3});
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_output(data_type, "Value").dependent_field({3});
+  }
   b.add_output<decl::Bool>("Is Valid")
       .dependent_field({3})
       .description("Whether the node could find a single face to sample at the UV coordinate");
@@ -55,7 +59,24 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
+  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_back(1));
+
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (type && *type != CD_PROP_STRING) {
+    /* The input and output sockets have the same name. */
+    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleUVSurface");
+      node.custom1 = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
+  }
+}
 
 class ReverseUVSampleFunction : public mf::MultiFunction {
   GeometrySet source_;
@@ -178,7 +199,7 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_UV_SURFACE, "Sample UV Surface", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;

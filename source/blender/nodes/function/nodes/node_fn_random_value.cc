@@ -16,44 +16,47 @@ namespace blender::nodes::node_fn_random_value_cc {
 
 NODE_STORAGE_FUNCS(NodeRandomValue)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeRandomValue &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
-  switch (data_type) {
-    case CD_PROP_FLOAT3:
-      b.add_input<decl::Vector>("Min").supports_field();
-      b.add_input<decl::Vector>("Max").default_value({1.0f, 1.0f, 1.0f}).supports_field();
-      break;
-    case CD_PROP_FLOAT:
-      b.add_input<decl::Float>("Min").supports_field();
-      b.add_input<decl::Float>("Max").default_value(1.0f).supports_field();
-      break;
-    case CD_PROP_INT32:
-      b.add_input<decl::Int>("Min").supports_field();
-      b.add_input<decl::Int>("Max").default_value(100).supports_field();
-      break;
-    case CD_PROP_BOOL:
-      b.add_input<decl::Float>("Probability")
-          .min(0.0f)
-          .max(1.0f)
-          .default_value(0.5f)
-          .subtype(PROP_FACTOR)
-          .supports_field()
-          .make_available([](bNode &node) { node_storage(node).data_type = CD_PROP_BOOL; });
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    switch (data_type) {
+      case CD_PROP_FLOAT3:
+        b.add_input<decl::Vector>("Min").supports_field();
+        b.add_input<decl::Vector>("Max").default_value({1.0f, 1.0f, 1.0f}).supports_field();
+        break;
+      case CD_PROP_FLOAT:
+        b.add_input<decl::Float>("Min").supports_field();
+        b.add_input<decl::Float>("Max").default_value(1.0f).supports_field();
+        break;
+      case CD_PROP_INT32:
+        b.add_input<decl::Int>("Min").supports_field();
+        b.add_input<decl::Int>("Max").default_value(100).supports_field();
+        break;
+      case CD_PROP_BOOL:
+        b.add_input<decl::Float>("Probability")
+            .min(0.0f)
+            .max(1.0f)
+            .default_value(0.5f)
+            .subtype(PROP_FACTOR)
+            .supports_field()
+            .make_available([](bNode &node) { node_storage(node).data_type = CD_PROP_BOOL; });
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
 
   b.add_input<decl::Int>("ID").implicit_field(implicit_field_inputs::id_or_index);
   b.add_input<decl::Int>("Seed").supports_field();
 
-  b.add_output(data_type, "Value").dependent_field();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
+    b.add_output(data_type, "Value").dependent_field();
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -85,7 +88,36 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
   }
 }
 
-static void node_gather_link_search_ops(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
+  if (!type) {
+    return;
+  }
+  if (params.in_out() == SOCK_IN) {
+    if (ELEM(*type, CD_PROP_INT32, CD_PROP_FLOAT3, CD_PROP_FLOAT)) {
+      params.add_item(IFACE_("Min"), [type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("FunctionNodeRandomValue");
+        node_storage(node).data_type = *type;
+        params.update_and_connect_available_socket(node, "Min");
+      });
+      params.add_item(IFACE_("Max"), [type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("FunctionNodeRandomValue");
+        node_storage(node).data_type = *type;
+        params.update_and_connect_available_socket(node, "Max");
+      });
+    }
+    search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(3));
+  }
+  else {
+    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("FunctionNodeRandomValue");
+      node_storage(node).data_type = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
+  }
+}
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
@@ -154,7 +186,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_RANDOM_VALUE, "Random Value", NODE_CLASS_CONVERTER);
   ntype.initfunc = fn_node_random_value_init;
   ntype.draw_buttons = node_layout;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   ntype.gather_link_search_ops = node_gather_link_search_ops;
   node_type_storage(

@@ -34,13 +34,14 @@
 
 namespace blender::nodes::node_geo_blur_attribute_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
+  const bNode *node = b.node_or_null();
 
-  b.add_input(data_type, "Value").supports_field().hide_value().is_default_link_socket();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_input(data_type, "Value").supports_field().hide_value().is_default_link_socket();
+  }
   b.add_input<decl::Int>("Iterations")
       .default_value(1)
       .min(0)
@@ -53,7 +54,10 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
       .supports_field()
       .description("Relative mix weight of neighboring elements");
 
-  b.add_output(data_type, "Value").field_source_reference_all().dependent_field();
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_output(data_type, "Value").field_source_reference_all().dependent_field();
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -66,7 +70,37 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const bNodeType &node_type = params.node_type();
+  const NodeDeclaration &declaration = *node_type.static_declaration;
+
+  /* Weight and Iterations inputs don't change based on the data type. */
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
+
+  const std::optional<eCustomDataType> new_node_type = bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(params.other_socket().type));
+  if (!new_node_type.has_value()) {
+    return;
+  }
+  eCustomDataType fixed_data_type = *new_node_type;
+  if (fixed_data_type == CD_PROP_STRING) {
+    return;
+  }
+  if (fixed_data_type == CD_PROP_QUATERNION) {
+    /* Don't implement quaternion blurring for now. */
+    return;
+  }
+  if (fixed_data_type == CD_PROP_BOOL) {
+    /* This node does not support boolean sockets, use integer instead. */
+    fixed_data_type = CD_PROP_INT32;
+  }
+  params.add_item(IFACE_("Value"), [node_type, fixed_data_type](LinkSearchOpParams &params) {
+    bNode &node = params.add_node(node_type);
+    node.custom1 = fixed_data_type;
+    params.update_and_connect_available_socket(node, "Value");
+  });
+}
 
 static void build_vert_to_vert_by_edge_map(const Span<int2> edges,
                                            const int verts_num,
@@ -451,7 +485,7 @@ static void node_register()
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_BLUR_ATTRIBUTE, "Blur Attribute", NODE_CLASS_ATTRIBUTE);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = node_gather_link_searches;

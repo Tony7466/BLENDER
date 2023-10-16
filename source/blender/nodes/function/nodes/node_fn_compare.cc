@@ -25,12 +25,14 @@ namespace blender::nodes::node_fn_compare_cc {
 
 NODE_STORAGE_FUNCS(NodeFunctionCompare)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
+  const bNode *node = b.node_or_null();
   b.is_function_node();
-  const NodeFunctionCompare &storage = node_storage(node);
+  if (node == nullptr) {
+    return;
+  }
+  const NodeFunctionCompare &storage = node_storage(*node);
   const NodeCompareOperation operation = NodeCompareOperation(storage.operation);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
   const NodeCompareMode mode = NodeCompareMode(storage.mode);
@@ -681,7 +683,7 @@ static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_COMPARE, "Compare", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.labelfunc = node_label;
   ntype.initfunc = node_init;
   node_type_storage(

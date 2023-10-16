@@ -34,12 +34,14 @@ namespace blender::nodes::node_sh_mix_cc {
 
 NODE_STORAGE_FUNCS(NodeShaderMix)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  /* TODO: Note the fact of lack of defaut values for colot inputs! */
-  const NodeShaderMix &storage = node_storage(node);
+  const bNode *node = b.node_or_null();
+  if (node == nullptr) {
+    return;
+  }
+
+  const NodeShaderMix &storage = node_storage(*node);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
   const bool use_vector_factor = data_type == SOCK_VECTOR &&
                                  storage.factor_mode != NODE_MIX_MODE_UNIFORM;
@@ -219,9 +221,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
   for (const EnumPropertyItem *item = rna_enum_ramp_blend_items; item->identifier != nullptr;
        item++) {
     if (item->name != nullptr && item->identifier[0] != '\0') {
-      params.add_item(CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, item->name),
-                      SocketSearchOp{socket_name, item->value},
-                      weight);
+      params.add_item(IFACE_(item->name), SocketSearchOp{socket_name, item->value}, weight);
     }
   }
 }
@@ -564,7 +564,7 @@ void register_node_type_sh_mix()
   sh_fn_node_type_base(&ntype, SH_NODE_MIX, "Mix", NODE_CLASS_CONVERTER);
   ntype.ui_class = file_ns::sh_node_mix_ui_class;
   ntype.gpu_fn = file_ns::gpu_shader_mix;
-  ntype.declare_dynamic = file_ns::node_declare_dynamic;
+  ntype.declare = file_ns::node_declare;
   ntype.initfunc = file_ns::node_mix_init;
   node_type_storage(
       &ntype, "NodeShaderMix", node_free_standard_storage, node_copy_standard_storage);

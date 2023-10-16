@@ -21,24 +21,26 @@
 
 namespace blender::nodes::node_geo_attribute_statistic_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
+  const bNode *node = b.node_or_null();
 
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
-  b.add_input(data_type, "Attribute").hide_value().field_on_all();
 
-  b.add_output(data_type, "Mean");
-  b.add_output(data_type, "Median");
-  b.add_output(data_type, "Sum");
-  b.add_output(data_type, "Min");
-  b.add_output(data_type, "Max");
-  b.add_output(data_type, "Range");
-  b.add_output(data_type, "Standard Deviation");
-  b.add_output(data_type, "Variance");
+  if (node != nullptr) {
+    const eCustomDataType data_type = eCustomDataType(node->custom1);
+    b.add_input(data_type, "Attribute").hide_value().field_on_all();
+
+    b.add_output(data_type, "Mean");
+    b.add_output(data_type, "Median");
+    b.add_output(data_type, "Sum");
+    b.add_output(data_type, "Min");
+    b.add_output(data_type, "Max");
+    b.add_output(data_type, "Range");
+    b.add_output(data_type, "Standard Deviation");
+    b.add_output(data_type, "Variance");
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -68,7 +70,36 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
   }
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const bNodeType &node_type = params.node_type();
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(2));
+
+  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
+  if (!type) {
+    return;
+  }
+
+  if (params.in_out() == SOCK_IN) {
+    params.add_item(IFACE_("Attribute"), [node_type, type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node(node_type);
+      node.custom1 = *type;
+      params.update_and_connect_available_socket(node, "Attribute");
+    });
+  }
+  else {
+    for (const StringRefNull name :
+         {"Mean", "Median", "Sum", "Min", "Max", "Range", "Standard Deviation", "Variance"})
+    {
+      params.add_item(IFACE_(name.c_str()), [node_type, name, type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node(node_type);
+        node.custom1 = *type;
+        params.update_and_connect_available_socket(node, name);
+      });
+    }
+  }
+}
 
 template<typename T> static T compute_sum(const Span<T> data)
 {
@@ -336,7 +367,7 @@ static void node_register()
       &ntype, GEO_NODE_ATTRIBUTE_STATISTIC, "Attribute Statistic", NODE_CLASS_ATTRIBUTE);
 
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
