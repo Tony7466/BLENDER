@@ -6,10 +6,12 @@
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_material_voronoi.glsl)
 
+#define CONCAT(a, b) a##b
+
 /* The fractalization logic is the same as for fBM Noise, except that some additions are replaced
  * by lerps. */
-#define FRACTAL_VORONOI_X_FX(T) \
-  VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, T coord) \
+#define FRACTAL_VORONOI_X_FX(T, D) \
+  VoronoiOutput CONCAT(fractal_voronoi_x_fx_, D)(VoronoiParams params, T coord) \
   { \
     float amplitude = 1.0; \
     float max_amplitude = 0.0; \
@@ -24,13 +26,13 @@
     for (int i = 0; i <= ceil(params.detail); ++i) { \
       VoronoiOutput octave; \
       if (params.feature == SHD_VORONOI_F2) { \
-        octave = voronoi_f2(params, coord * scale); \
+        octave = CONCAT(voronoi_f2_, D)(params, coord * scale); \
       } \
       else if (params.feature == SHD_VORONOI_SMOOTH_F1 && params.smoothness != 0.0) { \
-        octave = voronoi_smooth_f1(params, coord * scale); \
+        octave = CONCAT(voronoi_smooth_f1_, D)(params, coord * scale); \
       } \
       else { \
-        octave = voronoi_f1(params, coord * scale); \
+        octave = CONCAT(voronoi_f1_, D)(params, coord * scale); \
       } \
 \
       if (zero_input) { \
@@ -72,8 +74,8 @@
 
 /* The fractalization logic is the same as for fBM Noise, except that some additions are replaced
  * by lerps. */
-#define FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(T) \
-  float fractal_voronoi_distance_to_edge(VoronoiParams params, T coord) \
+#define FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(T, D) \
+  float CONCAT(fractal_voronoi_distance_to_edge_, D)(VoronoiParams params, T coord) \
   { \
     float amplitude = 1.0; \
     float max_amplitude = params.max_distance; \
@@ -83,7 +85,7 @@
     bool zero_input = params.detail == 0.0 || params.roughness == 0.0; \
 \
     for (int i = 0; i <= ceil(params.detail); ++i) { \
-      float octave_distance = voronoi_distance_to_edge(params, coord * scale); \
+      float octave_distance = CONCAT(voronoi_distance_to_edge_, D)(params, coord * scale); \
 \
       if (zero_input) { \
         distance = octave_distance; \
@@ -115,24 +117,24 @@
 
 /* **** 1D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(float)
+FRACTAL_VORONOI_X_FX(float, 1d)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(float)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(float, 1d)
 
 /* **** 2D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec2)
+FRACTAL_VORONOI_X_FX(vec2, 2d)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec2)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec2, 2d)
 
 /* **** 3D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec3)
+FRACTAL_VORONOI_X_FX(vec3, 3d)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec3)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec3, 3d)
 
 /* **** 4D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec4)
+FRACTAL_VORONOI_X_FX(vec4, 4d)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec4)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec4, 4d)

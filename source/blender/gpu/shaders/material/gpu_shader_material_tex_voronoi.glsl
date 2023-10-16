@@ -61,7 +61,7 @@ void node_tex_voronoi_f1_1d(vec3 coord,
   w *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  VoronoiOutput Output = fractal_voronoi_x_fx_1d(params, w);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outW = Output.Position.w;
@@ -91,7 +91,7 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
   w *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  VoronoiOutput Output = fractal_voronoi_x_fx_1d(params, w);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outW = Output.Position.w;
@@ -121,7 +121,7 @@ void node_tex_voronoi_f2_1d(vec3 coord,
   w *= scale;
 
   params.max_distance = (0.5 + 0.5 * params.randomness) * 2.0;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  VoronoiOutput Output = fractal_voronoi_x_fx_1d(params, w);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outW = Output.Position.w;
@@ -151,7 +151,7 @@ void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
   w *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  outDistance = fractal_voronoi_distance_to_edge(params, w);
+  outDistance = fractal_voronoi_distance_to_edge_1d(params, w);
 }
 
 void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
@@ -177,7 +177,7 @@ void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
 
   w *= scale;
 
-  outRadius = voronoi_n_sphere_radius(params, w);
+  outRadius = voronoi_n_sphere_radius_1d(params, w);
 }
 
 /* **** 2D Voronoi **** */
@@ -205,8 +205,9 @@ void node_tex_voronoi_f1_2d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  params.max_distance = voronoi_distance_2d(
+      vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_2d(params, coord.xy);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -235,8 +236,9 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  params.max_distance = voronoi_distance_2d(
+      vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_2d(params, coord.xy);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -265,9 +267,10 @@ void node_tex_voronoi_f2_2d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params) *
+  params.max_distance = voronoi_distance_2d(
+                            vec2(0.0), vec2(0.5 + 0.5 * params.randomness), params) *
                         2.0;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  VoronoiOutput Output = fractal_voronoi_x_fx_2d(params, coord.xy);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -297,7 +300,7 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
   coord *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  outDistance = fractal_voronoi_distance_to_edge(params, coord.xy);
+  outDistance = fractal_voronoi_distance_to_edge_2d(params, coord.xy);
 }
 
 void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
@@ -323,7 +326,7 @@ void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
 
   coord *= scale;
 
-  outRadius = voronoi_n_sphere_radius(params, coord.xy);
+  outRadius = voronoi_n_sphere_radius_2d(params, coord.xy);
 }
 
 /* **** 3D Voronoi **** */
@@ -351,8 +354,9 @@ void node_tex_voronoi_f1_3d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  params.max_distance = voronoi_distance_3d(
+      vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_3d(params, coord);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -381,8 +385,9 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  params.max_distance = voronoi_distance_3d(
+      vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_3d(params, coord);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -411,9 +416,10 @@ void node_tex_voronoi_f2_3d(vec3 coord,
 
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params) *
+  params.max_distance = voronoi_distance_3d(
+                            vec3(0.0), vec3(0.5 + 0.5 * params.randomness), params) *
                         2.0;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  VoronoiOutput Output = fractal_voronoi_x_fx_3d(params, coord);
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -443,7 +449,7 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
   coord *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  outDistance = fractal_voronoi_distance_to_edge(params, coord);
+  outDistance = fractal_voronoi_distance_to_edge_3d(params, coord);
 }
 
 void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
@@ -469,7 +475,7 @@ void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
 
   coord *= scale;
 
-  outRadius = voronoi_n_sphere_radius(params, coord);
+  outRadius = voronoi_n_sphere_radius_3d(params, coord);
 }
 
 /* **** 4D Voronoi **** */
@@ -498,8 +504,9 @@ void node_tex_voronoi_f1_4d(vec3 coord,
   w *= scale;
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  params.max_distance = voronoi_distance_4d(
+      vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_4d(params, vec4(coord, w));
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -530,8 +537,9 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
   w *= scale;
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params);
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  params.max_distance = voronoi_distance_4d(
+      vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx_4d(params, vec4(coord, w));
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -562,9 +570,10 @@ void node_tex_voronoi_f2_4d(vec3 coord,
   w *= scale;
   coord *= scale;
 
-  params.max_distance = voronoi_distance(vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params) *
+  params.max_distance = voronoi_distance_4d(
+                            vec4(0.0), vec4(0.5 + 0.5 * params.randomness), params) *
                         2.0;
-  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  VoronoiOutput Output = fractal_voronoi_x_fx_4d(params, vec4(coord, w));
   outDistance = Output.Distance;
   outColor.xyz = Output.Color;
   outPosition = Output.Position.xyz;
@@ -596,7 +605,7 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
   coord *= scale;
 
   params.max_distance = 0.5 + 0.5 * params.randomness;
-  outDistance = fractal_voronoi_distance_to_edge(params, vec4(coord, w));
+  outDistance = fractal_voronoi_distance_to_edge_4d(params, vec4(coord, w));
 }
 
 void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
@@ -623,5 +632,5 @@ void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
   w *= scale;
   coord *= scale;
 
-  outRadius = voronoi_n_sphere_radius(params, vec4(coord, w));
+  outRadius = voronoi_n_sphere_radius_4d(params, vec4(coord, w));
 }
