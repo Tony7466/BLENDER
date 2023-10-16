@@ -56,7 +56,7 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
       b.add_input<decl::Shader>(name, identifier);
       break;
     case SOCK_BOOLEAN:
-      b.add_input<decl::Bool>(name, identifier).default_value(false).hide_value().supports_field();
+      b.add_input<decl::Bool>(name, identifier).default_value(false).supports_field();
       break;
     case SOCK_INT:
       b.add_input<decl::Int>(name, identifier).min(-100000).max(100000).supports_field();
