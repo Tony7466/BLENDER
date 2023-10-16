@@ -4104,7 +4104,7 @@ void node_type_base_custom(bNodeType *ntype,
 
 namespace blender::bke {
 
-std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDatatype type)
+std::optional<eCustomDataType> socket_type_to_custom_data_type(eNodeSocketDatatype type)
 {
   switch (type) {
     case SOCK_FLOAT:
@@ -4122,11 +4122,11 @@ std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDat
     case SOCK_STRING:
       return CD_PROP_STRING;
     default:
-      return {};
+      return std::nullopt;
   }
 }
 
-std::optional<eNodeSocketDatatype> custom_data_type_to_node_data_type(eCustomDataType type)
+std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataType type)
 {
   switch (type) {
     case CD_PROP_FLOAT:
@@ -4146,7 +4146,7 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_node_data_type(eCustomDat
     case CD_PROP_QUATERNION:
       return SOCK_ROTATION;
     default:
-      return {};
+      return std::nullopt;
   }
 }
 

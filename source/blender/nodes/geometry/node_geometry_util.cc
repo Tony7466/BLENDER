@@ -22,11 +22,6 @@
 
 namespace blender::nodes {
 
-std::optional<eCustomDataType> node_socket_to_custom_data_type(const bNodeSocket &socket)
-{
-  return bke::node_data_type_to_custom_data_type(eNodeSocketDatatype(socket.type));
-}
-
 bool check_tool_context_and_error(GeoNodeExecParams &params)
 {
   if (!params.user_data()->operator_data) {

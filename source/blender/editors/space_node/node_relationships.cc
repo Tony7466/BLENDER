@@ -453,7 +453,7 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
         return viewer_socket;
       }
       NodeGeometryViewer *storage = (NodeGeometryViewer *)viewer_node.storage;
-      const eCustomDataType data_type = *bke::node_data_type_to_custom_data_type(
+      const eCustomDataType data_type = *bke::socket_type_to_custom_data_type(
           eNodeSocketDatatype(src_socket.type));
       BLI_assert(data_type != CD_AUTO_FROM_NAME);
       storage->data_type = data_type;

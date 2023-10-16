@@ -328,8 +328,8 @@ extern bNodeTreeType NodeTreeTypeUndefined;
 extern bNodeType NodeTypeUndefined;
 extern bNodeSocketType NodeSocketTypeUndefined;
 
-std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDatatype type);
-std::optional<eNodeSocketDatatype> custom_data_type_to_node_data_type(eCustomDataType type);
+std::optional<eCustomDataType> socket_type_to_custom_data_type(eNodeSocketDatatype type);
+std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataType type);
 
 /**
  * Contains information about a specific kind of zone (e.g. simulation or repeat zone in geometry
