@@ -1065,7 +1065,7 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
     }
     bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
     MutableSpan<float> radii = drawing.radii_for_write();
-    threading::parallel_for(radii.index_range(), 8196, [&](const IndexRange range) {
+    threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
       for (const int i : range) {
         radii[i] /= 2000.0f;
       }
