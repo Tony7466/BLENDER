@@ -814,6 +814,19 @@ class NodeTreeMainUpdater {
     }
   }
 
+  /* Reset enum references. */
+  void clear_enum_definitions(const Span<bNodeTreeInterfaceSocket *> sockets)
+  {
+    for (bNodeTreeInterfaceSocket *socket : sockets) {
+      if (!STREQ(socket->socket_type, "NodeSocketEnum")) {
+        continue;
+      }
+      bNodeSocketValueEnum &default_value = *static_cast<bNodeSocketValueEnum *>(
+          socket->socket_data);
+      default_value.enum_ref.reset();
+    }
+  }
+
   void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src)
   {
     if (src.enum_ref.is_undefined()) {
@@ -824,7 +837,7 @@ class NodeTreeMainUpdater {
       /* First connection, set the reference. */
       dst.enum_ref = src.enum_ref;
     }
-    else if (dst.enum_ref != src.enum_ref) {
+    else if (src.enum_ref.is_valid() && dst.enum_ref != src.enum_ref) {
       /* Error if enum ref does not match other connections. */
       dst.enum_ref = NodeEnumDefinitionRef::undefined();
     }
@@ -853,6 +866,10 @@ class NodeTreeMainUpdater {
   void propagate_enum_definitions(bNodeTree &ntree)
   {
     ntree.ensure_interface_cache();
+
+    /* Reset enum references in the interface. */
+    clear_enum_definitions(ntree.interface_inputs());
+
     /* Propagation from right to left to determine which enum
      * definition to use for enum sockets. */
     for (bNode *node : ntree.toposort_right_to_left()) {
