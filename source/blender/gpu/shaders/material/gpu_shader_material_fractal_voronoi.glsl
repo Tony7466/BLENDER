@@ -6,7 +6,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_material_voronoi.glsl)
 
-#define CONCAT(a, b) a##b
+#define CONCAT(a, b) a##b##d
 
 /* The fractalization logic is the same as for fBM Noise, except that some additions are replaced
  * by lerps. */
@@ -117,26 +117,26 @@
 
 /* **** 1D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(float, 1d)
+FRACTAL_VORONOI_X_FX(float, 1)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(float, 1d)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(float, 1)
 
 /* **** 2D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec2, 2d)
+FRACTAL_VORONOI_X_FX(vec2, 2)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec2, 2d)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec2, 2)
 
 /* **** 3D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec3, 3d)
+FRACTAL_VORONOI_X_FX(vec3, 3)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec3, 3d)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec3, 3)
 
 /* **** 4D Fractal Voronoi **** */
 
-FRACTAL_VORONOI_X_FX(vec4, 4d)
+FRACTAL_VORONOI_X_FX(vec4, 4)
 
-FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec4, 4d)
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vec4, 4)
 
 #undef CONCAT
