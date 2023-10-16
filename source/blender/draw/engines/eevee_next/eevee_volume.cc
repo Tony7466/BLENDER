@@ -8,7 +8,6 @@
  * Volumetric effects rendering using Frostbite's Physically-based & Unified Volumetric Rendering
  * approach.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite
- *
  */
 
 #include "DNA_volume_types.h"
@@ -23,9 +22,9 @@
 
 namespace blender::eevee {
 
-bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesInfoDataBuf &data)
+VolumeModule::GridAABB::GridAABB(Object *ob, const Camera &camera, const VolumesInfoData &data)
 {
-  /* Returns the unified volume grid cell index of a world space coordinate. */
+  /* Returns the unified volume grid cell corner of a world space coordinate. */
   auto to_global_grid_coords = [&](float3 wP) -> int3 {
     const float4x4 &view_matrix = camera.data_get().viewmat;
     const float4x4 &projection_matrix = camera.data_get().winmat;
@@ -33,47 +32,38 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
     float3 ndc_coords = math::project_point(projection_matrix * view_matrix, wP);
     ndc_coords = (ndc_coords * 0.5f) + float3(0.5f);
 
-    float3 grid_coords = ndc_to_volume(projection_matrix,
-                                       data.depth_near,
-                                       data.depth_far,
-                                       data.depth_distribution,
-                                       data.coord_scale,
-                                       ndc_coords);
-
-    return int3(grid_coords * float3(data.tex_size));
+    float3 grid_coords = screen_to_volume(projection_matrix,
+                                          data.depth_near,
+                                          data.depth_far,
+                                          data.depth_distribution,
+                                          data.coord_scale,
+                                          ndc_coords);
+    /* Round to nearest grid corner. */
+    return int3(grid_coords * float3(data.tex_size) + 0.5);
   };
 
   const BoundBox &bbox = *BKE_object_boundbox_get(ob);
   min = int3(INT32_MAX);
   max = int3(INT32_MIN);
 
-  for (float3 corner : bbox.vec) {
-    corner = math::transform_point(float4x4(ob->object_to_world), corner);
-    int3 grid_coord = to_global_grid_coords(corner);
-    min = math::min(min, grid_coord);
-    max = math::max(max, grid_coord);
+  for (float3 l_corner : bbox.vec) {
+    float3 w_corner = math::transform_point(float4x4(ob->object_to_world), l_corner);
+    /* Note that this returns the nearest cell corner coordinate.
+     * So sub-froxel AABB will effectively return the same coordinate
+     * for each corner (making it empty and skipped) unless it
+     * cover the center of the froxel. */
+    math::min_max(to_global_grid_coords(w_corner), min, max);
   }
-
-  bool is_visible = false;
-  for (int i : IndexRange(3)) {
-    is_visible = is_visible || (min[i] >= 0 && min[i] < data.tex_size[i]);
-    is_visible = is_visible || (max[i] >= 0 && max[i] < data.tex_size[i]);
-  }
-
-  min = math::clamp(min, int3(0), data.tex_size);
-  max = math::clamp(max, int3(0), data.tex_size);
-
-  return is_visible;
 }
 
-bool VolumeModule::GridAABB::overlaps(const GridAABB &aabb)
+bool VolumeModule::GridAABB::is_empty() const
 {
-  for (int i : IndexRange(3)) {
-    if (min[i] > aabb.max[i] || max[i] < aabb.min[i]) {
-      return false;
-    }
-  }
-  return true;
+  return math::reduce_min(max - min) <= 0;
+}
+
+VolumeModule::GridAABB VolumeModule::GridAABB::intersect(const GridAABB &other) const
+{
+  return {math::min(this->max, other.max), math::max(this->min, other.min)};
 }
 
 void VolumeModule::init()
@@ -150,15 +140,13 @@ void VolumeModule::begin_sync()
     data_.depth_distribution = 1.0f / (integration_end - integration_start);
   }
 
-  data_.push_update();
-
   enabled_ = inst_.world.has_volume();
 }
 
 void VolumeModule::sync_object(Object *ob,
                                ObjectHandle & /*ob_handle*/,
                                ResourceHandle res_handle,
-                               MaterialPass *material_pass /*= nullptr*/)
+                               MaterialPass *material_pass /*=nullptr*/)
 {
   float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
@@ -183,8 +171,11 @@ void VolumeModule::sync_object(Object *ob,
     return;
   }
 
-  GridAABB aabb;
-  if (!aabb.init(ob, inst_.camera, data_)) {
+  GridAABB object_aabb(ob, inst_.camera, data_);
+  /* Remember that these are cells corners, so this extents to `tex_size`. */
+  GridAABB view_aabb(int3(0), data_.tex_size);
+  if (object_aabb.intersect(view_aabb).is_empty()) {
+    /* Skip invisible object with respect to raster grid and bounds density. */
     return;
   }
 
@@ -194,27 +185,25 @@ void VolumeModule::sync_object(Object *ob,
     enabled_ = true;
 
     /* Add a barrier at the start of a subpass or when 2 volumes overlaps. */
-    if (!subpass_aabbs_.contains_as(shader)) {
+    if (!subpass_aabbs_.contains_as(shader) == false) {
       object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
-      subpass_aabbs_.add(shader, {aabb});
+      subpass_aabbs_.add(shader, {object_aabb});
     }
     else {
       Vector<GridAABB> &aabbs = subpass_aabbs_.lookup(shader);
-      for (GridAABB &_aabb : aabbs) {
-        if (aabb.overlaps(_aabb)) {
+      for (GridAABB &other_aabb : aabbs) {
+        if (object_aabb.intersect(other_aabb).is_empty() == false) {
           object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
           aabbs.clear();
           break;
         }
       }
-      aabbs.append(aabb);
+      aabbs.append(object_aabb);
     }
 
-    int3 grid_size = aabb.max - aabb.min + int3(1);
-
     object_pass->push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    object_pass->push_constant("grid_coords_min", aabb.min);
-    object_pass->dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
+    object_pass->push_constant("grid_coords_min", object_aabb.min);
+    object_pass->dispatch(math::divide_ceil(object_aabb.extent(), int3(VOLUME_GROUP_SIZE)));
   }
 }
 
@@ -244,6 +233,13 @@ void VolumeModule::end_sync()
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
 
+  if (!inst_.pipelines.world_volume.is_valid()) {
+    prop_scattering_tx_.clear(float4(0.0f));
+    prop_extinction_tx_.clear(float4(0.0f));
+    prop_emission_tx_.clear(float4(0.0f));
+    prop_phase_tx_.clear(float4(0.0f));
+  }
+
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
@@ -256,10 +252,11 @@ void VolumeModule::end_sync()
   scatter_ps_.init();
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
-  inst_.lights.bind_resources(&scatter_ps_);
-  inst_.irradiance_cache.bind_resources(&scatter_ps_);
-  inst_.shadows.bind_resources(&scatter_ps_);
-  inst_.sampling.bind_resources(&scatter_ps_);
+  inst_.lights.bind_resources(scatter_ps_);
+  inst_.reflection_probes.bind_resources(scatter_ps_);
+  inst_.irradiance_cache.bind_resources(scatter_ps_);
+  inst_.shadows.bind_resources(scatter_ps_);
+  inst_.sampling.bind_resources(scatter_ps_);
   scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
   scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
   scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
@@ -273,7 +270,7 @@ void VolumeModule::end_sync()
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  integration_ps_.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
+  inst_.bind_uniform_data(&integration_ps_);
   integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
   integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
@@ -286,9 +283,9 @@ void VolumeModule::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
+  inst_.bind_uniform_data(&resolve_ps_);
   bind_resources(resolve_ps_);
   resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
-  resolve_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   resolve_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
   /* Sync with the integration pass. */
   resolve_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);

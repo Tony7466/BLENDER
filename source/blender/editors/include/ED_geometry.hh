@@ -13,7 +13,7 @@
 #include "DNA_customdata_types.h"
 
 #include "BKE_attribute.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 struct Mesh;
 struct ReportList;
@@ -35,10 +35,13 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
 namespace blender::ed::geometry {
 
 MenuType node_group_operator_assets_menu();
+MenuType node_group_operator_assets_menu_unassigned();
+
+void clear_operator_asset_trees();
 
 void ui_template_node_operator_asset_menu_items(uiLayout &layout,
-                                                bContext &C,
+                                                const bContext &C,
                                                 StringRef catalog_path);
-void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C);
+void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext &C);
 
 }  // namespace blender::ed::geometry

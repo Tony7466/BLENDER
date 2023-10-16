@@ -57,7 +57,7 @@
 #include "BKE_layer.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
@@ -92,11 +92,11 @@
 #include "GPU_matrix.h"
 #include "GPU_select.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DRW_engine.h"
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 #include "ANIM_bone_collections.h"
 
@@ -205,7 +205,7 @@ static void editselect_buf_cache_init(ViewContext *vc, short select_mode)
     Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
         vc->scene, vc->view_layer, vc->v3d, &bases_len);
 
-    DRW_select_buffer_context_create(bases, bases_len, select_mode);
+    DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, select_mode);
     MEM_freeN(bases);
   }
   else {
@@ -213,7 +213,7 @@ static void editselect_buf_cache_init(ViewContext *vc, short select_mode)
     if (vc->obact) {
       BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
       Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
-      DRW_select_buffer_context_create(&base, 1, select_mode);
+      DRW_select_buffer_context_create(vc->depsgraph, &base, 1, select_mode);
     }
   }
 }
@@ -1192,10 +1192,10 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      vc->scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+      vc->scene->r.cfra, [&](const int layer_index, blender::bke::greasepencil::Drawing &drawing) {
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, drawing_index);
+                ob_eval, *vc->obedit, layer_index);
 
         changed = ed::curves::select_lasso(
             *vc,
@@ -3171,11 +3171,11 @@ static bool ed_grease_pencil_select_pick(bContext *C,
   const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obedit));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obedit->data);
   Vector<blender::bke::greasepencil::Drawing *> drawings;
-  Vector<int> drawing_indices;
+  Vector<int> layer_indices;
   grease_pencil.foreach_editable_drawing(
-      vc.scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+      vc.scene->r.cfra, [&](const int layer_index, blender::bke::greasepencil::Drawing &drawing) {
         drawings.append(&drawing);
-        drawing_indices.append(drawing_index);
+        layer_indices.append(layer_index);
       });
 
   /* Get selection domain from tool settings. */
@@ -3191,7 +3191,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                  ob_eval, *vc.obedit, drawing_indices[i]);
+                  ob_eval, *vc.obedit, layer_indices[i]);
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          *vc.obedit,
@@ -3276,7 +3276,6 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   SelectPick_Params params{};
   ED_select_pick_params_from_operator(op->ptr, &params);
 
-  const bool vert_without_handles = RNA_boolean_get(op->ptr, "vert_without_handles");
   bool center = RNA_boolean_get(op->ptr, "center");
   bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
   /* Only force object select for edit-mode to support vertex parenting,
@@ -3336,8 +3335,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       changed = ED_lattice_select_pick(C, mval, &params);
     }
     else if (ELEM(obedit->type, OB_CURVES_LEGACY, OB_SURF)) {
-      changed = ED_curve_editnurb_select_pick(
-          C, mval, ED_view3d_select_dist_px(), vert_without_handles, &params);
+      changed = ED_curve_editnurb_select_pick(C, mval, ED_view3d_select_dist_px(), &params);
     }
     else if (obedit->type == OB_MBALL) {
       changed = ED_mball_select_pick(C, mval, &params);
@@ -3422,15 +3420,6 @@ void VIEW3D_OT_select(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
       ot->srna, "object", false, "Object", "Use object selection (edit mode only)");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  /* Needed for select-through to usefully drag handles, see: #98254.
-   * NOTE: this option may be removed and become default behavior, see design task: #98552. */
-  prop = RNA_def_boolean(ot->srna,
-                         "vert_without_handles",
-                         false,
-                         "Control Point Without Handles",
-                         "Only select the curve control point, not its handles");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_int_vector(ot->srna,
@@ -4205,10 +4194,10 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int layer_index, blender::bke::greasepencil::Drawing &drawing) {
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, drawing_index);
+                ob_eval, *vc->obedit, layer_index);
         changed |= ed::curves::select_box(*vc,
                                           drawing.strokes_for_write(),
                                           deformation.positions,
@@ -4611,7 +4600,7 @@ static bool paint_vertsel_circle_select(ViewContext *vc,
   const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
   Object *ob = vc->obact;
   Mesh *me = static_cast<Mesh *>(ob->data);
-  /* CircleSelectUserData data = {nullptr}; */ /* UNUSED */
+  // CircleSelectUserData data = {nullptr}; /* UNUSED. */
 
   bool changed = false;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
@@ -5053,10 +5042,10 @@ static bool grease_pencil_circle_select(ViewContext *vc,
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      vc->scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+      vc->scene->r.cfra, [&](const int layer_index, blender::bke::greasepencil::Drawing &drawing) {
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, drawing_index);
+                ob_eval, *vc->obedit, layer_index);
 
         changed = ed::curves::select_circle(*vc,
                                             drawing.strokes_for_write(),

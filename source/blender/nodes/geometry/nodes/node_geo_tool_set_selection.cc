@@ -44,6 +44,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
         case ATTR_DOMAIN_POINT:
+          /* Remove attributes in case they are on the wrong domain, which can happen after
+           * conversion to and from other geometry types. */
+          mesh->attributes_for_write().remove(".select_edge");
+          mesh->attributes_for_write().remove(".select_poly");
           bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
                                              ".select_vert",
                                              ATTR_DOMAIN_POINT,
@@ -51,6 +55,10 @@ static void node_geo_exec(GeoNodeExecParams params)
           BKE_mesh_flush_select_from_verts(mesh);
           break;
         case ATTR_DOMAIN_FACE:
+          /* Remove attributes in case they are on the wrong domain, which can happen after
+           * conversion to and from other geometry types. */
+          mesh->attributes_for_write().remove(".select_vert");
+          mesh->attributes_for_write().remove(".select_edge");
           bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
                                              ".select_poly",
                                              ATTR_DOMAIN_FACE,
@@ -98,7 +106,6 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  ntype.gather_add_node_search_ops = search_link_ops_for_for_tool_node;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
   nodeRegisterType(&ntype);
 

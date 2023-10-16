@@ -208,6 +208,9 @@ enum class BuiltinBits {
    */
   VIEWPORT_INDEX = (1 << 17),
 
+  /* Texture atomics requires usage options to alter compilation flag. */
+  TEXTURE_ATOMIC = (1 << 18),
+
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
   USE_DEBUG_DRAW = (1 << 29),
   USE_DEBUG_PRINT = (1 << 30),
@@ -675,7 +678,7 @@ struct ShaderCreateInfo {
   }
 
   /**
-   * Allows to fetch framebuffer values from previous render sub-pass.
+   * Allows to fetch frame-buffer values from previous render sub-pass.
    *
    * On Apple Silicon, the additional `raster_order_group` is there to set the sub-pass
    * dependencies. Any sub-pass input need to have the same `raster_order_group` defined in the
@@ -1030,11 +1033,6 @@ struct ShaderCreateInfo {
   bool has_resource_image() const
   {
     return has_resource_type(Resource::BindType::IMAGE);
-  }
-
-  bool has_resource_storage() const
-  {
-    return has_resource_type(Resource::BindType::STORAGE_BUFFER);
   }
 
   /** \} */

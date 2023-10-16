@@ -17,6 +17,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -85,7 +86,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   const bNodeType &node_type = params.node_type();
-  const NodeDeclaration &declaration = *node_type.fixed_declaration;
+  const NodeDeclaration &declaration = *node_type.static_declaration;
 
   /* Weight and Iterations inputs don't change based on the data type. */
   search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
@@ -441,8 +442,9 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         }
         break;
       case GeometryComponent::Type::Curve:
+      case GeometryComponent::Type::GreasePencil:
         if (context.domain() == ATTR_DOMAIN_POINT) {
-          if (const bke::CurvesGeometry *curves = context.curves()) {
+          if (const bke::CurvesGeometry *curves = context.curves_or_strokes()) {
             result_buffer = blur_on_curves(
                 *curves, iterations_, neighbor_weights, buffer_a, buffer_b);
           }

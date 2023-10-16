@@ -39,7 +39,11 @@ using namespace blender::gpu;
 
 /* Fire off a single dispatch per encoder. Can make debugging view clearer for texture resources
  * associated with each dispatch. */
-#define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1 && !NDEBUG
+#if defined(NDEBUG)
+#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 0
+#else
+#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1
+#endif
 
 /* Debug option to bind null buffer for missing UBOs.
  * Enabled by default. TODO: Ensure all required UBO bindings are present. */
@@ -2186,7 +2190,7 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
   }
 
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-  GPU_finish();
+  GPU_flush();
 #endif
 
   /* Shader instance. */
@@ -2221,7 +2225,7 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
                                                     compute_pso_inst.threadgroup_y_len,
                                                     compute_pso_inst.threadgroup_z_len)];
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-  GPU_finish();
+  GPU_flush();
 #endif
 }
 
@@ -2229,7 +2233,7 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
 
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-  GPU_finish();
+  GPU_flush();
 #endif
 
   /* Ensure all resources required by upcoming compute submission are correctly bound. */
@@ -2275,7 +2279,7 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
                                                            compute_pso_inst.threadgroup_y_len,
                                                            compute_pso_inst.threadgroup_z_len)];
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-    GPU_finish();
+    GPU_flush();
 #endif
   }
 }
@@ -2620,15 +2624,15 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
    * If latency improves, increase frames in flight to improve overall
    * performance. */
   int perf_max_drawables = MTL_MAX_DRAWABLES;
-  if (MTLContext::avg_drawable_latency_us > 185000) {
+  if (MTLContext::avg_drawable_latency_us > 150000) {
     perf_max_drawables = 1;
   }
-  else if (MTLContext::avg_drawable_latency_us > 85000) {
+  else if (MTLContext::avg_drawable_latency_us > 75000) {
     perf_max_drawables = 2;
   }
 
   while (MTLContext::max_drawables_in_flight > min_ii(perf_max_drawables, MTL_MAX_DRAWABLES)) {
-    PIL_sleep_ms(2);
+    PIL_sleep_ms(1);
   }
 
   /* Present is submitted in its own CMD Buffer to ensure drawable reference released as early as

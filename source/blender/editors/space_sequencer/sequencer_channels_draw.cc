@@ -12,7 +12,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
@@ -41,7 +41,7 @@
 #include "WM_api.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 static float draw_offset_get(const View2D *timeline_region_v2d)
 {

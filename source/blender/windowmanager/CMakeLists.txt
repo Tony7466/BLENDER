@@ -22,7 +22,6 @@ set(INC
   ../render
   ../sequencer
   ../../../intern/clog
-  ../../../intern/ghost
   ../../../intern/memutil
   ../../../extern/fmtlib/include
   ../bmesh
@@ -104,7 +103,9 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
   bf_sequencer
+  bf_intern_ghost
 )
 
 if(WIN32)

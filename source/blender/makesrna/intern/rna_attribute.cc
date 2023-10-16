@@ -88,6 +88,7 @@ const EnumPropertyItem rna_enum_attribute_domain_items[] = {
     // {ATTR_DOMAIN_GRIDS, "GRIDS", 0, "Grids", "Attribute on mesh multires grids"},
     {ATTR_DOMAIN_CURVE, "CURVE", 0, "Spline", "Attribute on spline"},
     {ATTR_DOMAIN_INSTANCE, "INSTANCE", 0, "Instance", "Attribute on instance"},
+    {ATTR_DOMAIN_LAYER, "LAYER", 0, "Layer", "Attribute on Grease Pencil layer"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -144,7 +145,7 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "BLT_translation.h"
 
@@ -246,6 +247,9 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
     if (!include_instances && domain_item->value == ATTR_DOMAIN_INSTANCE) {
       continue;
     }
+    if (!U.experimental.use_grease_pencil_version3 && domain_item->value == ATTR_DOMAIN_LAYER) {
+      continue;
+    }
 
     if (domain_item->value == ATTR_DOMAIN_POINT && id_type == ID_ME) {
       RNA_enum_item_add(&item, &totitem, &mesh_vertex_domain_item);
@@ -279,6 +283,12 @@ static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
   return !BKE_attribute_allow_procedural_access(layer->name);
 }
 
+static bool rna_Attribute_is_required_get(PointerRNA *ptr)
+{
+  const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
+  return BKE_id_attribute_required(ptr->owner_id, layer->name);
+}
+
 static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
@@ -289,6 +299,7 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
 
   const int length = BKE_id_attribute_data_length(id, layer);
   const size_t struct_size = CustomData_get_elem_size(layer);
+  CustomData_ensure_data_is_mutable(layer, length);
 
   rna_iterator_array_begin(iter, layer->data, struct_size, length, 0, nullptr);
 }
@@ -1153,6 +1164,11 @@ static void rna_def_attribute(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Attribute_is_internal_get", nullptr);
   RNA_def_property_ui_text(
       prop, "Is Internal", "The attribute is meant for internal use by Blender");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "is_required", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_Attribute_is_required_get", nullptr);
+  RNA_def_property_ui_text(prop, "Is Required", "Whether the attribute can be removed or renamed");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* types */
