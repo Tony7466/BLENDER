@@ -264,32 +264,10 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     });
   }
   else {
-    /* Make sure the switch input comes first in the search for boolean sockets. */
-    int true_false_weights = 0;
-    if (params.other_socket().type == SOCK_BOOLEAN) {
-      params.add_item(IFACE_("Switch"), [](LinkSearchOpParams &params) {
-        bNode &node = params.add_node("GeometryNodeMenuSwitch");
-        params.update_and_connect_available_socket(node, "Switch");
-      });
-      true_false_weights--;
-    }
-
-    params.add_item(
-        IFACE_("False"),
-        [](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("GeometryNodeMenuSwitch");
-          node_storage(node).data_type = params.socket.type;
-          params.update_and_connect_available_socket(node, "False");
-        },
-        true_false_weights);
-    params.add_item(
-        IFACE_("True"),
-        [](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("GeometryNodeMenuSwitch");
-          node_storage(node).data_type = params.socket.type;
-          params.update_and_connect_available_socket(node, "True");
-        },
-        true_false_weights);
+    /* No sensible way to connect inputs currently:
+     * Switch socket connection will always create a conflicting enum ref.
+     * Case input sockets don't existing without an actual enum definition.
+     */
   }
 }
 
