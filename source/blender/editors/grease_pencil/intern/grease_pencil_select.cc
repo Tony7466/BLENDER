@@ -417,7 +417,7 @@ static void GREASE_PENCIL_OT_set_selection_mode(wmOperatorType *ot)
 
 }  // namespace blender::ed::greasepencil
 
-eAttrDomain ED_grease_pencil_selection_domain_get(bContext *C)
+eAttrDomain ED_grease_pencil_selection_domain_get(const bContext *C)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
 
