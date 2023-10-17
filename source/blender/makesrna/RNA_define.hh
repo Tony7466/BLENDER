@@ -381,8 +381,6 @@ void RNA_def_property_flag(PropertyRNA *prop, PropertyFlag flag);
 void RNA_def_property_clear_flag(PropertyRNA *prop, PropertyFlag flag);
 void RNA_def_property_override_flag(PropertyRNA *prop, PropertyOverrideFlag flag);
 void RNA_def_property_override_clear_flag(PropertyRNA *prop, PropertyOverrideFlag flag);
-void RNA_def_property_internal_flag(PropertyRNA *prop, PropertyFlagIntern flag);
-void RNA_def_property_internal_clear_flag(PropertyRNA *prop, PropertyFlagIntern flag);
 
 /**
  * Add the property-tags passed as \a tags to \a prop (if valid).

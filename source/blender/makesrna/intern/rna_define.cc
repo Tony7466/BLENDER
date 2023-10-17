@@ -1544,16 +1544,6 @@ void RNA_def_property_override_clear_flag(PropertyRNA *prop, PropertyOverrideFla
   prop->flag_override &= ~flag;
 }
 
-void RNA_def_property_internal_flag(PropertyRNA *prop, PropertyFlagIntern flag)
-{
-  prop->flag_internal |= flag;
-}
-
-void RNA_def_property_internal_clear_flag(PropertyRNA *prop, PropertyFlagIntern flag)
-{
-  prop->flag_internal &= ~flag;
-}
-
 void RNA_def_property_tags(PropertyRNA *prop, int tags)
 {
   prop->tags |= tags;
