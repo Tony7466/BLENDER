@@ -5,6 +5,7 @@
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
 namespace blender::geometry {
@@ -141,6 +142,73 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
    * of the grids. The cell size of the resulting volume has to be determined somehow. */
 }
 
+static void join_grease_pencil(const Span<const GeometryComponent *> src_components,
+                               GeometrySet &result)
+{
+  int tot_drawings = 0;
+  Vector<int> start_offsets;
+  for (const GeometryComponent *src_component : src_components) {
+    const bke::GreasePencilComponent &src_grease_pencil_component =
+        static_cast<const bke::GreasePencilComponent &>(*src_component);
+    start_offsets.append(tot_drawings);
+    tot_drawings += src_grease_pencil_component.get()->drawings().size();
+  }
+
+  GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
+
+  /* Copy all the drawings. */
+  dst_grease_pencil->drawing_array_num = tot_drawings;
+  dst_grease_pencil->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(tot_drawings,
+                                                                               __func__);
+  for (const int index : src_components.index_range()) {
+    const bke::GreasePencilComponent &src_grease_pencil_component =
+        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
+    const int start_offset = start_offsets[index];
+    for (int i = 0; i < src_grease_pencil_component.get()->drawing_array_num; i++) {
+      const GreasePencilDrawingBase *src_drawing_base =
+          src_grease_pencil_component.get()->drawing_array[i];
+      switch (src_drawing_base->type) {
+        case GP_DRAWING: {
+          const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
+              src_drawing_base);
+          dst_grease_pencil->drawing_array[start_offset + i] =
+              reinterpret_cast<GreasePencilDrawingBase *>(
+                  MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
+          break;
+        }
+        case GP_DRAWING_REFERENCE: {
+          const GreasePencilDrawingReference *src_drawing_reference =
+              reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
+          dst_grease_pencil->drawing_array[start_offset + i] =
+              reinterpret_cast<GreasePencilDrawingBase *>(MEM_dupallocN(src_drawing_reference));
+          break;
+        }
+      }
+    }
+  }
+
+  /* Copy the layers and adjust the drawing indices for the frame mappings. */
+  for (const int index : src_components.index_range()) {
+    const bke::GreasePencilComponent &src_grease_pencil_component =
+        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
+    const int start_offset = start_offsets[index];
+    const blender::Span<const bke::greasepencil::Layer *> src_layers =
+        src_grease_pencil_component.get()->layers();
+    for (const bke::greasepencil::Layer *src_layer : src_layers) {
+      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->add_layer(
+          dst_grease_pencil->root_group(), *src_layer);
+      for (auto [key, value] : dst_layer.frames_for_write().items()) {
+        value.drawing_index += start_offset;
+      }
+    }
+  }
+
+  result.replace_grease_pencil(dst_grease_pencil);
+  bke::GreasePencilComponent &dst_component =
+      result.get_component_for_write<bke::GreasePencilComponent>();
+  join_attributes(src_components, dst_component);
+}
+
 static void join_component_type(const bke::GeometryComponent::Type component_type,
                                 const Span<GeometrySet> src_geometry_sets,
                                 const bke::AnonymousAttributePropagationInfo &propagation_info,
@@ -169,6 +237,9 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
     case bke::GeometryComponent::Type::Volume:
       join_volumes(components, result);
       return;
+    case bke::GeometryComponent::Type::GreasePencil:
+      join_grease_pencil(components, result);
+      return;
     default:
       break;
   }
@@ -194,12 +265,14 @@ GeometrySet join_geometries(const Span<GeometrySet> geometries,
                             const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   GeometrySet result;
-  static const Array<GeometryComponent::Type> supported_types({GeometryComponent::Type::Mesh,
-                                                               GeometryComponent::Type::PointCloud,
-                                                               GeometryComponent::Type::Instance,
-                                                               GeometryComponent::Type::Volume,
-                                                               GeometryComponent::Type::Curve,
-                                                               GeometryComponent::Type::Edit});
+  static const Array<GeometryComponent::Type> supported_types(
+      {GeometryComponent::Type::Mesh,
+       GeometryComponent::Type::PointCloud,
+       GeometryComponent::Type::Instance,
+       GeometryComponent::Type::Volume,
+       GeometryComponent::Type::Curve,
+       GeometryComponent::Type::Edit,
+       GeometryComponent::Type::GreasePencil});
   for (const GeometryComponent::Type type : supported_types) {
     join_component_type(type, geometries, propagation_info, result);
   }
