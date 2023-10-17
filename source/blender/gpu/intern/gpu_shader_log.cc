@@ -40,6 +40,7 @@ void Shader::print_log(Span<const char *> sources,
                        const bool error,
                        GPULogParser *parser)
 {
+  printf("%s: %s\n", __func__, log);
   const char line_prefix[] = "      | ";
   char err_col[] = "\033[31;1m";
   char warn_col[] = "\033[33;1m";
@@ -103,7 +104,6 @@ void Shader::print_log(Span<const char *> sources,
     }
 
     GPULogItem log_item;
-    log_line = parser->parse_line(log_line, log_item);
 
     /* Sanitize output. Really bad values can happen when the error line is buggy. */
     if (log_item.cursor.source >= sources.size()) {
