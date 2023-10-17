@@ -135,6 +135,7 @@ static void recalcData_grease_pencil(TransInfo *t)
 
           curves.calculate_bezier_auto_handles();
           curves.tag_positions_changed();
+          drawing.tag_positions_changed();
         });
 
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
