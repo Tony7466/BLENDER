@@ -94,29 +94,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   grease_pencil_dst->material_array = static_cast<Material **>(
       MEM_dupallocN(grease_pencil_src->material_array));
 
-  /* Duplicate drawing array. */
-  grease_pencil_dst->drawing_array_num = grease_pencil_src->drawing_array_num;
-  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(
-      grease_pencil_src->drawing_array_num, __func__);
-  for (int i = 0; i < grease_pencil_src->drawing_array_num; i++) {
-    const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
-    switch (src_drawing_base->type) {
-      case GP_DRAWING: {
-        const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
-            src_drawing_base);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
-        break;
-      }
-      case GP_DRAWING_REFERENCE: {
-        const GreasePencilDrawingReference *src_drawing_reference =
-            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_dupallocN(src_drawing_reference));
-        break;
-      }
-    }
-  }
+  BKE_grease_pencil_duplicate_drawing_array(grease_pencil_src, grease_pencil_dst);
 
   /* Duplicate layer tree. */
   grease_pencil_dst->root_group_ptr = MEM_new<bke::greasepencil::LayerGroup>(
@@ -869,6 +847,12 @@ Layer &LayerGroup::add_layer(StringRefNull name)
   return this->add_node(new_layer->as_node()).as_layer();
 }
 
+Layer &LayerGroup::add_layer(const Layer &duplicate_layer)
+{
+  Layer *new_layer = MEM_new<Layer>(__func__, duplicate_layer);
+  return this->add_node(new_layer->as_node()).as_layer();
+}
+
 LayerGroup &LayerGroup::add_group(StringRefNull name)
 {
   LayerGroup *new_group = MEM_new<LayerGroup>(__func__, name);
@@ -1204,6 +1188,34 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
+}
+
+void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
+                                               GreasePencil *grease_pencil_dst)
+{
+  using namespace blender;
+  grease_pencil_dst->drawing_array_num = grease_pencil_src->drawing_array_num;
+  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(
+      grease_pencil_src->drawing_array_num, __func__);
+  for (int i = 0; i < grease_pencil_src->drawing_array_num; i++) {
+    const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
+    switch (src_drawing_base->type) {
+      case GP_DRAWING: {
+        const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
+            src_drawing_base);
+        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
+            MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
+        break;
+      }
+      case GP_DRAWING_REFERENCE: {
+        const GreasePencilDrawingReference *src_drawing_reference =
+            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
+        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
+            MEM_dupallocN(src_drawing_reference));
+        break;
+      }
+    }
+  }
 }
 
 /** \} */
@@ -1664,6 +1676,24 @@ void GreasePencil::remove_drawings_with_no_users()
   remove_drawings_unchecked(*this, drawings_to_be_removed.as_span());
 }
 
+void GreasePencil::update_drawing_users_for_layer(const blender::bke::greasepencil::Layer &layer)
+{
+  using namespace blender;
+  for (auto [key, value] : layer.frames().items()) {
+    if (value.drawing_index > 0 && value.drawing_index < this->drawings().size()) {
+      GreasePencilDrawingBase *drawing_base = this->drawing(value.drawing_index);
+      if (drawing_base->type != GP_DRAWING) {
+        continue;
+      }
+      bke::greasepencil::Drawing &drawing =
+          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      if (!drawing.has_users()) {
+        drawing.add_user();
+      }
+    }
+  }
+}
+
 void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
                                const blender::Map<int, int> &frame_number_destinations)
 {
@@ -2029,21 +2059,40 @@ static int find_layer_insertion_index(
   return index;
 }
 
+static void grow_or_init_customdata(GreasePencil *grease_pencil,
+                                    const blender::bke::greasepencil::LayerGroup &parent_group)
+{
+  using namespace blender;
+  const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
+  if (layers.is_empty()) {
+    CustomData_realloc(&grease_pencil->layers_data, 0, 1);
+  }
+  else {
+    int insertion_index = find_layer_insertion_index(layers, parent_group, false);
+    grow_customdata(grease_pencil->layers_data, insertion_index, layers.size());
+  }
+}
+
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
-
-  const Span<const bke::greasepencil::Layer *> layers = this->layers();
-  if (layers.is_empty()) {
-    CustomData_realloc(&this->layers_data, 0, 1);
-    return parent_group.add_layer(unique_name);
-  }
-  int insertion_index = find_layer_insertion_index(layers, parent_group, false);
-  grow_customdata(this->layers_data, insertion_index, layers.size());
-
+  grow_or_init_customdata(this, parent_group);
   return parent_group.add_layer(unique_name);
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(
+    blender::bke::greasepencil::LayerGroup &parent_group,
+    const blender::bke::greasepencil::Layer &duplicate_layer)
+{
+  using namespace blender;
+  std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
+  grow_or_init_customdata(this, parent_group);
+  bke::greasepencil::Layer &new_layer = parent_group.add_layer(duplicate_layer);
+  this->update_drawing_users_for_layer(new_layer);
+  new_layer.set_name(unique_name);
+  return new_layer;
 }
 
 blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(

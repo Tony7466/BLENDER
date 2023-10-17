@@ -503,6 +503,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    * Adds a new layer named \a name at the end of this group and returns it.
    */
   Layer &add_layer(StringRefNull name);
+  Layer &add_layer(const Layer &duplicate_layer);
   /**
    * Adds a new group named \a name at the end of this group and returns it.
    */
@@ -779,6 +780,8 @@ GreasePencil *BKE_grease_pencil_new_nomain();
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src);
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
+void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
+                                               GreasePencil *grease_pencil_dst);
 
 int BKE_grease_pencil_object_material_index_get(Object *ob, Material *ma);
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
