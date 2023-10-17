@@ -90,15 +90,15 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
           const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
 
-          MutableSpan<float> *value_attribute = nullptr;
+          std::optional<blender::MutableSpan<float>> value_attribute = {};
 
           if (t->mode == TFM_CURVE_SHRINKFATTEN) {
             MutableSpan<float> radii = drawing.radii_for_write();
-            value_attribute = &radii;
+            value_attribute = radii;
           }
           else if (t->mode == TFM_GPENCIL_OPACITY) {
             MutableSpan<float> opacities = drawing.opacities_for_write();
-            value_attribute = &opacities;
+            value_attribute = opacities;
           }
 
           curve_populate_trans_data_structs(tc,

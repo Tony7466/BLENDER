@@ -6,6 +6,8 @@
  * \ingroup edtransform
  */
 
+#include <optional>
+
 #include "BLI_array.hh"
 #include "BLI_inplace_priority_queue.hh"
 #include "BLI_math_matrix.h"
@@ -98,7 +100,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     curve_populate_trans_data_structs(
         tc,
         curves,
-        nullptr /* Currently no transform for attributes other than position. */,
+        {} /* Currently no transform for attributes other than position. */,
         selection_per_object[i],
         use_proportional_edit,
         use_connected_only,
@@ -123,7 +125,7 @@ static void recalcData_curves(TransInfo *t)
 
 void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        blender::bke::CurvesGeometry &curves,
-                                       blender::MutableSpan<float> *value_attribute,
+                                       std::optional<blender::MutableSpan<float>> value_attribute,
                                        const blender::IndexMask &selected_indices,
                                        bool use_proportional_edit,
                                        bool use_connected_only,
@@ -171,7 +173,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
             td.flag = TD_SELECTED;
           }
 
-          if (value_attribute != nullptr) {
+          if (value_attribute) {
             float *value = &((*value_attribute)[point_i]);
             td.val = value;
             td.ival = *value;
@@ -205,7 +207,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         copy_v3_v3(td->center, td->iloc);
         td->loc = *elem;
 
-        if (value_attribute != nullptr) {
+        if (value_attribute) {
           float *value = &((*value_attribute)[point_i]);
           td->val = value;
           td->ival = *value;

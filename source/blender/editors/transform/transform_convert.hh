@@ -117,7 +117,7 @@ void animrecord_check_state(TransInfo *t, ID *id);
  */
 void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        blender::bke::CurvesGeometry &curves,
-                                       blender::MutableSpan<float> *value_attribute,
+                                       std::optional<blender::MutableSpan<float>> value_attribute,
                                        const blender::IndexMask &selected_indices,
                                        bool use_proportional_edit,
                                        bool use_connected_only,
