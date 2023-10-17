@@ -373,7 +373,7 @@ class _defs_transform:
             label="Bend",
             icon="ops.gpencil.edit_bend",
             widget=None,
-            keymap=(),
+            keymap="3D View Tool: Bend",
         )
 
     @ToolDef.from_fn
