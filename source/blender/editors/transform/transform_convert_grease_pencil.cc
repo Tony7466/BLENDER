@@ -110,7 +110,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
                                             layer_points_offset);
 
           if (use_proportional_edit) {
-            layer_points_offset += curves.point_num;
+            layer_points_offset += curves.points_num();
           }
           else {
             layer_points_offset += selected_indices.size();
