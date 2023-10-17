@@ -13,6 +13,8 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_volume_types.h"
 
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 
@@ -24,10 +26,43 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supported_type({GeometryComponent::Type::Mesh,
                        GeometryComponent::Type::Volume,
                        GeometryComponent::Type::PointCloud,
-                       GeometryComponent::Type::Curve});
+                       GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Material>("Material").hide_label();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
+}
+
+static void assign_material_to_grease_pencil(GreasePencil &grease_pencil,
+                                             bke::CurvesGeometry &curves,
+                                             const IndexMask &selection,
+                                             Material *material)
+{
+  if (selection.size() != curves.curves_num()) {
+    /* If the entire curve isn't selected, and there is no material slot yet, add an empty
+     * slot so that the faces that aren't selected can still refer to the default material. */
+    BKE_id_material_eval_ensure_default_slot(&grease_pencil.id);
+  }
+
+  int new_material_index = -1;
+  for (const int i : IndexRange(grease_pencil.material_array_num)) {
+    Material *other_material = grease_pencil.material_array[i];
+    if (other_material == material) {
+      new_material_index = i;
+      break;
+    }
+  }
+  if (new_material_index == -1) {
+    /* Append a new material index. */
+    new_material_index = grease_pencil.material_array_num;
+    BKE_id_material_eval_assign(&grease_pencil.id, new_material_index + 1, material);
+  }
+
+  MutableAttributeAccessor attributes = curves.attributes_for_write();
+  SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", ATTR_DOMAIN_CURVE);
+  index_mask::masked_fill(material_indices.span, new_material_index, selection);
+  material_indices.finish();
 }
 
 static void assign_material_to_faces(Mesh &mesh, const IndexMask &selection, Material *material)
@@ -105,6 +140,29 @@ static void node_geo_exec(GeoNodeExecParams params)
       BKE_id_material_eval_assign(&curves->id, 1, material);
       if (selection_field.node().depends_on_input()) {
         curves_selection_warning = true;
+      }
+    }
+    if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
+      using namespace blender::bke::greasepencil;
+      Vector<Mesh *> mesh_by_layer(grease_pencil->layers().size(), nullptr);
+      for (const int layer_index : grease_pencil->layers().index_range()) {
+        Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
+                                                                          layer_index);
+        if (drawing == nullptr) {
+          continue;
+        }
+        bke::CurvesGeometry &curves = drawing->strokes_for_write();
+        if (curves.curves_num() == 0) {
+          continue;
+        }
+
+        const bke::GreasePencilLayerFieldContext field_context{
+            *grease_pencil, ATTR_DOMAIN_CURVE, layer_index};
+        fn::FieldEvaluator selection_evaluator{field_context, curves.curves_num()};
+        selection_evaluator.add(selection_field);
+        selection_evaluator.evaluate();
+        const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
+        assign_material_to_grease_pencil(*grease_pencil, curves, selection, material);
       }
     }
   });
