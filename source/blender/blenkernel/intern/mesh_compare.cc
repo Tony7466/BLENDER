@@ -718,9 +718,9 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
   return std::nullopt;
 }
 
-std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
-                                              const Mesh &mesh2,
-                                              const float threshold)
+std::optional<MeshMismatch> meshes_unisomorphic(const Mesh &mesh1,
+                                                const Mesh &mesh2,
+                                                const float threshold)
 {
 
   /* These will be assumed implicitly later on. */

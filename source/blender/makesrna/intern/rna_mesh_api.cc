@@ -38,8 +38,9 @@
 
 static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {
+
   using namespace blender::bke::mesh;
-  const std::optional<MeshMismatch> mismatch = meshes_isomorphic(*mesh, *mesh2, threshold);
+  const std::optional<MeshMismatch> mismatch = meshes_unisomorphic(*mesh, *mesh2, threshold);
 
   if (!mismatch) {
     return "Same";
