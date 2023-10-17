@@ -38,15 +38,21 @@
 
 static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {
+  const char *ret = BKE_mesh_cmp(mesh, mesh2, threshold);
 
+  if (!ret) {
+    return "Same";
+  }
+  /* The meshes are not exactly equal. Check if only the indices changed. */
   using namespace blender::bke::mesh;
   const std::optional<MeshMismatch> mismatch = meshes_unisomorphic(*mesh, *mesh2, threshold);
 
+  /* There is no actual mismatch between the two meshes except for the change of indices. */
   if (!mismatch) {
-    return "Same";
+    return (std::string(ret) + " (only indices changed)").c_str();
   }
 
-  return mismatch_to_string(mismatch.value());
+  return ret;
 }
 
 static void rna_Mesh_create_normals_split(Mesh *mesh)
