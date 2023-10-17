@@ -17,7 +17,7 @@
 
 #include "FN_field_cpp_type.hh"
 
-namespace blender::nodes::node_geo_switch_cc {
+namespace blender::nodes::node_geo_index_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeIndexSwitch)
 
@@ -83,16 +83,19 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-class IndexSwitchFn : public mf::MultiFunction {
+class IndexSwitchFunction : public mf::MultiFunction {
   mf::Signature signature_;
+  Array<std::string> debug_names_;
 
  public:
-  IndexSwitchFn(const CPPType &type, const int items_num)
+  IndexSwitchFunction(const CPPType &type, const int items_num)
   {
     mf::SignatureBuilder builder{"Index Switch", signature_};
     builder.single_input<int>("Index");
+    debug_names_.reinitialize(items_num);
     for (const int i : IndexRange(items_num)) {
-      builder.single_input(nullptr, type);
+      debug_names_[i] = std::to_string(i);
+      builder.single_input(debug_names_[i].c_str(), type);
     }
     builder.single_output("Output", type);
     this->set_signature(&signature_);
@@ -154,8 +157,8 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
 
     debug_name_ = node.name;
     inputs_.append_as("Index", CPPType::get<ValueOrField<int>>());
-    for (const int i : storage.items_span().index_range()) {
-      inputs_.append_as(std::to_string(i), cpp_type, lf::ValueUsage::Maybe);
+    for (const int i : storage.items_span().index_range().drop_front(1)) {
+      inputs_.append_as(node.input_socket(i).identifier, cpp_type, lf::ValueUsage::Maybe);
     }
     outputs_.append_as("Value", cpp_type);
   }
@@ -198,11 +201,11 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
 
   void execute_field(Field<int> index, lf::Params &params) const
   {
-    // TODO
-    /* When the condition is a non-constant field, we need both inputs. */
-    void *false_value_or_field = params.try_get_input_data_ptr_or_request(false_input_index);
-    void *true_value_or_field = params.try_get_input_data_ptr_or_request(true_input_index);
-    if (ELEM(nullptr, false_value_or_field, true_value_or_field)) {
+    Array<void *, 8> input_values(inputs_.size());
+    for (const int i : inputs_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    }
+    if (input_values.as_span().contains(nullptr)) {
       /* Try again when inputs are available. */
       return;
     }
@@ -211,43 +214,19 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         type);
     const CPPType &value_type = value_or_field_type.value;
-    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type);
 
-    GField false_field = value_or_field_type.as_field(false_value_or_field);
-    GField true_field = value_or_field_type.as_field(true_value_or_field);
+    Vector<GField> input_fields({std::move(index)});
+    for (const int i : inputs_.index_range().drop_front(1)) {
+      input_fields.append(value_or_field_type.as_field(input_values[i]));
+    }
 
-    GField output_field{FieldOperation::Create(
-        switch_multi_function, {std::move(index), std::move(false_field), std::move(true_field)})};
+    std::unique_ptr<mf::MultiFunction> switch_fn = std::make_unique<IndexSwitchFunction>(
+        value_type, inputs_.size() - 1);
+    GField output_field(FieldOperation::Create(std::move(switch_fn), std::move(input_fields)));
 
     void *output_ptr = params.get_output_data_ptr(0);
     value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
     params.output_set(0);
-  }
-
-  const MultiFunction &get_switch_multi_function(const CPPType &type) const
-  {
-    const MultiFunction *switch_multi_function = nullptr;
-    type.to_static_type_tag<float,
-                            int,
-                            bool,
-                            float3,
-                            ColorGeometry4f,
-                            std::string,
-                            math::Quaternion>([&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      if constexpr (std::is_void_v<T>) {
-        BLI_assert_unreachable();
-      }
-      else {
-        static auto switch_fn = mf::build::SI3_SO<bool, T, T, T>(
-            "Switch", [](const bool condition, const T &false_value, const T &true_value) {
-              return condition ? true_value : false_value;
-            });
-        switch_multi_function = &switch_fn;
-      }
-    });
-    BLI_assert(switch_multi_function != nullptr);
-    return *switch_multi_function;
   }
 };
 
@@ -300,15 +279,25 @@ static void register_node()
 }
 NOD_REGISTER_NODE(register_node)
 
-}  // namespace blender::nodes::node_geo_switch_cc
+}  // namespace blender::nodes::node_geo_index_switch_cc
 
 namespace blender::nodes {
 
-std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node)
+std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node)
 {
-  using namespace node_geo_switch_cc;
+  using namespace node_geo_index_switch_cc;
   BLI_assert(node.type == GEO_NODE_SWITCH);
   return std::make_unique<LazyFunctionForIndexSwitchNode>(node);
 }
 
 }  // namespace blender::nodes
+
+blender::Span<IndexSwitchItem> NodeIndexSwitch::items_span() const
+{
+  return blender::Span<IndexSwitchItem>(items, items_num);
+}
+
+blender::MutableSpan<IndexSwitchItem> NodeIndexSwitch::items_span()
+{
+  return blender::MutableSpan<IndexSwitchItem>(items, items_num);
+}

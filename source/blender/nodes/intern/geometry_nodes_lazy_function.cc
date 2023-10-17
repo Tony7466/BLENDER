@@ -3015,6 +3015,10 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_switch_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_INDEX_SWITCH: {
+        this->build_index_switch_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3483,6 +3487,33 @@ struct GeometryNodesLazyFunctionBuilder {
   void build_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
     std::unique_ptr<LazyFunction> lazy_function = get_switch_node_lazy_function(bnode);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    int input_index = 0;
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      if (bsocket->is_available()) {
+        lf::InputSocket &lf_socket = lf_node.input(input_index);
+        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        input_index++;
+      }
+    }
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      if (bsocket->is_available()) {
+        lf::OutputSocket &lf_socket = lf_node.output(0);
+        graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        break;
+      }
+    }
+
+    this->build_switch_node_socket_usage(bnode, graph_params);
+  }
+
+  void build_index_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_index_switch_node_lazy_function(bnode);
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
