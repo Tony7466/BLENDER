@@ -1,1 +1,2 @@
 Referenced by issue #113689, Regression: UI: Assertion for node tree zoom out
+Referenced by issue #113804, Python's SSL unable to access it's own certificates for authentication, `request.urlopen(..)` fails
