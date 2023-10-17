@@ -10,27 +10,34 @@
 #include "BLI_set.hh"
 
 #include "BKE_duplilist.h"
+#include "BKE_particle.h"
 
-#include "DNA_curves_types.h"
+#include "DNA_particle_types.h"
 
 #include "material.h"
 #include "object.h"
 
 namespace blender::io::hydra {
 
-class CurvesData : public ObjectData {
+class ParticleSystemData : public ObjectData {
+
  private:
   pxr::VtIntArray curve_vertex_counts_;
   pxr::VtVec3fArray vertices_;
-  pxr::VtVec2fArray uvs_;
-  pxr::VtFloatArray widths_;
 
   MaterialData *mat_data_ = nullptr;
 
  public:
-  CurvesData(HydraSceneDelegate *scene_delegate,
-             const Object *object,
-             pxr::SdfPath const &prim_id);
+  ParticleSystemData(HydraSceneDelegate *scene_delegate,
+                   const Object *object,
+                   pxr::SdfPath const &prim_id,
+                   ParticleSystem *particle_system);
+
+  static bool is_supported(const ParticleSystem *particle_system);
+  static bool is_visible(HydraSceneDelegate *scene_delegate,
+                         Object *object,
+                         ParticleSystem *particle_system,
+                         int object_mode = OB_VISIBLE_SELF);
 
   void init() override;
   void insert() override;
@@ -38,18 +45,21 @@ class CurvesData : public ObjectData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  pxr::SdfPath material_id() const override;
-  void available_materials(Set<pxr::SdfPath> &paths) const override;
+  pxr::SdfPath material_id(pxr::SdfPath const &id) const override;
 
   pxr::HdBasisCurvesTopology topology() const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
+
+  ParticleSystem *particle_system;
 
  protected:
   void write_materials() override;
 
  private:
-  void write_curves(const Curves *curves_id);
-  void write_uv_maps(const Curves *curves_id);
+  void write_curves();
+  void write_hair();
 };
+
+using ParticleSystemMap = Map<pxr::SdfPath, std::unique_ptr<ParticleSystemData>>;
 
 }  // namespace blender::io::hydra

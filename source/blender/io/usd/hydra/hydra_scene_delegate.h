@@ -18,6 +18,7 @@
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
+#include "particle_system.h"
 #include "volume.h"
 #include "volume_modifier.h"
 #include "world.h"
@@ -36,6 +37,7 @@ class Engine;
 class HydraSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
+  friend MeshData;     /* has access to particle systems */
 
  public:
   struct ShadingSettings {
@@ -59,6 +61,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
  private:
   ObjectDataMap objects_;
   MaterialDataMap materials_;
+  ParticleSystemMap particle_systems_;
   std::unique_ptr<InstancerData> instancer_data_;
   std::unique_ptr<WorldData> world_data_;
 
@@ -94,6 +97,8 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPath prim_id(const ID *id, const char *prefix) const;
   pxr::SdfPath object_prim_id(const Object *object) const;
   pxr::SdfPath material_prim_id(const Material *mat) const;
+  pxr::SdfPath particle_system_prim_id(const pxr::SdfPath parent_obj,
+                                       const ParticleSystem *mat) const;
   pxr::SdfPath instancer_prim_id() const;
   pxr::SdfPath world_prim_id() const;
 
@@ -103,11 +108,13 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   VolumeData *volume_data(pxr::SdfPath const &id) const;
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
+  ParticleSystemData *particle_system_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
 
   void update_world();
   void check_updates();
   void update_collection();
+  void update_particle_systems();
   bool set_light_shading_settings();
   bool set_world_shading_settings();
 };

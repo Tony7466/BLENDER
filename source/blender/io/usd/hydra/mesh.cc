@@ -58,7 +58,7 @@ void MeshData::remove()
 
 void MeshData::update()
 {
-  Object *object = (Object *)id;
+  const Object *object = (Object *)id;
   if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
     update_prims();
@@ -132,8 +132,7 @@ pxr::HdMeshTopology MeshData::topology(pxr::SdfPath const &id) const
                              sm.face_vertex_indices);
 }
 
-pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
-    pxr::HdInterpolation interpolation) const
+pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(pxr::HdInterpolation interpolation) const
 {
   pxr::HdPrimvarDescriptorVector primvars;
   if (interpolation == pxr::HdInterpolationVertex) {

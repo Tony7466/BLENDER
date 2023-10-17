@@ -47,6 +47,12 @@ pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 pxr::HdBasisCurvesTopology HydraSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", id.GetText());
+
+  auto p_data = particle_system_data(id);
+  if (p_data) {
+    return p_data->topology();
+  }
+
   CurvesData *c_data = curves_data(id);
   return c_data->topology();
 };
@@ -98,6 +104,11 @@ pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
+
+  ParticleSystemData *p_data = particle_system_data(id);
+  if (p_data) {
+    return p_data->primvar_descriptors(interpolation);
+  }
   MeshData *m_data = mesh_data(id);
   if (m_data) {
     return m_data->primvar_descriptors(interpolation);
@@ -116,6 +127,7 @@ pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
 pxr::SdfPath HydraSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
+
   ObjectData *obj_data = object_data(rprim_id);
   if (obj_data) {
     return obj_data->material_id(rprim_id);
@@ -214,6 +226,7 @@ void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
     set_light_shading_settings();
     set_world_shading_settings();
     update_collection();
+    update_particle_systems();
     update_world();
   }
 }
@@ -224,6 +237,10 @@ void HydraSceneDelegate::clear()
     obj_data->remove();
   }
   objects_.clear();
+  for (auto &psys_data : particle_systems_.values()) {
+    psys_data->remove();
+  }
+  particle_systems_.clear();
   instancer_data_->remove();
   for (auto &mat_data : materials_.values()) {
     mat_data->remove();
@@ -254,6 +271,11 @@ pxr::SdfPath HydraSceneDelegate::material_prim_id(const Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
+pxr::SdfPath HydraSceneDelegate::particle_system_prim_id(const pxr::SdfPath parent_obj, const ParticleSystem *psys) const
+{
+  return parent_obj.AppendPath(pxr::SdfPath(prim_id((ID *)psys, "PS").GetName()));
+}
+
 pxr::SdfPath HydraSceneDelegate::instancer_prim_id() const
 {
   return GetDelegateID().AppendElementString("Instancer");
@@ -269,7 +291,14 @@ ObjectData *HydraSceneDelegate::object_data(pxr::SdfPath const &id) const
   if (id == world_prim_id()) {
     return world_data_.get();
   }
+
   auto name = id.GetName();
+  if (STRPREFIX(name.c_str(), "PS_")) {
+    auto particle_data = particle_systems_.lookup_ptr(id);
+    if (particle_data) {
+      return particle_data->get();
+    }
+  }  
   pxr::SdfPath p_id = (STRPREFIX(name.c_str(), "SM_") || STRPREFIX(name.c_str(), "VF_")) ?
                           id.GetParentPath() :
                           id;
@@ -312,6 +341,15 @@ MaterialData *HydraSceneDelegate::material_data(pxr::SdfPath const &id) const
     return nullptr;
   }
   return mat_data->get();
+}
+
+ParticleSystemData *HydraSceneDelegate::particle_system_data(pxr::SdfPath const &id) const
+{
+  auto psys_data = particle_systems_.lookup_ptr(id);
+  if (!psys_data) {
+    return nullptr;
+  }
+  return psys_data->get();
 }
 
 InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
@@ -362,6 +400,7 @@ void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
   bool do_update_world = false;
+  bool do_update_particle_systems = false;
 
   if (set_world_shading_settings()) {
     do_update_world = true;
@@ -385,6 +424,7 @@ void HydraSceneDelegate::check_updates()
     switch (GS(id->name)) {
       case ID_OB: {
         do_update_collection = true;
+        do_update_particle_systems = true;
         break;
       }
       case ID_MA: {
@@ -405,12 +445,17 @@ void HydraSceneDelegate::check_updates()
             id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_BASE_FLAGS))
         {
           do_update_collection = true;
+          do_update_particle_systems = true;
         }
         if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
             ((scene->world && !world_data_) || (!scene->world && world_data_)))
         {
           do_update_world = true;
         }
+        break;
+      }
+      case ID_PA : {
+        do_update_particle_systems = true;
         break;
       }
 
@@ -425,6 +470,9 @@ void HydraSceneDelegate::check_updates()
   }
   if (do_update_collection) {
     update_collection();
+  }
+  if (do_update_particle_systems) {
+    update_particle_systems();
   }
 }
 
@@ -517,6 +565,44 @@ void HydraSceneDelegate::update_collection()
       item.value->remove();
     }
     return ret;
+  });
+}
+
+void HydraSceneDelegate::update_particle_systems()
+{
+  const bool for_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  for (auto &obj : objects_.values()) {
+    Object *object = (Object *)obj->id;
+    LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+      if (ParticleSystemData::is_visible(this, object, psys)) {
+        pxr::SdfPath psys_path = particle_system_prim_id(obj->prim_id, psys);
+        ParticleSystemData *psys_data = particle_systems_.contains(psys_path) ?
+                                            particle_systems_.lookup_ptr(psys_path)->get() :
+                                            nullptr;
+
+        if (!psys_data) {
+          psys_data = particle_systems_
+                          .lookup_or_add(
+                              psys_path,
+                              std::make_unique<ParticleSystemData>(this, object, psys_path, psys))
+                          .get();
+          psys_data->init();
+          psys_data->insert();
+        }
+        else {
+          psys_data->update();
+        }
+      }
+    }
+  }
+  particle_systems_.remove_if([&](auto item) {
+    Object *object = (Object *)item.value->id;
+    ParticleSystem *psys = item.value->particle_system;
+    bool ret = ParticleSystemData::is_supported(psys);
+    if (!ret || !ParticleSystemData::is_visible(this, object, psys)) {
+      item.value->remove();
+    }
+    return !ret;
   });
 }
 
