@@ -262,6 +262,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_surfel_ray";
     case VOLUME_INTEGRATION:
       return "eevee_volume_integration";
+    case VOLUME_OCCUPANCY_CONVERT:
+      return "eevee_volume_occupancy_convert";
     case VOLUME_RESOLVE:
       return "eevee_volume_resolve";
     case VOLUME_SCATTER:

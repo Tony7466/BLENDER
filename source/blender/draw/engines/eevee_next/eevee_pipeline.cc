@@ -773,9 +773,18 @@ void VolumeLayer::sync()
     /* Double sided without depth test. */
     pass.state_set(DRW_STATE_WRITE_DEPTH);
     inst_.bind_uniform_data(&pass);
-    inst_.volume.bind_properties_buffers(pass);
+    inst_.volume.bind_occupancy_buffers(pass);
     inst_.sampling.bind_resources(pass);
     occupancy_ps_ = &pass;
+  }
+  {
+    /* TODO(fclem): Optimize out when not needed. */
+    PassMain::Sub &pass = layer_pass.sub("resolve_hits_ps");
+    pass.state_set(DRW_STATE_WRITE_DEPTH);
+    inst_.bind_uniform_data(&pass);
+    pass.shader_set(inst_.shaders.static_shader_get(VOLUME_OCCUPANCY_CONVERT));
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
   {
     PassMain::Sub &pass = layer_pass.sub("material_ps");
@@ -825,7 +834,7 @@ void VolumePipeline::sync()
   }
 }
 
-void VolumePipeline::render(View &view, Texture &occupancy_tx)
+void VolumePipeline::render(View &view, Texture &occupancy_tx, Texture &hit_count_tx)
 {
   BLI_assert_msg(enabled_, "Trying to run the volume object pipeline with no actual volume calls");
 
@@ -833,6 +842,7 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
     /* TODO(fclem): We might want to skip empty layers as the clear overhead is be significant. */
     /* TODO(fclem): Move this clear inside the render pass. */
     occupancy_tx.clear(uint4(0u));
+    hit_count_tx.clear(uint4(0u));
     (*layer).render(view);
   }
 }

@@ -29,6 +29,9 @@ void main()
   float jitter = sampling_rng_1D_get(SAMPLING_VOLUME_W) * uniform_buf.volumes.inv_tex_size.z;
   float volume_z = screen_to_volume(ss_P).z - jitter;
 
+#if 0
+  /* XOR technique:
+   * Gives correct result for manifold meshes in and out of view. */
   OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);
 
   for (int i = 0; i < imageSize(occupancy_img).z; i++) {
@@ -40,4 +43,11 @@ void main()
       imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits.bits[i]);
     }
   }
+#else
+  uint hit_id = imageAtomicAdd(hit_count_img, texel, 1u);
+  if (hit_id < VOLUME_HIT_DEPTH_MAX) {
+    float value = gl_FrontFacing ? volume_z : -volume_z;
+    imageStore(hit_depth_img, ivec3(texel, hit_id), vec4(value));
+  }
+#endif
 }

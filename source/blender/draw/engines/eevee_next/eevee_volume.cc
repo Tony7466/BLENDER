@@ -131,6 +131,15 @@ void VolumeModule::end_sync()
   eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |
                                      GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
   occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
+
+  int max_ray_depth = 16;
+  eGPUTextureUsage hit_count_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                     GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
+  eGPUTextureUsage hit_depth_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                     GPU_TEXTURE_USAGE_SHADER_WRITE;
+  hit_count_tx_.ensure_2d(GPU_R32UI, data_.tex_size.xy(), hit_count_usage);
+  hit_depth_tx_.ensure_3d(GPU_R32F, int3(data_.tex_size.xy(), max_ray_depth), hit_depth_usage);
+
   if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
     /* Metal requires a dummy attachment. */
     occupancy_fb_.ensure(GPU_ATTACHMENT_NONE,
@@ -213,7 +222,7 @@ void VolumeModule::draw_prepass(View &view)
 
   if (inst_.pipelines.volume.is_enabled()) {
     occupancy_fb_.bind();
-    inst_.pipelines.volume.render(view, occupancy_tx_);
+    inst_.pipelines.volume.render(view, occupancy_tx_, hit_count_tx_);
   }
   DRW_stats_group_end();
 }

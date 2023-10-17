@@ -57,9 +57,16 @@ class VolumeModule {
    * It is filled during a pre-pass using atomic operations.
    * Using a 3D bitfield, we only allocate one bit per froxel.
    */
-  Texture occupancy_tx_ = {"occupancy_tx_"};
+  Texture occupancy_tx_ = {"occupancy_tx"};
+  /**
+   * List of surface hit for correct occupancy determination.
+   * One texture holds the number of hit count and the other the depth and
+   * the facing of each hit.
+   */
+  Texture hit_count_tx_ = {"hit_count_tx"};
+  Texture hit_depth_tx_ = {"hit_depth_tx"};
   /** Empty framebuffer for occupancy pass. */
-  Framebuffer occupancy_fb_ = {"occupancy_fb_"};
+  Framebuffer occupancy_fb_ = {"occupancy_fb"};
 
   /* Material Parameters */
   Texture prop_scattering_tx_;
@@ -112,6 +119,13 @@ class VolumeModule {
     pass.bind_image(VOLUME_PROP_EMISSION_IMG_SLOT, &prop_emission_tx_);
     pass.bind_image(VOLUME_PROP_PHASE_IMG_SLOT, &prop_phase_tx_);
     pass.bind_image(VOLUME_OCCUPANCY_SLOT, &occupancy_tx_);
+  }
+
+  template<typename PassType> void bind_occupancy_buffers(PassType &pass)
+  {
+    pass.bind_image(VOLUME_OCCUPANCY_SLOT, &occupancy_tx_);
+    pass.bind_image(VOLUME_HIT_DEPTH_SLOT, &hit_depth_tx_);
+    pass.bind_image(VOLUME_HIT_COUNT_SLOT, &hit_count_tx_);
   }
 
   bool needs_shadow_tagging()
