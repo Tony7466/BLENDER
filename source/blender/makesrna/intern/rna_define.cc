@@ -1403,8 +1403,8 @@ PropertyRNA *RNA_def_property(StructOrFunctionRNA *cont_,
       break;
     }
     case PROP_POINTER:
-      RNA_def_property_flag(
-          prop, PROP_THICK_WRAP); /* needed for default behavior when PARM_RNAPTR is set */
+      /* needed for default behavior when PARM_RNAPTR is set */
+      RNA_def_property_flag(prop, PROP_THICK_WRAP);
       break;
     case PROP_ENUM:
     case PROP_COLLECTION:
