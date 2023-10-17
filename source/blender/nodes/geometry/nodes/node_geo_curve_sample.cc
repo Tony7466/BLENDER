@@ -90,8 +90,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   const NodeDeclaration &declaration = *params.node_type().static_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(4));
-  search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(3));
+  search_link_ops_for_declarations(params, declaration.inputs);
+  search_link_ops_for_declarations(params, declaration.outputs);
 
   const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
       eNodeSocketDatatype(params.other_socket().type));
@@ -452,8 +452,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   curves.ensure_evaluated_lengths();
 
   const NodeGeometryCurveSample &storage = node_storage(params.node());
-  const GeometryNodeCurveSampleMode mode = (GeometryNodeCurveSampleMode)storage.mode;
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const GeometryNodeCurveSampleMode mode = GeometryNodeCurveSampleMode(storage.mode);
 
   Field<float> length_field = params.extract_input<Field<float>>(
       mode == GEO_NODE_CURVE_SAMPLE_FACTOR ? "Factor" : "Length");

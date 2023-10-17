@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_function_ref.hh"
 #include "BLI_set.hh"
 
 #include "BKE_context.h"
@@ -147,23 +146,6 @@ void search_link_ops_for_basic_node(GatherLinkSearchOpParams &params)
   }
   const NodeDeclaration &declaration = *node_type.static_declaration;
   search_link_ops_for_declarations(params, declaration.sockets(params.in_out()));
-}
-
-void search_link_ops_for_declaration(GatherLinkSearchOpParams &params,
-                                     FunctionRef<void(NodeDeclarationBuilder &b)> builder)
-{
-  return;
-  NodeDeclaration declaration;
-  NodeDeclarationBuilder node_decl_builder{declaration};
-  builder(node_decl_builder);
-  node_decl_builder.finalize();
-
-  if (params.in_out() == SOCK_IN) {
-    search_link_ops_for_declarations(params, declaration.inputs.as_span());
-  }
-  else {
-    search_link_ops_for_declarations(params, declaration.outputs.as_span());
-  }
 }
 
 }  // namespace blender::nodes

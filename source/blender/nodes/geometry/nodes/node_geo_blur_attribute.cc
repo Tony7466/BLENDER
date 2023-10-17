@@ -76,7 +76,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   const NodeDeclaration &declaration = *node_type.static_declaration;
 
   /* Weight and Iterations inputs don't change based on the data type. */
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
+  search_link_ops_for_declarations(params, declaration.inputs);
 
   const std::optional<eCustomDataType> new_node_type = bke::socket_type_to_custom_data_type(
       eNodeSocketDatatype(params.other_socket().type));

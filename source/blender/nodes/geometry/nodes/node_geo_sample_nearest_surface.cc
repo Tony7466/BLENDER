@@ -54,8 +54,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   const NodeDeclaration &declaration = *params.node_type().static_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
-  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
+  search_link_ops_for_declarations(params, declaration.inputs);
 
   const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
       eNodeSocketDatatype(params.other_socket().type));

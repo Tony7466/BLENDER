@@ -98,7 +98,52 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
   }
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs);
+
+  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
+  if (!type) {
+    return;
+  }
+  if (params.in_out() == SOCK_OUT) {
+    params.add_item(
+        IFACE_("Leading"),
+        [type](LinkSearchOpParams &params) {
+          bNode &node = params.add_node("GeometryNodeAccumulateField");
+          node_storage(node).data_type = *type;
+          params.update_and_connect_available_socket(node, "Leading");
+        },
+        0);
+    params.add_item(
+        IFACE_("Trailing"),
+        [type](LinkSearchOpParams &params) {
+          bNode &node = params.add_node("GeometryNodeAccumulateField");
+          node_storage(node).data_type = *type;
+          params.update_and_connect_available_socket(node, "Trailing");
+        },
+        -1);
+    params.add_item(
+        IFACE_("Total"),
+        [type](LinkSearchOpParams &params) {
+          bNode &node = params.add_node("GeometryNodeAccumulateField");
+          node_storage(node).data_type = *type;
+          params.update_and_connect_available_socket(node, "Total");
+        },
+        -2);
+  }
+  else {
+    params.add_item(
+        IFACE_("Value"),
+        [type](LinkSearchOpParams &params) {
+          bNode &node = params.add_node("GeometryNodeAccumulateField");
+          node_storage(node).data_type = *type;
+          params.update_and_connect_available_socket(node, "Value");
+        },
+        0);
+  }
+}
 
 class AccumulateFieldInput final : public bke::GeometryFieldInput {
  private:

@@ -91,6 +91,8 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
 static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
 {
   const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs);
+
   const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
   if (!type) {
     return;
@@ -108,7 +110,6 @@ static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
         params.update_and_connect_available_socket(node, "Max");
       });
     }
-    search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(3));
   }
   else {
     params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {

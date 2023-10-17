@@ -130,7 +130,34 @@ static std::optional<eNodeSocketDatatype> get_compare_type_for_operation(
   }
 }
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params) {}
+static void node_gather_link_searches(GatherLinkSearchOpParams &params)
+{
+  const eNodeSocketDatatype type = eNodeSocketDatatype(params.other_socket().type);
+  if (!ELEM(type, SOCK_INT, SOCK_BOOLEAN, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_STRING)) {
+    return;
+  }
+  const StringRef socket_name = params.in_out() == SOCK_IN ? "A" : "Result";
+  for (const EnumPropertyItem *item = rna_enum_node_compare_operation_items;
+       item->identifier != nullptr;
+       item++)
+  {
+    if (item->name != nullptr && item->identifier[0] != '\0') {
+      const NodeCompareOperation operation = NodeCompareOperation(item->value);
+      if (const std::optional<eNodeSocketDatatype> fixed_type = get_compare_type_for_operation(
+              type, operation))
+      {
+        params.add_item(IFACE_(item->name), SocketSearchOp{socket_name, *fixed_type, operation});
+      }
+    }
+  }
+
+  if (params.in_out() != SOCK_IN && type != SOCK_STRING) {
+    params.add_item(
+        IFACE_("Angle"),
+        SocketSearchOp{
+            "Angle", SOCK_VECTOR, NODE_COMPARE_GREATER_THAN, NODE_COMPARE_MODE_DIRECTION});
+  }
+}
 
 static void node_label(const bNodeTree * /*tree*/,
                        const bNode *node,
