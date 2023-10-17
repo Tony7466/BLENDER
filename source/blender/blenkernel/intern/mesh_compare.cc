@@ -58,10 +58,9 @@ const char *mismatch_to_string(const MeshMismatch &mismatch)
       return "The sets of attribute ids are different";
     case MeshMismatch::AttributeTypes:
       return "Some attributes with the same name have different types";
-    default:
-      BLI_assert_unreachable();
-      return "";
   }
+  BLI_assert_unreachable();
+  return "";
 }
 
 class IndexMapping {
