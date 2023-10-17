@@ -12,6 +12,8 @@
 
 #include "BLI_task.hh"
 
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
 namespace blender::nodes::node_geo_material_selection_cc {
@@ -55,6 +57,40 @@ static VArray<bool> select_mesh_faces_by_material(const Mesh &mesh,
   return VArray<bool>::ForContainer(std::move(face_selection));
 }
 
+static VArray<bool> select_grease_pencil_by_material(const GreasePencil &grease_pencil,
+                                                     const bke::CurvesGeometry &curves,
+                                                     const Material *material,
+                                                     const IndexMask &curve_mask)
+{
+  Vector<int> slots;
+  for (const int slot_i : IndexRange(grease_pencil.material_array_num)) {
+    if (grease_pencil.material_array[slot_i] == material) {
+      slots.append(slot_i);
+    }
+  }
+  if (slots.is_empty()) {
+    return VArray<bool>::ForSingle(false, curves.curves_num());
+  }
+
+  const AttributeAccessor attributes = curves.attributes();
+  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_CURVE, 0);
+  if (material_indices.is_single()) {
+    const int slot_i = material_indices.get_internal_single();
+    return VArray<bool>::ForSingle(slots.contains(slot_i), curves.curves_num());
+  }
+
+  const VArraySpan<int> material_indices_span(material_indices);
+
+  Array<bool> curve_selection(curve_mask.min_array_size());
+  curve_mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int curve_index) {
+    const int slot_i = material_indices_span[curve_index];
+    curve_selection[curve_index] = slots.contains(slot_i);
+  });
+
+  return VArray<bool>::ForContainer(std::move(curve_selection));
+}
+
 class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
   Material *material_;
 
@@ -69,19 +105,42 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final
   {
-    if (context.type() != GeometryComponent::Type::Mesh) {
-      return {};
-    }
-    const Mesh *mesh = context.mesh();
-    if (mesh == nullptr) {
+    if (!ELEM(
+            context.type(), GeometryComponent::Type::Mesh, GeometryComponent::Type::GreasePencil))
+    {
       return {};
     }
 
-    const eAttrDomain domain = context.domain();
-    const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask : IndexMask(mesh->faces_num);
-
-    VArray<bool> selection = select_mesh_faces_by_material(*mesh, material_, domain_mask);
-    return mesh->attributes().adapt_domain<bool>(std::move(selection), ATTR_DOMAIN_FACE, domain);
+    switch (context.type()) {
+      case (GeometryComponent::Type::Mesh): {
+        const Mesh *mesh = context.mesh();
+        if (mesh == nullptr) {
+          return {};
+        }
+        const eAttrDomain domain = context.domain();
+        const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask :
+                                                                     IndexMask(mesh->faces_num);
+        VArray<bool> selection = select_mesh_faces_by_material(*mesh, material_, domain_mask);
+        return mesh->attributes().adapt_domain<bool>(
+            std::move(selection), ATTR_DOMAIN_FACE, domain);
+      }
+      case (GeometryComponent::Type::GreasePencil): {
+        const bke::CurvesGeometry *curves = context.curves_or_strokes();
+        if (curves == nullptr) {
+          return {};
+        }
+        const eAttrDomain domain = context.domain();
+        const IndexMask domain_mask = mask;
+        VArray<bool> selection = select_grease_pencil_by_material(
+            *context.grease_pencil(), *curves, material_, domain_mask);
+        return curves->attributes().adapt_domain<bool>(
+            std::move(selection), ATTR_DOMAIN_CURVE, domain);
+      }
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+    return {};
   }
 
   uint64_t hash() const override
