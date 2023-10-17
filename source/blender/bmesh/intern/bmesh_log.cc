@@ -40,6 +40,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <memory>
 #include <type_traits>
 
 using blender::Array;
@@ -358,7 +359,7 @@ template<typename T> constexpr char get_elem_type()
 struct BMLogEntry {
   BMLogEntry *next = nullptr, *prev = nullptr;
 
-  Vector<BMLogSetBase *> sets;
+  Vector<std::unique_ptr<BMLogSetBase>> sets;
   BLI_mempool *vpool = nullptr;
   BLI_mempool *epool = nullptr;
   BLI_mempool *fpool = nullptr;
@@ -407,7 +408,7 @@ struct BMLogEntry {
     BMLogVert **lv = nullptr;
 
     for (int i = sets.size() - 1; i >= 0; i--) {
-      BMLogSetBase *set = sets[i];
+      BMLogSetBase *set = sets[i].get();
 
       if (set->type != BMLogSetType::LOG_SET_DIFF) {
         continue;
@@ -432,17 +433,6 @@ struct BMLogEntry {
   ~BMLogEntry()
   {
     dead = true;
-
-    for (BMLogSetBase *set : sets) {
-      switch (set->type) {
-        case BMLogSetType::LOG_SET_DIFF:
-          delete static_cast<BMLogSetDiff *>(set);
-          break;
-        case BMLogSetType::LOG_SET_FULL:
-          delete static_cast<BMLogSetFullMesh *>(set);
-          break;
-      }
-    }
 
     BLI_mempool_iter iter;
 
@@ -492,10 +482,10 @@ struct BMLogEntry {
     int av = 0, ae = 0, af = 0, mv = 0, me = 0, mf = 0, dv = 0, de = 0, df = 0;
     int totmesh = 0;
 
-    for (BMLogSetBase *set : sets) {
+    for (std::unique_ptr<BMLogSetBase> &set : sets) {
       switch (set->type) {
         case BMLogSetType::LOG_SET_DIFF: {
-          BMLogSetDiff *diff = static_cast<BMLogSetDiff *>(set);
+          BMLogSetDiff *diff = static_cast<BMLogSetDiff *>(set.get());
 
           av += diff->added_verts.size();
           ae += diff->added_edges.size();
@@ -594,11 +584,14 @@ struct BMLogEntry {
   void push_set(BMesh *bm, BMLogSetType type)
   {
     switch (type) {
-      case BMLogSetType::LOG_SET_DIFF:
-        sets.append(static_cast<BMLogSetBase *>(new BMLogSetDiff(this)));
+      case BMLogSetType::LOG_SET_DIFF: {
+        sets.append(
+            std::unique_ptr<BMLogSetBase>(static_cast<BMLogSetBase *>(new BMLogSetDiff(this))));
         break;
+      }
       case BMLogSetType::LOG_SET_FULL:
-        sets.append(static_cast<BMLogSetBase *>(new BMLogSetFullMesh(bm, this, idmap)));
+        sets.append(std::unique_ptr<BMLogSetBase>(
+            static_cast<BMLogSetBase *>(new BMLogSetFullMesh(bm, this, idmap))));
         break;
     }
   }
@@ -609,14 +602,14 @@ struct BMLogEntry {
       push_set(bm, BMLogSetType::LOG_SET_DIFF);
     }
 
-    return static_cast<BMLogSetDiff *>(sets[sets.size() - 1]);
+    return static_cast<BMLogSetDiff *>(sets[sets.size() - 1].get());
   }
 
   BMLogSetDiff *first_diff_set(BMesh *bm)
   {
-    for (BMLogSetBase *set : sets) {
+    for (std::unique_ptr<BMLogSetBase> &set : sets) {
       if (set->type == BMLogSetType::LOG_SET_DIFF) {
-        return static_cast<BMLogSetDiff *>(set);
+        return static_cast<BMLogSetDiff *>(set.get());
       }
     }
 

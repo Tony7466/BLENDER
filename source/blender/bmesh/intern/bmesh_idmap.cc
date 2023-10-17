@@ -360,7 +360,7 @@ template<typename T> void BM_idmap_release(BMIdMap *idmap, T *elem, bool clear_i
   if (id < 0 || id >= idmap->map.size() ||
       (idmap->map[id] && idmap->map[id] != reinterpret_cast<BMElem *>(elem)))
   {
-    idmap_log_message("%s: id corruptions\n", __func__);
+    idmap_log_message("%s: invalid id %d\n", __func__, id);
     return;
   }
   else {
