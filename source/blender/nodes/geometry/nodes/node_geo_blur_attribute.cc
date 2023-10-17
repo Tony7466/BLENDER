@@ -86,12 +86,12 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   const bNodeType &node_type = params.node_type();
-  const NodeDeclaration &declaration = *node_type.fixed_declaration;
+  const NodeDeclaration &declaration = *node_type.static_declaration;
 
   /* Weight and Iterations inputs don't change based on the data type. */
   search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(2));
 
-  const std::optional<eCustomDataType> new_node_type = node_data_type_to_custom_data_type(
+  const std::optional<eCustomDataType> new_node_type = bke::socket_type_to_custom_data_type(
       eNodeSocketDatatype(params.other_socket().type));
   if (!new_node_type.has_value()) {
     return;
