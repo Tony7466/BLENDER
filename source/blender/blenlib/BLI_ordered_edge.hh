@@ -36,13 +36,25 @@ struct OrderedEdge {
     return (this->v_low << 8) ^ this->v_high;
   }
 
-  friend bool operator==(const OrderedEdge &e1, const OrderedEdge &e2);
+  friend bool operator==(const OrderedEdge &e1, const OrderedEdge &e2)
+  {
+    return e1.v_low == e2.v_low && e1.v_high == e2.v_high;
+  }
 
-  friend bool operator!=(const OrderedEdge &e1, const OrderedEdge &e2);
+  friend bool operator!=(const OrderedEdge &e1, const OrderedEdge &e2)
+  {
+    return !(e1 == e2);
+  }
+
+  friend bool operator<(const OrderedEdge &e1, const OrderedEdge &e2)
+  {
+    if (e1.v_low != e2.v_low) {
+      return e1.v_low < e2.v_low;
+    }
+    return e1.v_high < e2.v_high;
+  }
 
   friend std::ostream &operator<<(std::ostream &stream, const OrderedEdge &e);
-
-  friend bool operator<(const OrderedEdge &e1, const OrderedEdge &e2);
 };
 
 }  // namespace blender
