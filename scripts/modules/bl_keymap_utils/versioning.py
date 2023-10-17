@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Update Blender version this key-map was written in:
@@ -24,7 +26,7 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
         for _km_name, _km_parms, km_items_data in keyconfig_data:
             for (_item_op, item_event, _item_prop) in km_items_data["items"]:
                 if item_event.get("value") == 'PRESS':
-                    # Unfortunately we don't know the 'map_type' at this point.
+                    # Unfortunately we don't know the `map_type` at this point.
                     # Setting repeat true on other kinds of events is harmless.
                     item_event["repeat"] = True
 
@@ -76,6 +78,20 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
                     elif item_modal == 'ROTATE':
                         km_items.append(('TRACKBALL', item_event, None))
 
+                # The modal key for "Rotate Normals" also didn't exist until then.
+                km_items.append(('ROTATE_NORMALS', {"type": 'N', "value": 'PRESS'}, None))
+                break
+
+    if keyconfig_version <= (4, 0, 3):
+        if not has_copy:
+            keyconfig_data = copy.deepcopy(keyconfig_data)
+            has_copy = True
+
+        # "Snap Source Toggle" did not exist until then.
+        for km_name, _km_parms, km_items_data in keyconfig_data:
+            if km_name == "Transform Modal Map":
+                km_items_data["items"].append(("EDIT_SNAP_SOURCE_ON", {"type": 'B', "value": 'PRESS'}, None))
+                km_items_data["items"].append(("EDIT_SNAP_SOURCE_OFF", {"type": 'B', "value": 'PRESS'}, None))
                 break
 
     return keyconfig_data

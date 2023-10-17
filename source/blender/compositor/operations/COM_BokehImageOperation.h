@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -30,7 +31,7 @@ namespace blender::compositor {
  * - Distance between the center of the image and the pixel to be evaluated.
  * - Distance between the center of the image and the outer-edge.
  * - Distance between the center of the image and the inner-edge.
-
+ *
  * With a simple compare it can be detected if the evaluated pixel is between the outer and inner
  * edge.
  */

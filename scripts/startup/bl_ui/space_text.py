@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Header, Menu, Panel
 from bpy.app.translations import (
@@ -66,12 +69,12 @@ class TEXT_HT_footer(Header):
             if text.filepath:
                 if text.is_dirty:
                     row.label(
-                        text=iface_("File: *%s (unsaved)" % text.filepath),
+                        text=iface_("File: *%s (unsaved)") % text.filepath,
                         translate=False,
                     )
                 else:
                     row.label(
-                        text=iface_("File: %s" % text.filepath),
+                        text=iface_("File: %s") % text.filepath,
                         translate=False,
                     )
             else:
@@ -224,6 +227,16 @@ class TEXT_MT_view(Menu):
 
         layout.separator()
 
+        props = layout.operator("wm.context_cycle_int", text="Zoom In")
+        props.data_path = "space_data.font_size"
+        props.reverse = False
+
+        props = layout.operator("wm.context_cycle_int", text="Zoom Out")
+        props.data_path = "space_data.font_size"
+        props.reverse = True
+
+        layout.separator()
+
         layout.menu("TEXT_MT_view_navigation")
 
         layout.separator()
@@ -246,7 +259,13 @@ class TEXT_MT_text(Menu):
 
         if text:
             layout.separator()
-            layout.operator("text.reload")
+            row = layout.row()
+            row.operator("text.reload")
+            row.enabled = not text.is_in_memory
+
+            row = layout.row()
+            row.operator("text.jump_to_file_at_point", text="Edit Externally")
+            row.enabled = (not text.is_in_memory and context.preferences.filepaths.text_editor != "")
 
             layout.separator()
             layout.operator("text.save", icon='FILE_TICK')

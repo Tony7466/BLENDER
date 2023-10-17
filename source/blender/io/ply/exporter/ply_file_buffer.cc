@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "ply_file_buffer.hh"
+
+#include <iostream>
 
 namespace blender::io::ply {
 
@@ -40,36 +44,31 @@ void FileBuffer::close_file()
 
 void FileBuffer::write_header_element(StringRef name, int count)
 {
-  write_fstring("element {} {}\n", name, count);
+  write_fstring("element {} {}\n", std::string_view(name), count);
 }
 void FileBuffer::write_header_scalar_property(StringRef dataType, StringRef name)
 {
-  write_fstring("property {} {}\n", dataType, name);
+  write_fstring("property {} {}\n", std::string_view(dataType), std::string_view(name));
 }
 
 void FileBuffer::write_header_list_property(StringRef countType,
                                             StringRef dataType,
                                             StringRef name)
 {
-  write_fstring("property list {} {} {}\n", countType, dataType, name);
+  write_fstring("property list {} {} {}\n",
+                std::string_view(countType),
+                std::string_view(dataType),
+                std::string_view(name));
 }
 
 void FileBuffer::write_string(StringRef s)
 {
-  write_fstring("{}\n", s);
+  write_fstring("{}\n", std::string_view(s));
 }
 
 void FileBuffer::write_newline()
 {
   write_fstring("\n");
-}
-
-void FileBuffer::ensure_space(size_t at_least)
-{
-  if (blocks_.is_empty() || (blocks_.last().capacity() - blocks_.last().size() < at_least)) {
-    blocks_.append(VectorChar());
-    blocks_.reserve(std::max(at_least, buffer_chunk_size_));
-  }
 }
 
 void FileBuffer::write_bytes(Span<char> bytes)

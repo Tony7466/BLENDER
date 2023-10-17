@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
@@ -44,7 +47,7 @@ bool is_visible(IsectBox box)
 
 bool intersects_near_plane(IsectBox box)
 {
-  vec4 near_plane = drw_view_culling.planes[4];
+  vec4 near_plane = drw_view_culling.frustum_planes.planes[4];
   bool on_positive_side = false;
   bool on_negative_side = false;
 
@@ -69,7 +72,7 @@ bool intersects_near_plane(IsectBox box)
 
 void main()
 {
-  if (gl_GlobalInvocationID.x >= resource_len) {
+  if (int(gl_GlobalInvocationID.x) >= resource_len) {
     return;
   }
 

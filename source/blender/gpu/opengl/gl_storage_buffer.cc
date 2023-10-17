@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -7,6 +8,7 @@
 
 #include "BLI_string.h"
 
+#include "GPU_capabilities.h"
 #include "gpu_backend.hh"
 #include "gpu_context_private.hh"
 
@@ -26,7 +28,7 @@ GLStorageBuf::GLStorageBuf(size_t size, GPUUsageType usage, const char *name)
 {
   usage_ = usage;
   /* Do not create UBO GL buffer here to allow allocation from any thread. */
-  BLI_assert(size <= GLContext::max_ssbo_size);
+  BLI_assert(size <= GPU_max_storage_buffer_size());
 }
 
 GLStorageBuf::~GLStorageBuf()
@@ -117,27 +119,20 @@ void GLStorageBuf::unbind()
   slot_ = 0;
 }
 
-void GLStorageBuf::clear(eGPUTextureFormat internal_format, eGPUDataFormat data_format, void *data)
+void GLStorageBuf::clear(uint32_t clear_value)
 {
   if (ssbo_id_ == 0) {
     this->init();
   }
 
   if (GLContext::direct_state_access_support) {
-    glClearNamedBufferData(ssbo_id_,
-                           to_gl_internal_format(internal_format),
-                           to_gl_data_format(internal_format),
-                           to_gl(data_format),
-                           data);
+    glClearNamedBufferData(ssbo_id_, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
   }
   else {
     /* WATCH(@fclem): This should be ok since we only use clear outside of drawing functions. */
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_id_);
-    glClearBufferData(GL_SHADER_STORAGE_BUFFER,
-                      to_gl_internal_format(internal_format),
-                      to_gl_data_format(internal_format),
-                      to_gl(data_format),
-                      data);
+    glClearBufferData(
+        GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   }
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -47,7 +48,7 @@ class VKDescriptorPools {
 
   void init(const VkDevice vk_device);
 
-  VKDescriptorSet allocate(const VkDescriptorSetLayout &descriptor_set_layout);
+  std::unique_ptr<VKDescriptorSet> allocate(const VkDescriptorSetLayout &descriptor_set_layout);
   void free(VKDescriptorSet &descriptor_set);
 
   /**

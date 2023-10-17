@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -13,8 +15,7 @@
  * Then the shading pass will shade the areas with stencil not equal 0 differently.
  */
 
-#include "BKE_object.h"
-#include "BLI_math.h"
+#include "BKE_object.hh"
 #include "DRW_render.h"
 #include "GPU_compute.h"
 
@@ -220,14 +221,14 @@ void ShadowPass::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
   uint words_len = (view_len_ == 1) ? divide_ceil_u(resource_len, 32) :
                                       resource_len * word_per_draw;
   words_len = ceil_to_multiple_u(max_ii(1, words_len), 4);
-  uint32_t data = 0xFFFFFFFFu;
+  const uint32_t data = 0xFFFFFFFFu;
 
   if (current_pass_type_ == ShadowPass::PASS) {
     /* TODO(fclem): Resize to nearest pow2 to reduce fragmentation. */
     pass_visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(pass_visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear(pass_visibility_buf_, data);
     fail_visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(fail_visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear(fail_visibility_buf_, data);
   }
   else if (current_pass_type_ == ShadowPass::FAIL) {
     /* Already computed in the ShadowPass::PASS */
@@ -236,7 +237,7 @@ void ShadowPass::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
   }
   else {
     visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear(visibility_buf_, data);
   }
 
   if (do_visibility_) {
@@ -244,11 +245,11 @@ void ShadowPass::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
 
     if (dynamic_pass_type_shader_ == nullptr) {
       dynamic_pass_type_shader_ = GPU_shader_create_from_info_name(
-          "workbench_next_shadow_visibility_compute_dynamic_pass_type");
+          "workbench_shadow_visibility_compute_dynamic_pass_type");
     }
     if (static_pass_type_shader_ == nullptr) {
       static_pass_type_shader_ = GPU_shader_create_from_info_name(
-          "workbench_next_shadow_visibility_compute_static_pass_type");
+          "workbench_shadow_visibility_compute_static_pass_type");
     }
 
     GPUShader *shader = current_pass_type_ == ShadowPass::FORCED_FAIL ? static_pass_type_shader_ :
@@ -304,17 +305,17 @@ ShadowPass::~ShadowPass()
   }
 }
 
-PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*= false*/)
+PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*=false*/)
 {
   return passes_[type][manifold][cap];
 }
 
-GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*= false*/)
+GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*=false*/)
 {
   GPUShader *&shader = shaders_[depth_pass][manifold][cap];
 
   if (shader == nullptr) {
-    std::string create_info_name = "workbench_next_shadow";
+    std::string create_info_name = "workbench_shadow";
     create_info_name += (depth_pass) ? "_pass" : "_fail";
     create_info_name += (manifold) ? "_manifold" : "_no_manifold";
     create_info_name += (cap) ? "_caps" : "_no_caps";
@@ -352,7 +353,7 @@ void ShadowPass::init(const SceneState &scene_state, SceneResources &resources)
   float4x4 view_matrix;
   DRW_view_viewmat_get(nullptr, view_matrix.ptr(), false);
   resources.world_buf.shadow_direction_vs = float4(
-      math::transform_direction(view_matrix, direction_ws));
+      math::transform_direction(view_matrix, direction_ws), 0.0f);
 
   /* Clamp to avoid overshadowing and shading errors. */
   float focus = clamp_f(scene.display.shadow_focus, 0.0001f, 0.99999f);

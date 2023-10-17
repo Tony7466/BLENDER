@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -30,7 +32,7 @@
 
 #endif /* !WITH_PYTHON_SAFETY */
 
-/* sanity checks on above defs */
+/* Sanity checks on above defines. */
 #if defined(USE_PYRNA_INVALIDATE_WEAKREF) && !defined(USE_WEAKREFS)
 #  define USE_WEAKREFS
 #endif
@@ -56,6 +58,10 @@ struct ID;
 extern "C" {
 #endif
 
+/**
+ * Sub-classes of #pyrna_struct_Type which support idprop definitions use this as a meta-class.
+ * \note tp_base member is set to `&PyType_Type` on initialization.
+ */
 extern PyTypeObject pyrna_struct_meta_idprop_Type;
 extern PyTypeObject pyrna_struct_Type;
 extern PyTypeObject pyrna_prop_Type;
@@ -103,7 +109,7 @@ typedef struct {
   PointerRNA ptr;
 } BPy_DummyPointerRNA;
 
-typedef struct {
+typedef struct BPy_StructRNA {
   PyObject_HEAD /* Required Python macro. */
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
@@ -116,8 +122,9 @@ typedef struct {
 #endif /* !USE_PYRNA_STRUCT_REFERENCE */
 
 #ifdef PYRNA_FREE_SUPPORT
-  bool freeptr; /* needed in some cases if ptr.data is created on the fly, free when deallocing */
-#endif          /* PYRNA_FREE_SUPPORT */
+  /** Needed in some cases if ptr.data is created on the fly, free when deallocating. */
+  bool freeptr;
+#endif /* PYRNA_FREE_SUPPORT */
 } BPy_StructRNA;
 
 typedef struct {
@@ -173,6 +180,7 @@ void BPY_update_rna_module(void);
 // PyObject *BPY_rna_doc(void);
 PyObject *BPY_rna_types(void);
 
+PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr);
 PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr);
 PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop);
 

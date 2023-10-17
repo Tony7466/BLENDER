@@ -1,22 +1,24 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
  */
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_inplace_priority_queue.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_span.hh"
 
 #include "BKE_curves.hh"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Curve/Surfaces Transform Creation
@@ -60,7 +62,7 @@ static void calculate_curve_point_distances_for_proportional_editing(
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 {
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
-  Array<Vector<int64_t>> selected_indices_per_object(t->data_container_len);
+  IndexMaskMemory memory;
   Array<IndexMask> selection_per_object(t->data_container_len);
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
@@ -75,8 +77,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       tc.data_len = curves.point_num;
     }
     else {
-      selection_per_object[i] = ed::curves::retrieve_selected_points(
-          curves, selected_indices_per_object[i]);
+      selection_per_object[i] = ed::curves::retrieve_selected_points(curves, memory);
       tc.data_len = selection_per_object[i].size();
     }
 
@@ -101,7 +102,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     MutableSpan<float3> positions = curves.positions_for_write();
     if (use_proportional_edit) {
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-      const VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
+      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         Vector<float> closest_distances;
@@ -192,7 +193,7 @@ static void recalcData_curves(TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_Curves = {
     /*flags*/ (T_EDIT | T_POINTS),
-    /*createTransData*/ blender::ed::transform::curves::createTransCurvesVerts,
-    /*recalcData*/ blender::ed::transform::curves::recalcData_curves,
+    /*create_trans_data*/ blender::ed::transform::curves::createTransCurvesVerts,
+    /*recalc_data*/ blender::ed::transform::curves::recalcData_curves,
     /*special_aftertrans_update*/ nullptr,
 };

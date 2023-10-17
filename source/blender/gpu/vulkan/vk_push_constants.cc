@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -7,6 +8,7 @@
 
 #include "vk_push_constants.hh"
 #include "vk_backend.hh"
+#include "vk_context.hh"
 #include "vk_memory_layout.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
@@ -47,15 +49,16 @@ uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
 }
 
 VKPushConstants::StorageType VKPushConstants::Layout::determine_storage_type(
-    const shader::ShaderCreateInfo &info, const VkPhysicalDeviceLimits &vk_physical_device_limits)
+    const shader::ShaderCreateInfo &info, const VKDevice &device)
 {
   if (info.push_constants_.is_empty()) {
     return StorageType::NONE;
   }
 
+  uint32_t max_push_constants_size =
+      device.physical_device_properties_get().limits.maxPushConstantsSize;
   uint32_t size = struct_size<Std430>(info.push_constants_);
-  return size <= vk_physical_device_limits.maxPushConstantsSize ? STORAGE_TYPE_DEFAULT :
-                                                                  STORAGE_TYPE_FALLBACK;
+  return size <= max_push_constants_size ? STORAGE_TYPE_DEFAULT : STORAGE_TYPE_FALLBACK;
 }
 
 template<typename LayoutT>
@@ -99,28 +102,28 @@ const VKPushConstants::Layout::PushConstant *VKPushConstants::Layout::find(int32
   return nullptr;
 }
 
+void VKPushConstants::Layout::debug_print() const
+{
+  std::ostream &stream = std::cout;
+  stream << "VKPushConstants::Layout::debug_print()\n";
+  for (const PushConstant &push_constant : push_constants) {
+    stream << "  - location:" << push_constant.location;
+    stream << ", offset:" << push_constant.offset;
+    stream << ", array_size:" << push_constant.array_size;
+    stream << "\n";
+  }
+}
+
 VKPushConstants::VKPushConstants() = default;
 VKPushConstants::VKPushConstants(const Layout *layout) : layout_(layout)
 {
   data_ = MEM_mallocN(layout->size_in_bytes(), __func__);
-  switch (layout_->storage_type_get()) {
-    case StorageType::UNIFORM_BUFFER:
-      uniform_buffer_ = new VKUniformBuffer(layout_->size_in_bytes(), __func__);
-      break;
-
-    case StorageType::PUSH_CONSTANTS:
-    case StorageType::NONE:
-      break;
-  }
 }
 
 VKPushConstants::VKPushConstants(VKPushConstants &&other) : layout_(other.layout_)
 {
   data_ = other.data_;
   other.data_ = nullptr;
-
-  uniform_buffer_ = other.uniform_buffer_;
-  other.uniform_buffer_ = nullptr;
 }
 
 VKPushConstants::~VKPushConstants()
@@ -129,9 +132,6 @@ VKPushConstants::~VKPushConstants()
     MEM_freeN(data_);
     data_ = nullptr;
   }
-
-  delete uniform_buffer_;
-  uniform_buffer_ = nullptr;
 }
 
 VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
@@ -140,9 +140,6 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
 
   data_ = other.data_;
   other.data_ = nullptr;
-
-  uniform_buffer_ = other.uniform_buffer_;
-  other.uniform_buffer_ = nullptr;
 
   return *this;
 }
@@ -155,7 +152,7 @@ void VKPushConstants::update(VKContext &context)
   BLI_assert_msg(&pipeline.push_constants_get() == this,
                  "Invalid state detected. Push constants doesn't belong to the active shader of "
                  "the given context.");
-  VKDescriptorSet &descriptor_set = pipeline.descriptor_set_get();
+  VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
 
   switch (layout_get().storage_type_get()) {
     case VKPushConstants::StorageType::NONE:
@@ -167,7 +164,7 @@ void VKPushConstants::update(VKContext &context)
 
     case VKPushConstants::StorageType::UNIFORM_BUFFER:
       update_uniform_buffer();
-      descriptor_set.bind(uniform_buffer_get(), layout_get().descriptor_set_location_get());
+      descriptor_set.bind(*uniform_buffer_get(), layout_get().descriptor_set_location_get());
       break;
   }
 }
@@ -175,16 +172,22 @@ void VKPushConstants::update(VKContext &context)
 void VKPushConstants::update_uniform_buffer()
 {
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
-  BLI_assert(uniform_buffer_ != nullptr);
   BLI_assert(data_ != nullptr);
-  uniform_buffer_->update(data_);
+  VKContext &context = *VKContext::get();
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer = tracked_resource_for(context, is_dirty_);
+  uniform_buffer->update(data_);
+  is_dirty_ = false;
 }
 
-VKUniformBuffer &VKPushConstants::uniform_buffer_get()
+std::unique_ptr<VKUniformBuffer> &VKPushConstants::uniform_buffer_get()
 {
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
-  BLI_assert(uniform_buffer_ != nullptr);
-  return *uniform_buffer_;
+  return active_resource();
+}
+
+std::unique_ptr<VKUniformBuffer> VKPushConstants::create_resource(VKContext & /*context*/)
+{
+  return std::make_unique<VKUniformBuffer>(layout_->size_in_bytes(), __func__);
 }
 
 }  // namespace blender::gpu

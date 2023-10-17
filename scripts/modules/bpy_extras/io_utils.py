@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 __all__ = (
@@ -122,7 +124,7 @@ def orientation_helper(axis_forward='Y', axis_up='Z'):
                     'XYZ'[('XYZ'.index(self.axis_up[-1]) + 1) % 3]
                 )
 
-        cls.__annotations__['axis_forward'] = EnumProperty(
+        cls.__annotations__["axis_forward"] = EnumProperty(
             name="Forward",
             items=(
                 ('X', "X Forward", ""),
@@ -143,7 +145,7 @@ def orientation_helper(axis_forward='Y', axis_up='Z'):
                     'XYZ'[('XYZ'.index(self.axis_forward[-1]) + 1) % 3]
                 )
 
-        cls.__annotations__['axis_up'] = EnumProperty(
+        cls.__annotations__["axis_up"] = EnumProperty(
             name="Up",
             items=(
                 ('X', "X Up", ""),

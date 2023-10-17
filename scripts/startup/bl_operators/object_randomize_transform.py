@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Operator
@@ -22,8 +24,11 @@ def randomize_selected(context, seed, delta,
                 obj.delta_location += rand_vec(loc)
             else:
                 obj.location += rand_vec(loc)
-        else:  # otherwise the values change under us
-            uniform(0.0, 0.0), uniform(0.0, 0.0), uniform(0.0, 0.0)
+        else:
+            # Otherwise the values change under us.
+            uniform(0.0, 0.0)
+            uniform(0.0, 0.0)
+            uniform(0.0, 0.0)
 
         if rot:
             vec = rand_vec(rot)
@@ -68,7 +73,9 @@ def randomize_selected(context, seed, delta,
             else:
                 obj.scale = aX, aY, aZ
         else:
-            uniform(0.0, 0.0), uniform(0.0, 0.0), uniform(0.0, 0.0)
+            uniform(0.0, 0.0)
+            uniform(0.0, 0.0)
+            uniform(0.0, 0.0)
 
 
 from bpy.props import (
