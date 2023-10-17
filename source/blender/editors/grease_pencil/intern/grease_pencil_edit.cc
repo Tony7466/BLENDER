@@ -872,8 +872,6 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* Identifiers. */
   ot->name = "Set Cyclical State";
   ot->idname = "GREASE_PENCIL_OT_cyclical_set";
@@ -889,7 +887,6 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
   /* Simplify parameters. */
   ot->prop = RNA_def_enum(
       ot->srna, "type", prop_cyclical_types, int(CyclicalMode::TOGGLE), "Type", "");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
