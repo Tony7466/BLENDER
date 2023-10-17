@@ -677,7 +677,7 @@ static bool modify_key_op_poll(bContext *C)
 
 /* Insert Key Operator ------------------------ */
 
-static int insert_key_exec(bContext *C, wmOperator *op)
+static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
 {
   Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
@@ -685,12 +685,6 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 
   const float cfra = BKE_scene_frame_get(scene);
   const bool confirm = op->flag & OP_IS_INVOKE;
-
-  KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
-  if (ks == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
   /* exit the edit mode to make sure that those object data properties that have been
    * updated since the last switching to the edit mode will be keyframed correctly
    */
@@ -740,6 +734,48 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   }
 
   return OPERATOR_FINISHED;
+}
+
+static int insert_key_foo(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+
+  // for selected RNA -> call
+  ID *id;
+  const char *rna_path = "";
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Scene *scene = CTX_data_scene(C);
+  const float cfra = BKE_scene_frame_get(scene);
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
+                                                                                    cfra);
+  ListBase nla_cache = {nullptr, nullptr};
+  bAction *action = nullptr;
+  eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS;
+  const char *groupname = nullptr;
+  const int array_index = -1;
+  blender::animrig::insert_keyframe(bmain,
+                                    op->reports,
+                                    id,
+                                    action,
+                                    groupname,
+                                    rna_path,
+                                    array_index,
+                                    &anim_eval_context,
+                                    BEZT_KEYTYPE_KEYFRAME,
+                                    &nla_cache,
+                                    insert_key_flags);
+
+  return OPERATOR_FINISHED;
+}
+
+static int insert_key_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
+  if (ks != nullptr) {
+    return insert_key_with_keyingset(C, op, ks);
+  }
+  return insert_key_foo(C, op);
 }
 
 void ANIM_OT_keyframe_insert(wmOperatorType *ot)
