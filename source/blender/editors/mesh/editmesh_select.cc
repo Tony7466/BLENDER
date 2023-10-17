@@ -5427,18 +5427,25 @@ static int edbm_select_by_attribute_exec(bContext *C, wmOperator * /*op*/)
       continue;
     }
 
+    bool changed = false;
     BMElem *elem;
     BMIter iter;
     BM_ITER_MESH (elem, &iter, bm, *iter_type) {
+      if (BM_elem_flag_test(elem, BM_ELEM_HIDDEN | BM_ELEM_SELECT)) {
+        continue;
+      }
       if (BM_ELEM_CD_GET_BOOL(elem, layer->offset)) {
         BM_elem_select_set(bm, elem, true);
+        changed = true;
       }
     }
 
-    EDBM_selectmode_flush(em);
+    if (changed) {
+      EDBM_selectmode_flush(em);
 
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
   }
   MEM_freeN(objects);
 
