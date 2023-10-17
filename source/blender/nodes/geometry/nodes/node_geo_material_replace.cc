@@ -10,13 +10,15 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
 namespace blender::nodes::node_geo_material_replace_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Geometry>("Geometry")
+      .supported_type({GeometryComponent::Type::Mesh, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Material>("Old");
   b.add_input<decl::Material>("New").translation_context(BLT_I18NCONTEXT_ID_MATERIAL);
   b.add_output<decl::Geometry>("Geometry").propagate_all();
@@ -34,6 +36,13 @@ static void node_geo_exec(GeoNodeExecParams params)
       for (const int i : IndexRange(mesh->totcol)) {
         if (mesh->mat[i] == old_material) {
           mesh->mat[i] = new_material;
+        }
+      }
+    }
+    if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
+      for (const int i : IndexRange(grease_pencil->material_array_num)) {
+        if (grease_pencil->material_array[i] == old_material) {
+          grease_pencil->material_array[i] = new_material;
         }
       }
     }
