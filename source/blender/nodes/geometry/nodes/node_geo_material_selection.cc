@@ -130,7 +130,9 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
           return {};
         }
         const eAttrDomain domain = context.domain();
-        const IndexMask domain_mask = mask;
+        const IndexMask domain_mask = (domain == ATTR_DOMAIN_CURVE) ?
+                                          mask :
+                                          IndexMask(curves.curves_num());
         VArray<bool> selection = select_grease_pencil_by_material(
             *context.grease_pencil(), *curves, material_, domain_mask);
         return curves->attributes().adapt_domain<bool>(
