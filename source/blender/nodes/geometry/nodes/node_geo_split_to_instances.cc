@@ -17,8 +17,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "DNA_pointcloud_types.h"
-
 #include "RNA_enum_types.hh"
 
 #include "BLI_array_utils.hh"
@@ -39,7 +37,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("All geometry groups as separate instances");
   b.add_output<decl::Int>("Group ID")
       .field_on_all()
-      .description("The group id of each group instance");
+      .description("The group ID of each group instance");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -222,14 +220,14 @@ static void split_curve_groups(const bke::CurveComponent &component,
       const IndexMask &mask = split_groups.group_masks[group_index];
       const int group_id = split_groups.group_ids[group_index];
 
-      std::optional<bke::CurvesGeometry> group_curves;
+      bke::CurvesGeometry group_curves;
       if (domain == ATTR_DOMAIN_POINT) {
         group_curves = bke::curves_copy_point_selection(src_curves, mask, propagation_info);
       }
       else {
         group_curves = bke::curves_copy_curve_selection(src_curves, mask, propagation_info);
       }
-      Curves *group_curves_id = bke::curves_new_nomain(std::move(*group_curves));
+      Curves *group_curves_id = bke::curves_new_nomain(std::move(group_curves));
       GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
       group_geometry.replace_curves(group_curves_id);
     }
