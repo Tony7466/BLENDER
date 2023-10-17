@@ -748,7 +748,6 @@ static int insert_key_foo(bContext *C, wmOperator *op)
   const float cfra = BKE_scene_frame_get(scene);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
                                                                                     cfra);
-  ListBase nla_cache = {nullptr, nullptr};
   bAction *action = nullptr;
   eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS;
   const char *groupname = nullptr;
@@ -762,7 +761,6 @@ static int insert_key_foo(bContext *C, wmOperator *op)
                                     array_index,
                                     &anim_eval_context,
                                     BEZT_KEYTYPE_KEYFRAME,
-                                    &nla_cache,
                                     insert_key_flags);
 
   return OPERATOR_FINISHED;
