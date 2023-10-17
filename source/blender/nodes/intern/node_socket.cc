@@ -591,8 +591,14 @@ void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
 
 bool socket_type_supports_fields(const eNodeSocketDatatype socket_type)
 {
-  return ELEM(
-      socket_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION);
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_INT,
+              SOCK_ROTATION,
+              SOCK_ENUM);
 }
 
 }  // namespace blender::nodes
