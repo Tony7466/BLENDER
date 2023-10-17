@@ -148,7 +148,7 @@ bool occupancy_bit_resolve(OccupancyBits entry, OccupancyBits exit, int bit_n, i
           inside_volume = true;
         }
       }
-      if (i + j * 32 == bit_n) {
+      if (i + j * 32 == uint(bit_n)) {
         return inside_volume;
       }
     }

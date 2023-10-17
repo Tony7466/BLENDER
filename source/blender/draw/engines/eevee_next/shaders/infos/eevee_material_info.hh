@@ -315,7 +315,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D,
-           "hit_count_img ")
+           "hit_count_img")
     .image(VOLUME_OCCUPANCY_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,

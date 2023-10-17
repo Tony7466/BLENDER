@@ -21,7 +21,8 @@ void main()
 
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
-  int hit_count = int(min(imageLoad(hit_count_img, texel).x, VOLUME_HIT_DEPTH_MAX));
+  int hit_count = int(imageLoad(hit_count_img, texel).x);
+  hit_count = min(hit_count, VOLUME_HIT_DEPTH_MAX);
   if (hit_count == 0) {
     return;
   }
