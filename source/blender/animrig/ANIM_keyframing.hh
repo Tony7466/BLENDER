@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include <string>
+
+#include "BLI_vector.hh"
 #include "DNA_anim_types.h"
 #include "ED_transform.hh"
 #include "RNA_types.hh"
@@ -146,5 +149,10 @@ bool autokeyframe_property(bContext *C,
                            bool only_if_property_keyed);
 
 /** \} */
+
+int action_insert_key(bAction *action,
+                      std::string rna_path,
+                      float frame,
+                      const blender::Vector<float> &values);
 
 }  // namespace blender::animrig

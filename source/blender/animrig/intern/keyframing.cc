@@ -8,6 +8,7 @@
 
 #include <cfloat>
 #include <cmath>
+#include <string>
 
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -36,6 +37,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_path.hh"
+#include "RNA_prototypes.h"
 #include "RNA_types.hh"
 
 #include "WM_api.hh"
@@ -1025,6 +1027,98 @@ int clear_keyframe(Main *bmain,
   }
   /* return success/failure */
   return key_count;
+}
+
+static FCurve *action_fcurve_ensure(
+    bAction *act, const char group[], PointerRNA *ptr, std::string rna_path, const int array_index)
+{
+  bActionGroup *agrp;
+  FCurve *fcu;
+
+  /* try to find f-curve matching for this setting
+   * - add if not found and allowed to add one
+   *   TODO: add auto-grouping support? how this works will need to be resolved
+   */
+  fcu = BKE_fcurve_find(&act->curves, rna_path.c_str(), array_index);
+  if (fcu) {
+    return fcu;
+  }
+
+  /* use default settings to make a F-Curve */
+  fcu = BKE_fcurve_create();
+
+  fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
+  fcu->auto_smoothing = U.auto_smoothing_new;
+  if (BLI_listbase_is_empty(&act->curves)) {
+    fcu->flag |= FCURVE_ACTIVE; /* first one added active */
+  }
+
+  /* store path - make copy, and store that */
+  char fcu_rna_path[rna_path.length() + 1];
+  std::strcpy(fcu_rna_path, rna_path.c_str());
+  fcu->rna_path = fcu_rna_path;
+  fcu->array_index = array_index;
+
+  /* if a group name has been provided, try to add or find a group, then add F-Curve to it */
+  if (group) {
+    /* try to find group */
+    agrp = BKE_action_group_find_name(act, group);
+
+    /* no matching groups, so add one */
+    if (agrp == nullptr) {
+      agrp = action_groups_add_new(act, group);
+
+      /* sync bone group colors if applicable */
+      if (ptr && (ptr->type == &RNA_PoseBone)) {
+        bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
+        action_group_colors_set_from_posebone(agrp, pchan);
+      }
+    }
+
+    /* add F-Curve to group */
+    action_groups_add_channel(act, agrp, fcu);
+  }
+  else {
+    /* just add F-Curve to end of Action's list */
+    BLI_addtail(&act->curves, fcu);
+  }
+
+  /* return the F-Curve */
+  return fcu;
+}
+
+static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value)
+{
+  if (!BKE_fcurve_is_keyframable(fcu)) {
+    return false;
+  }
+  const int inserted_index = insert_vert_fcurve(
+      fcu, frame, value, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NOFLAGS);
+  return inserted_index >= 0;
+}
+
+int action_insert_key(bAction *action,
+                      std::string rna_path,
+                      const float frame,
+                      const blender::Vector<float> &values)
+{
+  BLI_assert(action != nullptr);
+
+  int property_array_index = 0;
+  int inserted_keys = 0;
+  const char *group = "";
+  for (const float value : values) {
+    FCurve *fcu = action_fcurve_ensure(action, group, nullptr, rna_path, property_array_index);
+    if (!fcu) {
+      continue;
+    }
+    const bool inserted_key = insert_key_fcu_foo(fcu, frame, value);
+    if (inserted_key) {
+      inserted_keys++;
+    }
+    property_array_index++;
+  }
+  return inserted_keys;
 }
 
 }  // namespace blender::animrig

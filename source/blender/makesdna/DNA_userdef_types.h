@@ -955,7 +955,7 @@ typedef struct UserDef {
   /** Flags for autokeying. */
   short autokey_flag;
   /** Flags for which channels to insert keys at. */
-  short key_insert_channels;
+  short key_insert_channels;  // eKeyInsertChannels
   char _pad15[6];
   /** Flags for animation. */
   short animation_flag;

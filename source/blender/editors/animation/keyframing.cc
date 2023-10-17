@@ -32,6 +32,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
+#include "BKE_lib_id.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -621,6 +622,64 @@ float *ANIM_setting_get_rna_values(
   return values;
 }
 
+/* Values are casted to float since that is what the animation system deals with. */
+static void get_rna_values(PointerRNA *ptr, PropertyRNA *prop, blender::Vector<float> &values)
+{
+  if (RNA_property_array_check(prop)) {
+    const int length = RNA_property_array_length(ptr, prop);
+
+    switch (RNA_property_type(prop)) {
+      case PROP_BOOLEAN: {
+        bool *tmp_bool = static_cast<bool *>(MEM_malloc_arrayN(length, sizeof(bool), __func__));
+        RNA_property_boolean_get_array(ptr, prop, tmp_bool);
+        for (int i = 0; i < length; i++) {
+          values.append(float(tmp_bool[i]));
+        }
+        MEM_freeN(tmp_bool);
+        break;
+      }
+      case PROP_INT: {
+        int *tmp_int = static_cast<int *>(MEM_malloc_arrayN(length, sizeof(int), __func__));
+        RNA_property_int_get_array(ptr, prop, tmp_int);
+        for (int i = 0; i < length; i++) {
+          values.append(float(tmp_int[i]));
+        }
+        MEM_freeN(tmp_int);
+        break;
+      }
+      case PROP_FLOAT: {
+        float *tmp_float = static_cast<float *>(
+            MEM_malloc_arrayN(length, sizeof(float), __func__));
+        RNA_property_float_get_array(ptr, prop, tmp_float);
+        for (int i = 0; i < length; i++) {
+          values.append(tmp_float[i]);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  else {
+    switch (RNA_property_type(prop)) {
+      case PROP_BOOLEAN:
+        values.append(float(RNA_property_boolean_get(ptr, prop)));
+        break;
+      case PROP_INT:
+        values.append(float(RNA_property_int_get(ptr, prop)));
+        break;
+      case PROP_FLOAT:
+        values.append(RNA_property_float_get(ptr, prop));
+        break;
+      case PROP_ENUM:
+        values.append(float(RNA_property_enum_get(ptr, prop)));
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 /* ------------------------- Insert Key API ------------------------- */
 
 void ED_keyframes_add(FCurve *fcu, int num_keys_to_add)
@@ -736,32 +795,80 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
+static void construct_rna_paths(blender::Vector<std::string> &r_paths, ID *id)
+{
+  eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
+    r_paths.append("location");
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
+    r_paths.append("rotation_euler");
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
+    r_paths.append("scale");
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
+    /* Magic needed? */
+  }
+}
+
 static int insert_key_foo(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
+  using namespace blender;
 
-  // for selected RNA -> call
-  ID *id;
-  const char *rna_path = "";
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  const float cfra = BKE_scene_frame_get(scene);
-  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
-                                                                                    cfra);
-  bAction *action = nullptr;
-  eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS;
-  const char *groupname = nullptr;
-  const int array_index = -1;
-  blender::animrig::insert_keyframe(bmain,
-                                    op->reports,
-                                    id,
-                                    action,
-                                    groupname,
-                                    rna_path,
-                                    array_index,
-                                    &anim_eval_context,
-                                    BEZT_KEYTYPE_KEYFRAME,
-                                    insert_key_flags);
+
+  const float scene_frame = BKE_scene_frame_get(scene);
+
+  ListBase selected_objects = {nullptr, nullptr};
+  CTX_data_selected_objects(C, &selected_objects);
+  bool depsgraph_needs_update = false;
+  LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected_objects) {
+    ID *selected_id = object_ptr_link->ptr.owner_id;
+    if (!BKE_id_is_editable(bmain, selected_id)) {
+      BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
+      return 0;
+    }
+    bAction *action = ED_id_action_ensure(bmain, selected_id);
+    if (action == nullptr) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "%s)",
+                  selected_id->name);
+      continue;
+    }
+    PointerRNA id_ptr = RNA_id_pointer_create(selected_id);
+    Vector<std::string> rna_paths;
+    construct_rna_paths(rna_paths, selected_id);
+    for (const std::string &rna_path : rna_paths) {
+      PointerRNA ptr;
+      PropertyRNA *prop = nullptr;
+      const bool path_resolved = RNA_path_resolve_property(&id_ptr, rna_path.c_str(), &ptr, &prop);
+      if (!path_resolved) {
+        BKE_reportf(
+            op->reports,
+            RPT_ERROR,
+            "Could not insert keyframe, as this type does not support animation data (ID = "
+            "%s, path = %s)",
+            selected_id->name,
+            rna_path.c_str());
+        continue;
+      }
+      Vector<float> rna_values;
+      get_rna_values(&ptr, prop, rna_values);
+      int result = animrig::action_insert_key(action, rna_path, scene_frame, rna_values);
+      if (result > 0) {
+        depsgraph_needs_update = true;
+      }
+    }
+  }
+  if (depsgraph_needs_update) {
+    DEG_relations_tag_update(bmain);
+  }
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+  BLI_freelistN(&selected_objects);
 
   return OPERATOR_FINISHED;
 }
@@ -770,7 +877,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
-  if (ks != nullptr) {
+  if (false) {
     return insert_key_with_keyingset(C, op, ks);
   }
   return insert_key_foo(C, op);
