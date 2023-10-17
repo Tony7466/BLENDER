@@ -9,7 +9,7 @@
 #  include <wrl.h>
 
 #  include "BLI_path_util.h"
-#include "BLI_winstuff.h"
+#  include "BLI_winstuff.h"
 #  include "BLI_winstuff_com.hh"
 
 #  include "utf_winfunc.h"
