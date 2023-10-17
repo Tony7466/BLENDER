@@ -86,8 +86,9 @@ const char *dirname(char *path);
 bool BLI_windows_is_store_install(void);
 bool BLI_windows_register_blend_extension(bool all_users);
 bool BLI_windows_unregister_blend_extension(bool all_users);
+bool BLI_windows_update_pinned_launcher(const char *launcher_path);
 
-/**
+    /**
  * Set the `root_dir` to the default root directory on MS-Windows,
  * The string is guaranteed to be set with a length of 3 & null terminated,
  * using a fall-back in case the root directory can't be found.
