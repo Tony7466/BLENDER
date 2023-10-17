@@ -24,71 +24,34 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>("Selection").field_source();
 }
 
-static VArray<bool> select_mesh_faces_by_material(const Mesh &mesh,
-                                                  const Material *material,
-                                                  const IndexMask &face_mask)
+static VArray<bool> select_by_material(VArray<int> material_indices,
+                                       const Span<Material *> materials,
+                                       const Material *material,
+                                       const int domain_size,
+                                       const IndexMask &domain_mask)
 {
   Vector<int> slots;
-  for (const int slot_i : IndexRange(mesh.totcol)) {
-    if (mesh.mat[slot_i] == material) {
+  for (const int slot_i : IndexRange(materials.size())) {
+    if (materials[slot_i] == material) {
       slots.append(slot_i);
     }
   }
   if (slots.is_empty()) {
-    return VArray<bool>::ForSingle(false, mesh.faces_num);
+    return VArray<bool>::ForSingle(false, domain_size);
   }
 
-  const AttributeAccessor attributes = mesh.attributes();
-  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
   if (material_indices.is_single()) {
     const int slot_i = material_indices.get_internal_single();
-    return VArray<bool>::ForSingle(slots.contains(slot_i), mesh.faces_num);
+    return VArray<bool>::ForSingle(slots.contains(slot_i), domain_size);
   }
 
   const VArraySpan<int> material_indices_span(material_indices);
-
-  Array<bool> face_selection(face_mask.min_array_size());
-  face_mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int face_index) {
-    const int slot_i = material_indices_span[face_index];
-    face_selection[face_index] = slots.contains(slot_i);
+  Array<bool> domain_selection(domain_mask.min_array_size());
+  domain_mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int domain_index) {
+    const int slot_i = material_indices_span[domain_index];
+    domain_selection[domain_index] = slots.contains(slot_i);
   });
-
-  return VArray<bool>::ForContainer(std::move(face_selection));
-}
-
-static VArray<bool> select_grease_pencil_by_material(const GreasePencil &grease_pencil,
-                                                     const bke::CurvesGeometry &curves,
-                                                     const Material *material,
-                                                     const IndexMask &curve_mask)
-{
-  Vector<int> slots;
-  for (const int slot_i : IndexRange(grease_pencil.material_array_num)) {
-    if (grease_pencil.material_array[slot_i] == material) {
-      slots.append(slot_i);
-    }
-  }
-  if (slots.is_empty()) {
-    return VArray<bool>::ForSingle(false, curves.curves_num());
-  }
-
-  const AttributeAccessor attributes = curves.attributes();
-  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_CURVE, 0);
-  if (material_indices.is_single()) {
-    const int slot_i = material_indices.get_internal_single();
-    return VArray<bool>::ForSingle(slots.contains(slot_i), curves.curves_num());
-  }
-
-  const VArraySpan<int> material_indices_span(material_indices);
-
-  Array<bool> curve_selection(curve_mask.min_array_size());
-  curve_mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int curve_index) {
-    const int slot_i = material_indices_span[curve_index];
-    curve_selection[curve_index] = slots.contains(slot_i);
-  });
-
-  return VArray<bool>::ForContainer(std::move(curve_selection));
+  return VArray<bool>::ForContainer(std::move(domain_selection));
 }
 
 class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
@@ -120,7 +83,11 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
         const eAttrDomain domain = context.domain();
         const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask :
                                                                      IndexMask(mesh->faces_num);
-        VArray<bool> selection = select_mesh_faces_by_material(*mesh, material_, domain_mask);
+        const AttributeAccessor attributes = mesh->attributes();
+        const VArray<int> material_indices = *attributes.lookup_or_default<int>(
+            "material_index", ATTR_DOMAIN_FACE, 0);
+        VArray<bool> selection = select_by_material(
+            material_indices, {mesh->mat, mesh->totcol}, material_, mesh->faces_num, domain_mask);
         return mesh->attributes().adapt_domain<bool>(
             std::move(selection), ATTR_DOMAIN_FACE, domain);
       }
@@ -132,9 +99,17 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
         const eAttrDomain domain = context.domain();
         const IndexMask domain_mask = (domain == ATTR_DOMAIN_CURVE) ?
                                           mask :
-                                          IndexMask(curves.curves_num());
-        VArray<bool> selection = select_grease_pencil_by_material(
-            *context.grease_pencil(), *curves, material_, domain_mask);
+                                          IndexMask(curves->curves_num());
+        const AttributeAccessor attributes = curves->attributes();
+        const VArray<int> material_indices = *attributes.lookup_or_default<int>(
+            "material_index", ATTR_DOMAIN_CURVE, 0);
+        const GreasePencil &grease_pencil = *context.grease_pencil();
+        VArray<bool> selection = select_by_material(
+            material_indices,
+            {grease_pencil.material_array, grease_pencil.material_array_num},
+            material_,
+            curves->curves_num(),
+            domain_mask);
         return curves->attributes().adapt_domain<bool>(
             std::move(selection), ATTR_DOMAIN_CURVE, domain);
       }
