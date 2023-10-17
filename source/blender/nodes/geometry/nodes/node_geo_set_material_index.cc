@@ -17,21 +17,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
-static void set_material_index_in_component(GeometryComponent &component,
-                                            const Field<bool> &selection_field,
-                                            const Field<int> &index_field,
-                                            const eAttrDomain domain)
+static void set_material_index_in_geometry(const fn::FieldContext &field_context,
+                                           const Field<bool> &selection_field,
+                                           const Field<int> &index_field,
+                                           MutableAttributeAccessor &attributes,
+                                           const eAttrDomain domain)
 {
-  const int domain_size = component.attribute_domain_size(domain);
+  const int domain_size = attributes.domain_size(domain);
   if (domain_size == 0) {
     return;
   }
-  MutableAttributeAccessor attributes = *component.attributes_for_write();
 
   const bke::AttributeValidator validator = attributes.lookup_validator("material_index");
   AttributeWriter<int> indices = attributes.lookup_or_add_for_write<int>("material_index", domain);
 
-  const bke::GeometryFieldContext field_context{component, domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   evaluator.add_with_destination(validator.validate_field_if_necessary(index_field),
@@ -56,17 +55,10 @@ static void set_material_index_in_grease_pencil(GreasePencil &grease_pencil,
     }
 
     MutableAttributeAccessor attributes = curves.attributes_for_write();
-    const bke::AttributeValidator validator = attributes.lookup_validator("material_index");
-    AttributeWriter<int> indices = attributes.lookup_or_add_for_write<int>("material_index",
-                                                                           ATTR_DOMAIN_CURVE);
     const bke::GreasePencilLayerFieldContext field_context{
         grease_pencil, ATTR_DOMAIN_CURVE, layer_index};
-    fn::FieldEvaluator evaluator{field_context, curves.curves_num()};
-    evaluator.set_selection(selection_field);
-    evaluator.add_with_destination(validator.validate_field_if_necessary(index_field),
-                                   indices.varray);
-    evaluator.evaluate();
-    indices.finish();
+    set_material_index_in_geometry(
+        field_context, selection_field, index_field, attributes, ATTR_DOMAIN_CURVE);
   }
 }
 
@@ -78,10 +70,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (geometry_set.has_mesh()) {
-      set_material_index_in_component(geometry_set.get_component_for_write<MeshComponent>(),
-                                      selection_field,
-                                      index_field,
-                                      ATTR_DOMAIN_FACE);
+      GeometryComponent &component = geometry_set.get_component_for_write<MeshComponent>();
+      const bke::GeometryFieldContext field_context{
+          geometry_set.get_component_for_write<MeshComponent>(), ATTR_DOMAIN_FACE};
+      MutableAttributeAccessor attributes = *component.attributes_for_write();
+      set_material_index_in_geometry(
+          field_context, selection_field, index_field, attributes, ATTR_DOMAIN_FACE);
     }
     if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
       set_material_index_in_grease_pencil(*grease_pencil, selection_field, index_field);
