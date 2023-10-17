@@ -821,17 +821,14 @@ static int grease_pencil_stroke_change_color_exec(bContext *C, wmOperator *op)
 
         bke::SpanAttributeWriter<int> materials = curves.attributes_for_write().lookup_or_add_for_write_span<int>(
             "material_index", ATTR_DOMAIN_CURVE);
-        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-            ".selection", ATTR_DOMAIN_POINT, true);
 
-        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        IndexMaskMemory memory;
+        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
-        for (int curve_index : curves.curves_range()) {
-          const IndexRange points = points_by_curve[curve_index];
-          if (ed::curves::has_anything_selected(selection, points)) {
-            materials.span[curve_index] = material_index;
-          }
-        }
+        selected_curves.foreach_index(
+            [&](const int curve_index) { materials.span[curve_index] = material_index;
+          });
+
         materials.finish();
       });
 
