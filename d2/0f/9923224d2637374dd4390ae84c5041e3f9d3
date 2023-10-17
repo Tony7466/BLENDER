@@ -3,3 +3,4 @@ Referenced by issue #106802, Regression: sculpt with shape keys looses deformati
 Referenced by issue #112448, Regression: Child hair particles set to "Interpolated" causes jittering when the based vertex changes position
 Referenced by pull request #113679, Fix #112448: Leading deform modifiers skip adding original coordinates
 Referenced by commit 9b0188db03c00e0e1567b4558ae35362852728a0, Fix #112448: Leading deform modifiers skip adding original coordinates
+Referenced by commit d7e501ce3bfbe9e77531a1c547cddb76063ef9d2, Fix #112448: Leading deform modifiers skip adding original coordinates
