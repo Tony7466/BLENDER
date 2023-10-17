@@ -1307,7 +1307,7 @@ static bool paint_cursor_context_init(bContext *C,
   }
   pcontext->mode = BKE_paintmode_get_active_from_context(C);
 
-  ED_view3d_viewcontext_init(C, &pcontext->vc, pcontext->depsgraph);
+  pcontext->vc = ED_view3d_viewcontext_init(C, pcontext->depsgraph);
 
   if (pcontext->brush->flag & BRUSH_CURVE) {
     pcontext->cursor_type = PAINT_CURSOR_CURVE;
@@ -1474,7 +1474,7 @@ static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
 {
   float radius = static_cast<float>(BKE_brush_size_get(pcontext->scene, pcontext->brush));
 
-  /* Redish color with alpha. */
+  /* Red-ish color with alpha. */
   immUniformColor4ub(255, 100, 100, 20);
   imm_draw_circle_fill_2d(pcontext->pos, pcontext->x, pcontext->y, radius, 40);
 
