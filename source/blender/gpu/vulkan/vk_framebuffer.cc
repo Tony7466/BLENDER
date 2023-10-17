@@ -22,6 +22,8 @@ namespace blender::gpu {
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
   size_set(1, 1);
+  srgb_ = false;
+  enabled_srgb_ = false;
 }
 
 VKFrameBuffer::~VKFrameBuffer()
@@ -31,7 +33,7 @@ VKFrameBuffer::~VKFrameBuffer()
 
 /** \} */
 
-void VKFrameBuffer::bind(bool /*enabled_srgb*/)
+void VKFrameBuffer::bind(bool enabled_srgb)
 {
   VKContext &context = *VKContext::get();
   /* Updating attachments can issue pipeline barriers, this should be done outside the render pass.
@@ -44,6 +46,13 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
   }
 
   context.activate_framebuffer(*this);
+
+  if (enabled_srgb_ != enabled_srgb) {
+    if (enabled_srgb && srgb_) {
+      enabled_srgb_ = enabled_srgb;
+    }
+  }
+  Shader::set_framebuffer_srgb_target(enabled_srgb_);
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
@@ -612,6 +621,17 @@ void VKFrameBuffer::update_size()
     }
   }
   size_set(1, 1);
+}
+
+void VKFrameBuffer::update_srgb()
+{
+  for (int i : IndexRange(GPU_FB_MAX_COLOR_ATTACHMENT)) {
+    VKTexture *texture = unwrap(unwrap(color_tex(i)));
+    if (texture) {
+      srgb_ = (texture->format_flag_get() & GPU_FORMAT_SRGB) != 0;
+      return;
+    }
+  }
 }
 
 int VKFrameBuffer::color_attachments_resource_size() const
