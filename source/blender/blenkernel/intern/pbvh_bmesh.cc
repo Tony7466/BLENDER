@@ -894,27 +894,27 @@ static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
 
 /* Notes on edge priority.
  *
- * The priority is used to control an order in which edges are handled for both splitting of long
+ * The priority is used to control the order in which edges are handled for both splitting of long
  * edges and collapsing of short edges. For the long edges we start with splitting the longest
- * edge, and for collapsing we start with the shortest edge.
+ * edge and for collapsing we start with the shortest edge.
  *
  * A heap-like data structure is used to accelerate such ordering. A bit confusingly, this data
- * structure gives highest priority to an element with the lowest number.
+ * structure gives the higher priorities to elements with lower numbers.
  *
- * When edge does not belong to and is not adjacent to a boundary use its length as priority.
- * Always prefer to handle those edges first. Modifying these edges leads to no distortion to the
- * boundary.
+ * When edges do not belong to and are not adjacent to boundaries, use their length as the
+ * priority. Always prefer to handle those edges first. Modifying those edges leads to no
+ * distortion to the boundary.
  *
  * If an edge is boundary, then handle it after all non-boundary edges are handled. Splitting such
- * edges do not lead to boundary distortion. Collapsing such edges leads to minimal boundary
+ * edges does not lead to boundary distortion. Collapsing such edges leads to minimal boundary
  * distortion.
  *
  * Once all of that is handled, handle edges which are adjacent to boundary. Modifying those edges
- * will likely lead to boundary distortion, so handle those last and if it absolutely necessary.
+ * will likely lead to boundary distortion, so handle those last, only if absolutely necessary.
  *
- * TODO(@sergey): Is the order actually correct? Maybe for collapse prefer handling of the adjacent
- * edges, and only collapse boundary edges if needed? Collapse of adjacent edges is done in a way
- * that does not distort boundary at all. */
+ * TODO(@sergey): Is the order actually correct? Maybe for collapse, prefer handling of the
+ * adjacent edges, and only collapse boundary edges if needed? Collapse of adjacent edges is done
+ * in a way that does not distort boundary at all. */
 
 static float long_edge_queue_priority(const BMEdge &edge)
 {
@@ -1397,11 +1397,11 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
   const bool v2_on_boundary = is_boundary_vert(*v2);
 
   if (v1_on_boundary || v2_on_boundary) {
-    /* For the boundary edges can be collapsed with minimal distortion. For those it does not
+    /* Boundary edges can be collapsed with minimal distortion. For those it does not
      * matter too much which vertex to keep and which one to remove.
      *
-     * For edges which are adjacent to boundary keep vertex which is on boundary, and dissolve the
-     * other one. */
+     * For edges which are adjacent to boundaries, keep the vertex which is on boundary and
+     * dissolve the other one. */
     if (v1_on_boundary) {
       v_del = v2;
       v_conn = v1;
@@ -1545,9 +1545,9 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
   /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it may have been
    * deleted above).
    *
-   * If the vertex is on boundary do not move it, to preserve the shape of the boundary.
+   * If the vertex is on a boundary, do not move it, to preserve the shape of the boundary.
    *
-   * TODO(@sergey): Explain why do we need to move the vertex at all. */
+   * TODO(@sergey): Explain why we need to move the vertex at all. */
   if (v_conn != nullptr && !is_boundary_vert(*v_conn)) {
     BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
