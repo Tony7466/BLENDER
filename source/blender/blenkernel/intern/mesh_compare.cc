@@ -117,15 +117,11 @@ static void sort_indices(MutableSpan<int> indices, const Span<T> values, const i
   std::stable_sort(indices.begin(), indices.end(), [&](int i1, int i2) {
     const T value1 = values[i1];
     const T value2 = values[i2];
-    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, float> || std::is_same_v<T, bool> ||
-                  std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge>)
-    {
+    if constexpr (is_same_any_v<T, int, float, bool, int8_t, OrderedEdge>) {
       /* These types are already comparable. */
       return value1 < value2;
     }
-    if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> ||
-                  std::is_same_v<T, ColorGeometry4f>)
-    {
+    if constexpr (is_same_any_v<T, float2, float3, ColorGeometry4f>) {
       return value1[component_i] < value2[component_i];
     }
     if constexpr (std::is_same_v<T, math::Quaternion>) {
@@ -232,10 +228,7 @@ static bool values_different(const T value1,
                              const float threshold,
                              const int component_i)
 {
-  if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int2> || std::is_same_v<T, bool> ||
-                std::is_same_v<T, int8_t> || std::is_same_v<T, OrderedEdge> ||
-                std::is_same_v<T, ColorGeometry4b>)
-  {
+  if constexpr (is_same_any_v<T, int, int2, bool, int8_t, OrderedEdge, ColorGeometry4b>) {
     /* These types already have a good implementation. */
     return value1 != value2;
   }
@@ -243,9 +236,7 @@ static bool values_different(const T value1,
   if constexpr (std::is_same_v<T, float>) {
     return compare_threshold_relative(value1, value2, threshold);
   }
-  if constexpr (std::is_same_v<T, float2> || std::is_same_v<T, float3> ||
-                std::is_same_v<T, ColorGeometry4f>)
-  {
+  if constexpr (is_same_any_v<T, float2, float3, ColorGeometry4f>) {
     return compare_threshold_relative(value1[component_i], value2[component_i], threshold);
   }
   if constexpr (std::is_same_v<T, math::Quaternion>) {
@@ -577,8 +568,7 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       else if constexpr (std::is_same_v<T, float3>) {
         num_loops = 3;
       }
-      else if constexpr (std::is_same_v<T, math::Quaternion> || std::is_same_v<T, ColorGeometry4f>)
-      {
+      else if constexpr (is_same_any_v<T, math::Quaternion, ColorGeometry4f>) {
         num_loops = 4;
       }
       for (const int component_i : IndexRange(num_loops)) {
