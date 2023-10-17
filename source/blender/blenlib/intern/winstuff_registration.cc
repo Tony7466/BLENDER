@@ -44,15 +44,15 @@ bool BLI_windows_update_pinned_launcher(const char *launcher_path)
     return false;
   }
 
-  LPWSTR quickLaunchPath;
+  LPWSTR quick_launch_folder_path;
   if (SHGetKnownFolderPath(
-          FOLDERID_ImplicitAppShortcuts, KF_FLAG_DEFAULT, NULL, &quickLaunchPath) != S_OK)
+          FOLDERID_ImplicitAppShortcuts, KF_FLAG_DEFAULT, NULL, &quick_launch_folder_path) != S_OK)
   {
     return false;
   }
 
-  std::wstring SearchPath = quickLaunchPath;
-  CoTaskMemFree(quickLaunchPath);
+  std::wstring search_path = quick_launch_folder_path;
+  CoTaskMemFree(quick_launch_folder_path);
 
   Microsoft::WRL::ComPtr<IShellLinkW> shell_link;
   if (CoCreateInstance(__uuidof(ShellLink), NULL, CLSCTX_ALL, IID_PPV_ARGS(&shell_link)) != S_OK) {
@@ -64,7 +64,7 @@ bool BLI_windows_update_pinned_launcher(const char *launcher_path)
     return false;
   }
 
-  for (auto const &dir_entry : std::filesystem::recursive_directory_iterator(SearchPath)) {
+  for (auto const &dir_entry : std::filesystem::recursive_directory_iterator(search_path)) {
     if (persist_file->Load(dir_entry.path().c_str(), STGM_READWRITE) != S_OK) {
       continue;
     }
