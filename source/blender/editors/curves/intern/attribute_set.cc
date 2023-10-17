@@ -12,27 +12,27 @@
 #include "BKE_report.h"
 #include "BKE_type_conversions.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curves.h"
-#include "ED_geometry.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_curves.hh"
+#include "ED_geometry.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "DNA_object_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Delete Operator
@@ -61,13 +61,13 @@ static bool active_attribute_poll(bContext *C)
 
 static IndexMask retrieve_selected_elements(const Curves &curves_id,
                                             const eAttrDomain domain,
-                                            Vector<int64_t> &r_indices)
+                                            IndexMaskMemory &memory)
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT:
-      return retrieve_selected_points(curves_id, r_indices);
+      return retrieve_selected_points(curves_id, memory);
     case ATTR_DOMAIN_CURVE:
-      return retrieve_selected_curves(curves_id, r_indices);
+      return retrieve_selected_curves(curves_id, memory);
     default:
       BLI_assert_unreachable();
       return {};
@@ -86,11 +86,12 @@ static void validate_value(const bke::AttributeAccessor attributes,
   BUFFER_FOR_CPP_TYPE_VALUE(type, validated_buffer);
   BLI_SCOPED_DEFER([&]() { type.destruct(validated_buffer); });
 
-  mf::ParamsBuilder params(*validator.function, 1);
+  const IndexMask single_mask(1);
+  mf::ParamsBuilder params(*validator.function, &single_mask);
   params.add_readonly_single_input(GPointer(type, buffer));
   params.add_uninitialized_single_output({type, validated_buffer, 1});
   mf::ContextBuilder context;
-  validator.function->call(IndexMask(1), params, context);
+  validator.function->call(single_mask, params, context);
 
   type.copy_assign(validated_buffer, buffer);
 }
@@ -133,8 +134,8 @@ static int set_attribute_exec(bContext *C, wmOperator *op)
     validate_value(attributes, layer->name, dst_type, dst_buffer);
     const GPointer dst_value(type, dst_buffer);
 
-    Vector<int64_t> indices;
-    const IndexMask selection = retrieve_selected_elements(*curves_id, attribute.domain, indices);
+    IndexMaskMemory memory;
+    const IndexMask selection = retrieve_selected_elements(*curves_id, attribute.domain, memory);
     if (selection.is_empty()) {
       attribute.finish();
       continue;
@@ -159,7 +160,10 @@ static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *even
   const bke::AttributeAccessor attributes = curves.attributes();
   const bke::GAttributeReader attribute = attributes.lookup(active_attribute->name);
   const eAttrDomain domain = attribute.domain;
-  const VArray<bool> selection = attributes.lookup_or_default<bool>(".selection", domain, true);
+
+  IndexMaskMemory memory;
+  const IndexMask selection = retrieve_selected_elements(active_curves_id, domain, memory);
+
   const CPPType &type = attribute.varray.type();
 
   PropertyRNA *prop = geometry::rna_property_for_type(*op->ptr,
@@ -171,15 +175,11 @@ static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *even
   BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
   BLI_SCOPED_DEFER([&]() { type.destruct(buffer); });
 
-  attribute_math::convert_to_static_type(type, [&](auto dummy) {
+  bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
     const VArray<T> values_typed = attribute.varray.typed<T>();
-    attribute_math::DefaultMixer<T> mixer{MutableSpan(static_cast<T *>(buffer), 1)};
-    for (const int i : values_typed.index_range()) {
-      if (selection[i]) {
-        mixer.mix_in(0, values_typed[i]);
-      }
-    }
+    bke::attribute_math::DefaultMixer<T> mixer{MutableSpan(static_cast<T *>(buffer), 1)};
+    selection.foreach_index([&](const int i) { mixer.mix_in(0, values_typed[i]); });
     mixer.finalize();
   });
 
@@ -201,7 +201,7 @@ static void set_attribute_ui(bContext *C, wmOperator *op)
   const eCustomDataType active_type = eCustomDataType(active_attribute->type);
   const StringRefNull prop_name = geometry::rna_property_name_for_type(active_type);
   const char *name = active_attribute->name;
-  uiItemR(layout, op->ptr, prop_name.c_str(), 0, name, ICON_NONE);
+  uiItemR(layout, op->ptr, prop_name.c_str(), UI_ITEM_NONE, name, ICON_NONE);
 }
 
 void CURVES_OT_attribute_set(wmOperatorType *ot)

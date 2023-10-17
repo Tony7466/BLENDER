@@ -25,16 +25,11 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "ED_geometry.h"
-#include "ED_mesh.h"
+#include "ED_geometry.hh"
 #include "ED_mesh.hh"
-#include "ED_object.h"
 #include "ED_object.hh"
-#include "ED_screen.h"
 #include "ED_screen.hh"
-#include "ED_transform.h"
 #include "ED_transform.hh"
-#include "ED_view3d.h"
 #include "ED_view3d.hh"
 
 #include "BLT_translation.h"

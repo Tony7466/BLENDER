@@ -12,6 +12,8 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_color.hh"
+
 #include "BKE_attribute.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"

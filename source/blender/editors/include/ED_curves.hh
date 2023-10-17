@@ -105,6 +105,7 @@ IndexMask random_mask(const bke::CurvesGeometry &curves,
                       eAttrDomain selection_domain,
                       uint32_t random_seed,
                       float probability,
+                      IndexMaskMemory &memory);
 
 /** \} */
 
