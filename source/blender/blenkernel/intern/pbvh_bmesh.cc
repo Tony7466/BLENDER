@@ -853,6 +853,104 @@ static void edge_queue_insert(EdgeQueueContext *eq_ctx, BMEdge *e, float priorit
   }
 }
 
+/* Return true if the edge is a boundary edge: both its vertices are on a boundary. */
+static bool is_boundary_edge(const BMEdge &edge)
+{
+  if (edge.head.hflag & BM_ELEM_SEAM) {
+    return true;
+  }
+
+  if ((edge.head.hflag & BM_ELEM_SMOOTH) == 0) {
+    return true;
+  }
+
+  /* TODO(@sergey): Other boundaries? For example, boundary edges between two different face sets.
+   */
+
+  return false;
+}
+
+/* Return true if the vertex is adjacent to a boundary edge. */
+static bool is_boundary_vert(const BMVert &vertex)
+{
+  BMEdge *edge;
+  BMEdge *first_edge;
+
+  edge = first_edge = vertex.e;
+  do {
+    if (is_boundary_edge(*edge)) {
+      return true;
+    }
+  } while ((edge = BM_DISK_EDGE_NEXT(edge, &vertex)) != first_edge);
+
+  return false;
+}
+
+/* Return true if at least one of the edge vertices is adjacent to a boundary. */
+static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
+{
+  return is_boundary_vert(*edge.v1) || is_boundary_vert(*edge.v2);
+}
+
+/* Notes on edge priority.
+ *
+ * The priority is used to control an order in which edges are handled for both splitting of long
+ * edges and collapsing of short edges. For the long edges we start with splitting the longest
+ * edge, and for collapsing we start with the shortest edge.
+ *
+ * A heap-like data structure is used to accelerate such ordering. A bit confusingly, this data
+ * structure gives highest priority to an element with the lowest number.
+ *
+ * When edge does not belong to and is not adjacent to a boundary use its length as priority.
+ * Always prefer to handle those edges first. Modifying these edges leads to no distortion to the
+ * boundary.
+ *
+ * If an edge is boundary, then handle it after all non-boundary edges are handled. Splitting such
+ * edges do not lead to boundary distortion. Collapsing such edges leads to minimal boundary
+ * distortion.
+ *
+ * Once all of that is handled, handle edges which are adjacent to boundary. Modifying those edges
+ * will likely lead to boundary distortion, so handle those last and if it absolutely necessary.
+ *
+ * TODO(@sergey): Is the order actually correct? Maybe for collapse prefer handling of the adjacent
+ * edges, and only collapse boundary edges if needed? Collapse of adjacent edges is done in a way
+ * that does not distort boundary at all. */
+
+static float long_edge_queue_priority(const BMEdge &edge)
+{
+  float priority = -BM_edge_calc_length_squared(&edge);
+
+  /* TODO(@sergey): Enabling this leads to infinite cycle in pbvh_bmesh_split_edge().
+   * Might not be directly related to this specific PR. Still would be nice to understand why the
+   * system is so fragile. */
+#if 0
+  /* TODO(@serge): Find better weighting strategy. Maybe multiplicative? */
+   if (is_boundary_edge(edge)) {
+     priority += 500;
+   }
+   else if (is_edge_adjacent_to_boundary(edge)) {
+     priority += 1000;
+   }
+#endif
+
+  return priority;
+}
+
+static float short_edge_queue_priority(const BMEdge &edge)
+{
+  float priority = BM_edge_calc_length_squared(&edge);
+
+  /* TODO(@serge): Find better weighting strategy. Maybe multiplicative? */
+  if (is_boundary_edge(edge)) {
+    priority += 500;
+  }
+  else if (is_edge_adjacent_to_boundary(edge)) {
+    priority += 1000;
+  }
+
+  return priority;
+}
+
 static void long_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
 {
 #ifdef USE_EDGEQUEUE_TAG
@@ -861,7 +959,7 @@ static void long_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
   {
     const float len_sq = BM_edge_calc_length_squared(e);
     if (len_sq > eq_ctx->q->limit_len_squared) {
-      edge_queue_insert(eq_ctx, e, -len_sq);
+      edge_queue_insert(eq_ctx, e, long_edge_queue_priority(*e));
     }
   }
 }
@@ -884,7 +982,7 @@ static void long_edge_queue_edge_add_recursive(
   if (EDGE_QUEUE_TEST(l_edge->e) == false)
 #  endif
   {
-    edge_queue_insert(eq_ctx, l_edge->e, -len_sq);
+    edge_queue_insert(eq_ctx, l_edge->e, long_edge_queue_priority(*l_edge->e));
   }
 
   /* temp support previous behavior! */
@@ -932,7 +1030,7 @@ static void short_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
   {
     const float len_sq = BM_edge_calc_length_squared(e);
     if (len_sq < eq_ctx->q->limit_len_squared) {
-      edge_queue_insert(eq_ctx, e, len_sq);
+      edge_queue_insert(eq_ctx, e, short_edge_queue_priority(*e));
     }
   }
 }
@@ -1295,9 +1393,27 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
 {
   BMVert *v_del, *v_conn;
 
+  const bool v1_on_boundary = is_boundary_vert(*v1);
+  const bool v2_on_boundary = is_boundary_vert(*v2);
+
+  if (v1_on_boundary || v2_on_boundary) {
+    /* For the boundary edges can be collapsed with minimal distortion. For those it does not
+     * matter too much which vertex to keep and which one to remove.
+     *
+     * For edges which are adjacent to boundary keep vertex which is on boundary, and dissolve the
+     * other one. */
+    if (v1_on_boundary) {
+      v_del = v2;
+      v_conn = v1;
+    }
+    else {
+      v_del = v1;
+      v_conn = v2;
+    }
+  }
   /* one of the two vertices may be masked, select the correct one for deletion */
-  if (BM_ELEM_CD_GET_FLOAT(v1, eq_ctx->cd_vert_mask_offset) <
-      BM_ELEM_CD_GET_FLOAT(v2, eq_ctx->cd_vert_mask_offset))
+  else if (BM_ELEM_CD_GET_FLOAT(v1, eq_ctx->cd_vert_mask_offset) <
+           BM_ELEM_CD_GET_FLOAT(v2, eq_ctx->cd_vert_mask_offset))
   {
     v_del = v1;
     v_conn = v2;
@@ -1426,9 +1542,13 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
     }
   }
 
-  /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it
-   * may have been deleted above) */
-  if (v_conn != nullptr) {
+  /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it may have been
+   * deleted above).
+   *
+   * If the vertex is on boundary do not move it, to preserve the shape of the boundary.
+   *
+   * TODO(@sergey): Explain why do we need to move the vertex at all. */
+  if (v_conn != nullptr && !is_boundary_vert(*v_conn)) {
     BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
     add_v3_v3(v_conn->no, v_del->no);
