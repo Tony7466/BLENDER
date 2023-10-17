@@ -24,12 +24,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>("Selection").field_source();
 }
 
-static VArray<bool> select_by_material(VArray<int> material_indices,
-                                       const Span<Material *> materials,
+static VArray<bool> select_by_material(const Span<Material *> materials,
                                        const Material *material,
-                                       const int domain_size,
+                                       const AttributeAccessor &attributes,
+                                       const eAttrDomain domain,
                                        const IndexMask &domain_mask)
 {
+  const int domain_size = attributes.domain_size(domain);
   Vector<int> slots;
   for (const int slot_i : IndexRange(materials.size())) {
     if (materials[slot_i] == material) {
@@ -40,6 +41,8 @@ static VArray<bool> select_by_material(VArray<int> material_indices,
     return VArray<bool>::ForSingle(false, domain_size);
   }
 
+  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", domain, 0);
   if (material_indices.is_single()) {
     const int slot_i = material_indices.get_internal_single();
     return VArray<bool>::ForSingle(slots.contains(slot_i), domain_size);
@@ -84,10 +87,8 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
         const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask :
                                                                      IndexMask(mesh->faces_num);
         const AttributeAccessor attributes = mesh->attributes();
-        const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-            "material_index", ATTR_DOMAIN_FACE, 0);
         VArray<bool> selection = select_by_material(
-            material_indices, {mesh->mat, mesh->totcol}, material_, mesh->faces_num, domain_mask);
+            {mesh->mat, mesh->totcol}, material_, attributes, domain, domain_mask);
         return mesh->attributes().adapt_domain<bool>(
             std::move(selection), ATTR_DOMAIN_FACE, domain);
       }
@@ -105,10 +106,10 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
             "material_index", ATTR_DOMAIN_CURVE, 0);
         const GreasePencil &grease_pencil = *context.grease_pencil();
         VArray<bool> selection = select_by_material(
-            material_indices,
             {grease_pencil.material_array, grease_pencil.material_array_num},
             material_,
-            curves->curves_num(),
+            attributes,
+            domain,
             domain_mask);
         return curves->attributes().adapt_domain<bool>(
             std::move(selection), ATTR_DOMAIN_CURVE, domain);
