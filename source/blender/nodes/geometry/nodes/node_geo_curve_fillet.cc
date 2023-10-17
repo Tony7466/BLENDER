@@ -105,17 +105,14 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
     }
     const bke::GreasePencilLayerFieldContext field_context(
         grease_pencil, ATTR_DOMAIN_CURVE, layer_index);
-    std::optional<bke::CurvesGeometry> dst_curves = fillet_curve(src_curves,
-                                                                 mode,
-                                                                 field_context,
-                                                                 count_field,
-                                                                 radius_field,
-                                                                 limit_radius,
-                                                                 propagation_info);
-    if (!dst_curves) {
-      continue;
-    }
-    drawing->strokes_for_write() = std::move(dst_curves.value());
+    bke::CurvesGeometry dst_curves = fillet_curve(src_curves,
+                                                  mode,
+                                                  field_context,
+                                                  count_field,
+                                                  radius_field,
+                                                  limit_radius,
+                                                  propagation_info);
+    drawing->strokes_for_write() = std::move(dst_curves);
     drawing->tag_topology_changed();
   }
 }
