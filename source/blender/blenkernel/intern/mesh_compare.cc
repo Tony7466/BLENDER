@@ -515,7 +515,7 @@ static std::optional<MeshMismatch> verify_attributes_compatible(
       return MeshMismatch::AttributeTypes;
     }
   }
-  return {};
+  return std::nullopt;
 }
 
 /**
@@ -609,7 +609,7 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       return mismatch;
     }
   }
-  return {};
+  return std::nullopt;
 }
 
 static bool all_set_sizes_one(const Span<int> set_sizes)
@@ -641,7 +641,7 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
 {
   if (all_set_sizes_one(verts.set_sizes)) {
     /* The vertices are already in one-to-one correspondence. */
-    return {};
+    return std::nullopt;
   }
 
   /* Since we are not yet able to distiniguish all vertices based on their attributes alone, we
@@ -715,7 +715,7 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
    * or vice versa. Since we don't actually need the mapping (we just care that it exists), we
    * don't construct it here. */
 
-  return {};
+  return std::nullopt;
 }
 
 std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
@@ -832,7 +832,7 @@ std::optional<MeshMismatch> meshes_isomorphic(const Mesh &mesh1,
     return MeshMismatch::FaceTopology;
   }
 
-  return {};
+  return std::nullopt;
 }
 
 }  // namespace blender::bke::mesh
