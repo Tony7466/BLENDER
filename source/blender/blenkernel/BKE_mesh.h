@@ -225,6 +225,14 @@ void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigne
 void BKE_mesh_smooth_flag_set(struct Mesh *me, bool use_smooth);
 void BKE_mesh_auto_smooth_flag_set(struct Mesh *me, bool use_auto_smooth, float auto_smooth_angle);
 
+/**
+ * Used for unit testing; compares two meshes, checking only
+ * differences we care about.  should be usable with leaf's
+ * testing framework I get RNA work done, will use hackish
+ * testing code for now.
+ */
+const char *BKE_mesh_cmp(struct Mesh *me1, struct Mesh *me2, float thresh);
+
 struct BoundBox *BKE_mesh_boundbox_get(struct Object *ob);
 
 void BKE_mesh_texspace_calc(struct Mesh *me);
