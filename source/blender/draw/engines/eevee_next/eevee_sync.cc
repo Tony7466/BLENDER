@@ -182,7 +182,7 @@ void SyncModule::sync_mesh(Object *ob,
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
   inst_.cryptomatte.sync_object(ob, res_handle);
 }
 
@@ -259,7 +259,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
   inst_.cryptomatte.sync_object(ob, res_handle);
 
   return true;
@@ -324,7 +324,7 @@ void SyncModule::sync_point_cloud(Object *ob,
 
   bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_caster, is_alpha_blend);
 }
 
 /** \} */
@@ -488,7 +488,7 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 
   bool is_caster = true;      /* TODO material.shadow.sub_pass. */
   bool is_alpha_blend = true; /* TODO material.is_alpha_blend. */
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_caster, is_alpha_blend);
 }
 
 /** \} */
@@ -559,7 +559,7 @@ void SyncModule::sync_curves(Object *ob,
 
   bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_caster, is_alpha_blend);
 }
 
 /** \} */
