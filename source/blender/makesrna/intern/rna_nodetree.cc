@@ -608,6 +608,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
 
+using blender::nodes::IndexSwitchItemsAccessor;
 using blender::nodes::RepeatItemsAccessor;
 using blender::nodes::SimulationItemsAccessor;
 
@@ -8971,6 +8972,59 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void rna_def_index_switch_item(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "IndexSwitchItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Index Switch Item", "");
+  RNA_def_struct_sdna(srna, "IndexSwitchItem");
+
+  rna_def_node_item_array_socket_item_common(srna, "IndexSwitchItemsAccessor");
+}
+
+static void rna_def_geo_index_switch_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeIndexSwitchItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of index_switch items");
+
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "IndexSwitchItem", "IndexSwitchItemsAccessor");
+  rna_def_node_item_array_common_functions(srna, "IndexSwitchItem", "IndexSwitchItemsAccessor");
+}
+
+static void def_geo_index_switch(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeIndexSwitch", "storage");
+
+  prop = RNA_def_property(srna, "index_switch_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
+  RNA_def_property_struct_type(prop, "IndexSwitchItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryIndexSwitchItems");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "IndexSwitchItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_Node_ItemArray_active_get<IndexSwitchItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<IndexSwitchItemsAccessor>",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NO_DEG_UPDATE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+}
+
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -10348,6 +10402,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_cmp_output_file_slot_layer(brna);
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
+  rna_def_geo_index_switch_items(brna);
 
   rna_def_node_instance_hash(brna);
 }

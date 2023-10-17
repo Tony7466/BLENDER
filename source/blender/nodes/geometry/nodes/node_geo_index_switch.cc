@@ -33,8 +33,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
   const bool supports_fields = socket_type_supports_fields(data_type);
 
-  for (const IndexSwitchItem &item : storage.items_span()) {
-    auto &input = b.add_input(data_type, "Input", std::to_string(item.identifier));
+  const Span<IndexSwitchItem> items = storage.items_span();
+
+  for (const int i : items.index_range()) {
+    auto &input = b.add_input(data_type, std::to_string(i), std::to_string(items[i].identifier));
     if (supports_fields) {
       input.supports_field();
     }
@@ -57,8 +59,13 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeIndexSwitch *data = MEM_cnew<NodeIndexSwitch>(__func__);
-  data->items = MEM_cnew_array<IndexSwitchItem>(1, __func__);
   data->data_type = SOCK_GEOMETRY;
+  data->next_identifier = 0;
+
+  data->items = MEM_cnew_array<IndexSwitchItem>(1, __func__);
+  data->items[0].identifier = data->next_identifier++;
+  data->items_num = 1;
+
   node->storage = data;
 }
 
@@ -145,15 +152,7 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
     can_be_field_ = socket_type_supports_fields(data_type);
 
-    const bNodeSocketType *socket_type = nullptr;
-    for (const bNodeSocket *socket : node.output_sockets()) {
-      if (socket->type == data_type) {
-        socket_type = socket->typeinfo;
-        break;
-      }
-    }
-    BLI_assert(socket_type != nullptr);
-    const CPPType &cpp_type = *socket_type->geometry_nodes_cpp_type;
+    const CPPType &cpp_type = *node.output_socket(0).typeinfo->geometry_nodes_cpp_type;
 
     debug_name_ = node.name;
     inputs_.append_as("Index", CPPType::get<ValueOrField<int>>());

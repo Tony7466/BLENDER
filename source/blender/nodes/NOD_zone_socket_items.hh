@@ -141,4 +141,66 @@ struct RepeatItemsAccessor {
   }
 };
 
+/**
+ * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) with
+ * repeat items.
+ */
+struct IndexSwitchItemsAccessor {
+  using ItemT = IndexSwitchItem;
+  static StructRNA *item_srna;
+  static int node_type;
+  static constexpr const char *node_idname = "GeometryNodeIndexSwitch";
+
+  static socket_items::SocketItemsRef<IndexSwitchItem> get_items_from_node(bNode &node)
+  {
+    auto *storage = static_cast<NodeIndexSwitch *>(node.storage);
+    return {&storage->items, &storage->items_num, &storage->active_index};
+  }
+  static void copy_item(const IndexSwitchItem &src, IndexSwitchItem &dst)
+  {
+    dst = src;
+  }
+  static void destruct_item(IndexSwitchItem *item) {}
+  static void blend_write(BlendWriter *writer, const bNode &node);
+  static void blend_read_data(BlendDataReader *reader, bNode &node);
+  static short *get_socket_type(IndexSwitchItem &item)
+  {
+    return &item.socket_type;
+  }
+  static char **get_name(IndexSwitchItem &item)
+  {
+    return &item.name;
+  }
+  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  {
+    return ELEM(socket_type,
+                SOCK_FLOAT,
+                SOCK_VECTOR,
+                SOCK_RGBA,
+                SOCK_BOOLEAN,
+                SOCK_ROTATION,
+                SOCK_INT,
+                SOCK_STRING,
+                SOCK_GEOMETRY,
+                SOCK_OBJECT,
+                SOCK_MATERIAL,
+                SOCK_IMAGE,
+                SOCK_COLLECTION);
+  }
+  static void init_with_socket_type_and_name(bNode &node,
+                                             IndexSwitchItem &item,
+                                             const eNodeSocketDatatype socket_type,
+                                             const char *name)
+  {
+    auto *storage = static_cast<NodeIndexSwitch *>(node.storage);
+    item.socket_type = socket_type;
+    item.identifier = storage->next_identifier++;
+    socket_items::set_item_name_and_make_unique<RepeatItemsAccessor>(node, item, name);
+  }
+  static std::string socket_identifier_for_item(const IndexSwitchItem &item)
+  {
+    return "Item_" + std::to_string(item.identifier);
+  }
+};
+
 }  // namespace blender::nodes
