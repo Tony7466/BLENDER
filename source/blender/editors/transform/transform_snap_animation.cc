@@ -151,6 +151,7 @@ bool transform_snap_nla_calc(TransInfo *t, float *vec)
   float best_dist = FLT_MAX;
   float2 best_source = float2(0);
   float2 best_target = float2(0);
+  bool found = false;
 
   for (int i = 0; i < tc->data_len; i++) {
     TransData *td = &tc->data[i];
@@ -159,16 +160,23 @@ bool transform_snap_nla_calc(TransInfo *t, float *vec)
 
     transform_snap_anim_flush_data_ex(t, td, snap_target[0], snap_mode, &snap_target[0]);
     int dist = abs(snap_target[0] - snap_source[0]);
-    if (dist != 0.0f && dist < best_dist) {
-      best_dist = dist;
+    if (dist < best_dist) {
+      if (dist != 0) {
+        /* Prioritize non-zero dist for scale. */
+        best_dist = dist;
+      }
+      else if (found) {
+        continue;
+      }
       best_source = snap_source;
       best_target = snap_target;
+      found = true;
     }
   }
 
   copy_v2_v2(t->tsnap.snap_source, best_source);
   copy_v2_v2(t->tsnap.snap_target, best_target);
-  return true;
+  return found;
 }
 
 /** \} */
