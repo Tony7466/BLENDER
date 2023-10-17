@@ -95,7 +95,6 @@ class GeoNodeExecParams {
    */
   template<typename T> T extract_input(StringRef identifier)
   {
-    const int index = this->get_input_index(identifier);
     if constexpr (is_field_base_type_v<T>) {
       ValueOrField<T> value_or_field = this->extract_input<ValueOrField<T>>(identifier);
       return value_or_field.as_value();
@@ -118,6 +117,7 @@ class GeoNodeExecParams {
 #ifdef DEBUG
       this->check_input_access(identifier, &CPPType::get<T>());
 #endif
+      const int index = this->get_input_index(identifier);
       T value = params_.extract_input<T>(index);
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
