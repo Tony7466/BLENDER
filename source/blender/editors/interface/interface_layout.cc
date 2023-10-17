@@ -211,20 +211,6 @@ struct uiLayoutItemRoot {
 /** \name Item
  * \{ */
 
-static const char *ui_item_name_add_colon(const char *name, char namestr[UI_MAX_NAME_STR])
-{
-  const int len = strlen(name);
-
-  if (len != 0 && len + 1 < UI_MAX_NAME_STR) {
-    memcpy(namestr, name, len);
-    namestr[len] = ':';
-    namestr[len + 1] = '\0';
-    return namestr;
-  }
-
-  return name;
-}
-
 static int ui_item_fit(
     int item, int pos, int all, int available, bool is_last, int alignment, float *extra_pixel)
 {
@@ -2128,23 +2114,14 @@ void uiItemFullR(uiLayout *layout,
     /* pass */
   }
   else if (ELEM(type, PROP_INT, PROP_FLOAT, PROP_STRING, PROP_POINTER)) {
-    if (use_prop_sep == false) {
-      name = ui_item_name_add_colon(name, namestr);
-    }
+    /* pass */
   }
   else if (type == PROP_BOOLEAN && is_array && index == RNA_NO_INDEX) {
-    if (use_prop_sep == false) {
-      name = ui_item_name_add_colon(name, namestr);
-    }
+    /* pass */
   }
   else if (type == PROP_ENUM && index != RNA_ENUM_VALUE) {
     if (flag & UI_ITEM_R_COMPACT) {
       name = "";
-    }
-    else {
-      if (use_prop_sep == false) {
-        name = ui_item_name_add_colon(name, namestr);
-      }
     }
   }
 
@@ -2915,11 +2892,6 @@ void uiItemPointerR_prop(uiLayout *layout,
     name = RNA_property_ui_name(prop);
   }
 
-  char namestr[UI_MAX_NAME_STR];
-  if (use_prop_sep == false) {
-    name = ui_item_name_add_colon(name, namestr);
-  }
-
   /* create button */
   uiBlock *block = uiLayoutGetBlock(layout);
 
@@ -3365,10 +3337,6 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
     return split_wrapper.decorate_column;
   }
 
-  char namestr[UI_MAX_NAME_STR];
-  if (text) {
-    text = ui_item_name_add_colon(text, namestr);
-  }
   uiItemL_(layout, text, icon);
 
   return layout;
