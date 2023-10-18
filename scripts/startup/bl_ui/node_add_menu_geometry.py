@@ -121,6 +121,7 @@ class NODE_MT_geometry_node_GEO_CURVE_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInterpolateCurves")
         node_add_menu.add_node_type(layout, "GeometryNodeResampleCurve")
         node_add_menu.add_node_type(layout, "GeometryNodeReverseCurve")
+        node_add_menu.add_node_type(layout, "GeometryNodeSplitCurves")
         node_add_menu.add_node_type(layout, "GeometryNodeSubdivideCurve")
         node_add_menu.add_node_type(layout, "GeometryNodeTrimCurve")
         node_add_menu.draw_assets_for_catalog(layout, "Curve/Operations")

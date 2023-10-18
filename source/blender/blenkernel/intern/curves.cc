@@ -333,9 +333,7 @@ void curves_copy_parameters(const Curves &src, Curves &dst)
   dst.selection_domain = src.selection_domain;
   dst.surface = src.surface;
   MEM_SAFE_FREE(dst.surface_uv_map);
-  if (src.surface_uv_map != nullptr) {
-    dst.surface_uv_map = BLI_strdup(src.surface_uv_map);
-  }
+  dst.surface_uv_map = BLI_strdup_null(src.surface_uv_map);
 }
 
 CurvesSurfaceTransforms::CurvesSurfaceTransforms(const Object &curves_ob, const Object *surface_ob)

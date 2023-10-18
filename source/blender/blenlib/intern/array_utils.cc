@@ -152,8 +152,7 @@ int64_t count_booleans(const VArray<bool> &varray)
         4096,
         0,
         [&](const IndexRange range, const int64_t init) {
-          const Span<bool> slice = span.slice(range);
-          return init + std::count(slice.begin(), slice.end(), true);
+          return init + span.slice(range).count(true);
         },
         std::plus<int64_t>());
   }
