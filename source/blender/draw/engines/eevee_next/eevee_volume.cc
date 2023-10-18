@@ -132,13 +132,22 @@ void VolumeModule::end_sync()
                                      GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
   occupancy_tx_.ensure_3d(GPU_R32UI, int3(data_.tex_size.xy(), occupancy_layers), occupancy_usage);
 
-  int max_ray_depth = 16;
-  eGPUTextureUsage hit_count_usage = GPU_TEXTURE_USAGE_SHADER_READ |
-                                     GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
-  eGPUTextureUsage hit_depth_usage = GPU_TEXTURE_USAGE_SHADER_READ |
-                                     GPU_TEXTURE_USAGE_SHADER_WRITE;
-  hit_count_tx_.ensure_2d(GPU_R32UI, data_.tex_size.xy(), hit_count_usage);
-  hit_depth_tx_.ensure_3d(GPU_R32F, int3(data_.tex_size.xy(), max_ray_depth), hit_depth_usage);
+  {
+    eGPUTextureUsage hit_count_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                       GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATOMIC;
+    eGPUTextureUsage hit_depth_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                       GPU_TEXTURE_USAGE_SHADER_WRITE;
+    int2 hit_list_size = int2(1);
+    int hit_list_layer = 1;
+    if (inst_.pipelines.volume.use_hit_list()) {
+      hit_list_layer = 16; /* TODO(fclem): Render option. */
+      hit_list_size = data_.tex_size.xy();
+    }
+    hit_depth_tx_.ensure_3d(GPU_R32F, int3(hit_list_size, hit_list_layer), hit_depth_usage);
+    if (hit_count_tx_.ensure_2d(GPU_R32UI, hit_list_size, hit_count_usage)) {
+      hit_count_tx_.clear(uint4(0));
+    }
+  }
 
   if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
     /* Metal requires a dummy attachment. */
