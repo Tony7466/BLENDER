@@ -14,6 +14,8 @@
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_noise.hh"
+#include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_task.hh"
 
 #include "BKE_collection.h"
@@ -254,6 +256,8 @@ struct AllGreasePencilsInfo {
   VectorSet<const GreasePencil *> order;
   /** Preprocessed data about every original grease pencil. This is ordered by #order. */
   Array<RealizeGreasePencilInfo> realize_info;
+  /** All layer names (changed to be unique). */
+  Array<std::string> all_layer_names;
   bool create_id_attribute = false;
 };
 
@@ -1576,19 +1580,28 @@ static OrderedAttributes gather_generic_grease_pencil_layer_attributes_to_propag
   return ordered_attributes;
 }
 
-static void gather_grease_pencils_to_realize(const bke::GeometrySet &geometry_set,
-                                             VectorSet<const GreasePencil *> &r_grease_pencils)
+static int gather_grease_pencils_to_realize(const bke::GeometrySet &geometry_set,
+                                            VectorSet<const GreasePencil *> &r_grease_pencils)
 {
+  int total_layers = 0;
   if (const GreasePencil *grease_pencil = geometry_set.get_grease_pencil()) {
     if (grease_pencil->layers().size() > 0) {
+      total_layers += grease_pencil->layers().size();
       r_grease_pencils.add(grease_pencil);
     }
   }
   if (const Instances *instances = geometry_set.get_instances()) {
     instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
-      gather_grease_pencils_to_realize(instance_geometry_set, r_grease_pencils);
+      total_layers += gather_grease_pencils_to_realize(instance_geometry_set, r_grease_pencils);
     });
   }
+  return total_layers;
+}
+
+static bool unique_layer_name_check(void *arg, const char *name)
+{
+  VectorSet<StringRefNull> &names = *reinterpret_cast<VectorSet<StringRefNull> *>(arg);
+  return names.contains(name);
 }
 
 static AllGreasePencilsInfo preprocess_grease_pencils(const bke::GeometrySet &geometry_set,
@@ -1598,12 +1611,26 @@ static AllGreasePencilsInfo preprocess_grease_pencils(const bke::GeometrySet &ge
   info.attributes = gather_generic_grease_pencil_layer_attributes_to_propagate(
       geometry_set, options, info.create_id_attribute);
 
-  gather_grease_pencils_to_realize(geometry_set, info.order);
+  const int total_layers = gather_grease_pencils_to_realize(geometry_set, info.order);
+  VectorSet<StringRefNull> current_names;
+  int current_name_i = 0;
+  info.all_layer_names.reinitialize(total_layers);
   info.realize_info.reinitialize(info.order.size());
   for (const int grease_pencil_index : info.realize_info.index_range()) {
     RealizeGreasePencilInfo &grease_pencil_info = info.realize_info[grease_pencil_index];
     const GreasePencil *grease_pencil = info.order[grease_pencil_index];
     grease_pencil_info.grease_pencil = grease_pencil;
+
+    const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
+    for (const int layer_i : layers.index_range()) {
+      char unique_name[MAX_NAME];
+      BLI_strncpy(unique_name, layers[layer_i]->name().c_str(), MAX_NAME);
+      BLI_uniquename_cb(
+          unique_layer_name_check, &current_names, "Layer", '.', unique_name, MAX_NAME);
+      info.all_layer_names[current_name_i] = unique_name;
+      current_names.add(info.all_layer_names[current_name_i]);
+      current_name_i++;
+    }
 
     bke::AttributeAccessor attributes = grease_pencil->attributes();
     grease_pencil_info.attributes.reinitialize(info.attributes.size());
@@ -1638,6 +1665,7 @@ static void execute_realize_grease_pencil_task(
   const GreasePencil &src_grease_pencil = *grease_pencil_info.grease_pencil;
   const int start_layer_offset = task.start_indices.layer;
   const int start_drawing_offset = task.start_indices.drawing;
+  const Span<std::string> all_layer_names = all_grease_pencils_info.all_layer_names;
 
   /* Copy all the drawings. */
   const Span<const GreasePencilDrawingBase *> src_drawings = src_grease_pencil.drawings();
@@ -1652,6 +1680,7 @@ static void execute_realize_grease_pencil_task(
     bke::greasepencil::Layer *dst_layer =
         dst_grease_pencil.layers_for_write()[start_layer_offset + layer_index];
     *dst_layer = *src_layer;
+    dst_layer->set_name(all_layer_names[start_layer_offset + layer_index]);
     for (auto [key, value] : dst_layer->frames_for_write().items()) {
       value.drawing_index += start_drawing_offset;
     }
