@@ -164,28 +164,11 @@ static void join_grease_pencil(const Span<const GeometryComponent *> src_compone
     const bke::GreasePencilComponent &src_grease_pencil_component =
         static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
     const int start_offset = start_offsets[index];
-    for (const int i : src_grease_pencil_component.get()->drawings().index_range()) {
-      const GreasePencilDrawingBase *src_drawing_base =
-          src_grease_pencil_component.get()->drawing_array[i];
-      switch (src_drawing_base->type) {
-        case GP_DRAWING: {
-          const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
-              src_drawing_base);
-          dst_grease_pencil->drawing_array[start_offset + i] =
-              reinterpret_cast<GreasePencilDrawingBase *>(
-                  MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
-          break;
-        }
-        case GP_DRAWING_REFERENCE: {
-          const GreasePencilDrawingReference *src_drawing_reference =
-              reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
-          dst_grease_pencil->drawing_array[start_offset + i] =
-              reinterpret_cast<GreasePencilDrawingBase *>(
-                  MEM_new<GreasePencilDrawingReference>(__func__, src_drawing_reference));
-          break;
-        }
-      }
-    }
+    const Span<const GreasePencilDrawingBase *> src_drawings =
+        src_grease_pencil_component.get()->drawings();
+    const IndexRange dst_range = IndexRange(start_offset, src_drawings.size());
+    bke::greasepencil::copy_drawing_array(src_grease_pencil_component.get()->drawings(),
+                                          dst_grease_pencil->drawings().slice(dst_range));
   }
 
   /* Copy the layers and adjust the drawing indices for the frame mappings. */
