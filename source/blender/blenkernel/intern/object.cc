@@ -114,7 +114,7 @@
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -707,6 +707,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* Only for versioning, vertex group names are now stored on object data. */
   BLO_read_list(reader, &ob->defbase);
+  BLO_read_list(reader, &ob->fmaps);
 
   /* XXX deprecated - old animation system <<< */
   direct_link_nlastrips(reader, &ob->nlastrips);

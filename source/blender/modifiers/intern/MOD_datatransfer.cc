@@ -221,6 +221,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     MEM_freeN((void *)report_str);
   }
 
+  BKE_reports_free(&reports);
+
   return result;
 }
 
