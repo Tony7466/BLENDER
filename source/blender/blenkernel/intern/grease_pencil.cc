@@ -511,6 +511,7 @@ TreeNode::~TreeNode()
 
 void TreeNode::set_name(StringRefNull name)
 {
+  MEM_SAFE_FREE(this->GreasePencilLayerTreeNode::name);
   this->GreasePencilLayerTreeNode::name = BLI_strdup(name.c_str());
 }
 
@@ -2013,9 +2014,10 @@ static std::string unique_node_name(const GreasePencil &grease_pencil,
                                     blender::StringRefNull name)
 {
   using namespace blender;
-  std::string unique_name(name.c_str());
+  char unique_name[MAX_NAME];
+  BLI_strncpy(unique_name, name.c_str(), MAX_NAME);
   VectorSet<StringRefNull> names = get_node_names(grease_pencil);
-  unique_node_name_ex(names, default_name, unique_name.data());
+  unique_node_name_ex(names, default_name, unique_name);
   return unique_name;
 }
 
