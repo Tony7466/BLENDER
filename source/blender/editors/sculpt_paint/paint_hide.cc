@@ -198,17 +198,14 @@ static void partialvis_update_grids(Depsgraph *depsgraph,
 }
 
 static void partialvis_update_bmesh_verts(BMesh *bm,
-                                          GSet *verts,
+                                          const blender::Set<BMVert *> &verts,
                                           PartialVisAction action,
                                           PartialVisArea area,
                                           float planes[4][4],
                                           bool *any_changed,
                                           bool *any_visible)
 {
-  GSetIterator gs_iter;
-
-  GSET_ITER (gs_iter, verts) {
-    BMVert *v = static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMVert *v : verts) {
     float *vmask = static_cast<float *>(
         CustomData_bmesh_get(&bm->vdata, v->head.data, CD_PAINT_MASK));
 
@@ -249,18 +246,22 @@ static void partialvis_update_bmesh(Object *ob,
                                     float planes[4][4])
 {
   BMesh *bm;
-  GSet *unique, *other;
   bool any_changed = false, any_visible = false;
 
   bm = BKE_pbvh_get_bmesh(pbvh);
-  unique = BKE_pbvh_bmesh_node_unique_verts(node);
-  other = BKE_pbvh_bmesh_node_other_verts(node);
 
   SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
 
-  partialvis_update_bmesh_verts(bm, unique, action, area, planes, &any_changed, &any_visible);
+  partialvis_update_bmesh_verts(bm,
+                                BKE_pbvh_bmesh_node_unique_verts(node),
+                                action,
+                                area,
+                                planes,
+                                &any_changed,
+                                &any_visible);
 
-  partialvis_update_bmesh_verts(bm, other, action, area, planes, &any_changed, &any_visible);
+  partialvis_update_bmesh_verts(
+      bm, BKE_pbvh_bmesh_node_other_verts(node), action, area, planes, &any_changed, &any_visible);
 
   /* Finally loop over node faces and tag the ones that are fully hidden. */
   partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(node));

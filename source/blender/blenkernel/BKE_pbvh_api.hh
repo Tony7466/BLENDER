@@ -14,7 +14,6 @@
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
-#include "BLI_ghash.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_vector.hh"
@@ -433,9 +432,10 @@ bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, PBVHFrustumPlanes *frust
  */
 bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *frustum);
 
-GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
-GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
-blender::Set<BMFace *> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
+const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
+const blender::Set<BMFace *> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+
 /**
  * In order to perform operations on the original node coordinates
  * (currently just ray-cast), store the node's triangles and vertices.
@@ -517,8 +517,10 @@ struct PBVHVertexIter {
   bool is_mesh;
 
   /* bmesh */
-  GSetIterator bm_unique_verts;
-  GSetIterator bm_other_verts;
+  std::optional<blender::Set<BMVert *>::Iterator> bm_unique_verts;
+  std::optional<blender::Set<BMVert *>::Iterator> bm_unique_verts_end;
+  std::optional<blender::Set<BMVert *>::Iterator> bm_other_verts;
+  std::optional<blender::Set<BMVert *>::Iterator> bm_other_verts_end;
   CustomData *bm_vdata;
   int cd_vert_mask_offset;
 
@@ -579,13 +581,13 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           vi.mask = vi.vmask ? vi.vmask[vi.index] : 0.0f; \
         } \
         else { \
-          if (!BLI_gsetIterator_done(&vi.bm_unique_verts)) { \
-            vi.bm_vert = (BMVert *)BLI_gsetIterator_getKey(&vi.bm_unique_verts); \
-            BLI_gsetIterator_step(&vi.bm_unique_verts); \
+          if (*vi.bm_unique_verts != *vi.bm_unique_verts_end) { \
+            vi.bm_vert = **vi.bm_unique_verts; \
+            (*vi.bm_unique_verts)++; \
           } \
           else { \
-            vi.bm_vert = (BMVert *)BLI_gsetIterator_getKey(&vi.bm_other_verts); \
-            BLI_gsetIterator_step(&vi.bm_other_verts); \
+            vi.bm_vert = **vi.bm_other_verts; \
+            (*vi.bm_other_verts)++; \
           } \
           vi.visible = !BM_elem_flag_test_bool(vi.bm_vert, BM_ELEM_HIDDEN); \
           if (mode == PBVH_ITER_UNIQUE && !vi.visible) { \
