@@ -1059,7 +1059,6 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
-<<<<<<< HEAD
 static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
                                                                  const char *separator)
 {
@@ -1749,7 +1748,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_CURVE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_AT_INDEX, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE, "_", "_");
@@ -1759,11 +1757,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_UV_SURFACE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_VIEWER, "_", "_");
-
-      versioning_node_dynamic_socket(*ntree, FN_NODE_COMPARE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, FN_NODE_RANDOM_VALUE, "_", "_");
-
-      versioning_node_dynamic_socket(*ntree, SH_NODE_MIX, "_", "_");
     }
   }
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
