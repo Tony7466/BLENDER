@@ -8,6 +8,7 @@
 #include "blender/util.h"
 
 #include "scene/alembic.h"
+#include "scene/bake.h"
 #include "scene/camera.h"
 #include "scene/integrator.h"
 #include "scene/light.h"
@@ -217,6 +218,14 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
 
   if (b_parent.ptr.data != b_ob.ptr.data) {
     visibility &= object_ray_visibility(b_parent);
+  }
+
+  /* Only bake selected objects when there is transparency and the ray passes
+   * through, by making unselected objects invisible to camera rays. */
+  if (scene->bake_manager->get_baking()) {
+    if (!b_parent.select_get(PointerRNA_NULL, b_view_layer)) {
+      visibility &= ~PATH_RAY_CAMERA;
+    }
   }
 
   /* TODO: make holdout objects on excluded layer invisible for non-camera rays. */

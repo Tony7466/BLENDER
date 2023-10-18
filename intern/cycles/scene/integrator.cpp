@@ -237,11 +237,6 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   if (!use_emission) {
     kintegrator->filter_closures |= FILTER_CLOSURE_EMISSION;
   }
-  if (scene->bake_manager->get_baking()) {
-    /* Baking does not need to trace through transparency, we only want to bake
-     * the object itself. */
-    kintegrator->filter_closures |= FILTER_CLOSURE_TRANSPARENT;
-  }
 
   GuidingParams guiding_params = get_guiding_params(device);
   kintegrator->use_guiding = guiding_params.use;
