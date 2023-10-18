@@ -161,7 +161,7 @@ void GLStorageBuf::copy_sub(VertBuf *src_, uint dst_offset, uint src_offset, uin
   }
 }
 
-void GLStorageBuf::sync_to_host()
+void GLStorageBuf::async_flush_to_host()
 {
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 }

@@ -108,7 +108,7 @@ void GPU_storagebuf_copy_sub_from_vertbuf(
 
 void GPU_storagebuf_sync_to_host(GPUStorageBuf *ssbo)
 {
-  unwrap(ssbo)->sync_to_host();
+  unwrap(ssbo)->async_flush_to_host();
 }
 
 void GPU_storagebuf_read(GPUStorageBuf *ssbo, void *data)

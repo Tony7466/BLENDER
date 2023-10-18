@@ -332,7 +332,7 @@ void MTLStorageBuf::copy_sub(VertBuf *src_, uint dst_offset, uint src_offset, ui
                           size:copy_size];
 }
 
-void MTLStorageBuf::sync_to_host()
+void MTLStorageBuf::async_flush_to_host()
 {
   bool device_only = (usage_ == GPU_USAGE_DEVICE_ONLY);
   BLI_assert_msg(!device_only,
