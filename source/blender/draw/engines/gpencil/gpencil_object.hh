@@ -92,7 +92,7 @@ class ObjectModule {
   void begin_sync(Depsgraph *depsgraph, const View &main_view)
   {
     camera_forward_ = main_view.forward();
-    camera_pos_ = float3(main_view.viewinv()[3]);
+    camera_pos_ = main_view.location();
     current_frame_ = DEG_get_ctime(depsgraph);
 
     is_object_fb_needed_ = false;
