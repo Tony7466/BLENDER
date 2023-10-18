@@ -54,6 +54,8 @@ class ObjectModule {
   bool use_stroke_fill_ = true;
   bool use_vfx_ = true;
   bool is_render_ = true;
+  bool is_persp_ = true;
+
   /** Forward vector used to sort gpencil objects. */
   float3 camera_forward_;
   float3 camera_pos_;
@@ -100,6 +102,7 @@ class ObjectModule {
     is_object_fb_needed_ = false;
     is_layer_fb_needed_ = false;
 
+    is_persp_ = main_view.is_persp();
     /* TODO(fclem): Shrink buffer. */
     // objects_buf_.shrink();
   }
@@ -286,7 +289,7 @@ class ObjectModule {
     float4x4 bbox_mat = object_to_world *
                         from_loc_rot_scale<float4x4>(center, Quaternion::identity(), size);
     float3 plane_normal;
-    if (DRW_view_is_persp_get(nullptr)) {
+    if (is_persp_) {
       /* BBox center to camera vector. */
       plane_normal = camera_pos_ - bbox_mat.location();
     }
