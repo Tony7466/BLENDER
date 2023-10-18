@@ -435,7 +435,7 @@ bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *frust
 
 GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
 GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
-GSet *BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+blender::Set<BMFace *> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
 /**
  * In order to perform operations on the original node coordinates
  * (currently just ray-cast), store the node's triangles and vertices.
@@ -620,7 +620,7 @@ struct PBVHFaceIter {
   const PBVHNode *node_;
   PBVHType pbvh_type_;
   int verts_size_;
-  GSetIterator bm_faces_iter_;
+  std::optional<blender::Set<BMFace *>::Iterator> bm_faces_iter_;
   int cd_hide_poly_, cd_face_set_;
   bool *hide_poly_;
   int *face_sets_;

@@ -111,7 +111,7 @@ struct PBVHNode {
    * NOTE: PBVH_BMESH only. Faces are always triangles
    * (dynamic topology forcibly triangulates the mesh).
    */
-  GSet *bm_faces = nullptr;
+  blender::Set<BMFace *> bm_faces;
   GSet *bm_unique_verts = nullptr;
   GSet *bm_other_verts = nullptr;
 
