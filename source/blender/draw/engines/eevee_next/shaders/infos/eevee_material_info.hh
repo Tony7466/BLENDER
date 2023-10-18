@@ -321,6 +321,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_world)
 GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
     .define("MAT_OCCUPANCY")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
+    .push_constant(Type::BOOL, "use_fast_method")
     .image(VOLUME_HIT_DEPTH_SLOT, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_3D, "hit_depth_img")
     .image(VOLUME_HIT_COUNT_SLOT,
            GPU_R32UI,

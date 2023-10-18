@@ -29,25 +29,23 @@ void main()
   float jitter = sampling_rng_1D_get(SAMPLING_VOLUME_W) * uniform_buf.volumes.inv_tex_size.z;
   float volume_z = view_z_to_volume_z(vPz) - jitter;
 
-#if 1
-  /* XOR technique:
-   * Gives correct result for manifold meshes in and out of view. */
-  OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);
-
-  for (int i = 0; i < imageSize(occupancy_img).z; i++) {
-    /* Negate occupancy bits before XORing so that meshes clipped by the near plane fill the space
-     * betwen the inner part of the mesh and the near plane.
-     * It doesn't change anything for closed meshes. */
-    occupancy_bits.bits[i] = ~occupancy_bits.bits[i];
-    if (occupancy_bits.bits[i] != 0u) {
-      imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits.bits[i]);
+  if (use_fast_method) {
+    OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);
+    for (int i = 0; i < imageSize(occupancy_img).z; i++) {
+      /* Negate occupancy bits before XORing so that meshes clipped by the near plane fill the
+       * space betwen the inner part of the mesh and the near plane.
+       * It doesn't change anything for closed meshes. */
+      occupancy_bits.bits[i] = ~occupancy_bits.bits[i];
+      if (occupancy_bits.bits[i] != 0u) {
+        imageAtomicXor(occupancy_img, ivec3(texel, i), occupancy_bits.bits[i]);
+      }
     }
   }
-#else
-  uint hit_id = imageAtomicAdd(hit_count_img, texel, 1u);
-  if (hit_id < VOLUME_HIT_DEPTH_MAX) {
-    float value = gl_FrontFacing ? volume_z : -volume_z;
-    imageStore(hit_depth_img, ivec3(texel, hit_id), vec4(value));
+  else {
+    uint hit_id = imageAtomicAdd(hit_count_img, texel, 1u);
+    if (hit_id < VOLUME_HIT_DEPTH_MAX) {
+      float value = gl_FrontFacing ? volume_z : -volume_z;
+      imageStore(hit_depth_img, ivec3(texel, hit_id), vec4(value));
+    }
   }
-#endif
 }

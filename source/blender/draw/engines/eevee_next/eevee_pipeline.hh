@@ -302,6 +302,9 @@ struct GridAABB {
  * A volume layer contains a list of non-overlapping volume objects.
  */
 class VolumeLayer {
+ public:
+  bool use_hit_list = false;
+
  private:
   Instance &inst_;
 
@@ -318,8 +321,12 @@ class VolumeLayer {
     this->sync();
   }
 
-  PassMain::Sub *occupancy_add(GPUMaterial *gpumat);
-  PassMain::Sub *material_add(GPUMaterial *gpumat);
+  PassMain::Sub *occupancy_add(const Object *ob,
+                               const ::Material *blender_mat,
+                               GPUMaterial *gpumat);
+  PassMain::Sub *material_add(const Object *ob,
+                              const ::Material *blender_mat,
+                              GPUMaterial *gpumat);
 
   /* Return true if the given bounds overlaps any of the contained object in this layer. */
   bool bounds_overlaps(const GridAABB &object_aabb) const
@@ -373,6 +380,9 @@ class VolumePipeline {
   {
     return enabled_;
   }
+
+  /* Returns true if any volume layer uses the hist list. */
+  bool use_hit_list() const;
 
  private:
   /**

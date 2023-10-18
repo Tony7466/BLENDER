@@ -765,6 +765,7 @@ void DeferredPipeline::render(View &main_view,
 void VolumeLayer::sync()
 {
   object_bounds_.clear();
+  use_hit_list = false;
 
   draw::PassMain &layer_pass = volume_layer_ps_;
   layer_pass.init();
@@ -797,16 +798,25 @@ void VolumeLayer::sync()
   }
 }
 
-PassMain::Sub *VolumeLayer::occupancy_add(GPUMaterial *gpumat)
+PassMain::Sub *VolumeLayer::occupancy_add(const Object *ob,
+                                          const ::Material *blender_mat,
+                                          GPUMaterial *gpumat)
 {
   BLI_assert_msg(GPU_material_has_volume_output(gpumat) == true,
                  "Only volume material should be added here");
+  bool use_fast_occupancy = (ob->type == OB_VOLUME) ||
+                            (blender_mat->volume_intersection_method == MA_VOLUME_ISECT_FAST);
+  use_hit_list |= !use_fast_occupancy;
+
   PassMain::Sub *pass = &occupancy_ps_->sub(GPU_material_get_name(gpumat));
   pass->material_set(*inst_.manager, gpumat);
+  pass->push_constant("use_fast_method", use_fast_occupancy);
   return pass;
 }
 
-PassMain::Sub *VolumeLayer::material_add(GPUMaterial *gpumat)
+PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
+                                         const ::Material * /*blender_mat*/,
+                                         GPUMaterial *gpumat)
 {
   BLI_assert_msg(GPU_material_has_volume_output(gpumat) == true,
                  "Only volume material should be added here");
@@ -842,7 +852,6 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx, Texture &hit_coun
     /* TODO(fclem): We might want to skip empty layers as the clear overhead is be significant. */
     /* TODO(fclem): Move this clear inside the render pass. */
     occupancy_tx.clear(uint4(0u));
-    hit_count_tx.clear(uint4(0u));
     (*layer).render(view);
   }
 }
@@ -940,6 +949,16 @@ void VolumePipeline::material_call(MaterialPass &volume_material_pass,
     /* Notify the volume module to enable itself. */
     enabled_ = true;
   }
+}
+
+bool VolumePipeline::use_hit_list() const
+{
+  for (auto &layer : layers_) {
+    if ((*layer).use_hit_list) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** \} */

@@ -23,9 +23,13 @@ void main()
 
   int hit_count = int(imageLoad(hit_count_img, texel).x);
   hit_count = min(hit_count, VOLUME_HIT_DEPTH_MAX);
+
   if (hit_count == 0) {
     return;
   }
+
+  /* Clear the texture for next layer / frame. */
+  imageStore(hit_count_img, texel, uvec4(0));
 
   for (int i = 0; i < hit_count; i++) {
     hit_depths[i] = imageLoad(hit_depth_img, ivec3(texel, i)).r;

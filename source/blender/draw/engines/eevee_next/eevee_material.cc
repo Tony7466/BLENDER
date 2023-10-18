@@ -255,8 +255,10 @@ Material &MaterialModule::material_sync(Object *ob,
     /* Volume needs to use one sub pass per object to support layering. */
     VolumeLayer *layer = inst_.pipelines.volume.register_and_get_layer(ob);
     if (layer) {
-      mat.volume_occupancy.sub_pass = layer->occupancy_add(mat.volume_occupancy.gpumat);
-      mat.volume_material.sub_pass = layer->material_add(mat.volume_material.gpumat);
+      mat.volume_occupancy.sub_pass = layer->occupancy_add(
+          ob, blender_mat, mat.volume_occupancy.gpumat);
+      mat.volume_material.sub_pass = layer->material_add(
+          ob, blender_mat, mat.volume_material.gpumat);
     }
     else {
       /* Culled volumes. */
@@ -359,8 +361,10 @@ Material &MaterialModule::material_sync(Object *ob,
     /* Volume needs to use one sub pass per object to support layering. */
     VolumeLayer *layer = inst_.pipelines.volume.register_and_get_layer(ob);
     if (layer) {
-      mat.volume_occupancy.sub_pass = layer->occupancy_add(mat.volume_occupancy.gpumat);
-      mat.volume_material.sub_pass = layer->material_add(mat.volume_material.gpumat);
+      mat.volume_occupancy.sub_pass = layer->occupancy_add(
+          ob, blender_mat, mat.volume_occupancy.gpumat);
+      mat.volume_material.sub_pass = layer->material_add(
+          ob, blender_mat, mat.volume_material.gpumat);
     }
     else {
       /* Culled volumes. */
