@@ -44,8 +44,6 @@ static void node_shader_buts_tangent(uiLayout *layout, bContext *C, PointerRNA *
     uiItemR(
         layout, ptr, "axis", UI_ITEM_R_SPLIT_EMPTY_NAME | UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   }
-
-  uiItemS(layout);
 }
 
 static void node_shader_init_tangent(bNodeTree * /*ntree*/, bNode *node)
