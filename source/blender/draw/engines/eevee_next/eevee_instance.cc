@@ -11,7 +11,7 @@
 #include <sstream>
 
 #include "BKE_global.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BLI_rect.h"
 #include "DEG_depsgraph_query.hh"
 #include "DNA_ID.h"
@@ -610,11 +610,20 @@ void Instance::light_bake_irradiance(
     capture_view.render_world();
 
     irradiance_cache.bake.surfels_create(probe);
+
+    if (irradiance_cache.bake.should_break()) {
+      return;
+    }
+
     irradiance_cache.bake.surfels_lights_eval();
 
     irradiance_cache.bake.clusters_build();
     irradiance_cache.bake.irradiance_offset();
   });
+
+  if (irradiance_cache.bake.should_break()) {
+    return;
+  }
 
   sampling.init(probe);
   while (!sampling.finished()) {

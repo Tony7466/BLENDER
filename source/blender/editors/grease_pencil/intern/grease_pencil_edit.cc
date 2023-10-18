@@ -306,7 +306,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -454,7 +454,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -661,7 +661,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -769,6 +769,7 @@ static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -799,6 +800,56 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+static int grease_pencil_stroke_change_color_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const int material_index = object->actcol - 1;
+
+  if (material_index == -1) {
+    return OPERATOR_CANCELLED;
+  }
+
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+        if (curves.points_num() == 0) {
+          return;
+        }
+
+        bke::SpanAttributeWriter<int> materials =
+            curves.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
+                                                                            ATTR_DOMAIN_CURVE);
+
+        IndexMaskMemory memory;
+        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+
+        selected_curves.foreach_index(
+            [&](const int curve_index) { materials.span[curve_index] = material_index; });
+
+        materials.finish();
+      });
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_change_color(wmOperatorType *ot)
+{
+  ot->name = "Change Stroke color";
+  ot->idname = "GREASE_PENCIL_OT_stroke_change_color";
+  ot->description = "Change Stroke color with selected material";
+
+  ot->exec = grease_pencil_stroke_change_color_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
 /** \} */
 
 }  // namespace blender::ed::greasepencil
@@ -810,6 +861,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
   WM_operatortype_append(GREASE_PENCIL_OT_dissolve);
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

@@ -17,10 +17,11 @@
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
@@ -70,11 +71,14 @@ static void grease_pencil_init_data(ID *id)
   using namespace blender::bke;
 
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
-  grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 
   grease_pencil->root_group_ptr = MEM_new<greasepencil::LayerGroup>(__func__);
   grease_pencil->active_layer = nullptr;
   grease_pencil->flag |= GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+  CustomData_reset(&grease_pencil->layers_data);
+
+  grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/,
@@ -91,29 +95,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   grease_pencil_dst->material_array = static_cast<Material **>(
       MEM_dupallocN(grease_pencil_src->material_array));
 
-  /* Duplicate drawing array. */
-  grease_pencil_dst->drawing_array_num = grease_pencil_src->drawing_array_num;
-  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(
-      grease_pencil_src->drawing_array_num, __func__);
-  for (int i = 0; i < grease_pencil_src->drawing_array_num; i++) {
-    const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
-    switch (src_drawing_base->type) {
-      case GP_DRAWING: {
-        const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
-            src_drawing_base);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
-        break;
-      }
-      case GP_DRAWING_REFERENCE: {
-        const GreasePencilDrawingReference *src_drawing_reference =
-            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_dupallocN(src_drawing_reference));
-        break;
-      }
-    }
-  }
+  BKE_grease_pencil_duplicate_drawing_array(grease_pencil_src, grease_pencil_dst);
 
   /* Duplicate layer tree. */
   grease_pencil_dst->root_group_ptr = MEM_new<bke::greasepencil::LayerGroup>(
@@ -125,6 +107,11 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
   }
 
+  CustomData_copy(&grease_pencil_src->layers_data,
+                  &grease_pencil_dst->layers_data,
+                  CD_MASK_ALL,
+                  grease_pencil_dst->layers().size());
+
   /* Make sure the runtime pointer exists. */
   grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__);
 }
@@ -135,6 +122,8 @@ static void grease_pencil_free_data(ID *id)
   BKE_animdata_free(&grease_pencil->id, false);
 
   MEM_SAFE_FREE(grease_pencil->material_array);
+
+  CustomData_free(&grease_pencil->layers_data, grease_pencil->layers().size());
 
   free_drawing_array(*grease_pencil);
   MEM_delete(&grease_pencil->root_group());
@@ -164,9 +153,19 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 {
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
+  blender::Vector<CustomDataLayer, 16> layers_data_layers;
+  CustomData_blend_write_prepare(grease_pencil->layers_data, layers_data_layers);
+
   /* Write LibData */
   BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
   BKE_id_blend_write(writer, &grease_pencil->id);
+
+  CustomData_blend_write(writer,
+                         &grease_pencil->layers_data,
+                         layers_data_layers,
+                         grease_pencil->layers().size(),
+                         CD_MASK_ALL,
+                         id);
 
   /* Write drawings. */
   write_drawing_array(*grease_pencil, writer);
@@ -187,6 +186,8 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   read_drawing_array(*grease_pencil, reader);
   /* Read layer tree. */
   read_layer_tree(*grease_pencil, reader);
+
+  CustomData_blend_read(reader, &grease_pencil->layers_data, grease_pencil->layers().size());
 
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
@@ -409,6 +410,72 @@ void Drawing::tag_topology_changed()
   this->tag_positions_changed();
 }
 
+DrawingReference::DrawingReference()
+{
+  this->base.type = GP_DRAWING_REFERENCE;
+  this->base.flag = 0;
+
+  this->id_reference = nullptr;
+}
+
+DrawingReference::DrawingReference(const DrawingReference &other)
+{
+  this->base.type = GP_DRAWING_REFERENCE;
+  this->base.flag = other.base.flag;
+
+  this->id_reference = other.id_reference;
+}
+
+DrawingReference::~DrawingReference() {}
+
+const Drawing *get_eval_grease_pencil_layer_drawing(const GreasePencil &grease_pencil,
+                                                    const int layer_index)
+{
+  BLI_assert(layer_index >= 0 && layer_index < grease_pencil.layers().size());
+  const Layer &layer = *grease_pencil.layers()[layer_index];
+  const int drawing_index = layer.drawing_index_at(grease_pencil.runtime->eval_frame);
+  if (drawing_index == -1) {
+    return nullptr;
+  }
+  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(drawing_index);
+  if (drawing_base->type != GP_DRAWING) {
+    return nullptr;
+  }
+  const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+  return &drawing;
+}
+
+Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
+                                                        const int layer)
+{
+  return const_cast<Drawing *>(get_eval_grease_pencil_layer_drawing(grease_pencil, layer));
+}
+
+void copy_drawing_array(Span<const GreasePencilDrawingBase *> src_drawings,
+                        MutableSpan<GreasePencilDrawingBase *> dst_drawings)
+{
+  BLI_assert(src_drawings.size() == dst_drawings.size());
+  for (const int i : src_drawings.index_range()) {
+    const GreasePencilDrawingBase *src_drawing_base = src_drawings[i];
+    switch (src_drawing_base->type) {
+      case GP_DRAWING: {
+        const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
+            src_drawing_base);
+        dst_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
+            MEM_new<bke::greasepencil::Drawing>(__func__, src_drawing->wrap()));
+        break;
+      }
+      case GP_DRAWING_REFERENCE: {
+        const GreasePencilDrawingReference *src_drawing_reference =
+            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
+        dst_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
+            MEM_new<bke::greasepencil::DrawingReference>(__func__, src_drawing_reference->wrap()));
+        break;
+      }
+    }
+  }
+}
+
 TreeNode::TreeNode()
 {
   this->next = this->prev = nullptr;
@@ -444,6 +511,7 @@ TreeNode::~TreeNode()
 
 void TreeNode::set_name(StringRefNull name)
 {
+  MEM_SAFE_FREE(this->GreasePencilLayerTreeNode::name);
   this->GreasePencilLayerTreeNode::name = BLI_strdup(name.c_str());
 }
 
@@ -824,6 +892,12 @@ Layer &LayerGroup::add_layer(StringRefNull name)
   return this->add_node(new_layer->as_node()).as_layer();
 }
 
+Layer &LayerGroup::add_layer(const Layer &duplicate_layer)
+{
+  Layer *new_layer = MEM_new<Layer>(__func__, duplicate_layer);
+  return this->add_node(new_layer->as_node()).as_layer();
+}
+
 LayerGroup &LayerGroup::add_group(StringRefNull name)
 {
   LayerGroup *new_group = MEM_new<LayerGroup>(__func__, name);
@@ -1063,8 +1137,10 @@ GreasePencil *BKE_grease_pencil_new_nomain()
 
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src)
 {
-  return reinterpret_cast<GreasePencil *>(
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
       BKE_id_copy_ex(nullptr, &grease_pencil_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
+  grease_pencil->runtime->eval_frame = grease_pencil_src->runtime->eval_frame;
+  return grease_pencil;
 }
 
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
@@ -1132,8 +1208,18 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 
   /* Evaluate modifiers. */
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+  /* Store the frame that this grease pencil is evaluated on. */
+  grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
   GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
                                                              GeometryOwnershipType::ReadOnly);
+  /* Only add the edit hint component in edit mode for now so users can properly select deformed
+   * drawings. */
+  if (object->mode == OB_MODE_EDIT) {
+    GeometryComponentEditData &edit_component =
+        geometry_set.get_component_for_write<GeometryComponentEditData>();
+    edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
+        *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
+  }
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   if (!geometry_set.has_grease_pencil()) {
@@ -1144,12 +1230,20 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
    * would result in a copy when it's shared. So for now, we use a const_cast here. */
   GreasePencil *grease_pencil_eval = const_cast<GreasePencil *>(geometry_set.get_grease_pencil());
 
-  /* Store the frame that this grease pencil data was evaluated on. */
-  grease_pencil_eval->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
-
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
+}
+
+void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
+                                               GreasePencil *grease_pencil_dst)
+{
+  using namespace blender;
+  grease_pencil_dst->drawing_array_num = grease_pencil_src->drawing_array_num;
+  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(
+      grease_pencil_src->drawing_array_num, __func__);
+  bke::greasepencil::copy_drawing_array(grease_pencil_src->drawings(),
+                                        grease_pencil_dst->drawings());
 }
 
 /** \} */
@@ -1582,7 +1676,7 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
       case GP_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference_to_remove =
             reinterpret_cast<GreasePencilDrawingReference *>(drawing_base_to_remove);
-        MEM_freeN(drawing_reference_to_remove);
+        MEM_delete(&drawing_reference_to_remove->wrap());
         break;
       }
     }
@@ -1608,6 +1702,24 @@ void GreasePencil::remove_drawings_with_no_users()
     }
   }
   remove_drawings_unchecked(*this, drawings_to_be_removed.as_span());
+}
+
+void GreasePencil::update_drawing_users_for_layer(const blender::bke::greasepencil::Layer &layer)
+{
+  using namespace blender;
+  for (auto [key, value] : layer.frames().items()) {
+    if (value.drawing_index > 0 && value.drawing_index < this->drawings().size()) {
+      GreasePencilDrawingBase *drawing_base = this->drawing(value.drawing_index);
+      if (drawing_base->type != GP_DRAWING) {
+        continue;
+      }
+      bke::greasepencil::Drawing &drawing =
+          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      if (!drawing.has_users()) {
+        drawing.add_user();
+      }
+    }
+  }
 }
 
 void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
@@ -1715,56 +1827,17 @@ enum ForeachDrawingMode {
 };
 
 static void foreach_drawing_ex(
-    GreasePencil &grease_pencil,
-    const int frame,
-    const ForeachDrawingMode mode,
-    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
-{
-  using namespace blender::bke::greasepencil;
-
-  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-  for (const Layer *layer : grease_pencil.layers()) {
-    switch (mode) {
-      case VISIBLE: {
-        if (!layer->is_visible()) {
-          continue;
-        }
-        break;
-      }
-      case EDITABLE: {
-        if (!layer->is_editable()) {
-          continue;
-        }
-        break;
-      }
-    }
-
-    int index = layer->drawing_index_at(frame);
-    if (index == -1) {
-      continue;
-    }
-    GreasePencilDrawingBase *drawing_base = drawings[index];
-    if (drawing_base->type == GP_DRAWING) {
-      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-      function(index, drawing->wrap());
-    }
-    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO: Drawing references are not implemented yet. */
-      BLI_assert_unreachable();
-    }
-  }
-}
-
-static void foreach_drawing_ex(
     const GreasePencil &grease_pencil,
     const int frame,
     const ForeachDrawingMode mode,
-    blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function)
+    blender::FunctionRef<void(const int, const blender::bke::greasepencil::Drawing &)> function)
 {
   using namespace blender::bke::greasepencil;
 
   blender::Span<const GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-  for (const Layer *layer : grease_pencil.layers()) {
+  blender::Span<const Layer *> layers = grease_pencil.layers();
+  for (const int layer_i : layers.index_range()) {
+    const Layer *layer = layers[layer_i];
     switch (mode) {
       case VISIBLE: {
         if (!layer->is_visible()) {
@@ -1788,7 +1861,7 @@ static void foreach_drawing_ex(
     if (drawing_base->type == GP_DRAWING) {
       const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
           drawing_base);
-      function(index, drawing->wrap());
+      function(layer_i, drawing->wrap());
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
       /* TODO: Drawing references are not implemented yet. */
@@ -1799,23 +1872,38 @@ static void foreach_drawing_ex(
 
 void GreasePencil::foreach_visible_drawing(
     const int frame,
-    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    blender::FunctionRef<void(const int, blender::bke::greasepencil::Drawing &)> function)
 {
-  foreach_drawing_ex(*this, frame, VISIBLE, function);
+  foreach_drawing_ex(
+      *this,
+      frame,
+      VISIBLE,
+      [&](const int layer_index, const blender::bke::greasepencil::Drawing &drawing) {
+        /* We const_cast here to be able to implement `foreach_drawing_ex` only once. */
+        function(layer_index, const_cast<blender::bke::greasepencil::Drawing &>(drawing));
+      });
 }
 
 void GreasePencil::foreach_visible_drawing(
     const int frame,
-    blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const
+    blender::FunctionRef<void(const int, const blender::bke::greasepencil::Drawing &)> function)
+    const
 {
   foreach_drawing_ex(*this, frame, VISIBLE, function);
 }
 
 void GreasePencil::foreach_editable_drawing(
     const int frame,
-    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    blender::FunctionRef<void(const int, blender::bke::greasepencil::Drawing &)> function)
 {
-  foreach_drawing_ex(*this, frame, EDITABLE, function);
+  foreach_drawing_ex(
+      *this,
+      frame,
+      EDITABLE,
+      [&](const int layer_index, const blender::bke::greasepencil::Drawing &drawing) {
+        /* We const_cast here to be able to implement `foreach_drawing_ex` only once. */
+        function(layer_index, const_cast<blender::bke::greasepencil::Drawing &>(drawing));
+      });
 }
 
 std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() const
@@ -1824,7 +1912,7 @@ std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() c
   std::optional<Bounds<float3>> bounds;
   this->foreach_visible_drawing(
       this->runtime->eval_frame,
-      [&](int /*drawing_index*/, const bke::greasepencil::Drawing &drawing) {
+      [&](const int /*layer_index*/, const bke::greasepencil::Drawing &drawing) {
         const bke::CurvesGeometry &curves = drawing.strokes();
         bounds = bounds::merge(bounds, curves.bounds_min_max());
       });
@@ -1926,9 +2014,10 @@ static std::string unique_node_name(const GreasePencil &grease_pencil,
                                     blender::StringRefNull name)
 {
   using namespace blender;
-  std::string unique_name(name.c_str());
+  char unique_name[MAX_NAME];
+  BLI_strncpy(unique_name, name.c_str(), MAX_NAME);
   VectorSet<StringRefNull> names = get_node_names(grease_pencil);
-  unique_node_name_ex(names, default_name, unique_name.data());
+  unique_node_name_ex(names, default_name, unique_name);
   return unique_name;
 }
 
@@ -1944,12 +2033,96 @@ static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
   return unique_node_name(grease_pencil, DATA_("GP_Group"), name);
 }
 
+static void grow_customdata(CustomData &data, const int insertion_index, const int size)
+{
+  using namespace blender;
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
+  CustomData_realloc(&new_data, size, size + 1);
+
+  const IndexRange range_before(insertion_index + 1);
+  const IndexRange range_after(insertion_index + 1, size - insertion_index - 1);
+
+  if (range_before.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_before.start(), range_before.start(), range_before.size());
+  }
+  if (range_after.size() > 0) {
+    CustomData_copy_data(
+        &data, &new_data, range_after.start(), range_after.start() + 1, range_after.size());
+  }
+
+  CustomData_free(&data, size);
+  data = new_data;
+}
+
+static int find_layer_insertion_index(
+    const blender::Span<const blender::bke::greasepencil::Layer *> layers,
+    const blender::bke::greasepencil::LayerGroup &group,
+    const bool above = true)
+{
+  using namespace blender;
+  if (!group.layers().is_empty()) {
+    if (above) {
+      return layers.first_index(group.layers().last());
+    }
+    return layers.first_index(group.layers().first());
+  }
+  if (!group.as_node().parent_group()) {
+    return 0;
+  }
+  bke::greasepencil::LayerGroup &parent_group = *group.as_node().parent_group();
+  const Span<const bke::greasepencil::TreeNode *> nodes = parent_group.nodes();
+  int index = nodes.first_index(&group.as_node());
+  while (index > 0 && index < nodes.size() - 1) {
+    if (nodes[index]->is_layer()) {
+      break;
+    }
+    if (above) {
+      index++;
+    }
+    else {
+      index--;
+    }
+  }
+  index = math::clamp(index, 0, int(layers.size() - 1));
+  return index;
+}
+
+static void grow_or_init_customdata(GreasePencil *grease_pencil,
+                                    const blender::bke::greasepencil::LayerGroup &parent_group)
+{
+  using namespace blender;
+  const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
+  if (layers.is_empty()) {
+    CustomData_realloc(&grease_pencil->layers_data, 0, 1);
+  }
+  else {
+    int insertion_index = find_layer_insertion_index(layers, parent_group, false);
+    grow_customdata(grease_pencil->layers_data, insertion_index, layers.size());
+  }
+}
+
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
+  grow_or_init_customdata(this, parent_group);
   return parent_group.add_layer(unique_name);
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(
+    blender::bke::greasepencil::LayerGroup &parent_group,
+    const blender::bke::greasepencil::Layer &duplicate_layer)
+{
+  using namespace blender;
+  std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
+  grow_or_init_customdata(this, parent_group);
+  bke::greasepencil::Layer &new_layer = parent_group.add_layer(duplicate_layer);
+  this->update_drawing_users_for_layer(new_layer);
+  new_layer.set_name(unique_name);
+  return new_layer;
 }
 
 blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(
@@ -1960,55 +2133,242 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(
   return parent_group.add_group(unique_name);
 }
 
+static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
+{
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
+
+  for (const int old_i : new_by_old_map.index_range()) {
+    const int new_i = new_by_old_map[old_i];
+    CustomData_copy_data(&data, &new_data, old_i, new_i, 1);
+  }
+  CustomData_free(&data, new_by_old_map.size());
+  data = new_data;
+}
+
+static void fill_reorder_indices_array(const int reorder_from,
+                                       const int reorder_to,
+                                       const int size,
+                                       blender::MutableSpan<int> reorder_indices)
+{
+  using namespace blender;
+  BLI_assert(reorder_from >= 0 && reorder_from < size);
+  BLI_assert(reorder_to >= 0 && reorder_to < size);
+
+  const int start = math::min(reorder_from, reorder_to);
+  const int end = math::max(reorder_from, reorder_to);
+  const int dist = math::abs(reorder_to - reorder_from);
+
+  array_utils::fill_index_range(reorder_indices.slice(IndexRange(start)));
+  reorder_indices[reorder_from] = reorder_to;
+  if (reorder_from < reorder_to) {
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_from + 1, dist)),
+                                  reorder_from);
+  }
+  else {
+    array_utils::fill_index_range(reorder_indices.slice(IndexRange(reorder_to, dist)),
+                                  reorder_to + 1);
+  }
+  array_utils::fill_index_range(reorder_indices.slice(IndexRange(end + 1, size - end - 1)),
+                                end + 1);
+}
+
+static void reorder_layer_data(GreasePencil &grease_pencil,
+                               const int reorder_from,
+                               const int reorder_to)
+{
+  using namespace blender;
+  if (reorder_from != reorder_to) {
+    Array<int> indices(grease_pencil.layers().size());
+    fill_reorder_indices_array(reorder_from, reorder_to, grease_pencil.layers().size(), indices);
+    reorder_customdata(grease_pencil.layers_data, indices);
+  }
+}
+
 void GreasePencil::move_node_up(blender::bke::greasepencil::TreeNode &node, const int step)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_up(node, step);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    if (&node.as_layer() != node.parent_group()->layers().last()) {
+      const bke::greasepencil::TreeNode &target_node =
+          reinterpret_cast<GreasePencilLayerTreeNode *>(
+              BLI_findlinkfrom(reinterpret_cast<Link *>(&node), step))
+              ->wrap();
+      const int from_index = layers.first_index(&node.as_layer());
+      int to_index = -1;
+      if (target_node.is_layer()) {
+        to_index = layers.first_index(&target_node.as_layer());
+      }
+      else if (target_node.is_group()) {
+        const bke::greasepencil::LayerGroup &group = target_node.as_group();
+        to_index = layers.first_index(group.layers().last());
+      }
+
+      reorder_layer_data(*this, from_index, to_index);
+    }
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_up(node, step);
 }
 void GreasePencil::move_node_down(blender::bke::greasepencil::TreeNode &node, const int step)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_down(node, step);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    if (&node.as_layer() != node.parent_group()->layers().first()) {
+      const bke::greasepencil::TreeNode &target_node =
+          reinterpret_cast<GreasePencilLayerTreeNode *>(
+              BLI_findlinkfrom(reinterpret_cast<Link *>(&node), -step))
+              ->wrap();
+      const int from_index = layers.first_index(&node.as_layer());
+      int to_index = -1;
+      if (target_node.is_layer()) {
+        to_index = layers.first_index(&target_node.as_layer());
+      }
+      else if (target_node.is_group()) {
+        const bke::greasepencil::LayerGroup &group = target_node.as_group();
+        to_index = find_layer_insertion_index(layers, group, false);
+      }
+
+      reorder_layer_data(*this, from_index, to_index);
+    }
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_down(node, step);
 }
 void GreasePencil::move_node_top(blender::bke::greasepencil::TreeNode &node)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_top(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
+    const int from_index = layers.first_index(&node.as_layer());
+    /* Since `group` is the parent of `node`, we know `group` can never be empty. */
+    const int to_index = layers.first_index(group.layers().last());
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_top(node);
 }
 void GreasePencil::move_node_bottom(blender::bke::greasepencil::TreeNode &node)
 {
-  if (node.parent_group()) {
-    node.parent_group()->move_node_bottom(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const blender::bke::greasepencil::LayerGroup &group = *node.parent_group();
+    const int from_index = layers.first_index(&node.as_layer());
+    /* Since `group` is the parent of `node`, we know `group` can never be empty. */
+    const int to_index = layers.first_index(group.layers().first());
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->move_node_bottom(node);
 }
 
 void GreasePencil::move_node_after(blender::bke::greasepencil::TreeNode &node,
                                    blender::bke::greasepencil::TreeNode &target_node)
 {
+  using namespace blender;
   if (!target_node.parent_group() || !node.parent_group()) {
     return;
+  }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = -1;
+    if (target_node.is_layer()) {
+      to_index = layers.first_index(&target_node.as_layer());
+    }
+    else if (target_node.is_group()) {
+      const bke::greasepencil::LayerGroup &group = target_node.as_group();
+      to_index = find_layer_insertion_index(layers, group, true);
+    }
+    if (from_index > to_index) {
+      to_index++;
+    }
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group() && node.as_group().num_nodes_total() > 0) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
   }
   node.parent_group()->unlink_node(node);
   target_node.parent_group()->add_node_after(node, target_node);
 }
+
 void GreasePencil::move_node_before(blender::bke::greasepencil::TreeNode &node,
                                     blender::bke::greasepencil::TreeNode &target_node)
 {
+  using namespace blender;
   if (!target_node.parent_group() || !node.parent_group()) {
     return;
+  }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = -1;
+    if (target_node.is_layer()) {
+      to_index = layers.first_index(&target_node.as_layer());
+    }
+    else if (target_node.is_group()) {
+      const bke::greasepencil::LayerGroup &group = target_node.as_group();
+      to_index = find_layer_insertion_index(layers, group, false);
+    }
+    if (to_index > from_index) {
+      to_index--;
+    }
+
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
   }
   node.parent_group()->unlink_node(node);
   target_node.parent_group()->add_node_before(node, target_node);
 }
+
 void GreasePencil::move_node_into(blender::bke::greasepencil::TreeNode &node,
                                   blender::bke::greasepencil::LayerGroup &parent_group)
 {
-  if (node.parent_group()) {
-    node.parent_group()->unlink_node(node);
+  using namespace blender;
+  if (!node.parent_group()) {
+    return;
   }
+  if (node.is_layer()) {
+    const Span<const bke::greasepencil::Layer *> layers = this->layers();
+    const int from_index = layers.first_index(&node.as_layer());
+    int to_index = find_layer_insertion_index(layers, parent_group, true);
+    reorder_layer_data(*this, from_index, to_index);
+  }
+  if (node.is_group()) {
+    BLI_assert_msg(0, "Reordering custom data when moving a group is not implemented");
+  }
+  node.parent_group()->unlink_node(node);
   parent_group.add_node(node);
 }
 
@@ -2047,6 +2407,29 @@ void GreasePencil::rename_node(blender::bke::greasepencil::TreeNode &node,
                                   unique_layer_group_name(*this, new_name));
 }
 
+static void shrink_customdata(CustomData &data, const int index_to_remove, const int size)
+{
+  using namespace blender;
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
+  CustomData_realloc(&new_data, size, size - 1);
+
+  const IndexRange range_before(index_to_remove);
+  const IndexRange range_after(index_to_remove + 1, size - index_to_remove - 1);
+
+  if (!range_before.is_empty()) {
+    CustomData_copy_data(
+        &data, &new_data, range_before.start(), range_before.start(), range_before.size());
+  }
+  if (!range_after.is_empty()) {
+    CustomData_copy_data(
+        &data, &new_data, range_after.start(), range_after.start() - 1, range_after.size());
+  }
+
+  CustomData_free(&data, size);
+  data = new_data;
+}
+
 void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
@@ -2069,6 +2452,10 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
       }
     }
   }
+
+  /* Remove all the layer attributes and shrink the `CustomData`. */
+  const int64_t layer_index = this->layers().first_index(&layer);
+  shrink_customdata(this->layers_data, layer_index, this->layers().size());
 
   /* Unlink the layer from the parent group. */
   layer.parent_group().unlink_node(layer.as_node());
@@ -2165,7 +2552,7 @@ static void free_drawing_array(GreasePencil &grease_pencil)
       case GP_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference =
             reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
-        MEM_freeN(drawing_reference);
+        MEM_delete(&drawing_reference->wrap());
         break;
       }
     }
