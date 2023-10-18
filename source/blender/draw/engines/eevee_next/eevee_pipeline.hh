@@ -361,7 +361,7 @@ class VolumePipeline {
   VolumePipeline(Instance &inst) : inst_(inst){};
 
   void sync();
-  void render(View &view, Texture &occupancy_tx, Texture &hit_count_tx);
+  void render(View &view, Texture &occupancy_tx);
 
   /**
    * Returns correct volume layer for a given object and add the object to the layer.

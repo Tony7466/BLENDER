@@ -844,7 +844,7 @@ void VolumePipeline::sync()
   }
 }
 
-void VolumePipeline::render(View &view, Texture &occupancy_tx, Texture &hit_count_tx)
+void VolumePipeline::render(View &view, Texture &occupancy_tx)
 {
   BLI_assert_msg(enabled_, "Trying to run the volume object pipeline with no actual volume calls");
 

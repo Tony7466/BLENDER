@@ -140,12 +140,12 @@ void VolumeModule::end_sync()
     int2 hit_list_size = int2(1);
     int hit_list_layer = 1;
     if (inst_.pipelines.volume.use_hit_list()) {
-      hit_list_layer = 16; /* TODO(fclem): Render option. */
+      hit_list_layer = clamp_i(inst_.scene->eevee.volumetric_ray_depth, 1, 16);
       hit_list_size = data_.tex_size.xy();
     }
     hit_depth_tx_.ensure_3d(GPU_R32F, int3(hit_list_size, hit_list_layer), hit_depth_usage);
     if (hit_count_tx_.ensure_2d(GPU_R32UI, hit_list_size, hit_count_usage)) {
-      hit_count_tx_.clear(uint4(0));
+      hit_count_tx_.clear(uint4(0u));
     }
   }
 
@@ -243,7 +243,7 @@ void VolumeModule::draw_prepass(View &view)
 
   if (inst_.pipelines.volume.is_enabled()) {
     occupancy_fb_.bind();
-    inst_.pipelines.volume.render(volume_view, occupancy_tx_, hit_count_tx_);
+    inst_.pipelines.volume.render(volume_view, occupancy_tx_);
   }
   DRW_stats_group_end();
 }
