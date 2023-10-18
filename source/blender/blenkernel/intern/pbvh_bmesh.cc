@@ -864,6 +864,10 @@ static bool is_boundary_edge(const BMEdge &edge)
     return true;
   }
 
+  if (!BM_edge_is_manifold(&edge)) {
+    return true;
+  }
+
   /* TODO(@sergey): Other boundaries? For example, boundary edges between two different face sets.
    */
 
