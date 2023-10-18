@@ -362,7 +362,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
     PointerRNA from_obj_data_ptr = RNA_pointer_get(&from_obj_ptr, "data");
     uiItemPointerR(
-        col, ptr, "bone_from", &from_obj_data_ptr, "bones", IFACE_("Bone"), ICON_GROUP_BONE);
+        col, ptr, "bone_from", &from_obj_data_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
   }
 
   col = uiLayoutColumn(layout, true);
@@ -371,7 +371,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   if (!RNA_pointer_is_null(&to_obj_ptr) && RNA_enum_get(&to_obj_ptr, "type") == OB_ARMATURE) {
     PointerRNA to_obj_data_ptr = RNA_pointer_get(&to_obj_ptr, "data");
     uiItemPointerR(
-        col, ptr, "bone_to", &to_obj_data_ptr, "bones", IFACE_("Bone"), ICON_GROUP_BONE);
+        col, ptr, "bone_to", &to_obj_data_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
   }
 
   uiItemR(layout, ptr, "use_volume_preserve", UI_ITEM_NONE, nullptr, ICON_NONE);
