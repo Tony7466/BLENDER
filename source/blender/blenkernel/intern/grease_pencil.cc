@@ -2022,6 +2022,10 @@ static void grow_customdata(CustomData &data, const int insertion_index, const i
   data = new_data;
 }
 
+/**
+ * \returns the index of the layer to insert above when above == true, otherwise the index of the
+ * layer to insert below
+ */
 static int find_layer_insertion_index(
     const blender::Span<const blender::bke::greasepencil::Layer *> layers,
     const blender::bke::greasepencil::LayerGroup &group,
@@ -2037,26 +2041,89 @@ static int find_layer_insertion_index(
   if (!group.as_node().parent_group()) {
     return 0;
   }
+
+  /* The target group is empty (and not the root group), so we need to search either upward or
+   * downward through the nodes to find the nearest layer. */
   bke::greasepencil::LayerGroup &parent_group = *group.as_node().parent_group();
   const Span<const bke::greasepencil::TreeNode *> nodes = parent_group.nodes();
-  int index = nodes.first_index(&group.as_node());
-  while (index > 0 && index < nodes.size() - 1) {
-    if (nodes[index]->is_layer()) {
-      break;
+  int node_index = nodes.first_index(&group.as_node());
+
+  if (above) {
+    /* Search upward through the nodes for a layer or non-empty group to insert below.
+     * Since above == true, the insertion will happen above the layer whose index we return.
+     * NOTE: This means we need to return a value of -1 in the case where the insertion point
+     * should be below the 0th layer (i.e., the caller should insert above the -1st layer). */
+
+    /* We know that node_index currently refers to an empty group and that we need to search
+     * upward, so we increment node_index here to start the search at the first node above our
+     * starting point (if any). */
+    node_index++;
+    while (node_index < nodes.size()) {
+      if (nodes[node_index]->is_layer()) {
+        /* We've been searching upward and found a layer above the group we're inserting into, so
+         * we want to insert just below this layer we found. Since the insertion will happen above
+         * the index we return, we need to subtract 1 from the index of the layer we found. */
+        int found_layer_index = layers.first_index(&nodes[node_index]->as_layer());
+        return found_layer_index - 1;
+      }
+
+      BLI_assert(nodes[node_index]->is_group());
+      const bke::greasepencil::LayerGroup &found_group = nodes[node_index]->as_group();
+      if (!found_group.layers().is_empty()) {
+        /* We've been searching upward and found a non-empty group above the group we're inserting
+         * into, so we want to insert just below the lowest layer in that group we found. Since the
+         * insertion will happen above the index we return, we need to subtract 1 from the index of
+         * that layer. */
+        return layers.first_index(found_group.layers().first()) - 1;
+      }
+
+      /* The node we're currently visiting must be an empty group, so we increment node_index to
+       * continue searching upward (if there are any more nodes above this one to visit). */
+      node_index++;
     }
-    if (above) {
-      index++;
-    }
-    else {
-      index--;
-    }
+
+    /* We finished the upward search without finding a layer or non-empty group, so the insertion
+     * point should be above the highest layer. So we return the index of the highest layer. */
+    return layers.size() - 1;
   }
-  index = math::clamp(index, 0, int(layers.size() - 1));
-  return index;
+
+  /* Search downward through the nodes for a layer or non-empty group to insert above.
+   * Since above == false, the insertion will happen below the layer whose index we return.
+   * NOTE: This means we need to return a value equal to layers.size() in the case where the
+   * insertion point should be above the highest layer. */
+
+  /* We know that node_index currently refers to an empty group and that we need to search
+   * downward, so we decrement node_index here to start the search at the first node below our
+   * starting point (if any). */
+  node_index--;
+  while (node_index >= 0) {
+    if (nodes[node_index]->is_layer()) {
+      /* We've been searching downward and found a layer below the group we're inserting into, so
+       * we want to insert just above this layer we found. Since the insertion will happen below
+       * the index we return, we need to add 1 to the index of the layer we found. */
+      int found_layer_index = layers.first_index(&nodes[node_index]->as_layer());
+      return found_layer_index + 1;
+    }
+
+    BLI_assert(nodes[node_index]->is_group());
+    const bke::greasepencil::LayerGroup &found_group = nodes[node_index]->as_group();
+    if (!found_group.layers().is_empty()) {
+      /* We've been searching downward and found a non-empty group below the group we're inserting
+       * into, so we want to insert just above the highest layer in that group we found. Since the
+       * insertion will happen below the index we return, we need to add 1 to the index of that
+       * layer. */
+      return layers.first_index(found_group.layers().last()) + 1;
+    }
+
+    node_index--;
+  }
+
+  /* We finished the downward search without finding a layer or non-empty group, so the insertion
+   * point should be below the 0th layer. */
+  return 0;
 }
 
-static void grow_or_init_customdata(GreasePencil *grease_pencil,
-                                    const blender::bke::greasepencil::LayerGroup &parent_group)
+static void grow_or_init_customdata(GreasePencil *grease_pencil)
 {
   using namespace blender;
   const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
@@ -2064,7 +2131,8 @@ static void grow_or_init_customdata(GreasePencil *grease_pencil,
     CustomData_realloc(&grease_pencil->layers_data, 0, 1);
   }
   else {
-    int insertion_index = find_layer_insertion_index(layers, parent_group, false);
+    /* New layers are always added at the highest position and subsequently moved into place. */
+    int insertion_index = layers.size() - 1;
     grow_customdata(grease_pencil->layers_data, insertion_index, layers.size());
   }
 }
@@ -2074,7 +2142,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
-  grow_or_init_customdata(this, parent_group);
+  grow_or_init_customdata(this);
   return parent_group.add_layer(unique_name);
 }
 
@@ -2084,7 +2152,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
-  grow_or_init_customdata(this, parent_group);
+  grow_or_init_customdata(this);
   bke::greasepencil::Layer &new_layer = parent_group.add_layer(duplicate_layer);
   this->update_drawing_users_for_layer(new_layer);
   new_layer.set_name(unique_name);
@@ -2171,7 +2239,10 @@ void GreasePencil::move_node_up(blender::bke::greasepencil::TreeNode &node, cons
       }
       else if (target_node.is_group()) {
         const bke::greasepencil::LayerGroup &group = target_node.as_group();
-        to_index = layers.first_index(group.layers().last());
+        to_index = find_layer_insertion_index(layers, group, true);
+      }
+      if (from_index > to_index) {
+        to_index++;
       }
 
       reorder_layer_data(*this, from_index, to_index);
@@ -2203,6 +2274,9 @@ void GreasePencil::move_node_down(blender::bke::greasepencil::TreeNode &node, co
       else if (target_node.is_group()) {
         const bke::greasepencil::LayerGroup &group = target_node.as_group();
         to_index = find_layer_insertion_index(layers, group, false);
+      }
+      if (to_index > from_index) {
+        to_index--;
       }
 
       reorder_layer_data(*this, from_index, to_index);
@@ -2329,6 +2403,10 @@ void GreasePencil::move_node_into(blender::bke::greasepencil::TreeNode &node,
     const Span<const bke::greasepencil::Layer *> layers = this->layers();
     const int from_index = layers.first_index(&node.as_layer());
     int to_index = find_layer_insertion_index(layers, parent_group, true);
+    if (from_index > to_index) {
+      to_index++;
+    }
+
     reorder_layer_data(*this, from_index, to_index);
   }
   if (node.is_group()) {
