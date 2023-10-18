@@ -42,7 +42,7 @@ void main()
     hit_ordered[hit_index[i]] = hit_depths[i];
   }
 
-#if 1 /* Debug. Need to adjust the qualifier of the texture. */
+#if 0 /* Debug. Need to adjust the qualifier of the texture adjusted. */
   for (int i = 0; i < hit_count; i++) {
     imageStore(hit_depth_img, ivec3(texel, i), vec4(hit_ordered[i]));
   }

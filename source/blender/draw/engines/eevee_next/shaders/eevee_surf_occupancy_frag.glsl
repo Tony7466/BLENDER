@@ -21,15 +21,14 @@ vec4 closure_to_rgba(Closure cl)
 void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
-  vec2 uv = gl_FragCoord.xy / vec2(imageSize(occupancy_img).xy);
-  vec3 ss_P = vec3(uv, gl_FragCoord.z);
+  float vPz = dot(drw_view_forward(), interp.P) - dot(drw_view_forward(), drw_view_position());
   /* Apply jitter here instead of modifying the projection matrix.
    * This is because the depth range and mapping function changes. */
   /* TODO(fclem): Jitter the camera for the other 2 dimension. */
   float jitter = sampling_rng_1D_get(SAMPLING_VOLUME_W) * uniform_buf.volumes.inv_tex_size.z;
-  float volume_z = screen_to_volume(ss_P).z - jitter;
+  float volume_z = view_z_to_volume_z(vPz) - jitter;
 
-#if 0
+#if 1
   /* XOR technique:
    * Gives correct result for manifold meshes in and out of view. */
   OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);

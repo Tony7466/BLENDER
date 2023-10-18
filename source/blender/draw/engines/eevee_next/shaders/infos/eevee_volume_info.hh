@@ -63,11 +63,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
 GPU_SHADER_CREATE_INFO(eevee_volume_occupancy_convert)
     .additional_info("eevee_shared", "eevee_global_ubo", "draw_fullscreen")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
-    .image(VOLUME_HIT_DEPTH_SLOT,
-           GPU_R32F,
-           Qualifier::READ_WRITE,
-           ImageType::FLOAT_3D,
-           "hit_depth_img")
+    .image(VOLUME_HIT_DEPTH_SLOT, GPU_R32F, Qualifier::READ, ImageType::FLOAT_3D, "hit_depth_img")
     .image(VOLUME_HIT_COUNT_SLOT, GPU_R32UI, Qualifier::READ, ImageType::UINT_2D, "hit_count_img")
     .image(VOLUME_OCCUPANCY_SLOT,
            GPU_R32UI,

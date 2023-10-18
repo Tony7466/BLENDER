@@ -220,9 +220,21 @@ void VolumeModule::draw_prepass(View &view)
   DRW_stats_group_start("Volumes");
   inst_.pipelines.world_volume.render(view);
 
+  float left, right, bottom, top, near, far;
+  float4x4 winmat = view.winmat();
+  projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
+
+  float4x4 winmat_infinite = view.is_persp() ?
+                                 math::projection::perspective_infinite(
+                                     left, right, bottom, top, near) :
+                                 math::projection::orthographic_infinite(left, right, bottom, top);
+
+  View volume_view = {"Volume View"};
+  volume_view.sync(view.viewmat(), winmat_infinite);
+
   if (inst_.pipelines.volume.is_enabled()) {
     occupancy_fb_.bind();
-    inst_.pipelines.volume.render(view, occupancy_tx_, hit_count_tx_);
+    inst_.pipelines.volume.render(volume_view, occupancy_tx_, hit_count_tx_);
   }
   DRW_stats_group_end();
 }
