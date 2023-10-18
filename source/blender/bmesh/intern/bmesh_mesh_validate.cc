@@ -40,7 +40,7 @@
 template<> struct blender::DefaultHash<blender::Set<const BMVert *>> {
   uint64_t operator()(const blender::Set<const BMVert *> &value) const
   {
-    uint64_t hash = 24865768234;
+    uint64_t hash = 0;
     for (const BMVert *vert : value) {
       hash = get_default_hash_2(hash, vert);
     }
