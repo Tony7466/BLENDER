@@ -2339,7 +2339,7 @@ static void UI_OT_drop_color(wmOperatorType *ot)
   ot->invoke = drop_color_invoke;
   ot->poll = ED_operator_regionactive;
 
-  ot->flag = OPTYPE_INTERNAL;
+  ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   RNA_def_float_color(
       ot->srna, "color", 3, nullptr, 0.0, FLT_MAX, "Color", "Source color", 0.0, 1.0);
