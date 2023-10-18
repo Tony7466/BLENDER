@@ -6,21 +6,12 @@
  * \ingroup edtransform
  */
 
-#include "BLI_array.hh"
-#include "BLI_inplace_priority_queue.hh"
 #include "BLI_math_matrix.h"
-#include "BLI_span.hh"
 
 #include "BKE_context.h"
-#include "BKE_curves.hh"
-#include "BKE_grease_pencil.hh"
 
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
-
-#include "MEM_guardedalloc.h"
-
-#include "WM_api.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
