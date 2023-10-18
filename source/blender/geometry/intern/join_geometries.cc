@@ -5,7 +5,6 @@
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
-#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
 namespace blender::geometry {
@@ -141,7 +140,6 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
   /* Not yet supported. Joining volume grids with the same name requires resampling of at least one
    * of the grids. The cell size of the resulting volume has to be determined somehow. */
 }
-
 
 static void join_component_type(const bke::GeometryComponent::Type component_type,
                                 const Span<GeometrySet> src_geometry_sets,
