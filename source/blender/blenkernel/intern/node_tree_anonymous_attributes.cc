@@ -7,12 +7,14 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_dot_export.hh"
+#include "BKE_node_tree_zones.hh"
 
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bit_span_ops.hh"
 
 #include "BLI_resource_scope.hh"
 
+#include <iostream>
 #include <sstream>
 
 namespace blender::bke::anonymous_attribute_inferencing {
@@ -412,6 +414,8 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
                                               .set();
   }
 
+  const bNodeTreeZones *zones = tree.zones();
+
   /* Inferencing pass from right to left to determine which anonymous attributes have to be
    * propagated to which geometry sockets. */
   for (const bNode *node : tree.toposort_right_to_left()) {
@@ -446,6 +450,33 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
       const bNodeSocket &field_socket = node->input_socket(relation.field_input);
       required_fields_by_geometry_socket[geometry_socket.index_in_tree()] |=
           propagated_fields_by_socket[field_socket.index_in_tree()];
+    }
+    if (zones != nullptr) {
+      if (node->type == GEO_NODE_REPEAT_OUTPUT) {
+        /* Anonymous attributes passed into the repeat zone with a border link need to be available
+         * in every iteration. Therefor, make sure that the Repeat Output node requires these
+         * anonymous attributes on its geometry inputs. */
+        if (const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier)) {
+          for (const bNodeLink *border_link : zone->border_links) {
+            const bNodeSocket &from_socket = *border_link->fromsock;
+            if (!socket_is_field(from_socket)) {
+              continue;
+            }
+            const BoundedBitSpan fields_in_border_link =
+                propagated_fields_by_socket[from_socket.index_in_tree()];
+            if (bits::any_bit_set(fields_in_border_link)) {
+              for (const bNodeSocket *input_socket : node->input_sockets()) {
+                if (input_socket->type == SOCK_GEOMETRY) {
+                  /* Require all anonymous attributes from the border link. The ones that are not
+                   * actually available on the geometry, will be filtered out later. */
+                  required_fields_by_geometry_socket[input_socket->index_in_tree()] |=
+                      fields_in_border_link;
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -487,7 +518,7 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
                                              std::move(tree_relations)};
 
 /* Print analysis result for debugging purposes. */
-#if 0
+#if 1
   bNodeTreeToDotOptionsForAnonymousAttributeInferencing options{result};
   std::cout << "\n\n" << node_tree_to_dot(tree, options) << "\n\n";
 #endif
