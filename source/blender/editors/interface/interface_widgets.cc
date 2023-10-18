@@ -2054,10 +2054,14 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         bool has_prev = false;
         if (pos > 0) {
           if (BLF_str_offset_to_glyph_bounds(
-                  fstyle->uifont_id, drawstr + but->ofs, pos - 1, &bounds) &&
-              !BLI_rcti_is_empty(&bounds))
-          {
-            prev_right_edge = bounds.xmax;
+                  fstyle->uifont_id, drawstr + but->ofs, pos - 1, &bounds)) {
+            if (bounds.xmax > bounds.xmin) {
+              prev_right_edge = bounds.xmax;
+            }
+            else {
+              /* Some characters, like space, have empty bounds. */
+              prev_right_edge = BLF_width(fstyle->uifont_id, drawstr + but->ofs, pos);
+            }
             has_prev = true;
           }
         }
@@ -2065,10 +2069,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         /* Find left edge of next character if available. */
         int next_left_edge = 0;
         bool has_next = false;
-        if (pos < strlen(drawstr)) {
-          if (BLF_str_offset_to_glyph_bounds(
-                  fstyle->uifont_id, drawstr + but->ofs, pos, &bounds) &&
-              !BLI_rcti_is_empty(&bounds))
+        if (pos < strlen(drawstr + but->ofs)) {
+          if (BLF_str_offset_to_glyph_bounds(fstyle->uifont_id, drawstr + but->ofs, pos, &bounds))
           {
             next_left_edge = bounds.xmin;
             has_next = true;
