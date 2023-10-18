@@ -33,6 +33,8 @@ struct Material;
 
 namespace blender::bke {
 
+GreasePencil *grease_pencil_new_nomain(int layer_num);
+
 namespace greasepencil {
 
 struct DrawingTransforms {
@@ -203,6 +205,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
   TreeNode(const TreeNode &other);
+  TreeNode &operator=(const TreeNode &other);
   ~TreeNode();
 
  public:
@@ -331,6 +334,7 @@ class Layer : public ::GreasePencilLayer {
   Layer();
   explicit Layer(StringRefNull name);
   Layer(const Layer &other);
+  Layer &operator=(const Layer &other);
   ~Layer();
 
  public:
@@ -455,6 +459,8 @@ class LayerGroupRuntime {
  */
 class LayerGroup : public ::GreasePencilLayerTreeGroup {
   friend struct ::GreasePencil;
+  /* Note: This function uses the internal `add_node` API. So we mark it as a friend. */
+  friend GreasePencil *blender::bke::grease_pencil_new_nomain(int num_layers);
 
  public:
   LayerGroup();

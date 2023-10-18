@@ -142,56 +142,6 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
    * of the grids. The cell size of the resulting volume has to be determined somehow. */
 }
 
-static void join_grease_pencil(const Span<const GeometryComponent *> src_components,
-                               GeometrySet &result)
-{
-  int drawings_num = 0;
-  Array<int> start_offsets(src_components.size());
-  for (const int index : src_components.index_range()) {
-    const bke::GreasePencilComponent &src_grease_pencil_component =
-        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
-    start_offsets[index] = drawings_num;
-    drawings_num += src_grease_pencil_component.get()->drawings().size();
-  }
-
-  GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
-
-  /* Copy all the drawings. */
-  dst_grease_pencil->drawing_array_num = drawings_num;
-  dst_grease_pencil->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(drawings_num,
-                                                                               __func__);
-  for (const int index : src_components.index_range()) {
-    const bke::GreasePencilComponent &src_grease_pencil_component =
-        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
-    const int start_offset = start_offsets[index];
-    const Span<const GreasePencilDrawingBase *> src_drawings =
-        src_grease_pencil_component.get()->drawings();
-    const IndexRange dst_range = IndexRange(start_offset, src_drawings.size());
-    bke::greasepencil::copy_drawing_array(src_grease_pencil_component.get()->drawings(),
-                                          dst_grease_pencil->drawings().slice(dst_range));
-  }
-
-  /* Copy the layers and adjust the drawing indices for the frame mappings. */
-  for (const int index : src_components.index_range()) {
-    const bke::GreasePencilComponent &src_grease_pencil_component =
-        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
-    const int start_offset = start_offsets[index];
-    const Span<const bke::greasepencil::Layer *> src_layers =
-        src_grease_pencil_component.get()->layers();
-    for (const bke::greasepencil::Layer *src_layer : src_layers) {
-      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->add_layer(
-          dst_grease_pencil->root_group(), *src_layer);
-      for (auto [key, value] : dst_layer.frames_for_write().items()) {
-        value.drawing_index += start_offset;
-      }
-    }
-  }
-
-  result.replace_grease_pencil(dst_grease_pencil);
-  bke::GreasePencilComponent &dst_component =
-      result.get_component_for_write<bke::GreasePencilComponent>();
-  join_attributes(src_components, dst_component);
-}
 
 static void join_component_type(const bke::GeometryComponent::Type component_type,
                                 const Span<GeometrySet> src_geometry_sets,
@@ -220,9 +170,6 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
       return;
     case bke::GeometryComponent::Type::Volume:
       join_volumes(components, result);
-      return;
-    case bke::GeometryComponent::Type::GreasePencil:
-      join_grease_pencil(components, result);
       return;
     default:
       break;

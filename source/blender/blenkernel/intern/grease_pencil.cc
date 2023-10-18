@@ -497,11 +497,23 @@ TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name) : Tre
   this->GreasePencilLayerTreeNode::name = BLI_strdup(name.c_str());
 }
 
+static void copy_tree_node(const TreeNode &src_node, TreeNode &dst_node)
+{
+  dst_node.GreasePencilLayerTreeNode::name = BLI_strdup_null(
+      src_node.GreasePencilLayerTreeNode::name);
+  dst_node.flag = src_node.flag;
+  copy_v3_v3_uchar(dst_node.color, src_node.color);
+}
+
 TreeNode::TreeNode(const TreeNode &other) : TreeNode(GreasePencilLayerTreeNodeType(other.type))
 {
-  this->GreasePencilLayerTreeNode::name = BLI_strdup_null(other.GreasePencilLayerTreeNode::name);
-  this->flag = other.flag;
-  copy_v3_v3_uchar(this->color, other.color);
+  copy_tree_node(other, *this);
+}
+
+TreeNode &TreeNode::operator=(const TreeNode &other)
+{
+  copy_tree_node(other, *this);
+  return *this;
 }
 
 TreeNode::~TreeNode()
@@ -602,10 +614,8 @@ Layer::Layer(StringRefNull name) : Layer()
   new (&this->base) TreeNode(GP_LAYER_TREE_LEAF, name);
 }
 
-Layer::Layer(const Layer &other) : Layer()
+static copy_layer(const Layer &src_layer, Layer &dst_layer)
 {
-  new (&this->base) TreeNode(other.base.wrap());
-
   /* TODO: duplicate masks. */
 
   /* Note: We do not duplicate the frame storage since it is only needed for writing. */
@@ -616,6 +626,19 @@ Layer::Layer(const Layer &other) : Layer()
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
   /* TODO: what about masks cache? */
+}
+
+Layer::Layer(const Layer &other) : Layer()
+{
+  new (&this->base) TreeNode(other.base.wrap());
+  copy_layer(other, *this);
+}
+
+Layer &Layer::operator=(const Layer &other)
+{
+  this->base.wrap() = other.base.wrap();
+  copy_layer(other, *this);
+  return *this;
 }
 
 Layer::~Layer()
@@ -1245,6 +1268,22 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
   bke::greasepencil::copy_drawing_array(grease_pencil_src->drawings(),
                                         grease_pencil_dst->drawings());
 }
+
+namespace blender::bke {
+
+GreasePencil *grease_pencil_new_nomain(const int layer_num)
+{
+  using namespace blender;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
+      BKE_id_new_nomain(ID_GP, nullptr));
+  for ([[maybe_unused]] const int _ : IndexRange(layer_num)) {
+    bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__);
+    grease_pencil->root_group().add_node(new_layer->as_node());
+  }
+  return grease_pencil;
+}
+
+}  // namespace blender::bke
 
 /** \} */
 
