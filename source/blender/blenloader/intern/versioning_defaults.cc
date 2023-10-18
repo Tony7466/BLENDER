@@ -551,6 +551,11 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY(scene->view_settings.view_transform, "Standard");
       STRNCPY(scene->view_settings.look, "None");
     }
+
+    if (app_template && STREQ(app_template, "Video_Editing")) {
+      /* Pass: no extra tweaks needed. Keep the view settings configured above, and rely on the
+       * default state of enabled AV sync. */
+    }
     else {
       /* Default to AgX view transform. */
       STRNCPY(scene->view_settings.view_transform, "AgX");
