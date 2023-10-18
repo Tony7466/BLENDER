@@ -145,26 +145,26 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
 static void join_grease_pencil(const Span<const GeometryComponent *> src_components,
                                GeometrySet &result)
 {
-  int tot_drawings = 0;
-  Vector<int> start_offsets;
-  for (const GeometryComponent *src_component : src_components) {
+  int drawings_num = 0;
+  Array<int> start_offsets(src_components.size());
+  for (const int index : src_components.index_range()) {
     const bke::GreasePencilComponent &src_grease_pencil_component =
-        static_cast<const bke::GreasePencilComponent &>(*src_component);
-    start_offsets.append(tot_drawings);
-    tot_drawings += src_grease_pencil_component.get()->drawings().size();
+        static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
+    start_offsets[index] = drawings_num;
+    drawings_num += src_grease_pencil_component.get()->drawings().size();
   }
 
   GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
 
   /* Copy all the drawings. */
-  dst_grease_pencil->drawing_array_num = tot_drawings;
-  dst_grease_pencil->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(tot_drawings,
+  dst_grease_pencil->drawing_array_num = drawings_num;
+  dst_grease_pencil->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(drawings_num,
                                                                                __func__);
   for (const int index : src_components.index_range()) {
     const bke::GreasePencilComponent &src_grease_pencil_component =
         static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
     const int start_offset = start_offsets[index];
-    for (int i = 0; i < src_grease_pencil_component.get()->drawing_array_num; i++) {
+    for (const int i : src_grease_pencil_component.get()->drawings().index_range()) {
       const GreasePencilDrawingBase *src_drawing_base =
           src_grease_pencil_component.get()->drawing_array[i];
       switch (src_drawing_base->type) {
@@ -180,7 +180,8 @@ static void join_grease_pencil(const Span<const GeometryComponent *> src_compone
           const GreasePencilDrawingReference *src_drawing_reference =
               reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
           dst_grease_pencil->drawing_array[start_offset + i] =
-              reinterpret_cast<GreasePencilDrawingBase *>(MEM_dupallocN(src_drawing_reference));
+              reinterpret_cast<GreasePencilDrawingBase *>(
+                  MEM_new<GreasePencilDrawingReference>(__func__, src_drawing_reference));
           break;
         }
       }
@@ -192,7 +193,7 @@ static void join_grease_pencil(const Span<const GeometryComponent *> src_compone
     const bke::GreasePencilComponent &src_grease_pencil_component =
         static_cast<const bke::GreasePencilComponent &>(*src_components[index]);
     const int start_offset = start_offsets[index];
-    const blender::Span<const bke::greasepencil::Layer *> src_layers =
+    const Span<const bke::greasepencil::Layer *> src_layers =
         src_grease_pencil_component.get()->layers();
     for (const bke::greasepencil::Layer *src_layer : src_layers) {
       bke::greasepencil::Layer &dst_layer = dst_grease_pencil->add_layer(
