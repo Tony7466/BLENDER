@@ -840,7 +840,7 @@ void VolumePipeline::sync()
 {
   enabled_ = false;
   for (auto &layer : layers_) {
-    (*layer).sync();
+    layer->sync();
   }
 }
 
@@ -852,7 +852,7 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
     /* TODO(fclem): We might want to skip empty layers as the clear overhead is be significant. */
     /* TODO(fclem): Move this clear inside the render pass. */
     occupancy_tx.clear(uint4(0u));
-    (*layer).render(view);
+    layer->render(view);
   }
 }
 
@@ -909,8 +909,8 @@ VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
   }
   /* Do linear search in all layers in order. This can be optimized. */
   for (auto &layer : layers_) {
-    if (!(*layer).bounds_overlaps(object_aabb)) {
-      (*layer).add_object_bound(object_aabb);
+    if (!layer->bounds_overlaps(object_aabb)) {
+      layer->add_object_bound(object_aabb);
       return layer.get();
     }
   }
@@ -954,7 +954,7 @@ void VolumePipeline::material_call(MaterialPass &volume_material_pass,
 bool VolumePipeline::use_hit_list() const
 {
   for (auto &layer : layers_) {
-    if ((*layer).use_hit_list) {
+    if (layer->use_hit_list) {
       return true;
     }
   }
