@@ -1059,6 +1059,7 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
+<<<<<<< HEAD
 static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
                                                                  const char *separator)
 {
@@ -1088,6 +1089,30 @@ static void versioning_node_dynamic_socket(bNodeTree &ntree,
     }
     version_socket_identifier_suffixes_for_dynamic_types(node->inputs, input_separator);
     version_socket_identifier_suffixes_for_dynamic_types(node->outputs, output_separator);
+  }
+}
+
+static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
+{
+  using namespace blender;
+  /* Previously, Grease Pencil used a radius convention where 1 "px" = 0.001 units. This "px" was
+   * the brush size which would be stored in the stroke thickness and then scaled by the point
+   * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
+   * going from a thickness to a radius, hence the factor of two) to convert back into blender
+   * units.
+   * Store the radius now directly in blender units. This makes it consistent with how hair curves
+   * handle the radius. */
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    MutableSpan<float> radii = drawing.radii_for_write();
+    threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
+      for (const int i : range) {
+        radii[i] /= 2000.0f;
+      }
+    });
   }
 }
 
@@ -1125,8 +1150,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
-        ts->snap_mode &= ~SCE_SNAP_TO_FACE;
-        ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
+        ts->snap_mode &= ~(1 << 2); /* SCE_SNAP_TO_FACE */
+        ts->snap_mode |= (1 << 8);  /* SCE_SNAP_INDIVIDUAL_PROJECT */
       }
 #undef SCE_SNAP_PROJECT
     }
@@ -1415,7 +1440,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->snap_flag_anim |= SCE_SNAP;
-      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+      scene->toolsettings->snap_anim_mode |= (1 << 10); /* SCE_SNAP_TO_FRAME */
     }
   }
 
@@ -1667,10 +1692,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           snap_to_new |= SCE_SNAP_TO_GRID;
         }
         if (type == IS_DEFAULT && snap_to_old & (1 << 8)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
+          snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
         }
         if (type == IS_DEFAULT && snap_to_old & (1 << 9)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
+          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
         }
         if (snap_to_old & (1 << 10)) {
           snap_to_new |= SCE_SNAP_TO_FRAME;
@@ -1739,6 +1764,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       versioning_node_dynamic_socket(*ntree, FN_NODE_RANDOM_VALUE, "_", "_");
 
       versioning_node_dynamic_socket(*ntree, SH_NODE_MIX, "_", "_");
+    }
+  }
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
     }
   }
 
