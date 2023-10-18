@@ -3204,7 +3204,13 @@ static void rna_Node_ItemArray_remove(ID *id,
 {
   blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
+    const char **name_ptr = Accessor::get_name(*item_to_remove);
+    if (name_ptr && *name_ptr) {
+      BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
+    }
+    else {
+      BKE_report(reports, RPT_ERROR, "Unable to locate item in node");
+    }
     return;
   }
   const int remove_index = item_to_remove - *ref.items;
@@ -8974,11 +8980,19 @@ static void def_geo_repeat_output(StructRNA *srna)
 
 static void rna_def_index_switch_item(BlenderRNA *brna)
 {
+  PropertyRNA *prop;
+
   StructRNA *srna = RNA_def_struct(brna, "IndexSwitchItem", nullptr);
   RNA_def_struct_ui_text(srna, "Index Switch Item", "");
   RNA_def_struct_sdna(srna, "IndexSwitchItem");
 
-  rna_def_node_item_array_socket_item_common(srna, "IndexSwitchItemsAccessor");
+  prop = RNA_def_property(srna, "identifier", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_range(prop, 0, INT32_MAX, 1, -1);
+  RNA_def_property_ui_text(prop, "Identifier", "Consistent identifier used for the item");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+
+  // rna_def_node_item_array_socket_item_common(srna, "IndexSwitchItemsAccessor");
 }
 
 static void rna_def_geo_index_switch_items(BlenderRNA *brna)
@@ -9004,7 +9018,7 @@ static void def_geo_index_switch(StructRNA *srna)
   RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
   RNA_def_property_struct_type(prop, "IndexSwitchItem");
   RNA_def_property_ui_text(prop, "Items", "");
-  RNA_def_property_srna(prop, "NodeGeometryIndexSwitchItems");
+  RNA_def_property_srna(prop, "NodeIndexSwitchItems");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, nullptr, "active_index");
@@ -10350,6 +10364,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
 
   rna_def_simulation_state_item(brna);
   rna_def_repeat_item(brna);
+  rna_def_index_switch_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \

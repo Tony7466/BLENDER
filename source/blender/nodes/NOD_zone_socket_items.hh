@@ -160,16 +160,16 @@ struct IndexSwitchItemsAccessor {
   {
     dst = src;
   }
-  static void destruct_item(IndexSwitchItem *item) {}
+  static void destruct_item(IndexSwitchItem * /*item*/) {}
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
-  static short *get_socket_type(IndexSwitchItem &item)
+  static short *get_socket_type(IndexSwitchItem & /*item*/)
   {
-    return &item.socket_type;
+    return nullptr;
   }
-  static char **get_name(IndexSwitchItem &item)
+  static char **get_name(IndexSwitchItem & /*item*/)
   {
-    return &item.name;
+    return nullptr;
   }
   static bool supports_socket_type(const eNodeSocketDatatype socket_type)
   {
@@ -195,7 +195,7 @@ struct IndexSwitchItemsAccessor {
     auto *storage = static_cast<NodeIndexSwitch *>(node.storage);
     item.socket_type = socket_type;
     item.identifier = storage->next_identifier++;
-    socket_items::set_item_name_and_make_unique<RepeatItemsAccessor>(node, item, name);
+    socket_items::set_item_name_and_make_unique<IndexSwitchItemsAccessor>(node, item, name);
   }
   static std::string socket_identifier_for_item(const IndexSwitchItem &item)
   {

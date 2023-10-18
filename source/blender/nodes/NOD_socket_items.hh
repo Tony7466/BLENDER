@@ -175,6 +175,11 @@ inline void set_item_name_and_make_unique(bNode &node,
                                           typename Accessor::ItemT &item,
                                           const char *value)
 {
+  char **item_name = Accessor::get_name(item);
+  if (!item_name) {
+    return;
+  }
+
   using ItemT = typename Accessor::ItemT;
   SocketItemsRef array = Accessor::get_items_from_node(node);
   const char *default_name = nodeStaticSocketLabel(*Accessor::get_socket_type(item), 0);
@@ -204,7 +209,6 @@ inline void set_item_name_and_make_unique(bNode &node,
       unique_name,
       ARRAY_SIZE(unique_name));
 
-  char **item_name = Accessor::get_name(item);
   MEM_SAFE_FREE(*item_name);
   *item_name = BLI_strdup(unique_name);
 }

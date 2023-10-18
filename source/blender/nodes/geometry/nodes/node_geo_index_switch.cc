@@ -36,7 +36,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   const Span<IndexSwitchItem> items = storage.items_span();
 
   for (const int i : items.index_range()) {
-    auto &input = b.add_input(data_type, std::to_string(i), std::to_string(items[i].identifier));
+    const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
+    auto &input = b.add_input(data_type, std::to_string(i), std::move(identifier));
     if (supports_fields) {
       input.supports_field();
     }
@@ -49,6 +50,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   else if (data_type == SOCK_GEOMETRY) {
     output.propagate_all();
   }
+
+  b.add_input<decl::Extend>("", "__extend__");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
