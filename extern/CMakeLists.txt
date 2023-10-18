@@ -23,7 +23,9 @@ endif()
 if(WITH_COMPILER_ASAN AND NOT WITH_EXTERN_ASAN)
   # Disable ASAN for extern dependencies, as it can lead to linking issues due to too large binaries.
   string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " -fno-sanitize=all")
+  string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO " -fno-sanitize=all")
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fno-sanitize=all")
+  string(APPEND CMAKE_C_FLAGS_DEBUG " -fno-sanitize=all")
 endif()
 
 
