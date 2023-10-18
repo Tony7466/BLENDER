@@ -270,10 +270,16 @@ class EEVEE_NEXT_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
         row.active = ((mat.blend_method == 'CLIP') or (mat.shadow_method == 'CLIP'))
         row.prop(mat, "alpha_threshold")
 
-        if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
-            layout.prop(mat, "show_transparent_back")
+        col = layout.column(heading="Transparency")
+        col.prop(mat, "use_transparent_shadow")
 
-        layout.prop(mat, "use_screen_refraction")
+        if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
+            col.prop(mat, "show_transparent_back")
+
+        col.prop(mat, "use_screen_refraction")
+
+        layout.separator()
+
         layout.prop(mat, "volume_intersection_method")
         layout.prop(mat, "pass_index")
 

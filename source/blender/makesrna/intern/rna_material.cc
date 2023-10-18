@@ -885,6 +885,15 @@ void RNA_def_material(BlenderRNA *brna)
       prop, "Probe Capture Backface Culling", "Use back faces for probe captures");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
+  prop = RNA_def_property(srna, "use_transparent_shadow", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_TRANSPARENT_SHADOW);
+  RNA_def_property_ui_text(
+      prop,
+      "Transparent Shadows",
+      "Use transparent shadows for this material if it contains a Transparent BSDF, "
+      "disabling will render faster but not give accurate shadows");
+  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+
   prop = RNA_def_property(srna, "use_screen_refraction", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_SS_REFRACTION);
   RNA_def_property_ui_text(
