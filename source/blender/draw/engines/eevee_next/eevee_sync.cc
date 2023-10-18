@@ -328,10 +328,10 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
   const bool has_motion = false;
 
   Material &material = inst_.materials.material_get(
-      ob, has_motion, material_slot - 1, MAT_GEOM_VOLUME_OBJECT);
+      ob, has_motion, material_slot - 1, MAT_GEOM_VOLUME);
 
-  /* Use bounding volume geometry to tag empty spaces. */
-  GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
+  /* Use bounding box tag empty spaces. */
+  GPUBatch *geom = DRW_cache_cube_get();
 
   geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
 

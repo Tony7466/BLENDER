@@ -78,6 +78,17 @@ GPU_SHADER_CREATE_INFO(eevee_geom_point_cloud)
                      "draw_resource_id_varying",
                      "draw_view");
 
+GPU_SHADER_CREATE_INFO(eevee_geom_volume)
+    .additional_info("eevee_shared")
+    .define("MAT_GEOM_VOLUME")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_out(eevee_surf_iface)
+    .vertex_source("eevee_geom_volume_vert.glsl")
+    .additional_info("draw_modelmat_new",
+                     "draw_object_infos_new",
+                     "draw_resource_id_varying",
+                     "draw_view");
+
 GPU_SHADER_CREATE_INFO(eevee_geom_gpencil)
     .additional_info("eevee_shared")
     .define("MAT_GEOM_GPENCIL")
@@ -349,7 +360,8 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     /* EEVEE_MAT_FINAL_VARIATION(prefix##_gpencil, "eevee_geom_gpencil", __VA_ARGS__) */ \
     EEVEE_MAT_FINAL_VARIATION(prefix##_curves, "eevee_geom_curves", __VA_ARGS__) \
     EEVEE_MAT_FINAL_VARIATION(prefix##_mesh, "eevee_geom_mesh", __VA_ARGS__) \
-    EEVEE_MAT_FINAL_VARIATION(prefix##_point_cloud, "eevee_geom_point_cloud", __VA_ARGS__)
+    EEVEE_MAT_FINAL_VARIATION(prefix##_point_cloud, "eevee_geom_point_cloud", __VA_ARGS__) \
+    EEVEE_MAT_FINAL_VARIATION(prefix##_volume, "eevee_geom_volume", __VA_ARGS__)
 
 #  define EEVEE_MAT_PIPE_VARIATIONS(name, ...) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_world, "eevee_surf_world", __VA_ARGS__) \

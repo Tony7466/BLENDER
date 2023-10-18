@@ -40,10 +40,14 @@ enum eMaterialPipeline {
 };
 
 enum eMaterialGeometry {
+  /* These maps directly to object types. */
   MAT_GEOM_MESH = 0,
   MAT_GEOM_POINT_CLOUD,
   MAT_GEOM_CURVES,
   MAT_GEOM_GPENCIL,
+  MAT_GEOM_VOLUME,
+
+  /* These maps to special vertex shader. */
   MAT_GEOM_VOLUME_OBJECT,
   MAT_GEOM_VOLUME_WORLD,
   MAT_GEOM_WORLD,
@@ -110,7 +114,7 @@ static inline eMaterialGeometry to_material_geometry(const Object *ob)
     case OB_CURVES:
       return MAT_GEOM_CURVES;
     case OB_VOLUME:
-      return MAT_GEOM_VOLUME_OBJECT;
+      return MAT_GEOM_VOLUME;
     case OB_GPENCIL_LEGACY:
       return MAT_GEOM_GPENCIL;
     case OB_POINTCLOUD:

@@ -428,6 +428,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       }
       info.vertex_inputs_.clear();
       break;
+    case MAT_GEOM_VOLUME:
     case MAT_GEOM_VOLUME_OBJECT:
     case MAT_GEOM_VOLUME_WORLD:
       /** Volume grid attributes come from 3D textures. Transfer attributes to samplers. */
@@ -438,8 +439,12 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_vertex_attrib_load = !ELEM(
-      geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT);
+  const bool do_vertex_attrib_load = !ELEM(geometry_type,
+                                           MAT_GEOM_WORLD,
+                                           MAT_GEOM_VOLUME_WORLD,
+                                           MAT_GEOM_VOLUME_OBJECT,
+                                           MAT_GEOM_VOLUME,
+                                           MAT_GEOM_VOLUME);
 
   if (!do_vertex_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
@@ -476,7 +481,12 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (!is_compute) {
-    if (!ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT)) {
+    if (!ELEM(geometry_type,
+              MAT_GEOM_WORLD,
+              MAT_GEOM_VOLUME_WORLD,
+              MAT_GEOM_VOLUME_OBJECT,
+              MAT_GEOM_VOLUME))
+    {
       vert_gen << "vec3 nodetree_displacement()\n";
       vert_gen << "{\n";
       vert_gen << ((codegen.displacement) ? codegen.displacement : "return vec3(0);\n");
@@ -548,6 +558,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
     case MAT_GEOM_POINT_CLOUD:
       info.additional_info("eevee_geom_point_cloud");
+      break;
+    case MAT_GEOM_VOLUME:
+      info.additional_info("eevee_geom_volume");
       break;
   }
   /* Pipeline Info. */

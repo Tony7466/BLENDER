@@ -241,12 +241,12 @@ Material &MaterialModule::material_sync(Object *ob,
                                         eMaterialGeometry geometry_type,
                                         bool has_motion)
 {
-  if (geometry_type == MAT_GEOM_VOLUME_OBJECT) {
+  if (geometry_type == MAT_GEOM_VOLUME) {
     MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME_MATERIAL);
     Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {
       Material mat = {};
       mat.volume_occupancy = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_MESH);
+          ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME);
       mat.volume_material = material_pass_get(
           ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
       return mat;
