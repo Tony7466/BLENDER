@@ -4,6 +4,30 @@
 
 /**
  * Prepass that voxelizes an object on frustum aligned voxels.
+ *
+ * There is two method available:
+ *
+ * - Fast method: For each fragment we compute the amount of
+ *   froxels center in-front of it. We then convert that
+ *   into occupancy bitmask that we apply to the occupancy
+ *   texture using imageAtomicXor. This flips the bit for each
+ *   surfaces encountered along the camera ray.
+ *   This is straight forward and works well for any manifold
+ *   geometry.
+ *
+ * - Accurate method:
+ *   For each fragment we write the fragment depth
+ *   in a list (contained in one array texture). This list
+ *   is then processed by a fullscreen pass (see
+ *   eevee_occupancy_convert_frag.glsl) that sorts and
+ *   converts all the hits to the occupancy bits. This
+ *   emulate Cycles behavior by considering only back-face
+ *   hits as exit events and front-face hits as entry events.
+ *   The result stores it to the occupancy texture using
+ *   bit-wise OR operation to compose it with other non-hit
+ *   list objects. This also decouple the hit-list evaluation
+ *   complexity from the material evaluation shader.
+ *
  */
 
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)

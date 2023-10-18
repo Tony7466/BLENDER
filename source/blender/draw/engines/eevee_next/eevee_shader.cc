@@ -443,7 +443,6 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
                                            MAT_GEOM_WORLD,
                                            MAT_GEOM_VOLUME_WORLD,
                                            MAT_GEOM_VOLUME_OBJECT,
-                                           MAT_GEOM_VOLUME,
                                            MAT_GEOM_VOLUME);
 
   if (!do_vertex_attrib_load && !info.vertex_out_interfaces_.is_empty()) {

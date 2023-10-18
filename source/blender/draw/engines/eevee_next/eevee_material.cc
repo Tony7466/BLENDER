@@ -292,6 +292,7 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.planar_probe_shading = MaterialPass();
       mat.volume_occupancy = MaterialPass();
       mat.volume_material = MaterialPass();
+      mat.is_volume = false;
     }
     else {
       /* Order is important for transparent. */
@@ -315,18 +316,18 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.planar_probe_shading = material_pass_get(
             ob, blender_mat, MAT_PIPE_DEFERRED, geometry_type, MAT_PROBE_PLANAR);
       }
-    }
 
-    mat.is_volume = GPU_material_has_volume_output(mat.shading.gpumat);
-    if (mat.is_volume) {
-      mat.volume_occupancy = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
-      mat.volume_material = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
-    }
-    else {
-      mat.volume_occupancy = MaterialPass();
-      mat.volume_material = MaterialPass();
+      mat.is_volume = GPU_material_has_volume_output(mat.shading.gpumat);
+      if (mat.is_volume) {
+        mat.volume_occupancy = material_pass_get(
+            ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
+        mat.volume_material = material_pass_get(
+            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+      }
+      else {
+        mat.volume_occupancy = MaterialPass();
+        mat.volume_material = MaterialPass();
+      }
     }
 
     if (blender_mat->blend_shadow == MA_BS_NONE) {

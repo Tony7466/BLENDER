@@ -903,7 +903,7 @@ VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
 {
   GridAABB object_aabb = grid_aabb_from_object(ob);
   GridAABB view_aabb = grid_aabb_from_view();
-  if (object_aabb.intersect(view_aabb).is_empty()) {
+  if (object_aabb.intersection(view_aabb).is_empty()) {
     /* Skip invisible object with respect to raster grid and bounds density. */
     return nullptr;
   }
@@ -938,7 +938,7 @@ void VolumePipeline::material_call(MaterialPass &volume_material_pass,
     /* Possible double work here. Should be relatively insignificant in practice. */
     GridAABB object_aabb = grid_aabb_from_object(ob);
     GridAABB view_aabb = grid_aabb_from_view();
-    GridAABB visible_aabb = object_aabb.intersect(view_aabb);
+    GridAABB visible_aabb = object_aabb.intersection(view_aabb);
     /* Invisible volumes should already have been clipped. */
     BLI_assert(visible_aabb.is_empty() == false);
     /* TODO(fclem): Use graphic pipeline instead of compute so we can leverage GPU culling,

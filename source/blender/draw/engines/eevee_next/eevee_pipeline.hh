@@ -280,7 +280,7 @@ struct GridAABB {
   GridAABB(int3 min_, int3 max_) : min(min_), max(max_){};
 
   /** Returns the intersection between this AABB and the \a other AABB. */
-  GridAABB intersect(const GridAABB &other) const
+  GridAABB intersection(const GridAABB &other) const
   {
     return {math::max(this->min, other.min), math::min(this->max, other.max)};
   }
@@ -332,7 +332,7 @@ class VolumeLayer {
   bool bounds_overlaps(const GridAABB &object_aabb) const
   {
     for (const GridAABB &other_aabb : object_bounds_) {
-      if (object_aabb.intersect(other_aabb).is_empty() == false) {
+      if (object_aabb.intersection(other_aabb).is_empty() == false) {
         return true;
       }
     }
