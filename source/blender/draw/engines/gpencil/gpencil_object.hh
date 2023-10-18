@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_math_quaternion_types.hh"
+
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "DRW_gpu_wrapper.hh"
@@ -263,55 +265,51 @@ class ObjectModule {
 
   float4x4 get_object_plane_mat(Object *object)
   {
-    float plane_normal[3], plane_mat[4][4];
+    using namespace math;
     /* Find the normal most likely to represent the gpObject. */
     /* TODO: This does not work quite well if you use
      * strokes not aligned with the object axes. Maybe we could try to
      * compute the minimum axis of all strokes. But this would be more
      * computationally heavy and should go into the GPData evaluation. */
     const BoundBox *bbox = BKE_object_boundbox_get(object);
+    float4x4 object_to_world = float4x4(object->object_to_world);
+
     /* Convert bbox to matrix */
-    float mat[4][4], size[3], center[3];
+    float3 size;
+    float3 center;
     BKE_boundbox_calc_size_aabb(bbox, size);
     BKE_boundbox_calc_center_aabb(bbox, center);
-    unit_m4(mat);
-    copy_v3_v3(mat[3], center);
     /* Avoid division by 0.0 later. */
-    add_v3_fl(size, 1e-8f);
-    rescale_m4(mat, size);
+    size += 1e-8f;
+
     /* BBox space to World. */
-    mul_m4_m4m4(mat, object->object_to_world, mat);
+    float4x4 bbox_mat = object_to_world *
+                        from_loc_rot_scale<float4x4>(center, Quaternion::identity(), size);
+    float3 plane_normal;
     if (DRW_view_is_persp_get(nullptr)) {
       /* BBox center to camera vector. */
-      sub_v3_v3v3(plane_normal, camera_pos_, mat[3]);
+      plane_normal = camera_pos_ - bbox_mat.location();
     }
     else {
-      copy_v3_v3(plane_normal, camera_forward_);
+      plane_normal = camera_forward_;
     }
     /* World to BBox space. */
-    invert_m4(mat);
-    /* Normalize the vector in BBox space. */
-    mul_mat3_m4_v3(mat, plane_normal);
-    normalize_v3(plane_normal);
+    float4x4 bbox_mat_inv = invert(bbox_mat);
+    /* mat_inv_t is a "normal" matrix which will transform
+     * BBox normal space to world space. */
+    float4x4 bbox_mat_inv_t = transpose(bbox_mat_inv);
 
-    transpose_m4(mat);
-    /* mat is now a "normal" matrix which will transform
-     * BBox space normal to world space. */
-    mul_mat3_m4_v3(mat, plane_normal);
-    normalize_v3(plane_normal);
+    /* Normalize the vector in BBox space. */
+    plane_normal = normalize(transform_direction(bbox_mat_inv, plane_normal));
+    plane_normal = normalize(transform_direction(bbox_mat_inv_t, plane_normal));
 
     /* Define a matrix that will be used to render a triangle to merge the depth of the rendered
      * gpencil object with the rest of the scene. */
-    unit_m4(plane_mat);
-    copy_v3_v3(plane_mat[2], plane_normal);
-    orthogonalize_m4(plane_mat, 2);
-    mul_mat3_m4_v3(object->object_to_world, size);
-    float radius = len_v3(size);
-    mul_m4_v3(object->object_to_world, center);
-    rescale_m4(plane_mat, blender::float3{radius, radius, radius});
-    copy_v3_v3(plane_mat[3], center);
-
-    return float4x4(plane_mat);
+    float4x4 plane_mat = from_up_axis<float4x4>(plane_normal);
+    float radius = length(transform_direction(object_to_world, size));
+    plane_mat = scale(plane_mat, float3(radius));
+    plane_mat.location() = transform_point(object_to_world, center);
+    return plane_mat;
   }
 };
 
