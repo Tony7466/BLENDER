@@ -614,17 +614,17 @@ Layer::Layer(StringRefNull name) : Layer()
   new (&this->base) TreeNode(GP_LAYER_TREE_LEAF, name);
 }
 
-static copy_layer(const Layer &src_layer, Layer &dst_layer)
+static void copy_layer(const Layer &src_layer, Layer &dst_layer)
 {
   /* TODO: duplicate masks. */
 
   /* Note: We do not duplicate the frame storage since it is only needed for writing. */
 
-  this->blend_mode = other.blend_mode;
-  this->opacity = other.opacity;
+  dst_layer.blend_mode = src_layer.blend_mode;
+  dst_layer.opacity = src_layer.opacity;
 
-  this->runtime->frames_ = other.runtime->frames_;
-  this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
+  dst_layer.runtime->frames_ = src_layer.runtime->frames_;
+  dst_layer.runtime->sorted_keys_cache_ = src_layer.runtime->sorted_keys_cache_;
   /* TODO: what about masks cache? */
 }
 
