@@ -412,6 +412,11 @@ static bool rna_idproperty_verify_valid(PointerRNA *ptr, PropertyRNA *prop, IDPr
         return false;
       }
       break;
+    case IDP_ENUM:
+      if (!ELEM(prop->type, PROP_ENUM)) {
+        return false;
+      }
+      break;
     case IDP_GROUP:
     case IDP_ID:
       if (prop->type != PROP_POINTER) {
@@ -3576,7 +3581,7 @@ int RNA_property_enum_get(PointerRNA *ptr, PropertyRNA *prop)
   BLI_assert(RNA_property_type(prop) == PROP_ENUM);
 
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
-    return IDP_Int(idprop);
+    return IDP_Enum(idprop);
   }
   if (eprop->get) {
     return eprop->get(ptr);
@@ -3595,7 +3600,7 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
   BLI_assert(RNA_property_type(prop) == PROP_ENUM);
 
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
-    IDP_Int(idprop) = value;
+    IDP_Enum(idprop) = value;
     rna_idproperty_touch(idprop);
   }
   else if (eprop->set) {
@@ -3612,7 +3617,7 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
 
     group = RNA_struct_idprops(ptr, true);
     if (group) {
-      IDP_AddToGroup(group, IDP_New(IDP_INT, &val, prop->identifier));
+      IDP_AddToGroup(group, IDP_New(IDP_ENUM, &val, prop->identifier));
     }
   }
 }

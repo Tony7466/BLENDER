@@ -116,6 +116,17 @@ typedef struct IDPropertyUIDataID {
   char _pad[6];
 } IDPropertyUIDataID;
 
+typedef struct IDPropertyUIDataEnumItem {
+  char *name;
+  char *description;
+  int identifier;
+} IDPropertyUIDataEnumItem;
+
+typedef struct IDPropertyUIDataEnum {
+  IDPropertyUIData base;
+  IDPropertyUIDataEnumItem *items;
+} IDPropertyUIDataEnum;
+
 typedef struct IDPropertyData {
   void *pointer;
   ListBase group;
@@ -176,6 +187,8 @@ typedef enum eIDPropertyType {
    * be 0 or 1.
    */
   IDP_BOOLEAN = 10,
+  /* Integer value with a list of enum items for selection. */
+  IDP_ENUM = 11,
 } eIDPropertyType;
 #define IDP_NUMTYPES 11
 

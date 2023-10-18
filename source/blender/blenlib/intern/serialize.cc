@@ -41,6 +41,14 @@ const BooleanValue *Value::as_boolean_value() const
   return static_cast<const BooleanValue *>(this);
 }
 
+const EnumValue *Value::as_enum_value() const
+{
+  if (type_ != eValueType::Int) {
+    return nullptr;
+  }
+  return static_cast<const EnumValue *>(this);
+}
+
 const ArrayValue *Value::as_array_value() const
 {
   if (type_ != eValueType::Array) {

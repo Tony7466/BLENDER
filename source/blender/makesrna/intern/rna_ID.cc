@@ -1577,6 +1577,11 @@ static void rna_def_ID_properties(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_IDPROPERTY);
   RNA_def_property_array(prop, 1);
 
+  /* IDP_ENUM */
+  prop = RNA_def_property(srna, "enum", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(prop, "rna_IDPEnum_get", "rna_IDPEnum_set", "rna_IDPEnum_itemf");
+  RNA_def_property_flag(prop, PROP_IDPROPERTY);
+
   /* IDP_GROUP */
   prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_IDPROPERTY);

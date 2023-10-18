@@ -54,6 +54,7 @@ static size_t idp_size_table[] = {
     sizeof(double),    /* #IDP_DOUBLE */
     0,                 /* #IDP_IDPARRAY (no fixed size). */
     sizeof(int8_t),    /* #IDP_BOOLEAN */
+    sizeof(int),       /* #IDP_ENUM */
 };
 
 /* -------------------------------------------------------------------- */
@@ -500,6 +501,7 @@ void IDP_SyncGroupValues(IDProperty *dest, const IDProperty *src)
         case IDP_FLOAT:
         case IDP_DOUBLE:
         case IDP_BOOLEAN:
+        case IDP_ENUM:
           other->data = prop->data;
           break;
         case IDP_GROUP:
@@ -841,6 +843,8 @@ bool IDP_EqualsProperties_ex(const IDProperty *prop1,
       return (IDP_Double(prop1) == IDP_Double(prop2));
     case IDP_BOOLEAN:
       return (IDP_Bool(prop1) == IDP_Bool(prop2));
+    case IDP_ENUM:
+      return (IDP_Enum(prop1) == IDP_Enum(prop2));
     case IDP_STRING: {
       return ((prop1->len == prop2->len) &&
               STREQLEN(IDP_String(prop1), IDP_String(prop2), size_t(prop1->len)));
@@ -916,6 +920,10 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
       break;
     case IDP_BOOLEAN:
       prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty boolean"));
+      prop->data.val = bool(val->i);
+      break;
+    case IDP_ENUM:
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty enum"));
       prop->data.val = bool(val->i);
       break;
     case IDP_ARRAY: {
@@ -1497,6 +1505,9 @@ eIDPropertyUIDataType IDP_ui_data_type(const IDProperty *prop)
   }
   if (prop->type == IDP_BOOLEAN || (prop->type == IDP_ARRAY && prop->subtype == IDP_BOOLEAN)) {
     return IDP_UI_DATA_TYPE_BOOLEAN;
+  }
+  if (prop->type == IDP_ENUM) {
+    return IDP_UI_DATA_TYPE_ENUM;
   }
   return IDP_UI_DATA_TYPE_UNSUPPORTED;
 }
