@@ -2319,7 +2319,7 @@ static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
 
     if (UI_but_flag_is_set(but, UI_BUT_UNDO)) {
-      ED_undo_push(C, RNA_property_identifier(but->rnaprop));
+      ED_undo_push(C, RNA_property_ui_name(but->rnaprop));
     }
   }
   else {
