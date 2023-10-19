@@ -63,6 +63,7 @@ class InstanceReference {
   InstanceReference(Object &object);
   InstanceReference(Collection &collection);
   InstanceReference(GeometrySet geometry_set);
+  InstanceReference(std::unique_ptr<GeometrySet> geometry_set);
 
   InstanceReference(const InstanceReference &other);
   InstanceReference(InstanceReference &&other);
@@ -102,13 +103,17 @@ class Instances {
   mutable std::mutex almost_unique_ids_mutex_;
   mutable blender::Array<int> almost_unique_ids_;
 
-  CustomDataAttributes attributes_;
+  CustomData attributes_;
 
  public:
-  Instances() = default;
+  Instances();
+  Instances(Instances &&other);
   Instances(const Instances &other);
+  ~Instances();
 
-  void reserve(int min_capacity);
+  Instances &operator=(const Instances &other);
+  Instances &operator=(Instances &&other);
+
   /**
    * Resize the transform, handles, and attributes to the specified capacity.
    *
@@ -169,8 +174,8 @@ class Instances {
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
 
-  CustomDataAttributes &custom_data_attributes();
-  const CustomDataAttributes &custom_data_attributes() const;
+  CustomData &custom_data_attributes();
+  const CustomData &custom_data_attributes() const;
 
   void foreach_referenced_geometry(
       blender::FunctionRef<void(const GeometrySet &geometry_set)> callback) const;
@@ -182,6 +187,11 @@ class Instances {
 /* -------------------------------------------------------------------- */
 /** \name #InstanceReference Inline Methods
  * \{ */
+
+inline InstanceReference::InstanceReference(std::unique_ptr<GeometrySet> geometry_set)
+    : type_(Type::GeometrySet), data_(nullptr), geometry_set_(std::move(geometry_set))
+{
+}
 
 inline InstanceReference::InstanceReference(Object &object) : type_(Type::Object), data_(&object)
 {
@@ -256,12 +266,12 @@ inline const GeometrySet &InstanceReference::geometry_set() const
   return *geometry_set_;
 }
 
-inline CustomDataAttributes &Instances::custom_data_attributes()
+inline CustomData &Instances::custom_data_attributes()
 {
   return attributes_;
 }
 
-inline const CustomDataAttributes &Instances::custom_data_attributes() const
+inline const CustomData &Instances::custom_data_attributes() const
 {
   return attributes_;
 }
