@@ -1100,7 +1100,7 @@ static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value
 int insert_key_action(bAction *action,
                       std::string rna_path,
                       const float frame,
-                      const Vector<float> &values)
+                      const Span<float> values)
 {
   BLI_assert(action != nullptr);
 

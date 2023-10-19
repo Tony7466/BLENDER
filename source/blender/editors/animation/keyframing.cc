@@ -883,7 +883,7 @@ static int insert_key_foo(bContext *C, wmOperator *op)
       }
       Vector<float> rna_values;
       get_rna_values(&ptr, prop, rna_values);
-      int result = animrig::insert_key_action(action, rna_path, scene_frame, rna_values);
+      int result = animrig::insert_key_action(action, rna_path, scene_frame, rna_values.as_span());
       if (result > 0) {
         depsgraph_needs_update = true;
       }
