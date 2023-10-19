@@ -157,20 +157,20 @@ struct ZstdFrame {
 };
 
 class WriteWrap {
-public:
- virtual bool open(const char *filepath) = 0;
- virtual bool close() = 0;
- virtual bool write(const void *data, size_t data_len) = 0;
+ public:
+  virtual bool open(const char *filepath) = 0;
+  virtual bool close() = 0;
+  virtual bool write(const void *buf, size_t buf_len) = 0;
 
- /* Buffer output (we only want when output isn't already buffered). */
- bool use_buf = true;
+  /** Buffer output (we only want when output isn't already buffered). */
+  bool use_buf = true;
 };
 
 class RawWriteWrap : public WriteWrap {
  public:
   bool open(const char *filepath) override;
   bool close() override;
-  bool write(const void *data, size_t data_len) override;
+  bool write(const void *buf, size_t buf_len) override;
 
  private:
   int file_handle = 0;
@@ -199,7 +199,7 @@ bool RawWriteWrap::write(const void *buf, size_t buf_len)
 }
 
 class ZstdWriteWrap : public WriteWrap {
-  WriteWrap &baseWrap;
+  WriteWrap &base_wrap;
 
   ListBase threadpool = {};
   ListBase tasks = {};
@@ -213,14 +213,14 @@ class ZstdWriteWrap : public WriteWrap {
 
   bool write_error = false;
 
-public:
- ZstdWriteWrap(WriteWrap &baseWrap) : baseWrap(baseWrap) {}
+ public:
+  ZstdWriteWrap(WriteWrap &base_wrap) : base_wrap(base_wrap) {}
 
- bool open(const char *filepath) override;
- bool close() override;
- bool write(const void *data, size_t data_len) override;
+  bool open(const char *filepath) override;
+  bool close() override;
+  bool write(const void *buf, size_t buf_len) override;
 
-private:
+ private:
   struct ZstdWriteBlockTask;
   void write_task(ZstdWriteBlockTask *task);
   void write_u32_le(uint32_t val);
@@ -261,7 +261,7 @@ void ZstdWriteWrap::write_task(ZstdWriteBlockTask *task)
     write_error = true;
   }
   else {
-    if (baseWrap.write(out_buf, out_size)) {
+    if (base_wrap.write(out_buf, out_size)) {
       ZstdFrame *frameinfo = static_cast<ZstdFrame *>(
           MEM_mallocN(sizeof(ZstdFrame), "zstd frameinfo"));
       frameinfo->uncompressed_size = task->size;
@@ -283,7 +283,7 @@ void ZstdWriteWrap::write_task(ZstdWriteBlockTask *task)
 
 bool ZstdWriteWrap::open(const char *filepath)
 {
-  if (!baseWrap.open(filepath)) {
+  if (!base_wrap.open(filepath)) {
     return false;
   }
 
@@ -301,7 +301,7 @@ void ZstdWriteWrap::write_u32_le(uint32_t val)
 #ifdef __BIG_ENDIAN__
   BLI_endian_switch_uint32(&val);
 #endif
-  baseWrap.write(&val, sizeof(uint32_t));
+  base_wrap.write(&val, sizeof(uint32_t));
 }
 
 /* In order to implement efficient seeking when reading the .blend, we append
@@ -333,7 +333,7 @@ void ZstdWriteWrap::write_seekable_frames()
   /* Write seek table footer (number of frames, option flags and second magic number). */
   write_u32_le(num_frames);
   const char flags = 0; /* We don't store checksums for each frame. */
-  baseWrap.write(&flags, 1);
+  base_wrap.write(&flags, 1);
   write_u32_le(0x8F92EAB1);
 }
 
@@ -348,7 +348,7 @@ bool ZstdWriteWrap::close()
   write_seekable_frames();
   BLI_freelistN(&frames);
 
-  return baseWrap.close() && !write_error;
+  return base_wrap.close() && !write_error;
 }
 
 bool ZstdWriteWrap::write(const void *buf, size_t buf_len)
