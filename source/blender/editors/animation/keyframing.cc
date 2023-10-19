@@ -797,18 +797,18 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
 
 static blender::Vector<std::string> construct_rna_paths(Object *ob)
 {
-  blender::Vector<std::string> r_paths;
+  blender::Vector<std::string> paths;
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
-    r_paths.append("location");
+    paths.append("location");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
     switch (ob->rotmode) {
       case ROT_MODE_QUAT:
-        r_paths.append("rotation_quaternion");
+        paths.append("rotation_quaternion");
         break;
       case ROT_MODE_AXISANGLE:
-        r_paths.append("rotation_axis_angle");
+        paths.append("rotation_axis_angle");
         break;
       case ROT_MODE_XYZ:
       case ROT_MODE_XZY:
@@ -816,18 +816,19 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
       case ROT_MODE_YZX:
       case ROT_MODE_ZXY:
       case ROT_MODE_ZYX:
-        r_paths.append("rotation_euler");
+        paths.append("rotation_euler");
       default:
         break;
     }
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
-    r_paths.append("scale");
+    paths.append("scale");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     /* Magic needed? */
     // id->properties
   }
+  return paths;
 }
 
 static int insert_key_foo(bContext *C, wmOperator *op)

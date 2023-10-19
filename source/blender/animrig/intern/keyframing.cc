@@ -1054,7 +1054,7 @@ static FCurve *action_fcurve_ensure(
   }
 
   /* store path - make copy, and store that */
-  char fcu_rna_path[rna_path.length() + 1];
+  char *fcu_rna_path = static_cast<char *>(MEM_mallocN(rna_path.length() + 1, "fcu_rna_path"));
   std::strcpy(fcu_rna_path, rna_path.c_str());
   fcu->rna_path = fcu_rna_path;
   fcu->array_index = array_index;
@@ -1106,7 +1106,7 @@ int action_insert_key(bAction *action,
 
   int property_array_index = 0;
   int inserted_keys = 0;
-  const char *group = "";
+  const char *group = "Object Transforms";
   for (const float value : values) {
     FCurve *fcu = action_fcurve_ensure(action, group, nullptr, rna_path, property_array_index);
     if (!fcu) {
