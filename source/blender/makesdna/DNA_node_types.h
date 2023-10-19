@@ -2658,6 +2658,7 @@ typedef enum GeometryNodeCurveResampleMode {
   GEO_NODE_CURVE_RESAMPLE_COUNT = 0,
   GEO_NODE_CURVE_RESAMPLE_LENGTH = 1,
   GEO_NODE_CURVE_RESAMPLE_EVALUATED = 2,
+  GEO_NODE_CURVE_RESAMPLE_EQUIDISTANT = 3,
 } GeometryNodeCurveResampleMode;
 
 typedef enum GeometryNodeCurveSampleMode {

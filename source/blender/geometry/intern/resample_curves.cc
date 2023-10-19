@@ -4,6 +4,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_math_color.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_quaternion.hh"
 
 #include "BLI_length_parameterize.hh"
@@ -18,6 +19,8 @@
 #include "BKE_geometry_fields.hh"
 
 #include "GEO_resample_curves.hh"
+
+#pragma optimize("", off)
 
 namespace blender::geometry {
 
@@ -418,6 +421,101 @@ CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
                              selection_field,
                              get_count_input_from_length(segment_length_field),
                              output_ids);
+}
+
+CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
+  const fn::FieldContext& field_context,
+  const fn::Field<bool>& selection_field,
+  const fn::Field<float>& segment_length_field,
+  const ResampleCurvesOutputAttributeIDs& output_ids)
+{
+  // TODO: make sure the length can't be negative.
+  const float target_chord_length = 2.0f;
+  const float target_chord_length_squared = target_chord_length * target_chord_length;
+
+  const Span<float3> evaluated_positions = src_curves.evaluated_positions();
+  const OffsetIndices<int> evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
+
+  Vector<float3> all_positions = {};
+
+  // TODO: this can be threaded, per curve segment.
+  for (int curve_index = 0; curve_index < src_curves.curves_num(); ++curve_index) {
+    const Span<float3> curve_positions = evaluated_positions.slice(evaluated_points_by_curve[curve_index]);
+    Vector<float3> curve_sample_points = {};
+    float3 last_sample_position = curve_positions[0];
+    int last_segment_index = 0;
+    int segment_index = 0;
+    const int segment_count = curve_positions.size() - 1;
+
+    while (segment_index < segment_count) {
+      const float3 a = curve_positions[segment_index];
+      const float3 b = curve_positions[segment_index + 1];
+
+      if (last_segment_index == segment_index) {
+        const float3 chord_direction = math::normalize(b - a);
+
+        // Figure out how many samples we can place along the current segment.
+        const float Jd = math::distance_squared(b, last_sample_position);
+        int colinear_samples = static_cast<int>(Jd / target_chord_length_squared);
+
+        if (colinear_samples > 0) {
+          for (int i = 0; i < colinear_samples; ++i) {
+            const float3 k = last_sample_position + chord_direction * (target_chord_length * (i + 1));
+            curve_sample_points.append(k);
+          }
+          last_sample_position = curve_sample_points.last();
+        }
+        ++segment_index;
+        continue;
+      }
+
+      // Use sphere-line intersection on each segment.
+      float3 p1, p2;
+      const int intersection_count = isect_line_sphere_v3(a, b, last_sample_position, target_chord_length, p1, p2, true);
+      switch (intersection_count) {
+      case 0:
+        ++segment_index;
+        continue;
+      case 1:
+        curve_sample_points.append(p1);
+        break;
+      case 2:
+        // Pick the intersection that is closest to the last sample position.
+        if (math::distance_squared(p1, last_sample_position) < math::distance_squared(p2, last_sample_position)) {
+          curve_sample_points.append(p1);
+        }
+        else {
+          curve_sample_points.append(p2);
+        }
+        break;
+      }
+
+      last_segment_index = segment_index;
+      last_sample_position = curve_sample_points.last();
+    }
+
+    all_positions.extend(curve_sample_points);
+  }
+
+  //std::cout << "x,y,z" << std::endl;
+
+  //for (auto& p : all_positions) {
+  //  std::cout << p.x << "," << p.y << "," << p.z << std::endl;
+  //}
+
+  CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
+
+  dst_positions.copy_from(all_positions.as_span());
+
+  AttributesForInterpolation attributes;
+  gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
+
+  for (bke::GSpanAttributeWriter& attribute : attributes.dst_attributes) {
+    attribute.finish();
+  }
+
+  return dst_curves;
 }
 
 CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
