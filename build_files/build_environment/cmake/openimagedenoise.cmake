@@ -7,7 +7,7 @@ set(OIDN_EXTRA_ARGS
   -DTBB_ROOT=${LIBDIR}/tbb
   -DISPC_EXECUTABLE=${LIBDIR}/ispc/bin/ispc
   -DOIDN_FILTER_RTLIGHTMAP=OFF
-  -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
+  -DPython_EXECUTABLE=${PYTHON_BINARY}
 )
 if(NOT APPLE)
   set(OIDN_EXTRA_ARGS
@@ -34,11 +34,6 @@ if(WIN32)
     -DCMAKE_EXE_LINKER_FLAGS=-L"${LIBDIR}/dpcpp/lib"
   )
 else()
-  set(OIDN_EXTRA_ARGS
-    ${OIDN_EXTRA_ARGS}
-    -Dtbb_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/tbb_static.a
-    -Dtbbmalloc_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/tbbmalloc_static.a
-  )
   if(NOT APPLE)
     set(OIDN_EXTRA_ARGS
       ${OIDN_EXTRA_ARGS}
