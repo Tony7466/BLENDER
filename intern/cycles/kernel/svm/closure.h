@@ -272,7 +272,12 @@ ccl_device
       }
 
       /* Emission (attenuated by sheen and coat) */
+
+      /* This section of code will be removed after merging some changes from Lukas. */
       weight = max(weight, zero_spectrum());
+      /* End of region being removed. (Note: The if statement will probably change to the old
+       * one.)*/
+
       if (!is_zero(emission) && !isequal(weight, zero_spectrum())) {
         emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }
