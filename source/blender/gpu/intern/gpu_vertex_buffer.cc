@@ -36,7 +36,6 @@ VertBuf::VertBuf()
 VertBuf::~VertBuf()
 {
   /* Should already have been cleared. */
-  BLI_assert(this->sharing_info == nullptr);
   BLI_assert(flag == GPU_VERTBUF_INVALID);
 }
 
@@ -64,10 +63,6 @@ void VertBuf::init(const GPUVertFormat *format, GPUUsageType usage)
 
 void VertBuf::clear()
 {
-  if (this->sharing_info) {
-    this->sharing_info->remove_user_and_delete_if_last();
-    this->sharing_info = nullptr;
-  }
   this->release_data();
   flag = GPU_VERTBUF_INVALID;
 }
@@ -79,9 +74,6 @@ VertBuf *VertBuf::duplicate()
   *dst = *this;
   /* Almost full copy... */
   dst->handle_refcount_ = 1;
-  if (dst->sharing_info) {
-    dst->sharing_info->add_user();
-  }
   /* Metadata. */
 #ifndef NDEBUG
   dst->extended_usage_ = extended_usage_;
@@ -107,26 +99,9 @@ void VertBuf::resize(uint vert_len)
 {
   /* Catch any unnecessary usage. */
   BLI_assert(vertex_alloc != vert_len);
-  BLI_assert(this->sharing_info == nullptr);
   vertex_len = vertex_alloc = vert_len;
 
   this->resize_data();
-
-  flag |= GPU_VERTBUF_DATA_DIRTY;
-}
-
-void VertBuf::set_data_shared(const ImplicitSharingInfo &sharing_info,
-                              const void *data,
-                              uint vert_len)
-{
-  if (this->sharing_info) {
-    sharing_info.remove_user_and_delete_if_last();
-  }
-  this->vertex_len = this->vertex_alloc = vert_len;
-
-  this->data = const_cast<uchar *>(static_cast<const uchar *>(data));
-  this->sharing_info = &sharing_info;
-  this->sharing_info->add_user();
 
   flag |= GPU_VERTBUF_DATA_DIRTY;
 }
@@ -215,14 +190,6 @@ void GPU_vertbuf_data_alloc(GPUVertBuf *verts, uint v_len)
 void GPU_vertbuf_data_resize(GPUVertBuf *verts, uint v_len)
 {
   unwrap(verts)->resize(v_len);
-}
-
-void GPU_vertbuf_data_set_shared(GPUVertBuf *verts,
-                                 const blender::ImplicitSharingInfo &sharing_info,
-                                 const void *data,
-                                 uint v_len)
-{
-  unwrap(verts)->set_data_shared(sharing_info, data, v_len);
 }
 
 void GPU_vertbuf_data_len_set(GPUVertBuf *verts_, uint v_len)

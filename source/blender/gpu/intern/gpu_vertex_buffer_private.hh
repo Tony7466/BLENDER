@@ -31,7 +31,6 @@ class VertBuf {
   GPUVertBufStatus flag = GPU_VERTBUF_INVALID;
   /** NULL indicates data in VRAM (unmapped) */
   uchar *data = nullptr;
-  const ImplicitSharingInfo *sharing_info = nullptr;
 
 #ifndef NDEBUG
   /** Usage including extended usage flags. */
@@ -56,7 +55,6 @@ class VertBuf {
   /* Data management. */
   void allocate(uint vert_len);
   void resize(uint vert_len);
-  void set_data_shared(const ImplicitSharingInfo &sharing_info, const void *data, uint vert_len);
   void upload();
   virtual void bind_as_ssbo(uint binding) = 0;
   virtual void bind_as_texture(uint binding) = 0;

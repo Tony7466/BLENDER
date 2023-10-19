@@ -257,18 +257,9 @@ static void pointcloud_extract_position(const PointCloud &pointcloud, PointCloud
   GPUUsageType usage_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
   GPU_vertbuf_init_with_format_ex(cache.eval_cache.position, &format, usage_flag);
 
-  const bke::AttributeReader position = pointcloud.attributes().lookup<float3>("position");
-  if (position && position.varray.is_span()) {
-    GPU_vertbuf_data_set_shared(cache.eval_cache.position,
-                                *position.sharing_info,
-                                position.varray.get_internal_span().data(),
-                                position.varray.size());
-  }
-  else {
-    MutableSpan vbo_data{static_cast<float3 *>(GPU_vertbuf_get_data(cache.eval_cache.position)),
-                         pointcloud.totpoint};
-    position.varray.materialize(vbo_data);
-  }
+  MutableSpan vbo_data{static_cast<float3 *>(GPU_vertbuf_get_data(cache.eval_cache.position)),
+                       pointcloud.totpoint};
+  vbo_data.copy_from(pointcloud.positions());
 }
 
 static void pointcloud_extract_radius(const PointCloud &pointcloud, PointCloudBatchCache &cache)
@@ -284,17 +275,10 @@ static void pointcloud_extract_radius(const PointCloud &pointcloud, PointCloudBa
 
   const bke::AttributeReader radius = pointcloud.attributes().lookup<float>("radius",
                                                                             ATTR_DOMAIN_POINT);
-  if (radius && radius.varray.is_span()) {
-    GPU_vertbuf_data_set_shared(cache.eval_cache.radius,
-                                *radius.sharing_info,
-                                radius.varray.get_internal_span().data(),
-                                radius.varray.size());
-  }
-  else {
-    MutableSpan vbo_data{static_cast<float *>(GPU_vertbuf_get_data(cache.eval_cache.radius)),
-                         pointcloud.totpoint};
-    radius.varray.materialize(vbo_data);
-  }
+
+  MutableSpan vbo_data{static_cast<float *>(GPU_vertbuf_get_data(cache.eval_cache.radius)),
+                       pointcloud.totpoint};
+  radius.varray.materialize(vbo_data);
 }
 
 static void pointcloud_extract_attribute(const PointCloud &pointcloud,

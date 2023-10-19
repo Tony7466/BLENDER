@@ -12,10 +12,6 @@
 
 #include "BLI_utildefines.h"
 
-#ifdef __cplusplus
-#  include "BLI_implicit_sharing.hh"
-#endif
-
 #include "GPU_vertex_format.h"
 
 typedef enum {
@@ -106,15 +102,6 @@ void GPU_vertbuf_data_resize(GPUVertBuf *, uint v_len);
  * This is useful for streaming data.
  */
 void GPU_vertbuf_data_len_set(GPUVertBuf *, uint v_len);
-
-#ifdef __cplusplus
-
-void GPU_vertbuf_data_set_shared(GPUVertBuf *verts,
-                                 const blender::ImplicitSharingInfo &sharing_info,
-                                 const void *data,
-                                 uint v_len);
-
-#endif
 
 /**
  * The most important #set_attr variant is the untyped one. Get it right first.
