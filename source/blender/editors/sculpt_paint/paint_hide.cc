@@ -226,7 +226,7 @@ static void partialvis_update_bmesh_verts(BMesh *bm,
   }
 }
 
-static void partialvis_update_bmesh_faces(const blender::Set<BMFace *> faces)
+static void partialvis_update_bmesh_faces(const blender::Set<BMFace *> &faces)
 {
   for (BMFace *f : faces) {
     if (paint_is_bmesh_face_hidden(f)) {
