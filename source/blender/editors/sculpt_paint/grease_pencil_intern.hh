@@ -28,6 +28,8 @@ namespace greasepencil {
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
 
+int grease_pencil_stroke_cutter_exec(bContext *C, wmOperator *op);
+
 }  // namespace greasepencil
 
 }  // namespace blender::ed::sculpt_paint

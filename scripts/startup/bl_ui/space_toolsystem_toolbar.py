@@ -1751,6 +1751,24 @@ class _defs_paint_grease_pencil:
             data_block='ERASE',
         )
 
+    @ToolDef.from_fn
+    def cutter():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("grease_pencil.stroke_cutter")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "flat_caps")
+        
+        return dict(
+            idname="builtin.cutter",
+            label="Cutter",
+            icon="ops.gpencil.stroke_cutter",
+            cursor='KNIFE',
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
 
 class _defs_image_generic:
 
@@ -3012,6 +3030,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'EDIT_GREASE_PENCIL': [
             *_tools_select,
+            None,
+            # TODO: should be in 'PAINT_GREASE_PENCIL', but I can't get it to work
+            _defs_paint_grease_pencil.cutter,
         ],
         'PARTICLE': [
             *_tools_select,
@@ -3103,6 +3124,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_paint_grease_pencil.draw,
             _defs_paint_grease_pencil.erase,
+            # TODO
+            #_defs_paint_grease_pencil.cutter,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,

@@ -289,6 +289,28 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 }
 
+static void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  ot->name = "Grease Pencil Cutter";
+  ot->idname = "GREASE_PENCIL_OT_stroke_cutter";
+  ot->description = "Delete stroke points in between intersecting strokes";
+
+  ot->invoke = WM_gesture_lasso_invoke;
+  ot->modal = WM_gesture_lasso_modal;
+  ot->exec = greasepencil::grease_pencil_stroke_cutter_exec;
+  ot->poll = ed::greasepencil::editable_grease_pencil_poll;
+  ot->cancel = WM_gesture_lasso_cancel;
+
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  WM_operator_properties_gesture_lasso(ot);
+
+  prop = RNA_def_boolean(ot->srna, "flat_caps", false, "Flat Caps", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+}
+
 /** \} */
 
 }  // namespace blender::ed::sculpt_paint
@@ -302,6 +324,7 @@ void ED_operatortypes_grease_pencil_draw()
   using namespace blender::ed::sculpt_paint;
   WM_operatortype_append(GREASE_PENCIL_OT_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_draw_mode_toggle);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
 }
 
 /** \} */
