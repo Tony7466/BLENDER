@@ -741,7 +741,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_screen.hh"
 #  include "BKE_unit.h"
 
-#  include "NOD_composite.h"
+#  include "NOD_composite.hh"
 
 #  include "ED_image.hh"
 #  include "ED_info.hh"
@@ -2320,21 +2320,20 @@ static void rna_EditMesh_update(bContext *C, PointerRNA * /*ptr*/)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  Mesh *me = nullptr;
-
   BKE_view_layer_synced_ensure(scene, view_layer);
-  Object *object = BKE_view_layer_active_object_get(view_layer);
-  if (object) {
-    me = BKE_mesh_from_object(object);
-    if (me && me->edit_mesh == nullptr) {
-      me = nullptr;
-    }
-  }
 
-  if (me) {
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    Mesh *me = BKE_mesh_from_object(obedit);
+
     DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GEOM | ND_DATA, me);
   }
+
+  MEM_freeN(objects);
 }
 
 static char *rna_MeshStatVis_path(const PointerRNA * /*ptr*/)
@@ -8066,7 +8065,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "shadow_normal_bias", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, 0.1f, 0.001, 3);
-  RNA_def_property_ui_text(prop, "Shadow Normal Bias", "Move  along their normal");
+  RNA_def_property_ui_text(prop, "Shadow Normal Bias", "Move along their normal");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 

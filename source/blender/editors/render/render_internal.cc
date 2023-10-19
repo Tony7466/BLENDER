@@ -39,12 +39,12 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "DEG_depsgraph.hh"
 

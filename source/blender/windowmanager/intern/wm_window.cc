@@ -480,40 +480,54 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 
 void wm_window_title(wmWindowManager *wm, wmWindow *win)
 {
+  if (win->ghostwin == nullptr) {
+    return;
+  }
+
   if (WM_window_is_temp_screen(win)) {
     /* Nothing to do for 'temp' windows,
      * because #WM_window_open always sets window title. */
+    return;
   }
-  else if (win->ghostwin) {
-    GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
 
-    std::string filepath = BKE_main_blendfile_path_from_global();
-    std::string filename = BLI_path_basename(filepath.c_str());
-    bool has_filepath = !filepath.empty();
-    bool include_directory = has_filepath && (filepath != filename) &&
-                             GHOST_SetPath(handle, filepath.c_str()) == GHOST_kFailure;
+  GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
 
-    std::string str;
-    str += wm->file_saved ? " " : "* ";
-    str += has_filepath ? filename : IFACE_("(Unsaved)");
-    if (G_MAIN->recovered) {
-      str += IFACE_(" (Recovered)");
-    }
+  const char *filepath = BKE_main_blendfile_path_from_global();
+  const char *filename = BLI_path_basename(filepath);
 
-    if (include_directory) {
-      str += " [" + filepath.substr(0, filepath.length() - filename.length()) + "]";
-    }
+  const bool has_filepath = filepath[0] != '\0';
+  const bool include_filepath = has_filepath && (filepath != filename) &&
+                                (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
 
-    str += " - Blender ";
-    str += BKE_blender_version_string_compact();
-
-    GHOST_SetTitle(handle, str.c_str());
-
-    /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
-     * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
-     * terminate request (e.g., OS Shortcut Alt+F4, Command+Q, (...) or session end). */
-    GHOST_SetWindowModifiedState(handle, bool(!wm->file_saved));
+  std::string str;
+  str += wm->file_saved ? " " : "* ";
+  if (has_filepath) {
+    const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
+    str.append(filename, filename_no_ext_len);
   }
+  else {
+    str += IFACE_("(Unsaved)");
+  }
+
+  if (G_MAIN->recovered) {
+    str += IFACE_(" (Recovered)");
+  }
+
+  if (include_filepath) {
+    str += " [";
+    str += filepath;
+    str += "]";
+  }
+
+  str += " - Blender ";
+  str += BKE_blender_version_string_compact();
+
+  GHOST_SetTitle(handle, str.c_str());
+
+  /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
+   * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
+   * terminate request (e.g., OS Shortcut Alt+F4, Command+Q, (...) or session end). */
+  GHOST_SetWindowModifiedState(handle, bool(!wm->file_saved));
 }
 
 void WM_window_set_dpi(const wmWindow *win)
@@ -1963,6 +1977,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   if (ghost_flag & GHOST_kCapabilityDesktopSample) {
     flag |= WM_CAPABILITY_DESKTOP_SAMPLE;
   }
+  if (ghost_flag & GHOST_kCapabilityInputIME) {
+    flag |= WM_CAPABILITY_INPUT_IME;
+  }
 
   return flag;
 }
@@ -2725,6 +2742,9 @@ bool WM_window_is_temp_screen(const wmWindow *win)
 void wm_window_IME_begin(wmWindow *win, int x, int y, int w, int h, bool complete)
 {
   BLI_assert(win);
+  if ((WM_capabilities_flag() & WM_CAPABILITY_INPUT_IME) == 0) {
+    return;
+  }
 
   /* Convert to native OS window coordinates. */
   float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
@@ -2736,8 +2756,17 @@ void wm_window_IME_begin(wmWindow *win, int x, int y, int w, int h, bool complet
 
 void wm_window_IME_end(wmWindow *win)
 {
-  BLI_assert(win && win->ime_data);
+  if ((WM_capabilities_flag() & WM_CAPABILITY_INPUT_IME) == 0) {
+    return;
+  }
 
+  BLI_assert(win);
+  /* NOTE(@ideasman42): on WAYLAND a call to "begin" must be closed by an "end" call.
+   * Even if no IME events were generated (which assigned `ime_data`).
+   * TODO: check if #GHOST_EndIME can run on WIN32 & APPLE without causing problems. */
+#  if defined(WIN32) || defined(__APPLE__)
+  BLI_assert(win->ime_data);
+#  endif
   GHOST_EndIME(static_cast<GHOST_WindowHandle>(win->ghostwin));
   win->ime_data = nullptr;
   win->ime_data_is_composing = false;
