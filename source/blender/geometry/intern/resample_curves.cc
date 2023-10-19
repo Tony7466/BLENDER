@@ -436,6 +436,13 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   const Span<float3> evaluated_positions = src_curves.evaluated_positions();
   const OffsetIndices<int> evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
 
+  fn::FieldEvaluator evaluator{ field_context, src_curves.curves_num() };
+  evaluator.set_selection(selection_field);
+  evaluator.evaluate();
+  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  IndexMaskMemory memory;
+  const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
+
   Vector<float3> all_positions = {};
 
   // TODO: this can be threaded, per curve segment.
@@ -504,12 +511,25 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   //}
 
   CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+
+  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
+  const OffsetIndices src_evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
+
+  dst_curves.fill_curve_types(selection, CURVE_TYPE_POLY);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+  offset_indices::copy_group_sizes(src_evaluated_points_by_curve, selection, dst_offsets);
+  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_offsets);
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
+
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
   dst_positions.copy_from(all_positions.as_span());
 
   AttributesForInterpolation attributes;
   gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
+
+  copy_or_defaults_for_unselected_curves(src_curves, unselected, attributes, dst_curves);
 
   for (bke::GSpanAttributeWriter& attribute : attributes.dst_attributes) {
     attribute.finish();
