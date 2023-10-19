@@ -238,12 +238,13 @@ struct GeometrySet {
                                                          bool ignore_empty) const;
 
   /**
-   * Modify all "real" (non-instance) geometries in their local space. The same real geometry may
-   * be used by many instances, but is only processed once. Hence, context from the instances (e.g.
-   * instance position) can't be taken into account.
+   * Invokes the given function for all "real" (non-instance) geometries in their local space. The
+   * function can then modify it inplace. The same real geometry may be used by many instances, but
+   * is only processed once. Hence, context from the instances (e.g. instance position) can't be
+   * taken into account.
    *
    * The given function is invoked for all separate geometry-sets independently. It may be called
-   * from multiple threads for different geometry-sets at the same time.
+   * from multiple threads at the same time.
    *
    * The geometry-set passed to the function may contain any component type *except* for instances.
    * That is because the geometry of those instances is processed independently.

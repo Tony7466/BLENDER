@@ -25,6 +25,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+/* TODO: Figure out how to do this properly. */
 #include "../geometry/GEO_join_geometries.hh"
 
 #include "BLI_rand.hh"
@@ -726,37 +727,37 @@ static void gather_mutable_geometry_sets(GeometrySet &geometry_set,
   }
 }
 
-static void modify_geometry_set(GeometrySet &geometry,
-                                const FunctionRef<void(GeometrySet &geometry_set)> fn)
-{
-  const InstancesComponent *old_instances_component = geometry.get_component<InstancesComponent>();
-  if (old_instances_component == nullptr) {
-    fn(geometry);
-    return;
-  }
-  /* Extract old instances. */
-  GeometrySet old_instances_geometry;
-  old_instances_geometry.add(*old_instances_component);
-  geometry.remove<InstancesComponent>();
-
-  fn(geometry);
-
-  /* Join original instances back. The new instances are concatenated at the end. */
-  geometry = geometry::join_geometries({old_instances_geometry, geometry},
-                                       AnonymousAttributePropagationInfo{});
-}
-
 void GeometrySet::modify_real_geometries(const FunctionRef<void(GeometrySet &geometry_set)> fn)
 {
   Vector<GeometrySet *> geometry_sets;
   gather_mutable_geometry_sets(*this, geometry_sets);
+
+  /* Extract old instances, they are added back in the end. */
+  Array<GeometrySet> old_instances(geometry_sets.size());
+  for (const int i : geometry_sets.index_range()) {
+    GeometrySet &geometry = *geometry_sets[i];
+    if (const InstancesComponent *component = geometry.get_component<InstancesComponent>()) {
+      old_instances[i].add(*component);
+      geometry.remove<InstancesComponent>();
+    }
+  }
+
   if (geometry_sets.size() == 1) {
     /* Avoid possible overhead and a large call stack when multithreading is pointless. */
-    modify_geometry_set(*geometry_sets.first(), fn);
+    fn(*geometry_sets.first());
   }
   else {
-    threading::parallel_for_each(
-        geometry_sets, [&](GeometrySet *geometry_set) { modify_geometry_set(*geometry_set, fn); });
+    threading::parallel_for_each(geometry_sets,
+                                 [&](GeometrySet *geometry_set) { fn(*geometry_set); });
+  }
+
+  /* Join back original instances. */
+  for (const int i : geometry_sets.index_range()) {
+    GeometrySet &geometry = *geometry_sets[i];
+    GeometrySet &instances = old_instances[i];
+
+    geometry = geometry::join_geometries({instances, geometry},
+                                         AnonymousAttributePropagationInfo());
   }
 }
 
