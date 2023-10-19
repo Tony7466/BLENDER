@@ -1147,6 +1147,16 @@ void IMB_exr_clear_channels(void *handle)
   BLI_freelistN(&data->channels);
 }
 
+void IMB_exr_free_channels_buffer(void *handle,
+                                  void (*free_callback)(const char *name, float *buffer))
+{
+  ExrHandle *data = (ExrHandle *)handle;
+
+  LISTBASE_FOREACH (ExrChannel *, channel, &data->channels) {
+    free_callback(channel->name, channel->rect);
+  }
+}
+
 void IMB_exr_write_channels(void *handle)
 {
   ExrHandle *data = (ExrHandle *)handle;

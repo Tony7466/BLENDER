@@ -10,6 +10,7 @@ if(WITH_COMPOSITOR_CPU)
     intern
     nodes
     operations
+    realtime_compositor
     ../blenkernel
     ../blentranslation
     ../depsgraph

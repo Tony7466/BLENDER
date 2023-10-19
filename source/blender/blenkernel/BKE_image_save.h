@@ -79,7 +79,9 @@ bool BKE_image_render_write(struct ReportList *reports,
                             struct RenderResult *rr,
                             const struct Scene *scene,
                             const bool stamp,
-                            const char *filepath_basis);
+                            const char *filepath_basis,
+                            const struct ImageFormatData *source_format = nullptr,
+                            bool save_as_render = true);
 
 #ifdef __cplusplus
 }

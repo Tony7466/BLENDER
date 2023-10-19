@@ -38,6 +38,10 @@
 #  include "COM_compositor.hh"
 #endif
 
+namespace blender::realtime_compositor {
+class RenderContext;
+}
+
 static void composite_get_from_context(
     const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
@@ -179,12 +183,13 @@ void ntreeCompositExecTree(Render *render,
                            RenderData *rd,
                            bool rendering,
                            int do_preview,
-                           const char *view_name)
+                           const char *view_name,
+                           blender::realtime_compositor::RenderContext *render_context)
 {
 #ifdef WITH_COMPOSITOR_CPU
-  COM_execute(render, rd, scene, ntree, rendering, view_name);
+  COM_execute(render, rd, scene, ntree, rendering, view_name, render_context);
 #else
-  UNUSED_VARS(render, scene, ntree, rd, rendering, view_name);
+  UNUSED_VARS(render, scene, ntree, rd, rendering, view_name, render_context);
 #endif
 
   UNUSED_VARS(do_preview);

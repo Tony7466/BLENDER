@@ -84,6 +84,8 @@ void IMB_exrtile_write_channels(void * /*handle*/,
 {
 }
 void IMB_exr_clear_channels(void * /*handle*/) {}
+void IMB_exr_free_channels_buffer(void * /*handle*/,
+                                  void (* /* free_callback */)(const char *name, float *buffer));
 
 void IMB_exr_multilayer_convert(void * /*handle*/,
                                 void * /*base*/,

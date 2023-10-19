@@ -16,6 +16,10 @@
 
 #include "RE_compositor.hh"
 
+namespace blender::realtime_compositor {
+class RenderContext;
+}
+
 static struct {
   bool is_initialized = false;
   ThreadMutex mutex;
@@ -54,7 +58,8 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  bool rendering,
-                 const char *view_name)
+                 const char *view_name,
+                 blender::realtime_compositor::RenderContext *render_context)
 {
   /* Initialize mutex, TODO: this mutex init is actually not thread safe and
    * should be done somewhere as part of blender startup, all the other
@@ -80,7 +85,8 @@ void COM_execute(Render *render,
       node_tree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
   {
     /* Realtime GPU compositor. */
-    RE_compositor_execute(*render, *scene, *render_data, *node_tree, rendering, view_name);
+    RE_compositor_execute(
+        *render, *scene, *render_data, *node_tree, rendering, view_name, render_context);
   }
   else {
     /* Tiled and Full Frame compositors. */
