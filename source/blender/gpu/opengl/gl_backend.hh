@@ -29,6 +29,8 @@
 #include "gl_uniform_buffer.hh"
 #include "gl_vertex_buffer.hh"
 
+#include "shaderc/shaderc.hpp"
+
 namespace blender {
 namespace gpu {
 
@@ -38,6 +40,7 @@ class GLBackend : public GPUBackend {
 #ifdef WITH_RENDERDOC
   renderdoc::api::Renderdoc renderdoc_;
 #endif
+  shaderc::Compiler shaderc_compiler_;
 
  public:
   GLBackend()
@@ -165,6 +168,8 @@ class GLBackend : public GPUBackend {
 
   bool debug_capture_begin();
   void debug_capture_end();
+
+  shaderc::Compiler &get_shaderc_compiler();
 
  private:
   static void platform_init();

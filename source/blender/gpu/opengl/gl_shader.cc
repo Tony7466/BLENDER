@@ -1125,7 +1125,7 @@ char *GLShader::glsl_patch_get(GLenum gl_stage)
   return glsl_patch_default_get();
 }
 
-GLuint GLShader::create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources)
+GLuint GLShader::compile_stage_using_driver(GLenum gl_stage, MutableSpan<const char *> sources)
 {
   GLuint shader = glCreateShader(gl_stage);
   if (shader == 0) {
@@ -1172,6 +1172,79 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage, MutableSpan<const char *> 
 
   glAttachShader(shader_program_, shader);
   return shader;
+}
+
+static std::string combine_sources(Span<const char *> sources)
+{
+  char *sources_combined = BLI_string_join_arrayN((const char **)sources.data(), sources.size());
+  std::string result(sources_combined);
+  MEM_freeN(sources_combined);
+  return result;
+}
+
+GLuint GLShader::compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const char *> sources)
+{
+  std::string combined_sources = combine_sources(sources);
+  VKBackend &backend = VKBackend::get();
+  shaderc::Compiler &compiler = backend.get_shaderc_compiler();
+  shaderc::CompileOptions options;
+  options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    options.SetOptimizationLevel(shaderc_optimization_level_zero);
+    options.SetGenerateDebugInfo();
+  }
+
+  GLuint shader = glCreateShader(gl_stage);
+  if (shader == 0) {
+    fprintf(stderr, "GLShader: Error: Could not create shader object.\n");
+    return 0;
+  }
+
+  /* Patch the shader code using the first source slot. */
+  sources[0] = glsl_patch_get(gl_stage);
+
+  glShaderSource(shader, sources.size(), sources.data(), nullptr);
+  glCompileShader(shader);
+
+  GLint status;
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+  if (!status || (G.debug & G_DEBUG_GPU)) {
+    char log[5000] = "";
+    glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
+    if (log[0] != '\0') {
+      GLLogParser parser;
+      switch (gl_stage) {
+        case GL_VERTEX_SHADER:
+          this->print_log(sources, log, "VertShader", !status, &parser);
+          break;
+        case GL_GEOMETRY_SHADER:
+          this->print_log(sources, log, "GeomShader", !status, &parser);
+          break;
+        case GL_FRAGMENT_SHADER:
+          this->print_log(sources, log, "FragShader", !status, &parser);
+          break;
+        case GL_COMPUTE_SHADER:
+          this->print_log(sources, log, "ComputeShader", !status, &parser);
+          break;
+      }
+    }
+  }
+  if (!status) {
+    glDeleteShader(shader);
+    compilation_failed_ = true;
+    return 0;
+  }
+
+  debug::object_label(gl_stage, shader, name);
+
+  glAttachShader(shader_program_, shader);
+  return shader;
+}
+
+GLuint GLShader::create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources)
+{
+  return compile_stage_using_driver(gl_stage, sources);
 }
 
 void GLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)

@@ -263,6 +263,7 @@ static void detect_workarounds()
     GLContext::texture_filter_anisotropic_support = false;
     GCaps.shader_draw_parameters_support = false;
     GLContext::shader_draw_parameters_support = false;
+    GLContext::spir_v_support = false;
     /* Although an OpenGL 4.3 feature, our implementation requires shader_draw_parameters_support.
      * NOTE: we should untangle this by checking both features for clarity. */
     GLContext::multi_draw_indirect_support = false;
@@ -494,6 +495,7 @@ bool GLContext::texture_filter_anisotropic_support = false;
 bool GLContext::texture_gather_support = false;
 bool GLContext::texture_storage_support = false;
 bool GLContext::vertex_attrib_binding_support = false;
+bool GLContext::spir_v_support = false;
 
 /** Workarounds. */
 
@@ -594,6 +596,7 @@ void GLBackend::capabilities_init()
   GLContext::texture_storage_support = epoxy_gl_version() >= 43;
   GLContext::vertex_attrib_binding_support = epoxy_has_gl_extension(
       "GL_ARB_vertex_attrib_binding");
+  GLContext::spir_v_support = epoxy_has_gl_extension("GL_ARB_gl_spirv");
 
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;

@@ -92,6 +92,8 @@ class GLShader : public Shader {
 
   /** Create, compile and attach the shader stage to the shader program. */
   GLuint create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources);
+  GLuint compile_stage_using_driver(GLenum gl_stage, MutableSpan<const char *> sources);
+  GLuint compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const char *> sources);
 
   /**
    * \brief features available on newer implementation such as native barycentric coordinates
