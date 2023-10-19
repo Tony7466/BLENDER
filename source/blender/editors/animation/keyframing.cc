@@ -795,20 +795,38 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static void construct_rna_paths(blender::Vector<std::string> &r_paths, ID *id)
+static blender::Vector<std::string> construct_rna_paths(Object *ob)
 {
+  blender::Vector<std::string> r_paths;
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
     r_paths.append("location");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
-    r_paths.append("rotation_euler");
+    switch (ob->rotmode) {
+      case ROT_MODE_QUAT:
+        r_paths.append("rotation_quaternion");
+        break;
+      case ROT_MODE_AXISANGLE:
+        r_paths.append("rotation_axis_angle");
+        break;
+      case ROT_MODE_XYZ:
+      case ROT_MODE_XZY:
+      case ROT_MODE_YXZ:
+      case ROT_MODE_YZX:
+      case ROT_MODE_ZXY:
+      case ROT_MODE_ZYX:
+        r_paths.append("rotation_euler");
+      default:
+        break;
+    }
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
     r_paths.append("scale");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     /* Magic needed? */
+    // id->properties
   }
 }
 
@@ -840,8 +858,8 @@ static int insert_key_foo(bContext *C, wmOperator *op)
       continue;
     }
     PointerRNA id_ptr = RNA_id_pointer_create(selected_id);
-    Vector<std::string> rna_paths;
-    construct_rna_paths(rna_paths, selected_id);
+    Object *ob = static_cast<Object *>(object_ptr_link->ptr.data);
+    Vector<std::string> rna_paths = construct_rna_paths(ob);
     for (const std::string &rna_path : rna_paths) {
       PointerRNA ptr;
       PropertyRNA *prop = nullptr;
