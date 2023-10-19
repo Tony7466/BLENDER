@@ -230,9 +230,7 @@ Vector<float> visualkey_get_values(PointerRNA *ptr, PropertyRNA *prop)
     Object *ob = static_cast<Object *>(ptr->data);
     /* Loc code is specific... */
     if (strstr(identifier, "location")) {
-      for (int i = 0; i < 3; i++) {
-        values.append(ob->object_to_world[3][i]);
-      }
+      values.extend({ob->object_to_world[3], 3});
       return values;
     }
 
@@ -249,9 +247,7 @@ Vector<float> visualkey_get_values(PointerRNA *ptr, PropertyRNA *prop)
     if (strstr(identifier, "location")) {
       /* only use for non-connected bones */
       if ((pchan->bone->parent == nullptr) || !(pchan->bone->flag & BONE_CONNECTED)) {
-        for (int i = 0; i < 3; i++) {
-          values.append(tmat[3][i]);
-        }
+        values.extend({tmat[3], 3});
         return values;
       }
     }
@@ -264,18 +260,14 @@ Vector<float> visualkey_get_values(PointerRNA *ptr, PropertyRNA *prop)
   if (strstr(identifier, "rotation_euler")) {
     float buffer[3];
     mat4_to_eulO(buffer, rotmode, tmat);
-    for (int i = 0; i < 3; i++) {
-      values.append(buffer[i]);
-    }
+    values.extend({buffer, 3});
     return values;
   }
 
   if (strstr(identifier, "rotation_quaternion")) {
     float buffer[4];
     mat4_to_quat(buffer, tmat);
-    for (int i = 0; i < 4; i++) {
-      values.append(buffer[i]);
-    }
+    values.extend({buffer, 4});
     return values;
   }
 
@@ -283,18 +275,14 @@ Vector<float> visualkey_get_values(PointerRNA *ptr, PropertyRNA *prop)
     /* w = 0, x,y,z = 1,2,3 */
     float buffer[4];
     mat4_to_axis_angle(buffer + 1, buffer, tmat);
-    for (int i = 0; i < 4; i++) {
-      values.append(buffer[i]);
-    }
+    values.extend({buffer, 4});
     return values;
   }
 
   if (strstr(identifier, "scale")) {
     float buffer[3];
     mat4_to_size(buffer, tmat);
-    for (int i = 0; i < 3; i++) {
-      values.append(buffer[i]);
-    }
+    values.extend({buffer, 3});
     return values;
   }
 

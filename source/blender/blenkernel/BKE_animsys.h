@@ -261,7 +261,7 @@ struct NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
 void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
                                            struct PointerRNA *prop_ptr,
                                            struct PropertyRNA *prop,
-                                           const blender::MutableSpan<float> &values,
+                                           const blender::MutableSpan<float> values,
                                            int index,
                                            const struct AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,

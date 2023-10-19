@@ -583,15 +583,12 @@ blender::Vector<float> ANIM_setting_get_rna_values(PointerRNA *ptr, PropertyRNA 
         break;
       }
       case PROP_FLOAT: {
-        float *tmp_float = static_cast<float *>(
-            MEM_malloc_arrayN(length, sizeof(float), __func__));
-        RNA_property_float_get_array(ptr, prop, tmp_float);
-        for (int i = 0; i < length; i++) {
-          values.append(tmp_float[i]);
-        }
+        values = blender::Vector<float>(length);
+        RNA_property_float_get_array(ptr, prop, &values[0]);
         break;
       }
       default:
+        values = blender::Vector<float>(length);
         break;
     }
   }
@@ -610,7 +607,7 @@ blender::Vector<float> ANIM_setting_get_rna_values(PointerRNA *ptr, PropertyRNA 
         values.append(float(RNA_property_enum_get(ptr, prop)));
         break;
       default:
-        break;
+        values.append(0.0f);
     }
   }
 
