@@ -654,6 +654,7 @@ ccl_device
       break;
     }
 #ifdef __HAIR__
+#  ifdef __PRINCIPLED_HAIR__
     case CLOSURE_BSDF_HAIR_CHIANG_ID:
     case CLOSURE_BSDF_HAIR_HUANG_ID: {
       uint4 data_node2 = read_node(kg, &offset);
@@ -806,6 +807,7 @@ ccl_device
       }
       break;
     }
+#  endif /* __PRINCIPLED_HAIR__ */
     case CLOSURE_BSDF_HAIR_REFLECTION_ID:
     case CLOSURE_BSDF_HAIR_TRANSMISSION_ID: {
       Spectrum weight = closure_weight * mix_weight;
