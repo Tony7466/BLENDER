@@ -99,7 +99,7 @@ static void join_attributes(const Span<const GeometryComponent *> src_components
 static void join_instances(const Span<const GeometryComponent *> src_components,
                            GeometrySet &result)
 {
-  Array<int> offsets_data(src_components.size());
+  Array<int> offsets_data(src_components.size() + 1);
   for (const int i : src_components.index_range()) {
     const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
     offsets_data[i] = src_component.get()->instances_num();
