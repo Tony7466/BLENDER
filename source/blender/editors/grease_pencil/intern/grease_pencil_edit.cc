@@ -914,7 +914,9 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
         }
 
         /* Remove the attribute if it is empty. */
-        if (!ed::curves::has_anything_selected(curves.cyclic(), curves.curves_range())) {
+        if (mode != CyclicalMode::CLOSE &&
+            !ed::curves::has_anything_selected(curves.cyclic(), curves.curves_range()))
+        {
           curves.attributes_for_write().remove("cyclic");
         }
 
