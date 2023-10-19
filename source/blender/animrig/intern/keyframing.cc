@@ -1100,7 +1100,7 @@ static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value
 int action_insert_key(bAction *action,
                       std::string rna_path,
                       const float frame,
-                      const blender::Vector<float> &values)
+                      const Vector<float> &values)
 {
   BLI_assert(action != nullptr);
 

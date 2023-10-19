@@ -153,6 +153,6 @@ bool autokeyframe_property(bContext *C,
 int action_insert_key(bAction *action,
                       std::string rna_path,
                       float frame,
-                      const blender::Vector<float> &values);
+                      const Vector<float> &values);
 
 }  // namespace blender::animrig
