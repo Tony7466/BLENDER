@@ -646,6 +646,12 @@ static void rna_float_print(FILE *f, float num)
   else if ((fabsf(num) < float(INT64_MAX)) && (int64_t(num) == num)) {
     fprintf(f, "%.1ff", num);
   }
+  else if (num == std::numeric_limits<float>::infinity()) {
+    fprintf(f, "std::numeric_limits<float>::infinity()");
+  }
+  else if (num == -std::numeric_limits<float>::infinity()) {
+    fprintf(f, "-std::numeric_limits<float>::infinity()");
+  }
   else {
     fprintf(f, "%.10ff", num);
   }
@@ -4223,7 +4229,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       StructRNA *type = rna_find_struct((const char *)pprop->type);
       if (type && (type->flag & STRUCT_ID) &&
           !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
-        prop->flag |= PROP_PTR_NO_OWNERSHIP;
+        RNA_def_property_flag(prop, PROP_PTR_NO_OWNERSHIP);
       }
       break;
     }
@@ -4235,7 +4241,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       StructRNA *type = rna_find_struct((const char *)cprop->item_type);
       if (type && (type->flag & STRUCT_ID) &&
           !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
-        prop->flag |= PROP_PTR_NO_OWNERSHIP;
+        RNA_def_property_flag(prop, PROP_PTR_NO_OWNERSHIP);
       }
       break;
     }

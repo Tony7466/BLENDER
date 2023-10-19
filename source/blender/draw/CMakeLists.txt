@@ -685,6 +685,7 @@ set(GLSL_SRC
   intern/draw_shader_shared.h
 
   engines/gpencil/shaders/gpencil_frag.glsl
+  engines/gpencil/shaders/grease_pencil_frag.glsl
   engines/gpencil/shaders/gpencil_vert.glsl
   engines/gpencil/shaders/grease_pencil_vert.glsl
   engines/gpencil/shaders/gpencil_antialiasing_frag.glsl
@@ -694,6 +695,7 @@ set(GLSL_SRC
   engines/gpencil/shaders/gpencil_mask_invert_frag.glsl
   engines/gpencil/shaders/gpencil_depth_merge_frag.glsl
   engines/gpencil/shaders/gpencil_depth_merge_vert.glsl
+  engines/gpencil/shaders/grease_pencil_depth_merge_vert.glsl
   engines/gpencil/shaders/gpencil_vfx_frag.glsl
 
   engines/gpencil/gpencil_defines.h
