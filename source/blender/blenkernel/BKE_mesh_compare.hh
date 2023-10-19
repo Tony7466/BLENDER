@@ -20,21 +20,21 @@ enum class MeshMismatch : int8_t;
 const char *mismatch_to_string(const MeshMismatch &mismatch);
 
 /**
- * \brief Checks if the two meshes are different, even up to a change of indices.
+ * \brief Checks if the two meshes are different, returning the type of mismatch if any. Changes in
+ * index order are detected, but treated as a mismatch.
  *
- * \details Two meshes are considered the same, if, for each domain, there is a bijection between
- * the two meshes such that the bijections preserve connectivity.
+ * \details Instead of just blindly comparing the two meshes, the code tries to determine if they
+ * are isomorphic. Two meshes are considered isomorphic, if, for each domain, there is a bijection
+ * between the two meshes such that the bijections preserve connectivity.
  *
  * In general, determining if two graphs are isomorphic is a very difficult problem (no polynomial
  * time algorithm is known). Because we have more information than just connectivity (attributes),
  * we can compute it in a more reasonable time in most cases.
  *
  * \returns The type of mismatch that was detected, if there is any.
- *
- * \warning This assumes that the mesh is of decent quality: no zero-size edges or faces.
  */
-std::optional<MeshMismatch> meshes_unisomorphic(const Mesh &mesh1,
-                                                const Mesh &mesh2,
-                                                const float threshold);
+std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1,
+                                           const Mesh &mesh2,
+                                           const float threshold);
 
 }  // namespace blender::bke::mesh

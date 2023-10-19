@@ -29,6 +29,7 @@ enum class MeshMismatch : int8_t {
   FaceTopology,     /* The face topology is different. */
   Attributes,       /* The sets of attribute ids are different. */
   AttributeTypes,   /* Some attributes with the same name have different types. */
+  Indices,          /* The meshes are the same up to a change of indices. */
 };
 
 const char *mismatch_to_string(const MeshMismatch &mismatch)
@@ -58,6 +59,8 @@ const char *mismatch_to_string(const MeshMismatch &mismatch)
       return "The sets of attribute ids are different";
     case MeshMismatch::AttributeTypes:
       return "Some attributes with the same name have different types";
+    case MeshMismatch::Indices:
+      return "The meshes are the same up to a change of indices";
   }
   BLI_assert_unreachable();
   return "";
@@ -612,6 +615,39 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
   return std::nullopt;
 }
 
+/* When all checks are done, it's possible that some set sizes are still not one e.g, when you have
+ * two loose verts at the same position they are indistinguishable. This makes all the set ID's one
+ * by choosing a match. If possible, the match is chosen such that they have the same unsorted
+ * index.
+ */
+static void make_set_sizes_one(IndexMapping &indices)
+{
+  for (const int sorted_i : indices.set_sizes.index_range()) {
+    if (indices.set_sizes[sorted_i] == 1) {
+      continue;
+    }
+    int match = sorted_i;
+    for (const int other_index :
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
+    {
+      if (indices.from_sorted1[sorted_i] == indices.from_sorted2[other_index]) {
+        match = other_index;
+        break;
+      }
+    }
+    std::swap(indices.from_sorted2[sorted_i], indices.from_sorted2[match]);
+    for (const int other_set_i :
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
+    {
+      /* New first element, since this one is now in a new set. */
+      indices.set_ids[other_set_i] = sorted_i + 1;
+      indices.set_sizes[other_set_i] -= 1;
+    }
+    indices.set_ids[sorted_i] = sorted_i;
+    indices.set_sizes[sorted_i] = 1;
+  }
+}
+
 static bool all_set_sizes_one(const Span<int> set_sizes)
 {
   for (const int size : set_sizes) {
@@ -695,9 +731,18 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
 
     /* In principle, we should make sure that there is exactly one matching vertex. If the mesh is
      * of good enough quality, that will always be the case. In other cases we just assume that any
-     * choice will be valid. Otherwise, the logic becomes a lot more difficult. */
-    const int set_i = matching_verts.first();
-    std::swap(verts.from_sorted2[sorted_i], verts.from_sorted2[verts.set_ids[sorted_i] + set_i]);
+     * choice will be valid. Otherwise, the logic becomes a lot more difficult. Because we want to
+     * test for mesh equality as well, we try to pick the matching vert with the same index. */
+    int index_in_set = matching_verts.first();
+    for (const int other_index_in_set : matching_verts) {
+      const int other_sorted_index = verts.set_ids[sorted_i] + other_index_in_set;
+      if (verts.from_sorted1[sorted_i] == verts.from_sorted2[other_sorted_index]) {
+        index_in_set = other_index_in_set;
+        break;
+      }
+    }
+    std::swap(verts.from_sorted2[sorted_i],
+              verts.from_sorted2[verts.set_ids[sorted_i] + index_in_set]);
     for (const int other_set_i : IndexRange(verts.set_ids[sorted_i], verts.set_sizes[sorted_i])) {
       /* New first element, since this one is now in a new set. */
       verts.set_ids[other_set_i] = sorted_i + 1;
@@ -718,9 +763,9 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
   return std::nullopt;
 }
 
-std::optional<MeshMismatch> meshes_unisomorphic(const Mesh &mesh1,
-                                                const Mesh &mesh2,
-                                                const float threshold)
+std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1,
+                                           const Mesh &mesh2,
+                                           const float threshold)
 {
 
   /* These will be assumed implicitly later on. */
@@ -814,7 +859,7 @@ std::optional<MeshMismatch> meshes_unisomorphic(const Mesh &mesh1,
     return MeshMismatch::EdgeTopology;
   }
 
-  BLI_assert(all_set_sizes_one(edges.set_sizes));
+  make_set_sizes_one(edges);
 
   edges.recalculate_inverse_maps();
 
@@ -826,12 +871,37 @@ std::optional<MeshMismatch> meshes_unisomorphic(const Mesh &mesh1,
     return MeshMismatch::FaceTopology;
   }
 
+  make_set_sizes_one(corners);
+
   corners.recalculate_inverse_maps();
 
   if (!sort_faces_based_on_corners(corners, mesh1.face_offsets(), mesh2.face_offsets(), faces)) {
     return MeshMismatch::FaceTopology;
   }
 
+  make_set_sizes_one(faces);
+
+  /* The meshes are isomorphic, we now just need to determine if they are equal i.e., the indices
+   * are the same. */
+  for (const int sorted_i : verts.from_sorted1.index_range()) {
+    if (verts.from_sorted1[sorted_i] != verts.from_sorted2[sorted_i]) {
+      return MeshMismatch::Indices;
+    }
+  }
+  /* Skip the test for edges, since a lot of tests actually have different edge indices.
+   *TODO: remove this once those tests have been updated. */
+  for (const int sorted_i : corners.from_sorted1.index_range()) {
+    if (corners.from_sorted1[sorted_i] != corners.from_sorted2[sorted_i]) {
+      return MeshMismatch::Indices;
+    }
+  }
+  for (const int sorted_i : faces.from_sorted1.index_range()) {
+    if (faces.from_sorted1[sorted_i] != faces.from_sorted2[sorted_i]) {
+      return MeshMismatch::Indices;
+    }
+  }
+
+  /* No mismatches found. */
   return std::nullopt;
 }
 
