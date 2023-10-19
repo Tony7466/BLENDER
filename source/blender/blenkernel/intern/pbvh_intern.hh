@@ -114,9 +114,9 @@ struct PBVHNode {
    * NOTE: PBVH_BMESH only. Faces are always triangles
    * (dynamic topology forcibly triangulates the mesh).
    */
-  blender::Set<BMFace *> bm_faces;
-  blender::Set<BMVert *> bm_unique_verts;
-  blender::Set<BMVert *> bm_other_verts;
+  blender::Set<BMFace *, 0> bm_faces;
+  blender::Set<BMVert *, 0> bm_unique_verts;
+  blender::Set<BMVert *, 0> bm_other_verts;
 
   /* Deprecated. Stores original coordinates of triangles. */
   float (*bm_orco)[3] = nullptr;

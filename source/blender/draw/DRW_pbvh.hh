@@ -70,7 +70,7 @@ struct PBVH_GPU_Args {
   PBVHNode *node;
 
   /* BMesh. */
-  const blender::Set<BMFace *> *bm_faces;
+  const blender::Set<BMFace *, 0> *bm_faces;
   int cd_mask_layer;
 };
 

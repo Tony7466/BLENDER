@@ -198,7 +198,7 @@ static void partialvis_update_grids(Depsgraph *depsgraph,
 }
 
 static void partialvis_update_bmesh_verts(BMesh *bm,
-                                          const blender::Set<BMVert *> &verts,
+                                          const blender::Set<BMVert *, 0> &verts,
                                           PartialVisAction action,
                                           PartialVisArea area,
                                           float planes[4][4],
@@ -226,7 +226,7 @@ static void partialvis_update_bmesh_verts(BMesh *bm,
   }
 }
 
-static void partialvis_update_bmesh_faces(const blender::Set<BMFace *> &faces)
+static void partialvis_update_bmesh_faces(const blender::Set<BMFace *, 0> &faces)
 {
   for (BMFace *f : faces) {
     if (paint_is_bmesh_face_hidden(f)) {

@@ -298,8 +298,8 @@ static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int nod
   }
 
   /* Enforce at least one primitive in each node */
-  blender::Set<BMFace *> *empty = nullptr;
-  blender::Set<BMFace *> *other;
+  blender::Set<BMFace *, 0> *empty = nullptr;
+  blender::Set<BMFace *, 0> *other;
   if (c1->bm_faces.is_empty()) {
     empty = &c1->bm_faces;
     other = &c2->bm_faces;
@@ -1986,17 +1986,17 @@ void BKE_pbvh_node_mark_topology_update(PBVHNode *node)
   node->flag |= PBVH_UpdateTopology;
 }
 
-const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node)
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node)
 {
   return node->bm_unique_verts;
 }
 
-const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node)
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node)
 {
   return node->bm_other_verts;
 }
 
-const blender::Set<BMFace *> &BKE_pbvh_bmesh_node_faces(PBVHNode *node)
+const blender::Set<BMFace *, 0> &BKE_pbvh_bmesh_node_faces(PBVHNode *node)
 {
   return node->bm_faces;
 }

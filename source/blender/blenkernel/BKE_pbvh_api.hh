@@ -433,9 +433,9 @@ bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, PBVHFrustumPlanes *frust
  */
 bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *frustum);
 
-const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
-const blender::Set<BMVert *> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
-const blender::Set<BMFace *> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
+const blender::Set<BMFace *, 0> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
 
 /**
  * In order to perform operations on the original node coordinates
@@ -518,10 +518,10 @@ struct PBVHVertexIter {
   bool is_mesh;
 
   /* bmesh */
-  std::optional<blender::Set<BMVert *>::Iterator> bm_unique_verts;
-  std::optional<blender::Set<BMVert *>::Iterator> bm_unique_verts_end;
-  std::optional<blender::Set<BMVert *>::Iterator> bm_other_verts;
-  std::optional<blender::Set<BMVert *>::Iterator> bm_other_verts_end;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_unique_verts;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_unique_verts_end;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_other_verts;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_other_verts_end;
   CustomData *bm_vdata;
   int cd_vert_mask_offset;
 
@@ -623,7 +623,7 @@ struct PBVHFaceIter {
   const PBVHNode *node_;
   PBVHType pbvh_type_;
   int verts_size_;
-  std::optional<blender::Set<BMFace *>::Iterator> bm_faces_iter_;
+  std::optional<blender::Set<BMFace *, 0>::Iterator> bm_faces_iter_;
   int cd_hide_poly_, cd_face_set_;
   bool *hide_poly_;
   int *face_sets_;
