@@ -367,8 +367,8 @@ void BKE_object_dimensions_set(Object *ob, const float value[3], int axis_mask);
 
 void BKE_object_empty_draw_type_set(Object *ob, int value);
 
-void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval);
-bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob);
+std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bounds(
+    const Object *ob);
 void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], bool use_hidden);
 bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
                              Scene *scene,

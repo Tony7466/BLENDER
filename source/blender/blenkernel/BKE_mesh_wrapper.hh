@@ -15,7 +15,7 @@ Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
                                      const CustomData_MeshMasks *cd_mask_extra,
                                      const Mesh *me_settings);
 void BKE_mesh_wrapper_ensure_mdata(Mesh *me);
-bool BKE_mesh_wrapper_minmax(const Mesh *me, float min[3], float max[3]);
+std::optional<blender::Bounds<blender::float3>> BKE_mesh_wrapper_minmax(const Mesh *me);
 
 int BKE_mesh_wrapper_vert_len(const Mesh *me);
 int BKE_mesh_wrapper_edge_len(const Mesh *me);

@@ -30,8 +30,6 @@ void BKE_volumes_init(void);
 void BKE_volume_init_grids(struct Volume *volume);
 void *BKE_volume_add(struct Main *bmain, const char *name);
 
-struct BoundBox *BKE_volume_boundbox_get(struct Object *ob);
-
 bool BKE_volume_is_y_up(const struct Volume *volume);
 bool BKE_volume_is_points_only(const struct Volume *volume);
 
@@ -165,8 +163,9 @@ bool BKE_volume_save(const struct Volume *volume,
 
 #ifdef __cplusplus
 
+#  include "BLI_bounds.hh"
 #  include "BLI_math_vector_types.hh"
 
-bool BKE_volume_min_max(const Volume *volume, blender::float3 &r_min, blender::float3 &r_max);
+std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume);
 
 #endif

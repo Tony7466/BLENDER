@@ -1989,13 +1989,25 @@ static void rna_Object_shaderfx_clear(Object *object, bContext *C)
 
 static void rna_Object_boundbox_get(PointerRNA *ptr, float *values)
 {
-  Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob)) {
-    memcpy(values, bb->vec, sizeof(bb->vec));
+  using namespace blender;
+  const Object *ob = reinterpret_cast<const Object *>(ptr->owner_id);
+  std::optional<Bounds<float3>> bounds;
+
+  if (ob->id.tag & LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT) {
+    bounds = BKE_object_boundbox_get(ob);
   }
   else {
-    copy_vn_fl(values, sizeof(bb->vec) / sizeof(float), 0.0f);
+    bounds = *ob->runtime.bb;
   }
+
+  if (!bounds) {
+    copy_vn_fl(values, sizeof(bb->vec) / sizeof(float), 0.0f);
+    return;
+  }
+
+  BoundBox bb;
+  BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
+  memcpy(values, bb->vec, sizeof(bb->vec));
 }
 
 static bool check_object_vgroup_support_and_warn(const Object *ob,

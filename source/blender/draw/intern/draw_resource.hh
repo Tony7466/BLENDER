@@ -103,9 +103,10 @@ inline void ObjectInfos::sync(const blender::draw::ObjectRef ref, bool is_active
 
   switch (GS(reinterpret_cast<ID *>(ref.object->data)->name)) {
     case ID_VO: {
-      BoundBox &bbox = *BKE_volume_boundbox_get(ref.object);
-      orco_add = (float3(bbox.vec[6]) + float3(bbox.vec[0])) * 0.5f; /* Center. */
-      orco_mul = (float3(bbox.vec[6]) - float3(bbox.vec[0])) * 0.5f; /* Half-Size. */
+      const blender::Bounds<float3> bounds = *BKE_volume_min_max(
+          static_cast<const Volume *>(ref.object->data));
+      orco_add = blender::math::midpoint(bounds.min, bounds.max);
+      orco_mul = (bounds.max - bounds.max) * 0.5f;
       break;
     }
     case ID_ME: {
@@ -161,7 +162,7 @@ inline void ObjectBounds::sync()
 
 inline void ObjectBounds::sync(Object &ob)
 {
-  const std::optional<BoundBox> bbox = BKE_object_boundbox_get(&ob);
+  const std::optional<blender::Bounds<float3>> bbox = BKE_object_boundbox_get(&ob);
   if (!bbox) {
     bounding_sphere.w = -1.0f; /* Disable test. */
     return;

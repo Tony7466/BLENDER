@@ -3562,7 +3562,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *
 {
   switch (ob->type) {
     case OB_MESH:
-      return BKE_mesh_boundbox_get(ob);
+      return BKE_mesh_wrapper_minmax(static_cast<const Mesh *>(ob->data));
     case OB_CURVES_LEGACY:
     case OB_SURF:
     case OB_FONT:
@@ -3583,64 +3583,23 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *
     case OB_POINTCLOUD:
       return static_cast<const PointCloud *>(ob->data)->bounds_min_max();
     case OB_VOLUME:
-      return *BKE_volume_boundbox_get(ob);
+      return *BKE_volume_min_max(static_cast<const Volume *>(ob->data));
     case OB_GREASE_PENCIL:
       return static_cast<const GreasePencil *>(ob->data)->bounds_min_max();
   }
   return std::nullopt;
 }
 
-void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval)
+std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bounds(
+    const Object *ob)
 {
-  float3 min(FLT_MAX);
-  float3 max(-FLT_MAX);
-
-  if (!BKE_mesh_wrapper_minmax(me_eval, min, max)) {
-    min = float3(0);
-    max = float3(0);
-  }
-
-  if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>("DM-BoundBox");
-  }
-
-  BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
-
-  ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
-}
-
-bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
-{
-  using namespace blender;
-
-  std::optional<Bounds<float3>> bounds;
   if (ob->runtime.geometry_set_eval) {
-    bounds = ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
+    return ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
   }
-  else if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
-                               float3(std::numeric_limits<float>::lowest())};
-    if (BKE_mesh_wrapper_minmax(mesh_eval, mesh_bounds.min, mesh_bounds.max)) {
-      bounds = bounds::merge(bounds, {mesh_bounds});
-    }
+  if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
+    return BKE_mesh_wrapper_minmax(mesh_eval);
   }
-  else {
-    return false;
-  }
-
-  if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
-  }
-  if (bounds) {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
-  }
-  else {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(0), float3(0));
-  }
-
-  ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
-
-  return true;
+  return std::nullopt;
 }
 
 /** \} */
@@ -3653,13 +3612,11 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
 
 void BKE_object_dimensions_get(Object *ob, float r_vec[3])
 {
-  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob)) {
+  using namespace blender;
+  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {
     float3 scale;
     mat4_to_size(scale, ob->object_to_world);
-
-    r_vec[0] = fabsf(scale[0]) * (bb->vec[4][0] - bb->vec[0][0]);
-    r_vec[1] = fabsf(scale[1]) * (bb->vec[2][1] - bb->vec[0][1]);
-    r_vec[2] = fabsf(scale[2]) * (bb->vec[1][2] - bb->vec[0][2]);
+    copy_v3_v3(r_vec, bounds->min - bounds->max);
   }
   else {
     zero_v3(r_vec);
@@ -3711,12 +3668,6 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
     case OB_FONT:
     case OB_SURF: {
       const BoundBox bb = *BKE_curve_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_MESH: {
-      const BoundBox bb = BKE_mesh_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;

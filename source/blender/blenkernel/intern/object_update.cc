@@ -243,16 +243,17 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 /** Bounding box from evaluated geometry. */
 static void object_sync_boundbox_to_original(Object *object_orig, Object *object_eval)
 {
-  if (!object_eval->runtime.bb || (object_eval->runtime.bb->flag & BOUNDBOX_DIRTY)) {
-    BKE_object_boundbox_calc_from_evaluated_geometry(object_eval);
+  const std::optional<blender::Bounds<blender::float3>> bounds =
+      BKE_object_evaluated_geometry_bounds(object_eval);
+  if (!bounds) {
+    return;
   }
 
-  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(object_eval)) {
-    if (object_orig->runtime.bb == nullptr) {
-      object_orig->runtime.bb = MEM_new<BoundBox>(__func__);
-    }
-    *object_orig->runtime.bb = *bb;
+  if (!object_orig->runtime.bb) {
+    object_orig->runtime.bb = MEM_new<BoundBox>(__func__);
   }
+
+  BKE_boundbox_init_from_minmax(object_orig->runtime.bb, bounds->min, bounds->max);
 }
 
 void BKE_object_sync_to_original(Depsgraph *depsgraph, Object *object)

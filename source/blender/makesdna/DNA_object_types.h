@@ -145,6 +145,7 @@ typedef struct Object_Runtime {
   double overlay_mode_transfer_start_time;
 
   /** Axis aligned bound-box (in local-space). */
+  // TODO: Move runtime struct to C++. Convert to Bounds<float3>
   struct BoundBox *bb;
 
   /**
