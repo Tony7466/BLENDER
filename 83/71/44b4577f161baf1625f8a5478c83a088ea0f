@@ -3,5 +3,5 @@ Referenced by commit 0084b8635f7, Fix T101398: Transfer Attribute node still def
 Referenced by issue #101610, Geometry Nodes: UV Sphere primitive removed from add menu
 Referenced by issue #101452, GeoNodes "Utilities"-items not sorted alphabetically
 Referenced by issue #92825, Refactor node editor add menu and search
-Referenced by issue blender/blender-addons#101514, Node Wrangler: Switch Type shows empty menu in Geometry Nodes
+Referenced by issue blender/blender-addons#101514, Node Wrangler: Switch Type shows empty menu
 Referenced by commit 15f5dfd45d14655f715617802f371f7f6b7a26ae, Nodes: Remove unused shader and compositor NodeItem definitions
