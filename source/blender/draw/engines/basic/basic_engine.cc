@@ -144,7 +144,7 @@ static void basic_cache_populate_particles(void *vedata, Object *ob)
       GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, nullptr);
       if (stl->g_data->use_material_slot_selection) {
         const short material_slot = part->omat;
-        DRW_select_load_id(ob->runtime.select_id | (material_slot << 16));
+        DRW_select_load_id(ob->runtime->select_id | (material_slot << 16));
       }
       DRW_shgroup_call(stl->g_data->depth_hair_shgrp[do_in_front], hairs, nullptr);
     }
@@ -217,7 +217,7 @@ static void basic_cache_populate(void *vedata, Object *ob)
             continue;
           }
           const short material_slot_select_id = i + 1;
-          DRW_select_load_id(ob->runtime.select_id | (material_slot_select_id << 16));
+          DRW_select_load_id(ob->runtime->select_id | (material_slot_select_id << 16));
           DRW_shgroup_call(shgrp, geoms[i], ob);
         }
       }

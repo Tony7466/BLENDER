@@ -5383,11 +5383,11 @@ static void sculpt_restore_mesh(Sculpt *sd, Object *ob)
 
 void SCULPT_update_object_bounding_box(Object *ob)
 {
-  if (ob->runtime.bb) {
+  if (ob->runtime->bb) {
     float bb_min[3], bb_max[3];
 
     BKE_pbvh_bounding_box(ob->sculpt->pbvh, bb_min, bb_max);
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, bb_min, bb_max);
+    BKE_boundbox_init_from_minmax(ob->runtime->bb, bb_min, bb_max);
   }
 }
 

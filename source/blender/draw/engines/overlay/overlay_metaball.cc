@@ -69,7 +69,7 @@ void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   int select_id = 0;
   if (is_select) {
-    select_id = ob->runtime.select_id;
+    select_id = ob->runtime->select_id;
   }
 
   LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {

@@ -32,6 +32,7 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
+#include "BKE_object_types.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -328,8 +329,8 @@ static void crazyspace_init_object_for_eval(Depsgraph *depsgraph,
 {
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   *object_crazy = blender::dna::shallow_copy(*object_eval);
-  if (object_crazy->runtime.data_orig != nullptr) {
-    object_crazy->data = object_crazy->runtime.data_orig;
+  if (object_crazy->runtime->data_orig != nullptr) {
+    object_crazy->data = object_crazy->runtime->data_orig;
   }
 }
 
@@ -531,8 +532,8 @@ void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
                              Object *object,
                              ReportList *reports)
 {
-  if (object->runtime.crazyspace_deform_imats != nullptr ||
-      object->runtime.crazyspace_deform_cos != nullptr)
+  if (object->runtime->crazyspace_deform_imats != nullptr ||
+      object->runtime->crazyspace_deform_cos != nullptr)
   {
     return;
   }
@@ -545,12 +546,12 @@ void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
   }
 
   const Mesh *mesh = (const Mesh *)object->data;
-  object->runtime.crazyspace_verts_num = mesh->totvert;
+  object->runtime->crazyspace_verts_num = mesh->totvert;
   BKE_crazyspace_build_sculpt(depsgraph,
                               scene,
                               object,
-                              &object->runtime.crazyspace_deform_imats,
-                              &object->runtime.crazyspace_deform_cos);
+                              &object->runtime->crazyspace_deform_imats,
+                              &object->runtime->crazyspace_deform_cos);
 }
 
 void BKE_crazyspace_api_displacement_to_deformed(Object *object,
@@ -559,17 +560,17 @@ void BKE_crazyspace_api_displacement_to_deformed(Object *object,
                                                  const float displacement[3],
                                                  float r_displacement_deformed[3])
 {
-  if (vertex_index < 0 || vertex_index >= object->runtime.crazyspace_verts_num) {
+  if (vertex_index < 0 || vertex_index >= object->runtime->crazyspace_verts_num) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Invalid vertex index %d (expected to be within 0 to %d range)",
                 vertex_index,
-                object->runtime.crazyspace_verts_num);
+                object->runtime->crazyspace_verts_num);
     return;
   }
 
   mul_v3_m3v3(r_displacement_deformed,
-              object->runtime.crazyspace_deform_imats[vertex_index],
+              object->runtime->crazyspace_deform_imats[vertex_index],
               displacement);
 }
 
@@ -579,17 +580,17 @@ void BKE_crazyspace_api_displacement_to_original(Object *object,
                                                  const float displacement_deformed[3],
                                                  float r_displacement[3])
 {
-  if (vertex_index < 0 || vertex_index >= object->runtime.crazyspace_verts_num) {
+  if (vertex_index < 0 || vertex_index >= object->runtime->crazyspace_verts_num) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Invalid vertex index %d (expected to be within 0 to %d range)",
                 vertex_index,
-                object->runtime.crazyspace_verts_num);
+                object->runtime->crazyspace_verts_num);
     return;
   }
 
   float mat[3][3];
-  if (!invert_m3_m3(mat, object->runtime.crazyspace_deform_imats[vertex_index])) {
+  if (!invert_m3_m3(mat, object->runtime->crazyspace_deform_imats[vertex_index])) {
     copy_v3_v3(r_displacement, displacement_deformed);
     return;
   }
@@ -599,8 +600,8 @@ void BKE_crazyspace_api_displacement_to_original(Object *object,
 
 void BKE_crazyspace_api_eval_clear(Object *object)
 {
-  MEM_SAFE_FREE(object->runtime.crazyspace_deform_imats);
-  MEM_SAFE_FREE(object->runtime.crazyspace_deform_cos);
+  MEM_SAFE_FREE(object->runtime->crazyspace_deform_imats);
+  MEM_SAFE_FREE(object->runtime->crazyspace_deform_cos);
 }
 
 /** \} */
@@ -621,7 +622,7 @@ GeometryDeformation get_evaluated_curves_deformation(const Object *ob_eval, cons
   if (ob_eval == nullptr) {
     return deformation;
   }
-  const GeometrySet *geometry_eval = ob_eval->runtime.geometry_set_eval;
+  const GeometrySet *geometry_eval = ob_eval->runtime->geometry_set_eval;
   if (geometry_eval == nullptr) {
     return deformation;
   }
@@ -695,7 +696,7 @@ GeometryDeformation get_evaluated_grease_pencil_drawing_deformation(const Object
   if (ob_eval == nullptr) {
     return deformation;
   }
-  const GeometrySet *geometry_eval = ob_eval->runtime.geometry_set_eval;
+  const GeometrySet *geometry_eval = ob_eval->runtime->geometry_set_eval;
   if (geometry_eval == nullptr || !geometry_eval->has<GeometryComponentEditData>()) {
     return deformation;
   }

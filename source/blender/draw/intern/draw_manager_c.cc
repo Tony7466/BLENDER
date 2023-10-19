@@ -2562,7 +2562,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
             }
           }
 
-          DRW_select_load_id(ob->runtime.select_id);
+          DRW_select_load_id(ob->runtime->select_id);
           DST.dupli_parent = data_.dupli_parent;
           DST.dupli_source = data_.dupli_object_current;
           drw_duplidata_load(ob);

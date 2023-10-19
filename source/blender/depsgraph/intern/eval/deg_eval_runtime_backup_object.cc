@@ -16,6 +16,7 @@
 
 #include "BKE_action.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 namespace blender::deg {
 
@@ -35,7 +36,7 @@ void ObjectRuntimeBackup::init_from_object(Object *object)
   }
   BKE_object_runtime_reset(object);
   /* Keep bounding-box (for now at least). */
-  object->runtime.bb = runtime.bb;
+  object->runtime->bb = runtime.bb;
   /* Object update will override actual object->data to an evaluated version.
    * Need to make sure we don't have data set to evaluated one before free
    * anything. */
@@ -79,12 +80,12 @@ void ObjectRuntimeBackup::backup_pose_channel_runtime_data(Object *object)
 
 void ObjectRuntimeBackup::restore_to_object(Object *object)
 {
-  ID *data_orig = object->runtime.data_orig;
-  ID *data_eval = runtime.data_eval;
-  BoundBox *bb = object->runtime.bb;
+  ID *data_orig = object->runtime->data_orig;
+  ID *data_eval = runtime->data_eval;
+  BoundBox *bb = object->runtime->bb;
   object->runtime = runtime;
-  object->runtime.data_orig = data_orig;
-  object->runtime.bb = bb;
+  object->runtime->data_orig = data_orig;
+  object->runtime->bb = bb;
   if (ELEM(object->type, OB_MESH, OB_LATTICE, OB_CURVES_LEGACY, OB_FONT) && data_eval != nullptr) {
     if (object->id.recalc & ID_RECALC_GEOMETRY) {
       /* If geometry is tagged for update it means, that part of
@@ -122,7 +123,7 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
       BKE_object_free_derived_caches(object);
     }
     else {
-      object->data = object->runtime.data_eval;
+      object->data = object->runtime->data_eval;
     }
   }
 

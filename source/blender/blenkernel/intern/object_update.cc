@@ -96,10 +96,10 @@ void BKE_object_eval_parent(Depsgraph *depsgraph, Object *ob)
 
   /* origin, for help line */
   if ((ob->partype & PARTYPE) == PARSKEL) {
-    copy_v3_v3(ob->runtime.parent_display_origin, par->object_to_world[3]);
+    copy_v3_v3(ob->runtime->parent_display_origin, par->object_to_world[3]);
   }
   else {
-    copy_v3_v3(ob->runtime.parent_display_origin, totmat[3]);
+    copy_v3_v3(ob->runtime->parent_display_origin, totmat[3]);
   }
 }
 

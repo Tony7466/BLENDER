@@ -342,7 +342,7 @@ static Mesh *rigidbody_get_mesh(Object *ob)
 
   switch (ob->rigidbody_object->mesh_source) {
     case RBO_MESH_DEFORM:
-      return ob->runtime.mesh_deform_eval;
+      return ob->runtime->mesh_deform_eval;
     case RBO_MESH_FINAL:
       return BKE_object_get_evaluated_mesh(ob);
     case RBO_MESH_BASE:
@@ -350,7 +350,7 @@ static Mesh *rigidbody_get_mesh(Object *ob)
        * on the original; otherwise every time the CoW is recreated it will
        * have to be recomputed. */
       BLI_assert(ob->rigidbody_object->mesh_source == RBO_MESH_BASE);
-      return (Mesh *)ob->runtime.data_orig;
+      return (Mesh *)ob->runtime->data_orig;
   }
 
   /* Just return something sensible so that at least Blender won't crash. */
@@ -1763,7 +1763,7 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
   const bool is_selected = base ? (base->flag & BASE_SELECTED) != 0 : false;
 
   if (rbo->shape == RB_SHAPE_TRIMESH && rbo->flag & RBO_FLAG_USE_DEFORM) {
-    Mesh *mesh = ob->runtime.mesh_deform_eval;
+    Mesh *mesh = ob->runtime->mesh_deform_eval;
     if (mesh) {
       float(*positions)[3] = reinterpret_cast<float(*)[3]>(
           mesh->vert_positions_for_write().data());

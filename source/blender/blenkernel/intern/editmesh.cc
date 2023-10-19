@@ -19,6 +19,7 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
+#include "BKE_object_types.hh
 #include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
@@ -283,16 +284,16 @@ void BKE_editmesh_ensure_autosmooth(BMEditMesh *em, Mesh *me)
 
 BoundBox *BKE_editmesh_cage_boundbox_get(Object *object, BMEditMesh * /*em*/)
 {
-  if (object->runtime.editmesh_bb_cage == nullptr) {
+  if (object->runtime->editmesh_bb_cage == nullptr) {
     float min[3], max[3];
     INIT_MINMAX(min, max);
-    if (object->runtime.editmesh_eval_cage) {
-      BKE_mesh_wrapper_minmax(object->runtime.editmesh_eval_cage, min, max);
+    if (object->runtime->editmesh_eval_cage) {
+      BKE_mesh_wrapper_minmax(object->runtime->editmesh_eval_cage, min, max);
     }
 
-    object->runtime.editmesh_bb_cage = MEM_cnew<BoundBox>("BMEditMesh.bb_cage");
-    BKE_boundbox_init_from_minmax(object->runtime.editmesh_bb_cage, min, max);
+    object->runtime->editmesh_bb_cage = MEM_cnew<BoundBox>("BMEditMesh.bb_cage");
+    BKE_boundbox_init_from_minmax(object->runtime->editmesh_bb_cage, min, max);
   }
 
-  return object->runtime.editmesh_bb_cage;
+  return object->runtime->editmesh_bb_cage;
 }

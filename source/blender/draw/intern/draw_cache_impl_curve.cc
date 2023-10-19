@@ -891,7 +891,7 @@ void DRW_curve_batch_cache_create_requested(Object *ob, const Scene *scene)
   printf("  mr_flag %d\n\n", mr_flag);
 #endif
 
-  CurveRenderData *rdata = curve_render_data_create(cu, ob->runtime.curve_cache, mr_flag);
+  CurveRenderData *rdata = curve_render_data_create(cu, ob->runtime->curve_cache, mr_flag);
 
   /* Generate VBOs */
   if (DRW_vbo_requested(cache->ordered.curves_pos)) {
