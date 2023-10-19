@@ -46,13 +46,8 @@ void VKFrameBuffer::bind(bool enabled_srgb)
   }
 
   context.activate_framebuffer(*this);
-
-  if (enabled_srgb_ != enabled_srgb) {
-    if (enabled_srgb && srgb_) {
-      enabled_srgb_ = enabled_srgb;
-    }
-    Shader::set_framebuffer_srgb_target(enabled_srgb_);
-  }
+  enabled_srgb_ = enabled_srgb;
+  Shader::set_framebuffer_srgb_target(enabled_srgb && srgb_);
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
@@ -457,18 +452,22 @@ void VKFrameBuffer::render_pass_create()
 
       /* Ensure texture is allocated to ensure the image view. */
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
+      const bool use_stencil = false;
+      const bool use_srgb = srgb_ && enabled_srgb_;
       image_views_.append(VKImageView(texture,
                                       eImageViewUsage::Attachment,
                                       IndexRange(max_ii(attachment.layer, 0), 1),
                                       IndexRange(attachment.mip, 1),
-                                      false,
+                                      use_stencil,
+                                      use_srgb,
                                       name_));
-      image_views[attachment_location] = image_views_.last().vk_handle();
+      const VKImageView &image_view = image_views_.last();
+      image_views[attachment_location] = image_view.vk_handle();
 
       VkAttachmentDescription &attachment_description =
           attachment_descriptions[attachment_location];
       attachment_description.flags = 0;
-      attachment_description.format = to_vk_format(texture.format_get());
+      attachment_description.format = image_view.vk_format();
       attachment_description.samples = VK_SAMPLE_COUNT_1_BIT;
       attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

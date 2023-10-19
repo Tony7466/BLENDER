@@ -569,8 +569,13 @@ void VKTexture::image_view_ensure()
 
 void VKTexture::image_view_update()
 {
-  image_view_.emplace(VKImageView(
-      *this, eImageViewUsage::ShaderBinding, layer_range(), mip_map_range(), use_stencil_, name_));
+  image_view_.emplace(VKImageView(*this,
+                                  eImageViewUsage::ShaderBinding,
+                                  layer_range(),
+                                  mip_map_range(),
+                                  use_stencil_,
+                                  true,
+                                  name_));
 }
 
 IndexRange VKTexture::mip_map_range() const
