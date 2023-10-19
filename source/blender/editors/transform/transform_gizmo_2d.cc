@@ -42,10 +42,10 @@
 #include "ED_uvedit.hh"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "transform.hh"
 #include "transform_gizmo.hh"
@@ -351,7 +351,7 @@ static bool seq_get_strip_pivot_median(const Scene *scene, float r_pivot[2])
   blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, scene->r.cfra, 0);
   strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
-  bool has_select = strips.size() != 0;
+  bool has_select = !strips.is_empty();
 
   if (has_select) {
     for (Sequence *seq : strips) {
@@ -389,7 +389,7 @@ static bool gizmo2d_calc_transform_pivot(const bContext *C, float r_pivot[2])
       blender::VectorSet strips = SEQ_query_rendered_strips(
           scene, channels, seqbase, scene->r.cfra, 0);
       strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
-      has_select = strips.size() != 0;
+      has_select = !strips.is_empty();
     }
     else if (pivot_point == V3D_AROUND_CENTER_BOUNDS) {
       has_select = gizmo2d_calc_bounds(C, r_pivot, nullptr, nullptr);

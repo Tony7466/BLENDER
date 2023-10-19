@@ -20,9 +20,9 @@
 #include "BKE_main.h"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_sequencer.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"

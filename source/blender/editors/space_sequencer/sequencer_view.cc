@@ -21,11 +21,11 @@
 
 #include "UI_view2d.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 /* For menu, popup, icons, etc. */
 #include "ED_anim_api.hh"
@@ -345,7 +345,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
   View2D *v2d = UI_view2d_fromcontext(C);
   rctf cur_new = v2d->cur;
 
-  if (strips.size() == 0) {
+  if (strips.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 

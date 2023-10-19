@@ -7,13 +7,13 @@
  */
 
 #include "SEQ_sequencer.h"
-#include "sequencer.h"
+#include "sequencer.hh"
 
 #include "DNA_listBase.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -103,10 +103,8 @@ static void seq_sequence_lookup_free(SequenceLookup **lookup)
 
   BLI_ghash_free((*lookup)->seq_by_name, nullptr, nullptr);
   BLI_ghash_free((*lookup)->meta_by_seq, nullptr, nullptr);
-  // BLI_ghash_free((*lookup)->effects_by_seq, nullptr, nullptr);
   (*lookup)->seq_by_name = nullptr;
   (*lookup)->meta_by_seq = nullptr;
-  //(*lookup)->effects_by_seq = nullptr;
   MEM_delete(*lookup);
   *lookup = nullptr;
 }

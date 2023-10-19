@@ -41,7 +41,7 @@
 
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include "UI_interface.hh"

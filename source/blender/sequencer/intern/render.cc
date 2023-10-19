@@ -56,14 +56,14 @@
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_modifier.h"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include "effects.h"
@@ -72,7 +72,7 @@
 #include "prefetch.h"
 #include "proxy.h"
 #include "render.h"
-#include "strip_time.h"
+#include "strip_time.hh"
 #include "utils.h"
 
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
@@ -690,7 +690,8 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
+      (ibuf->x != context->rectx || ibuf->y != context->recty))
+  {
     use_preprocess = true;
   }
 

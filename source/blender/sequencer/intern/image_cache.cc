@@ -42,7 +42,7 @@
 #include "disk_cache.h"
 #include "image_cache.h"
 #include "prefetch.h"
-#include "strip_time.h"
+#include "strip_time.hh"
 
 /**
  * Sequencer Cache Design Notes

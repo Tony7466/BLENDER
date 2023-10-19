@@ -19,11 +19,11 @@
 #include "BKE_report.h"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include "ED_keyframing.hh"
@@ -130,15 +130,14 @@ static void createTransSeqImageData(bContext * /*C*/, TransInfo *t)
       t->scene, channels, seqbase, t->scene->r.cfra, 0);
   strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
 
-  const int count = strips.size();
-  if (count == 0) {
+  if (strips.is_empty()) {
     return;
   }
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   tc->custom.type.free_cb = freeSeqData;
 
-  tc->data_len = count * 3; /* 3 vertices per sequence are needed. */
+  tc->data_len = strips.size() * 3; /* 3 vertices per sequence are needed. */
   TransData *td = tc->data = static_cast<TransData *>(
       MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData"));
   TransData2D *td2d = tc->data_2d = static_cast<TransData2D *>(

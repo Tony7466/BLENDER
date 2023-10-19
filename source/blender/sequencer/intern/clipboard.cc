@@ -29,7 +29,7 @@
 #include "SEQ_clipboard.h"
 #include "SEQ_select.h"
 
-#include "sequencer.h"
+#include "sequencer.hh"
 
 #ifdef WITH_AUDASPACE
 #  include <AUD_Special.h>

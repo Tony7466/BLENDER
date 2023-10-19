@@ -23,7 +23,7 @@
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "strip_time.h"
+#include "strip_time.hh"
 #include "utils.h"
 
 #include "SEQ_add.h"
@@ -31,12 +31,12 @@
 #include "SEQ_channels.h"
 #include "SEQ_edit.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include <cstring>

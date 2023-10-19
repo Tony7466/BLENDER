@@ -21,7 +21,7 @@
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_sequencer.h"
@@ -254,7 +254,7 @@ TransSeqSnapData *transform_snap_sequencer_data_alloc(const TransInfo *t)
   blender::VectorSet<Sequence *> snap_sources = SEQ_query_selected_strips(seqbase);
   blender::VectorSet<Sequence *> snap_targets = query_snap_targets(scene, snap_sources, true);
 
-  if (snap_sources.size() == 0) {
+  if (snap_sources.is_empty()) {
     MEM_freeN(snap_data);
     return nullptr;
   }

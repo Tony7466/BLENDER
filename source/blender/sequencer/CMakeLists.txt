@@ -31,7 +31,7 @@ set(SRC
   SEQ_clipboard.h
   SEQ_edit.h
   SEQ_effects.h
-  SEQ_iterator.h
+  SEQ_iterator.hh
   SEQ_modifier.h
   SEQ_prefetch.h
   SEQ_proxy.h
@@ -42,7 +42,7 @@ set(SRC
   SEQ_sequencer.h
   SEQ_sound.h
   SEQ_time.h
-  SEQ_transform.h
+  SEQ_transform.hh
   SEQ_utils.h
 
   intern/animation.cc
@@ -67,7 +67,7 @@ set(SRC
   intern/render.h
   intern/sequence_lookup.cc
   intern/sequencer.cc
-  intern/sequencer.h
+  intern/sequencer.hh
   intern/sound.cc
   intern/strip_add.cc
   intern/strip_edit.cc

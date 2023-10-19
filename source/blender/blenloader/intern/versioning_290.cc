@@ -70,7 +70,7 @@
 #include "SEQ_render.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "BLO_readfile.h"
 #include "readfile.hh"

@@ -31,16 +31,16 @@
 #include "RNA_prototypes.h"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
-#include "sequencer.h"
-#include "strip_time.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
 #include "utils.h"
 
 using blender::MutableSpan;
@@ -528,7 +528,8 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
 {
   SeqRetimingKey *prev_key = key - 1;
   if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0 ||
-      (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
+      (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0)
+  {
     return nullptr;
   }
 

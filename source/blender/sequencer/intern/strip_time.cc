@@ -29,16 +29,16 @@
 #include "RNA_prototypes.h"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
-#include "sequencer.h"
-#include "strip_time.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
 #include "utils.h"
 
 float seq_time_media_playback_rate_factor_get(const Scene *scene, const Sequence *seq)

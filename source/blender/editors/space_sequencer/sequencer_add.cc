@@ -45,14 +45,14 @@
 
 #include "SEQ_add.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include "ED_scene.hh"
@@ -293,12 +293,14 @@ static void load_data_init_from_operator(SeqLoadData *load_data, bContext *C, wm
   }
 
   if ((prop = RNA_struct_find_property(op->ptr, "cache")) &&
-      RNA_property_boolean_get(op->ptr, prop)) {
+      RNA_property_boolean_get(op->ptr, prop))
+  {
     load_data->flags |= SEQ_LOAD_SOUND_CACHE;
   }
 
   if ((prop = RNA_struct_find_property(op->ptr, "mono")) &&
-      RNA_property_boolean_get(op->ptr, prop)) {
+      RNA_property_boolean_get(op->ptr, prop))
+  {
     load_data->flags |= SEQ_LOAD_SOUND_MONO;
   }
 
@@ -823,7 +825,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
   bool overlap_shuffle_override = RNA_boolean_get(op->ptr, "overlap") == false &&
                                   RNA_boolean_get(op->ptr, "overlap_shuffle_override");
   bool has_seq_overlap = false;
-  blender::VectorSet<Sequence *> added_strips;
+  blender::Vector<Sequence *> added_strips;
 
   RNA_BEGIN (op->ptr, itemptr, "files") {
     char dir_only[FILE_MAX];
@@ -844,12 +846,12 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       if (RNA_boolean_get(op->ptr, "sound")) {
         seq_sound = SEQ_add_sound_strip(bmain, scene, ed->seqbasep, load_data);
         sequencer_add_movie_clamp_sound_strip_length(scene, seq_movie, seq_sound);
-        added_strips.add(seq_movie);
+        added_strips.append(seq_movie);
 
         if (seq_sound) {
           /* The video has sound, shift the video strip up a channel to make room for the sound
            * strip. */
-          added_strips.add(seq_sound);
+          added_strips.append(seq_sound);
           seq_movie->machine++;
         }
       }
@@ -890,7 +892,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
 
   Sequence *seq_movie = nullptr;
   Sequence *seq_sound = nullptr;
-  blender::VectorSet<Sequence *> added_strips;
+  blender::Vector<Sequence *> added_strips;
 
   seq_movie = SEQ_add_movie_strip(bmain, scene, ed->seqbasep, load_data);
 
@@ -901,10 +903,10 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   if (RNA_boolean_get(op->ptr, "sound")) {
     seq_sound = SEQ_add_sound_strip(bmain, scene, ed->seqbasep, load_data);
     sequencer_add_movie_clamp_sound_strip_length(scene, seq_movie, seq_sound);
-    added_strips.add(seq_movie);
+    added_strips.append(seq_movie);
 
     if (seq_sound) {
-      added_strips.add(seq_sound);
+      added_strips.append(seq_sound);
       /* The video has sound, shift the video strip up a channel to make room for the sound
        * strip. */
       seq_movie->machine++;
@@ -957,7 +959,7 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
     sequencer_add_movie_single_strip(C, op, &load_data, movie_strips);
   }
 
-  if (movie_strips.size() == 0) {
+  if (movie_strips.is_empty()) {
     sequencer_add_cancel(C, op);
     return OPERATOR_CANCELLED;
   }

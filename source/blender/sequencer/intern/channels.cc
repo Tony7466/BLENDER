@@ -17,7 +17,7 @@
 #include "BLI_blenlib.h"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 

@@ -60,7 +60,7 @@
 #include "DNA_material_types.h"
 
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"

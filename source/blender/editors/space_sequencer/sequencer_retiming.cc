@@ -23,13 +23,13 @@
 #include "ED_select_utils.hh"
 #include "ED_sequencer.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_retiming.hh"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "WM_api.hh"
 #include "WM_toolsystem.h"
@@ -221,7 +221,7 @@ static bool retiming_key_add_new_for_seq(bContext *C,
 
 static int retiming_key_add_from_selection(bContext *C,
                                            wmOperator *op,
-                                           blender::VectorSet<Sequence *> &strips,
+                                           blender::Span<Sequence *> strips,
                                            const int timeline_frame)
 {
   bool inserted = false;
@@ -267,7 +267,7 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
 
   int ret_val;
   blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
-  if (strips.size() != 0) {
+  if (!strips.is_empty()) {
     ret_val = retiming_key_add_from_selection(C, op, strips, timeline_frame);
   }
   else {

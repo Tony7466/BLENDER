@@ -21,7 +21,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_modifier.h"
 #include "SEQ_relations.h"
 #include "SEQ_select.h"

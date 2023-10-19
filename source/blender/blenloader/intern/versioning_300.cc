@@ -89,7 +89,7 @@
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"

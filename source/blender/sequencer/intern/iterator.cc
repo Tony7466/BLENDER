@@ -21,7 +21,7 @@
 
 #include "BKE_scene.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_time.h"

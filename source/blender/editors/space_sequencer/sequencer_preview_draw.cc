@@ -40,14 +40,14 @@
 #include "BIF_glutil.hh"
 
 #include "SEQ_channels.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_prefetch.h"
 #include "SEQ_proxy.h"
 #include "SEQ_render.h"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"

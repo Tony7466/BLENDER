@@ -24,7 +24,7 @@
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 

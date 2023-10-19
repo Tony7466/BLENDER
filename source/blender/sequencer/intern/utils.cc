@@ -30,7 +30,7 @@
 #include "SEQ_animation.h"
 #include "SEQ_channels.h"
 #include "SEQ_edit.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_select.h"
@@ -43,7 +43,7 @@
 
 #include "multiview.h"
 #include "proxy.h"
-#include "sequencer.h"
+#include "sequencer.hh"
 #include "utils.h"
 
 struct SeqUniqueInfo {

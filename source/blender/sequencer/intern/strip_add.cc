@@ -47,13 +47,13 @@
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 #include "SEQ_utils.h"
 
 #include "multiview.h"
 #include "proxy.h"
-#include "sequencer.h"
-#include "strip_time.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
 #include "utils.h"
 
 void SEQ_add_load_data_init(SeqLoadData *load_data,

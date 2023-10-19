@@ -35,7 +35,7 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"

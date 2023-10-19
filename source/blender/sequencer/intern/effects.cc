@@ -57,7 +57,7 @@
 
 #include "effects.h"
 #include "render.h"
-#include "strip_time.h"
+#include "strip_time.hh"
 #include "utils.h"
 
 static SeqEffectHandle get_sequence_effect_impl(int seq_type);

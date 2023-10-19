@@ -39,7 +39,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
@@ -49,8 +49,8 @@
 #include "multiview.h"
 #include "proxy.h"
 #include "render.h"
-#include "sequencer.h"
-#include "strip_time.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
 #include "utils.h"
 
 struct SeqIndexBuildContext {

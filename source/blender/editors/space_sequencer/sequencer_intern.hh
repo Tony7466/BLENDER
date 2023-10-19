@@ -153,7 +153,7 @@ bool sequencer_view_strips_poll(bContext *C);
  * \param C: context
  * \return collection of strips (`Sequence`)
  */
-blender::VectorSet<Sequence *> all_strips_from_context(struct bContext *C);
+blender::VectorSet<Sequence *> all_strips_from_context(bContext *C);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,
@@ -163,7 +163,7 @@ blender::VectorSet<Sequence *> all_strips_from_context(struct bContext *C);
  * \param C: context
  * \return collection of strips (`Sequence`)
  */
-blender::VectorSet<Sequence *> selected_strips_from_context(struct bContext *C);
+blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C);
 
 /* Externals. */
 

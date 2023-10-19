@@ -34,7 +34,7 @@
 #include "SEQ_channels.h"
 #include "SEQ_edit.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_modifier.h"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
@@ -49,7 +49,7 @@
 
 #include "image_cache.h"
 #include "prefetch.h"
-#include "sequencer.h"
+#include "sequencer.hh"
 #include "utils.h"
 
 /* -------------------------------------------------------------------- */

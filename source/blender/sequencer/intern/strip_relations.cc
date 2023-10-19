@@ -25,12 +25,12 @@
 
 #include "IMB_imbuf.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_prefetch.h"
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "effects.h"
 #include "image_cache.h"

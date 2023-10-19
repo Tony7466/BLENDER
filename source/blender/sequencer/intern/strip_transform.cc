@@ -25,14 +25,14 @@
 #include "SEQ_channels.h"
 #include "SEQ_edit.h"
 #include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
-#include "sequencer.h"
-#include "strip_time.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
 
 #include "CLG_log.h"
 
@@ -274,7 +274,7 @@ bool SEQ_transform_seqbase_shuffle_time(blender::Span<Sequence *> strips_to_shuf
       seq->flag &= ~SEQ_OVERLAP;
     }
 
-    if (time_dependent_strips.size() != 0) {
+    if (!time_dependent_strips.is_empty()) {
       for (Sequence *seq : time_dependent_strips) {
         SEQ_offset_animdata(evil_scene, seq, offset);
       }
@@ -322,7 +322,7 @@ static blender::VectorSet<Sequence *> query_right_side_strips(
 
   blender::VectorSet<Sequence *> right_side_strips;
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
-    if (time_dependent_strips.size() != 0 && time_dependent_strips.contains(seq)) {
+    if (!time_dependent_strips.is_empty() && time_dependent_strips.contains(seq)) {
       continue;
     }
     if (transformed_strips.contains(seq)) {
@@ -528,7 +528,7 @@ static void seq_transform_handle_overwrite(Scene *scene,
 
   /* Remove covered strips. This must be done in separate loop, because
    * `SEQ_edit_strip_split()` also uses `SEQ_edit_remove_flagged_sequences()`. See #91096. */
-  if (strips_to_delete.size() > 0) {
+  if (!strips_to_delete.is_empty()) {
     for (Sequence *seq : strips_to_delete) {
       SEQ_edit_flag_for_removal(scene, seqbasep, seq);
     }
