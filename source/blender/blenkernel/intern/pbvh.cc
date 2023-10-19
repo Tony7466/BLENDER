@@ -823,8 +823,6 @@ void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
 
 void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 {
-  std::cout << sizeof(PBVHNode) << '\n';
-  std::cout << sizeof(blender::Set<BMVert *, 0>) << '\n';
   const int totvert = mesh->totvert;
   const int looptri_num = poly_to_tri_count(mesh->faces_num, mesh->totloop);
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
