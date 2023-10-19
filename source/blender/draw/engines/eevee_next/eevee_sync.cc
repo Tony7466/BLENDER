@@ -155,10 +155,9 @@ void SyncModule::sync_mesh(Object *ob,
     Material &material = material_array.materials[i];
     GPUMaterial *gpu_material = material_array.gpu_materials[i];
 
-    geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-
     if (material.is_volume && (i == 0)) {
       /* Only support single volume material for now. */
+      geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
       inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
