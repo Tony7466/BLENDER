@@ -891,7 +891,7 @@ static void version_copy_socket(bNodeTreeInterfaceSocket &dst,
                                 char *identifier)
 {
   /* Node socket copy function based on bNodeTreeInterface::item_copy to avoid using blenkernel. */
-  dst.name = BLI_strdup(src.name);
+  dst.name = BLI_strdup_null(src.name);
   dst.description = BLI_strdup_null(src.description);
   dst.socket_type = BLI_strdup(src.socket_type);
   dst.default_attribute_name = BLI_strdup_null(src.default_attribute_name);
@@ -1094,7 +1094,7 @@ static void versioning_node_dynamic_socket(bNodeTree &ntree,
 static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
 {
   using namespace blender;
-  /* Previously, Grease Pencil used a radius convention where 1 "px" = 0.001 units. This "px" was
+  /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
    * the brush size which would be stored in the stroke thickness and then scaled by the point
    * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
    * going from a thickness to a radius, hence the factor of two) to convert back into blender
