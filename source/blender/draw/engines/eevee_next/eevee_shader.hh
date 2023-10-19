@@ -156,6 +156,7 @@ class ShaderModule {
                                    bNodeTree *nodetree,
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type,
+                                   eMaterialDisplacement displacement_type,
                                    bool deferred_compilation);
   GPUMaterial *world_shader_get(::World *blender_world,
                                 bNodeTree *nodetree,
@@ -165,6 +166,7 @@ class ShaderModule {
                                    bNodeTree *nodetree,
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type,
+                                   eMaterialDisplacement displacement_type,
                                    bool is_lookdev);
 
   void material_create_info_ammend(GPUMaterial *mat, GPUCodegenOutput *codegen);

@@ -48,6 +48,12 @@ enum eMaterialGeometry {
   MAT_GEOM_WORLD,
 };
 
+enum eMaterialDisplacement {
+  MAT_DISPLACEMENT_BUMP = 0,
+  MAT_DISPLACEMENT_VERTEX,
+  MAT_DISPLACEMENT_BOTH,
+};
+
 enum eMaterialProbe {
   MAT_PROBE_NONE = 0,
   MAT_PROBE_REFLECTION,
@@ -56,18 +62,26 @@ enum eMaterialProbe {
 
 static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
                                                   eMaterialPipeline &pipeline_type,
-                                                  eMaterialGeometry &geometry_type)
+                                                  eMaterialGeometry &geometry_type,
+                                                  eMaterialDisplacement &displacement_type)
 {
   const uint64_t geometry_mask = ((1u << 4u) - 1u);
   const uint64_t pipeline_mask = ((1u << 4u) - 1u);
+  const uint64_t displacement_mask = ((1u << 2u) - 1u);
   geometry_type = static_cast<eMaterialGeometry>(shader_uuid & geometry_mask);
   pipeline_type = static_cast<eMaterialPipeline>((shader_uuid >> 4u) & pipeline_mask);
+  displacement_type = static_cast<eMaterialDisplacement>((shader_uuid >> 8u) & displacement_mask);
 }
 
 static inline uint64_t shader_uuid_from_material_type(eMaterialPipeline pipeline_type,
-                                                      eMaterialGeometry geometry_type)
+                                                      eMaterialGeometry geometry_type,
+                                                      eMaterialDisplacement displacement_type)
 {
-  return geometry_type | (pipeline_type << 4);
+  /**
+   * WARNING: This must not be more than 10 bits.
+   * Otherwise edit other bit packing in user functions.
+   */
+  return geometry_type | (pipeline_type << 4) | (displacement_type << 8);
 }
 
 ENUM_OPERATORS(eClosureBits, CLOSURE_AMBIENT_OCCLUSION)
@@ -123,10 +137,13 @@ struct MaterialKey {
   ::Material *mat;
   uint64_t options;
 
-  MaterialKey(::Material *mat_, eMaterialGeometry geometry, eMaterialPipeline surface_pipeline)
+  MaterialKey(::Material *mat_,
+              eMaterialGeometry geometry,
+              eMaterialPipeline surface_pipeline,
+              eMaterialDisplacement displacement)
       : mat(mat_)
   {
-    options = shader_uuid_from_material_type(surface_pipeline, geometry);
+    options = shader_uuid_from_material_type(surface_pipeline, geometry, displacement);
   }
 
   uint64_t hash() const
@@ -160,12 +177,13 @@ struct ShaderKey {
   ShaderKey(GPUMaterial *gpumat,
             eMaterialGeometry geometry,
             eMaterialPipeline pipeline,
+            eMaterialDisplacement displacement,
             char blend_flags,
             eMaterialProbe probe_capture)
   {
     shader = GPU_material_get_shader(gpumat);
     options = blend_flags;
-    options = (options << 6u) | shader_uuid_from_material_type(pipeline, geometry);
+    options = (options << 6u) | shader_uuid_from_material_type(pipeline, geometry, displacement);
     options = (options << 16u) | shader_closure_bits_from_flag(gpumat);
     options = (options << 2u) | uint64_t(probe_capture);
   }

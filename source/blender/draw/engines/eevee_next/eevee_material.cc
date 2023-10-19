@@ -160,6 +160,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
                                                ::Material *blender_mat,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
+                                               eMaterialDisplacement displacement_type,
                                                eMaterialProbe probe_capture)
 {
   bNodeTree *ntree = (blender_mat->use_nodes && blender_mat->nodetree != nullptr) ?
@@ -169,8 +170,12 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
   bool use_deferred_compilation = inst_.is_viewport();
 
   MaterialPass matpass = MaterialPass();
-  matpass.gpumat = inst_.shaders.material_shader_get(
-      blender_mat, ntree, pipeline_type, geometry_type, use_deferred_compilation);
+  matpass.gpumat = inst_.shaders.material_shader_get(blender_mat,
+                                                     ntree,
+                                                     pipeline_type,
+                                                     geometry_type,
+                                                     displacement_type,
+                                                     use_deferred_compilation);
 
   switch (GPU_material_status(matpass.gpumat)) {
     case GPU_MAT_SUCCESS: {
@@ -185,13 +190,21 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       queued_shaders_count++;
       blender_mat = (geometry_type == MAT_GEOM_VOLUME_OBJECT) ? BKE_material_default_volume() :
                                                                 BKE_material_default_surface();
-      matpass.gpumat = inst_.shaders.material_shader_get(
-          blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
+      matpass.gpumat = inst_.shaders.material_shader_get(blender_mat,
+                                                         blender_mat->nodetree,
+                                                         pipeline_type,
+                                                         geometry_type,
+                                                         MAT_DISPLACEMENT_BUMP,
+                                                         false);
       break;
     case GPU_MAT_FAILED:
     default:
-      matpass.gpumat = inst_.shaders.material_shader_get(
-          error_mat_, error_mat_->nodetree, pipeline_type, geometry_type, false);
+      matpass.gpumat = inst_.shaders.material_shader_get(error_mat_,
+                                                         error_mat_->nodetree,
+                                                         pipeline_type,
+                                                         geometry_type,
+                                                         MAT_DISPLACEMENT_BUMP,
+                                                         false);
       break;
   }
   /* Returned material should be ready to be drawn. */
@@ -213,8 +226,12 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     matpass.sub_pass = nullptr;
   }
   else {
-    ShaderKey shader_key(
-        matpass.gpumat, geometry_type, pipeline_type, blender_mat->blend_flag, probe_capture);
+    ShaderKey shader_key(matpass.gpumat,
+                         geometry_type,
+                         pipeline_type,
+                         static_cast<eMaterialDisplacement>(blender_mat->displacement_method),
+                         blender_mat->blend_flag,
+                         probe_capture);
 
     PassMain::Sub *shader_sub = shader_map_.lookup_or_add_cb(shader_key, [&]() {
       /* First time encountering this shader. Create a sub that will contain materials using it. */
@@ -241,10 +258,11 @@ Material &MaterialModule::material_sync(Object *ob,
                                         bool has_motion)
 {
   if (geometry_type == MAT_GEOM_VOLUME_OBJECT) {
-    MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME);
+    MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME, MAT_DISPLACEMENT_BUMP);
     return material_map_.lookup_or_add_cb(material_key, [&]() {
       Material mat = {};
-      mat.volume = material_pass_get(ob, blender_mat, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
+      mat.volume = material_pass_get(
+          ob, blender_mat, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT, MAT_DISPLACEMENT_BUMP);
       return mat;
     });
   }
@@ -257,7 +275,10 @@ Material &MaterialModule::material_sync(Object *ob,
                                        (has_motion ? MAT_PIPE_DEFERRED_PREPASS_VELOCITY :
                                                      MAT_PIPE_DEFERRED_PREPASS);
 
-  MaterialKey material_key(blender_mat, geometry_type, surface_pipe);
+  eMaterialDisplacement displacement_type = static_cast<eMaterialDisplacement>(
+      blender_mat->displacement_method);
+
+  MaterialKey material_key(blender_mat, geometry_type, surface_pipe, displacement_type);
 
   Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {
     Material mat;

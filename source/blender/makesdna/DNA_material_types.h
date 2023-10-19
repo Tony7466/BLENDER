@@ -215,7 +215,7 @@ typedef struct Material {
   char blend_method;
   char blend_shadow;
   char blend_flag;
-  char _pad3[1];
+  char displacement_method;
 
   /**
    * Cached slots for texture painting, must be refreshed in
@@ -351,6 +351,13 @@ enum {
   MA_BS_SOLID = 1,
   MA_BS_CLIP = 2,
   MA_BS_HASHED = 3,
+};
+
+/** #Material::displacement_method */
+enum {
+  MA_DISPLACEMENT_BUMP = 0,
+  MA_DISPLACEMENT_DISPLACE = 1,
+  MA_DISPLACEMENT_BOTH = 2,
 };
 
 /* Grease Pencil Stroke styles */

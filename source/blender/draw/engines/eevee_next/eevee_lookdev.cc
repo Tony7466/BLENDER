@@ -141,6 +141,7 @@ bool LookdevModule::sync_world()
                                                     node_tree,
                                                     MAT_PIPE_DEFERRED,
                                                     MAT_GEOM_WORLD,
+                                                    MAT_DISPLACEMENT_BUMP,
                                                     true);
   inst_.pipelines.world.sync(gpu_material_);
   inst_.pipelines.background.sync(gpu_material_, parameters_.background_opacity);
