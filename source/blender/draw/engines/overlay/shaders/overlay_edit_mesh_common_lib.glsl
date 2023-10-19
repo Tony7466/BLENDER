@@ -16,7 +16,7 @@ vec4 EDIT_MESH_edge_color_outer(uint edge_flag, uint face_flag, float crease, fl
 vec4 EDIT_MESH_edge_color_inner(uint edge_flag)
 {
   vec4 color = colorWireEdit;
-  vec4 selected_edge_col = (selectEdge) ? colorEdgeModeSelection : colorEdgeSelect;
+  vec4 selected_edge_col = (selectEdge) ? colorEdgeModeSelect : colorEdgeSelect;
   color = ((edge_flag & EDGE_SELECTED) != 0u) ? selected_edge_col : color;
   color = ((edge_flag & EDGE_ACTIVE) != 0u) ? colorEditMeshActive : color;
   color.a = 1.0;
@@ -26,7 +26,7 @@ vec4 EDIT_MESH_edge_color_inner(uint edge_flag)
 vec4 EDIT_MESH_edge_vertex_color(uint vertex_flag)
 {
   /* Edge color in vextex selection mode. */
-  vec4 selected_edge_col = (selectEdge) ? colorEdgeModeSelection : colorEdgeSelect;
+  vec4 selected_edge_col = (selectEdge) ? colorEdgeModeSelect : colorEdgeSelect;
   bool edge_selected = (vertex_flag & (VERT_ACTIVE | VERT_SELECTED)) != 0u;
   vec4 color = (edge_selected) ? selected_edge_col : colorWireEdit;
   color.a = 1.0;
@@ -55,7 +55,7 @@ vec4 EDIT_MESH_face_color(uint face_flag)
   bool face_freestyle = (face_flag & FACE_FREESTYLE) != 0u;
   bool face_selected = (face_flag & FACE_SELECTED) != 0u;
   bool face_active = (face_flag & FACE_ACTIVE) != 0u;
-  vec4 selected_face_col = (selectFace) ? colorFaceModeSelection : colorFaceSelect;
+  vec4 selected_face_col = (selectFace) ? colorFaceModeSelect : colorFaceSelect;
   vec4 color = colorFace;
   color = (retopologyOffset > 0.0) ? colorFaceRetopology : color;
   color = (face_freestyle) ? colorFaceFreestyle : color;
