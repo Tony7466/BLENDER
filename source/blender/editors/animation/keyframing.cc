@@ -583,12 +583,12 @@ blender::Vector<float> ANIM_setting_get_rna_values(PointerRNA *ptr, PropertyRNA 
         break;
       }
       case PROP_FLOAT: {
-        values = blender::Vector<float>(length);
+        values.reinitialize(length);
         RNA_property_float_get_array(ptr, prop, &values[0]);
         break;
       }
       default:
-        values = blender::Vector<float>(length);
+        values.reinitialize(length);
         break;
     }
   }
