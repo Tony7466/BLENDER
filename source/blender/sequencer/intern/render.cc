@@ -690,8 +690,7 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty))
-  {
+      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
     use_preprocess = true;
   }
 
