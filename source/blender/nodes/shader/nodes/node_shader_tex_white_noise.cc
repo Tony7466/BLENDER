@@ -206,16 +206,25 @@ NODE_SHADER_MATERIALX_BEGIN
       break;
     case 2:
       vector = get_input_link("Vector", NodeItem::Type::Vector2);
+      if (!vector) {
+        vector = texcoord_node();
+      }
       noise = create_node(
           "cellnoise2d", NodeItem::Type::Float, {{"texcoord", vector * val(LARGE_NUMBER)}});
       break;
     case 3:
       vector = get_input_link("Vector", NodeItem::Type::Vector3);
+      if (!vector) {
+        vector = texcoord_node(NodeItem::Type::Vector3);
+      }
       noise = create_node(
           "cellnoise3d", NodeItem::Type::Float, {{"position", vector * val(LARGE_NUMBER)}});
       break;
     case 4:
       vector = get_input_link("Vector", NodeItem::Type::Vector3);
+      if (!vector) {
+        vector = texcoord_node(NodeItem::Type::Vector3);
+      }
       w = get_input_value("W", NodeItem::Type::Float);
       noise = create_node(
           "cellnoise3d", NodeItem::Type::Float, {{"position", (vector + w) * val(LARGE_NUMBER)}});
