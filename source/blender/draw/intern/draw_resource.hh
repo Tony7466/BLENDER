@@ -16,7 +16,7 @@
 #include "BKE_curve.h"
 #include "BKE_duplilist.h"
 #include "BKE_mesh.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_volume.h"
 #include "BLI_hash.h"
 #include "DNA_curve_types.h"
@@ -161,8 +161,8 @@ inline void ObjectBounds::sync()
 
 inline void ObjectBounds::sync(Object &ob)
 {
-  const BoundBox *bbox = BKE_object_boundbox_get(&ob);
-  if (bbox == nullptr) {
+  const std::optional<BoundBox> bbox = BKE_object_boundbox_get(&ob);
+  if (!bbox) {
     bounding_sphere.w = -1.0f; /* Disable test. */
     return;
   }

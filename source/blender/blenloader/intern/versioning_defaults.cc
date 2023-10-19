@@ -475,23 +475,37 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
 
     /* Reset all grease pencil brushes. */
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    BKE_brush_gpencil_paint_presets(bmain, scene->toolsettings, true);
-    BKE_brush_gpencil_sculpt_presets(bmain, scene->toolsettings, true);
-    BKE_brush_gpencil_vertex_presets(bmain, scene->toolsettings, true);
-    BKE_brush_gpencil_weight_presets(bmain, scene->toolsettings, true);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      ToolSettings *ts = scene->toolsettings;
 
-    /* Ensure new Paint modes. */
-    BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
-    BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
-    BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
+      if (ts->gp_paint) {
+        BKE_brush_gpencil_paint_presets(bmain, ts, true);
+      }
+      if (ts->gp_sculptpaint) {
+        BKE_brush_gpencil_sculpt_presets(bmain, ts, true);
+      }
+      if (ts->gp_vertexpaint) {
+        BKE_brush_gpencil_vertex_presets(bmain, ts, true);
+      }
+      if (ts->gp_weightpaint) {
+        BKE_brush_gpencil_weight_presets(bmain, ts, true);
+      }
 
-    /* Enable cursor. */
-    GpPaint *gp_paint = scene->toolsettings->gp_paint;
-    gp_paint->paint.flags |= PAINT_SHOW_BRUSH;
+      /* Ensure new Paint modes. */
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
 
-    /* Ensure Palette by default. */
-    BKE_gpencil_palette_ensure(bmain, scene);
+      /* Enable cursor. */
+      if (ts->gp_paint) {
+        ts->gp_paint->paint.flags |= PAINT_SHOW_BRUSH;
+      }
+
+      /* Ensure Palette by default. */
+      if (ts->gp_paint) {
+        BKE_gpencil_palette_ensure(bmain, scene);
+      }
+    }
   }
 
   /* For builtin templates only. */
@@ -531,7 +545,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
     blo_update_defaults_scene(bmain, scene);
 
-    if (app_template && STREQ(app_template, "Video_Editing")) {
+    if (app_template &&
+        (STREQ(app_template, "Video_Editing") || STREQ(app_template, "2D_Animation"))) {
       /* Filmic is too slow, use standard until it is optimized. */
       STRNCPY(scene->view_settings.view_transform, "Standard");
       STRNCPY(scene->view_settings.look, "None");
@@ -539,7 +554,13 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     else {
       /* Default to AgX view transform. */
       STRNCPY(scene->view_settings.view_transform, "AgX");
+    }
 
+    if (app_template && STREQ(app_template, "Video_Editing")) {
+      /* Pass: no extra tweaks needed. Keep the view settings configured above, and rely on the
+       * default state of enabled AV sync. */
+    }
+    else {
       /* AV Sync break physics sim caching, disable until that is fixed. */
       scene->audio.flag &= ~AUDIO_SYNC;
       scene->flag &= ~SCE_FRAME_DROP;

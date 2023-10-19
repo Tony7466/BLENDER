@@ -211,20 +211,6 @@ struct uiLayoutItemRoot {
 /** \name Item
  * \{ */
 
-static const char *ui_item_name_add_colon(const char *name, char namestr[UI_MAX_NAME_STR])
-{
-  const int len = strlen(name);
-
-  if (len != 0 && len + 1 < UI_MAX_NAME_STR) {
-    memcpy(namestr, name, len);
-    namestr[len] = ':';
-    namestr[len + 1] = '\0';
-    return namestr;
-  }
-
-  return name;
-}
-
 static int ui_item_fit(
     int item, int pos, int all, int available, bool is_last, int alignment, float *extra_pixel)
 {
@@ -1459,7 +1445,8 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorCallContext context,
                             eUI_Item_Flag flag,
                             const EnumPropertyItem *item_array,
-                            int totitem)
+                            int totitem,
+                            int active)
 {
   const char *propname = RNA_property_identifier(prop);
   if (RNA_property_type(prop) != PROP_ENUM) {
@@ -1548,7 +1535,13 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                       flag,
                       nullptr);
 
-      ui_but_tip_from_enum_item(static_cast<uiBut *>(block->buttons.last), item);
+      uiBut *but = static_cast<uiBut *>(block->buttons.last);
+
+      if (active == (i - 1)) {
+        but->flag |= UI_SELECT_DRAW;
+      }
+
+      ui_but_tip_from_enum_item(but, item);
     }
     else {
       if (item->name) {
@@ -1603,7 +1596,8 @@ void uiItemsFullEnumO(uiLayout *layout,
                       const char *propname,
                       IDProperty *properties,
                       wmOperatorCallContext context,
-                      eUI_Item_Flag flag)
+                      eUI_Item_Flag flag,
+                      const int active)
 {
   wmOperatorType *ot = WM_operatortype_find(opname, false); /* print error next */
 
@@ -1651,7 +1645,8 @@ void uiItemsFullEnumO(uiLayout *layout,
     }
 
     /* add items */
-    uiItemsFullEnumO_items(layout, ot, ptr, prop, properties, context, flag, item_array, totitem);
+    uiItemsFullEnumO_items(
+        layout, ot, ptr, prop, properties, context, flag, item_array, totitem, active);
 
     if (free) {
       MEM_freeN((void *)item_array);
@@ -2055,10 +2050,10 @@ void uiItemFullR(uiLayout *layout,
                  int value,
                  eUI_Item_Flag flag,
                  const char *name,
-                 int icon)
+                 int icon,
+                 const char *placeholder)
 {
   uiBlock *block = layout->root->block;
-  char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
   const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
   /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
@@ -2118,23 +2113,14 @@ void uiItemFullR(uiLayout *layout,
     /* pass */
   }
   else if (ELEM(type, PROP_INT, PROP_FLOAT, PROP_STRING, PROP_POINTER)) {
-    if (use_prop_sep == false) {
-      name = ui_item_name_add_colon(name, namestr);
-    }
+    /* pass */
   }
   else if (type == PROP_BOOLEAN && is_array && index == RNA_NO_INDEX) {
-    if (use_prop_sep == false) {
-      name = ui_item_name_add_colon(name, namestr);
-    }
+    /* pass */
   }
   else if (type == PROP_ENUM && index != RNA_ENUM_VALUE) {
     if (flag & UI_ITEM_R_COMPACT) {
       name = "";
-    }
-    else {
-      if (use_prop_sep == false) {
-        name = ui_item_name_add_colon(name, namestr);
-      }
     }
   }
 
@@ -2466,6 +2452,10 @@ void uiItemFullR(uiLayout *layout,
       ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS))
   {
     UI_but_flag_enable(but, UI_BUT_LIST_ITEM);
+  }
+
+  if (but && placeholder) {
+    UI_but_placeholder_set(but, placeholder);
   }
 
 #ifdef UI_PROP_DECORATE
@@ -2867,8 +2857,6 @@ void uiItemPointerR_prop(uiLayout *layout,
                          int icon,
                          bool results_are_suggestions)
 {
-  const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
-
   ui_block_new_button_group(uiLayoutGetBlock(layout), uiButtonGroupFlag(0));
 
   const PropertyType type = RNA_property_type(prop);
@@ -2899,11 +2887,6 @@ void uiItemPointerR_prop(uiLayout *layout,
   }
   if (!name) {
     name = RNA_property_ui_name(prop);
-  }
-
-  char namestr[UI_MAX_NAME_STR];
-  if (use_prop_sep == false) {
-    name = ui_item_name_add_colon(name, namestr);
   }
 
   /* create button */
@@ -3179,6 +3162,8 @@ void uiItemPopoverPanel_ptr(
   if (ok && (pt->draw_header != nullptr)) {
     layout = uiLayoutRow(layout, true);
     Panel panel{};
+    Panel_Runtime panel_runtime{};
+    panel.runtime = &panel_runtime;
     panel.type = pt;
     panel.layout = layout;
     panel.flag = PNL_POPOVER;
@@ -3349,10 +3334,6 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
     return split_wrapper.decorate_column;
   }
 
-  char namestr[UI_MAX_NAME_STR];
-  if (text) {
-    text = ui_item_name_add_colon(text, namestr);
-  }
   uiItemL_(layout, text, icon);
 
   return layout;
@@ -3550,15 +3531,46 @@ struct MenuItemLevel {
   PointerRNA rnapoin;
 };
 
-static void menu_item_enum_opname_menu(bContext * /*C*/, uiLayout *layout, void *arg)
+/* Obtain the active menu item based on the calling button's text. */
+static int menu_item_enum_opname_menu_active(bContext *C, uiBut *but, MenuItemLevel *lvl)
+{
+  wmOperatorType *ot = WM_operatortype_find(lvl->opname, true);
+
+  if (!ot) {
+    return -1;
+  }
+
+  PointerRNA ptr;
+  const EnumPropertyItem *item_array = nullptr;
+  bool free;
+  int totitem;
+  WM_operator_properties_create_ptr(&ptr, ot);
+  /* so the context is passed to itemf functions (some need it) */
+  WM_operator_properties_sanitize(&ptr, false);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, lvl->propname);
+  RNA_property_enum_items_gettexted(C, &ptr, prop, &item_array, &totitem, &free);
+  int active = RNA_enum_from_name(item_array, but->str);
+  if (free) {
+    MEM_freeN((void *)item_array);
+  }
+
+  return active;
+}
+
+static void menu_item_enum_opname_menu(bContext *C, uiLayout *layout, void *arg)
 {
   uiBut *but = static_cast<uiBut *>(arg);
   MenuItemLevel *lvl = static_cast<MenuItemLevel *>(but->func_argN);
   /* Use the operator properties from the button owning the menu. */
   IDProperty *op_props = but->opptr ? static_cast<IDProperty *>(but->opptr->data) : nullptr;
 
+  /* The calling but's str _probably_ contains the active
+   * menu item name, set in uiItemMenuEnumFullO_ptr. */
+  const int active = menu_item_enum_opname_menu_active(C, but, lvl);
+
   uiLayoutSetOperatorContext(layout, lvl->opcontext);
-  uiItemsFullEnumO(layout, lvl->opname, lvl->propname, op_props, lvl->opcontext, UI_ITEM_NONE);
+  uiItemsFullEnumO(
+      layout, lvl->opname, lvl->propname, op_props, lvl->opcontext, UI_ITEM_NONE, active);
 
   /* override default, needed since this was assumed pre 2.70 */
   UI_block_direction_set(layout->root->block, UI_DIR_DOWN);
@@ -5966,8 +5978,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
-  Panel *panel = MEM_cnew<Panel>(__func__);
-  panel->type = pt;
+  Panel *panel = BKE_panel_new(pt);
   panel->flag = PNL_POPOVER;
 
   if (pt->listener) {
@@ -5996,9 +6007,9 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
   panel->layout = layout;
   pt->draw(C, panel);
   panel->layout = nullptr;
-  BLI_assert(panel->runtime.custom_data_ptr == nullptr);
+  BLI_assert(panel->runtime->custom_data_ptr == nullptr);
 
-  MEM_freeN(panel);
+  BKE_panel_free(panel);
 
   /* Draw child panels. */
   LISTBASE_FOREACH (LinkData *, link, &pt->children) {

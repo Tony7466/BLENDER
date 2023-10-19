@@ -55,6 +55,7 @@ void VKContext::sync_backbuffer()
       command_buffer_.init(device);
       command_buffer_.begin_recording();
       device.init_dummy_buffer(*this);
+      device.init_dummy_color_attachment();
     }
     device.descriptor_pools_get().reset();
   }
@@ -155,6 +156,7 @@ void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
   BLI_assert(active_fb == nullptr);
   active_fb = &framebuffer;
   framebuffer.update_size();
+  framebuffer.update_srgb();
   command_buffer_.begin_render_pass(framebuffer);
 }
 

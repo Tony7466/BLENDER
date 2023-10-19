@@ -40,7 +40,7 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
@@ -1245,7 +1245,7 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
     uiDefBut(block,
              UI_BTYPE_LABEL,
              0,
-             IFACE_("Dimensions:"),
+             IFACE_("Dimensions"),
              0,
              yi -= buth,
              butw,
