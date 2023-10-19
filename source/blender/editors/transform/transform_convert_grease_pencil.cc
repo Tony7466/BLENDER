@@ -81,7 +81,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
           const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
 
-          std::optional<MutableSpan<float>> value_attribute = {};
+          std::optional<MutableSpan<float>> value_attribute;
 
           if (t->mode == TFM_CURVE_SHRINKFATTEN) {
             MutableSpan<float> radii = drawing.radii_for_write();
