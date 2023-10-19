@@ -879,7 +879,7 @@ GridAABB VolumePipeline::grid_aabb_from_object(Object *ob)
     return int3(grid_coords * float3(data.tex_size) + 0.5);
   };
 
-  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
+  const BoundBox bbox = *BKE_object_boundbox_get(ob);
   int3 min = int3(INT32_MAX);
   int3 max = int3(INT32_MIN);
 
