@@ -634,7 +634,7 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;
   PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
-  float active_vertex_color[4];
+  blender::float4 active_vertex_color;
 
   if (!SCULPT_handles_colors_report(ss, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -643,11 +643,12 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   BKE_sculpt_update_object_for_edit(CTX_data_depsgraph_pointer(C), ob, true, false, false);
 
   /* No color attribute? Set color to white. */
-  if (!SCULPT_has_colors(ss)) {
+  SculptColorInfo color_info = SCULPT_color_get(*ss);
+  if (color_info.layer.is_empty()) {
     copy_v4_fl(active_vertex_color, 1.0f);
   }
   else {
-    SCULPT_vertex_color_get(ss, active_vertex, active_vertex_color);
+    active_vertex_color = SCULPT_vertex_color_get(*ss, color_info, active_vertex);
   }
 
   float color_srgb[3];
@@ -762,17 +763,19 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
   }
 }
 
-static bool sculpt_mask_by_color_contiguous_floodfill(
-    SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate, void *userdata)
+static bool sculpt_mask_by_color_contiguous_floodfill(SculptSession *ss,
+                                                      const SculptColorInfo &color_info,
+                                                      PBVHVertRef from_v,
+                                                      PBVHVertRef to_v,
+                                                      bool is_duplicate,
+                                                      void *userdata)
 {
   int from_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, from_v);
   int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
 
   MaskByColorContiguousFloodFillData *data = static_cast<MaskByColorContiguousFloodFillData *>(
       userdata);
-  float current_color[4];
-
-  SCULPT_vertex_color_get(ss, to_v, current_color);
+  const blender::float4 current_color = SCULPT_vertex_color_get(*ss, color_info, to_v);
 
   float new_vertex_mask = sculpt_mask_by_color_delta_get(
       current_color, data->initial_color, data->threshold, data->invert);
@@ -788,6 +791,7 @@ static bool sculpt_mask_by_color_contiguous_floodfill(
 }
 
 static void sculpt_mask_by_color_contiguous(Object *object,
+                                            const SculptColorInfo &color_info,
                                             const PBVHVertRef vertex,
                                             const float threshold,
                                             const bool invert,
@@ -814,8 +818,7 @@ static void sculpt_mask_by_color_contiguous(Object *object,
   ffd.invert = invert;
   ffd.new_mask = new_mask;
 
-  float color[4];
-  SCULPT_vertex_color_get(ss, vertex, color);
+  const blender::float4 color = SCULPT_vertex_color_get(*ss, color_info, vertex);
 
   copy_v3_v3(ffd.initial_color, color);
 

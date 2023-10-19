@@ -890,22 +890,39 @@ void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float
 
 float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex);
 
+struct SculptColorInfo {
+  blender::GSpan layer;
+  int bm_offset = -1;
+  eCustomDataType data_type;
+  eAttrDomain domain;
+};
+SculptColorInfo SCULPT_color_get(const SculptSession &ss);
 struct SculptColorWriteInfo {
   blender::GMutableSpan layer;
   int bm_offset = -1;
+  eCustomDataType data_type;
+  eAttrDomain domain;
 };
 SculptColorWriteInfo SCULPT_color_get_for_write(SculptSession *ss);
-void SCULPT_store_colors(SculptSession *ss,
+void SCULPT_store_colors(const SculptSession &ss,
+                         const SculptColorWriteInfo &color_info,
                          blender::Span<int> indices,
                          blender::MutableSpan<blender::float4> r_colors);
-void SCULPT_store_colors_vertex(SculptSession *ss,
+void SCULPT_store_colors_vertex(const SculptSession &ss,
+                                const SculptColorWriteInfo &color_info,
                                 blender::Span<int> indices,
                                 blender::MutableSpan<blender::float4> r_colors);
-void SCULPT_swap_colors(SculptSession *ss,
+void SCULPT_swap_colors(const SculptSession &ss,
+                        const SculptColorWriteInfo &color_info,
                         blender::Span<int> indices,
                         blender::MutableSpan<blender::float4> r_colors);
-void SCULPT_vertex_color_get(const SculptSession *ss, PBVHVertRef vertex, float r_color[4]);
-void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float color[4]);
+blender::float4 SCULPT_vertex_color_get(const SculptSession &ss,
+                                        const SculptColorInfo &color_info,
+                                        PBVHVertRef vertex);
+void SCULPT_vertex_color_set(const SculptSession &ss,
+                             const SculptColorWriteInfo &color_info,
+                             PBVHVertRef vertex,
+                             const float4 &color);
 
 bool SCULPT_vertex_is_occluded(SculptSession *ss, PBVHVertRef vertex, bool original);
 
@@ -1249,6 +1266,7 @@ void SCULPT_floodfill_add_and_skip_initial(SculptFloodFill *flood, PBVHVertRef v
 void SCULPT_floodfill_execute(SculptSession *ss,
                               SculptFloodFill *flood,
                               bool (*func)(SculptSession *ss,
+                                           const SculptColorInfo &color_info,
                                            PBVHVertRef from_v,
                                            PBVHVertRef to_v,
                                            bool is_duplicate,

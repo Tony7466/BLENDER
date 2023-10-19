@@ -1204,6 +1204,7 @@ void SCULPT_floodfill_add_active(
 void SCULPT_floodfill_execute(SculptSession *ss,
                               SculptFloodFill *flood,
                               bool (*func)(SculptSession *ss,
+                                           const SculptColorInfo &color_info,
                                            PBVHVertRef from_v,
                                            PBVHVertRef to_v,
                                            bool is_duplicate,

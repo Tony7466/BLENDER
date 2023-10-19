@@ -1374,8 +1374,7 @@ static void sculpt_expand_colors_update_task(SculptSession *ss, PBVHNode *node)
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
-    float initial_color[4];
-    SCULPT_vertex_color_get(ss, vd.vertex, initial_color);
+    blender::float4 initial_color = SCULPT_vertex_color_get(ss, vd.vertex);
 
     const bool enabled = sculpt_expand_state_get(ss, expand_cache, vd.vertex);
     float fade;
