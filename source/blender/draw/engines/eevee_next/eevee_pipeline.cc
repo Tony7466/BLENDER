@@ -766,6 +766,8 @@ void VolumeLayer::sync()
 {
   object_bounds_.clear();
   use_hit_list = false;
+  is_empty = true;
+  finalized = false;
 
   draw::PassMain &layer_pass = volume_layer_ps_;
   layer_pass.init();
@@ -777,15 +779,6 @@ void VolumeLayer::sync()
     inst_.volume.bind_occupancy_buffers(pass);
     inst_.sampling.bind_resources(pass);
     occupancy_ps_ = &pass;
-  }
-  {
-    /* TODO(fclem): Optimize out when not needed. */
-    PassMain::Sub &pass = layer_pass.sub("resolve_hits_ps");
-    pass.state_set(DRW_STATE_WRITE_DEPTH);
-    inst_.bind_uniform_data(&pass);
-    pass.shader_set(inst_.shaders.static_shader_get(VOLUME_OCCUPANCY_CONVERT));
-    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
-    pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
   {
     PassMain::Sub &pass = layer_pass.sub("material_ps");
@@ -807,6 +800,7 @@ PassMain::Sub *VolumeLayer::occupancy_add(const Object *ob,
   bool use_fast_occupancy = (ob->type == OB_VOLUME) ||
                             (blender_mat->volume_intersection_method == MA_VOLUME_ISECT_FAST);
   use_hit_list |= !use_fast_occupancy;
+  is_empty = false;
 
   PassMain::Sub *pass = &occupancy_ps_->sub(GPU_material_get_name(gpumat));
   pass->material_set(*inst_.manager, gpumat);
@@ -825,8 +819,22 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
   return pass;
 }
 
-void VolumeLayer::render(View &view)
+void VolumeLayer::render(View &view, Texture &occupancy_tx)
 {
+  if (is_empty) {
+    return;
+  }
+  if (finalized == false) {
+    finalized = true;
+    if (use_hit_list) {
+      /* Add resolve pass only when needed. Insert after occupancy, before material pass. */
+      occupancy_ps_->shader_set(inst_.shaders.static_shader_get(VOLUME_OCCUPANCY_CONVERT));
+      occupancy_ps_->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+      occupancy_ps_->draw_procedural(GPU_PRIM_TRIS, 1, 3);
+    }
+  }
+  /* TODO(fclem): Move this clear inside the render pass. */
+  occupancy_tx.clear(uint4(0u));
   inst_.manager->submit(volume_layer_ps_, view);
 }
 
@@ -849,10 +857,7 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
   BLI_assert_msg(enabled_, "Trying to run the volume object pipeline with no actual volume calls");
 
   for (auto &layer : layers_) {
-    /* TODO(fclem): We might want to skip empty layers as the clear overhead is be significant. */
-    /* TODO(fclem): Move this clear inside the render pass. */
-    occupancy_tx.clear(uint4(0u));
-    layer->render(view);
+    layer->render(view, occupancy_tx);
   }
 }
 

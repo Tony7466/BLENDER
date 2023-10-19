@@ -304,6 +304,8 @@ struct GridAABB {
 class VolumeLayer {
  public:
   bool use_hit_list = false;
+  bool is_empty = true;
+  bool finalized = false;
 
  private:
   Instance &inst_;
@@ -345,7 +347,7 @@ class VolumeLayer {
   }
 
   void sync();
-  void render(View &view);
+  void render(View &view, Texture &occupancy_tx);
 };
 
 class VolumePipeline {
