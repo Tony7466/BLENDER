@@ -15,6 +15,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_ID.h"
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -825,8 +826,13 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
     paths.append("scale");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
-    /* Magic needed? */
-    // id->properties
+    if (ob->id.properties) {
+      LISTBASE_FOREACH (IDProperty *, prop, &ob->id.properties->data.group) {
+        std::string name = prop->name;
+        std::string rna_path = "[\"" + name + "\"]";
+        paths.append(rna_path);
+      }
+    }
   }
   return paths;
 }
