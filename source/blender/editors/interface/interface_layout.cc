@@ -2054,7 +2054,6 @@ void uiItemFullR(uiLayout *layout,
                  const char *placeholder)
 {
   uiBlock *block = layout->root->block;
-  char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
   const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
   /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
@@ -2858,8 +2857,6 @@ void uiItemPointerR_prop(uiLayout *layout,
                          int icon,
                          bool results_are_suggestions)
 {
-  const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
-
   ui_block_new_button_group(uiLayoutGetBlock(layout), uiButtonGroupFlag(0));
 
   const PropertyType type = RNA_property_type(prop);
