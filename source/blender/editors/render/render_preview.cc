@@ -161,7 +161,7 @@ struct IconPreview {
 /** \name Preview for Buttons
  * \{ */
 
-static Main *G_pr_main_grease_pencil = nullptr;
+static Main *G_pr_main_grease_pencil_legacy = nullptr;
 
 #ifndef WITH_HEADLESS
 static Main *load_main_from_memory(const void *blend, int blend_size)
@@ -194,8 +194,9 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
     base_initialized = true;
   }
   if (!base_initialized_gpencil && with_gpencil) {
-    G_pr_main_grease_pencil = load_main_from_memory(datatoc_preview_grease_pencil_blend,
-                                                    datatoc_preview_grease_pencil_blend_size);
+    G_pr_main_grease_pencil_legacy = load_main_from_memory(
+        datatoc_preview_grease_pencil_legacy_blend,
+        datatoc_preview_grease_pencil_legacy_blend_size);
     base_initialized_gpencil = true;
   }
 #else
@@ -220,8 +221,8 @@ void ED_preview_free_dbase()
     BKE_main_free(G.pr_main);
   }
 
-  if (G_pr_main_grease_pencil) {
-    BKE_main_free(G_pr_main_grease_pencil);
+  if (G_pr_main_grease_pencil_legacy) {
+    BKE_main_free(G_pr_main_grease_pencil_legacy);
   }
 }
 
@@ -537,7 +538,7 @@ static Scene *preview_prepare_scene(
 
         /* For grease pencil, always use sphere for icon renders. */
         const ePreviewType preview_type = static_cast<ePreviewType>(
-            (sp->pr_method == PR_ICON_RENDER && sp->pr_main == G_pr_main_grease_pencil) ?
+            (sp->pr_method == PR_ICON_RENDER && sp->pr_main == G_pr_main_grease_pencil_legacy) ?
                 MA_SPHERE_A :
                 (ePreviewType)mat->pr_type);
         ED_preview_set_visibility(pr_main, sce, view_layer, preview_type, sp->pr_method);
@@ -1529,7 +1530,7 @@ static void other_id_types_preview_render(IconPreview *ip,
       sp->pr_main = G.pr_main;
     }
     else {
-      sp->pr_main = G_pr_main_grease_pencil;
+      sp->pr_main = G_pr_main_grease_pencil_legacy;
     }
   }
 
@@ -2080,7 +2081,7 @@ void ED_preview_shader_job(const bContext *C,
     sp->pr_main = G.pr_main;
   }
   else {
-    sp->pr_main = G_pr_main_grease_pencil;
+    sp->pr_main = G_pr_main_grease_pencil_legacy;
   }
 
   if (ob && ob->totcol) {
