@@ -273,7 +273,8 @@ void Instance::object_sync_render(void *instance_,
 void Instance::end_sync()
 {
   velocity.end_sync();
-  shadows.end_sync(); /** \note: Needs to be before lights. */
+  volume.end_sync();  /* Needs to be before shadows. */
+  shadows.end_sync(); /* Needs to be before lights. */
   lights.end_sync();
   sampling.end_sync();
   subsurface.end_sync();
@@ -283,7 +284,6 @@ void Instance::end_sync()
   light_probes.end_sync();
   reflection_probes.end_sync();
   planar_probes.end_sync();
-  volume.end_sync();
 
   global_ubo_.push_update();
 }
