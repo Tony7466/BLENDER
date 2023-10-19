@@ -188,38 +188,42 @@ static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
+  /* MaterialX cellnoise node rounds float value of texture coordinate.
+   * Therefore it changes at different integer coordinates.
+   * The simple trick would be to multiply the texture coordinate by a large number. */
+  const float LARGE_NUMBER = 10000.0f;
+
   NodeItem noise = empty();
   NodeItem vector = empty();
   NodeItem w = empty();
+
   int dimension = node_->custom1;
   switch (dimension) {
     case 1:
       w = get_input_value("W", NodeItem::Type::Vector2);
-      noise = create_node("cellnoise2d",
-                          NodeItem::Type::Float,
-                          {{"texcoord", w}});
+      noise = create_node(
+          "cellnoise2d", NodeItem::Type::Float, {{"texcoord", w * val(LARGE_NUMBER)}});
       break;
     case 2:
       vector = get_input_link("Vector", NodeItem::Type::Vector2);
-      noise = create_node("cellnoise2d",
-                          NodeItem::Type::Float, {{"texcoord", vector}});
+      noise = create_node(
+          "cellnoise2d", NodeItem::Type::Float, {{"texcoord", vector * val(LARGE_NUMBER)}});
       break;
     case 3:
       vector = get_input_link("Vector", NodeItem::Type::Vector3);
-      noise = create_node("cellnoise3d",
-                          NodeItem::Type::Float, {{"position", vector}});
+      noise = create_node(
+          "cellnoise3d", NodeItem::Type::Float, {{"position", vector * val(LARGE_NUMBER)}});
       break;
     case 4:
       vector = get_input_link("Vector", NodeItem::Type::Vector3);
-      w = get_input_value("W", NodeItem::Type::Float);      
-      noise = create_node("cellnoise3d",
-                          NodeItem::Type::Float,
-                          {{"position", vector + w}});
+      w = get_input_value("W", NodeItem::Type::Float);
+      noise = create_node(
+          "cellnoise3d", NodeItem::Type::Float, {{"position", (vector + w) * val(LARGE_NUMBER)}});
       break;
     default:
       BLI_assert_unreachable();
       break;
-    }
+  }
 
   if (STREQ(socket_out_->name, "Value")) {
     return noise;
@@ -227,8 +231,9 @@ NODE_SHADER_MATERIALX_BEGIN
 
   /* NOTE: cellnoise node doesn't have colored output, so we create hsvtorgb node and put
    * noise in first (Hue) channel to generate color. */
-  NodeItem combine = create_node(
-      "combine3", NodeItem::Type::Color3, {{"in1", noise}, {"in2", val(1.0f)}, {"in3", val(0.5f)}});
+  NodeItem combine = create_node("combine3",
+                                 NodeItem::Type::Color3,
+                                 {{"in1", noise}, {"in2", val(1.0f)}, {"in3", val(0.5f)}});
   return create_node("hsvtorgb", NodeItem::Type::Color3, {{"in", combine}});
 }
 #endif
