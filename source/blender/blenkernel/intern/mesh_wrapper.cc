@@ -146,24 +146,18 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
   });
 }
 
-bool BKE_mesh_wrapper_minmax(const Mesh *me, float min[3], float max[3])
+std::optional<blender::Bounds<blender::float3>> BKE_mesh_wrapper_minmax(const Mesh *me)
 {
   using namespace blender;
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH:
-      return BKE_editmesh_cache_calc_minmax(me->edit_mesh, me->runtime->edit_data, min, max);
+      return BKE_editmesh_cache_calc_minmax(me->edit_mesh, me->runtime->edit_data);
     case ME_WRAPPER_TYPE_MDATA:
-    case ME_WRAPPER_TYPE_SUBD: {
-      if (const std::optional<Bounds<float3>> bounds = me->bounds_min_max()) {
-        copy_v3_v3(min, math::min(bounds->min, float3(min)));
-        copy_v3_v3(max, math::max(bounds->max, float3(max)));
-        return true;
-      }
-      return false;
-    }
+    case ME_WRAPPER_TYPE_SUBD:
+      return me->bounds_min_max();
   }
   BLI_assert_unreachable();
-  return false;
+  return std::nullopt;
 }
 
 /* -------------------------------------------------------------------- */

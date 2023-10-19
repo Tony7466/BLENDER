@@ -3846,7 +3846,8 @@ static void clampto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
      * This could cause issues when evaluating from a thread.
      * If the depsgraph ensures the bound-box is always available, a code-path could
      * be used that doesn't lazy initialize to avoid thread safety issues in the future. */
-    BKE_object_minmax(ct->tar, curveMin, curveMax, true);
+    const std::optional<blender::Bounds<blender::float3>> bounds = BKE_object_boundbox_get(
+        ct->tar);
 
     /* Get target-matrix. */
     if (data->tar->runtime.curve_cache && data->tar->runtime.curve_cache->anim_path_accum_length) {

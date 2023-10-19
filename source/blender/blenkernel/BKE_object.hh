@@ -11,11 +11,12 @@
 
 #include <optional>
 
+#include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_sys_types.h"
 
 #include "DNA_object_enums.h"
-#include "DNA_object_types.h" /* #BoundBox. */
 #include "DNA_userdef_enums.h"
 
 struct Base;
@@ -347,7 +348,7 @@ void BKE_boundbox_minmax(const BoundBox *bb,
                          float r_min[3],
                          float r_max[3]);
 
-std::optional<BoundBox> BKE_object_boundbox_get(Object *ob);
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *ob);
 void BKE_object_dimensions_get(Object *ob, float r_vec[3]);
 /**
  * The original scale and object matrix can be passed in so any difference

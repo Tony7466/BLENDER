@@ -3558,7 +3558,7 @@ void BKE_boundbox_minmax(const BoundBox *bb,
   }
 }
 
-std::optional<BoundBox> BKE_object_boundbox_get(Object *ob)
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *ob)
 {
   switch (ob->type) {
     case OB_MESH:
@@ -3579,13 +3579,13 @@ std::optional<BoundBox> BKE_object_boundbox_get(Object *ob)
     case OB_GPENCIL_LEGACY:
       return *BKE_gpencil_boundbox_get(ob);
     case OB_CURVES:
-      return BKE_curves_boundbox_get(ob);
+      return static_cast<const Curves *>(ob->data)->geometry.wrap().bounds_min_max();
     case OB_POINTCLOUD:
-      return BKE_pointcloud_boundbox_get(ob);
+      return static_cast<const PointCloud *>(ob->data)->bounds_min_max();
     case OB_VOLUME:
       return *BKE_volume_boundbox_get(ob);
     case OB_GREASE_PENCIL:
-      return BKE_grease_pencil_boundbox_get(ob);
+      return static_cast<const GreasePencil *>(ob->data)->bounds_min_max();
   }
   return std::nullopt;
 }
