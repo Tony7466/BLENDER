@@ -45,6 +45,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   color specular_tint = max(SpecularTint, color(0.0));
   float coat_weight = clamp(CoatWeight, 0.0, 1.0);
   color coat_tint = max(CoatTint, color(0.0));
+  float sheen_weight = max(SheenWeight, 0.0);
   color base_color = max(BaseColor, color(0.0));
   color clamped_base_color = min(base_color, color(1.0));
   float clamped_color_weight = max(metallic, subsurface_weight);
@@ -153,7 +154,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   if (SheenWeight > CLOSURE_WEIGHT_CUTOFF) {
     normal sheen_normal = normalize(mix(Normal, CoatNormal, coat_weight));
     closure color SheenBSDF = sheen(sheen_normal, clamp(SheenRoughness, 0.0, 1.0));
-    BSDF = layer(SheenWeight * max(SheenTint, color(0.0)) * SheenBSDF, BSDF);
+    BSDF = layer(sheen_weight * max(SheenTint, color(0.0)) * SheenBSDF, BSDF);
   }
 
   BSDF = mix(transparent(), BSDF, clamp(Alpha, 0.0, 1.0));
