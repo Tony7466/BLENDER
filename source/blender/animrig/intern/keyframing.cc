@@ -1097,7 +1097,7 @@ static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value
   return inserted_index >= 0;
 }
 
-int action_insert_key(bAction *action,
+int insert_key_action(bAction *action,
                       std::string rna_path,
                       const float frame,
                       const Vector<float> &values)

@@ -150,7 +150,7 @@ bool autokeyframe_property(bContext *C,
 
 /** \} */
 
-int action_insert_key(bAction *action,
+int insert_key_action(bAction *action,
                       std::string rna_path,
                       float frame,
                       const Vector<float> &values);
