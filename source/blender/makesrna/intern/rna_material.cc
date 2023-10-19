@@ -76,8 +76,8 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 #  include "BKE_texture.h"
 #  include "BKE_workspace.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_gpencil_legacy.hh"
 #  include "ED_image.hh"
@@ -781,6 +781,22 @@ void RNA_def_material(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static EnumPropertyItem prop_eevee_volume_isect_method_items[] = {
+      {MA_VOLUME_ISECT_FAST,
+       "FAST",
+       0,
+       "Fast",
+       "Each face is considered as a medium interface. Gives correct results for manifold "
+       "geometry that contains no inner parts"},
+      {MA_VOLUME_ISECT_ACCURATE,
+       "ACCURATE",
+       0,
+       "Accurate",
+       "Faces are considered as medium interface only when they have different consecutive "
+       "facing. Gives correct results as long as the max ray depth is not exceeded"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static EnumPropertyItem prop_eevee_blend_items[] = {
       {MA_BM_SOLID, "OPAQUE", 0, "Opaque", "Render surface without transparency"},
       {MA_BM_CLIP,
@@ -858,6 +874,12 @@ void RNA_def_material(BlenderRNA *brna)
       prop, "Backface Culling", "Use back face culling to hide the back side of faces");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
+  prop = RNA_def_property(srna, "use_backface_culling_probe", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_CULL_BACKFACE_PROBE);
+  RNA_def_property_ui_text(
+      prop, "Probe Capture Backface Culling", "Use back faces for probe captures");
+  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+
   prop = RNA_def_property(srna, "use_screen_refraction", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_SS_REFRACTION);
   RNA_def_property_ui_text(
@@ -877,6 +899,14 @@ void RNA_def_material(BlenderRNA *brna)
                            "Refraction Depth",
                            "Approximate the thickness of the object to compute two refraction "
                            "events (0 is disabled)");
+  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+
+  prop = RNA_def_property(srna, "volume_intersection_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, prop_eevee_volume_isect_method_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Volume Intersection Method",
+      "Determines which inner part of the mesh will produce volumetric effect");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
   /* For Preview Render */

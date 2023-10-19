@@ -193,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ "shape_keys",
+    /*name_plural*/ N_("shape keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
@@ -461,7 +461,11 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
   k1 = k[0] = k[1] = k[2] = k[3] = firstkey;
   t[0] = t[1] = t[2] = t[3] = k1->pos;
 
-  /* if (fac < 0.0 || fac > 1.0) return 1; */
+#if 0
+  if (fac < 0.0 || fac > 1.0) {
+    return 1;
+  }
+#endif
 
   if (k1->next == nullptr) {
     return 1;
@@ -479,7 +483,7 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
       }
       k1 = k1->next;
     }
-    /* k1 = k[1]; */ /* UNUSED */
+    // k1 = k[1]; /* UNUSED */
     t[0] = k[0]->pos;
     t[1] += dpos;
     t[2] = k[2]->pos + dpos;

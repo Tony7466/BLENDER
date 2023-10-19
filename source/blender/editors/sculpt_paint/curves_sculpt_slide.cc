@@ -10,7 +10,7 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
@@ -19,7 +19,7 @@
 #include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_sample.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
@@ -35,7 +35,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GEO_add_curves_on_mesh.hh"
 #include "GEO_reverse_uv_sampler.hh"
@@ -218,7 +218,7 @@ struct SlideOperationExecutor {
       self_->initial_positions_cu_ = curves_orig_->positions();
       self_->initial_deformed_positions_cu_ = deformation.positions;
 
-      /* First find all curves to slide. When the mouse moves, only those curves  will be moved. */
+      /* First find all curves to slide. When the mouse moves, only those curves will be moved. */
       this->find_curves_to_slide_with_symmetry();
       return;
     }
