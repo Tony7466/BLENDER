@@ -51,8 +51,8 @@ void VKFrameBuffer::bind(bool enabled_srgb)
     if (enabled_srgb && srgb_) {
       enabled_srgb_ = enabled_srgb;
     }
+    Shader::set_framebuffer_srgb_target(enabled_srgb_);
   }
-  Shader::set_framebuffer_srgb_target(enabled_srgb_);
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
