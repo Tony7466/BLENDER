@@ -87,15 +87,26 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
 
   /* Compute the min and max of all realized geometry for the two
-   * vector outputs, which are only meant to consider real geometry. */
+   * vector outputs, which are only meant to consider real geometry.
+   *
+   * Grease Pencil are a bit of an exception where we want them to create
+   * separate bounding box for each layer. But to include their calculation
+   * in the Min/Max.
+   *
+   * The reason we don't do this for the Instances too is that it can get expensive. */
   const std::optional<Bounds<float3>> bounds = geometry_set.compute_boundbox_without_instances();
-  if (!bounds) {
+  std::optional<Bounds<float3>> bounds_with_grease_pencil = bounds;
+  if (const GreasePencil *grease_pencil = geometry_set.get_grease_pencil()) {
+    bounds_with_grease_pencil = bounds::merge(bounds_with_grease_pencil,
+                                              grease_pencil->bounds_min_max());
+  }
+  if (!bounds_with_grease_pencil) {
     params.set_output("Min", float3(0));
     params.set_output("Max", float3(0));
   }
   else {
-    params.set_output("Min", bounds->min);
-    params.set_output("Max", bounds->max);
+    params.set_output("Min", bounds_with_grease_pencil->min);
+    params.set_output("Max", bounds_with_grease_pencil->max);
   }
 
   /* Generate the bounding box meshes inside each unique geometry set (including individually for
