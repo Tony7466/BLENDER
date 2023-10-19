@@ -904,6 +904,7 @@ if(WITH_BLENDER)
 
     # Blend files.
     data_to_c_simple(../../../../release/datafiles/preview.blend SRC)
+    data_to_c_simple(../../../../release/datafiles/preview_grease_pencil.blend SRC)
     data_to_c_simple(../../../../release/datafiles/preview_grease_pencil_legacy.blend SRC)
 
     # Images.
