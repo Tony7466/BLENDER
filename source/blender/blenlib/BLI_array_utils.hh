@@ -179,6 +179,7 @@ void copy_group_to_group(OffsetIndices<int> src_offsets,
 void count_indices(Span<int> indices, MutableSpan<int> counts);
 
 void invert_booleans(MutableSpan<bool> span);
+void invert_booleans(MutableSpan<bool> span, const IndexMask &mask);
 
 enum class BooleanMix {
   None,

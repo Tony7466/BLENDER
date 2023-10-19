@@ -846,17 +846,17 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
         IndexMaskMemory memory;
         const IndexMask curve_selection = ed::curves::retrieve_selected_curves(curves, memory);
 
-        curve_selection.foreach_index([&](const int64_t curve_i) {
-          if (mode == CyclicalMode::CLOSE) {
-            cyclic[curve_i] = true;
-          }
-          else if (mode == CyclicalMode::OPEN) {
-            cyclic[curve_i] = false;
-          }
-          else if (mode == CyclicalMode::TOGGLE) {
-            cyclic[curve_i] ^= true;
-          }
-        });
+        switch (mode) {
+          case CyclicalMode::CLOSE:
+            index_mask::masked_fill(cyclic, true, curve_selection);
+            break;
+          case CyclicalMode::OPEN:
+            index_mask::masked_fill(cyclic, false, curve_selection);
+            break;
+          case CyclicalMode::TOGGLE:
+            array_utils::invert_booleans(cyclic, curve_selection);
+            break;
+        }
 
         changed = true;
       });
