@@ -80,6 +80,7 @@ static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
   lib->runtime.name_map = nullptr;
   /* This is runtime data. */
   lib->parent = nullptr;
+  lib->tag = 0;
 }
 
 IDTypeInfo IDType_ID_LI = {
@@ -88,7 +89,7 @@ IDTypeInfo IDType_ID_LI = {
     /*main_listbase_index*/ INDEX_ID_LI,
     /*struct_size*/ sizeof(Library),
     /*name*/ "Library",
-    /*name_plural*/ "libraries",
+    /*name_plural*/ N_("libraries"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIBRARY,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,

@@ -647,7 +647,7 @@ IDTypeInfo IDType_ID_LS = {
     /*main_listbase_index*/ INDEX_ID_LS,
     /*struct_size*/ sizeof(FreestyleLineStyle),
     /*name*/ "FreestyleLineStyle",
-    /*name_plural*/ "linestyles",
+    /*name_plural*/ N_("line styles"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_FREESTYLELINESTYLE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -711,7 +711,7 @@ static LineStyleModifier *new_modifier(const char *name, int type, size_t size)
   }
   m = (LineStyleModifier *)MEM_callocN(size, "line style modifier");
   m->type = type;
-  STRNCPY(m->name, name);
+  STRNCPY(m->name, DATA_(name));
   m->influence = 1.0f;
   m->flags = LS_MODIFIER_ENABLED | LS_MODIFIER_EXPANDED;
 

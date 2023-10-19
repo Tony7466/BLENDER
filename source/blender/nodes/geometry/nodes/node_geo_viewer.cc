@@ -96,8 +96,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     ed::viewer_path::activate_geometry_node(*bmain, *snode, viewer_node);
   };
 
-  const std::optional<eCustomDataType> type = node_socket_to_custom_data_type(
-      params.other_socket());
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(socket_type);
   if (params.in_out() == SOCK_OUT) {
     /* The viewer node only has inputs. */
     return;
@@ -124,7 +124,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
       /* If the source node has a geometry socket, connect it to the new viewer node as well. */
       LISTBASE_FOREACH (bNodeSocket *, socket, &params.node.outputs) {
-        if (socket->type == SOCK_GEOMETRY && !(socket->flag & (SOCK_UNAVAIL | SOCK_HIDDEN))) {
+        if (socket->type == SOCK_GEOMETRY && socket->is_visible()) {
           nodeAddLink(&params.node_tree,
                       &params.node,
                       socket,

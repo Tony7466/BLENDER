@@ -25,12 +25,12 @@
 #include "BKE_camera.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -1053,7 +1053,7 @@ void ED_view3d_cursor3d_update(bContext *C,
   {
     wmMsgBus *mbus = CTX_wm_message_bus(C);
     wmMsgParams_RNA msg_key_params = {{nullptr}};
-    RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
+    msg_key_params.ptr = RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor);
     WM_msg_publish_rna_params(mbus, &msg_key_params);
   }
 

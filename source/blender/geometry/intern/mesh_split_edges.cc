@@ -12,6 +12,7 @@
 #include "BKE_mesh_mapping.hh"
 
 #include "GEO_mesh_split_edges.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
 
@@ -115,7 +116,7 @@ static BitVector<> selection_to_bit_vector(const IndexMask &selection, const int
 /**
  * Used for fanning around the corners connected to a vertex.
  *
- * Depending on the winding direction of neighboring faces, travelling from a corner across an edge
+ * Depending on the winding direction of neighboring faces, traveling from a corner across an edge
  * to a different face can give a corner that uses a different vertex than the original. To find
  * the face's corner that uses the original vertex, we may have to use the next corner instead.
  */
@@ -192,15 +193,19 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
   return groups;
 }
 
-/* Calculate groups of corners that are contiguously connected to each input vertex. */
-static Array<Vector<CornerGroup>> calc_all_corner_groups(const OffsetIndices<int> faces,
-                                                         const Span<int> corner_verts,
-                                                         const Span<int> corner_edges,
-                                                         const GroupedSpan<int> vert_to_corner_map,
-                                                         const GroupedSpan<int> edge_to_corner_map,
-                                                         const Span<int> corner_to_face_map,
-                                                         const BitSpan split_edges,
-                                                         const IndexMask &affected_verts)
+/* Calculate groups of corners that are contiguously connected to each input vertex.
+ * BLI_NOINLINE because MSVC 17.7 has a codegen bug here, given there is only a single call to this
+ * function, not inlining it for all platforms won't affect performance. See
+ * https://developercommunity.visualstudio.com/t/10448291 for details. */
+BLI_NOINLINE static Array<Vector<CornerGroup>> calc_all_corner_groups(
+    const OffsetIndices<int> faces,
+    const Span<int> corner_verts,
+    const Span<int> corner_edges,
+    const GroupedSpan<int> vert_to_corner_map,
+    const GroupedSpan<int> edge_to_corner_map,
+    const Span<int> corner_to_face_map,
+    const BitSpan split_edges,
+    const IndexMask &affected_verts)
 {
   Array<Vector<CornerGroup>> corner_groups(affected_verts.size(), NoInitialization());
   affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
@@ -517,10 +522,7 @@ void split_edges(Mesh &mesh,
   const BitVector<> selection_bits = selection_to_bit_vector(selected_edges, orig_edges.size());
   const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
 
-  Array<int> vert_to_corner_offsets;
-  Array<int> vert_to_corner_indices;
-  const GroupedSpan<int> vert_to_corner_map = bke::mesh::build_vert_to_loop_map(
-      mesh.corner_verts(), orig_verts_num, vert_to_corner_offsets, vert_to_corner_indices);
+  const GroupedSpan<int> vert_to_corner_map = mesh.vert_to_corner_map();
 
   Array<int> edge_to_corner_offsets;
   Array<int> edge_to_corner_indices;
@@ -535,7 +537,7 @@ void split_edges(Mesh &mesh,
         orig_edges, orig_verts_num, vert_to_edge_offsets, vert_to_edge_indices);
   }
 
-  const Array<int> corner_to_face_map = bke::mesh::build_loop_to_face_map(mesh.faces());
+  const Array<int> corner_to_face_map = mesh.corner_to_face_map();
 
   const Array<Vector<CornerGroup>> corner_groups = calc_all_corner_groups(faces,
                                                                           mesh.corner_verts(),
@@ -595,7 +597,8 @@ void split_edges(Mesh &mesh,
 
   BKE_mesh_tag_edges_split(&mesh);
 
-  BLI_assert(BKE_mesh_is_valid(&mesh));
+  debug_randomize_vert_order(&mesh);
+  debug_randomize_edge_order(&mesh);
 }
 
 }  // namespace blender::geometry

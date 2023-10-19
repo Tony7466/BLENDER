@@ -670,7 +670,7 @@ static bool rna_Property_readonly_get(PointerRNA *ptr)
   /* don't use this because it will call functions that check the internal
    * data for introspection we only need to know if it can be edited so the
    * flag is better for this */
-  /*  return RNA_property_editable(ptr, prop); */
+  // return RNA_property_editable(ptr, prop);
   return (prop->flag & PROP_EDITABLE) == 0;
 }
 
@@ -1214,7 +1214,7 @@ static int rna_BlenderRNA_structs_lookup_int(PointerRNA *ptr, int index, Pointer
   StructRNA *srna = static_cast<StructRNA *>(
       index < brna->structs_len ? BLI_findlink(&brna->structs, index) : nullptr);
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
   else {
@@ -1228,7 +1228,7 @@ static int rna_BlenderRNA_structs_lookup_string(PointerRNA *ptr,
   BlenderRNA *brna = static_cast<BlenderRNA *>(ptr->data);
   StructRNA *srna = static_cast<StructRNA *>(BLI_ghash_lookup(brna->structs_map, (void *)key));
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
 

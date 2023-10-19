@@ -52,6 +52,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
 
@@ -200,7 +201,7 @@ IDTypeInfo IDType_ID_TE = {
     /*main_listbase_index*/ INDEX_ID_TE,
     /*struct_size*/ sizeof(Tex),
     /*name*/ "Texture",
-    /*name_plural*/ "textures",
+    /*name_plural*/ N_("textures"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_TEXTURE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

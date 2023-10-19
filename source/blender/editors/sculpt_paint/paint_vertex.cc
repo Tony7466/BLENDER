@@ -45,12 +45,12 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -241,15 +241,9 @@ void init_session_data(const ToolSettings *ts, Object *ob)
   }
 
   Mesh *me = (Mesh *)ob->data;
-  const blender::OffsetIndices faces = me->faces();
-  const Span<int> corner_verts = me->corner_verts();
 
-  if (gmap->vert_to_loop_indices.is_empty()) {
-    gmap->vert_to_loop = blender::bke::mesh::build_vert_to_loop_map(
-        corner_verts, me->totvert, gmap->vert_to_loop_offsets, gmap->vert_to_loop_indices);
-    gmap->vert_to_face = blender::bke::mesh::build_vert_to_face_map(
-        faces, corner_verts, me->totvert, gmap->vert_to_face_offsets, gmap->vert_to_face_indices);
-  }
+  gmap->vert_to_loop = me->vert_to_corner_map();
+  gmap->vert_to_face = me->vert_to_face_map();
 
   /* Create average brush arrays */
   if (ob->mode == OB_MODE_WEIGHT_PAINT) {
@@ -965,7 +959,7 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
   vpd->type = type;
   vpd->domain = domain;
 
-  ED_view3d_viewcontext_init(C, &vpd->vc, depsgraph);
+  vpd->vc = ED_view3d_viewcontext_init(C, depsgraph);
   vwpaint::view_angle_limits_init(&vpd->normal_angle_precalc,
                                   vp->paint.brush->falloff_angle,
                                   (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);

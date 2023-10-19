@@ -29,11 +29,11 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "data_transfer_intern.h"
 
@@ -393,7 +393,7 @@ static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
                                             me_dst->faces(),
                                             me_dst->corner_verts(),
                                             me_dst->corner_edges(),
-                                            {},
+                                            me_dst->corner_to_face_map(),
                                             me_dst->vert_normals(),
                                             me_dst->face_normals(),
                                             sharp_edges,

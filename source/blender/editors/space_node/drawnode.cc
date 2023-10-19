@@ -8,6 +8,7 @@
  */
 
 #include "BLI_color.hh"
+#include "BLI_string.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 
@@ -60,10 +61,11 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_shader.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -90,8 +92,7 @@ static void node_buts_value(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   /* first output stores value */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   uiItemR(layout, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
 }
@@ -101,9 +102,8 @@ static void node_buts_rgb(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   /* first output stores value */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
   uiLayout *col;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   col = uiLayoutColumn(layout, false);
   uiTemplateColorPicker(col, &sockptr, "default_value", true, false, false, false);
@@ -189,8 +189,7 @@ static void node_buts_normal(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr
   bNode *node = (bNode *)ptr->data;
   /* first output stores normal */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   uiItemR(layout, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
 }
@@ -549,8 +548,7 @@ static void node_composit_buts_image(uiLayout *layout, bContext *C, PointerRNA *
 {
   bNode *node = (bNode *)ptr->data;
 
-  PointerRNA iuserptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
   uiTemplateID(layout,
                C,
@@ -577,8 +575,7 @@ static void node_composit_buts_image_ex(uiLayout *layout, bContext *C, PointerRN
 {
   bNode *node = (bNode *)ptr->data;
 
-  PointerRNA iuserptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
   uiTemplateImage(layout, C, ptr, "image", &iuserptr, false, true);
 }
@@ -791,8 +788,7 @@ static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *C, Pointe
 
     NodeCryptomatte *crypto = (NodeCryptomatte *)node->storage;
     PointerRNA imaptr = RNA_pointer_get(ptr, "image");
-    PointerRNA iuserptr;
-    RNA_pointer_create((ID *)ptr->owner_id, &RNA_ImageUser, &crypto->iuser, &iuserptr);
+    PointerRNA iuserptr = RNA_pointer_create((ID *)ptr->owner_id, &RNA_ImageUser, &crypto->iuser);
     uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
 
     node_buts_image_user(col, C, ptr, &imaptr, &iuserptr, false, false);
@@ -891,13 +887,12 @@ static void node_texture_buts_bricks(uiLayout *layout, bContext * /*C*/, Pointer
 
 static void node_texture_buts_proc(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  PointerRNA tex_ptr;
   bNode *node = (bNode *)ptr->data;
   ID *id = ptr->owner_id;
   Tex *tex = (Tex *)node->storage;
   uiLayout *col, *row;
 
-  RNA_pointer_create(id, &RNA_Texture, tex, &tex_ptr);
+  PointerRNA tex_ptr = RNA_pointer_create(id, &RNA_Texture, tex);
 
   col = uiLayoutColumn(layout, false);
 
@@ -994,9 +989,7 @@ static void node_texture_buts_image(uiLayout *layout, bContext *C, PointerRNA *p
 static void node_texture_buts_image_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
-  PointerRNA iuserptr;
-
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiTemplateImage(layout, C, ptr, "image", &iuserptr, false, false);
 }
 
@@ -1230,7 +1223,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_RGBA>,
     std_node_socket_color_fn<SOCK_SHADER>,
     std_node_socket_color_fn<SOCK_BOOLEAN>,
-    nullptr /* UNUSED */,
+    nullptr /* UNUSED. */,
     std_node_socket_color_fn<SOCK_INT>,
     std_node_socket_color_fn<SOCK_STRING>,
     std_node_socket_color_fn<SOCK_OBJECT>,
@@ -1261,14 +1254,14 @@ static void node_file_output_socket_draw(bContext *C,
 
   if (imtype == R_IMF_IMTYPE_MULTILAYER) {
     NodeImageMultiFileSocket *input = (NodeImageMultiFileSocket *)sock->storage;
-    RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotLayer, input, &inputptr);
+    inputptr = RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotLayer, input);
 
     uiItemL(row, input->layer, ICON_NONE);
   }
   else {
     NodeImageMultiFileSocket *input = (NodeImageMultiFileSocket *)sock->storage;
     uiBlock *block;
-    RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotFile, input, &inputptr);
+    inputptr = RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotFile, input);
 
     uiItemL(row, input->path, ICON_NONE);
 
@@ -1292,14 +1285,18 @@ static void node_file_output_socket_draw(bContext *C,
 
 static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
 {
-  if (node.runtime->declaration == nullptr) {
+  const nodes::NodeDeclaration *node_decl = node.declaration();
+  if (node_decl == nullptr) {
+    return false;
+  }
+  if (node_decl->skip_updating_sockets) {
     return false;
   }
   if (socket.in_out == SOCK_OUT) {
     return false;
   }
   const int socket_index = BLI_findindex(&node.inputs, &socket);
-  return node.declaration()->inputs[socket_index]->is_attribute_name;
+  return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
 static void std_node_socket_draw(
@@ -1456,9 +1453,7 @@ static void std_node_socket_interface_draw(ID *id,
                                            bContext * /*C*/,
                                            uiLayout *layout)
 {
-  PointerRNA ptr, tree_ptr;
-  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket, &ptr);
-  RNA_id_pointer_create(id, &tree_ptr);
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket);
 
   const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   BLI_assert(typeinfo != nullptr);
@@ -1513,11 +1508,27 @@ static void std_node_socket_interface_draw(ID *id,
   }
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
 
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
+    if (ELEM(type, SOCK_INT, SOCK_VECTOR)) {
+      uiItemR(col, &ptr, "default_input", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    }
+  }
+
+  {
+    uiLayout *sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub, interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE);
+    uiItemR(sub, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
+  }
+
+  if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, &ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    if (nodes::socket_type_supports_fields(type)) {
+      uiLayout *sub = uiLayoutColumn(col, false);
+      uiLayoutSetActive(sub, interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE);
+      uiItemR(sub, &ptr, "force_non_field", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    }
   }
 }
 

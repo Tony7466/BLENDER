@@ -59,12 +59,12 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -139,6 +139,10 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
   mesh_dst->runtime->looptris_cache = mesh_src->runtime->looptris_cache;
   mesh_dst->runtime->looptri_faces_cache = mesh_src->runtime->looptri_faces_cache;
+  mesh_dst->runtime->vert_to_face_offset_cache = mesh_src->runtime->vert_to_face_offset_cache;
+  mesh_dst->runtime->vert_to_face_map_cache = mesh_src->runtime->vert_to_face_map_cache;
+  mesh_dst->runtime->vert_to_corner_map_cache = mesh_src->runtime->vert_to_corner_map_cache;
+  mesh_dst->runtime->corner_to_face_map_cache = mesh_src->runtime->corner_to_face_map_cache;
 
   /* Only do tessface if we have no faces. */
   const bool do_tessface = ((mesh_src->totface_legacy != 0) && (mesh_src->faces_num == 0));
@@ -368,7 +372,7 @@ IDTypeInfo IDType_ID_ME = {
     /*main_listbase_index*/ INDEX_ID_ME,
     /*struct_size*/ sizeof(Mesh),
     /*name*/ "Mesh",
-    /*name_plural*/ "meshes",
+    /*name_plural*/ N_("meshes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_MESH,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -1054,9 +1058,6 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
     CustomData_add_layer(&me_dst->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, me_dst->totface_legacy);
   }
 
-  /* Expect that normals aren't copied at all, since the destination mesh is new. */
-  BLI_assert(BKE_mesh_vert_normals_are_dirty(me_dst));
-
   return me_dst;
 }
 
@@ -1154,28 +1155,20 @@ void BKE_mesh_ensure_default_orig_index_customdata_no_check(Mesh *mesh)
   ensure_orig_index_layer(mesh->face_data, mesh->faces_num);
 }
 
-BoundBox *BKE_mesh_boundbox_get(Object *ob)
+BoundBox BKE_mesh_boundbox_get(Object *ob)
 {
-  /* This is Object-level data access,
-   * DO NOT touch to Mesh's bb, would be totally thread-unsafe. */
-  if (ob->runtime.bb == nullptr || ob->runtime.bb->flag & BOUNDBOX_DIRTY) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    float min[3], max[3];
+  Mesh *me = static_cast<Mesh *>(ob->data);
+  float min[3], max[3];
 
-    INIT_MINMAX(min, max);
-    if (!BKE_mesh_wrapper_minmax(me, min, max)) {
-      min[0] = min[1] = min[2] = -1.0f;
-      max[0] = max[1] = max[2] = 1.0f;
-    }
-
-    if (ob->runtime.bb == nullptr) {
-      ob->runtime.bb = (BoundBox *)MEM_mallocN(sizeof(*ob->runtime.bb), __func__);
-    }
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
-    ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
+  INIT_MINMAX(min, max);
+  if (!BKE_mesh_wrapper_minmax(me, min, max)) {
+    min[0] = min[1] = min[2] = -1.0f;
+    max[0] = max[1] = max[2] = 1.0f;
   }
 
-  return ob->runtime.bb;
+  BoundBox bb;
+  BKE_boundbox_init_from_minmax(&bb, min, max);
+  return bb;
 }
 
 void BKE_mesh_texspace_calc(Mesh *me)
@@ -1778,7 +1771,7 @@ void BKE_mesh_calc_normals_split_ex(const Mesh *mesh,
       mesh->faces(),
       mesh->corner_verts(),
       mesh->corner_edges(),
-      {},
+      mesh->corner_to_face_map(),
       mesh->vert_normals(),
       mesh->face_normals(),
       sharp_edges,

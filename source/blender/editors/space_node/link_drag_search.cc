@@ -5,7 +5,6 @@
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"
 
@@ -15,7 +14,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
+
+#include "UI_string_search.hh"
 
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
@@ -26,7 +27,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.hh"
 #include "ED_node.hh"
@@ -87,16 +88,15 @@ static void add_reroute_node_fn(nodes::LinkSearchOpParams &params)
 static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 {
   /* Add a group input based on the connected socket, and add a new group input node. */
-  const eNodeSocketInOut in_out = eNodeSocketInOut(params.socket.in_out);
-  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
-  SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
-  SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
   bNodeTreeInterfaceSocket *socket_iface = params.node_tree.tree_interface.add_socket(
       params.socket.name,
       params.socket.description,
       params.socket.typeinfo->idname,
-      flag,
+      NODE_INTERFACE_SOCKET_INPUT,
       nullptr);
+  socket_iface->init_from_socket_instance(&params.socket);
+  params.node_tree.tree_interface.active_item_set(&socket_iface->item);
+
   bNode &group_input = params.add_node("NodeGroupInput");
 
   /* This is necessary to create the new sockets in the other input nodes. */
@@ -105,7 +105,8 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   /* Hide the new input in all other group input nodes, to avoid making them taller. */
   for (bNode *node : params.node_tree.all_nodes()) {
     if (node->type == NODE_GROUP_INPUT) {
-      bNodeSocket *new_group_input_socket = nodeFindSocket(node, in_out, socket_iface->identifier);
+      bNodeSocket *new_group_input_socket = nodeFindSocket(
+          node, SOCK_OUT, socket_iface->identifier);
       if (new_group_input_socket) {
         new_group_input_socket->flag |= SOCK_HIDDEN;
       }
@@ -117,7 +118,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, socket_iface->identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, socket_iface->identifier);
   if (socket) {
     /* Unhide the socket for the new input in the new node and make a connection to it. */
     socket->flag &= ~SOCK_HIDDEN;
@@ -142,7 +143,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, interface_socket.identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
@@ -335,12 +336,12 @@ static void gather_socket_link_operations(const bContext &C,
           return true;
         }
       }
-      search_link_ops.append(
-          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket.name,
-           [interface_socket](nodes::LinkSearchOpParams &params) {
-             add_existing_group_input_fn(params, interface_socket);
-           },
-           weight});
+      search_link_ops.append({std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP +
+                                  (interface_socket.name ? interface_socket.name : ""),
+                              [interface_socket](nodes::LinkSearchOpParams &params) {
+                                add_existing_group_input_fn(params, interface_socket);
+                              },
+                              weight});
       weight--;
       return true;
     });
@@ -360,7 +361,7 @@ static void link_drag_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearch<SocketLinkOperation> search;
+  ui::string_search::StringSearch<SocketLinkOperation> search;
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
     search.add(op.name, &op, op.weight);

@@ -157,6 +157,7 @@ typedef struct bNodeSocket {
 
   /** Custom dynamic defined label, MAX_NAME. */
   char label[64];
+  char short_label[64];
   char description[64];
 
   /**
@@ -315,6 +316,8 @@ typedef enum eNodePanelFlag {
   NODE_PANEL_COLLAPSED = (1 << 0),
   /* The parent panel is collapsed. */
   NODE_PANEL_PARENT_COLLAPSED = (1 << 1),
+  /* The panel has visible content. */
+  NODE_PANEL_CONTENT_VISIBLE = (1 << 2),
 } eNodePanelFlag;
 
 typedef struct bNodePanelState {
@@ -327,6 +330,7 @@ typedef struct bNodePanelState {
 #ifdef __cplusplus
   bool is_collapsed() const;
   bool is_parent_collapsed() const;
+  bool has_visible_content() const;
 #endif
 } bNodePanelState;
 
@@ -366,9 +370,13 @@ typedef struct bNode {
    */
   int16_t type;
 
-  char _pad1[2];
+  /**
+   * Depth of the node in the node editor, used to keep recently selected nodes at the front, and
+   * to order frame nodes properly.
+   */
+  int16_t ui_order;
 
-  /** Used for some builtin nodes that store properties but don't have a storage struct . */
+  /** Used for some builtin nodes that store properties but don't have a storage struct. */
   int16_t custom1, custom2;
   float custom3, custom4;
 
@@ -426,6 +434,11 @@ typedef struct bNode {
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
+
+  /* True if the socket is visible and has a valid location. The icon may not be visible. */
+  bool is_socket_drawn(const bNodeSocket &socket) const;
+  /* True if the socket is drawn and the icon is visible. */
+  bool is_socket_icon_drawn(const bNodeSocket &socket) const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
@@ -711,6 +724,7 @@ typedef struct bNodeTree {
   const bNestedNodeRef *nested_node_ref_from_node_id_path(blender::Span<int> node_ids) const;
   [[nodiscard]] bool node_id_path_from_nested_node_ref(const int32_t nested_node_id,
                                                        blender::Vector<int32_t> &r_node_ids) const;
+  const bNode *find_nested_node(int32_t nested_node_id) const;
 
   /**
    * Update a run-time cache for the node tree based on it's current state. This makes many methods
@@ -766,6 +780,12 @@ typedef struct bNodeTree {
 
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;
+
+  /**
+   * Update a run-time cache for the node tree interface based on it's current state.
+   * This should be done before accessing interface item spans below.
+   */
+  void ensure_interface_cache() const;
 
   /* Cached interface item lists. */
   blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
@@ -897,6 +917,7 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_MESH = (1 << 3),
   GEO_NODE_ASSET_CURVE = (1 << 4),
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
+  GEO_NODE_ASSET_MODIFIER = (1 << 6),
 } GeometryNodeAssetTraitFlag;
 ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
 
@@ -1027,7 +1048,7 @@ typedef struct NodeBilateralBlurData {
 } NodeBilateralBlurData;
 
 typedef struct NodeKuwaharaData {
-  short size;
+  short size DNA_DEPRECATED;
   short variation;
   int uniformity;
   float sharpness;
@@ -1329,6 +1350,7 @@ typedef struct TexNodeOutput {
 
 typedef struct NodeKeyingScreenData {
   char tracking_object[64];
+  float smoothness;
 } NodeKeyingScreenData;
 
 typedef struct NodeKeyingData {
@@ -1785,7 +1807,6 @@ typedef struct NodeGeometrySimulationOutput {
 #ifdef __cplusplus
   blender::Span<NodeSimulationItem> items_span() const;
   blender::MutableSpan<NodeSimulationItem> items_span();
-  blender::IndexRange items_range() const;
 #endif
 } NodeGeometrySimulationOutput;
 
@@ -1799,11 +1820,6 @@ typedef struct NodeRepeatItem {
    * names change.
    */
   int identifier;
-
-#ifdef __cplusplus
-  static bool supports_type(eNodeSocketDatatype type);
-  std::string identifier_str() const;
-#endif
 } NodeRepeatItem;
 
 typedef struct NodeGeometryRepeatInput {
@@ -1817,13 +1833,11 @@ typedef struct NodeGeometryRepeatOutput {
   int active_index;
   /** Identifier to give to the next repeat item. */
   int next_identifier;
-  char _pad[4];
+  int inspection_index;
 
 #ifdef __cplusplus
   blender::Span<NodeRepeatItem> items_span() const;
   blender::MutableSpan<NodeRepeatItem> items_span();
-  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
-  void set_item_name(NodeRepeatItem &item, const char *name);
 #endif
 } NodeGeometryRepeatOutput;
 
@@ -2282,8 +2296,8 @@ enum {
   SHD_SUBSURFACE_GAUSSIAN = 2,
 #endif
   SHD_SUBSURFACE_BURLEY = 3,
-  SHD_SUBSURFACE_RANDOM_WALK_FIXED_RADIUS = 4,
-  SHD_SUBSURFACE_RANDOM_WALK = 5,
+  SHD_SUBSURFACE_RANDOM_WALK = 4,
+  SHD_SUBSURFACE_RANDOM_WALK_SKIN = 5,
 };
 
 /* blur node */

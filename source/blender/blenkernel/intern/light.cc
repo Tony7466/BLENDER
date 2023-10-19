@@ -33,10 +33,11 @@
 #include "BKE_light.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_preview_image.hh"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BLO_read_write.hh"
 
@@ -160,7 +161,7 @@ IDTypeInfo IDType_ID_LA = {
     /*main_listbase_index*/ INDEX_ID_LA,
     /*struct_size*/ sizeof(Light),
     /*name*/ "Light",
-    /*name_plural*/ "lights",
+    /*name_plural*/ N_("lights"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHT,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
