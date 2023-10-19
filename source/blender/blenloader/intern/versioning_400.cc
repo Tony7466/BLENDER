@@ -1118,6 +1118,13 @@ static void versioning_object_hide_shadow(Object *object)
   }
 }
 
+static void versioning_material_transparent_shadow(Material *material)
+{
+  if (material->blend_shadow == MA_BS_SOLID) {
+    material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1754,6 +1761,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 2)) {
     LISTBASE_FOREACH (Object *, object, &bmain->objects) {
       versioning_object_hide_shadow(object);
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      versioning_material_transparent_shadow(material);
     }
   }
 
