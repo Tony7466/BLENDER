@@ -65,8 +65,6 @@ void node_bsdf_principled(vec4 base_color,
   ior = max(ior, 1e-5);
   alpha = saturate(alpha);
   subsurface_weight = saturate(subsurface_weight);
-  subsurface_radius = max(subsurface_radius, vec3(0.0));
-  subsurface_scale = max(subsurface_scale, 0.0);
   /* Not used by EEVEE */
   /* subsurface_anisotropy = clamp(subsurface_anisotropy, 0.0, 0.9); */
   /* subsurface_ior = clamp(subsurface_ior, 1.01, 3.8); */
@@ -79,6 +77,7 @@ void node_bsdf_principled(vec4 base_color,
   coat_roughness = saturate(coat_roughness);
   coat_ior = max(coat_ior, 1.0);
   coat_tint = max(coat_tint, vec4(0.0));
+  sheen_weight = max(sheen_weight, 0.0);
   sheen_roughness = saturate(sheen_roughness);
   sheen_tint = max(sheen_tint, vec4(0.0));
 
@@ -221,7 +220,7 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Diffuse component */
   if (true) {
-    diffuse_data.sss_radius = subsurface_radius * subsurface_scale;
+    diffuse_data.sss_radius = max(subsurface_radius * subsurface_scale, vec3(0.0));
     diffuse_data.sss_id = uint(do_sss);
     diffuse_data.color += weight * base_color.rgb * coat_tint.rgb;
   }

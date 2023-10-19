@@ -113,10 +113,8 @@ ccl_device
       float roughness = saturatef(stack_load_float(stack, roughness_offset));
       Spectrum specular_tint = rgb_to_spectrum(
           max(stack_load_float3(stack, specular_tint_offset), zero_float3()));
-      /* anisotropic is clamped to > 0 later on resulting in [0..1] clamping. */
-      float anisotropic = min(stack_load_float(stack, anisotropic_offset), 1.0f);
-      /* sheen_weight is clamped to > 0 later on. */
-      float sheen_weight = stack_load_float(stack, sheen_weight_offset);
+      float anisotropic = saturatef(stack_load_float(stack, anisotropic_offset));
+      float sheen_weight = max(stack_load_float(stack, sheen_weight_offset), 0.0f);
       float3 sheen_tint = max(stack_load_float3(stack, sheen_tint_offset), zero_float3());
       float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
       float coat_weight = saturatef(stack_load_float(stack, coat_weight_offset));
@@ -392,10 +390,10 @@ ccl_device
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(
           sd, rgb_to_spectrum(clamped_base_color) * subsurface_weight * weight);
       if (bssrdf) {
-        float3 subsurface_radius = max(stack_load_float3(stack, data_subsurf.y), zero_float3());
-        float subsurface_scale = max(stack_load_float(stack, data_subsurf.z), 0.0f);
+        float3 subsurface_radius = stack_load_float3(stack, data_subsurf.y);
+        float subsurface_scale = stack_load_float(stack, data_subsurf.z);
 
-        bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
+        bssrdf->radius = rgb_to_spectrum(max(subsurface_radius * subsurface_scale, zero_float3()));
         bssrdf->albedo = rgb_to_spectrum(clamped_base_color);
         bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->alpha = sqr(roughness);

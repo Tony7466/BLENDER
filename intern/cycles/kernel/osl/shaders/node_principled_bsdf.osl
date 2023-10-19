@@ -40,9 +40,11 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
   /* Clamping to match SVM */
   float metallic = clamp(Metallic, 0.0, 1.0);
+  float transmission = clamp(TransmissionWeight, 0.0, 1.0);
   float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
   color specular_tint = max(SpecularTint, color(0.0));
   float coat_weight = clamp(CoatWeight, 0.0, 1.0);
+  color coat_tint = max(CoatTint, color(0.0));
   color base_color = max(BaseColor, color(0.0));
   color clamped_base_color = min(base_color, color(1.0));
   float clamped_color_weight = max(metallic, subsurface_weight);
@@ -60,7 +62,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   /* Handle anisotropy. */
   vector T = Tangent;
   if (Anisotropic > 0.0) {
-    float aspect = sqrt(1.0 - min(Anisotropic, 1.0) * 0.9);
+    float aspect = sqrt(1.0 - clamp(Anisotropic, 0.0, 1.0) * 0.9);
     alpha_x /= aspect;
     alpha_y *= aspect;
     if (AnisotropicRotation != 0.0)
@@ -80,7 +82,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     BSDF = base_color * diffuse(Normal);
     if (subsurface_weight > CLOSURE_WEIGHT_CUTOFF) {
-      vector radius = max(SubsurfaceScale, 0.0) * max(SubsurfaceRadius, vector(0.0));
+      vector radius = max(SubsurfaceScale * SubsurfaceRadius, vector(0.0));
       float subsurface_ior = (subsurface_method == "random_walk_skin") ? SubsurfaceIOR : eta;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
@@ -117,7 +119,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
     TransmissionBSDF = generalized_schlick_bsdf(
         Normal, vector(0.0), color(1.0), sqrt(base_color), r2, r2, F0, F90, -eta, distribution),
-    BSDF = mix(BSDF, TransmissionBSDF, min(TransmissionWeight, 1.0));
+    BSDF = mix(BSDF, TransmissionBSDF, transmission);
   }
 
   closure color MetallicBSDF = 0;
@@ -138,7 +140,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       float coat_neta = 1.0 / coat_ior;
       float cosNI = dot(I, CoatNormal);
       float cosNT = sqrt(1.0 - coat_neta * coat_neta * (1 - cosNI * cosNI));
-      BSDF *= pow(max(CoatTint, color(0.0)), coat_weight / cosNT);
+      BSDF *= pow(coat_tint, coat_weight / cosNT);
     }
     float coat_r2 = clamp(CoatRoughness, 0.0, 1.0);
     coat_r2 = coat_r2 * coat_r2;
