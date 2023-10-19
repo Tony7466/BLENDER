@@ -162,6 +162,11 @@ Span<InstanceReference> Instances::references() const
   return references_;
 }
 
+MutableSpan<InstanceReference> Instances::references()
+{
+  return references_;
+}
+
 void Instances::remove(const IndexMask &mask,
                        const AnonymousAttributePropagationInfo &propagation_info)
 {

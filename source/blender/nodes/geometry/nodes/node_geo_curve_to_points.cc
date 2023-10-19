@@ -157,7 +157,7 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only({GeometryComponent::Type::Edit});
           geometry.replace_pointcloud(pointcloud);
         }
       });
@@ -179,7 +179,7 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only({GeometryComponent::Type::Edit});
           geometry.replace_pointcloud(pointcloud);
         }
       });
@@ -196,7 +196,7 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id.get());
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only({GeometryComponent::Type::Edit});
           geometry.replace_pointcloud(pointcloud);
         }
       });

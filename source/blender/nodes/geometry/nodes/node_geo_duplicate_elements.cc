@@ -287,10 +287,10 @@ static void duplicate_curves(GeometrySet &geometry_set,
                              const AnonymousAttributePropagationInfo &propagation_info)
 {
   if (!geometry_set.has_curves()) {
-    geometry_set.remove_geometry_during_modify();
+    geometry_set.keep_only({GeometryComponent::Type::Edit});
     return;
   }
-  geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
+  geometry_set.keep_only({GeometryComponent::Type::Curve, GeometryComponent::Type::Edit});
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
   const Curves &curves_id = *geometry_set.get_curves();
@@ -322,7 +322,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
   });
 
   if (dst_points_num == 0) {
-    geometry_set.remove_geometry_during_modify();
+    geometry_set.keep_only({GeometryComponent::Type::Edit});
     return;
   }
 
@@ -472,10 +472,10 @@ static void duplicate_faces(GeometrySet &geometry_set,
                             const AnonymousAttributePropagationInfo &propagation_info)
 {
   if (!geometry_set.has_mesh()) {
-    geometry_set.remove_geometry_during_modify();
+    geometry_set.keep_only({GeometryComponent::Type::Edit});
     return;
   }
-  geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
+  geometry_set.keep_only({GeometryComponent::Type::Mesh, GeometryComponent::Type::Edit});
 
   const Mesh &mesh = *geometry_set.get_mesh();
   const OffsetIndices faces = mesh.faces();
@@ -658,7 +658,7 @@ static void duplicate_edges(GeometrySet &geometry_set,
                             const AnonymousAttributePropagationInfo &propagation_info)
 {
   if (!geometry_set.has_mesh()) {
-    geometry_set.remove_geometry_during_modify();
+    geometry_set.keep_only({GeometryComponent::Type::Edit});
     return;
   };
   const Mesh &mesh = *geometry_set.get_mesh();
@@ -939,8 +939,8 @@ static void duplicate_points(GeometrySet &geometry_set,
         break;
     }
   }
-  component_types.append(GeometryComponent::Type::Instance);
-  geometry_set.keep_only_during_modify(component_types);
+  component_types.append(GeometryComponent::Type::Edit);
+  geometry_set.keep_only(component_types);
 }
 
 /** \} */

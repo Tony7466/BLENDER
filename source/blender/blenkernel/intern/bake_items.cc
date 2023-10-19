@@ -52,10 +52,10 @@ void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
     if (bke::Instances *instances = geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove_anonymous();
     }
-    geometry.keep_only_during_modify({GeometryComponent::Type::Mesh,
-                                      GeometryComponent::Type::Curve,
-                                      GeometryComponent::Type::PointCloud,
-                                      GeometryComponent::Type::Instance});
+    geometry.keep_only({GeometryComponent::Type::Mesh,
+                        GeometryComponent::Type::Curve,
+                        GeometryComponent::Type::PointCloud,
+                        GeometryComponent::Type::Instance});
   });
 }
 

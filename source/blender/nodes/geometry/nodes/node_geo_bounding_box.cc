@@ -48,7 +48,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
 
       if (!sub_bounds) {
-        sub_geometry.remove_geometry_during_modify();
+        sub_geometry.keep_only({GeometryComponent::Type::Edit});
       }
       else {
         const float3 scale = sub_bounds->max - sub_bounds->min;
@@ -56,7 +56,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         Mesh *mesh = geometry::create_cuboid_mesh(scale, 2, 2, 2, "uv_map");
         transform_mesh(*mesh, center, float3(0), float3(1));
         sub_geometry.replace_mesh(mesh);
-        sub_geometry.keep_only_during_modify({GeometryComponent::Type::Mesh});
+        sub_geometry.keep_only({GeometryComponent::Type::Mesh, GeometryComponent::Type::Edit});
       }
     });
 

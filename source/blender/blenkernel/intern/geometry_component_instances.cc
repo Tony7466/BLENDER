@@ -86,6 +86,14 @@ const Instances *InstancesComponent::get() const
   return instances_;
 }
 
+Instances *InstancesComponent::release()
+{
+  BLI_assert(this->is_mutable());
+  Instances *instances = instances_;
+  instances_ = nullptr;
+  return instances;
+}
+
 Instances *InstancesComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());

@@ -134,7 +134,7 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
     blender::geometry::sdf_volume_grid_add_from_points(
         volume, "distance", positions, radii, voxel_size);
   }
-  r_geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
+  r_geometry_set.keep_only({GeometryComponent::Type::Volume, GeometryComponent::Type::Edit});
   r_geometry_set.replace_volume(volume);
 }
 }  // namespace blender::nodes

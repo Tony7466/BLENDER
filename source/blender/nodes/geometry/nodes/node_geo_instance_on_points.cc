@@ -223,7 +223,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      attributes_to_propagate);
       }
     }
-    geometry_set.remove_geometry_during_modify();
+    geometry_set.keep_only({GeometryComponent::Type::Instance, GeometryComponent::Type::Edit});
   });
 
   /* Unused references may have been added above. Remove those now so that other nodes don't

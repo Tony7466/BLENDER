@@ -25,6 +25,8 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "../geometry/GEO_join_geometries.hh"
+
 #include "BLI_rand.hh"
 
 #include "MEM_guardedalloc.h"
@@ -165,19 +167,6 @@ void GeometrySet::keep_only(const Span<GeometryComponent::Type> component_types)
       }
     }
   }
-}
-
-void GeometrySet::keep_only_during_modify(const Span<GeometryComponent::Type> component_types)
-{
-  Vector<GeometryComponent::Type> extended_types = component_types;
-  extended_types.append_non_duplicates(GeometryComponent::Type::Instance);
-  extended_types.append_non_duplicates(GeometryComponent::Type::Edit);
-  this->keep_only(extended_types);
-}
-
-void GeometrySet::remove_geometry_during_modify()
-{
-  this->keep_only_during_modify({});
 }
 
 void GeometrySet::add(const GeometryComponent &component)
@@ -729,12 +718,32 @@ static void gather_mutable_geometry_sets(GeometrySet &geometry_set,
    * instances. */
   Instances &instances = *geometry_set.get_instances_for_write();
   instances.ensure_geometry_instances();
-  for (const int handle : instances.references().index_range()) {
-    if (instances.references()[handle].type() == InstanceReference::Type::GeometrySet) {
-      GeometrySet &instance_geometry = instances.geometry_set_from_reference(handle);
+  for (InstanceReference &reference : instances.references()) {
+    if (reference.type() == InstanceReference::Type::GeometrySet) {
+      GeometrySet &instance_geometry = reference.geometry_set();
       gather_mutable_geometry_sets(instance_geometry, r_geometry_sets);
     }
   }
+}
+
+static void modify_geometry_set(GeometrySet &geometry,
+                                GeometrySet::ForeachSubGeometryCallback callback)
+{
+  const InstancesComponent *old_instances_component = geometry.get_component<InstancesComponent>();
+  if (old_instances_component == nullptr) {
+    callback(geometry);
+    return;
+  }
+  /* Extract old instances. */
+  GeometrySet old_instances_geometry;
+  old_instances_geometry.add(*old_instances_component);
+  geometry.remove<InstancesComponent>();
+
+  callback(geometry);
+
+  /* Join back. */
+  geometry = geometry::join_geometries({old_instances_geometry, geometry},
+                                       AnonymousAttributePropagationInfo{});
 }
 
 void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
@@ -743,11 +752,12 @@ void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
   gather_mutable_geometry_sets(*this, geometry_sets);
   if (geometry_sets.size() == 1) {
     /* Avoid possible overhead and a large call stack when multithreading is pointless. */
-    callback(*geometry_sets.first());
+    modify_geometry_set(*geometry_sets.first(), callback);
   }
   else {
-    threading::parallel_for_each(geometry_sets,
-                                 [&](GeometrySet *geometry_set) { callback(*geometry_set); });
+    threading::parallel_for_each(geometry_sets, [&](GeometrySet *geometry_set) {
+      modify_geometry_set(*geometry_set, callback);
+    });
   }
 }
 

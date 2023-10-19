@@ -210,7 +210,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (!geometry_set.has_volume()) {
-      geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
+      geometry_set.keep_only({GeometryComponent::Type::PointCloud, GeometryComponent::Type::Edit});
       return;
     }
     const VolumeComponent *component = geometry_set.get_component<VolumeComponent>();
@@ -258,7 +258,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry::debug_randomize_point_order(pointcloud);
 
     geometry_set.replace_pointcloud(pointcloud);
-    geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
+    geometry_set.keep_only({GeometryComponent::Type::PointCloud, GeometryComponent::Type::Edit});
   });
 
   params.set_output("Points", std::move(geometry_set));
