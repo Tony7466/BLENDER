@@ -891,6 +891,11 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
           return;
         }
 
+        /* Return to stop from creating unneeded attribute. */
+        if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {
+          return;
+        }
+
         MutableSpan<bool> cyclic = curves.cyclic_for_write();
 
         IndexMaskMemory memory;
@@ -906,6 +911,11 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
           case CyclicalMode::TOGGLE:
             array_utils::invert_booleans(cyclic, curve_selection);
             break;
+        }
+
+        /* Remove the attribute if it is empty. */
+        if (!ed::curves::has_anything_selected(curves.cyclic(), curves.curves_range())) {
+          curves.attributes_for_write().remove("cyclic");
         }
 
         changed = true;
