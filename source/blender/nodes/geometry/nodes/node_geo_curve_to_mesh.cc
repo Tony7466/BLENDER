@@ -108,7 +108,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Mesh");
 
-  curve_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  curve_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (geometry_set.has_curves()) {
       const Curves &curves = *geometry_set.get_curves();
       Mesh *mesh = curve_to_mesh(curves.geometry.wrap(), profile_set, fill_caps, propagation_info);
@@ -117,7 +117,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (geometry_set.has_grease_pencil()) {
       grease_pencil_to_mesh(geometry_set, profile_set, fill_caps, propagation_info);
     }
-    geometry_set.keep_only({GeometryComponent::Type::Mesh, GeometryComponent::Type::Edit});
+    geometry_set.keep_only({GeometryComponent::Type::Mesh,
+                            GeometryComponent::Type::Instance,
+                            GeometryComponent::Type::Edit});
   });
 
   params.set_output("Mesh", std::move(curve_set));

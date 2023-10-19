@@ -264,7 +264,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 #ifdef WITH_BULLET
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     Mesh *mesh = compute_hull(geometry_set);
     if (mesh) {
       geometry::debug_randomize_mesh_order(mesh);

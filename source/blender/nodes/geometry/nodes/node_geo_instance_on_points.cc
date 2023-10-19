@@ -191,7 +191,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet instance = params.get_input<GeometrySet>("Instance");
   instance.ensure_owns_direct_data();
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
     InstancesComponent &instances_component =

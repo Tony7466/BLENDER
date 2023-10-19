@@ -1045,7 +1045,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry_set, count_field, selection_field, attribute_outputs, propagation_info);
   }
   else {
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
       switch (duplicate_domain) {
         case ATTR_DOMAIN_CURVE:
           duplicate_curves(

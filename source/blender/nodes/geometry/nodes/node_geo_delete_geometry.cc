@@ -323,7 +323,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     separate_geometry(geometry_set, domain, mode, selection, propagation_info, is_error);
   }
   else {
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
       bool is_error;
       /* Invert here because we want to keep the things not in the selection. */
       separate_geometry(geometry_set, domain, mode, selection, propagation_info, is_error);

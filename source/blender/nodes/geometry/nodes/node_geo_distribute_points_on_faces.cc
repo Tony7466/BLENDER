@@ -579,7 +579,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   lazy_threading::send_hint();
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     point_distribution_calculate(
         geometry_set, selection_field, method, seed, attribute_outputs, params);
     /* Keep instances because the original geometry set may contain instances that are processed as

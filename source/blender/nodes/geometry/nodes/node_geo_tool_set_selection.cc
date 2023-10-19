@@ -40,7 +40,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
   const eAttrDomain domain = eAttrDomain(params.node().custom1);
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
-  geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+  geometry.modify_real_geometries([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
         case ATTR_DOMAIN_POINT:

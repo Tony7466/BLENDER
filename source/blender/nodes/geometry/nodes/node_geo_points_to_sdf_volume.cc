@@ -86,7 +86,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 #ifdef WITH_OPENVDB
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   const NodeGeometryPointsToVolume &storage = node_storage(params.node());
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     initialize_volume_component_from_points(
         params, storage, geometry_set, openvdb::GRID_LEVEL_SET);
   });

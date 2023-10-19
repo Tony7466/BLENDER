@@ -36,7 +36,7 @@ static void remove_materials(Material ***materials, short *materials_num)
 void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
 {
   main_geometry.ensure_owns_all_data();
-  main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+  main_geometry.modify_real_geometries([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
       remove_materials(&mesh->mat, &mesh->totcol);

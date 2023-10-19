@@ -90,7 +90,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Curve");
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (geometry_set.has_curves()) {
       const Curves &src_curves_id = *geometry_set.get_curves();
       Curves *dst_curves_id = subdivide_curves(src_curves_id, cuts_field, propagation_info);

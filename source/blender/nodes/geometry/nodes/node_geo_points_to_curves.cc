@@ -166,7 +166,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const bke::AnonymousAttributePropagationInfo propagation_info =
       params.get_output_propagation_info("Curves");
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     geometry_set.replace_curves(nullptr);
     if (const PointCloud *points = geometry_set.get_pointcloud()) {
       Curves *curves_id = curves_from_points(

@@ -68,7 +68,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                             is_error);
         }
         else {
-          geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+          geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
             separate_geometry(geometry_set,
                               domain,
                               GEO_NODE_DELETE_GEOMETRY_MODE_ALL,

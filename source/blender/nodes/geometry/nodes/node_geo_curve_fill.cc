@@ -176,7 +176,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryCurveFill &storage = node_storage(params.node());
   const GeometryNodeCurveFillMode mode = (GeometryNodeCurveFillMode)storage.mode;
 
-  geometry_set.modify_geometry_sets(
+  geometry_set.modify_real_geometries(
       [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode); });
 
   params.set_output("Mesh", std::move(geometry_set));

@@ -413,7 +413,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     axis_field = params.get_input<Field<float3>>("Axis");
   }
 
-  geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+  geometry.modify_real_geometries([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
         case ATTR_DOMAIN_FACE: {

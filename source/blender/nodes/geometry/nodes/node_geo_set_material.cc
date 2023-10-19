@@ -83,7 +83,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   bool volume_selection_warning = false;
   bool curves_selection_warning = false;
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
       if (mesh->faces_num == 0) {
         if (mesh->totvert > 0) {

@@ -727,11 +727,11 @@ static void gather_mutable_geometry_sets(GeometrySet &geometry_set,
 }
 
 static void modify_geometry_set(GeometrySet &geometry,
-                                GeometrySet::ForeachSubGeometryCallback callback)
+                                const FunctionRef<void(GeometrySet &geometry_set)> fn)
 {
   const InstancesComponent *old_instances_component = geometry.get_component<InstancesComponent>();
   if (old_instances_component == nullptr) {
-    callback(geometry);
+    fn(geometry);
     return;
   }
   /* Extract old instances. */
@@ -739,25 +739,24 @@ static void modify_geometry_set(GeometrySet &geometry,
   old_instances_geometry.add(*old_instances_component);
   geometry.remove<InstancesComponent>();
 
-  callback(geometry);
+  fn(geometry);
 
-  /* Join back. */
+  /* Join original instances back. The new instances are concatenated at the end. */
   geometry = geometry::join_geometries({old_instances_geometry, geometry},
                                        AnonymousAttributePropagationInfo{});
 }
 
-void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
+void GeometrySet::modify_real_geometries(const FunctionRef<void(GeometrySet &geometry_set)> fn)
 {
   Vector<GeometrySet *> geometry_sets;
   gather_mutable_geometry_sets(*this, geometry_sets);
   if (geometry_sets.size() == 1) {
     /* Avoid possible overhead and a large call stack when multithreading is pointless. */
-    modify_geometry_set(*geometry_sets.first(), callback);
+    modify_geometry_set(*geometry_sets.first(), fn);
   }
   else {
-    threading::parallel_for_each(geometry_sets, [&](GeometrySet *geometry_set) {
-      modify_geometry_set(*geometry_set, callback);
-    });
+    threading::parallel_for_each(
+        geometry_sets, [&](GeometrySet *geometry_set) { modify_geometry_set(*geometry_set, fn); });
   }
 }
 

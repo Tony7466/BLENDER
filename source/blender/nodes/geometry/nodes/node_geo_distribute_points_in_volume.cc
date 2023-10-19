@@ -208,7 +208,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     threshold = params.extract_input<float>("Threshold");
   }
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (!geometry_set.has_volume()) {
       geometry_set.keep_only({GeometryComponent::Type::PointCloud, GeometryComponent::Type::Edit});
       return;

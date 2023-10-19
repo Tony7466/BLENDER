@@ -21,7 +21,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
       const bke::MeshFieldContext field_context(*mesh, ATTR_DOMAIN_FACE);
       fn::FieldEvaluator evaluator(field_context, mesh->faces_num);

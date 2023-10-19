@@ -1495,7 +1495,7 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 
 static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
 {
-  geometry_set.modify_geometry_sets([&](bke::GeometrySet &sub_geometry) {
+  geometry_set.modify_real_geometries([&](bke::GeometrySet &sub_geometry) {
     if (Instances *instances = sub_geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove("id");
     }

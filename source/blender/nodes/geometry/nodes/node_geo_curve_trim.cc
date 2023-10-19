@@ -215,7 +215,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (mode == GEO_NODE_CURVE_SAMPLE_FACTOR) {
     Field<float> start_field = params.extract_input<Field<float>>("Start");
     Field<float> end_field = params.extract_input<Field<float>>("End");
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
       geometry_set_curve_trim(
           geometry_set, mode, selection_field, start_field, end_field, propagation_info);
     });
@@ -223,7 +223,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   else if (mode == GEO_NODE_CURVE_SAMPLE_LENGTH) {
     Field<float> start_field = params.extract_input<Field<float>>("Start_001");
     Field<float> end_field = params.extract_input<Field<float>>("End_001");
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
       geometry_set_curve_trim(
           geometry_set, mode, selection_field, start_field, end_field, propagation_info);
     });

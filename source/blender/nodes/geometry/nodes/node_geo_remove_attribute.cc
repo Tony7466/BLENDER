@@ -34,7 +34,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::atomic<bool> attribute_exists = false;
   std::atomic<bool> cannot_delete = false;
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
                                                GeometryComponent::Type::PointCloud,
                                                GeometryComponent::Type::Curve,

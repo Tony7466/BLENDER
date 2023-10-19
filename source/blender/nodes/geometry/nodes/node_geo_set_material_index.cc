@@ -71,7 +71,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<int> index_field = params.extract_input<Field<int>>("Material Index");
 
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+  geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
     if (geometry_set.has_mesh()) {
       GeometryComponent &component = geometry_set.get_component_for_write<MeshComponent>();
       const bke::GeometryFieldContext field_context{

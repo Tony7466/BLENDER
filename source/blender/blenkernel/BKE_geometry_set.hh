@@ -237,13 +237,21 @@ struct GeometrySet {
   Vector<GeometryComponent::Type> gather_component_types(bool include_instances,
                                                          bool ignore_empty) const;
 
-  using ForeachSubGeometryCallback = FunctionRef<void(GeometrySet &geometry_set)>;
-
   /**
-   * Modify every (recursive) instance separately. This is often more efficient than realizing all
-   * instances just to change the same thing on all of them.
+   * Modify all "real" (non-instance) geometries in their local space. The same real geometry may
+   * be used by many instances, but is only processed once. Hence, context from the instances (e.g.
+   * instance position) can't be taken into account.
+   *
+   * The given function is invoked for all separate geometry-sets independently. It may be called
+   * from multiple threads for different geometry-sets at the same time.
+   *
+   * The geometry-set passed to the function may contain any component type *except* for instances.
+   * That is because the geometry of those instances is processed independently.
+   *
+   * The function may add new instances. Those will be joined with the instances that have been in
+   * the geometry set originally.
    */
-  void modify_geometry_sets(ForeachSubGeometryCallback callback);
+  void modify_real_geometries(FunctionRef<void(GeometrySet &geometry_set)> fn);
 
   /* Utility methods for creation. */
   /**

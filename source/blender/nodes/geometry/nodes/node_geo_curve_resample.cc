@@ -71,7 +71,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   switch (mode) {
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
       Field<int> count = params.extract_input<Field<int>>("Count");
-      geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+      geometry_set.modify_real_geometries([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
@@ -104,7 +104,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     case GEO_NODE_CURVE_RESAMPLE_LENGTH: {
       Field<float> length = params.extract_input<Field<float>>("Length");
-      geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+      geometry_set.modify_real_geometries([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};
@@ -136,7 +136,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       break;
     }
     case GEO_NODE_CURVE_RESAMPLE_EVALUATED:
-      geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+      geometry_set.modify_real_geometries([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_CURVE};

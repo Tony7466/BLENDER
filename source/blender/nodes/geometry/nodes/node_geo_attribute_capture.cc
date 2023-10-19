@@ -240,7 +240,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                          GeometryComponent::Type::Curve,
                                                          GeometryComponent::Type::GreasePencil};
 
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    geometry_set.modify_real_geometries([&](GeometrySet &geometry_set) {
       for (const GeometryComponent::Type type : types) {
         if (geometry_set.has(type)) {
           capture_on(geometry_set.get_component_for_write(type));
