@@ -9,6 +9,7 @@
  * \brief A BVH for high poly meshes.
  */
 
+#include <optional>
 #include <string>
 
 #include "BLI_bitmap.h"
