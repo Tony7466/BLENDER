@@ -181,6 +181,8 @@ void count_indices(Span<int> indices, MutableSpan<int> counts);
 void invert_booleans(MutableSpan<bool> span);
 void invert_booleans(MutableSpan<bool> span, const IndexMask &mask);
 
+int64_t count_booleans(const VArray<bool> &varray);
+
 enum class BooleanMix {
   None,
   AllFalse,
