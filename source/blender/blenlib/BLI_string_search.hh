@@ -84,8 +84,8 @@ template<typename T> class StringSearch : private StringSearchBase {
  public:
   StringSearch(const RecentCache *recent_cache, const MainWordsHeuristic main_words_heuristic)
   {
-    this->recent_cache_ = recent_cache;
-    this->main_words_heuristic_ = main_words_heuristic;
+    recent_cache_ = recent_cache;
+    main_words_heuristic_ = main_words_heuristic;
   }
 
   /**
