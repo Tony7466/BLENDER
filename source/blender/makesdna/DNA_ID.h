@@ -120,6 +120,7 @@ typedef struct IDPropertyUIDataEnumItem {
   char *name;
   char *description;
   int identifier;
+  char _pad[4];
 } IDPropertyUIDataEnumItem;
 
 typedef struct IDPropertyUIDataEnum {
