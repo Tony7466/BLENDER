@@ -22,7 +22,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_modifier.h"
 #include "BKE_pointcloud.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_attribute.hh"
 #include "BKE_node_runtime.hh"
 #include "BLI_math_quaternion.hh"
