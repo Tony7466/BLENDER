@@ -29,6 +29,14 @@ class GPULogParser;
  */
 class Shader {
  public:
+  struct StageNames {
+    static constexpr StringRef vertex = StringRef("VertexShader");
+    static constexpr StringRef geometry = StringRef("GeometryShader");
+    static constexpr StringRef fragment = StringRef("FragmentShader");
+    static constexpr StringRef compute = StringRef("ComputeShader");
+    static constexpr StringRef stage_name_unknown = StringRef("Unknown");
+  };
+
   /** Uniform & attribute locations for shader. */
   ShaderInterface *interface = nullptr;
 
@@ -160,6 +168,15 @@ class GPULogParser {
   int parse_number(const char *log_line, const char **r_new_position) const;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GPULogParser");
+};
+
+class ShaderCLogParser : public GPULogParser {
+ public:
+  const char *parse_line(const char *log_line, GPULogItem &log_item) override;
+
+ protected:
+  const char *skip_name(const char *log_line);
+  const char *skip_severity_keyword(const char *log_line, GPULogItem &log_item);
 };
 
 }  // namespace gpu

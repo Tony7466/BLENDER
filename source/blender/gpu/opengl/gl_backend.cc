@@ -269,6 +269,7 @@ static void detect_workarounds()
     GLContext::multi_draw_indirect_support = false;
     /* Turn off extensions. */
     GLContext::layered_rendering_support = false;
+    GLContext::conservative_depth_support = false;
     /* Turn off vendor specific extensions. */
     GLContext::native_barycentric_support = false;
     GLContext::framebuffer_fetch_support = false;
@@ -458,6 +459,11 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
   }
 
+  if (GLContext::spir_v_support) {
+    /* GL_ARB_conservative_depth extension isn't supported by SpirV. */
+    GLContext::conservative_depth_support = false;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -496,6 +502,7 @@ bool GLContext::texture_gather_support = false;
 bool GLContext::texture_storage_support = false;
 bool GLContext::vertex_attrib_binding_support = false;
 bool GLContext::spir_v_support = false;
+bool GLContext::conservative_depth_support = false;
 
 /** Workarounds. */
 
@@ -596,7 +603,10 @@ void GLBackend::capabilities_init()
   GLContext::texture_storage_support = epoxy_gl_version() >= 43;
   GLContext::vertex_attrib_binding_support = epoxy_has_gl_extension(
       "GL_ARB_vertex_attrib_binding");
-  GLContext::spir_v_support = epoxy_has_gl_extension("GL_ARB_gl_spirv");
+  GLContext::spir_v_support = epoxy_has_gl_extension("GL_ARB_gl_spirv") &&
+                              epoxy_has_gl_extension("GL_ARB_spirv_extensions") &&
+                              epoxy_gl_version() >= 45;
+  GLContext::conservative_depth_support = epoxy_has_gl_extension("GL_ARB_conservative_depth");
 
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;

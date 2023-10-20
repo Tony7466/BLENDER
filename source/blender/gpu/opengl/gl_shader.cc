@@ -14,11 +14,14 @@
 #include "GPU_capabilities.h"
 #include "GPU_platform.h"
 
+#include "gl_backend.hh"
 #include "gl_debug.hh"
 #include "gl_vertex_buffer.hh"
 
 #include "gl_shader.hh"
 #include "gl_shader_interface.hh"
+
+#include "BLI_string_utils.h"
 
 #include <sstream>
 
@@ -54,7 +57,7 @@ GLShader::~GLShader()
   glDeleteShader(geom_shader_);
   glDeleteShader(frag_shader_);
   glDeleteShader(compute_shader_);
-  glDeleteProgram(shader_program_);
+  // Double free? glDeleteProgram(shader_program_);
 }
 
 /** \} */
@@ -758,7 +761,7 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (info.early_fragment_test_) {
     ss << "layout(early_fragment_tests) in;\n";
   }
-  if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
+  if (GLContext::conservative_depth_support) {
     ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
   }
 
@@ -1019,7 +1022,10 @@ static char *glsl_patch_default_get()
 
   size_t slen = 0;
   /* Version need to go first. */
-  if (epoxy_gl_version() >= 43) {
+  if (GLContext::spir_v_support) {
+    STR_CONCAT(patch, slen, "#version 450 core\n");
+  }
+  else if (epoxy_gl_version() >= 43) {
     STR_CONCAT(patch, slen, "#version 430\n");
   }
   else {
@@ -1049,7 +1055,7 @@ static char *glsl_patch_default_get()
     STR_CONCAT(patch, slen, "#extension GL_ARB_texture_cube_map_array : enable\n");
     STR_CONCAT(patch, slen, "#define GPU_ARB_texture_cube_map_array\n");
   }
-  if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
+  if (GLContext::conservative_depth_support) {
     STR_CONCAT(patch, slen, "#extension GL_ARB_conservative_depth : enable\n");
   }
   if (GPU_shader_image_load_store_support()) {
@@ -1100,7 +1106,12 @@ static char *glsl_patch_compute_get()
 
   size_t slen = 0;
   /* Version need to go first. */
-  STR_CONCAT(patch, slen, "#version 430\n");
+  if (GLContext::spir_v_support) {
+    STR_CONCAT(patch, slen, "#version 450 core\n");
+  }
+  else {
+    STR_CONCAT(patch, slen, "#version 430\n");
+  }
   STR_CONCAT(patch, slen, "#extension GL_ARB_compute_shader :enable\n");
 
   if (GLContext::texture_cube_map_array_support) {
@@ -1133,9 +1144,6 @@ GLuint GLShader::compile_stage_using_driver(GLenum gl_stage, MutableSpan<const c
     return 0;
   }
 
-  /* Patch the shader code using the first source slot. */
-  sources[0] = glsl_patch_get(gl_stage);
-
   glShaderSource(shader, sources.size(), sources.data(), nullptr);
   glCompileShader(shader);
 
@@ -1168,9 +1176,6 @@ GLuint GLShader::compile_stage_using_driver(GLenum gl_stage, MutableSpan<const c
     return 0;
   }
 
-  debug::object_label(gl_stage, shader, name);
-
-  glAttachShader(shader_program_, shader);
   return shader;
 }
 
@@ -1184,15 +1189,60 @@ static std::string combine_sources(Span<const char *> sources)
 
 GLuint GLShader::compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const char *> sources)
 {
+  /* Compile using Shader C. */
   std::string combined_sources = combine_sources(sources);
-  VKBackend &backend = VKBackend::get();
+  GLBackend &backend = *GLBackend::get();
   shaderc::Compiler &compiler = backend.get_shaderc_compiler();
   shaderc::CompileOptions options;
-  options.SetOptimizationLevel(shaderc_optimization_level_performance);
-  options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
+  options.SetAutoMapLocations(true);
+  // options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  options.SetTargetEnvironment(shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
   if (G.debug & G_DEBUG_GPU_RENDERDOC) {
     options.SetOptimizationLevel(shaderc_optimization_level_zero);
     options.SetGenerateDebugInfo();
+  }
+
+  StringRef stage_name;
+  shaderc_shader_kind shaderc_stage = shaderc_vertex_shader;
+  switch (gl_stage) {
+    case GL_VERTEX_SHADER:
+      stage_name = StageNames::vertex;
+      shaderc_stage = shaderc_vertex_shader;
+      break;
+    case GL_GEOMETRY_SHADER:
+      stage_name = StageNames::geometry;
+      shaderc_stage = shaderc_geometry_shader;
+      break;
+    case GL_FRAGMENT_SHADER:
+      stage_name = StageNames::fragment;
+      shaderc_stage = shaderc_fragment_shader;
+      break;
+    case GL_COMPUTE_SHADER:
+      stage_name = StageNames::compute;
+      shaderc_stage = shaderc_compute_shader;
+      break;
+    default:
+      BLI_assert_unreachable();
+      return 0;
+  }
+
+  shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
+      combined_sources, shaderc_stage, name, options);
+  if (module.GetNumErrors() != 0 /*|| module.GetNumWarnings() != 0*/) {
+    printf("%s\n%s", name, combined_sources.c_str());
+    std::string log = module.GetErrorMessage();
+    Vector<char> logcstr(log.c_str(), log.c_str() + log.size() + 1);
+
+    ShaderCLogParser parser;
+    print_log(sources,
+              logcstr.data(),
+              stage_name.data(),
+              module.GetCompilationStatus() != shaderc_compilation_status_success,
+              &parser);
+  }
+  if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+    compilation_failed_ = true;
+    return 0;
   }
 
   GLuint shader = glCreateShader(gl_stage);
@@ -1200,12 +1250,9 @@ GLuint GLShader::compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const c
     fprintf(stderr, "GLShader: Error: Could not create shader object.\n");
     return 0;
   }
-
-  /* Patch the shader code using the first source slot. */
-  sources[0] = glsl_patch_get(gl_stage);
-
-  glShaderSource(shader, sources.size(), sources.data(), nullptr);
-  glCompileShader(shader);
+  const int binary_size = (module.cend() - module.cbegin()) * sizeof(uint32_t);
+  glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, module.begin(), binary_size);
+  glSpecializeShader(shader, "main", 0, 0, 0);
 
   GLint status;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -1214,20 +1261,7 @@ GLuint GLShader::compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const c
     glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
     if (log[0] != '\0') {
       GLLogParser parser;
-      switch (gl_stage) {
-        case GL_VERTEX_SHADER:
-          this->print_log(sources, log, "VertShader", !status, &parser);
-          break;
-        case GL_GEOMETRY_SHADER:
-          this->print_log(sources, log, "GeomShader", !status, &parser);
-          break;
-        case GL_FRAGMENT_SHADER:
-          this->print_log(sources, log, "FragShader", !status, &parser);
-          break;
-        case GL_COMPUTE_SHADER:
-          this->print_log(sources, log, "ComputeShader", !status, &parser);
-          break;
-      }
+      this->print_log(sources, log, stage_name.data(), !status, &parser);
     }
   }
   if (!status) {
@@ -1236,15 +1270,27 @@ GLuint GLShader::compile_stage_using_spir_v(GLenum gl_stage, MutableSpan<const c
     return 0;
   }
 
-  debug::object_label(gl_stage, shader, name);
-
-  glAttachShader(shader_program_, shader);
   return shader;
 }
 
 GLuint GLShader::create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources)
 {
-  return compile_stage_using_driver(gl_stage, sources);
+  /* Patch the shader code using the first source slot. */
+  sources[0] = glsl_patch_get(gl_stage);
+
+  GLuint shader = 0;
+  if (GLContext::spir_v_support) {
+    shader = compile_stage_using_spir_v(gl_stage, sources);
+  }
+  else {
+    shader = compile_stage_using_driver(gl_stage, sources);
+  }
+
+  if (shader) {
+    debug::object_label(gl_stage, shader, name);
+    glAttachShader(shader_program_, shader);
+  }
+  return shader;
 }
 
 void GLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)

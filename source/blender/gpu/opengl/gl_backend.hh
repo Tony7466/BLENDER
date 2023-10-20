@@ -169,7 +169,10 @@ class GLBackend : public GPUBackend {
   bool debug_capture_begin();
   void debug_capture_end();
 
-  shaderc::Compiler &get_shaderc_compiler();
+  shaderc::Compiler &get_shaderc_compiler()
+  {
+    return shaderc_compiler_;
+  }
 
  private:
   static void platform_init();

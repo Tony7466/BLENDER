@@ -70,6 +70,7 @@ class GLContext : public Context {
   static bool texture_storage_support;
   static bool vertex_attrib_binding_support;
   static bool spir_v_support;
+  static bool conservative_depth_support;
 
   /** Workarounds. */
 

@@ -115,6 +115,10 @@ find_package_wrapper(Epoxy REQUIRED)
 # find_package_wrapper(TIFF REQUIRED)
 find_package(TIFF)
 
+if(WITH_OPENGL_BACKEND)
+  find_package_wrapper(ShaderC REQUIRED)
+endif()
+
 if(WITH_VULKAN_BACKEND)
   find_package_wrapper(Vulkan REQUIRED)
   find_package_wrapper(ShaderC REQUIRED)

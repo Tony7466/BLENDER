@@ -332,11 +332,15 @@ if(WITH_OPENGL_BACKEND)
   list(APPEND INC_SYS
     ${Epoxy_INCLUDE_DIRS}
   )
+  list(APPEND INC_SYS
+    ${SHADERC_INCLUDE_DIRS}
+  )
   list(APPEND SRC
     ${OPENGL_SRC}
   )
   list(APPEND LIB
     ${Epoxy_LIBRARIES}
+    ${SHADERC_LIBRARIES}
   )
   add_definitions(-DWITH_OPENGL_BACKEND)
 endif()

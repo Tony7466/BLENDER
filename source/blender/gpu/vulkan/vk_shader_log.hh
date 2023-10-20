@@ -14,4 +14,5 @@ class VKLogParser : public GPULogParser {
   const char *skip_name(const char *log_line);
   const char *skip_severity_keyword(const char *log_line, GPULogItem &log_item);
 };
+
 }  // namespace blender::gpu

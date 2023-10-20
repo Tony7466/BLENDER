@@ -468,23 +468,23 @@ static std::string main_function_wrapper(std::string &pre_main, std::string &pos
   return ss.str();
 }
 
-static const std::string to_stage_name(shaderc_shader_kind stage)
+static const StringRef to_stage_name(shaderc_shader_kind stage)
 {
   switch (stage) {
     case shaderc_vertex_shader:
-      return std::string("vertex");
+      return VKShader::StageNames::vertex;
     case shaderc_geometry_shader:
-      return std::string("geometry");
+      return VKShader::StageNames::geometry;
     case shaderc_fragment_shader:
-      return std::string("fragment");
+      return VKShader::StageNames::fragment;
     case shaderc_compute_shader:
-      return std::string("compute");
+      return VKShader::StageNames::compute;
 
     default:
       BLI_assert_msg(false, "Do not know how to convert shaderc_shader_kind to stage name.");
       break;
   }
-  return std::string("unknown stage");
+  return VKShader::StageNames::stage_name_unknown;
 }
 
 static char *glsl_patch_get()
@@ -561,7 +561,7 @@ Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
     VKLogParser parser;
     print_log(sources,
               logcstr.data(),
-              to_stage_name(stage).c_str(),
+              to_stage_name(stage).data(),
               module.GetCompilationStatus() != shaderc_compilation_status_success,
               &parser);
   }

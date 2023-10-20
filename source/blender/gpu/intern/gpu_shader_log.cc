@@ -308,4 +308,40 @@ int GPULogParser::parse_number(const char *log_line, const char **r_new_position
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name ShaderC Log Parser
+ * \{ */
+
+const char *ShaderCLogParser::parse_line(const char *log_line, GPULogItem &log_item)
+{
+  log_line = skip_name(log_line);
+  log_line = skip_separators(log_line, ":");
+
+  /* Parse error line & char numbers. */
+  if (at_number(log_line)) {
+    const char *error_line_number_end;
+    log_item.cursor.row = parse_number(log_line, &error_line_number_end);
+    log_line = error_line_number_end;
+  }
+  log_line = skip_separators(log_line, ": ");
+
+  /* Skip to message. Avoid redundant info. */
+  log_line = skip_severity_keyword(log_line, log_item);
+  log_line = skip_separators(log_line, ": ");
+
+  return log_line;
+}
+
+const char *ShaderCLogParser::skip_name(const char *log_line)
+{
+  return skip_until(log_line, ':');
+}
+
+const char *ShaderCLogParser::skip_severity_keyword(const char *log_line, GPULogItem &log_item)
+{
+  return skip_severity(log_line, log_item, "error", "warning", "note");
+}
+
+/** \} */
+
 }  // namespace blender::gpu
