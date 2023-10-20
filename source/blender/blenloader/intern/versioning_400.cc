@@ -50,6 +50,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -242,6 +243,45 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
   }
 }
 
+static void versioning_object_hide_shadow(Object *object)
+{
+  /** EEVEE now uses the Object visibility flag for disabling shadow casting.
+   * Enable it if all object materials have shadows disabled. */
+
+  if (!ELEM(object->type,
+            OB_CURVES,
+            OB_CURVES_LEGACY,
+            OB_FONT,
+            OB_MBALL,
+            OB_MESH,
+            OB_POINTCLOUD,
+            OB_SURF,
+            OB_VOLUME))
+  {
+    return;
+  }
+
+  short *material_len = BKE_object_material_len_p(object);
+  if (!material_len) {
+    return;
+  }
+
+  using namespace blender;
+  bool has_any_valid_material = false;
+  for (int i : IndexRange(*material_len)) {
+    if (Material *material = BKE_object_material_get(object, i)) {
+      has_any_valid_material = true;
+      if (material->blend_shadow != MA_BS_NONE) {
+        return;
+      }
+    }
+  }
+
+  if (has_any_valid_material) {
+    object->visibility_flag |= OB_HIDE_SHADOW;
+  }
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -314,6 +354,12 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     BKE_mesh_legacy_face_map_to_generic(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 2)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      versioning_object_hide_shadow(object);
+    }
   }
 
   /**
@@ -1084,40 +1130,6 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
-static void versioning_object_hide_shadow(Object *object)
-{
-  /** EEVEE now uses the Object visibility flag for disabling shadow casting.
-   * Enable it if all object materials have shadows disabled. */
-
-  if (!ELEM(object->type,
-            OB_CURVES,
-            OB_CURVES_LEGACY,
-            OB_FONT,
-            OB_MBALL,
-            OB_MESH,
-            OB_POINTCLOUD,
-            OB_SURF,
-            OB_VOLUME))
-  {
-    return;
-  }
-
-  using namespace blender;
-  bool has_any_valid_material = false;
-  for (int i : IndexRange(object->totcol)) {
-    if (Material *material = object->mat[i]) {
-      has_any_valid_material = true;
-      if (material->blend_shadow != MA_BS_NONE) {
-        return;
-      }
-    }
-  }
-
-  if (has_any_valid_material) {
-    object->visibility_flag |= OB_HIDE_SHADOW;
-  }
-}
-
 static void versioning_material_transparent_shadow(Material *material)
 {
   if (material->blend_shadow == MA_BS_SOLID) {
@@ -1755,12 +1767,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
       versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 2)) {
-    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-      versioning_object_hide_shadow(object);
     }
   }
 
