@@ -57,7 +57,10 @@ void WorldData::init()
     if (world->use_nodes) {
       /* TODO: Create nodes parsing system */
 
-      bNode *output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
+      output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
+      if (!output_node) {
+        return;
+      }
       const Span<bNodeSocket *> input_sockets = output_node->input_sockets();
       bNodeSocket *input_socket = nullptr;
 

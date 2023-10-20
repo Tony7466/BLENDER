@@ -17,6 +17,8 @@
 
 #include "light.h"
 
+class bNode;
+
 namespace blender::io::hydra {
 
 class WorldData : public LightData {
@@ -25,6 +27,8 @@ class WorldData : public LightData {
 
   void init() override;
   void update() override;
+
+  bNode *output_node = nullptr;
 
  protected:
   void write_transform() override;
