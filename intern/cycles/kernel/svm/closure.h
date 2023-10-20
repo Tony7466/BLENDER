@@ -201,7 +201,7 @@ ccl_device
             sd, sizeof(SheenBsdf), sheen_weight * rgb_to_spectrum(sheen_tint) * weight);
 
         if (bsdf) {
-          bsdf->N = safe_normalize(mix(N, coat_normal, coat_weight));
+          bsdf->N = safe_normalize(mix(N, coat_normal, saturatef(coat_weight)));
           bsdf->roughness = sheen_roughness;
 
           /* setup bsdf */
