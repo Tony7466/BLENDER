@@ -23,12 +23,13 @@ namespace blender::io::hydra {
 
 class WorldData : public LightData {
  public:
+  bNode *output_node = nullptr;
+
+ public:
   WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;
   void update() override;
-
-  bNode *output_node = nullptr;
 
  protected:
   void write_transform() override;
