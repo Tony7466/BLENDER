@@ -728,7 +728,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       sub1_node->parent = node->parent;
       sub1_node->custom1 = NODE_MATH_SUBTRACT;
       sub1_node->locx = node->locx;
-      sub1_node->locy = node->locy - 300.0f;
+      sub1_node->locy = node->locy - 320.0f;
       sub1_node->flag |= NODE_HIDDEN;
       bNodeSocket *sub1_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 0));
       bNodeSocket *sub1_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 1));
@@ -750,7 +750,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         greater_node->parent = node->parent;
         greater_node->custom1 = NODE_MATH_GREATER_THAN;
         greater_node->locx = node->locx;
-        greater_node->locy = node->locy - 340.0f;
+        greater_node->locy = node->locy - 360.0f;
         greater_node->flag |= NODE_HIDDEN;
         bNodeSocket *greater_socket_A = static_cast<bNodeSocket *>(
             BLI_findlink(&greater_node->inputs, 0));
