@@ -711,11 +711,11 @@ static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *nt
         sample_nearest_surface->locy = node->locy;
         static auto socket_remap = []() {
           Map<std::string, std::string> map;
-          map.add_new("Attribute", "Value_Vector");
-          map.add_new("Attribute_001", "Value_Float");
-          map.add_new("Attribute_002", "Value_Color");
-          map.add_new("Attribute_003", "Value_Bool");
-          map.add_new("Attribute_004", "Value_Int");
+          map.add_new("Attribute", "Value");
+          map.add_new("Attribute_001", "Value");
+          map.add_new("Attribute_002", "Value");
+          map.add_new("Attribute_003", "Value");
+          map.add_new("Attribute_004", "Value");
           map.add_new("Source", "Mesh");
           map.add_new("Source Position", "Sample Position");
           return map;
@@ -768,11 +768,11 @@ static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *nt
 
         static auto sample_index_remap = []() {
           Map<std::string, std::string> map;
-          map.add_new("Attribute", "Value_Vector");
-          map.add_new("Attribute_001", "Value_Float");
-          map.add_new("Attribute_002", "Value_Color");
-          map.add_new("Attribute_003", "Value_Bool");
-          map.add_new("Attribute_004", "Value_Int");
+          map.add_new("Attribute", "Value");
+          map.add_new("Attribute_001", "Value");
+          map.add_new("Attribute_002", "Value");
+          map.add_new("Attribute_003", "Value");
+          map.add_new("Attribute_004", "Value");
           map.add_new("Source Position", "Sample Position");
           return map;
         }();
@@ -798,11 +798,11 @@ static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *nt
         const bool index_was_linked = nodeFindSocket(node, SOCK_IN, "Index")->link != nullptr;
         static auto socket_remap = []() {
           Map<std::string, std::string> map;
-          map.add_new("Attribute", "Value_Vector");
-          map.add_new("Attribute_001", "Value_Float");
-          map.add_new("Attribute_002", "Value_Color");
-          map.add_new("Attribute_003", "Value_Bool");
-          map.add_new("Attribute_004", "Value_Int");
+          map.add_new("Attribute", "Value");
+          map.add_new("Attribute_001", "Value");
+          map.add_new("Attribute_002", "Value");
+          map.add_new("Attribute_003", "Value");
+          map.add_new("Attribute_004", "Value");
           map.add_new("Source", "Geometry");
           map.add_new("Index", "Index");
           return map;
@@ -1016,7 +1016,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
                 is_smooth_node,
                 nodeFindSocket(is_smooth_node, SOCK_OUT, "Smooth"),
                 capture_node,
-                nodeFindSocket(capture_node, SOCK_IN, "Value_003"));
+                nodeFindSocket(capture_node, SOCK_IN, "Value"));
     nodeAddLink(&ntree,
                 capture_node,
                 nodeFindSocket(capture_node, SOCK_OUT, "Geometry"),
@@ -1043,7 +1043,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     }
     nodeAddLink(&ntree,
                 capture_node,
-                nodeFindSocket(capture_node, SOCK_OUT, "Attribute_003"),
+                nodeFindSocket(capture_node, SOCK_OUT, "Attribute"),
                 set_smooth_node,
                 nodeFindSocket(set_smooth_node, SOCK_IN, "Shade Smooth"));
   }
