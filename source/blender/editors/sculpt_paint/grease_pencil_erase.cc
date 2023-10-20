@@ -962,7 +962,7 @@ struct EraseOperationExecutor {
     const float length_ab = math::length(co_b - co_a);
     float distance = (length_ab == 0.0f ?
                           0.0f :
-                          math::clamp(math::length(isect - float2(co_a)) / length_ab, 0.0f, 1.0f));
+                          math::clamp(math::length(isect - co_a) / length_ab, 0.0f, 1.0f));
 
     return distance;
   }
@@ -1046,7 +1046,7 @@ struct EraseOperationExecutor {
 
           /* Add some padding to the line segment c-d, otherwise we could just miss an
            * intersection. */
-          const float2 padding_cd = math::normalize(float2(co_d - co_c) * intersection_padding);
+          const float2 padding_cd = math::normalize(co_d - co_c) * intersection_padding;
           const float2 padded_c = co_c - padding_cd;
           const float2 padded_d = co_d + padding_cd;
 
@@ -1074,7 +1074,7 @@ struct EraseOperationExecutor {
   }
 
   /**
-   * Expand a cutter segment of one point by walking along the curve points in both directions.
+   * Expand a cutter segment of one point by walking along the curve in both directions.
    * A cutter segments ends at an intersection with another curve, or at the end of the curve.
    */
   static void expand_cutter_segment(CutterSegment *segment,
@@ -1132,7 +1132,10 @@ struct EraseOperationExecutor {
           break;
         }
 
-        /* Store intersection data. */
+        /* When we hit an intersection, store the intersection factor. Potentially, line segment
+         * a-b can be intersected by multiple curves, so we want to fetch the first intersection
+         * point we bumped into. In forward direction this is the minimum distance factor, in
+         * backward direction the maximum. */
         if (intersected) {
           segment->is_intersected[point_range_index] = true;
           segment->intersection_factor[point_range_index] = (direction == 1) ? distance_min :
@@ -1209,7 +1212,7 @@ struct EraseOperationExecutor {
       /* Look for curve points inside the lasso area. */
       const IndexRange src_points = src_points_by_curve[src_curve];
       for (const int src_point : src_points) {
-        /* Skip point when it is already part of a segment. */
+        /* Skip point when it is already part of a cutter segment. */
         if (cutter_segments.point_is_in_segment(src_curve, src_point)) {
           continue;
         }
@@ -1222,11 +1225,11 @@ struct EraseOperationExecutor {
                                       int(screen_space_positions[src_point].y),
                                       IS_CLIPPED))
         {
-          /* Create new cutter curve segment. */
+          /* Create new cutter segment. */
           CutterSegment *segment = cutter_segments.create_segment(src_curve, src_point);
 
-          /* Expand cutter segment in both directions until an intersection is found or the end of
-           * the curve is reached. */
+          /* Expand the cutter segment in both directions until an intersection is found or the end
+           * of the curve is reached. */
           expand_cutter_segment(
               segment, src, screen_space_positions, screen_space_bbox, true, &cutter_segments);
         }
