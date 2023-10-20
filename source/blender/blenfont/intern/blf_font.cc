@@ -1629,6 +1629,11 @@ bool blf_ensure_face(FontBLF *font)
   blf_ensure_size(font);
   blf_font_metrics(font->face, &font->metrics);
 
+  font->char_weight = font->metrics.weight;
+  font->char_slant = font->metrics.slant;
+  font->char_width = font->metrics.width;
+  font->char_spacing = font->metrics.spacing;
+
   /* Save TrueType table with bits to quickly test most unicode block coverage. */
   TT_OS2 *os2_table = (TT_OS2 *)FT_Get_Sfnt_Table(font->face, FT_SFNT_OS2);
   if (os2_table) {

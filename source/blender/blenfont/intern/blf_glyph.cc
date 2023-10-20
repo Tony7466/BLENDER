@@ -898,15 +898,18 @@ static bool blf_glyph_set_variation_float(FontBLF *font,
  *
  * \param coords: Array of design coordinates, per axis.
  * \param weight: Weight class value (1-1000 allowed, 100-900 typical).
- * \return value set (could be clamped), or 400 (normal) if the axis does not exist.
+ * \return value set (could be clamped), or current weight if the axis does not exist.
  */
-static float blf_glyph_set_variation_weight(FontBLF *font, FT_Fixed coords[], float weight)
+static float blf_glyph_set_variation_weight(FontBLF *font,
+                                            FT_Fixed coords[],
+                                            float current_weight,
+                                            float target_weight)
 {
-  float value = weight;
+  float value = target_weight;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_WEIGHT, &value)) {
     return value;
   }
-  return 400.0f;
+  return current_weight;
 }
 
 /**
@@ -914,15 +917,18 @@ static float blf_glyph_set_variation_weight(FontBLF *font, FT_Fixed coords[], fl
  *
  * \param coords: Array of design coordinates, per axis.
  * \param degrees: Slant in clockwise (opposite to spec) degrees.
- * \return value set (could be clamped), or 0 (upright) if the axis does not exist.
+ * \return value set (could be clamped), or current slant if the axis does not exist.
  */
-static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], float degrees)
+static float blf_glyph_set_variation_slant(FontBLF *font,
+                                           FT_Fixed coords[],
+                                           float current_degrees,
+                                           float target_degrees)
 {
-  float value = -degrees;
+  float value = -target_degrees;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_SLANT, &value)) {
     return -value;
   }
-  return 0.0f;
+  return current_degrees;
 }
 
 /**
@@ -930,15 +936,18 @@ static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], flo
  *
  * \param coords: Array of design coordinates, per axis.
  * \param width: Glyph width value. 1.0 is normal, as per spec (which uses percent).
- * \return value set (could be clamped), or 1.0 (normal) if the axis does not exist.
+ * \return value set (could be clamped), or current width if the axis does not exist.
  */
-static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], float width)
+static float blf_glyph_set_variation_width(FontBLF *font,
+                                           FT_Fixed coords[],
+                                           float current_width,
+                                           float target_width)
 {
-  float value = width * 100.0f;
+  float value = target_width * 100.0f;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_WIDTH, &value)) {
     return value / 100.0f;
   }
-  return 1.0f;
+  return current_width;
 }
 
 /**
@@ -946,15 +955,18 @@ static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], flo
  *
  * \param coords: Array of design coordinates, per axis.
  * \param spacing: Glyph spacing value. 0.0 is normal, as per spec.
- * \return value set (could be clamped), or 0.0 (normal) if the axis does not exist.
+ * \return value set (could be clamped), or current spacing if the axis does not exist.
  */
-static float blf_glyph_set_variation_spacing(FontBLF *font, FT_Fixed coords[], float spacing)
+static float blf_glyph_set_variation_spacing(FontBLF *font,
+                                             FT_Fixed coords[],
+                                             float current_spacing,
+                                             float target_spacing)
 {
-  float value = spacing;
+  float value = target_spacing;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_SPACING, &value)) {
     return value;
   }
-  return 0.0f;
+  return current_spacing;
 }
 
 /**
@@ -1139,10 +1151,10 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     FT_Get_Var_Design_Coordinates(glyph_font->face, BLF_VARIATIONS_MAX, &coords[0]);
     /* Update design coordinates with new values. */
 
-    weight = blf_glyph_set_variation_weight(glyph_font, coords, weight_target);
-    slant = blf_glyph_set_variation_slant(glyph_font, coords, slant_target);
-    width = blf_glyph_set_variation_width(glyph_font, coords, width_target);
-    spacing = blf_glyph_set_variation_spacing(glyph_font, coords, spacing_target);
+    weight = blf_glyph_set_variation_weight(glyph_font, coords, weight, weight_target);
+    slant = blf_glyph_set_variation_slant(glyph_font, coords, slant, slant_target);
+    width = blf_glyph_set_variation_width(glyph_font, coords, width, width_target);
+    spacing = blf_glyph_set_variation_spacing(glyph_font, coords, spacing, spacing_target);
     blf_glyph_set_variation_optical_size(glyph_font, coords, settings_font->size);
 
     /* Save updated design coordinates. */
