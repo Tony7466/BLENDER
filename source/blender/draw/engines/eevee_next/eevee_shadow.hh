@@ -331,7 +331,6 @@ class ShadowModule {
   void sync_object(const Object *ob,
                    const ObjectHandle &handle,
                    const ResourceHandle &resource_handle,
-                   bool is_shadow_caster,
                    bool is_alpha_blend);
   void end_sync();
 
