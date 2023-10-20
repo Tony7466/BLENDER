@@ -2052,24 +2052,14 @@ static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
   return unique_node_name(grease_pencil, DATA_("GP_Group"), name);
 }
 
-static void grow_customdata(CustomData &data, const int insertion_index, const int size)
+static void grow_customdata(CustomData &data, const int size)
 {
   using namespace blender;
   CustomData new_data;
   CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
   CustomData_realloc(&new_data, size, size + 1);
 
-  const IndexRange range_before(insertion_index + 1);
-  const IndexRange range_after(insertion_index + 1, size - insertion_index - 1);
-
-  if (range_before.size() > 0) {
-    CustomData_copy_data(
-        &data, &new_data, range_before.start(), range_before.start(), range_before.size());
-  }
-  if (range_after.size() > 0) {
-    CustomData_copy_data(
-        &data, &new_data, range_after.start(), range_after.start() + 1, range_after.size());
-  }
+  CustomData_copy_data(&data, &new_data, 0, 0, size);
 
   CustomData_free(&data, size);
   data = new_data;
@@ -2108,8 +2098,7 @@ static int find_layer_insertion_index(
   return index;
 }
 
-static void grow_or_init_customdata(GreasePencil *grease_pencil,
-                                    const blender::bke::greasepencil::LayerGroup &parent_group)
+static void grow_or_init_customdata(GreasePencil *grease_pencil)
 {
   using namespace blender;
   const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
@@ -2117,8 +2106,7 @@ static void grow_or_init_customdata(GreasePencil *grease_pencil,
     CustomData_realloc(&grease_pencil->layers_data, 0, 1);
   }
   else {
-    int insertion_index = find_layer_insertion_index(layers, parent_group, false);
-    grow_customdata(grease_pencil->layers_data, insertion_index, layers.size());
+    grow_customdata(grease_pencil->layers_data, layers.size());
   }
 }
 
@@ -2127,7 +2115,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
-  grow_or_init_customdata(this, parent_group);
+  grow_or_init_customdata(this);
   return parent_group.add_layer(unique_name);
 }
 
@@ -2137,7 +2125,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
-  grow_or_init_customdata(this, parent_group);
+  grow_or_init_customdata(this);
   bke::greasepencil::Layer &new_layer = parent_group.add_layer(duplicate_layer);
   this->update_drawing_users_for_layer(new_layer);
   new_layer.set_name(unique_name);
