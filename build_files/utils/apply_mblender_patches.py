@@ -14,7 +14,10 @@ import make_utils
 from make_utils import call
 
 
-MB_0001 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0001-operator-repeat/diff/mb-0001-operator-repeat.diff"
+MB_0001 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0001-operator-repeat/diff/MB-0001-operator-repeat.diff"
+MB_0005 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0005-splash-changes/diff/MB-0005-splash-changes.diff"
+MB_0006 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0006-allow-no-modal-transform/diff/MB-0006-allow-no-modal-transform.diff"
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -40,4 +43,10 @@ if make_utils.command_missing(wget_command):
 
 if __name__ == "__main__":
 	call([wget_command, MB_0001, "-O", tmp_file])
+	call([git_command, "apply", tmp_file])
+	
+	call([wget_command, MB_0005, "-O", tmp_file])
+	call([git_command, "apply", tmp_file])
+	
+	call([wget_command, MB_0006, "-O", tmp_file])
 	call([git_command, "apply", tmp_file])

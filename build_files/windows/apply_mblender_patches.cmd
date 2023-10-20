@@ -8,11 +8,17 @@ if "%CURL%" == "" (
 	goto ERR
 )
 
-set MB_001=https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0001-operator-repeat/diff/mb-0001-operator-repeat.diff
+set MB_0001=https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0001-operator-repeat/diff/MB-0001-operator-repeat.diff
+set MB_0005=https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0005-splash-changes/diff/MB-0005-splash-changes.diff
+set MB_0006=https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0006-allow-no-modal-transform/diff/MB-0006-allow-no-modal-transform.diff
 
-echo "%MB_001%"
+"%CURL%" "%MB_0001%" --ssl-no-revoke | "%GIT%" apply 
+if errorlevel 1 goto ERR
 
-"%CURL%" "%MB_001%" --ssl-no-revoke | "%GIT%" apply 
+"%CURL%" "%MB_0005%" --ssl-no-revoke | "%GIT%" apply 
+if errorlevel 1 goto ERR
+
+"%CURL%" "%MB_0006%" --ssl-no-revoke | "%GIT%" apply 
 if errorlevel 1 goto ERR
 
 echo Now build blender as usually.
