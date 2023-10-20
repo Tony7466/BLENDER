@@ -117,7 +117,7 @@ ccl_device
       float sheen_weight = max(stack_load_float(stack, sheen_weight_offset), 0.0f);
       float3 sheen_tint = max(stack_load_float3(stack, sheen_tint_offset), zero_float3());
       float sheen_roughness = saturatef(stack_load_float(stack, sheen_roughness_offset));
-      float coat_weight = saturatef(stack_load_float(stack, coat_weight_offset));
+      float coat_weight = fmaxf(stack_load_float(stack, coat_weight_offset), 0.0f);
       float coat_roughness = saturatef(stack_load_float(stack, coat_roughness_offset));
       float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
       float3 coat_tint = max(stack_load_float3(stack, coat_tint_offset), zero_float3());

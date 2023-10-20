@@ -43,7 +43,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   float transmission = clamp(TransmissionWeight, 0.0, 1.0);
   float subsurface_weight = clamp(SubsurfaceWeight, 0.0, 1.0);
   color specular_tint = max(SpecularTint, color(0.0));
-  float coat_weight = clamp(CoatWeight, 0.0, 1.0);
+  float coat_weight = max(CoatWeight, 0.0);
   color coat_tint = max(CoatTint, color(0.0));
   float sheen_weight = max(SheenWeight, 0.0);
   color base_color = max(BaseColor, color(0.0));
@@ -141,7 +141,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       float coat_neta = 1.0 / coat_ior;
       float cosNI = dot(I, CoatNormal);
       float cosNT = sqrt(1.0 - coat_neta * coat_neta * (1 - cosNI * cosNI));
-      BSDF *= mix(color(1.0), pow(CoatTint, 1.0 / cosNT), coat_weight);
+      BSDF *= mix(color(1.0), pow(CoatTint, 1.0 / cosNT), clamp(coat_weight, 0.0, 1.0));
     }
     float coat_r2 = clamp(CoatRoughness, 0.0, 1.0);
     coat_r2 = coat_r2 * coat_r2;
@@ -152,7 +152,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   if (SheenWeight > CLOSURE_WEIGHT_CUTOFF) {
-    normal sheen_normal = normalize(mix(Normal, CoatNormal, coat_weight));
+    normal sheen_normal = normalize(mix(Normal, CoatNormal, clamp(coat_weight, 0.0, 1.0)));
     closure color SheenBSDF = sheen(sheen_normal, clamp(SheenRoughness, 0.0, 1.0));
     BSDF = layer(sheen_weight * max(SheenTint, color(0.0)) * SheenBSDF, BSDF);
   }
