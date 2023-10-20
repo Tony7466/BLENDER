@@ -707,6 +707,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* Only for versioning, vertex group names are now stored on object data. */
   BLO_read_list(reader, &ob->defbase);
+  BLO_read_list(reader, &ob->fmaps);
 
   /* XXX deprecated - old animation system <<< */
   direct_link_nlastrips(reader, &ob->nlastrips);
@@ -1055,7 +1056,7 @@ IDTypeInfo IDType_ID_OB = {
     /*main_listbase_index*/ INDEX_ID_OB,
     /*struct_size*/ sizeof(Object),
     /*name*/ "Object",
-    /*name_plural*/ "objects",
+    /*name_plural*/ N_("objects"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_OBJECT,
     /*flags*/ 0,
     /*asset_type_info*/ &AssetType_OB,
