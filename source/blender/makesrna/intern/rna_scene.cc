@@ -705,7 +705,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_string_utils.h"
+#  include "BLI_string_utils.hh"
 
 #  include "DNA_anim_types.h"
 #  include "DNA_cachefile_types.h"
@@ -7782,6 +7782,15 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "volumetric_sample_distribution", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_ui_text(
       prop, "Exponential Sampling", "Distribute more samples closer to the camera");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "volumetric_ray_depth", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Volume Max Ray Depth",
+                           "Maximum surface intersection count used by the accurate volume "
+                           "intersection method. Will create artifact if it is exceeded");
+  RNA_def_property_range(prop, 1, 16);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
