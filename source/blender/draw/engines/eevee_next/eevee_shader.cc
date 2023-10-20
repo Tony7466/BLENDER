@@ -262,6 +262,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_surfel_ray";
     case VOLUME_INTEGRATION:
       return "eevee_volume_integration";
+    case VOLUME_OCCUPANCY_CONVERT:
+      return "eevee_volume_occupancy_convert";
     case VOLUME_RESOLVE:
       return "eevee_volume_resolve";
     case VOLUME_SCATTER:
@@ -345,7 +347,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_AO) &&
       ELEM(pipeline_type, MAT_PIPE_FORWARD, MAT_PIPE_DEFERRED) &&
-      ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES))
+      geometry_type_has_surface(geometry_type))
   {
     info.define("MAT_AMBIENT_OCCLUSION");
   }
@@ -353,9 +355,13 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
     info.define("MAT_TRANSPARENT");
     /* Transparent material do not have any velocity specific pipeline. */
-    if (pipeline_type == MAT_PIPE_FORWARD_PREPASS_VELOCITY) {
-      pipeline_type = MAT_PIPE_FORWARD_PREPASS;
+    if (pipeline_type == MAT_PIPE_PREPASS_FORWARD_VELOCITY) {
+      pipeline_type = MAT_PIPE_PREPASS_FORWARD;
     }
+  }
+
+  if (pipeline_type == MAT_PIPE_PREPASS_FORWARD) {
+    info.define("MAT_FORWARD");
   }
 
   bool supports_render_passes = (pipeline_type == MAT_PIPE_DEFERRED);
@@ -427,6 +433,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       }
       info.vertex_inputs_.clear();
       break;
+    case MAT_GEOM_VOLUME:
     case MAT_GEOM_VOLUME_OBJECT:
     case MAT_GEOM_VOLUME_WORLD:
       /** Volume grid attributes come from 3D textures. Transfer attributes to samplers. */
@@ -437,8 +444,11 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_vertex_attrib_load = !ELEM(
-      geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT);
+  const bool do_vertex_attrib_load = !ELEM(geometry_type,
+                                           MAT_GEOM_WORLD,
+                                           MAT_GEOM_VOLUME_WORLD,
+                                           MAT_GEOM_VOLUME_OBJECT,
+                                           MAT_GEOM_VOLUME);
 
   if (!do_vertex_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
@@ -462,7 +472,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
 
   std::stringstream vert_gen, frag_gen, comp_gen;
 
-  bool is_compute = pipeline_type == MAT_PIPE_VOLUME;
+  bool is_compute = pipeline_type == MAT_PIPE_VOLUME_MATERIAL;
 
   if (do_vertex_attrib_load) {
     vert_gen << global_vars.str() << attr_load.str();
@@ -477,7 +487,11 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   if (!is_compute) {
     const bool use_vertex_displacement = (codegen.displacement != nullptr) &&
                                          (displacement_type > MAT_DISPLACEMENT_BUMP) &&
-                                         (geometry_type != MAT_GEOM_WORLD);
+                                         (!ELEM(geometry_type,
+                                                MAT_GEOM_WORLD,
+                                                MAT_GEOM_VOLUME_WORLD,
+                                                MAT_GEOM_VOLUME_OBJECT,
+                                                MAT_GEOM_VOLUME));
 
     vert_gen << "vec3 nodetree_displacement()\n";
     vert_gen << "{\n";
@@ -550,6 +564,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     case MAT_GEOM_POINT_CLOUD:
       info.additional_info("eevee_geom_point_cloud");
       break;
+    case MAT_GEOM_VOLUME:
+      info.additional_info("eevee_geom_volume");
+      break;
   }
   /* Pipeline Info. */
   switch (geometry_type) {
@@ -561,15 +578,16 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
     default:
       switch (pipeline_type) {
-        case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
-        case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
+        case MAT_PIPE_PREPASS_FORWARD_VELOCITY:
+        case MAT_PIPE_PREPASS_DEFERRED_VELOCITY:
           info.additional_info("eevee_surf_depth", "eevee_velocity_geom");
           break;
-        case MAT_PIPE_FORWARD_PREPASS:
-        case MAT_PIPE_DEFERRED_PREPASS:
+        case MAT_PIPE_PREPASS_OVERLAP:
+        case MAT_PIPE_PREPASS_FORWARD:
+        case MAT_PIPE_PREPASS_DEFERRED:
           info.additional_info("eevee_surf_depth");
           break;
-        case MAT_PIPE_PLANAR_PREPASS:
+        case MAT_PIPE_PREPASS_PLANAR:
           info.additional_info("eevee_surf_depth", "eevee_clip_plane");
           break;
         case MAT_PIPE_SHADOW:
@@ -585,6 +603,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
               BLI_assert_unreachable();
             } break;
           }
+          break;
+        case MAT_PIPE_VOLUME_OCCUPANCY:
+          info.additional_info("eevee_surf_occupancy");
           break;
         case MAT_PIPE_CAPTURE:
           info.additional_info("eevee_surf_capture");
@@ -614,12 +635,15 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
-                                               eMaterialDisplacement displacement_type,
                                                bool deferred_compilation)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
-  uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
+  eMaterialDisplacement displacement_type = static_cast<eMaterialDisplacement>(
+      blender_mat->displacement_method);
+
+  uint64_t shader_uuid = shader_uuid_from_material_type(
+      pipeline_type, geometry_type, displacement_type);
 
   return DRW_shader_from_material(
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);
@@ -629,13 +653,12 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME_MATERIAL);
   bool defer_compilation = is_volume;
 
   eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME_WORLD : MAT_GEOM_WORLD;
 
-  uint64_t shader_uuid = shader_uuid_from_material_type(
-      pipeline_type, geometry_type, MAT_DISPLACEMENT_BUMP);
+  uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
   return DRW_shader_from_world(
       blender_world, nodetree, shader_uuid, is_volume, defer_compilation, codegen_callback, this);
@@ -652,7 +675,7 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
 {
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
   GPUMaterial *gpumat = GPU_material_from_nodetree(nullptr,
                                                    nullptr,

@@ -130,6 +130,7 @@ enum eShaderType {
   SURFEL_RAY,
 
   VOLUME_INTEGRATION,
+  VOLUME_OCCUPANCY_CONVERT,
   VOLUME_RESOLVE,
   VOLUME_SCATTER,
   VOLUME_SCATTER_WITH_LIGHTS,
@@ -156,7 +157,6 @@ class ShaderModule {
                                    bNodeTree *nodetree,
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type,
-                                   eMaterialDisplacement displacement_type,
                                    bool deferred_compilation);
   GPUMaterial *world_shader_get(::World *blender_world,
                                 bNodeTree *nodetree,
@@ -166,7 +166,6 @@ class ShaderModule {
                                    bNodeTree *nodetree,
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type,
-                                   eMaterialDisplacement displacement_type,
                                    bool is_lookdev);
 
   void material_create_info_ammend(GPUMaterial *mat, GPUCodegenOutput *codegen);
