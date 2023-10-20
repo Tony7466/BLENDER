@@ -969,7 +969,7 @@ enum class CapsMode : int8_t {
 };
 
 static const EnumPropertyItem caps_types[] = {
-    {int(CapsMode::TOGGLE), "TOGGLE", 0, "BOTH", ""},
+    {int(CapsMode::TOGGLE), "TOGGLE", 0, "Both", ""},
     {int(CapsMode::START), "START", 0, "Start", ""},
     {int(CapsMode::END), "END", 0, "End", ""},
     {int(CapsMode::DEFAULT), "DEFAULT", 0, "Default", "Set as default rounded"},
