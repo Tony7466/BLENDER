@@ -28,6 +28,7 @@ class GreasePencilDrawingRuntime;
 namespace greasepencil {
 class DrawingRuntime;
 class Drawing;
+class DrawingReference;
 class TreeNode;
 class Layer;
 class LayerRuntime;
@@ -120,6 +121,10 @@ typedef struct GreasePencilDrawingReference {
    * See the note in `GreasePencilLayer->frames()` for a detailed explanation of this.
    */
   struct GreasePencil *id_reference;
+#ifdef __cplusplus
+  blender::bke::greasepencil::DrawingReference &wrap();
+  const blender::bke::greasepencil::DrawingReference &wrap() const;
+#endif
 } GreasePencilDrawingReference;
 
 /**
@@ -487,11 +492,8 @@ typedef struct GreasePencil {
                       blender::bke::greasepencil::LayerGroup &parent_group);
 
   /* Search functions. */
-  const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
-  blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
-  const blender::bke::greasepencil::LayerGroup *find_layer_group_by_name(
-      blender::StringRefNull name) const;
-  blender::bke::greasepencil::LayerGroup *find_layer_group_by_name(blender::StringRefNull name);
+  const blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name) const;
+  blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name);
 
   void rename_node(blender::bke::greasepencil::TreeNode &node, blender::StringRefNull new_name);
 

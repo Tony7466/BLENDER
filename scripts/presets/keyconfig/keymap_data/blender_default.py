@@ -4622,6 +4622,10 @@ def km_grease_pencil_edit(params):
         *_template_items_proportional_editing(
             params, connected=True, toggle_data_path='tool_settings.use_proportional_edit'),
 
+        # Cyclical set
+        ("grease_pencil.cyclical_set", {"type": 'F', "value": 'PRESS'}, {"properties": [("type", "CLOSE")]}),
+        ("grease_pencil.cyclical_set", {"type": 'C', "value": 'PRESS',
+         "alt": True}, {"properties": [("type", "TOGGLE")]}),
     ])
 
     return keymap
