@@ -844,7 +844,7 @@ static float short_edge_queue_priority(const BMEdge &edge)
 {
   float priority = BM_edge_calc_length_squared(&edge);
 
-  /* TODO(@serge): Find better weighting strategy. Maybe multiplicative? */
+  /* TODO(@sergey): Find better weighting strategy. Maybe multiplicative? */
   if (is_boundary_edge(edge)) {
     priority += 500;
   }
