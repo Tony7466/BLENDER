@@ -30,7 +30,7 @@ ObjectRuntimeBackup::ObjectRuntimeBackup(const Depsgraph * /*depsgraph*/)
 void ObjectRuntimeBackup::init_from_object(Object *object)
 {
   /* Store evaluated mesh and curve_cache, and make sure we don't free it. */
-  runtime = object->runtime;
+  runtime = *object->runtime;
   if (object->light_linking) {
     light_linking_runtime = object->light_linking->runtime;
   }
@@ -81,9 +81,9 @@ void ObjectRuntimeBackup::backup_pose_channel_runtime_data(Object *object)
 void ObjectRuntimeBackup::restore_to_object(Object *object)
 {
   ID *data_orig = object->runtime->data_orig;
-  ID *data_eval = runtime->data_eval;
+  ID *data_eval = runtime.data_eval;
   BoundBox *bb = object->runtime->bb;
-  object->runtime = runtime;
+  *object->runtime = runtime;
   object->runtime->data_orig = data_orig;
   object->runtime->bb = bb;
   if (ELEM(object->type, OB_MESH, OB_LATTICE, OB_CURVES_LEGACY, OB_FONT) && data_eval != nullptr) {

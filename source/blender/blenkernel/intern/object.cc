@@ -1587,7 +1587,7 @@ static void object_update_from_subsurf_ccg(Object *object)
 void BKE_object_eval_assign_data(Object *object_eval, ID *data_eval, bool is_owned)
 {
   BLI_assert(object_eval->id.tag & LIB_TAG_COPIED_ON_WRITE);
-  BLI_assert(object_eval->runtime.data_eval == nullptr);
+  BLI_assert(object_eval->runtime->data_eval == nullptr);
   BLI_assert(data_eval->tag & LIB_TAG_NO_MAIN);
 
   if (is_owned) {
@@ -4974,7 +4974,7 @@ bool BKE_object_supports_material_slots(Object *ob)
 
 void BKE_object_runtime_reset(Object *object)
 {
-  memset(object->runtime, 0, sizeof(object->runtime));
+  memset(object->runtime, 0, sizeof(*object->runtime));
 }
 
 void BKE_object_runtime_reset_on_copy(Object *object, const int /*flag*/)

@@ -6,7 +6,9 @@
  * \ingroup draw_engine
  */
 
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
+
 #include "BLI_math_color.h"
 #include "DRW_render.h"
 

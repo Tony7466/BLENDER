@@ -64,6 +64,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_modifier.h"
 #  include "BKE_object.hh"
+#  include "BKE_object_types.hh"
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 

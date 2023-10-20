@@ -11,6 +11,7 @@
 #include "DNA_meta_types.h"
 
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 #include "DEG_depsgraph_query.hh"
 

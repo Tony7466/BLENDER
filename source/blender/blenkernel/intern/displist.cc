@@ -1351,7 +1351,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
        * data. This is needed for a few reasons:
        * - Existing code from before curve evaluation was changed to use #GeometrySet expected to
        *   have a copy of the original curve data. (Any evaluated data was placed in
-       *   #Object.runtime.curve_cache).
+       *   #Object.runtime->curve_cache).
        * - The result of modifier evaluation is not a #Curve data-block but a #Curves data-block,
        *   which can support constructive modifiers and geometry nodes.
        * - The dependency graph has handling of edit mode pointers (see #update_edit_mode_pointers)

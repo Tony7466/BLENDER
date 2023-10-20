@@ -644,7 +644,7 @@ static void object_for_curve_to_mesh_free(Object *temp_object)
 }
 
 /**
- * Populate `object->runtime.curve_cache` which is then used to create the mesh.
+ * Populate `object->runtime->curve_cache` which is then used to create the mesh.
  */
 static void curve_to_mesh_eval_ensure(Object &object)
 {

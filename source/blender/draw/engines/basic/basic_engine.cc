@@ -13,6 +13,7 @@
 
 #include "BKE_global.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 

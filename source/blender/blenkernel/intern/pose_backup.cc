@@ -22,6 +22,7 @@
 #include "BKE_action.hh"
 #include "BKE_armature.hh"
 #include "BKE_idprop.h"
+#include "BKE_object_types.hh"
 
 using namespace blender::bke;
 

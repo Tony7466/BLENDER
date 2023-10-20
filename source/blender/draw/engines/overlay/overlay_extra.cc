@@ -23,6 +23,7 @@
 #include "BKE_modifier.h"
 #include "BKE_movieclip.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_tracking.h"
 
 #include "BLI_listbase.h"

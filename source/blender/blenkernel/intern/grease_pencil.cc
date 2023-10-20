@@ -18,6 +18,7 @@
 #include "BKE_material.h"
 #include "BKE_modifier.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
@@ -1227,7 +1228,7 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
-  object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
+  object->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }
 
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,

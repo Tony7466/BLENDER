@@ -33,6 +33,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -742,10 +743,10 @@ static void duplidata_key_free(void *key)
   else {
     Object temp_object = blender::dna::shallow_copy(*dupli_key->ob);
     /* Do not modify the original bound-box. */
-    temp_object.runtime.bb = nullptr;
+    temp_object.runtime->bb = nullptr;
     BKE_object_replace_data_on_shallow_copy(&temp_object, dupli_key->ob_data);
     drw_batch_cache_generate_requested(&temp_object);
-    MEM_SAFE_FREE(temp_object.runtime.bb);
+    MEM_SAFE_FREE(temp_object.runtime->bb);
   }
   MEM_freeN(key);
 }

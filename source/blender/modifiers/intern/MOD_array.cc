@@ -37,6 +37,7 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object_deform.h"
+#include "BKE_object_types.hh"
 #include "BKE_screen.hh"
 
 #include "UI_interface.hh"
