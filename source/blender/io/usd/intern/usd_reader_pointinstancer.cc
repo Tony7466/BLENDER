@@ -90,16 +90,24 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
     auto scales_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<float3>("scales", ATTR_DOMAIN_POINT);
 
-    for (int i = 0; i < std::min(positions.size(), scales.size()); i++) {
-        scales_attribute.span[i] = float3(scales[i][0], scales[i][1], scales[i][2]);
+    for (int i = 0; i < positions.size(); i++) {
+        if (i < scales.size()) {
+            scales_attribute.span[i] = float3(scales[i][0], scales[i][1], scales[i][2]);
+        } else {
+            scales_attribute.span[i] = float3(1.0);
+        }
     }
 
     scales_attribute.span.save();
 
     auto orientations_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<math::Quaternion>("orientations", ATTR_DOMAIN_POINT);
 
-    for (int i = 0; i < std::min(positions.size(), orientations.size()); i++) {
-        orientations_attribute.span[i] = math::Quaternion(orientations[i].GetImaginary()[0], orientations[i].GetImaginary()[1], orientations[i].GetImaginary()[2], orientations[i].GetReal());
+    for (int i = 0; i < positions.size(); i++) {
+        if (i < orientations.size()) {
+            orientations_attribute.span[i] = math::Quaternion(orientations[i].GetImaginary()[0], orientations[i].GetImaginary()[1], orientations[i].GetImaginary()[2], orientations[i].GetReal());
+        } else {
+            orientations_attribute.span[i] = math::Quaternion();
+        }
     }
 
     orientations_attribute.span.save();
