@@ -855,9 +855,9 @@ static const FT_Var_Axis *blf_var_axis_by_tag(const FT_MM_Var *variations,
  * \return success if able to set this value.
  */
 [[maybe_unused]] static bool blf_glyph_set_variation_normalized(const FontBLF *font,
-                                               FT_Fixed coords[],
-                                               const uint32_t tag,
-                                               const float factor)
+                                                                FT_Fixed coords[],
+                                                                const uint32_t tag,
+                                                                const float factor)
 {
   int axis_index;
   const FT_Var_Axis *axis = blf_var_axis_by_tag(font->variations, tag, &axis_index);
@@ -892,7 +892,6 @@ static bool blf_glyph_set_variation_float(FontBLF *font,
   }
   return false;
 }
-
 
 /**
  * Set the "wght" (Weight) axis to a specific weight value.
@@ -965,7 +964,9 @@ static float blf_glyph_set_variation_spacing(FontBLF *font, FT_Fixed coords[], f
  * \param points: Non-zero size in typographic points.
  * \return success if able to set this value.
  */
-static bool blf_glyph_set_variation_optical_size(FontBLF *font, FT_Fixed coords[], const float points)
+static bool blf_glyph_set_variation_optical_size(FontBLF *font,
+                                                 FT_Fixed coords[],
+                                                 const float points)
 {
   float value = points;
   return blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_OPTSIZE, &value);

@@ -324,7 +324,7 @@ void BLF_disable(int fontid, int option)
   }
 }
 
-void BLF_character_weight(int fontid,  int weight)
+void BLF_character_weight(int fontid, int weight)
 {
   FontBLF *font = blf_get(fontid);
   if (font) {

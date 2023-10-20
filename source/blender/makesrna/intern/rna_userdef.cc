@@ -1294,7 +1294,7 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Points", "Font size in points");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
-	prop = RNA_def_property(srna, "character_weight", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "character_weight", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 400);
   RNA_def_property_range(prop, 100.0f, 900.0f);
   RNA_def_property_ui_range(prop, 100.0f, 900.0f, 50, 0);
