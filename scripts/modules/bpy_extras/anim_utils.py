@@ -254,7 +254,6 @@ def bake_action_iter(
         raise Exception("Pose and object baking is disabled, no action needed")
 
     pose_info = []
-    armature_info = []
     obj_info = []
 
     # -------------------------------------------------------------------------
@@ -307,16 +306,6 @@ def bake_action_iter(
     # pose
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if bake_options.do_pose:
-
-        # bake armature level custom props
-        if bake_options.do_custom_props:
-            print(armature_info)
-            print("the type of armature _info is:", type(armature_info))
-            for f, custom_props in armature_info:
-                if (getattr(obj, custom_props).is_animatable):
-                    obj[key] = value
-                    obj.keyframe_insert(f'[\"{key}\"]', frame=f)
-
         for name, pbone in obj.pose.bones.items():
             if bake_options.only_selected and not pbone.bone.select:
                 continue
