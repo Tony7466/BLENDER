@@ -302,13 +302,12 @@ class EEVEE_NEXT_MATERIAL_PT_settings_surface(MaterialButtonsPanel, Panel):
         #TODO(fclem): Displacement option
         #TODO(fclem): Transparent shadow option
 
-        layout.prop(mat, "surface_render_method", text="Render Method")
-
+        col = layout.column()
+        col.prop(mat, "surface_render_method", text="Render Method")
         if mat.surface_render_method == 'BLENDED':
-            layout.prop(mat, "show_transparent_back", text="Transparency Overlap")
+            col.prop(mat, "show_transparent_back", text="Transparency Overlap")
         elif mat.surface_render_method == 'DITHERED':
-            layout.prop(mat, "use_screen_refraction", text="Raytraced Refraction")
-
+            col.prop(mat, "use_screen_refraction", text="Raytraced Refraction")
 
         col = layout.column(heading="Light Probe Volume")
         col.prop(mat, "lightprobe_volume_single_sided", text="Single Sided")
