@@ -915,14 +915,27 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
     float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
 
+    *roughness = std::fmaxf(*roughness, 1e-5f);
+    *lacunarity = std::fmaxf(*lacunarity, 1e-5f);
+
     if (roughness_link != nullptr) {
-      /* Add Multiply Math node and Power Math node before Roughness input. */
+      /* Add Max Math node, Multiply Math node and Power Math node before Roughness input. */
+
+      bNode *max1_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      max1_node->parent = node->parent;
+      max1_node->custom1 = NODE_MATH_MAXIMUM;
+      max1_node->locx = node->locx;
+      max1_node->locy = node->locy - 400.0f + locy_offset;
+      max1_node->flag |= NODE_HIDDEN;
+      bNodeSocket *max1_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&max1_node->inputs, 0));
+      bNodeSocket *max1_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&max1_node->inputs, 1));
+      bNodeSocket *max1_socket_out = nodeFindSocket(max1_node, SOCK_OUT, "Value");
 
       bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       mul_node->parent = node->parent;
       mul_node->custom1 = NODE_MATH_MULTIPLY;
       mul_node->locx = node->locx;
-      mul_node->locy = node->locy - 340.0f + locy_offset;
+      mul_node->locy = node->locy - 360.0f + locy_offset;
       mul_node->flag |= NODE_HIDDEN;
       bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 0));
       bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 1));
@@ -932,40 +945,74 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       pow_node->parent = node->parent;
       pow_node->custom1 = NODE_MATH_POWER;
       pow_node->locx = node->locx;
-      pow_node->locy = node->locy - 300.0f + locy_offset;
+      pow_node->locy = node->locy - 320.0f + locy_offset;
       pow_node->flag |= NODE_HIDDEN;
       bNodeSocket *pow_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 0));
       bNodeSocket *pow_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 1));
       bNodeSocket *pow_socket_out = nodeFindSocket(pow_node, SOCK_OUT, "Value");
 
+      *version_cycles_node_socket_float_value(max1_socket_B) = -1e-5f;
       *version_cycles_node_socket_float_value(mul_socket_B) = -1.0f;
       *version_cycles_node_socket_float_value(pow_socket_A) = *lacunarity;
 
       nodeRemLink(ntree, roughness_link);
-      nodeAddLink(ntree, roughness_from_node, roughness_from_socket, mul_node, mul_socket_A);
-      if (lacunarity_link != nullptr) {
-        nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, pow_node, pow_socket_A);
-      }
+      nodeAddLink(ntree, roughness_from_node, roughness_from_socket, max1_node, max1_socket_A);
+      nodeAddLink(ntree, max1_node, max1_socket_out, mul_node, mul_socket_A);
       nodeAddLink(ntree, mul_node, mul_socket_out, pow_node, pow_socket_B);
       nodeAddLink(ntree, pow_node, pow_socket_out, node, roughness_socket);
+
+      if (lacunarity_link != nullptr) {
+        bNode *max2_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        max2_node->parent = node->parent;
+        max2_node->custom1 = NODE_MATH_MAXIMUM;
+        max2_node->locx = node->locx;
+        max2_node->locy = node->locy - 440.0f + locy_offset;
+        max2_node->flag |= NODE_HIDDEN;
+        bNodeSocket *max2_socket_A = static_cast<bNodeSocket *>(
+            BLI_findlink(&max2_node->inputs, 0));
+        bNodeSocket *max2_socket_B = static_cast<bNodeSocket *>(
+            BLI_findlink(&max2_node->inputs, 1));
+        bNodeSocket *max2_socket_out = nodeFindSocket(max2_node, SOCK_OUT, "Value");
+
+        *version_cycles_node_socket_float_value(max2_socket_B) = -1e-5f;
+
+        nodeRemLink(ntree, lacunarity_link);
+        nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, max2_node, max2_socket_A);
+        nodeAddLink(ntree, max2_node, max2_socket_out, pow_node, pow_socket_A);
+        nodeAddLink(ntree, max2_node, max2_socket_out, node, lacunarity_socket);
+      }
     }
     else if ((lacunarity_link != nullptr) && (roughness_link == nullptr)) {
-      /* Add Power Math node before Roughness input. */
+      /* Add Max Math node and Power Math node before Roughness input. */
+
+      bNode *max2_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      max2_node->parent = node->parent;
+      max2_node->custom1 = NODE_MATH_MAXIMUM;
+      max2_node->locx = node->locx;
+      max2_node->locy = node->locy - 360.0f + locy_offset;
+      max2_node->flag |= NODE_HIDDEN;
+      bNodeSocket *max2_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&max2_node->inputs, 0));
+      bNodeSocket *max2_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&max2_node->inputs, 1));
+      bNodeSocket *max2_socket_out = nodeFindSocket(max2_node, SOCK_OUT, "Value");
 
       bNode *pow_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       pow_node->parent = node->parent;
       pow_node->custom1 = NODE_MATH_POWER;
       pow_node->locx = node->locx;
-      pow_node->locy = node->locy - 300.0f + locy_offset;
+      pow_node->locy = node->locy - 320.0f + locy_offset;
       pow_node->flag |= NODE_HIDDEN;
       bNodeSocket *pow_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 0));
       bNodeSocket *pow_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&pow_node->inputs, 1));
       bNodeSocket *pow_socket_out = nodeFindSocket(pow_node, SOCK_OUT, "Value");
 
+      *version_cycles_node_socket_float_value(max2_socket_B) = -1e-5f;
       *version_cycles_node_socket_float_value(pow_socket_A) = *lacunarity;
       *version_cycles_node_socket_float_value(pow_socket_B) = -(*roughness);
 
-      nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, pow_node, pow_socket_A);
+      nodeRemLink(ntree, lacunarity_link);
+      nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, max2_node, max2_socket_A);
+      nodeAddLink(ntree, max2_node, max2_socket_out, pow_node, pow_socket_A);
+      nodeAddLink(ntree, max2_node, max2_socket_out, node, lacunarity_socket);
       nodeAddLink(ntree, pow_node, pow_socket_out, node, roughness_socket);
     }
     else {
