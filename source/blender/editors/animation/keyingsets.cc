@@ -528,25 +528,15 @@ KeyingSetInfo *ANIM_keyingset_info_find_name(const char name[])
       BLI_findstring(&keyingset_type_infos, name, offsetof(KeyingSetInfo, idname)));
 }
 
-KeyingSet *ANIM_builtin_keyingset_get_named(KeyingSet *prevKS, const char name[])
+KeyingSet *ANIM_builtin_keyingset_get_named(const char name[])
 {
-  KeyingSet *ks, *first = nullptr;
-
   /* sanity checks  any name to check? */
   if (name[0] == 0) {
     return nullptr;
   }
 
-  /* get first KeyingSet to use */
-  if (prevKS && prevKS->next) {
-    first = prevKS->next;
-  }
-  else {
-    first = static_cast<KeyingSet *>(builtin_keyingsets.first);
-  }
-
   /* loop over KeyingSets checking names */
-  for (ks = first; ks; ks = ks->next) {
+  LISTBASE_FOREACH (KeyingSet *, ks, &builtin_keyingsets) {
     if (STREQ(name, ks->idname)) {
       return ks;
     }
@@ -710,10 +700,10 @@ KeyingSet *ANIM_get_keyingset_for_autokeying(const Scene *scene, const char *tra
   }
 
   if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAIL)) {
-    return ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_AVAILABLE_ID);
+    return ANIM_builtin_keyingset_get_named(ANIM_KS_AVAILABLE_ID);
   }
 
-  return ANIM_builtin_keyingset_get_named(nullptr, transformKSName);
+  return ANIM_builtin_keyingset_get_named(transformKSName);
 }
 
 static void anim_keyingset_visit_for_search_impl(const bContext *C,
@@ -904,15 +894,6 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks)
 
 /* Special 'Overrides' Iterator for Relative KeyingSets ------ */
 
-/* 'Data Sources' for relative Keying Set 'overrides'
- * - this is basically a wrapper for PointerRNA's in a linked list
- * - do not allow this to be accessed from outside for now
- */
-struct tRKS_DSource {
-  tRKS_DSource *next, *prev;
-  PointerRNA ptr; /* the whole point of this exercise! */
-};
-
 /* Iterator used for overriding the behavior of iterators defined for
  * relative Keying Sets, with the main usage of this being operators
  * requiring Auto Keyframing. Internal Use Only!
@@ -920,45 +901,38 @@ struct tRKS_DSource {
 static void RKS_ITER_overrides_list(KeyingSetInfo *ksi,
                                     bContext *C,
                                     KeyingSet *ks,
-                                    ListBase *dsources)
+                                    blender::Vector<PointerRNA> &sources)
 {
-  LISTBASE_FOREACH (tRKS_DSource *, ds, dsources) {
-    /* run generate callback on this data */
-    ksi->generate(ksi, C, ks, &ds->ptr);
+  for (PointerRNA ptr : sources) {
+    /* Run generate callback on this data. */
+    ksi->generate(ksi, C, ks, &ptr);
   }
 }
 
-void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *srna, void *data)
+void ANIM_relative_keyingset_add_source(blender::Vector<PointerRNA> &sources,
+                                        ID *id,
+                                        StructRNA *srna,
+                                        void *data)
 {
-  tRKS_DSource *ds;
-
-  /* sanity checks
-   * - we must have somewhere to output the data
-   * - we must have both srna+data (and with id too optionally), or id by itself only
-   */
-  if (dsources == nullptr) {
+  if (ELEM(nullptr, srna, data, id)) {
     return;
   }
-  if (ELEM(nullptr, srna, data) && (id == nullptr)) {
+  sources.append(RNA_pointer_create(id, srna, data));
+}
+
+void ANIM_relative_keyingset_add_source(blender::Vector<PointerRNA> &sources, ID *id)
+{
+  if (id == nullptr) {
     return;
   }
-
-  /* allocate new elem, and add to the list */
-  ds = static_cast<tRKS_DSource *>(MEM_callocN(sizeof(tRKS_DSource), "tRKS_DSource"));
-  BLI_addtail(dsources, ds);
-
-  /* depending on what data we have, create using ID or full pointer call */
-  if (srna && data) {
-    ds->ptr = RNA_pointer_create(id, srna, data);
-  }
-  else {
-    ds->ptr = RNA_id_pointer_create(id);
-  }
+  sources.append(RNA_id_pointer_create(id));
 }
 
 /* KeyingSet Operations (Insert/Delete Keyframes) ------------ */
 
-eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks)
+eModifyKey_Returns ANIM_validate_keyingset(bContext *C,
+                                           blender::Vector<PointerRNA> *sources,
+                                           KeyingSet *ks)
 {
   /* sanity check */
   if (ks == nullptr) {
@@ -994,8 +968,8 @@ eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, Keyi
   /* if a list of data sources are provided, run a special iterator over them,
    * otherwise, just continue per normal
    */
-  if (dsources) {
-    RKS_ITER_overrides_list(ksi, C, ks, dsources);
+  if (sources != nullptr) {
+    RKS_ITER_overrides_list(ksi, C, ks, *sources);
   }
   else {
     ksi->iter(ksi, C, ks);
@@ -1044,7 +1018,8 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
   return result;
 }
 
-int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short mode, float cfra)
+int ANIM_apply_keyingset(
+    bContext *C, blender::Vector<PointerRNA> *sources, KeyingSet *ks, short mode, float cfra)
 {
   /* sanity checks */
   if (ks == nullptr) {
@@ -1066,7 +1041,7 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short m
 
   /* if relative Keying Sets, poll and build up the paths */
   {
-    const eModifyKey_Returns error = ANIM_validate_keyingset(C, dsources, ks);
+    const eModifyKey_Returns error = ANIM_validate_keyingset(C, sources, ks);
     if (error != MODIFYKEY_SUCCESS) {
       BLI_assert(error < 0);
       /* return error code if failed */
@@ -1076,7 +1051,6 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short m
 
   Main *bmain = CTX_data_main(C);
   ReportList *reports = CTX_wm_reports(C);
-  ListBase nla_cache = {nullptr, nullptr};
   char keytype = scene->toolsettings->keyframe_type;
   int num_channels = 0;
   const char *groupname = nullptr;
@@ -1155,7 +1129,6 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short m
                                                           i,
                                                           &anim_eval_context,
                                                           eBezTriple_KeyframeType(keytype),
-                                                          &nla_cache,
                                                           kflag2);
       }
       else if (mode == MODIFYKEY_MODE_DELETE) {
@@ -1182,8 +1155,6 @@ int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short m
     /* send notifiers for updates (this doesn't require context to work!) */
     WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
   }
-
-  BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
   /* return the number of channels successfully affected */
   BLI_assert(num_channels >= 0);

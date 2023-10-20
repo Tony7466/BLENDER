@@ -4608,6 +4608,11 @@ def km_grease_pencil_edit(params):
         # Delete all active frames
         ("grease_pencil.delete_frame", {"type": 'DEL', "value": 'PRESS', "shift": True},
          {"properties": [("type", "ALL_FRAMES")]}),
+        # Keyframe Menu
+        op_menu("VIEW3D_MT_edit_greasepencil_animation", {"type": 'I', "value": 'PRESS'}),
+        # Cyclical set
+        ("grease_pencil.cyclical_set", {"type": 'F', "value": 'PRESS'}, {"properties": [("type", "CLOSE")]}),
+        ("grease_pencil.cyclical_set", {"type": 'C', "value": 'PRESS', "alt": True}, {"properties": [("type", "TOGGLE")]}),
     ])
 
     return keymap
