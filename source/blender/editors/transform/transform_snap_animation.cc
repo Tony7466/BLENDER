@@ -126,7 +126,7 @@ static float2 nla_transform_apply(TransInfo *t, float *vec, float2 &ival)
   float4x4 mat = float4x4::identity();
 
   float values_final_prev[4];
-  size_t values_final_size = sizeof(*t->values_final) * size_t(t->idx_max + 1);
+  const size_t values_final_size = sizeof(*t->values_final) * size_t(t->idx_max + 1);
   memcpy(values_final_prev, t->values_final, values_final_size);
   memcpy(t->values_final, vec, values_final_size);
 
@@ -159,7 +159,7 @@ bool transform_snap_nla_calc(TransInfo *t, float *vec)
     float2 snap_target = nla_transform_apply(t, vec, snap_source);
 
     transform_snap_anim_flush_data_ex(t, td, snap_target[0], snap_mode, &snap_target[0]);
-    int dist = abs(snap_target[0] - snap_source[0]);
+    const int dist = abs(snap_target[0] - snap_source[0]);
     if (dist < best_dist) {
       if (dist != 0) {
         /* Prioritize non-zero dist for scale. */

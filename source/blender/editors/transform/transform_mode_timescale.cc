@@ -37,7 +37,8 @@ static void timescale_snap_apply_fn(TransInfo *t, float vec[3])
 {
   float point[3];
   getSnapPoint(t, point);
-  float fac = (point[0] - t->center_global[0]) / (t->tsnap.snap_source[0] - t->center_global[0]);
+  const float fac = (point[0] - t->center_global[0]) /
+                    (t->tsnap.snap_source[0] - t->center_global[0]);
   vec[0] = fac;
 }
 
@@ -107,10 +108,10 @@ static void applyTimeScale(TransInfo *t)
 
 static void timescale_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
 {
-  float i_loc = mat_xform[3][0];
-  float startx = t->center_global[0];
-  float fac = t->values_final[0];
-  float loc = ((i_loc - startx) * fac) + startx;
+  const float i_loc = mat_xform[3][0];
+  const float startx = t->center_global[0];
+  const float fac = t->values_final[0];
+  const float loc = ((i_loc - startx) * fac) + startx;
   mat_xform[3][0] = loc;
 }
 
