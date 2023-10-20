@@ -970,8 +970,8 @@ static int insert_key_foo(bContext *C, wmOperator *op)
 static int insert_key_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
-  if (false) {
+  KeyingSet *ks = ANIM_keyingset_get_from_enum_type(scene, scene->active_keyingset);
+  if (ks) {
     return insert_key_with_keyingset(C, op, ks);
   }
   return insert_key_foo(C, op);
