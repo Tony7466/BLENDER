@@ -151,7 +151,8 @@ bool autokeyframe_property(bContext *C,
 /** \} */
 
 int insert_key_action(bAction *action,
-                      std::string rna_path,
+                      PointerRNA *ptr,
+                      const std::string &rna_path,
                       float frame,
                       const Span<float> values);
 

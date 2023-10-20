@@ -1029,17 +1029,17 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-static FCurve *action_fcurve_ensure(
-    bAction *act, const char group[], PointerRNA *ptr, std::string rna_path, const int array_index)
+static FCurve *action_fcurve_ensure(bAction *action,
+                                    const char group[],
+                                    PointerRNA *ptr,
+                                    const std::string &rna_path,
+                                    const int array_index)
 {
-  bActionGroup *agrp;
-  FCurve *fcu;
-
   /* try to find f-curve matching for this setting
    * - add if not found and allowed to add one
    *   TODO: add auto-grouping support? how this works will need to be resolved
    */
-  fcu = BKE_fcurve_find(&act->curves, rna_path.c_str(), array_index);
+  FCurve *fcu = BKE_fcurve_find(&action->curves, rna_path.c_str(), array_index);
   if (fcu) {
     return fcu;
   }
@@ -1049,7 +1049,7 @@ static FCurve *action_fcurve_ensure(
 
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
   fcu->auto_smoothing = U.auto_smoothing_new;
-  if (BLI_listbase_is_empty(&act->curves)) {
+  if (BLI_listbase_is_empty(&action->curves)) {
     fcu->flag |= FCURVE_ACTIVE; /* first one added active */
   }
 
@@ -1062,25 +1062,25 @@ static FCurve *action_fcurve_ensure(
   /* if a group name has been provided, try to add or find a group, then add F-Curve to it */
   if (group) {
     /* try to find group */
-    agrp = BKE_action_group_find_name(act, group);
+    bActionGroup *action_group = BKE_action_group_find_name(action, group);
 
     /* no matching groups, so add one */
-    if (agrp == nullptr) {
-      agrp = action_groups_add_new(act, group);
+    if (action_group == nullptr) {
+      action_group = action_groups_add_new(action, group);
 
       /* sync bone group colors if applicable */
       if (ptr && (ptr->type == &RNA_PoseBone)) {
         bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
-        action_group_colors_set_from_posebone(agrp, pchan);
+        action_group_colors_set_from_posebone(action_group, pchan);
       }
     }
 
     /* add F-Curve to group */
-    action_groups_add_channel(act, agrp, fcu);
+    action_groups_add_channel(action, action_group, fcu);
   }
   else {
     /* just add F-Curve to end of Action's list */
-    BLI_addtail(&act->curves, fcu);
+    BLI_addtail(&action->curves, fcu);
   }
 
   /* return the F-Curve */
@@ -1098,17 +1098,23 @@ static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value
 }
 
 int insert_key_action(bAction *action,
-                      std::string rna_path,
+                      PointerRNA *ptr,
+                      const std::string &rna_path,
                       const float frame,
                       const Span<float> values)
 {
   BLI_assert(action != nullptr);
 
+  std::string group = "Object Transforms";
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
+    group = pose_channel->name;
+  }
+
   int property_array_index = 0;
   int inserted_keys = 0;
-  const char *group = "Object Transforms";
   for (const float value : values) {
-    FCurve *fcu = action_fcurve_ensure(action, group, nullptr, rna_path, property_array_index);
+    FCurve *fcu = action_fcurve_ensure(action, group.c_str(), ptr, rna_path, property_array_index);
     if (!fcu) {
       continue;
     }

@@ -797,7 +797,7 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
 }
 
 static blender::Vector<std::string> construct_rna_paths(const eRotationModes rotation_mode,
-                                                        IDProperty *properties)
+                                                        IDProperty *properties = nullptr)
 {
   blender::Vector<std::string> paths;
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
@@ -826,6 +826,9 @@ static blender::Vector<std::string> construct_rna_paths(const eRotationModes rot
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
     paths.append("scale");
   }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATION_MODE) {
+    paths.append("rotation_mode");
+  }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     if (properties) {
       LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
@@ -838,7 +841,7 @@ static blender::Vector<std::string> construct_rna_paths(const eRotationModes rot
   return paths;
 }
 
-static void insert_key_id(PointerRNA *id_ptr,
+static void insert_key_id(PointerRNA *rna_pointer,
                           const blender::Span<std::string> rna_paths,
                           const float scene_frame,
                           Main *bmain,
@@ -846,7 +849,7 @@ static void insert_key_id(PointerRNA *id_ptr,
 {
   using namespace blender;
 
-  ID *id = id_ptr->owner_id;
+  ID *id = rna_pointer->owner_id;
   bAction *action = ED_id_action_ensure(bmain, id);
   if (action == nullptr) {
     BKE_reportf(reports,
@@ -860,21 +863,23 @@ static void insert_key_id(PointerRNA *id_ptr,
   for (const std::string &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
-    const bool path_resolved = RNA_path_resolve_property(id_ptr, rna_path.c_str(), &ptr, &prop);
-    std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+    const bool path_resolved = RNA_path_resolve_property(
+        rna_pointer, rna_path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       BKE_reportf(reports,
                   RPT_ERROR,
-                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "Could not insert keyframe, as this property does not exist (ID = "
                   "%s, path = %s)",
                   id->name,
-                  id_to_prop.c_str());
+                  rna_path.c_str());
       continue;
     }
+    std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
     Vector<float> rna_values;
     get_rna_values(&ptr, prop, rna_values);
+
     const int inserted_keys = animrig::insert_key_action(
-        action, id_to_prop, scene_frame, rna_values.as_span());
+        action, rna_pointer, rna_path_id_to_prop, scene_frame, rna_values.as_span());
   }
 }
 
