@@ -258,31 +258,27 @@ Vector<float> visualkey_get_values(PointerRNA *ptr, PropertyRNA *prop)
 
   /* Rot/Scale code are common! */
   if (strstr(identifier, "rotation_euler")) {
-    float buffer[3];
-    mat4_to_eulO(buffer, rotmode, tmat);
-    values.extend({buffer, 3});
+    values.resize(3);
+    mat4_to_eulO(values.data(), rotmode, tmat);
     return values;
   }
 
   if (strstr(identifier, "rotation_quaternion")) {
-    float buffer[4];
-    mat4_to_quat(buffer, tmat);
-    values.extend({buffer, 4});
+    values.resize(4);
+    mat4_to_quat(values.data(), tmat);
     return values;
   }
 
   if (strstr(identifier, "rotation_axis_angle")) {
     /* w = 0, x,y,z = 1,2,3 */
-    float buffer[4];
-    mat4_to_axis_angle(buffer + 1, buffer, tmat);
-    values.extend({buffer, 4});
+    values.resize(4);
+    mat4_to_axis_angle(&values[1], &values[0], tmat);
     return values;
   }
 
   if (strstr(identifier, "scale")) {
-    float buffer[3];
-    mat4_to_size(buffer, tmat);
-    values.extend({buffer, 3});
+    values.resize(3);
+    mat4_to_size(values.data(), tmat);
     return values;
   }
 
