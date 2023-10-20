@@ -5637,9 +5637,7 @@ float3x3 SCULPT_create_repeat_frame(Object *ob, float4x4 viewinv, float3 normal)
   using namespace blender::math;
 
   float3 view_tan = {1.0f, 0.0f, 0.0f};
-  bool success;
-
-  float4x4 world_to_object = invert(float4x4(ob->object_to_world), success);
+  float4x4 world_to_object = float4x4(ob->world_to_object);
 
   /* Get view tangent (x axis). */
   view_tan = float3x3(viewinv * world_to_object) * view_tan;
