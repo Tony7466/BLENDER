@@ -499,6 +499,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     vert_gen << "}\n\n";
 
     info.vertex_source_generated = vert_gen.str();
+
+    if (use_vertex_displacement && (displacement_type == MAT_DISPLACEMENT_VERTEX)) {
+      info.additional_info("eevee_displace_vertex_only");
+    }
   }
 
   if (!is_compute) {
