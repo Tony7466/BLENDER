@@ -180,7 +180,7 @@ static void object_init_data(ID *id)
 
   ob->trackflag = OB_POSY;
   ob->upflag = OB_POSZ;
-  ob->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__);
+  ob->runtime = MEM_cnew<blender::bke::ObjectRuntime>(__func__);
 
   /* Animation Visualization defaults */
   animviz_settings_init(&ob->avs);
@@ -683,7 +683,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Object *ob = (Object *)id;
 
-  ob->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__);
+  ob->runtime = MEM_cnew<blender::bke::ObjectRuntime>(__func__);
 
   PartEff *paf;
 
