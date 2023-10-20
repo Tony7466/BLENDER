@@ -843,7 +843,7 @@ static float long_edge_queue_priority(const BMEdge &edge)
    * Might not be directly related to this specific PR. Still would be nice to understand why the
    * system is so fragile. */
 #if 0
-  /* TODO(@serge): Find better weighting strategy. Maybe multiplicative? */
+  /* TODO(@sergey): Find better weighting strategy. Maybe multiplicative? */
    if (is_boundary_edge(edge)) {
      priority += 500;
    }
