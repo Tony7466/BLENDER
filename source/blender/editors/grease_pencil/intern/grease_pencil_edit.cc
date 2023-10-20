@@ -238,7 +238,8 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>) {
+                  std::is_same_v<T, float3>)
+    {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -952,6 +953,109 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Caps mode Set Operator
+ * \{ */
+
+enum class CapsMode : int8_t {
+  /* Toggle both ends. */
+  TOGGLE,
+  /* Change only start. */
+  START,
+  /* Change only end. */
+  END,
+  /* Switchs both to default rounded. */
+  DEFAULT,
+};
+
+static const EnumPropertyItem caps_types[] = {
+    {int(CapsMode::TOGGLE), "TOGGLE", 0, "BOTH", ""},
+    {int(CapsMode::START), "START", 0, "Start", ""},
+    {int(CapsMode::END), "END", 0, "End", ""},
+    {int(CapsMode::DEFAULT), "DEFAULT", 0, "Default", "Set as default rounded"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const CapsMode mode = CapsMode(RNA_enum_get(op->ptr, "type"));
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+        if (!ed::curves::has_anything_selected(curves)) {
+          return;
+        }
+        bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+        bke::SpanAttributeWriter<int8_t> start_caps =
+            attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
+        bke::SpanAttributeWriter<int8_t> end_caps =
+            attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
+
+        IndexMaskMemory memory;
+        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+
+        selected_curves.foreach_index([&](const int curve_index) {
+          if (mode == CapsMode::TOGGLE || mode == CapsMode::START) {
+            start_caps.span[curve_index] += 1;
+            if (start_caps.span[curve_index] >= GP_STROKE_CAP_MAX) {
+              start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+            }
+          }
+          if (mode == CapsMode::TOGGLE || mode == CapsMode::END) {
+            end_caps.span[curve_index] += 1;
+            if (end_caps.span[curve_index] >= GP_STROKE_CAP_MAX) {
+              end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+            }
+          }
+          if (mode == CapsMode::DEFAULT) {
+            start_caps.span[curve_index] = GP_STROKE_CAP_TYPE_ROUND;
+            end_caps.span[curve_index] = GP_STROKE_CAP_TYPE_ROUND;
+          }
+        });
+
+        start_caps.finish();
+        end_caps.finish();
+
+        changed = true;
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Set Curve Caps";
+  ot->idname = "GREASE_PENCIL_OT_caps_set";
+  ot->description = "Change curve caps mode (rounded or flat)";
+
+  /* Callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_caps_set_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  ot->prop = RNA_def_enum(ot->srna, "type", caps_types, int(CapsMode::TOGGLE), "Type", "");
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -963,6 +1067,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
+  WM_operatortype_append(GREASE_PENCIL_OT_caps_set);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
