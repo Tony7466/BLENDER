@@ -92,7 +92,7 @@ void IDP_FreeString(struct IDProperty *prop) ATTR_NONNULL();
 
 /*-------- Enum Type -------*/
 
-struct IDPropertyUIDataEnumItem *IDP_EnumItemFind(const struct IDProperty *prop);
+const struct IDPropertyUIDataEnumItem *IDP_EnumItemFind(const struct IDProperty *prop);
 
 /*-------- ID Type -------*/
 
