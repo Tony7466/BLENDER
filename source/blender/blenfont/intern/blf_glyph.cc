@@ -934,9 +934,9 @@ static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], flo
  */
 static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], float width)
 {
-  float value = width;
+  float value = width * 100.0f;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_WIDTH, &value)) {
-    return value;
+    return value / 100.0f;
   }
   return 1.0f;
 }
