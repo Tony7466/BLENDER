@@ -970,7 +970,7 @@ static float blf_glyph_set_variation_spacing(FontBLF *font,
 }
 
 /**
- * Set the proposed "opsz" (Optical Size) axis to a specific size value.
+ * Set the "opsz" (Optical Size) axis to a specific size value.
  *
  * \param coords: Array of design coordinates, per axis.
  * \param points: Non-zero size in typographic points.
