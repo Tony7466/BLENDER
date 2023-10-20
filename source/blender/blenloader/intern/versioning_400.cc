@@ -1060,13 +1060,22 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
 }
 
 static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
-                                                                 const char *separator)
+                                                                 const char *separator,
+                                                                 const std::optional<int> total)
 {
+  int index = 0;
   LISTBASE_FOREACH (bNodeSocket *, socket, &sockets) {
     if (socket->is_available()) {
       if (char *pos = strstr(socket->identifier, separator)) {
         /* End the identifier at the separator so that the old suffix is ignored. */
         *pos = '\0';
+
+        if (total.has_value()) {
+          index++;
+          if (index == *total) {
+            return;
+          }
+        }
       }
     }
     else {
@@ -1080,14 +1089,18 @@ static void version_socket_identifier_suffixes_for_dynamic_types(ListBase socket
 static void versioning_node_dynamic_socket(bNodeTree &ntree,
                                            const int type,
                                            const char *input_separator,
-                                           const char *output_separator)
+                                           const char *output_separator,
+                                           const std::optional<int> total_inputs = std::nullopt,
+                                           const std::optional<int> total_outputs = std::nullopt)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
     if (node->type != type) {
       continue;
     }
-    version_socket_identifier_suffixes_for_dynamic_types(node->inputs, input_separator);
-    version_socket_identifier_suffixes_for_dynamic_types(node->outputs, output_separator);
+    version_socket_identifier_suffixes_for_dynamic_types(
+        node->inputs, input_separator, total_inputs);
+    version_socket_identifier_suffixes_for_dynamic_types(
+        node->outputs, output_separator, total_outputs);
   }
 }
 
@@ -1744,7 +1757,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ", 1, 3);
       versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
