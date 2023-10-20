@@ -2108,7 +2108,7 @@ static void reorder_layer_data(GreasePencil &grease_pencil,
   Span<const bke::greasepencil::Layer *> layers = grease_pencil.layers();
 
   /* Stash the initial layer order that we can refer back to later */
-  auto old_layer_index_by_layer = Map<const bke::greasepencil::Layer *, int>();
+  Map<const bke::greasepencil::Layer *, int> old_layer_index_by_layer;
   old_layer_index_by_layer.reserve(layers.size());
   for (const int i : layers.index_range()) {
     old_layer_index_by_layer.add_new(layers[i], i);
@@ -2121,12 +2121,11 @@ static void reorder_layer_data(GreasePencil &grease_pencil,
 
   /* Compose the mapping from old layer indices to new layer indices */
   Array<int> new_by_old_map(layers.size());
-  int i_new = 0;
-  for (const bke::greasepencil::Layer *layer : layers) {
+  for (const int layer_i_new : layers.index_range()) {
+    const bke::greasepencil::Layer *layer = layers[layer_i_new];
     BLI_assert(old_layer_index_by_layer.contains(layer));
-    const int i_old = old_layer_index_by_layer.pop(layer);
-    new_by_old_map[i_old] = i_new;
-    i_new++;
+    const int layer_i_old = old_layer_index_by_layer.pop(layer);
+    new_by_old_map[layer_i_old] = layer_i_new;
   }
   BLI_assert(old_layer_index_by_layer.is_empty());
 
