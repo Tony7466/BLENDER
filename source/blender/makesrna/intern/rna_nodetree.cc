@@ -2027,12 +2027,12 @@ static bNodeSocket *find_socket_by_key(bNode &node,
 {
   ListBase *sockets = in_out == SOCK_IN ? &node.inputs : &node.outputs;
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (socket->name == key) {
+    if (socket->identifier == key) {
       return socket;
     }
   }
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (socket->identifier == key) {
+    if (socket->name == key) {
       return socket;
     }
   }
