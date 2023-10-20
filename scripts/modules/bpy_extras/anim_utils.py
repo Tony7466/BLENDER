@@ -215,7 +215,7 @@ def bake_action_iter(
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
 
             # Custom Properties
-            custom_props = pbone.id_properties_ensure().to_dict()
+            custom_props[name] = pbone.id_properties_ensure().to_dict()
 
         return matrix, bbones, custom_props
 
@@ -254,6 +254,7 @@ def bake_action_iter(
         raise Exception("Pose and object baking is disabled, no action needed")
 
     pose_info = []
+    armature_info = []
     obj_info = []
 
     # -------------------------------------------------------------------------
@@ -306,6 +307,16 @@ def bake_action_iter(
     # pose
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if bake_options.do_pose:
+
+        # bake armature level custom props
+        if bake_options.do_custom_props:
+            print(armature_info)
+            print("the type of armature _info is:", type(armature_info))
+            for f, custom_props in armature_info:
+                if (getattr(obj, custom_props).is_animatable):
+                    obj[key] = value
+                    obj.keyframe_insert(f'[\"{key}\"]', frame=f)
+
         for name, pbone in obj.pose.bones.items():
             if bake_options.only_selected and not pbone.bone.select:
                 continue
@@ -388,9 +399,13 @@ def bake_action_iter(
                             )
                 # Custom Properties
                 if bake_options.do_custom_props:
-                    for key, value in custom_props.items():
-                        pbone[key] = value
-                        pbone.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
+                    for key, value in custom_props[name].items():
+                        try:
+                            pbone[key] = value
+                            pbone.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
+                        except TypeError:
+                            # Non animatable properties (datablocks, text, etc) cannot be keyed.
+                            continue
 
             if is_new_action:
                 keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
