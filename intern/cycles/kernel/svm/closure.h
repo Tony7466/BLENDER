@@ -212,7 +212,7 @@ ccl_device
 
             /* Attenuate lower layers */
             Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-            weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+            weight = closure_layering_weight(albedo, weight);
           }
         }
       }
@@ -237,7 +237,7 @@ ccl_device
 
             /* Attenuate lower layers */
             Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-            weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+            weight = closure_layering_weight(albedo, weight);
           }
         }
 
@@ -265,7 +265,7 @@ ccl_device
            * TIR is no concern here since we're always coming from the outside. */
           float cosNT = sqrtf(1.0f - sqr(1.0f / coat_ior) * (1 - sqr(cosNI)));
           float optical_depth = 1.0f / cosNT;
-          weight *= power(rgb_to_spectrum(coat_tint), coat_weight * optical_depth);
+          weight *= mix(one_spectrum(), power(rgb_to_spectrum(coat_tint), optical_depth), coat_weight);
         }
       }
 
@@ -381,7 +381,7 @@ ccl_device
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
+          weight = closure_layering_weight(albedo, weight);
         }
       }
 

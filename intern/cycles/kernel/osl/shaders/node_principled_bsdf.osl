@@ -141,7 +141,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
       float coat_neta = 1.0 / coat_ior;
       float cosNI = dot(I, CoatNormal);
       float cosNT = sqrt(1.0 - coat_neta * coat_neta * (1 - cosNI * cosNI));
-      BSDF *= pow(coat_tint, coat_weight / cosNT);
+      BSDF *= mix(color(1.0), pow(CoatTint, 1.0 / cosNT), coat_weight);
     }
     float coat_r2 = clamp(CoatRoughness, 0.0, 1.0);
     coat_r2 = coat_r2 * coat_r2;
