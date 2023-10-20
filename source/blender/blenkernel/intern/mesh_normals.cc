@@ -390,7 +390,7 @@ blender::Span<blender::float3> Mesh::corner_normals() const
   using namespace blender::bke;
   this->runtime->corner_normals_cache.ensure([&](Vector<float3> &r_data) {
     r_data.reinitialize(this->totloop);
-    const OffsetIndices faces = this->faces();
+    const OffsetIndices<int> faces = this->faces();
     switch (this->normals_domain()) {
       case MeshNormalDomain::Point: {
         array_utils::gather(this->vert_normals(), this->corner_verts(), r_data.as_mutable_span());
