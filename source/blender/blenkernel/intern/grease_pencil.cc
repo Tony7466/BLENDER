@@ -2051,29 +2051,11 @@ static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
   return unique_node_name(grease_pencil, DATA_("GP_Group"), name);
 }
 
-static void grow_customdata(CustomData &data, const int size)
-{
-  using namespace blender;
-  CustomData new_data;
-  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
-  CustomData_realloc(&new_data, size, size + 1);
-
-  CustomData_copy_data(&data, &new_data, 0, 0, size);
-
-  CustomData_free(&data, size);
-  data = new_data;
-}
-
 static void grow_or_init_customdata(GreasePencil *grease_pencil)
 {
   using namespace blender;
-  const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
-  if (layers.is_empty()) {
-    CustomData_realloc(&grease_pencil->layers_data, 0, 1);
-  }
-  else {
-    grow_customdata(grease_pencil->layers_data, layers.size());
-  }
+  const int num_layers = grease_pencil->layers().size();
+  CustomData_realloc(&grease_pencil->layers_data, num_layers, num_layers + 1);
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
