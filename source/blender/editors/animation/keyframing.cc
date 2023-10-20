@@ -837,6 +837,47 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
   return paths;
 }
 
+static blender::Vector<std::string> construct_rna_paths(bPoseChannel *pose_channel)
+{
+  blender::Vector<std::string> paths;
+  eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
+    paths.append("location");
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
+    switch (pose_channel->rotmode) {
+      case ROT_MODE_QUAT:
+        paths.append("rotation_quaternion");
+        break;
+      case ROT_MODE_AXISANGLE:
+        paths.append("rotation_axis_angle");
+        break;
+      case ROT_MODE_XYZ:
+      case ROT_MODE_XZY:
+      case ROT_MODE_YXZ:
+      case ROT_MODE_YZX:
+      case ROT_MODE_ZXY:
+      case ROT_MODE_ZYX:
+        paths.append("rotation_euler");
+      default:
+        break;
+    }
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
+    paths.append("scale");
+  }
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
+    if (pose_channel->prop) {
+      LISTBASE_FOREACH (IDProperty *, prop, &pose_channel->prop->data.group) {
+        std::string name = prop->name;
+        std::string rna_path = "[\"" + name + "\"]";
+        paths.append(rna_path);
+      }
+    }
+  }
+  return paths;
+}
+
 static void insert_key_object_mode(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -848,8 +889,8 @@ static void insert_key_object_mode(bContext *C, wmOperator *op)
 
   ListBase selected_objects = {nullptr, nullptr};
   CTX_data_selected_objects(C, &selected_objects);
-  LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected_objects) {
-    ID *selected_id = object_ptr_link->ptr.owner_id;
+  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selected_objects) {
+    ID *selected_id = collection_ptr_link->ptr.owner_id;
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
       return;
@@ -863,13 +904,14 @@ static void insert_key_object_mode(bContext *C, wmOperator *op)
                   selected_id->name);
       continue;
     }
-    PointerRNA id_ptr = object_ptr_link->ptr;
-    Object *ob = static_cast<Object *>(object_ptr_link->ptr.data);
+    PointerRNA id_ptr = collection_ptr_link->ptr;
+    Object *ob = static_cast<Object *>(collection_ptr_link->ptr.data);
     Vector<std::string> rna_paths = construct_rna_paths(ob);
     for (const std::string &rna_path : rna_paths) {
       PointerRNA ptr;
       PropertyRNA *prop = nullptr;
       const bool path_resolved = RNA_path_resolve_property(&id_ptr, rna_path.c_str(), &ptr, &prop);
+      std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
       if (!path_resolved) {
         BKE_reportf(
             op->reports,
@@ -877,12 +919,13 @@ static void insert_key_object_mode(bContext *C, wmOperator *op)
             "Could not insert keyframe, as this type does not support animation data (ID = "
             "%s, path = %s)",
             selected_id->name,
-            rna_path.c_str());
+            id_to_prop.c_str());
         continue;
       }
       Vector<float> rna_values;
       get_rna_values(&ptr, prop, rna_values);
-      int result = animrig::insert_key_action(action, rna_path, scene_frame, rna_values.as_span());
+      int result = animrig::insert_key_action(
+          action, id_to_prop, scene_frame, rna_values.as_span());
       if (result > 0) {
         depsgraph_needs_update = true;
       }
@@ -902,8 +945,49 @@ static void insert_key_pose_mode(bContext *C, wmOperator *op)
 
   ListBase selected_pose_bones = {nullptr, nullptr};
   CTX_data_selected_pose_bones(C, &selected_pose_bones);
-  LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected_pose_bones) {
+  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selected_pose_bones) {
+    ID *selected_id = collection_ptr_link->ptr.owner_id;
+    if (!BKE_id_is_editable(bmain, selected_id)) {
+      BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
+      return;
     }
+    bAction *action = ED_id_action_ensure(bmain, selected_id);
+    if (action == nullptr) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "%s)",
+                  selected_id->name);
+      continue;
+    }
+    PointerRNA id_ptr = collection_ptr_link->ptr;
+    bPoseChannel *pchan = static_cast<bPoseChannel *>(collection_ptr_link->ptr.data);
+    Vector<std::string> rna_paths = construct_rna_paths(pchan);
+
+    for (const std::string &rna_path : rna_paths) {
+      PointerRNA ptr;
+      PropertyRNA *prop = nullptr;
+      const bool path_resolved = RNA_path_resolve_property(&id_ptr, rna_path.c_str(), &ptr, &prop);
+      std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+      if (!path_resolved) {
+        BKE_reportf(
+            op->reports,
+            RPT_ERROR,
+            "Could not insert keyframe, as this type does not support animation data (ID = "
+            "%s, path = %s)",
+            selected_id->name,
+            id_to_prop.c_str());
+        continue;
+      }
+      Vector<float> rna_values;
+      get_rna_values(&ptr, prop, rna_values);
+      int result = animrig::insert_key_action(
+          action, id_to_prop, scene_frame, rna_values.as_span());
+      if (result > 0) {
+        depsgraph_needs_update = true;
+      }
+    }
+  }
   BLI_freelistN(&selected_pose_bones);
 }
 
