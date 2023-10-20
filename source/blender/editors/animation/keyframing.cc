@@ -837,23 +837,22 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
   return paths;
 }
 
-static int insert_key_foo(bContext *C, wmOperator *op)
+static void insert_key_object_mode(bContext *C, wmOperator *op)
 {
   using namespace blender;
-
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
+  bool depsgraph_needs_update = false;
 
+  Scene *scene = CTX_data_scene(C);
   const float scene_frame = BKE_scene_frame_get(scene);
 
   ListBase selected_objects = {nullptr, nullptr};
   CTX_data_selected_objects(C, &selected_objects);
-  bool depsgraph_needs_update = false;
   LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected_objects) {
     ID *selected_id = object_ptr_link->ptr.owner_id;
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
-      return 0;
+      return;
     }
     bAction *action = ED_id_action_ensure(bmain, selected_id);
     if (action == nullptr) {
@@ -864,7 +863,7 @@ static int insert_key_foo(bContext *C, wmOperator *op)
                   selected_id->name);
       continue;
     }
-    PointerRNA id_ptr = RNA_id_pointer_create(selected_id);
+    PointerRNA id_ptr = object_ptr_link->ptr;
     Object *ob = static_cast<Object *>(object_ptr_link->ptr.data);
     Vector<std::string> rna_paths = construct_rna_paths(ob);
     for (const std::string &rna_path : rna_paths) {
@@ -889,11 +888,52 @@ static int insert_key_foo(bContext *C, wmOperator *op)
       }
     }
   }
+  BLI_freelistN(&selected_objects);
+}
+
+static void insert_key_pose_mode(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  Main *bmain = CTX_data_main(C);
+  bool depsgraph_needs_update = false;
+
+  Scene *scene = CTX_data_scene(C);
+  const float scene_frame = BKE_scene_frame_get(scene);
+
+  ListBase selected_pose_bones = {nullptr, nullptr};
+  CTX_data_selected_pose_bones(C, &selected_pose_bones);
+  LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected_pose_bones) {
+    }
+  BLI_freelistN(&selected_pose_bones);
+}
+
+static int insert_key_foo(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+
+  bool depsgraph_needs_update = false;
+
+  eContextObjectMode context_mode = CTX_data_mode_enum(C);
+  switch (context_mode) {
+
+    case CTX_MODE_OBJECT:
+      insert_key_object_mode(C, op);
+      break;
+
+    case CTX_MODE_POSE:
+      insert_key_pose_mode(C, op);
+      break;
+
+    default:
+      BKE_reportf(op->reports, RPT_ERROR, "Unsupported context mode");
+      break;
+  }
+
+  Main *bmain = CTX_data_main(C);
   if (depsgraph_needs_update) {
     DEG_relations_tag_update(bmain);
   }
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
-  BLI_freelistN(&selected_objects);
 
   return OPERATOR_FINISHED;
 }
