@@ -65,10 +65,20 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
     pxr::VtArray<pxr::GfVec3f> scales;
     pxr::VtArray<pxr::GfQuath> orientations;
     pxr::VtArray<int> proto_indices;
-    point_instancer_prim.GetPositionsAttr().Get(&positions);
-    point_instancer_prim.GetScalesAttr().Get(&scales);
-    point_instancer_prim.GetOrientationsAttr().Get(&orientations);
-    point_instancer_prim.GetProtoIndicesAttr().Get(&proto_indices);
+    std::vector<double> time_samples;
+
+    point_instancer_prim.GetPositionsAttr().GetTimeSamples(&time_samples);
+
+    double sample_time = motionSampleTime;
+
+    if (!time_samples.empty()) {
+        sample_time = time_samples[0];
+    }
+
+    point_instancer_prim.GetPositionsAttr().Get(&positions, sample_time);
+    point_instancer_prim.GetScalesAttr().Get(&scales, sample_time);
+    point_instancer_prim.GetOrientationsAttr().Get(&orientations, sample_time);
+    point_instancer_prim.GetProtoIndicesAttr().Get(&proto_indices, sample_time);
 
     PointCloud *point_cloud = BKE_pointcloud_new_nomain(positions.size());
 
@@ -80,7 +90,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
     auto scales_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<float3>("scales", ATTR_DOMAIN_POINT);
 
-    for (int i = 0; i < scales.size(); i++) {
+    for (int i = 0; i < std::min(positions.size(), scales.size()); i++) {
         scales_attribute.span[i] = float3(scales[i][0], scales[i][1], scales[i][2]);
     }
 
@@ -88,7 +98,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
     auto orientations_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<math::Quaternion>("orientations", ATTR_DOMAIN_POINT);
 
-    for (int i = 0; i < orientations.size(); i++) {
+    for (int i = 0; i < std::min(positions.size(), orientations.size()); i++) {
         orientations_attribute.span[i] = math::Quaternion(orientations[i].GetImaginary()[0], orientations[i].GetImaginary()[1], orientations[i].GetImaginary()[2], orientations[i].GetReal());
     }
 
@@ -96,7 +106,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
     auto proto_indices_attribute = point_cloud->attributes_for_write().lookup_or_add_for_write_only_span<int>("proto_indices", ATTR_DOMAIN_POINT);
 
-    for (int i = 0; i < proto_indices.size(); i++) {
+    for (int i = 0; i < std::min(positions.size(), proto_indices.size()); i++) {
         proto_indices_attribute.span[i] = proto_indices[i];
     }
 
@@ -104,6 +114,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
     BKE_pointcloud_nomain_to_pointcloud(point_cloud, base_point_cloud);
 
+    /*
     ModifierData *md = BKE_modifier_new(eModifierType_Nodes);
     BLI_addtail(&object_->modifiers, md);
     NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
@@ -164,6 +175,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
                 static_cast<bNodeSocket *>(group_output->inputs.first));
 
     BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+    */
 
     USDXformReader::read_object_data(bmain, motionSampleTime);
 }
