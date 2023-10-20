@@ -1318,7 +1318,7 @@ struct EraseOperationExecutor {
    * Apply the stroke cutter to every editable layer.
    */
   static int stroke_cutter_execute(wmOperator *op,
-                                   bContext *C,
+                                   const bContext *C,
                                    const int mcoords[][2],
                                    const int mcoords_len)
   {
@@ -1326,10 +1326,10 @@ struct EraseOperationExecutor {
 
     Scene *scene = CTX_data_scene(C);
     ARegion *region = CTX_wm_region(C);
+    RegionView3D *rv3d = CTX_wm_region_view3d(C);
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     Object *obact = CTX_data_active_object(C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
-    ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
@@ -1367,7 +1367,7 @@ struct EraseOperationExecutor {
 
       /* Compute screen space positions. */
       float4x4 projection;
-      ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+      ED_view3d_ob_project_mat_get(rv3d, obact, projection.ptr());
 
       Array<float2> screen_space_positions(src.points_num());
       threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
