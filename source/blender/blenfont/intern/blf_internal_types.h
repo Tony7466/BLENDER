@@ -343,7 +343,7 @@ typedef struct FontBLF {
   /** Axes data for Adobe MM, TrueType GX, or OpenType variation fonts. */
   FT_MM_Var *variations;
 
-  /** Character variation in 16.16 format. */
+  /** Character variations. */
   int char_weight;    /* 100 - 900, 400 = normal. */
   float char_slant;   /* Slant in clockwise degrees. 0.0 = upright. */
   float char_width;   /* Factor of normal character width. 1.0 = normal. */

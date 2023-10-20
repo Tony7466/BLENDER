@@ -1347,7 +1347,6 @@ static void blf_font_fill(FontBLF *font)
   font->clip_rec.ymax = 0;
   font->flags = 0;
   font->size = 0;
-
   font->char_weight = 400;
   font->char_slant = 0.0f;
   font->char_width = 1.0f;
@@ -1378,7 +1377,6 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
   /* Members with non-zero defaults. */
   metrics->weight = 400;
   metrics->width = 1.0f;
-  metrics->spacing = 0.0f;
 
   TT_OS2 *os2_table = (TT_OS2 *)FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
   if (os2_table) {

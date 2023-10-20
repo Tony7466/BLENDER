@@ -61,9 +61,9 @@ static FT_Fixed to_16dot16(double val)
 /**
  * Convert a floating point value to a FreeType 16.16 fixed point value.
  */
-static float from_16dot16(FT_Fixed val)
+static float from_16dot16(FT_Fixed value)
 {
-  return float(val) / 65536.0f;
+  return float(value) / 65536.0f;
 }
 
 /** \} */
@@ -823,7 +823,7 @@ static const FT_Var_Axis *blf_var_axis_by_tag(const FT_MM_Var *variations,
  * Convert a float factor to a fixed-point design coordinate.
  * Currently unused because we are only dealing with known axes
  * with specific functions, but this would be needed for unregistered,
- * custom, or private tags. These are all uppercase tags.
+ * custom, or private tags. These are all uppercase axis tags.
  *
  * \param axis: Pointer to a design space axis structure.
  * \param factor: -1 to 1 with 0 meaning "default"
@@ -847,11 +847,11 @@ static const FT_Var_Axis *blf_var_axis_by_tag(const FT_MM_Var *variations,
  * Alter a face variation axis by a factor.
  * Currently unused because we are only dealing with known axes
  * with specific functions, but this would be needed for unregistered,
- * custom, or private tags. These are all uppercase tags.
+ * custom, or private tags. These are all uppercase axis tags.
  *
  * \param coords: array of design coordinates, per axis.
  * \param tag: Axis tag, e.g. #BLF_VARIATION_AXIS_WEIGHT.
- * \param factor: -1 to 1 with 0 meaning "default".
+ * \param factor: -1 to 1 with 0 meaning "default"
  * \return success if able to set this value.
  */
 [[maybe_unused]] static bool blf_glyph_set_variation_normalized(const FontBLF *font,
@@ -1142,7 +1142,6 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     slant = blf_glyph_set_variation_slant(glyph_font, coords, slant_target);
     width = blf_glyph_set_variation_width(glyph_font, coords, width_target);
     spacing = blf_glyph_set_variation_spacing(glyph_font, coords, spacing_target);
-
     blf_glyph_set_variation_optical_size(glyph_font, coords, settings_font->size);
 
     /* Save updated design coordinates. */
