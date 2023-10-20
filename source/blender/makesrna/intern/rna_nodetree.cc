@@ -2021,6 +2021,44 @@ static void rna_Node_internal_links_begin(CollectionPropertyIterator *iter, Poin
   rna_iterator_array_begin(iter, begin, sizeof(bNodeLink), len, false, nullptr);
 }
 
+static bNodeSocket *find_socket_by_key(bNode &node,
+                                       const eNodeSocketInOut in_out,
+                                       const blender::StringRef key)
+{
+  ListBase *sockets = in_out == SOCK_IN ? &node.inputs : &node.outputs;
+  LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+    if (socket->name == key) {
+      return socket;
+    }
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+    if (socket->identifier == key) {
+      return socket;
+    }
+  }
+  return nullptr;
+}
+
+static int rna_NodeInputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_IN, key)) {
+    *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, socket);
+    return true;
+  }
+  return false;
+}
+
+static int rna_NodeOutputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_OUT, key)) {
+    *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, socket);
+    return true;
+  }
+  return false;
+}
+
 static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
@@ -9630,6 +9668,15 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "inputs", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "rna_NodeInputs_lookup_string",
+                                    nullptr);
   RNA_def_property_struct_type(prop, "NodeSocket");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Inputs", "");
@@ -9637,6 +9684,15 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "outputs", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "rna_NodeOutputs_lookup_string",
+                                    nullptr);
   RNA_def_property_struct_type(prop, "NodeSocket");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Outputs", "");
