@@ -796,7 +796,8 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static blender::Vector<std::string> construct_rna_paths(Object *ob)
+static blender::Vector<std::string> construct_rna_paths(const eRotationModes rotation_mode,
+                                                        IDProperty *properties)
 {
   blender::Vector<std::string> paths;
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
@@ -804,7 +805,7 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
     paths.append("location");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
-    switch (ob->rotmode) {
+    switch (rotation_mode) {
       case ROT_MODE_QUAT:
         paths.append("rotation_quaternion");
         break;
@@ -826,49 +827,8 @@ static blender::Vector<std::string> construct_rna_paths(Object *ob)
     paths.append("scale");
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
-    if (ob->id.properties) {
-      LISTBASE_FOREACH (IDProperty *, prop, &ob->id.properties->data.group) {
-        std::string name = prop->name;
-        std::string rna_path = "[\"" + name + "\"]";
-        paths.append(rna_path);
-      }
-    }
-  }
-  return paths;
-}
-
-static blender::Vector<std::string> construct_rna_paths(bPoseChannel *pose_channel)
-{
-  blender::Vector<std::string> paths;
-  eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
-    paths.append("location");
-  }
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
-    switch (pose_channel->rotmode) {
-      case ROT_MODE_QUAT:
-        paths.append("rotation_quaternion");
-        break;
-      case ROT_MODE_AXISANGLE:
-        paths.append("rotation_axis_angle");
-        break;
-      case ROT_MODE_XYZ:
-      case ROT_MODE_XZY:
-      case ROT_MODE_YXZ:
-      case ROT_MODE_YZX:
-      case ROT_MODE_ZXY:
-      case ROT_MODE_ZYX:
-        paths.append("rotation_euler");
-      default:
-        break;
-    }
-  }
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_SCALE) {
-    paths.append("scale");
-  }
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
-    if (pose_channel->prop) {
-      LISTBASE_FOREACH (IDProperty *, prop, &pose_channel->prop->data.group) {
+    if (properties) {
+      LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
         std::string name = prop->name;
         std::string rna_path = "[\"" + name + "\"]";
         paths.append(rna_path);
@@ -906,7 +866,8 @@ static void insert_key_object_mode(bContext *C, wmOperator *op)
     }
     PointerRNA id_ptr = collection_ptr_link->ptr;
     Object *ob = static_cast<Object *>(collection_ptr_link->ptr.data);
-    Vector<std::string> rna_paths = construct_rna_paths(ob);
+    Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(ob->rotmode),
+                                                        ob->id.properties);
     for (const std::string &rna_path : rna_paths) {
       PointerRNA ptr;
       PropertyRNA *prop = nullptr;
@@ -962,7 +923,8 @@ static void insert_key_pose_mode(bContext *C, wmOperator *op)
     }
     PointerRNA id_ptr = collection_ptr_link->ptr;
     bPoseChannel *pchan = static_cast<bPoseChannel *>(collection_ptr_link->ptr.data);
-    Vector<std::string> rna_paths = construct_rna_paths(pchan);
+    Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(pchan->rotmode),
+                                                        pchan->prop);
 
     for (const std::string &rna_path : rna_paths) {
       PointerRNA ptr;
