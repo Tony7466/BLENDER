@@ -130,6 +130,10 @@ static void convert_to_json(nlohmann::ordered_json &j, const Value &value)
     case eValueType::Double: {
       j = value.as_double_value()->value();
     }
+
+    case eValueType::Enum: {
+      j = value.as_enum_value()->value();
+    }
   }
 }
 

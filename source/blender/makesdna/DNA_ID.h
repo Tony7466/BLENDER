@@ -117,15 +117,23 @@ typedef struct IDPropertyUIDataID {
 } IDPropertyUIDataID;
 
 typedef struct IDPropertyUIDataEnumItem {
+  /* Unique identifier. */
+  char *identifier;
+  /* UI name of the item. */
   char *name;
+  /* Optional description. */
   char *description;
-  int identifier;
-  char _pad[4];
+  /* Unique value, generated automatically. */
+  int value;
+  /* Optional icon. */
+  int icon;
 } IDPropertyUIDataEnumItem;
 
 typedef struct IDPropertyUIDataEnum {
   IDPropertyUIData base;
   IDPropertyUIDataEnumItem *items;
+  int items_num;
+  char _pad[4];
 } IDPropertyUIDataEnum;
 
 typedef struct IDPropertyData {
