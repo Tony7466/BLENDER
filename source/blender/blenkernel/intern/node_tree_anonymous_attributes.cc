@@ -574,7 +574,7 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
                                              std::move(tree_relations)};
 
 /* Print analysis result for debugging purposes. */
-#if 1
+#if 0
   bNodeTreeToDotOptionsForAnonymousAttributeInferencing options{result};
   std::cout << "\n\n" << node_tree_to_dot(tree, options) << "\n\n";
 #endif
