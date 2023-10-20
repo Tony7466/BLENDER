@@ -885,6 +885,11 @@ void RNA_def_material(BlenderRNA *brna)
                            "Controls the blending and the compatibility with certain features");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
+  prop = RNA_def_property(srna, "displacement_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, prop_displacement_method_items);
+  RNA_def_property_ui_text(prop, "Displacement Method", "Method to use for the displacement");
+  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+
 #  if 1 /* Delete this section once we remove old eevee. */
   /* Blending (only Eevee for now) */
   prop = RNA_def_property(srna, "blend_method", PROP_ENUM, PROP_NONE);
@@ -897,12 +902,6 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "blend_shadow");
   RNA_def_property_enum_items(prop, prop_eevee_blend_shadow_items);
   RNA_def_property_ui_text(prop, "Shadow Mode", "Shadow mapping method");
-  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
-
-  prop = RNA_def_property(srna, "displacement_method", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "blend_shadow");
-  RNA_def_property_enum_items(prop, prop_displacement_method_items);
-  RNA_def_property_ui_text(prop, "Displacement Method", "Method to use for the displacement");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
   prop = RNA_def_property(srna, "alpha_threshold", PROP_FLOAT, PROP_FACTOR);
