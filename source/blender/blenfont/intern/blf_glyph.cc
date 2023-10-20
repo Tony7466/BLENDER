@@ -1006,10 +1006,10 @@ static bool blf_glyph_transform_weight(FT_GlyphSlot glyph, float width, bool mon
 }
 
 /**
- * Adjust the glyph's slant by a factor.
+ * Adjust the glyph's slant by a number of degrees.
  * Used for fonts without #BLF_VARIATION_AXIS_SLANT variable axis.
  *
- * \param degrees: amount of tilt in clockwise degrees.
+ * \param degrees: amount of tilt to add in clockwise degrees.
  */
 static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float degrees)
 {
@@ -1017,6 +1017,7 @@ static bool blf_glyph_transform_slant(FT_GlyphSlot glyph, float degrees)
     FT_Matrix transform = {to_16dot16(1), to_16dot16(degrees * 0.0225f), 0, to_16dot16(1)};
     FT_Outline_Transform(&glyph->outline, &transform);
     if (degrees < 0.0f) {
+      /* Leftward slant could interfere with prior characters to nudge right. */
       const FontBLF *font = (FontBLF *)glyph->face->generic.data;
       const FT_Pos average_width = font->ft_size->metrics.height;
       FT_Pos change = (FT_Pos)(float(average_width) * degrees * -0.01f);
