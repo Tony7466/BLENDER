@@ -1129,6 +1129,19 @@ static void copy_edge_data(BMesh &bm, BMEdge &dst, /*const*/ BMEdge &src)
   CustomData_bmesh_copy_data(&bm.edata, &bm.edata, src.head.data, &dst.head.data);
 }
 
+/* Merge edge custom data from src to dst. */
+static void merge_edge_data(BMesh &bm, BMEdge &dst, /*const*/ BMEdge &src)
+{
+  dst.head.hflag |= (src.head.hflag & ~(BM_ELEM_TAG | BM_ELEM_SMOOTH));
+
+  /* If either of the src or dst is sharp the result is sharp. */
+  if ((src.head.hflag & BM_ELEM_SMOOTH) == 0) {
+    dst.head.hflag &= ~BM_ELEM_SMOOTH;
+  }
+
+  BM_data_interp_from_edges(&bm, &src, &dst, &dst, 0.5f);
+}
+
 static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx, PBVH *pbvh, BMEdge *e)
 {
   BMesh *bm = pbvh->header.bm;
@@ -1358,6 +1371,56 @@ static void pbvh_bmesh_collapse_edge(
       int ni = n - pbvh->nodes.data();
       const std::array<BMEdge *, 3> e_tri = bm_edges_from_tri(&bm, v_tri);
       pbvh_bmesh_face_create(pbvh, ni, v_tri, e_tri, f);
+
+      /* The old and new triangles share one edge connecting v1 to v2.
+       *
+       * Custom data of other edges from the old triangle needs to be merged into the new edges:
+       *   - Custom data of (v_del, v1) needs to be merged into (v_conn, v1),
+       *   - Custom data of (v_del, v2) needs to be merged into (v_conn, v2),
+       *
+       * The winding of the faces is not known in advance, so do a bit of a naive search of these
+       * correspondences:
+       *
+       *   - We start from the edges in the new triangle which are adjacent to v_conn. There will
+       *     be two of them. At each loop iteration lets call them new_tri_edge.
+       *   - We "go" into the opposite edge (could be v2 or v1)
+       *   - We wind the old edge connecting v1/v2 to v_del. Lets call it old_edge.
+       *   - We merge custom data of old_edge to the new edge.
+       *
+       * <pre>
+       *
+       *            v2
+       *             +
+       *            /|\
+       *           / | \
+       *          /  |  \
+       *         /   |   \
+       *        /    |    \
+       *       /     |     \
+       *      /      |      \
+       *     +-------+-------+
+       *  v_conn   v_del      v1
+       *
+       * </pre>
+       *
+       * TODO(@sergey): Possible optimizations:
+       *
+       *   - Inline bm_edges_from_tri() above, so that we know which new edges we need to consider
+       *     instead of iterating over them.
+       *
+       */
+      for (BMEdge *new_tri_edge : e_tri) {
+        if (!BM_vert_in_edge(new_tri_edge, v_conn)) {
+          continue;
+        }
+
+        BMVert *v_other = BM_edge_other_vert(new_tri_edge, v_conn);
+        BMEdge *old_edge = BM_edge_exists(v_del, v_other);
+
+        if (old_edge) {
+          merge_edge_data(bm, *new_tri_edge, *old_edge);
+        }
+      }
 
       /* Ensure that v_conn is in the new face's node */
       if (!n->bm_unique_verts.contains(v_conn)) {
