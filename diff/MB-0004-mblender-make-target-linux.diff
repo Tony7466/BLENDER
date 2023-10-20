@@ -22,10 +22,10 @@ index 306eaf19baf..64a044be0c2 100644
  #
 diff --git a/build_files/utils/apply_mblender_patches.py b/build_files/utils/apply_mblender_patches.py
 new file mode 100644
-index 00000000000..954e1e2d24d
+index 00000000000..a227fdc1b11
 --- /dev/null
 +++ b/build_files/utils/apply_mblender_patches.py
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,57 @@
 +#!/usr/bin/env python3
 +# 
 +# Mechanical Blender
@@ -45,6 +45,8 @@ index 00000000000..954e1e2d24d
 +MB_0001 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0001-operator-repeat/diff/MB-0001-operator-repeat.diff"
 +MB_0005 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0005-splash-changes/diff/MB-0005-splash-changes.diff"
 +MB_0006 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0006-allow-no-modal-transform/diff/MB-0006-allow-no-modal-transform.diff"
++MB_0007 = "https://projects.blender.org/JaumeBellet/mblender/raw/branch/mb-0007-transform-flags/diff/MB-0007-transform-flags.diff"
++
 +
 +
 +def parse_arguments() -> argparse.Namespace:
@@ -70,11 +72,14 @@ index 00000000000..954e1e2d24d
 +
 +
 +if __name__ == "__main__":
-+	call([wget_command, MB_0001, "-O", tmp_file])
-+	call([git_command, "apply", tmp_file])
-+	
 +	call([wget_command, MB_0005, "-O", tmp_file])
 +	call([git_command, "apply", tmp_file])
++
++	call([wget_command, MB_0007, "-O", tmp_file])
++	call([git_command, "apply", tmp_file])
 +	
++	call([wget_command, MB_0001, "-O", tmp_file])
++	call([git_command, "apply", tmp_file])
++		
 +	call([wget_command, MB_0006, "-O", tmp_file])
 +	call([git_command, "apply", tmp_file])
