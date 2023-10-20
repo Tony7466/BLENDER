@@ -332,30 +332,6 @@ void BLF_character_weight(int fontid,  int weight)
   }
 }
 
-void BLF_character_slant(int fontid, float degrees)
-{
-  FontBLF *font = blf_get(fontid);
-  if (font) {
-    font->char_slant = degrees;
-  }
-}
-
-void BLF_character_width(int fontid, float factor)
-{
-  FontBLF *font = blf_get(fontid);
-  if (font) {
-    font->char_width = factor;
-  }
-}
-
-void BLF_character_spacing(int fontid, float factor)
-{
-  FontBLF *font = blf_get(fontid);
-  if (font) {
-    font->char_spacing = factor;
-  }
-}
-
 void BLF_aspect(int fontid, float x, float y, float z)
 {
   FontBLF *font = blf_get(fontid);

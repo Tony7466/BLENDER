@@ -1351,7 +1351,7 @@ static void blf_font_fill(FontBLF *font)
   font->char_weight = 400;
   font->char_slant = 0.0f;
   font->char_width = 1.0f;
-  font->char_spacing = 1.0f;
+  font->char_spacing = 0.0f;
 
   BLI_listbase_clear(&font->cache);
   font->kerning_cache = nullptr;
@@ -1369,10 +1369,6 @@ static void blf_font_fill(FontBLF *font)
   font->buf_info.col_init[1] = 0;
   font->buf_info.col_init[2] = 0;
   font->buf_info.col_init[3] = 0;
-
-  font->metrics.weight = 400;
-  font->metrics.width = 1.0f;
-  font->metrics.spacing = 1.0f;
 }
 
 /* Note that the data the following function creates is not yet used.
@@ -1382,7 +1378,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
   /* Members with non-zero defaults. */
   metrics->weight = 400;
   metrics->width = 1.0f;
-  metrics->spacing = 1.0f;
+  metrics->spacing = 0.0f;
 
   TT_OS2 *os2_table = (TT_OS2 *)FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
   if (os2_table) {

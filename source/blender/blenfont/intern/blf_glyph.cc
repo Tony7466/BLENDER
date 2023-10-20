@@ -821,11 +821,15 @@ static const FT_Var_Axis *blf_var_axis_by_tag(const FT_MM_Var *variations,
 
 /**
  * Convert a float factor to a fixed-point design coordinate.
+ * Currently unused because we are only dealing with known axes
+ * with specific functions, but this would be needed for unregistered,
+ * custom, or private tags. These are all uppercase tags.
  *
  * \param axis: Pointer to a design space axis structure.
  * \param factor: -1 to 1 with 0 meaning "default"
  */
-static FT_Fixed blf_factor_to_coordinate(const FT_Var_Axis *axis, const float factor)
+[[maybe_unused]] static FT_Fixed blf_factor_to_coordinate(const FT_Var_Axis *axis,
+                                                          const float factor)
 {
   FT_Fixed value = axis->def;
   if (factor > 0) {
@@ -840,13 +844,17 @@ static FT_Fixed blf_factor_to_coordinate(const FT_Var_Axis *axis, const float fa
 }
 
 /**
- * Alter a face variation axis by a factor
+ * Alter a face variation axis by a factor.
+ * Currently unused because we are only dealing with known axes
+ * with specific functions, but this would be needed for unregistered,
+ * custom, or private tags. These are all uppercase tags.
  *
  * \param coords: array of design coordinates, per axis.
  * \param tag: Axis tag, e.g. #BLF_VARIATION_AXIS_WEIGHT.
- * \param factor: -1 to 1 with 0 meaning "default"
+ * \param factor: -1 to 1 with 0 meaning "default".
+ * \return success if able to set this value.
  */
-static bool blf_glyph_set_variation_normalized(const FontBLF *font,
+[[maybe_unused]] static bool blf_glyph_set_variation_normalized(const FontBLF *font,
                                                FT_Fixed coords[],
                                                const uint32_t tag,
                                                const float factor)
@@ -866,6 +874,7 @@ static bool blf_glyph_set_variation_normalized(const FontBLF *font,
  * \param coords: Array of design coordinates, per axis.
  * \param tag: Axis tag, e.g. #BLF_VARIATION_AXIS_OPTSIZE.
  * \param value: New float value. Converted to 16.16 and clamped within allowed range.
+ * \return success if able to set this value.
  */
 static bool blf_glyph_set_variation_float(FontBLF *font,
                                           FT_Fixed coords[],
@@ -884,6 +893,14 @@ static bool blf_glyph_set_variation_float(FontBLF *font,
   return false;
 }
 
+
+/**
+ * Set the "wght" (Weight) axis to a specific weight value.
+ *
+ * \param coords: Array of design coordinates, per axis.
+ * \param weight: Weight class value (1-1000 allowed, 100-900 typical).
+ * \return value set (could be clamped), or 400 (normal) if the axis does not exist.
+ */
 static float blf_glyph_set_variation_weight(FontBLF *font, FT_Fixed coords[], float weight)
 {
   float value = weight;
@@ -893,6 +910,13 @@ static float blf_glyph_set_variation_weight(FontBLF *font, FT_Fixed coords[], fl
   return 400.0f;
 }
 
+/**
+ * Set the "slnt" (Slant) axis to a specific slant value.
+ *
+ * \param coords: Array of design coordinates, per axis.
+ * \param degrees: Slant in clockwise (opposite to spec) degrees.
+ * \return value set (could be clamped), or 0 (upright) if the axis does not exist.
+ */
 static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], float degrees)
 {
   float value = -degrees;
@@ -902,6 +926,13 @@ static float blf_glyph_set_variation_slant(FontBLF *font, FT_Fixed coords[], flo
   return 0.0f;
 }
 
+/**
+ * Set the "wdth" (Width) axis to a specific width value.
+ *
+ * \param coords: Array of design coordinates, per axis.
+ * \param width: Glyph width value. 1.0 is normal, as per spec (which uses percent).
+ * \return value set (could be clamped), or 1.0 (normal) if the axis does not exist.
+ */
 static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], float width)
 {
   float value = width;
@@ -911,15 +942,29 @@ static float blf_glyph_set_variation_width(FontBLF *font, FT_Fixed coords[], flo
   return 1.0f;
 }
 
+/**
+ * Set the proposed "spac" (Spacing) axis to a specific value.
+ *
+ * \param coords: Array of design coordinates, per axis.
+ * \param spacing: Glyph spacing value. 0.0 is normal, as per spec.
+ * \return value set (could be clamped), or 0.0 (normal) if the axis does not exist.
+ */
 static float blf_glyph_set_variation_spacing(FontBLF *font, FT_Fixed coords[], float spacing)
 {
   float value = spacing;
   if (blf_glyph_set_variation_float(font, coords, BLF_VARIATION_AXIS_SPACING, &value)) {
     return value;
   }
-  return 1.0f;
+  return 0.0f;
 }
 
+/**
+ * Set the proposed "opsz" (Optical Size) axis to a specific size value.
+ *
+ * \param coords: Array of design coordinates, per axis.
+ * \param points: Non-zero size in typographic points.
+ * \return success if able to set this value.
+ */
 static bool blf_glyph_set_variation_optical_size(FontBLF *font, FT_Fixed coords[], const float points)
 {
   float value = points;
