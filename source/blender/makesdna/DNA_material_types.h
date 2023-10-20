@@ -169,7 +169,9 @@ typedef struct Material {
   struct AnimData *adt;
 
   short flag;
-  char _pad1[2];
+  /** Rendering modes for EEVEE. */
+  char surface_render_method;
+  char _pad1[1];
 
   /* Colors from Blender Internal that we are still using. */
   float r, g, b, a;
@@ -328,6 +330,12 @@ enum {
   MA_PREVIEW_WORLD = 1 << 0,
 };
 
+/** #Material::surface_render_method */
+enum {
+  MA_SURFACE_METHOD_DEFERRED = 0,
+  MA_SURFACE_METHOD_FORWARD = 1,
+};
+
 /** #Material::volume_intersection_method */
 enum {
   MA_VOLUME_ISECT_FAST = 0,
@@ -351,6 +359,7 @@ enum {
   MA_BL_CULL_BACKFACE = (1 << 2),
   MA_BL_TRANSLUCENCY = (1 << 3),
   MA_BL_CULL_BACKFACE_PROBE = (1 << 4),
+  MA_BL_CULL_BACKFACE_SHADOW = (1 << 5),
 };
 
 /** #Material::blend_shadow */
