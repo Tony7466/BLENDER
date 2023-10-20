@@ -94,6 +94,8 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
+#include "NOD_socket.hh"
+
 #include "versioning_common.hh"
 
 static CLG_LogRef LOG = {"blo.readfile.doversion"};
@@ -880,16 +882,13 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
      * releases and would make the file crash when trying to open it. */
     storage.data_type = CD_PROP_FLOAT3;
 
+    blender::nodes::update_node_declaration_and_sockets(ntree, *store_attribute_node);
+
     bNodeSocket *store_attribute_geometry_input = static_cast<bNodeSocket *>(
         store_attribute_node->inputs.first);
     bNodeSocket *store_attribute_name_input = store_attribute_geometry_input->next->next;
-    bNodeSocket *store_attribute_value_input = nullptr;
-    LISTBASE_FOREACH (bNodeSocket *, socket, &store_attribute_node->inputs) {
-      if (socket->type == SOCK_VECTOR) {
-        store_attribute_value_input = socket;
-        break;
-      }
-    }
+    bNodeSocket *store_attribute_value_input = store_attribute_geometry_input->next->next->next;
+    BLI_assert(store_attribute_value_input->type == SOCK_VECTOR);
     bNodeSocket *store_attribute_geometry_output = static_cast<bNodeSocket *>(
         store_attribute_node->outputs.first);
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
