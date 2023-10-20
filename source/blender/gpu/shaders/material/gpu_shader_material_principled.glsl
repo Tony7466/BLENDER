@@ -110,7 +110,7 @@ void node_bsdf_principled(vec4 base_color,
     vec3 sheen_color = sheen_weight * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
     diffuse_data.color = weight * sheen_color;
     /* Attenuate lower layers */
-    weight *= (1.0 - max_v3(sheen_color));
+    weight *= max((1.0 - max_v3(sheen_color)), 0.0);
   }
   else {
     diffuse_data.color = vec3(0.0);
@@ -127,7 +127,7 @@ void node_bsdf_principled(vec4 base_color,
     float reflectance = bsdf_lut(coat_NV, coat_data.roughness, coat_ior, false).x;
     coat_data.weight = weight * coat_weight * reflectance;
     /* Attenuate lower layers */
-    weight *= (1.0 - reflectance * coat_weight);
+    weight *= max((1.0 - reflectance * coat_weight), 0.0);
 
     if (!all(equal(coat_tint.rgb, vec3(1.0)))) {
       float coat_neta = 1.0 / coat_ior;
@@ -158,7 +158,7 @@ void node_bsdf_principled(vec4 base_color,
     brdf_f82_tint_lut(F0, F82, NV, roughness, do_multiscatter != 0.0, metallic_brdf);
     reflection_data.color = weight * metallic * metallic_brdf;
     /* Attenuate lower layers */
-    weight *= (1.0 - metallic);
+    weight *= max((1.0 - metallic), 0.0);
   }
   else {
     reflection_data.color = vec3(0.0);
@@ -188,7 +188,7 @@ void node_bsdf_principled(vec4 base_color,
     refraction_data.weight = weight * transmission_weight;
     refraction_data.color = transmittance * coat_tint.rgb;
     /* Attenuate lower layers */
-    weight *= (1.0 - transmission_weight);
+    weight *= max((1.0 - transmission_weight), 0.0);
   }
   else {
     refraction_data.weight = 0.0;
@@ -215,7 +215,7 @@ void node_bsdf_principled(vec4 base_color,
 
     reflection_data.color += weight * reflectance;
     /* Attenuate lower layers */
-    weight *= (1.0 - max_v3(reflectance));
+    weight *= max((1.0 - max_v3(reflectance)), 0.0);
   }
 
   /* Diffuse component */
