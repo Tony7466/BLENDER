@@ -838,6 +838,46 @@ static blender::Vector<std::string> construct_rna_paths(const eRotationModes rot
   return paths;
 }
 
+static void insert_key_id(PointerRNA *id_ptr,
+                          const blender::Span<std::string> rna_paths,
+                          const float scene_frame,
+                          Main *bmain,
+                          ReportList *reports)
+{
+  using namespace blender;
+
+  ID *id = id_ptr->owner_id;
+  bAction *action = ED_id_action_ensure(bmain, id);
+  if (action == nullptr) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Could not insert keyframe, as this type does not support animation data (ID = "
+                "%s)",
+                id->name);
+    return;
+  }
+
+  for (const std::string &rna_path : rna_paths) {
+    PointerRNA ptr;
+    PropertyRNA *prop = nullptr;
+    const bool path_resolved = RNA_path_resolve_property(id_ptr, rna_path.c_str(), &ptr, &prop);
+    std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+    if (!path_resolved) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "%s, path = %s)",
+                  id->name,
+                  id_to_prop.c_str());
+      continue;
+    }
+    Vector<float> rna_values;
+    get_rna_values(&ptr, prop, rna_values);
+    const int inserted_keys = animrig::insert_key_action(
+        action, id_to_prop, scene_frame, rna_values.as_span());
+  }
+}
+
 static void insert_key_object_mode(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -855,42 +895,11 @@ static void insert_key_object_mode(bContext *C, wmOperator *op)
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
       return;
     }
-    bAction *action = ED_id_action_ensure(bmain, selected_id);
-    if (action == nullptr) {
-      BKE_reportf(op->reports,
-                  RPT_ERROR,
-                  "Could not insert keyframe, as this type does not support animation data (ID = "
-                  "%s)",
-                  selected_id->name);
-      continue;
-    }
     PointerRNA id_ptr = collection_ptr_link->ptr;
     Object *ob = static_cast<Object *>(collection_ptr_link->ptr.data);
     Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(ob->rotmode),
                                                         ob->id.properties);
-    for (const std::string &rna_path : rna_paths) {
-      PointerRNA ptr;
-      PropertyRNA *prop = nullptr;
-      const bool path_resolved = RNA_path_resolve_property(&id_ptr, rna_path.c_str(), &ptr, &prop);
-      std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
-      if (!path_resolved) {
-        BKE_reportf(
-            op->reports,
-            RPT_ERROR,
-            "Could not insert keyframe, as this type does not support animation data (ID = "
-            "%s, path = %s)",
-            selected_id->name,
-            id_to_prop.c_str());
-        continue;
-      }
-      Vector<float> rna_values;
-      get_rna_values(&ptr, prop, rna_values);
-      int result = animrig::insert_key_action(
-          action, id_to_prop, scene_frame, rna_values.as_span());
-      if (result > 0) {
-        depsgraph_needs_update = true;
-      }
-    }
+    insert_key_id(&id_ptr, rna_paths.as_span(), scene_frame, bmain, op->reports);
   }
   BLI_freelistN(&selected_objects);
 }
@@ -912,43 +921,12 @@ static void insert_key_pose_mode(bContext *C, wmOperator *op)
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
       return;
     }
-    bAction *action = ED_id_action_ensure(bmain, selected_id);
-    if (action == nullptr) {
-      BKE_reportf(op->reports,
-                  RPT_ERROR,
-                  "Could not insert keyframe, as this type does not support animation data (ID = "
-                  "%s)",
-                  selected_id->name);
-      continue;
-    }
     PointerRNA id_ptr = collection_ptr_link->ptr;
     bPoseChannel *pchan = static_cast<bPoseChannel *>(collection_ptr_link->ptr.data);
     Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(pchan->rotmode),
                                                         pchan->prop);
 
-    for (const std::string &rna_path : rna_paths) {
-      PointerRNA ptr;
-      PropertyRNA *prop = nullptr;
-      const bool path_resolved = RNA_path_resolve_property(&id_ptr, rna_path.c_str(), &ptr, &prop);
-      std::string id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
-      if (!path_resolved) {
-        BKE_reportf(
-            op->reports,
-            RPT_ERROR,
-            "Could not insert keyframe, as this type does not support animation data (ID = "
-            "%s, path = %s)",
-            selected_id->name,
-            id_to_prop.c_str());
-        continue;
-      }
-      Vector<float> rna_values;
-      get_rna_values(&ptr, prop, rna_values);
-      int result = animrig::insert_key_action(
-          action, id_to_prop, scene_frame, rna_values.as_span());
-      if (result > 0) {
-        depsgraph_needs_update = true;
-      }
-    }
+    insert_key_id(&id_ptr, rna_paths.as_span(), scene_frame, bmain, op->reports);
   }
   BLI_freelistN(&selected_pose_bones);
 }
