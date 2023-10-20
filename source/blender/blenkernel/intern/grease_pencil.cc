@@ -2058,13 +2058,33 @@ static void grow_or_init_customdata(GreasePencil *grease_pencil)
   CustomData_realloc(&grease_pencil->layers_data, num_layers, num_layers + 1);
 }
 
-blender::bke::greasepencil::Layer &GreasePencil::add_layer(
-    blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(const blender::StringRefNull name)
 {
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
   grow_or_init_customdata(this);
-  return parent_group.add_layer(unique_name);
+  return root_group().add_layer(unique_name);
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(
+    blender::bke::greasepencil::LayerGroup &parent_group, const blender::StringRefNull name)
+{
+  using namespace blender;
+  blender::bke::greasepencil::Layer &new_layer = add_layer(name);
+  move_node_into(new_layer.as_node(), parent_group);
+  return new_layer;
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(
+    const blender::bke::greasepencil::Layer &duplicate_layer)
+{
+  using namespace blender;
+  std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
+  grow_or_init_customdata(this);
+  bke::greasepencil::Layer &new_layer = root_group().add_layer(duplicate_layer);
+  this->update_drawing_users_for_layer(new_layer);
+  new_layer.set_name(unique_name);
+  return new_layer;
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
@@ -2072,11 +2092,8 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     const blender::bke::greasepencil::Layer &duplicate_layer)
 {
   using namespace blender;
-  std::string unique_name = unique_layer_name(*this, duplicate_layer.name());
-  grow_or_init_customdata(this);
-  bke::greasepencil::Layer &new_layer = parent_group.add_layer(duplicate_layer);
-  this->update_drawing_users_for_layer(new_layer);
-  new_layer.set_name(unique_name);
+  bke::greasepencil::Layer &new_layer = add_layer(duplicate_layer);
+  move_node_into(new_layer.as_node(), parent_group);
   return new_layer;
 }
 
