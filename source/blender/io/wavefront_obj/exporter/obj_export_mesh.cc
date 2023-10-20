@@ -13,7 +13,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
@@ -368,7 +368,10 @@ void OBJMesh::store_normal_coords_and_indices()
   loop_to_normal_index_.fill(-1);
 
   Span<float3> corner_normals;
-  if (export_mesh_->normals_domain() == blender::bke::MeshNormalDomain::Corner) {
+  if (ELEM(export_mesh_->normals_domain(),
+           bke::MeshNormalDomain::Point,
+           bke::MeshNormalDomain::Corner))
+  {
     corner_normals = export_mesh_->corner_normals();
   }
 

@@ -13,6 +13,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h" /* #BoundBox. */
 
 #include "BKE_customdata.h"
 
@@ -236,7 +237,7 @@ void BKE_mesh_sharp_edges_set_from_angle(struct Mesh *me, float angle);
  */
 const char *BKE_mesh_cmp(struct Mesh *me1, struct Mesh *me2, float thresh);
 
-struct BoundBox *BKE_mesh_boundbox_get(struct Object *ob);
+BoundBox BKE_mesh_boundbox_get(struct Object *ob);
 
 void BKE_mesh_texspace_calc(struct Mesh *me);
 void BKE_mesh_texspace_ensure(struct Mesh *me);
@@ -525,6 +526,7 @@ void BKE_mesh_flush_hidden_from_faces(struct Mesh *me);
 
 void BKE_mesh_flush_select_from_faces(struct Mesh *me);
 void BKE_mesh_flush_select_from_verts(struct Mesh *me);
+void BKE_mesh_flush_select_from_edges(struct Mesh *me);
 
 /* spatial evaluation */
 /**

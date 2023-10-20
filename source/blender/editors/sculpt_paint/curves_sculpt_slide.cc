@@ -19,7 +19,7 @@
 #include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_sample.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
@@ -212,7 +212,7 @@ struct SlideOperationExecutor {
       self_->initial_positions_cu_ = curves_orig_->positions();
       self_->initial_deformed_positions_cu_ = deformation.positions;
 
-      /* First find all curves to slide. When the mouse moves, only those curves  will be moved. */
+      /* First find all curves to slide. When the mouse moves, only those curves will be moved. */
       this->find_curves_to_slide_with_symmetry();
       return;
     }

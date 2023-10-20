@@ -13,7 +13,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_eval.hh"
@@ -23,7 +23,7 @@
 
 #include "BLI_linklist.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_virtual_array.hh"
 
 #include "PIL_time.h"
