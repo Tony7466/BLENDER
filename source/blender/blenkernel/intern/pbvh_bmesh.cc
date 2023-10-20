@@ -837,22 +837,7 @@ static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
 
 static float long_edge_queue_priority(const BMEdge &edge)
 {
-  float priority = -BM_edge_calc_length_squared(&edge);
-
-  /* TODO(@sergey): Enabling this leads to infinite cycle in pbvh_bmesh_split_edge().
-   * Might not be directly related to this specific PR. Still would be nice to understand why the
-   * system is so fragile. */
-#if 0
-  /* TODO(@sergey): Find better weighting strategy. Maybe multiplicative? */
-   if (is_boundary_edge(edge)) {
-     priority += 500;
-   }
-   else if (is_edge_adjacent_to_boundary(edge)) {
-     priority += 1000;
-   }
-#endif
-
-  return priority;
+  return -BM_edge_calc_length_squared(&edge);
 }
 
 static float short_edge_queue_priority(const BMEdge &edge)
