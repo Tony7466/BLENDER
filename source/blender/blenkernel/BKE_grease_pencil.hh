@@ -21,6 +21,8 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_virtual_array.hh"
 
+#include "BKE_curves.hh"
+
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_object_types.h" /* #BoundBox. */
@@ -684,6 +686,8 @@ class GreasePencilRuntime {
   void *batch_cache = nullptr;
   /* The frame on which the object was evaluated (only valid for evaluated object). */
   int eval_frame;
+  /* Copy-paste buffer with geometry from one or more layers. */
+  Vector<bke::CurvesGeometry> copy_paste_buffer;
 
  public:
   GreasePencilRuntime() {}

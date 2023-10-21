@@ -871,7 +871,8 @@ void gather_attributes(AttributeAccessor src_attributes,
                        const AnonymousAttributePropagationInfo &propagation_info,
                        const Set<std::string> &skip,
                        const IndexMask &selection,
-                       MutableAttributeAccessor dst_attributes);
+                       MutableAttributeAccessor dst_attributes,
+                       std::optional<IndexRange> dst_range = std::nullopt);
 
 /**
  * Fill the destination attribute by gathering indexed values from src attributes.

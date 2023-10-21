@@ -853,7 +853,8 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        const AnonymousAttributePropagationInfo &propagation_info,
                        const Set<std::string> &skip,
                        const IndexMask &selection,
-                       MutableAttributeAccessor dst_attributes)
+                       MutableAttributeAccessor dst_attributes,
+                       std::optional<IndexRange> dst_range)
 {
   const int src_size = src_attributes.domain_size(domain);
   src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
@@ -879,7 +880,12 @@ void gather_attributes(const AttributeAccessor src_attributes,
     if (!dst) {
       return true;
     }
-    array_utils::gather(src.varray, selection, dst.span);
+    if (dst_range.has_value()) {
+      array_utils::gather(src.varray, selection, dst.span.slice(dst_range.value()));
+    }
+    else {
+      array_utils::gather(src.varray, selection, dst.span);
+    }
     dst.finish();
     return true;
   });
