@@ -63,74 +63,26 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
   /* Note: although this is a single threaded call, multithreading is used. */
   MemoryBuffer *image = inputs[0];
 
-  /* First pass: copy values from input to output and square values if necessary. */
+  /* First pass: copy input to output and sum horizontally. */
   threading::parallel_for(IndexRange(area.ymin, area.ymax), 1, [&](const IndexRange range_y) {
-    threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
-      for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
-        for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
-
-          float4 color;
-          image->read_elem(x, y, &color.x);
-
-          float *out = output->get_elem(x, y);
-
-          switch (mode_) {
-            case eMode::Squared: {
-              color *= color;
-              break;
-            }
-            case eMode::Identity: {
-              /* Pass. */
-              break;
-            }
-            default: {
-              BLI_assert_msg(0, "Mode not implemented");
-              break;
-            }
-          }
-
-          out[0] = color.x;
-          out[1] = color.y;
-          out[2] = color.z;
-          out[3] = color.w;
-        }
-      }
-    });
-  });
-
-  /* Second pass. */
-  threading::parallel_for(IndexRange(area.ymin, area.ymax), 1, [&](const IndexRange range_y) {
-    for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
-      /* Track floating point error. See below. */
-      float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
-      for (int x = area.xmin; x < area.xmax; x++) {
-
-        float4 color;
-        output->read_elem_checked(x - 1, y, &color.x);
-
-        float *out = output->get_elem(x, y);
-
-        out[0] += color.x;
-        out[1] += color.y;
-        out[2] += color.z;
-        out[3] += color.w;
+    for (const int y : range_y) {
+      float4 accumulated_color = float4(0.0f);
+      for (const int x : IndexRange(area.xmin, area.xmax)) {
+        const float4 color = float4(image->get_elem(x, y));
+        accumulated_color += mode_ == eMode::Squared? color * color : color;
+        copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
   });
 
-  /* Third pass: vertical sum. */
+  /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
-    for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
-      for (int y = area.ymin; y < area.ymax; y++) {
+    for(const int x : range_x) {
+      for(const int y : IndexRange(area.ymin, area.ymax)) {
         float4 color;
         output->read_elem_checked(x, y - 1, &color.x);
-
         float *out = output->get_elem(x, y);
-
-        out[0] += color.x;
-        out[1] += color.y;
-        out[2] += color.z;
-        out[3] += color.w;
+        copy_v4_v4(out, float4(out) + color);
       }
     }
   });
@@ -138,140 +90,38 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
 
 MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
 {
+  /* Note: although this is a single threaded call, multithreading is used. */
   MemoryBuffer *output = new MemoryBuffer(DataType::Color, *area);
   PixelSampler sampler = PixelSampler::Nearest;
 
-  /* First pass: copy values from input to output and square values if necessary. */
+  /* First pass: copy input to output and sum horizontally. */
   threading::parallel_for(IndexRange(area->ymin, area->ymax), 1, [&](const IndexRange range_y) {
-    threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
-      for (float y = float(*range_y.begin()); y < float(*range_y.end()); y++) {
-        for (float x = float(*range_x.begin()); x < float(*range_x.end()); x++) {
-
-          float4 color;
-          image_reader_->read_sampled(&color.x, x, y, sampler);
-
-          float *out = output->get_elem(x, y);
-
-          switch (mode_) {
-            case eMode::Squared: {
-              color *= color;
-              break;
-            }
-            case eMode::Identity: {
-              /* Pass. */
-              break;
-            }
-            default: {
-              BLI_assert_msg(0, "Mode not implemented");
-              break;
-            }
-          }
-
-          out[0] = color.x;
-          out[1] = color.y;
-          out[2] = color.z;
-          out[3] = color.w;
-        }
-      }
-    });
-  });
-
-  /* Second pass. */
-  threading::parallel_for(IndexRange(area->ymin, area->ymax), 1, [&](const IndexRange range_y) {
-    for (int64_t y = *range_y.begin(); y < *range_y.end(); y++) {
-      /* Track floating point error. See below. */
-      float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
-      for (int x = area->xmin; x < area->xmax; x++) {
+    for (const int y : range_y) {
+      float4 accumulated_color = float4(0.0f);
+      for (const int x : IndexRange(area->xmin, area->xmax)) {
 
         float4 color;
-        output->read_elem_checked(x - 1, y, &color.x);
-
-        float *out = output->get_elem(x, y);
-
-        out[0] += color.x;
-        out[1] += color.y;
-        out[2] += color.z;
-        out[3] += color.w;
+        image_reader_->read_sampled(&color.x, x, y, sampler);
+        accumulated_color += mode_ == eMode::Squared? color * color : color;
+        copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
   });
 
-  /* Third pass: vertical sum. */
+  /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
-    for (int64_t x = *range_x.begin(); x < *range_x.end(); x++) {
-      for (int y = area->ymin; y < area->ymax; y++) {
+    for(const int x : range_x) {
+      for(const int y : IndexRange(area->ymin, area->ymax)) {
         float4 color;
         output->read_elem_checked(x, y - 1, &color.x);
-
         float *out = output->get_elem(x, y);
-
-        out[0] += color.x;
-        out[1] += color.y;
-        out[2] += color.z;
-        out[3] += color.w;
+        copy_v4_v4(out, float4(out) + color);
       }
     }
   });
 
   return output;
 }
-
-//MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
-//{
-//  MemoryBuffer *result = new MemoryBuffer(DataType::Color, *rect);
-//  PixelSampler sampler = PixelSampler::Nearest;
-//
-//  /* Track floating point error. See below. */
-//  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
-//
-//  for (BuffersIterator<float> it = result->iterate_with({}, *rect); !it.is_end(); ++it) {
-//    const int x = it.x;
-//    const int y = it.y;
-//
-//    float4 color, upper, left, upper_left;
-//    image_reader_->read_sampled(color, x, y, sampler);
-//
-//    result->read_elem_checked(x, y - 1, &upper.x);
-//    result->read_elem_checked(x - 1, y, &left.x);
-//    result->read_elem_checked(x - 1, y - 1, &upper_left.x);
-//
-//    float4 sum = upper + left - upper_left;
-//
-//    float4 v;
-//    switch (mode_) {
-//      case eMode::Squared: {
-//        v = color * color;
-//        break;
-//      }
-//      case eMode::Identity: {
-//        v = color;
-//        break;
-//      }
-//      default: {
-//        BLI_assert_msg(0, "Mode not implemented");
-//        break;
-//      }
-//    }
-//
-//    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
-//     * summing up large number of values.
-//     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
-//     * and then correct the error in the next iteration. */
-//    float4 difference = v - running_compensation;
-//    float4 temp = sum + difference;
-//    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
-//     * recovers `difference` for the next iteration. */
-//    running_compensation = (temp - sum) - difference;
-//    sum = temp;
-//
-//    it.out[0] = sum.x;
-//    it.out[1] = sum.y;
-//    it.out[2] = sum.z;
-//    it.out[3] = sum.w;
-//  }
-//
-//  return result;
-//}
 
 void SummedAreaTableOperation::set_mode(eMode mode)
 {

@@ -35,6 +35,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
         kuwahara_classic->set_use_sat(false);
       }
       else {
+        kuwahara_classic->set_use_sat(true);
         SummedAreaTableOperation *sat = new SummedAreaTableOperation();
         sat->set_mode(SummedAreaTableOperation::eMode::Identity);
         converter.add_operation(sat);
