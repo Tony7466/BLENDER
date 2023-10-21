@@ -955,7 +955,7 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 
 enum class CapsMode : int8_t {
   /* Toggle both ends. */
-  TOGGLE,
+  BOTH,
   /* Change only start. */
   START,
   /* Change only end. */
@@ -965,7 +965,7 @@ enum class CapsMode : int8_t {
 };
 
 static const EnumPropertyItem prop_caps_types[] = {
-    {int(CapsMode::TOGGLE), "TOGGLE", 0, "Both", ""},
+    {int(CapsMode::BOTH), "BOTH", 0, "Both", ""},
     {int(CapsMode::START), "START", 0, "Start", ""},
     {int(CapsMode::END), "END", 0, "End", ""},
     {int(CapsMode::DEFAULT), "DEFAULT", 0, "Default", "Set as default rounded"},
@@ -984,39 +984,44 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
+        IndexMaskMemory memory;
+        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+        if (selected_curves.is_empty()) {
           return;
         }
-        if (!ed::curves::has_anything_selected(curves)) {
-          return;
-        }
+
         bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
         bke::SpanAttributeWriter<int8_t> start_caps =
             attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
         bke::SpanAttributeWriter<int8_t> end_caps =
             attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
 
-        IndexMaskMemory memory;
-        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-        selected_curves.foreach_index([&](const int curve_index) {
-          if (mode == CapsMode::TOGGLE || mode == CapsMode::START) {
-            start_caps.span[curve_index] += 1;
-            if (start_caps.span[curve_index] >= GP_STROKE_CAP_MAX) {
-              start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+        if (mode == CapsMode::DEFAULT) {
+          index_mask::masked_fill(
+              start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
+          index_mask::masked_fill(
+              end_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
+        }
+        else {
+          selected_curves.foreach_index([&](const int curve_index) {
+            if (mode == CapsMode::BOTH || mode == CapsMode::START) {
+              if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+                start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+              }
+              else {
+                start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+              }
             }
-          }
-          if (mode == CapsMode::TOGGLE || mode == CapsMode::END) {
-            end_caps.span[curve_index] += 1;
-            if (end_caps.span[curve_index] >= GP_STROKE_CAP_MAX) {
-              end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+            if (mode == CapsMode::BOTH || mode == CapsMode::END) {
+              if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+                end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+              }
+              else {
+                end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+              }
             }
-          }
-          if (mode == CapsMode::DEFAULT) {
-            start_caps.span[curve_index] = GP_STROKE_CAP_TYPE_ROUND;
-            end_caps.span[curve_index] = GP_STROKE_CAP_TYPE_ROUND;
-          }
-        });
+          });
+        }
 
         start_caps.finish();
         end_caps.finish();
@@ -1047,7 +1052,7 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Simplify parameters. */
-  ot->prop = RNA_def_enum(ot->srna, "type", prop_caps_types, int(CapsMode::TOGGLE), "Type", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", prop_caps_types, int(CapsMode::BOTH), "Type", "");
 }
 
 /** \} */
