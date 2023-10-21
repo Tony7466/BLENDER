@@ -1108,7 +1108,11 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
       case ID_GD_LEGACY:
+#ifdef WITH_GREASE_PENCIL_V3
         return N_("Browse Grease Pencil (legacy) Data to be linked");
+#else
+        return N_("Browse Grease Pencil Data to be linked");
+#endif
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
       case ID_MSK:
