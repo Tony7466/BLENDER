@@ -14,7 +14,7 @@ namespace blender::nodes::node_geo_bridge_curves_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curves");
-  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
   b.add_input<decl::Bool>("Cyclic").field_on_all();
   b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
   b.add_input<decl::Float>("Weight").field_on_all().hide_value();
