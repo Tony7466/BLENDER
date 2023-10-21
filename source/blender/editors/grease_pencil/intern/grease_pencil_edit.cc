@@ -970,7 +970,7 @@ static const EnumPropertyItem prop_normalize_modes[] = {
     {int(NormalizeMode::OPACITY),
      "OPACITY",
      0,
-     "OPacity",
+     "Opacity",
      "Normalizes the stroke opacity by making all points use the same opacity value"},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -1031,7 +1031,7 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
             }
             else if (mode == NormalizeMode::OPACITY) {
               opacities[point_i] = opacity;
-              CLAMP(opacities[point_i], 0.0f, 1.0f);
+              math::clamp(opacities[point_i], 0.0f, 1.0f);
             }
           }
         });
