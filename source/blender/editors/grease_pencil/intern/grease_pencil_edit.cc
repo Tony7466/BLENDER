@@ -965,18 +965,12 @@ static int grease_pencil_stroke_flip_exec(bContext *C, wmOperator *op)
         if (curves.points_num() == 0) {
           return;
         }
-        if (!ed::curves::has_anything_selected(curves)) {
-          return;
-        }
-        bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
         IndexMaskMemory memory;
         IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
-        selected_curves.foreach_index([&](const int curve_index) {
-          /* Switch stroke direction. */       
-          curves.reverse_curves(selected_curves);
-        });
+        /* Switch stroke direction. */       
+        curves.reverse_curves(selected_curves);
 
         changed = true;
       });
