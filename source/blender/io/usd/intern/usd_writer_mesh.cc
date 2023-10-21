@@ -522,6 +522,44 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, con
   }
   
   usd_mesh.CreateSubdivisionSchemeAttr().Set(subdiv_scheme);
+  if (subdiv_scheme == pxr::UsdGeomTokens->catmullClark) {
+    /* For Catmull-Clark, also consider the various interpolation modes. */
+    /* For reference, see https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#face-varying-interpolation-rules */
+    switch (subsurfData->uv_smooth) {
+      case SUBSURF_UV_SMOOTH_NONE:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->all);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersOnly);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_AND_JUNCTIONS:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersPlus1);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersPlus2);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->boundaries);
+        break;
+      case SUBSURF_UV_SMOOTH_ALL:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->none);
+        break;
+      default:
+        BLI_assert_msg(0, "Unsupported UV smoothing mode.");
+    }
+    
+    /* For reference, see https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#boundary-interpolation-rules */
+    switch (subsurfData->boundary_smooth) {
+      case SUBSURF_BOUNDARY_SMOOTH_ALL:
+        usd_mesh.CreateInterpolateBoundaryAttr().Set(pxr::UsdGeomTokens->edgeOnly);
+        break;
+      case SUBSURF_BOUNDARY_SMOOTH_PRESERVE_CORNERS:
+        usd_mesh.CreateInterpolateBoundaryAttr().Set(pxr::UsdGeomTokens->edgeAndCorner);
+        break;
+      default:
+        BLI_assert_msg(0, "Unsupported boundary smoothing mode.");
+    }
+  }
   
   if (usd_export_context_.export_params.export_normals &&
       subdiv_scheme == pxr::UsdGeomTokens->none) {
