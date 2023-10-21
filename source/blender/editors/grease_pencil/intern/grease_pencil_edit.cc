@@ -964,7 +964,7 @@ enum class CapsMode : int8_t {
   DEFAULT,
 };
 
-static const EnumPropertyItem caps_types[] = {
+static const EnumPropertyItem prop_caps_types[] = {
     {int(CapsMode::TOGGLE), "TOGGLE", 0, "Both", ""},
     {int(CapsMode::START), "START", 0, "Start", ""},
     {int(CapsMode::END), "END", 0, "End", ""},
@@ -1047,7 +1047,7 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Simplify parameters. */
-  ot->prop = RNA_def_enum(ot->srna, "type", caps_types, int(CapsMode::TOGGLE), "Type", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", prop_caps_types, int(CapsMode::TOGGLE), "Type", "");
 }
 
 /** \} */
