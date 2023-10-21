@@ -961,14 +961,14 @@ enum class CapsMode : int8_t {
   /* Change only end. */
   END,
   /* Switchs both to default rounded. */
-  DEFAULT,
+  ROUND,
 };
 
 static const EnumPropertyItem prop_caps_types[] = {
     {int(CapsMode::BOTH), "BOTH", 0, "Both", ""},
     {int(CapsMode::START), "START", 0, "Start", ""},
     {int(CapsMode::END), "END", 0, "End", ""},
-    {int(CapsMode::DEFAULT), "DEFAULT", 0, "Default", "Set as default rounded"},
+    {int(CapsMode::ROUND), "ROUND", 0, "Rounded", "Set as default rounded"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -996,7 +996,7 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
         bke::SpanAttributeWriter<int8_t> end_caps =
             attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
 
-        if (mode == CapsMode::DEFAULT) {
+        if (mode == CapsMode::ROUND) {
           index_mask::masked_fill(
               start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
           index_mask::masked_fill(
