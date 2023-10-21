@@ -1011,19 +1011,17 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
-          return;
-        }
-        if (!ed::curves::has_anything_selected(curves)) {
+
+        IndexMaskMemory memory;
+        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+
+        if (selected_curves.is_empty()) {
           return;
         }
 
         MutableSpan<float> radii = drawing.radii_for_write();
         MutableSpan<float> opacities = drawing.opacities_for_write();
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
-        IndexMaskMemory memory;
-        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
         selected_curves.foreach_index([&](const int curve_index) {
           const IndexRange points = points_by_curve[curve_index];
