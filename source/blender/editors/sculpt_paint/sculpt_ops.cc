@@ -1456,6 +1456,8 @@ static void SCULPT_OT_repeat_last_relative(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = repeat_last_rel_invoke;
   ot->poll = repeat_history_rel_poll;
+
+  ot->flag = OPTYPE_DEPENDS_ON_CURSOR;
 }
 /* \} */
 

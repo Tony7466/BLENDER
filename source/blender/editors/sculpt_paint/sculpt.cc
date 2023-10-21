@@ -5699,7 +5699,8 @@ static bool sculpt_stroke_test_start(bContext *C, wmOperator *op, const float mv
     SCULPT_stroke_id_next(ob);
     ss->cache->stroke_id = ss->stroke_id;
 
-    float3x3 frame = SCULPT_create_repeat_frame(ob, float4x4(ss->cache->vc->rv3d->viewinv), ss->cache->initial_normal);
+    float3x3 frame = SCULPT_create_repeat_frame(
+        ob, float4x4(ss->cache->vc->rv3d->viewinv), ss->cache->initial_normal);
     RNA_float_set_array(op->ptr, "repeat_tangent_frame", &frame[0][0]);
 
     return true;
@@ -5995,8 +5996,9 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
 
   paint_stroke_operator_properties(ot);
 
-  PropertyRNA *prop = RNA_def_float_array(ot->srna, "repeat_tangent_frame", 9, 0, -1, 1, "", "", 0, 0);
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE|PROP_HIDDEN);
+  PropertyRNA *prop = RNA_def_float_array(
+      ot->srna, "repeat_tangent_frame", 9, 0, -1, 1, "", "", 0, 0);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 
   RNA_def_boolean(ot->srna,
                   "ignore_background_click",
