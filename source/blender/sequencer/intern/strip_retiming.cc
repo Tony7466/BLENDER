@@ -218,7 +218,7 @@ SeqRetimingKey *SEQ_retiming_transition_start_get(SeqRetimingKey *key)
   if ((key->flag & SEQ_SPEED_TRANSITION_OUT)) {
     return key - 1;
   }
-  if ((key->flag & SEQ_SPEED_TRANSITION_IN)) {
+  if (key->flag & SEQ_SPEED_TRANSITION_IN) {
     return key;
   }
   return nullptr;
@@ -565,7 +565,7 @@ float SEQ_retiming_key_speed_get(const Sequence *seq, const SeqRetimingKey *key)
 
   const SeqRetimingKey *key_prev = key - 1;
 
-  const int frame_index_max = seq->len - 1;
+  const int frame_index_max = seq->len;
   const int frame_retimed_prev = round_fl_to_int(key_prev->retiming_factor * frame_index_max);
   const int frame_index_prev = key_prev->strip_frame_index;
   const int frame_retimed = round_fl_to_int(key->retiming_factor * frame_index_max);

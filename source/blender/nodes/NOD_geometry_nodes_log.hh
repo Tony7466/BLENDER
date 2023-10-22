@@ -135,6 +135,9 @@ class GeometryInfoLog : public ValueLog {
   struct PointCloudInfo {
     int points_num;
   };
+  struct GreasePencilInfo {
+    int layers_num;
+  };
   struct InstancesInfo {
     int instances_num;
   };
@@ -147,6 +150,7 @@ class GeometryInfoLog : public ValueLog {
   std::optional<MeshInfo> mesh_info;
   std::optional<CurveInfo> curve_info;
   std::optional<PointCloudInfo> pointcloud_info;
+  std::optional<GreasePencilInfo> grease_pencil_info;
   std::optional<InstancesInfo> instances_info;
   std::optional<EditDataInfo> edit_data_info;
 

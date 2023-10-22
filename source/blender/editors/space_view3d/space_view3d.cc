@@ -47,7 +47,7 @@
 #include "BKE_main.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_viewer_path.h"
@@ -538,7 +538,7 @@ static bool view3d_drop_id_in_main_region_poll(bContext *C,
   return WM_drag_is_ID_type(drag, id_type);
 }
 
-static void view3d_ob_drop_draw_activate(wmDropBox *drop, wmDrag *drag)
+static void view3d_ob_drop_on_enter(wmDropBox *drop, wmDrag *drag)
 {
   V3DSnapCursorState *state = static_cast<V3DSnapCursorState *>(drop->draw_data);
   if (state) {
@@ -575,7 +575,7 @@ static void view3d_ob_drop_draw_activate(wmDropBox *drop, wmDrag *drag)
   }
 }
 
-static void view3d_ob_drop_draw_deactivate(wmDropBox *drop, wmDrag * /*drag*/)
+static void view3d_ob_drop_on_exit(wmDropBox *drop, wmDrag * /*drag*/)
 {
   V3DSnapCursorState *state = static_cast<V3DSnapCursorState *>(drop->draw_data);
   if (state) {
@@ -796,10 +796,9 @@ static void view3d_ob_drop_matrix_from_snap(V3DSnapCursorState *snap_state,
   mat4_to_size(scale, ob->object_to_world);
   rescale_m4(obmat_final, scale);
 
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
-  if (bb) {
+  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob)) {
     float offset[3];
-    BKE_boundbox_calc_center_aabb(bb, offset);
+    BKE_boundbox_calc_center_aabb(&bb.value(), offset);
     offset[2] = bb->vec[0][2];
     mul_mat3_m4_v3(obmat_final, offset);
     sub_v3_v3(obmat_final[3], offset);
@@ -982,8 +981,8 @@ static void view3d_dropboxes()
                         nullptr);
 
   drop->draw_droptip = WM_drag_draw_item_name_fn;
-  drop->draw_activate = view3d_ob_drop_draw_activate;
-  drop->draw_deactivate = view3d_ob_drop_draw_deactivate;
+  drop->on_enter = view3d_ob_drop_on_enter;
+  drop->on_exit = view3d_ob_drop_on_exit;
 
   drop = WM_dropbox_add(lb,
                         "OBJECT_OT_transform_to_mouse",
@@ -993,8 +992,8 @@ static void view3d_dropboxes()
                         nullptr);
 
   drop->draw_droptip = WM_drag_draw_item_name_fn;
-  drop->draw_activate = view3d_ob_drop_draw_activate;
-  drop->draw_deactivate = view3d_ob_drop_draw_deactivate;
+  drop->on_enter = view3d_ob_drop_on_enter;
+  drop->on_exit = view3d_ob_drop_on_exit;
 
   WM_dropbox_add(lb,
                  "OBJECT_OT_collection_external_asset_drop",
@@ -1625,6 +1624,7 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
       break;
     case NC_ASSET:
       switch (wmn->data) {
+        case ND_ASSET_CATALOGS:
         case ND_ASSET_LIST_READING:
           blender::ed::geometry::clear_operator_asset_trees();
           ED_region_tag_redraw(region);
