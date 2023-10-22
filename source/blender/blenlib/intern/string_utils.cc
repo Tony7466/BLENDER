@@ -14,7 +14,7 @@
 
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLI_dynstr.h"
@@ -31,7 +31,7 @@ char *BLI_string_replaceN(const char *__restrict str,
                           const char *__restrict substr_old,
                           const char *__restrict substr_new)
 {
-  DynStr *ds = NULL;
+  DynStr *ds = nullptr;
   size_t len_old = strlen(substr_old);
   const char *match;
 
@@ -41,7 +41,7 @@ char *BLI_string_replaceN(const char *__restrict str,
    * keep dicing and replacing. */
   while ((match = strstr(str, substr_old))) {
     /* the assembly buffer only gets created when we actually need to rebuild the string */
-    if (ds == NULL) {
+    if (ds == nullptr) {
       ds = BLI_dynstr_new();
     }
 
@@ -50,7 +50,7 @@ char *BLI_string_replaceN(const char *__restrict str,
     if (str != match) {
       /* Add the segment of the string from `str` to match to the buffer,
        * then restore the value at match. */
-      BLI_dynstr_nappend(ds, str, (int)(match - str));
+      BLI_dynstr_nappend(ds, str, int(match - str));
 
       /* now our current position should be set on the start of the match */
       str = match;
@@ -121,17 +121,17 @@ size_t BLI_string_replace_range(
     /* Grow, first handle special cases. */
 
     /* Special case, the src_end is entirely clipped. */
-    if (UNLIKELY((int)string_maxncpy <= src_beg + dst_len)) {
+    if (UNLIKELY(int(string_maxncpy) <= src_beg + dst_len)) {
       /* There is only room for the destination. */
-      dst_len = ((int)string_maxncpy - src_beg) - 1;
+      dst_len = (int(string_maxncpy) - src_beg) - 1;
       string_len = src_end;
       string[string_len] = '\0';
     }
 
     const int ofs = dst_len - src_len;
     /* Clip the string when inserting the destination string exceeds `string_maxncpy`. */
-    if (string_len + ofs >= (int)string_maxncpy) {
-      string_len = ((int)string_maxncpy - ofs) - 1;
+    if (string_len + ofs >= int(string_maxncpy)) {
+      string_len = (int(string_maxncpy) - ofs) - 1;
       string[string_len] = '\0';
       BLI_assert(src_end <= string_len);
     }
@@ -151,7 +151,7 @@ size_t BLI_string_replace_range(
   }
 
   if (dst_len > 0) {
-    memcpy(string + src_beg, dst, (size_t)dst_len);
+    memcpy(string + src_beg, dst, size_t(dst_len));
   }
   BLI_assert(string[string_len] == '\0');
   return (size_t)string_len;
@@ -269,11 +269,11 @@ size_t BLI_string_flip_side_name(char *name_dst,
   BLI_string_debug_size(name_dst, name_dst_maxncpy);
 
   size_t len;
-  char *prefix = alloca(name_dst_maxncpy); /* The part before the facing */
-  char *suffix = alloca(name_dst_maxncpy); /* The part after the facing */
-  char *number = alloca(name_dst_maxncpy); /* The number extension string */
-  const char *replace = NULL;
-  char *index = NULL;
+  char *prefix = static_cast<char *>(alloca(name_dst_maxncpy)); /* The part before the facing */
+  char *suffix = static_cast<char *>(alloca(name_dst_maxncpy)); /* The part after the facing */
+  char *number = static_cast<char *>(alloca(name_dst_maxncpy)); /* The number extension string */
+  const char *replace = nullptr;
+  char *index = nullptr;
   bool is_set = false;
 
   *prefix = *suffix = *number = '\0';
@@ -400,8 +400,8 @@ void BLI_uniquename_cb(UniquenameCheckCallback unique_check,
 
   if (unique_check(arg, name)) {
     char numstr[16];
-    char *tempname = alloca(name_maxncpy);
-    char *left = alloca(name_maxncpy);
+    char *tempname = static_cast<char *>(alloca(name_maxncpy));
+    char *left = static_cast<char *>(alloca(name_maxncpy));
     int number;
     size_t len = BLI_string_split_name_number(name, delim, left, &number);
     do {
@@ -435,11 +435,10 @@ void BLI_uniquename_cb(UniquenameCheckCallback unique_check,
  */
 static bool uniquename_find_dupe(ListBase *list, void *vlink, const char *name, int name_offset)
 {
-  Link *link;
-
-  for (link = list->first; link; link = link->next) {
+  for (Link *link = static_cast<Link *>(list->first); link; link = link->next) {
     if (link != vlink) {
-      if (STREQ(POINTER_OFFSET((const char *)link, name_offset), name)) {
+      if (STREQ(static_cast<const char *>(POINTER_OFFSET((const char *)link, name_offset)), name))
+      {
         return true;
       }
     }
@@ -448,13 +447,16 @@ static bool uniquename_find_dupe(ListBase *list, void *vlink, const char *name, 
   return false;
 }
 
+struct UniqueNameCheckData {
+  ListBase *lb;
+  void *vlink;
+  int name_offset;
+};
+
 static bool uniquename_unique_check(void *arg, const char *name)
 {
-  struct {
-    ListBase *lb;
-    void *vlink;
-    int name_offset;
-  } *data = arg;
+  UniqueNameCheckData *data = static_cast<UniqueNameCheckData *>(arg);
+
   return uniquename_find_dupe(data->lb, data->vlink, name, data->name_offset);
 }
 
@@ -465,11 +467,7 @@ void BLI_uniquename(ListBase *list,
                     int name_offset,
                     size_t name_maxncpy)
 {
-  struct {
-    ListBase *lb;
-    void *vlink;
-    int name_offset;
-  } data;
+  UniqueNameCheckData data{};
   data.lb = list;
   data.vlink = vlink;
   data.name_offset = name_offset;
@@ -477,7 +475,7 @@ void BLI_uniquename(ListBase *list,
   BLI_assert(name_maxncpy > 1);
 
   /* See if we are given an empty string */
-  if (ELEM(NULL, vlink)) {
+  if (ELEM(nullptr, vlink)) {
     return;
   }
 
@@ -485,7 +483,7 @@ void BLI_uniquename(ListBase *list,
                     &data,
                     defname,
                     delim,
-                    POINTER_OFFSET(vlink, name_offset),
+                    static_cast<char *>(POINTER_OFFSET(vlink, name_offset)),
                     name_maxncpy);
 }
 
@@ -562,7 +560,7 @@ size_t BLI_string_join_array_by_sep_char(
 char *BLI_string_join_arrayN(const char *strings[], uint strings_num)
 {
   const size_t result_size = BLI_string_len_array(strings, strings_num) + 1;
-  char *result = MEM_mallocN(sizeof(char) * result_size, __func__);
+  char *result = MEM_cnew_array<char>(result_size, __func__);
   char *c = result;
   for (uint i = 0; i < strings_num; i++) {
     const size_t string_len = strlen(strings[i]);
@@ -579,7 +577,7 @@ char *BLI_string_join_array_by_sep_charN(char sep, const char *strings[], uint s
 {
   const size_t result_size = BLI_string_len_array(strings, strings_num) +
                              (strings_num ? strings_num - 1 : 0) + 1;
-  char *result = MEM_mallocN(sizeof(char) * result_size, __func__);
+  char *result = MEM_cnew_array<char>(result_size, __func__);
   char *c = result;
   if (strings_num != 0) {
     for (uint i = 0; i < strings_num; i++) {
@@ -609,7 +607,7 @@ char *BLI_string_join_array_by_sep_char_with_tableN(char sep,
     result_size = 1;
   }
 
-  char *result = MEM_mallocN(sizeof(char) * result_size, __func__);
+  char *result = MEM_cnew_array<char>(result_size, __func__);
   char *c = result;
   if (strings_num != 0) {
     for (uint i = 0; i < strings_num; i++) {
