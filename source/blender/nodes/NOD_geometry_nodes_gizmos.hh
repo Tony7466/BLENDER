@@ -83,6 +83,7 @@ struct GizmoNodeSource {
 };
 
 struct GizmoInferencingResult {
+  Vector<const bNode *> nodes_with_gizmos_inside;
   MultiValueMap<const bNode *, GizmoInput> gizmo_inputs_for_value_node;
   MultiValueMap<const bNodeSocket *, GizmoInput> gizmo_inputs_for_node_inputs;
   MultiValueMap<InterfaceGizmoInput, GizmoInput> gizmo_inputs_for_interface_input;

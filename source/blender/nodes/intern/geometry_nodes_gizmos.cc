@@ -180,6 +180,9 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
       }
     }
+    if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.size() > 0) {
+      inferencing_result.nodes_with_gizmos_inside.append(group_node);
+    }
   }
 
   for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
@@ -191,6 +194,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
       for (const GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, gizmo_node_source.source);
       }
+      inferencing_result.nodes_with_gizmos_inside.append(gizmo_node);
     }
   }
 
@@ -354,6 +358,23 @@ void foreach_active_gizmo(
             continue;
           }
           used_gizmo_inputs.add_multiple(item.value);
+        }
+        for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
+          if (!(node->flag & NODE_SELECT)) {
+            continue;
+          }
+          if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
+            fn(*compute_context_builder.current(), *node);
+          }
+          else if (node->is_group()) {
+            const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+            for (const auto item :
+                 group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.items()) {
+              const GizmoInput gizmo_input{&node->input_socket(item.key.input_index),
+                                           item.key.elem_index};
+              used_gizmo_inputs.add(gizmo_input);
+            }
+          }
         }
         for (const GizmoInput &gizmo_input : used_gizmo_inputs) {
           foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
