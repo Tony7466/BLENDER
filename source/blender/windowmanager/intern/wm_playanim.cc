@@ -123,14 +123,14 @@ static bool buffer_from_filepath(const char *filepath,
     *r_error_message = BLI_sprintfN("failure '%s' to access size", strerror(errno));
   }
   else if (r_mem && UNLIKELY(!(mem = static_cast<uchar *>(MEM_mallocN(size, __func__))))) {
-    *r_error_message = BLI_sprintfN("error allocating buffer %" PRIu64 " size", size);
+    *r_error_message = BLI_sprintfN("error allocating buffer %" PRIu64 " size", uint64_t(size));
   }
   else if (r_mem && UNLIKELY((size_read = BLI_read(file, mem, size)) != size)) {
     *r_error_message = BLI_sprintfN(
         "error '%s' reading file "
         "(expected %" PRIu64 ", was %" PRId64 ")",
         strerror(errno),
-        size,
+        uint64_t(size),
         size_read);
   }
   else {
@@ -792,7 +792,7 @@ static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
   const bool *draw_flip = nullptr;
 
   playanim_toscreen_ex(
-      ghost_window, display_ctx, picture, ibuf, fstep, font_id, zoom, draw_flip, indicator_factor);
+      ghost_window, display_ctx, picture, ibuf, font_id, fstep, zoom, draw_flip, indicator_factor);
 }
 
 static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf *ibuf)
