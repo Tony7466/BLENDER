@@ -8035,6 +8035,36 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.reproject", text="Reproject")
 
 
+class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
+    bl_label = ""
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        
+        is_point_mode = tool_settings.gpencil_selectmode_edit == 'POINT'
+        is_stroke_mode = tool_settings.gpencil_selectmode_edit == 'STROKE'
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        row = layout.row()
+
+        if is_point_mode:
+            col = row.column(align=True)
+
+            col.label(text="Point", icon='GP_SELECT_POINTS')
+            col.separator()
+
+        if is_stroke_mode:
+            col = row.column(align=True)
+            col.label(text="Stroke", icon='GP_SELECT_STROKES')
+            col.separator()
+
+            # Main Strokes Operators
+            # col.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
+            col.operator("grease_pencil.stroke_simplify")
+
+
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
     if gpl:
@@ -8725,6 +8755,7 @@ classes = (
     VIEW3D_MT_gpencil_simplify,
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
+    VIEW3D_MT_greasepencil_edit_context_menu,
     VIEW3D_MT_edit_greasepencil,
     VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_greasepencil_stroke,
