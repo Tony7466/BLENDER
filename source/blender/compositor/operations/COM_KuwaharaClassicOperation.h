@@ -13,8 +13,6 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
   SocketReader *sat_reader_;
   SocketReader *sat_squared_reader_;
 
-  int kernel_size_;
-
   /* If true, execute filter using precomputed summed area table.
    * This yields faster, but less accurate results. */
   bool use_sat_;
@@ -26,8 +24,6 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
   void deinit_execution() override;
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
-  void set_kernel_size(int kernel_size);
-  int get_kernel_size();
   void set_use_sat(bool use_sat);
   bool get_use_sat();
 

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -17,6 +18,7 @@ KuwaharaClassicOperation::KuwaharaClassicOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
+  this->add_input_socket(DataType::Value);
   this->set_kernel_size(4);
   this->set_use_sat(true);
 
@@ -26,13 +28,15 @@ KuwaharaClassicOperation::KuwaharaClassicOperation()
 void KuwaharaClassicOperation::init_execution()
 {
   image_reader_ = this->get_input_socket_reader(0);
-  sat_reader_ = this->get_input_socket_reader(1);
-  sat_squared_reader_ = this->get_input_socket_reader(2);
+  size_reader_ = this->get_input_socket_reader(1);
+  sat_reader_ = this->get_input_socket_reader(2);
+  sat_squared_reader_ = this->get_input_socket_reader(3);
 }
 
 void KuwaharaClassicOperation::deinit_execution()
 {
   image_reader_ = nullptr;
+  size_reader_ = nullptr;
   sat_reader_ = nullptr;
   sat_squared_reader_ = nullptr;
 }
@@ -140,16 +144,6 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   output[3] = mean_of_color[min_index].w; /* Also apply filter to alpha channel. */
 }
 
-void KuwaharaClassicOperation::set_kernel_size(int kernel_size)
-{
-  kernel_size_ = kernel_size;
-}
-
-int KuwaharaClassicOperation::get_kernel_size()
-{
-  return kernel_size_;
-}
-
 void KuwaharaClassicOperation::set_use_sat(bool use_sat)
 {
   use_sat_ = use_sat;
@@ -165,8 +159,9 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
                                                             Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *image = inputs[0];
-  MemoryBuffer *sat = inputs[1];
-  MemoryBuffer *sat_squared = inputs[2];
+  MemoryBuffer *size_image = inputs[1];
+  MemoryBuffer *sat = inputs[2];
+  MemoryBuffer *sat_squared = inputs[3];
 
   int width = image->get_width();
   int height = image->get_height();
@@ -178,6 +173,8 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     float4 mean_of_color[4] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
     float4 mean_of_squared_color[4] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
     int quadrant_pixel_count[4] = {0, 0, 0, 0};
+
+    const int kernel_size = int(math::max(0.0f, *size_image->get_elem(x, y)));
 
     if (use_sat_) {
       for (int q = 0; q < 4; q++) {

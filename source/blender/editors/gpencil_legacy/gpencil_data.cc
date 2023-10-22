@@ -21,7 +21,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -50,7 +50,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -922,7 +922,7 @@ static bool gpencil_frame_is_equal(const bGPDframe *gpf_a, const bGPDframe *gpf_
     if (gps_a->caps[1] != gps_b->caps[1]) {
       return false;
     }
-    if (gps_a->hardeness != gps_b->hardeness) {
+    if (gps_a->hardness != gps_b->hardness) {
       return false;
     }
     if (!equals_v2v2(gps_a->aspect_ratio, gps_b->aspect_ratio)) {
