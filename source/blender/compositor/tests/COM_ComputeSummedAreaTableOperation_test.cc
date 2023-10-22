@@ -51,29 +51,30 @@ TEST_P(SummedAreaTableTestP, Values)
 
 INSTANTIATE_TEST_SUITE_P(FullFrame5x2_IdentityOnes,
                          SummedAreaTableTestP,
-                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Identity,
-                                                   eExecutionModel::FullFrame,
-                                                   rcti{0, 5, 0, 2},         /* Area. */
-                                                   {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
+                         testing::Values(SatParams{
+                             SummedAreaTableOperation::eMode::Identity,
+                             eExecutionModel::FullFrame,
+                             rcti{0, 5, 0, 2},         /* Area. */
+                             {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
 
-                                                   /* Expected output. */
-                                                   {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f},
-                                                     {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
+                             /* Expected output. */
+                             {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f}, {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
 
-}));
+                         }));
 
-INSTANTIATE_TEST_SUITE_P(FullFrame5x2_SquaredOnes,
-                         SummedAreaTableTestP,
-                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Squared,
-  eExecutionModel::FullFrame,
-  rcti{0, 5, 0, 2},         /* Area. */
-  {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
+INSTANTIATE_TEST_SUITE_P(
+    FullFrame5x2_SquaredOnes,
+    SummedAreaTableTestP,
+    testing::Values(SatParams{
+        SummedAreaTableOperation::eMode::Squared,
+        eExecutionModel::FullFrame,
+        rcti{0, 5, 0, 2},         /* Area. */
+        {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
 
-  /* Expect identical to when using Identity SAT, since all inputs are 1. */
-  {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f},
-    {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
+        /* Expect identical to when using Identity SAT, since all inputs are 1. */
+        {{1.0f, 2.0f, 3.0f, 4.0f, 5.0f}, {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}}
 
-}));
+    }));
 
 INSTANTIATE_TEST_SUITE_P(FullFrame3x2_Squared,
                          SummedAreaTableTestP,
@@ -87,7 +88,6 @@ INSTANTIATE_TEST_SUITE_P(FullFrame3x2_Squared,
                                                        {4.0f, 8.0f, 6.75f},
                                                        {0.02f, 16.0f, 24.0f},
                                                    }}));
-
 
 class SummedAreaTableSumTest : public ::testing::Test {
  public:

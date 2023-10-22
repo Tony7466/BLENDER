@@ -10,12 +10,9 @@ namespace blender::compositor {
 
 class KuwaharaClassicOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
+  SocketReader *size_reader_;
   SocketReader *sat_reader_;
   SocketReader *sat_squared_reader_;
-
-  /* If true, execute filter using precomputed summed area table.
-   * This yields faster, but less accurate results. */
-  bool use_sat_;
 
  public:
   KuwaharaClassicOperation();
@@ -23,9 +20,6 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
   void init_execution() override;
   void deinit_execution() override;
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
-  void set_use_sat(bool use_sat);
-  bool get_use_sat();
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

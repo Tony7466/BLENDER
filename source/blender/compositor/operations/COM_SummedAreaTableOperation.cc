@@ -69,7 +69,7 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
       float4 accumulated_color = float4(0.0f);
       for (const int x : IndexRange(area.xmin, area.xmax)) {
         const float4 color = float4(image->get_elem(x, y));
-        accumulated_color += mode_ == eMode::Squared? color * color : color;
+        accumulated_color += mode_ == eMode::Squared ? color * color : color;
         copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
@@ -77,8 +77,8 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
 
   /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
-    for(const int x : range_x) {
-      for(const int y : IndexRange(area.ymin, area.ymax)) {
+    for (const int x : range_x) {
+      for (const int y : IndexRange(area.ymin, area.ymax)) {
         float4 color;
         output->read_elem_checked(x, y - 1, &color.x);
         float *out = output->get_elem(x, y);
@@ -102,7 +102,7 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
 
         float4 color;
         image_reader_->read_sampled(&color.x, x, y, sampler);
-        accumulated_color += mode_ == eMode::Squared? color * color : color;
+        accumulated_color += mode_ == eMode::Squared ? color * color : color;
         copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
@@ -110,8 +110,8 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
 
   /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
-    for(const int x : range_x) {
-      for(const int y : IndexRange(area->ymin, area->ymax)) {
+    for (const int x : range_x) {
+      for (const int y : IndexRange(area->ymin, area->ymax)) {
         float4 color;
         output->read_elem_checked(x, y - 1, &color.x);
         float *out = output->get_elem(x, y);

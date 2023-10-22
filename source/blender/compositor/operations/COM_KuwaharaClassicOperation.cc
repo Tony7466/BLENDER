@@ -15,12 +15,10 @@ namespace blender::compositor {
 KuwaharaClassicOperation::KuwaharaClassicOperation()
 {
   this->add_input_socket(DataType::Color);
+  this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  this->add_input_socket(DataType::Value);
-  this->set_kernel_size(4);
-  this->set_use_sat(true);
 
   this->flags_.is_fullframe_operation = true;
 }
@@ -50,15 +48,20 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   float4 mean_of_squared_color[] = {float4(0.0f), float4(0.0f), float4(0.0f), float4(0.0f)};
   int quadrant_pixel_count[] = {0, 0, 0, 0};
 
-  if (use_sat_) {
+  float4 size;
+  size_reader_->read_sampled(size, x, y, sampler);
+  const int kernel_size = int(math::max(0.0f, size[0]));
+
+  /* Naive implementation is more accurate for small kernel sizes. */
+  if (kernel_size >= 4) {
     for (int q = 0; q < 4; q++) {
       /* A fancy expression to compute the sign of the quadrant q. */
       int2 sign = int2((q % 2) * 2 - 1, ((q / 2) * 2 - 1));
 
       int2 lower_bound = int2(x, y) -
-                         int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
+                         int2(sign.x > 0 ? 0 : kernel_size, sign.y > 0 ? 0 : kernel_size);
       int2 upper_bound = int2(x, y) +
-                         int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
+                         int2(sign.x < 0 ? 0 : kernel_size, sign.y < 0 ? 0 : kernel_size);
 
       /* Limit the quadrants to the image bounds. */
       int2 image_bound = int2(this->get_width(), this->get_height()) - int2(1);
@@ -74,14 +77,13 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
       kernel_area.ymax = corrected_upper_bound[1];
 
       mean_of_color[q] = summed_area_table_sum_tiled(sat_reader_, kernel_area);
-      mean_of_squared_color[q] =
-          summed_area_table_sum_tiled(sat_squared_reader_, kernel_area);
+      mean_of_squared_color[q] = summed_area_table_sum_tiled(sat_squared_reader_, kernel_area);
     }
   }
   else {
     /* Split surroundings of pixel into 4 overlapping regions. */
-    for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
-      for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
+    for (int dy = -kernel_size; dy <= kernel_size; dy++) {
+      for (int dx = -kernel_size; dx <= kernel_size; dx++) {
 
         int xx = x + dx;
         int yy = y + dy;
@@ -144,16 +146,6 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   output[3] = mean_of_color[min_index].w; /* Also apply filter to alpha channel. */
 }
 
-void KuwaharaClassicOperation::set_use_sat(bool use_sat)
-{
-  use_sat_ = use_sat;
-}
-
-bool KuwaharaClassicOperation::get_use_sat()
-{
-  return use_sat_;
-}
-
 void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                             const rcti &area,
                                                             Span<MemoryBuffer *> inputs)
@@ -176,15 +168,16 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
 
     const int kernel_size = int(math::max(0.0f, *size_image->get_elem(x, y)));
 
-    if (use_sat_) {
+    /* Naive implementation is more accurate for small kernel sizes. */
+    if (kernel_size >= 4) {
       for (int q = 0; q < 4; q++) {
         /* A fancy expression to compute the sign of the quadrant q. */
         int2 sign = int2((q % 2) * 2 - 1, ((q / 2) * 2 - 1));
 
         int2 lower_bound = int2(x, y) -
-                           int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
+                           int2(sign.x > 0 ? 0 : kernel_size, sign.y > 0 ? 0 : kernel_size);
         int2 upper_bound = int2(x, y) +
-                           int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
+                           int2(sign.x < 0 ? 0 : kernel_size, sign.y < 0 ? 0 : kernel_size);
 
         /* Limit the quadrants to the image bounds. */
         int2 image_bound = int2(width, height) - int2(1);
@@ -205,8 +198,8 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     }
     else {
       /* Split surroundings of pixel into 4 overlapping regions. */
-      for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
-        for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
+      for (int dy = -kernel_size; dy <= kernel_size; dy++) {
+        for (int dx = -kernel_size; dx <= kernel_size; dx++) {
 
           int xx = x + dx;
           int yy = y + dy;
