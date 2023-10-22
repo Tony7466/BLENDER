@@ -1663,8 +1663,6 @@ void BKE_object_free_derived_caches(Object *ob)
     delete ob->runtime.geometry_set_eval;
     ob->runtime.geometry_set_eval = nullptr;
   }
-
-  MEM_SAFE_FREE(ob->runtime.editmesh_bb_cage);
 }
 
 void BKE_object_free_caches(Object *object)
@@ -3558,26 +3556,23 @@ void BKE_boundbox_minmax(const BoundBox *bb,
   }
 }
 
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *ob)
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Object *ob)
 {
   switch (ob->type) {
     case OB_MESH:
-      return BKE_mesh_wrapper_minmax(static_cast<const Mesh *>(ob->data));
+      return static_cast<const Mesh *>(ob->data)->bounds_min_max();
     case OB_CURVES_LEGACY:
     case OB_SURF:
     case OB_FONT:
-      return *BKE_curve_boundbox_get(ob);
+      return BKE_curve_minmax(static_cast<const Curve *>(ob->data), true);
     case OB_MBALL:
-      if (const BoundBox *bb = BKE_mball_boundbox_get(ob)) {
-        return *bb;
-      }
-      return std::nullopt;
+      return BKE_object_evaluated_geometry_bounds(ob);
     case OB_LATTICE:
-      return *BKE_lattice_boundbox_get(ob);
+      return BKE_lattice_minmax(static_cast<const Lattice *>(ob->data));
     case OB_ARMATURE:
-      return *BKE_armature_boundbox_get(ob);
+      return BKE_armature_min_max(ob->pose);
     case OB_GPENCIL_LEGACY:
-      return *BKE_gpencil_boundbox_get(ob);
+      return BKE_gpencil_data_minmax(static_cast<const bGPdata *>(ob->data));
     case OB_CURVES:
       return static_cast<const Curves *>(ob->data)->geometry.wrap().bounds_min_max();
     case OB_POINTCLOUD:
@@ -3597,7 +3592,10 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bo
     return ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
   }
   if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    return BKE_mesh_wrapper_minmax(mesh_eval);
+    /* In case the evaluated mesh isn't part of the evaluated geometry set, check it separately.
+     * Eventually this should be removed when we can be sure that the geometry set contains the
+     * mesh. */
+    return mesh_eval->bounds_min_max();
   }
   return std::nullopt;
 }
@@ -3629,26 +3627,23 @@ void BKE_object_dimensions_set_ex(Object *ob,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob)) {
-    float3 len;
-    len.x = bb->vec[4][0] - bb->vec[0][0];
-    len.y = bb->vec[2][1] - bb->vec[0][1];
-    len.z = bb->vec[1][2] - bb->vec[0][2];
+  using namespace blender;
+  const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob);
+  float3 len = bounds->max - bounds->min;
 
-    for (int i = 0; i < 3; i++) {
-      if (((1 << i) & axis_mask) == 0) {
+  for (int i = 0; i < 3; i++) {
+    if (((1 << i) & axis_mask) == 0) {
 
-        if (ob_scale_orig != nullptr) {
-          const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
-          if (isfinite(scale_delta)) {
-            len[i] *= scale_delta;
-          }
+      if (ob_scale_orig != nullptr) {
+        const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
+        if (isfinite(scale_delta)) {
+          len[i] *= scale_delta;
         }
+      }
 
-        const float scale = copysignf(value[i] / len[i], ob->scale[i]);
-        if (isfinite(scale)) {
-          ob->scale[i] = scale;
-        }
+      const float scale = copysignf(value[i] / len[i], ob->scale[i]);
+      if (isfinite(scale)) {
+        ob->scale[i] = scale;
       }
     }
   }
@@ -3661,100 +3656,29 @@ void BKE_object_dimensions_set(Object *ob, const float value[3], int axis_mask)
 
 void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool use_hidden)
 {
-  bool changed = false;
+  using namespace blender;
+  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {
+    copy_v3_v3(r_min, math::transform_point(float4x4(ob->object_to_world), bounds->min));
+    copy_v3_v3(r_max, math::transform_point(float4x4(ob->object_to_world), bounds->max));
+    return;
+  }
+  float3 size = ob->scale;
 
-  switch (ob->type) {
-    case OB_CURVES_LEGACY:
-    case OB_FONT:
-    case OB_SURF: {
-      const BoundBox bb = *BKE_curve_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_GPENCIL_LEGACY: {
-      const BoundBox bb = *BKE_gpencil_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_LATTICE: {
-      Lattice *lt = (Lattice *)ob->data;
-      BPoint *bp = lt->def;
-      int u, v, w;
-
-      for (w = 0; w < lt->pntsw; w++) {
-        for (v = 0; v < lt->pntsv; v++) {
-          for (u = 0; u < lt->pntsu; u++, bp++) {
-            float3 vec;
-            mul_v3_m4v3(vec, ob->object_to_world, bp->vec);
-            minmax_v3v3_v3(r_min, r_max, vec);
-          }
-        }
-      }
-      changed = true;
-      break;
-    }
-    case OB_ARMATURE: {
-      changed = BKE_pose_minmax(ob, r_min, r_max, use_hidden, false);
-      break;
-    }
-    case OB_MBALL: {
-      float ob_min[3], ob_max[3];
-
-      changed = BKE_mball_minmax_ex(
-          (const MetaBall *)ob->data, ob_min, ob_max, ob->object_to_world, 0);
-      if (changed) {
-        minmax_v3v3_v3(r_min, r_max, ob_min);
-        minmax_v3v3_v3(r_min, r_max, ob_max);
-      }
-      break;
-    }
-    case OB_CURVES: {
-      const BoundBox bb = BKE_curves_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_POINTCLOUD: {
-      const BoundBox bb = BKE_pointcloud_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_VOLUME: {
-      const BoundBox bb = *BKE_volume_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
-    case OB_GREASE_PENCIL: {
-      const BoundBox bb = BKE_grease_pencil_boundbox_get(ob);
-      BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
-      changed = true;
-      break;
-    }
+  copy_v3_v3(size, ob->scale);
+  if (ob->type == OB_EMPTY) {
+    size *= ob->empty_drawsize;
   }
 
-  if (changed == false) {
-    float3 size = ob->scale;
+  minmax_v3v3_v3(r_min, r_max, ob->object_to_world[3]);
 
-    copy_v3_v3(size, ob->scale);
-    if (ob->type == OB_EMPTY) {
-      size *= ob->empty_drawsize;
-    }
+  float3 vec;
+  copy_v3_v3(vec, ob->object_to_world[3]);
+  add_v3_v3(vec, size);
+  minmax_v3v3_v3(r_min, r_max, vec);
 
-    minmax_v3v3_v3(r_min, r_max, ob->object_to_world[3]);
-
-    float3 vec;
-    copy_v3_v3(vec, ob->object_to_world[3]);
-    add_v3_v3(vec, size);
-    minmax_v3v3_v3(r_min, r_max, vec);
-
-    copy_v3_v3(vec, ob->object_to_world[3]);
-    sub_v3_v3(vec, size);
-    minmax_v3v3_v3(r_min, r_max, vec);
-  }
+  copy_v3_v3(vec, ob->object_to_world[3]);
+  sub_v3_v3(vec, size);
+  minmax_v3v3_v3(r_min, r_max, vec);
 }
 
 void BKE_object_empty_draw_type_set(Object *ob, const int value)
@@ -3902,6 +3826,7 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
                              float r_max[3],
                              const bool use_hidden)
 {
+  using namespace blender;
   bool ok = false;
   if ((ob->transflag & OB_DUPLI) == 0 && ob->runtime.geometry_set_eval == nullptr) {
     return ok;
@@ -3917,11 +3842,13 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
       /* Do not modify the original bounding-box. */
       temp_ob.runtime.bb = nullptr;
       BKE_object_replace_data_on_shallow_copy(&temp_ob, dob->ob_data);
-      if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(&temp_ob)) {
+      if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(&temp_ob)) {
+        BoundBox bb;
+        BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
         int i;
         for (i = 0; i < 8; i++) {
           float3 vec;
-          mul_v3_m4v3(vec, dob->mat, bb->vec[i]);
+          mul_v3_m4v3(vec, dob->mat, bb.vec[i]);
           minmax_v3v3_v3(r_min, r_max, vec);
         }
 

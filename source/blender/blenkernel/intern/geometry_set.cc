@@ -205,7 +205,7 @@ std::optional<Bounds<float3>> GeometrySet::compute_boundbox_without_instances() 
     bounds = bounds::merge(bounds, pointcloud->bounds_min_max());
   }
   if (const Mesh *mesh = this->get_mesh()) {
-    bounds = bounds::merge(bounds, BKE_mesh_wrapper_minmax(mesh));
+    bounds = bounds::merge(bounds, mesh->bounds_min_max());
   }
   if (const Volume *volume = this->get_volume()) {
     bounds = bounds::merge(bounds, BKE_volume_min_max(volume));

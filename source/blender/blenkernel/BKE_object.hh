@@ -348,8 +348,8 @@ void BKE_boundbox_minmax(const BoundBox *bb,
                          float r_min[3],
                          float r_max[3]);
 
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *ob);
-void BKE_object_dimensions_get(Object *ob, float r_vec[3]);
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Object *ob);
+void BKE_object_dimensions_get(const Object *ob, float r_vec[3]);
 /**
  * The original scale and object matrix can be passed in so any difference
  * of the objects matrix and the final matrix can be accounted for,

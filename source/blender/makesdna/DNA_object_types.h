@@ -177,9 +177,6 @@ typedef struct Object_Runtime {
   /* Evaluated mesh cage in edit mode. */
   struct Mesh *editmesh_eval_cage;
 
-  /** Cached cage bounding box of `editmesh_eval_cage` for selection. */
-  struct BoundBox *editmesh_bb_cage;
-
   /**
    * Original grease pencil bGPdata pointer, before object->data was changed to point
    * to gpd_eval.

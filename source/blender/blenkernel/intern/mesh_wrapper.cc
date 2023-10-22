@@ -147,20 +147,6 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
   });
 }
 
-std::optional<blender::Bounds<blender::float3>> BKE_mesh_wrapper_minmax(const Mesh *me)
-{
-  using namespace blender;
-  switch (me->runtime->wrapper_type) {
-    case ME_WRAPPER_TYPE_BMESH:
-      return BKE_editmesh_cache_calc_minmax(me->edit_mesh, me->runtime->edit_data);
-    case ME_WRAPPER_TYPE_MDATA:
-    case ME_WRAPPER_TYPE_SUBD:
-      return me->bounds_min_max();
-  }
-  BLI_assert_unreachable();
-  return std::nullopt;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Mesh Coordinate Access
  * \{ */

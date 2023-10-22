@@ -462,47 +462,20 @@ void BKE_curve_type_test(Object *ob)
   }
 }
 
-BoundBox *BKE_curve_boundbox_get(Object *ob)
-{
-  /* This is Object-level data access,
-   * DO NOT touch to Mesh's bb, would be totally thread-unsafe. */
-  if (ob->runtime.bb == nullptr || ob->runtime.bb->flag & BOUNDBOX_DIRTY) {
-    Curve *cu = (Curve *)ob->data;
-    float min[3], max[3];
-
-    INIT_MINMAX(min, max);
-    if (!BKE_curve_minmax(cu, true, min, max)) {
-      copy_v3_fl(min, -1.0f);
-      copy_v3_fl(max, 1.0f);
-    }
-
-    if (ob->runtime.bb == nullptr) {
-      ob->runtime.bb = (BoundBox *)MEM_mallocN(sizeof(*ob->runtime.bb), __func__);
-    }
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
-    ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
-  }
-
-  return ob->runtime.bb;
-}
-
 void BKE_curve_texspace_calc(Curve *cu)
 {
   if (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO) {
-    float min[3], max[3];
-
-    INIT_MINMAX(min, max);
-    if (!BKE_curve_minmax(cu, true, min, max)) {
-      min[0] = min[1] = min[2] = -1.0f;
-      max[0] = max[1] = max[2] = 1.0f;
+    std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
+    if (!bounds) {
+      bounds = blender::Bounds<blender::float3>{float3(-FLT_MAX), -float3(FLT_MAX)};
     }
 
     float texspace_location[3], texspace_size[3];
-    mid_v3_v3v3(texspace_location, min, max);
+    mid_v3_v3v3(texspace_location, bounds->min, bounds->max);
 
-    texspace_size[0] = (max[0] - min[0]) / 2.0f;
-    texspace_size[1] = (max[1] - min[1]) / 2.0f;
-    texspace_size[2] = (max[2] - min[2]) / 2.0f;
+    texspace_size[0] = (bounds->max[0] - bounds->min[0]) / 2.0f;
+    texspace_size[1] = (bounds->max[1] - bounds->min[1]) / 2.0f;
+    texspace_size[2] = (bounds->max[2] - bounds->min[2]) / 2.0f;
 
     for (int a = 0; a < 3; a++) {
       if (texspace_size[a] == 0.0f) {
@@ -5108,29 +5081,34 @@ void BKE_curve_nurb_vert_active_validate(Curve *cu)
   }
 }
 
-bool BKE_curve_minmax(Curve *cu, bool use_radius, float min[3], float max[3])
+std::optional<blender::Bounds<blender::float3>> BKE_curve_minmax(const Curve *cu, bool use_radius)
 {
-  ListBase *nurb_lb = BKE_curve_nurbs_get(cu);
+  ListBase nurb_lb = *BKE_curve_nurbs_get_for_read(cu);
   ListBase temp_nurb_lb = {nullptr, nullptr};
-  const bool is_font = BLI_listbase_is_empty(nurb_lb) && (cu->len != 0);
+  const bool is_font = BLI_listbase_is_empty(&nurb_lb) && (cu->len != 0);
   /* For font curves we generate temp list of splines.
    *
    * This is likely to be fine, this function is not supposed to be called
    * often, and it's the only way to get meaningful bounds for fonts.
    */
   if (is_font) {
-    nurb_lb = &temp_nurb_lb;
-    BKE_vfont_to_curve_ex(nullptr, cu, FO_EDIT, nurb_lb, nullptr, nullptr, nullptr, nullptr);
+    nurb_lb = temp_nurb_lb;
+    BKE_vfont_to_curve_ex(
+        nullptr, const_cast<Curve *>(cu), FO_EDIT, &nurb_lb, nullptr, nullptr, nullptr, nullptr);
     use_radius = false;
   }
   /* Do bounding box based on splines. */
-  LISTBASE_FOREACH (const Nurb *, nu, nurb_lb) {
-    BKE_nurb_minmax(nu, use_radius, min, max);
+  blender::Bounds<blender::float3> bounds{blender::float3(FLT_MAX), blender::float3(-FLT_MAX)};
+  LISTBASE_FOREACH (const Nurb *, nu, &nurb_lb) {
+    BKE_nurb_minmax(nu, use_radius, bounds.min, bounds.max);
   }
-  const bool result = (BLI_listbase_is_empty(nurb_lb) == false);
+  const bool result = (BLI_listbase_is_empty(&nurb_lb) == false);
   /* Cleanup if needed. */
   BKE_nurbList_free(&temp_nurb_lb);
-  return result;
+  if (!result) {
+    return std::nullopt;
+  }
+  return bounds;
 }
 
 bool BKE_curve_center_median(Curve *cu, float cent[3])
@@ -5168,18 +5146,6 @@ bool BKE_curve_center_median(Curve *cu, float cent[3])
   }
 
   return (total != 0);
-}
-
-bool BKE_curve_center_bounds(Curve *cu, float cent[3])
-{
-  float min[3], max[3];
-  INIT_MINMAX(min, max);
-  if (BKE_curve_minmax(cu, false, min, max)) {
-    mid_v3_v3v3(cent, min, max);
-    return true;
-  }
-
-  return false;
 }
 
 void BKE_curve_transform_ex(Curve *cu,

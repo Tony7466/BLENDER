@@ -96,16 +96,14 @@ short BKE_curve_type_get(const struct Curve *cu);
 void BKE_curve_type_test(struct Object *ob);
 void BKE_curve_dimension_update(struct Curve *cu);
 
-struct BoundBox *BKE_curve_boundbox_get(struct Object *ob);
-
 void BKE_curve_texspace_calc(struct Curve *cu);
 void BKE_curve_texspace_ensure(struct Curve *cu);
 
 /* Basic vertex data functions. */
 
-bool BKE_curve_minmax(struct Curve *cu, bool use_radius, float min[3], float max[3]);
+std::optional<blender::Bounds<blender::float3>> BKE_curve_minmax(const struct Curve *cu,
+                                                                 bool use_radius);
 bool BKE_curve_center_median(struct Curve *cu, float cent[3]);
-bool BKE_curve_center_bounds(struct Curve *cu, float cent[3]);
 void BKE_curve_transform_ex(
     struct Curve *cu, const float mat[4][4], bool do_keys, bool do_props, float unit_scale);
 void BKE_curve_transform(struct Curve *cu, const float mat[4][4], bool do_keys, bool do_props);

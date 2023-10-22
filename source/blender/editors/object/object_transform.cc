@@ -1471,7 +1471,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* done */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        BKE_curve_center_bounds(cu, cent);
+        if (std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true)) {
+          cent = math::midpoint(bounds->min, bounds->max);
+        }
       }
       else { /* #V3D_AROUND_CENTER_MEDIAN. */
         BKE_curve_center_median(cu, cent);
@@ -1592,7 +1594,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* done */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        BKE_lattice_center_bounds(lt, cent);
+        if (std::optional<blender::Bounds<blender::float3>> bounds = BKE_lattice_minmax(lt)) {
+          cent = math::midpoint(bounds->min, bounds->max);
+        }
       }
       else { /* #V3D_AROUND_CENTER_MEDIAN. */
         BKE_lattice_center_median(lt, cent);

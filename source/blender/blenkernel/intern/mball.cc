@@ -225,13 +225,6 @@ MetaElem *BKE_mball_element_add(MetaBall *mb, const int type)
   return ml;
 }
 
-BoundBox *BKE_mball_boundbox_get(Object *ob)
-{
-  BLI_assert(ob->type == OB_MBALL);
-  BKE_object_evaluated_geometry_bounds(ob);
-  return ob->runtime.bb;
-}
-
 bool BKE_mball_is_basis(const Object *ob)
 {
   /* Meta-Ball Basis Notes from Blender-2.5x

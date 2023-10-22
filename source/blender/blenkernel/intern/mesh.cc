@@ -46,6 +46,7 @@
 #include "BKE_bpath.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
@@ -1160,7 +1161,7 @@ void BKE_mesh_texspace_calc(Mesh *me)
   if (!(me->texspace_flag & ME_TEXSPACE_FLAG_AUTO)) {
     return;
   }
-  const std::optional<Bounds<float3>> bounds = BKE_mesh_wrapper_minmax(me);
+  const std::optional<Bounds<float3>> bounds = me->bounds_min_max();
   const float3 min = bounds ? bounds->min : float3(-1.0f);
   const float3 max = bounds ? bounds->max : float3(1.0f);
 
@@ -1475,11 +1476,21 @@ void BKE_mesh_looptri_get_real_edges(const blender::int2 *edges,
 std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
 {
   using namespace blender;
-  if (this->totvert == 0) {
+  const int verts_num = BKE_mesh_wrapper_vert_len(this);
+  if (verts_num == 0) {
     return std::nullopt;
   }
-  this->runtime->bounds_cache.ensure(
-      [&](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(this->vert_positions()); });
+  this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
+    switch (this->runtime->wrapper_type) {
+      case ME_WRAPPER_TYPE_BMESH:
+        r_bounds = *BKE_editmesh_cache_calc_minmax(this->edit_mesh, this->runtime->edit_data);
+        break;
+      case ME_WRAPPER_TYPE_MDATA:
+      case ME_WRAPPER_TYPE_SUBD:
+        r_bounds = *bounds::min_max(this->vert_positions());
+        break;
+    }
+  });
   return this->runtime->bounds_cache.data();
 }
 

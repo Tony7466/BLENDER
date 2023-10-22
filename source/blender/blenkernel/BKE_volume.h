@@ -12,7 +12,6 @@
 extern "C" {
 #endif
 
-struct BoundBox;
 struct Depsgraph;
 struct Main;
 struct Object;
