@@ -1019,20 +1019,17 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
           return;
         }
 
-        MutableSpan<float> radii = drawing.radii_for_write();
-        MutableSpan<float> opacities = drawing.opacities_for_write();
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
         selected_curves.foreach_index([&](const int curve_index) {
-          const IndexRange points = points_by_curve[curve_index];
-          for (const int point_i : points) {
-            if (mode == NormalizeMode::THICKNESS) {
-              radii[point_i] = radius;
-            }
-            else if (mode == NormalizeMode::OPACITY) {
-              opacities[point_i] = opacity;
-              math::clamp(opacities[point_i], 0.0f, 1.0f);
-            }
+          if (mode == NormalizeMode::THICKNESS) {
+            MutableSpan<float> radii = drawing.radii_for_write().slice(
+                points_by_curve[curve_index]);
+            radii.fill(radius);
+          }
+          if (mode == NormalizeMode::OPACITY) {
+            MutableSpan<float> opacities = drawing.opacities_for_write().slice(
+                points_by_curve[curve_index]);
+            opacities.fill(opacity);
           }
         });
 
