@@ -107,10 +107,10 @@ std::optional<blender::Bounds<blender::float3>> BKE_editmesh_cache_calc_minmax(
   if (emd->vertexCos.is_empty()) {
     BMVert *eve;
     BMIter iter;
-    float3 min(std::numeric_limits<float>::lowest());
-    float3 max(std::numeric_limits<float>::max());
+    float3 min(std::numeric_limits<float>::max());
+    float3 max(std::numeric_limits<float>::lowest());
     BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-      math::min_max(float3(eve->co), min, max);
+      minmax_v3v3_v3(min, max, eve->co);
     }
     return Bounds<float3>{min, max};
   }

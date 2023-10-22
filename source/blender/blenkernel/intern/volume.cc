@@ -968,12 +968,12 @@ bool BKE_volume_save(const Volume *volume,
 std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume)
 {
   // TODO: GEOMETRY CACHING
-  std::optional<blender::Bounds<blender::float3>> result;
 #ifdef WITH_OPENVDB
   /* TODO: if we know the volume is going to be displayed, it may be good to
    * load it as part of dependency graph evaluation for better threading. We
    * could also share the bounding box computation in the global volume cache. */
   if (BKE_volume_load(const_cast<Volume *>(volume), G.main)) {
+    std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
       openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
@@ -983,7 +983,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
 #else
   UNUSED_VARS(volume);
 #endif
-  return result;
+  return std::nullopt;
 }
 
 bool BKE_volume_is_y_up(const Volume *volume)
