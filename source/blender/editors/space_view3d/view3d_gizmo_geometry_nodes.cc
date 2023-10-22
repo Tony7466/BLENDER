@@ -21,7 +21,7 @@
 #include "BKE_idprop.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
