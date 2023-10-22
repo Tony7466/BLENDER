@@ -5,6 +5,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(draw_view_reconstruction_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_horizon_scan_lib.glsl)
 
 void main()
 {
@@ -25,7 +26,20 @@ void main()
   vec3 V = drw_world_incident_vector(P);
   vec3 Ng = drw_normal_view_to_world(surf.vNg);
   vec3 N = imageLoad(in_normal_img, ivec3(texel, in_normal_img_layer_index)).xyz;
+  vec3 vN = drw_normal_world_to_view(N);
 
+#if 1
+  HorizonScanResult result = horizon_scan(surf.vP,
+                                          vN,
+                                          hiz_tx,
+                                          texel,
+                                          uniform_buf.ao.pixel_size,
+                                          uniform_buf.ao.distance,
+                                          1.0,
+                                          false,
+                                          16);
+  float visibility = result.visibility;
+#else
   OcclusionData data = ambient_occlusion_search(
       surf.vP, hiz_tx, texel, uniform_buf.ao.distance, 0.0, 8.0);
 
@@ -34,6 +48,7 @@ void main()
   vec3 unused_bent_normal_out;
   ambient_occlusion_eval(
       data, texel, V, N, Ng, 0.0, visibility, unused_visibility_error_out, unused_bent_normal_out);
+#endif
 
   imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(saturate(visibility)));
 }
