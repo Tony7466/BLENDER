@@ -13,10 +13,10 @@ namespace blender::nodes::node_geo_curve_split_curves_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curves");
-  b.add_input<decl::Bool>("Selection").hide_value().supports_field();
-  b.add_input<decl::Bool>("Remove Next").default_value(true).supports_field();
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
+  b.add_input<decl::Bool>("Remove Segment").field_on_all();
 
-  b.add_output<decl::Geometry>("Curves");
+  b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
 // static bke::CurvesGeometry split_curves(const bke::CurvesGeometry &src_curves,
@@ -123,16 +123,25 @@ static bke::CurvesGeometry split_curves(const bke::CurvesGeometry &src_curves,
     if (selection[points.first()]) {
       add_split(curve, points.first(), remove_segments[points.first()] && points.size() > 1);
     }
+    else {
+      new_point++;
+    }
 
     /* Add the splits in the middle of the curve. */
     for (const int point : points.drop_front(1).drop_back(1)) {
       if (selection[point]) {
         add_split(curve, point, remove_segments[point]);
       }
+      else {
+        new_point++;
+      }
     }
 
     if (selection[points.last()]) {
       add_split(curve, points.last(), false);
+    }
+    else {
+      new_point++;
     }
   }
 
@@ -174,7 +183,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curves");
   Field<bool> selection = params.extract_input<Field<bool>>("Selection");
-  Field<bool> remove_segment = params.extract_input<Field<bool>>("Remove Next");
+  Field<bool> remove_segment = params.extract_input<Field<bool>>("Remove Segment");
   const AnonymousAttributePropagationInfo propagation_info = params.get_output_propagation_info(
       "Curves");
 
@@ -195,9 +204,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curves", geometry_set);
 }
 
-}  // namespace blender::nodes::node_geo_curve_split_curves_cc
-
-void register_node_type_geo_curve_split_curves()
+static void node_register()
 {
   namespace file_ns = blender::nodes::node_geo_curve_split_curves_cc;
   static bNodeType ntype;
@@ -206,3 +213,6 @@ void register_node_type_geo_curve_split_curves()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_split_curves_cc
