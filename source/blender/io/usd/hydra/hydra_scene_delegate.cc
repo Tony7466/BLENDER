@@ -35,6 +35,7 @@ HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
     : HdSceneDelegate(parent_index, delegate_id)
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
+  world_data_ = std::make_unique<WorldData>(this, world_prim_id());
 }
 
 pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
@@ -340,29 +341,27 @@ InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool c
 
 void HydraSceneDelegate::update_world()
 {
-  if (!world_data_) {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_ = std::make_unique<WorldData>(this, world_prim_id());
-      world_data_->init();
-      if (world_data_->empty()) {
-        world_data_ = nullptr;
-        return;
-      }
-      world_data_->insert();
-    }
-  }
-  else {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_->update();
-      if (world_data_->empty()) {
-        world_data_ = nullptr;
-      }
-    }
-    else {
-      world_data_->remove();
-      world_data_ = nullptr;
-    }
-  }
+  world_data_->update();
+
+  // if (world_data_->empty()) {
+  //  if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world))
+  //  {
+  //    world_data_->init();
+  //    if (world_data_->empty()) {
+  //      return;
+  //    }
+  //    world_data_->insert();
+  //  }
+  //}
+  // else {
+  //  if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world))
+  //  {
+  //    world_data_->update();
+  //  }
+  //  else {
+  //    world_data_->remove();
+  //  }
+  //}
 }
 
 void HydraSceneDelegate::check_updates()

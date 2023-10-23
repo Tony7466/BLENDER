@@ -146,13 +146,22 @@ void WorldData::init()
 void WorldData::update()
 {
   ID_LOG(1, "");
-  init();
-  if (empty()) {
-    remove();
-    return;
+
+  if (!scene_delegate_->shading_settings.use_scene_world ||
+      (scene_delegate_->shading_settings.use_scene_world && scene_delegate_->scene->world))
+  {
+    init();
+    if (empty()) {
+      remove();
+      return;
+    }
+    insert();
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
+                                                                        pxr::HdLight::AllDirty);
   }
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
-                                                                      pxr::HdLight::AllDirty);
+  else {
+    remove();
+  }
 }
 
 void WorldData::write_transform()
