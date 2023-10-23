@@ -4405,11 +4405,8 @@ bool RNA_property_collection_type_get(PointerRNA *ptr, PropertyRNA *prop, Pointe
   return ((r_ptr->type = rna_ensure_property(prop)->srna) ? 1 : 0);
 }
 
-int RNA_property_collection_raw_array(PointerRNA *ptr,
-                                      PropertyRNA *prop,
-                                      PropertyRNA *itemprop,
-                                      int set,
-                                      RawArray *array)
+int RNA_property_collection_raw_array(
+    PointerRNA *ptr, PropertyRNA *prop, PropertyRNA *itemprop, int set, RawArray *array)
 {
   CollectionPropertyIterator iter;
   ArrayIterator *internal;
