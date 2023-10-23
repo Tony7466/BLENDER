@@ -1,1 +1,2 @@
 Referenced by commit b4e6ef42798e45775bdd39671b65e79283d24f0d, Fix: MeshPolygon.use_smooth set inversed
+Referenced by issue #114028, Cycles: Displacement splits flat-shaded faces
