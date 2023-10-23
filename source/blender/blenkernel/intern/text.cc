@@ -231,7 +231,7 @@ IDTypeInfo IDType_ID_TXT = {
     /*main_listbase_index*/ INDEX_ID_TXT,
     /*struct_size*/ sizeof(Text),
     /*name*/ "Text",
-    /*name_plural*/ "texts",
+    /*name_plural*/ N_("texts"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_TEXT,
     /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -408,7 +408,7 @@ static void text_from_buf(Text *text, const uchar *buffer, const int len)
     cleanup_textline(tmp);
 
     BLI_addtail(&text->lines, tmp);
-    /* lines_count += 1; */ /* UNUSED */
+    // lines_count += 1; /* UNUSED. */
   }
 
   text->curl = text->sell = static_cast<TextLine *>(text->lines.first);
@@ -2221,7 +2221,7 @@ int txt_setcurr_tab_spaces(Text *text, int space)
   }
 
   while (text->curl->line[i] == indent) {
-    /* We only count those tabs/spaces that are before any text or before the curs; */
+    /* We only count those tabs/spaces that are before any text or before the `curs`. */
     if (i == text->curc) {
       return i;
     }
