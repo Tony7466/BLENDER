@@ -193,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ N_("shape keys"),
+    /*name_plural*/ N_("shape_keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
@@ -2287,8 +2287,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         sharp_edges,
         sharp_faces,
         clnors,
-        (mesh->flag & ME_AUTOSMOOTH) != 0,
-        mesh->smoothresh,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }
