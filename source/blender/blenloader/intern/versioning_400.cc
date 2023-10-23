@@ -45,6 +45,7 @@
 
 #include "BKE_armature.h"
 #include "BKE_attribute.h"
+#include "BKE_collection.h"
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
@@ -243,10 +244,12 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
   }
 }
 
-static void versioning_object_hide_shadow(Object *object)
+static void versioning_eevee_shadow_settings(Object *object)
 {
-  /** EEVEE now uses the Object visibility flag for disabling shadow casting.
-   * Enable it if all object materials have shadows disabled. */
+  /** EEVEE no longer uses the Material::blend_flag property.
+   * Instead, it uses Object::visibility_flag for disabling shadow casting
+   * and the Material::blend_flag for transparent shadows.
+   */
 
   if (!ELEM(object->type,
             OB_CURVES,
@@ -267,17 +270,19 @@ static void versioning_object_hide_shadow(Object *object)
   }
 
   using namespace blender;
-  bool has_any_valid_material = false;
+  bool hide_shadows = *material_len > 0;
   for (int i : IndexRange(*material_len)) {
-    if (Material *material = BKE_object_material_get(object, i)) {
-      has_any_valid_material = true;
-      if (material->blend_shadow != MA_BS_NONE) {
-        return;
-      }
+    Material *material = BKE_object_material_get(object, i + 1);
+    if (!material || material->blend_shadow != MA_BS_NONE) {
+      hide_shadows = false;
+    }
+    if (material && material->blend_shadow == MA_BS_SOLID) {
+      material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
     }
   }
 
-  if (has_any_valid_material) {
+  /* Enable the hide_shadow flag only if there's not any shadow casting material. */
+  if (hide_shadows) {
     object->visibility_flag |= OB_HIDE_SHADOW;
   }
 }
@@ -356,9 +361,15 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 2)) {
-    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-      versioning_object_hide_shadow(object);
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (!STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
+        continue;
+      }
+      FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (scene->master_collection, object) {
+        versioning_eevee_shadow_settings(object);
+      }
+      FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
     }
   }
 
@@ -1130,12 +1141,7 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
-static void versioning_material_transparent_shadow(Material *material)
-{
-  if (material->blend_shadow == MA_BS_SOLID) {
-    material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
-  }
-}
+static void versioning_material_transparent_shadow(Material *material) {}
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
@@ -1767,12 +1773,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
       versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
-    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-      versioning_material_transparent_shadow(material);
     }
   }
 
