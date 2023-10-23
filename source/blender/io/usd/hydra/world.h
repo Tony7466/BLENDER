@@ -17,8 +17,6 @@
 
 #include "light.h"
 
-class bNode;
-
 namespace blender::io::hydra {
 
 class WorldData : public LightData {
