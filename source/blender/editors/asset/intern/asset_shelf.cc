@@ -326,10 +326,22 @@ static int calculate_row_count_from_tile_draw_height(const int region_height_sca
   return std::max(1, int((region_height_scaled - 2 * main_region_padding_y()) / tile_draw_height));
 }
 
-static int calculate_scaled_region_height_from_row_count(const int row_count,
+static int calculate_scaled_region_height_from_row_count(const ARegion *region,
+                                                         const int row_count,
                                                          const int tile_draw_height)
 {
-  return (row_count * tile_draw_height + 2 * main_region_padding_y());
+  const int padding = main_region_padding_y();
+  int height = (row_count * tile_draw_height) + padding;
+
+  if (!region->overlap) {
+    /* Header is on the bottom so increase the content height to compensate. */
+    height += ED_asset_shelf_header_region_size();
+  }
+  else {
+    height += padding;
+  }
+
+  return height;
 }
 
 int ED_asset_shelf_region_snap(const ARegion *region, const int size, const int axis)
@@ -346,8 +358,8 @@ int ED_asset_shelf_region_snap(const ARegion *region, const int size, const int 
   const int row_count = calculate_row_count_from_tile_draw_height(size * UI_SCALE_FAC,
                                                                   tile_height);
 
-  const int new_size_scaled = calculate_scaled_region_height_from_row_count(row_count,
-                                                                            tile_height);
+  const int new_size_scaled = calculate_scaled_region_height_from_row_count(
+      region, row_count, tile_height);
   return new_size_scaled / UI_SCALE_FAC;
 }
 
@@ -366,7 +378,7 @@ static void region_resize_to_preferred(ScrArea *area, ARegion *region)
 
   const int tile_height = current_tile_draw_height(region);
   const int new_size_y = calculate_scaled_region_height_from_row_count(
-                             active_shelf->preferred_row_count, tile_height) /
+                             region, active_shelf->preferred_row_count, tile_height) /
                          UI_SCALE_FAC;
 
   if (region->sizey != new_size_y) {
