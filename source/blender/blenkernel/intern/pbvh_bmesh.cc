@@ -25,10 +25,14 @@
 #include "bmesh.h"
 #include "pbvh_intern.hh"
 
+#include "CLG_log.h"
+
 using blender::Array;
 using blender::IndexRange;
 using blender::Span;
 using blender::Vector;
+
+static CLG_LogRef LOG = {"pbvh.bmesh"};
 
 /* Avoid skinny faces */
 #define USE_EDGEQUEUE_EVEN_SUBDIV
@@ -1115,7 +1119,7 @@ static void copy_edge_data(BMesh &bm, BMEdge &dst, /*const*/ BMEdge &src)
 }
 
 /* Merge edge custom data from src to dst. */
-static void merge_edge_data(BMesh &bm, BMEdge &dst, /*const*/ BMEdge &src)
+static void merge_edge_data(BMesh &bm, BMEdge &dst, const BMEdge &src)
 {
   dst.head.hflag |= (src.head.hflag & ~(BM_ELEM_TAG | BM_ELEM_SMOOTH));
 
@@ -1277,6 +1281,186 @@ static bool pbvh_bmesh_subdivide_long_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh
   return any_subdivided;
 }
 
+/* Check whether the #vert is adjacent to any face which are adjacent to the #edge. */
+bool vert_in_face_adjacent_to_edge(BMVert *vert, BMEdge *edge)
+{
+  BMIter bm_iter;
+  BMFace *face;
+  BM_ITER_ELEM (face, &bm_iter, edge, BM_FACES_OF_EDGE) {
+    if (BM_vert_in_face(vert, face)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Merge attributes of a flap face into an edge which will remain after the edge collapse in
+ * #pbvh_bmesh_collapse_edge.
+ *
+ * This function is to be called before faces adjacent to #e are deleted.
+ * This function only handles edge attributes. and does not handle face deletion.
+
+ * \param bm: BMesh data structure
+ * \param del_face: Face which is adjacent to #v_del and will form a flap when merging #v_del to
+ *                  #v_conn.
+ * \param flap_face: Face which is adjacent to #v_conn and will form a flap when merging #v_del to
+ *                   #v_conn.
+ * \param e: An edge which is being collapsed. It connects #v_del and #v_conn.
+ * \param v_del: A vertex which will be removed after the edge collapse.
+ * \param l_del: A loop of del_face which is adjacent to v_del.
+ * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
+ */
+static void merge_flap_edge_data(BMesh &bm,
+                                 BMFace *del_face,
+                                 BMFace *flap_face,
+                                 BMEdge *e,
+                                 BMVert *v_del,
+                                 BMLoop *l_del,
+                                 BMVert *v_conn)
+{
+  /*
+   *
+   *                                       v_del
+   *                                      +
+   *          del_face        .        /  |
+   *                .               /     |
+   *        .                    /        |
+   * v1 +---------------------+ v2        |
+   *        .                    \        |
+   *                .               \     |
+   *                          .        \  |
+   *          flap_face                   +
+   *                                       v_conn
+   *
+   *
+   */
+
+  UNUSED_VARS_NDEBUG(del_face, flap_face);
+
+  /* Faces around #e (which connects #v_del to #v_conn) are to the handled separately from this
+   * function. Help troubleshooting cases where these faces are mistakingly considered flaps.  */
+  BLI_assert(!BM_edge_in_face(e, del_face));
+  BLI_assert(!BM_edge_in_face(e, flap_face));
+
+  /* The l_del->next->v and l_del->prev->v are v1 and v2, but in an unknown order. */
+  BMEdge *edge_v1_v2 = BM_edge_exists(l_del->next->v, l_del->prev->v);
+  if (!edge_v1_v2) {
+    CLOG_WARN(&LOG, "Unable to find edge shared between deleting and flap faces");
+    return;
+  }
+
+  BLI_assert(BM_edge_in_face(edge_v1_v2, del_face));
+  BLI_assert(BM_edge_in_face(edge_v1_v2, flap_face));
+
+  /* Disambiguate v1 from v2: the v2 is adjacent to a face around #e. */
+  BMVert *v2 = vert_in_face_adjacent_to_edge(edge_v1_v2->v1, e) ? edge_v1_v2->v1 : edge_v1_v2->v2;
+  BMVert *v1 = BM_edge_other_vert(edge_v1_v2, v2);
+
+  /* Merge attributes into an edge (v1, v_conn). */
+  BMEdge *dst_edge = BM_edge_exists(v1, v_conn);
+
+  const std::array<const BMEdge *, 4> source_edges{
+      /* Edges of the #flap_face.
+       * The face will be deleted, effectively being "collapsed" into an edge. */
+      edge_v1_v2,
+      BM_edge_exists(v2, v_conn),
+
+      /* Edges of the #del_face.
+       * These edges are implicitly merged with the ones from the #flap_face upon collapsing edge
+       * #e. */
+      BM_edge_exists(v1, v_del),
+      BM_edge_exists(v2, v_del),
+  };
+
+  for (const BMEdge *src_edge : source_edges) {
+    if (!src_edge) {
+      CLOG_WARN(&LOG, "Unable to find source edge for flap attributes merge");
+      continue;
+    }
+
+    merge_edge_data(bm, *dst_edge, *src_edge);
+  }
+}
+
+/**
+ * Merge attributes of edges from #v_del to #f
+ *
+ * This function is to be called before faces adjacent to #e are deleted.
+ * This function only handles edge attributes. and does not handle face deletion.
+
+ * \param bm: BMesh data structure
+ * \param del_face: Face which is adjacent to #v_del and will be deleted as part of merging #v_del
+ *                  to #v_conn.
+ * \param new_face: A new face which is created from #del_face by replacing #v_del with #v_conn.
+ * \param v_del: A vertex which will be removed after the edge collapse.
+ * \param l_del: A loop of del_face which is adjacent to v_del.
+ * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
+ */
+static void merge_face_edge_data(BMesh &bm,
+                                 BMFace * /*del_face*/,
+                                 BMFace *new_face,
+                                 BMVert *v_del,
+                                 BMLoop *l_del,
+                                 BMVert *v_conn)
+{
+  /* When collapsing an edge (v_conn, v_del) a face (v_conn, v2, v_del) is to be deleted and the
+   * v_del reference in the face (v_del, v2, v1) is to be replaced with v_conn. Doing vertex
+   * reference replacement in BMesh is not trivial. so for the simplicity the
+   * #pbvh_bmesh_collapse_edge deletes both original faces and creates new one (c_conn, v2, v1).
+   *
+   * When doing such re-creating attributes from old edges are to be merged into the new ones:
+   *   - Attributes of (v_del, v1) needs to be merged into (v_conn, v1),
+   *   - Attributes of (v_del, v2) needs to be merged into (v_conn, v2),
+   *
+   * <pre>
+   *
+   *            v2
+   *             +
+   *            /|\
+   *           / | \
+   *          /  |  \
+   *         /   |   \
+   *        /    |    \
+   *       /     |     \
+   *      /      |      \
+   *     +-------+-------+
+   *  v_conn   v_del      v1
+   *
+   * </pre>
+   */
+
+  /* The l_del->next->v and l_del->prev->v are v1 and v2, but in an unknown order. */
+  BMEdge *edge_v1_v2 = BM_edge_exists(l_del->next->v, l_del->prev->v);
+  if (!edge_v1_v2) {
+    CLOG_WARN(&LOG, "Unable to find edge shared between old and new faces");
+    return;
+  }
+
+  BMIter bm_iter;
+  BMEdge *dst_edge;
+  BM_ITER_ELEM (dst_edge, &bm_iter, new_face, BM_EDGES_OF_FACE) {
+    if (dst_edge == edge_v1_v2) {
+      continue;
+    }
+
+    BLI_assert(BM_vert_in_edge(dst_edge, v_conn));
+
+    /* Depending on an edge v_other will be v1 or v2. */
+    BMVert *v_other = BM_edge_other_vert(dst_edge, v_conn);
+
+    BMEdge *src_edge = BM_edge_exists(v_del, v_other);
+    BLI_assert(src_edge);
+
+    if (src_edge) {
+      merge_edge_data(bm, *dst_edge, *src_edge);
+    }
+    else {
+      CLOG_WARN(&LOG, "Unable to find edge to merge attributes from");
+    }
+  }
+}
+
 static void pbvh_bmesh_collapse_edge(
     PBVH *pbvh, BMEdge *e, BMVert *v1, BMVert *v2, GHash *deleted_verts, EdgeQueueContext *eq_ctx)
 {
@@ -1317,6 +1501,34 @@ static void pbvh_bmesh_collapse_edge(
   /* Remove the merge vertex from the PBVH. */
   pbvh_bmesh_vert_remove(pbvh, v_del);
 
+  /* For all remaining faces of v_del, create a new face that is the
+   * same except it uses v_conn instead of v_del */
+  /* NOTE: this could be done with BM_vert_splice(), but that
+   * requires handling other issues like duplicate edges, so doesn't
+   * really buy anything. */
+  Vector<BMFace *, 16> deleted_faces;
+
+  BMLoop *l;
+  BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_del) {
+    BMFace *f_del = l->f;
+
+    /* Ignore faces around #e: they will be deleted explicitly later on.
+     * Without ignoring these faces the #bm_face_exists_tri_from_loop_vert() triggers an assert. */
+    if (BM_edge_in_face(e, f_del)) {
+      continue;
+    }
+
+    /* Check if a face using these vertices already exists. If so, skip adding this face and mark
+     * the existing one for deletion as well. Prevents extraneous "flaps" from being created.
+     * Check is similar to #BM_face_exists. */
+    if (BMFace *existing_face = bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
+      merge_flap_edge_data(bm, f_del, existing_face, e, v_del, l, v_conn);
+
+      deleted_faces.append(existing_face);
+    }
+  }
+  BM_LOOPS_OF_VERT_ITER_END;
+
   /* Remove all faces adjacent to the edge. */
   BMLoop *l_adj;
   while ((l_adj = e->l)) {
@@ -1330,23 +1542,12 @@ static void pbvh_bmesh_collapse_edge(
   BLI_assert(BM_edge_is_wire(e));
   BM_edge_kill(&bm, e);
 
-  /* For all remaining faces of v_del, create a new face that is the
-   * same except it uses v_conn instead of v_del */
-  /* NOTE: this could be done with BM_vert_splice(), but that
-   * requires handling other issues like duplicate edges, so doesn't
-   * really buy anything. */
-  Vector<BMFace *, 16> deleted_faces;
-
-  BMLoop *l;
   BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_del) {
     /* Get vertices, replace use of v_del with v_conn */
     BMFace *f = l->f;
 
-    /* Check if a face using these vertices already exists. If so, skip adding this face and mark
-     * the existing one for deletion as well. Prevents extraneous "flaps" from being created.
-     * Check is similar to #BM_face_exists. */
     if (BMFace *existing_face = bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
-      deleted_faces.append(existing_face);
+      /* This case is handled above. */
     }
     else {
       const std::array<BMVert *, 3> v_tri{v_conn, l->next->v, l->prev->v};
@@ -1355,57 +1556,9 @@ static void pbvh_bmesh_collapse_edge(
       PBVHNode *n = pbvh_bmesh_node_from_face(pbvh, f);
       int ni = n - pbvh->nodes.data();
       const std::array<BMEdge *, 3> e_tri = bm_edges_from_tri(&bm, v_tri);
-      pbvh_bmesh_face_create(pbvh, ni, v_tri, e_tri, f);
+      BMFace *new_face = pbvh_bmesh_face_create(pbvh, ni, v_tri, e_tri, f);
 
-      /* The old and new triangles share one edge connecting v1 to v2.
-       *
-       * Custom data of other edges from the old triangle needs to be merged into the new edges:
-       *   - Custom data of (v_del, v1) needs to be merged into (v_conn, v1),
-       *   - Custom data of (v_del, v2) needs to be merged into (v_conn, v2),
-       *
-       * The winding of the faces is not known in advance, so do a bit of a naive search of these
-       * correspondences:
-       *
-       *   - We start from the edges in the new triangle which are adjacent to v_conn. There will
-       *     be two of them. At each loop iteration lets call them new_tri_edge.
-       *   - We "go" into the opposite edge (could be v2 or v1)
-       *   - We wind the old edge connecting v1/v2 to v_del. Lets call it old_edge.
-       *   - We merge custom data of old_edge to the new edge.
-       *
-       * <pre>
-       *
-       *            v2
-       *             +
-       *            /|\
-       *           / | \
-       *          /  |  \
-       *         /   |   \
-       *        /    |    \
-       *       /     |     \
-       *      /      |      \
-       *     +-------+-------+
-       *  v_conn   v_del      v1
-       *
-       * </pre>
-       *
-       * TODO(@sergey): Possible optimizations:
-       *
-       *   - Inline bm_edges_from_tri() above, so that we know which new edges we need to consider
-       *     instead of iterating over them.
-       *
-       */
-      for (BMEdge *new_tri_edge : e_tri) {
-        if (!BM_vert_in_edge(new_tri_edge, v_conn)) {
-          continue;
-        }
-
-        BMVert *v_other = BM_edge_other_vert(new_tri_edge, v_conn);
-        BMEdge *old_edge = BM_edge_exists(v_del, v_other);
-
-        if (old_edge) {
-          merge_edge_data(bm, *new_tri_edge, *old_edge);
-        }
-      }
+      merge_face_edge_data(bm, f, new_face, v_del, l, v_conn);
 
       /* Ensure that v_conn is in the new face's node */
       if (!n->bm_unique_verts.contains(v_conn)) {
