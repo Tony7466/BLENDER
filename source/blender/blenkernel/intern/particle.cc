@@ -66,7 +66,7 @@
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
@@ -382,7 +382,7 @@ IDTypeInfo IDType_ID_PA = {
     /*main_listbase_index*/ INDEX_ID_PA,
     /*struct_size*/ sizeof(ParticleSettings),
     /*name*/ "ParticleSettings",
-    /*name_plural*/ "particles",
+    /*name_plural*/ N_("particles"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_PARTICLESETTINGS,
     /*flags*/ 0,
     /*asset_type_info*/ nullptr,

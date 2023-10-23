@@ -42,7 +42,7 @@
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
@@ -76,6 +76,7 @@
 
 #include "ED_fileselect.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
@@ -2356,14 +2357,10 @@ static void radial_control_set_initial_mouse(bContext *C, RadialControl *rc, con
     d[0] *= zoom[0];
     d[1] *= zoom[1];
   }
-  /* Grease pencil draw tool needs to rescale the cursor size. If we don't do that
-   * the size of the radial is not equals to the actual stroke size. */
+  rc->scale_fac = 1.0f;
   if (rc->ptr.owner_id && GS(rc->ptr.owner_id->name) == ID_BR && rc->prop == &rna_Brush_size) {
-    rc->scale_fac = ED_gpencil_radial_control_scale(
-        C, (Brush *)rc->ptr.owner_id, rc->initial_value, event->mval);
-  }
-  else {
-    rc->scale_fac = 1.0f;
+    Brush *brush = reinterpret_cast<Brush *>(rc->ptr.owner_id);
+    rc->scale_fac = ED_gpencil_radial_control_scale(C, brush, rc->initial_value, event->mval);
   }
 
   rc->initial_mouse[0] -= d[0];

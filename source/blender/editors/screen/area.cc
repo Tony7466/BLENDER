@@ -16,7 +16,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -1300,15 +1300,19 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
       }
     }
     else if (spacetype == SPACE_VIEW3D) {
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_HEADER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER))
+      if (regiontype == RGN_TYPE_HEADER) {
+        /* Do not treat as overlapped if no transparency. */
+        bTheme *theme = UI_GetTheme();
+        return theme->space_view3d.header[3] != 255;
+      }
+      else if (ELEM(regiontype,
+                    RGN_TYPE_TOOLS,
+                    RGN_TYPE_UI,
+                    RGN_TYPE_TOOL_PROPS,
+                    RGN_TYPE_FOOTER,
+                    RGN_TYPE_TOOL_HEADER,
+                    RGN_TYPE_ASSET_SHELF,
+                    RGN_TYPE_ASSET_SHELF_HEADER))
       {
         return true;
       }
