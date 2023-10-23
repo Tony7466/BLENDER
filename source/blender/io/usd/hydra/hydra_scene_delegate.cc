@@ -387,9 +387,7 @@ void HydraSceneDelegate::check_updates()
         {
           do_update_collection = true;
         }
-        if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
-            ((scene->world && !world_data_) || (!scene->world && world_data_)))
-        {
+        if (id->recalc & ID_RECALC_AUDIO_VOLUME) {
           do_update_world = true;
         }
         break;
