@@ -65,8 +65,8 @@ set(SRC
   intern/easing.c
   intern/endian_switch.c
   intern/expr_pylike_eval.c
-  intern/fileops_c.cc
   intern/fileops.cc
+  intern/fileops_c.cc
   intern/filereader_file.c
   intern/filereader_gzip.c
   intern/filereader_memory.c
@@ -445,7 +445,6 @@ if(WIN32)
   )
   list(APPEND LIB
     bf_intern_utfconv
-    dxguid
     dxgi
   )
   list(APPEND SRC
