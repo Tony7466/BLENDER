@@ -260,10 +260,6 @@ void ReflectionProbeModule::sync_world_lookdev()
   world_probe_coord_ = probe.atlas_coord;
 
   do_world_update_set(true);
-
-  if (!update_probes_this_sample_) {
-    update_probes_next_sample_ = true;
-  }
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
@@ -351,7 +347,7 @@ void ReflectionProbeModule::end_sync()
 
   const bool do_update = instance_.do_reflection_probe_sync() || (only_world && world_updated);
   if (!do_update) {
-    if (update_probes_next_sample_ && !update_probes_this_sample_) {
+    if (update_probes_next_sample_) {
       DRW_viewport_request_redraw();
     }
 
@@ -372,6 +368,10 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.clear(float4(0.0f));
   }
 
+  /* Check reset probe updating as we completed rendering all Probes. */
+  if (update_probes_this_sample_) {
+    update_probes_next_sample_ = false;
+  }
   data_buf_.push_update();
 }
 
@@ -451,11 +451,6 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     }
 
     return info;
-  }
-
-  /* Check reset probe updating as we completed rendering all Probes. */
-  if (probe_type == ReflectionProbe::Type::PROBE && update_probes_this_sample_) {
-    update_probes_next_sample_ = false;
   }
 
   return std::nullopt;
