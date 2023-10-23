@@ -39,10 +39,15 @@ WorldData::WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &pri
   prim_type_ = pxr::HdPrimTypeTokens->domeLight;
 }
 
+WorldData *WorldData::create()
+{
+  init();
+  return data_.empty() ? nullptr : this;
+}
+
 void WorldData::init()
 {
   data_.clear();
-  data_[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
 
   float intensity = 1.0f;
   float exposure = 1.0f;
@@ -57,7 +62,7 @@ void WorldData::init()
     if (world->use_nodes) {
       /* TODO: Create nodes parsing system */
 
-      output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
+      bNode *output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
       if (!output_node) {
         return;
       }
@@ -130,6 +135,7 @@ void WorldData::init()
     }
   }
 
+  data_[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
   data_[pxr::HdLightTokens->intensity] = intensity;
   data_[pxr::HdLightTokens->exposure] = exposure;
   data_[pxr::HdLightTokens->color] = color;

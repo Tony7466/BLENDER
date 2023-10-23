@@ -343,9 +343,7 @@ void HydraSceneDelegate::update_world()
   if (!world_data_) {
     if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
       world_data_ = std::make_unique<WorldData>(this, world_prim_id());
-      world_data_->init();
-      if (scene->world->use_nodes && !world_data_->output_node) {
-        world_data_->remove();
+      if (!world_data_->create()) {
         world_data_ = nullptr;
         return;
       }
