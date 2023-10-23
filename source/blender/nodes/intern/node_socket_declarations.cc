@@ -680,4 +680,46 @@ SocketDeclarationPtr create_extend_declaration(const eNodeSocketInOut in_out)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name #Undefined
+ * \{ */
+
+bNodeSocket &Undefined::build(bNodeTree &ntree, bNode &node) const
+{
+  bNodeSocket &socket = *nodeAddSocket(&ntree,
+                                       &node,
+                                       this->in_out,
+                                       bke::NodeSocketTypeUndefined.idname,
+                                       this->identifier.c_str(),
+                                       this->name.c_str());
+  return socket;
+}
+
+bool Undefined::matches(const bNodeSocket &socket) const
+{
+  if (!this->matches_common_data(socket)) {
+    return false;
+  }
+  if (!STREQ(socket.typeinfo->idname, bke::NodeSocketTypeUndefined.idname)) {
+    return false;
+  }
+  return true;
+}
+
+bool Undefined::can_connect(const bNodeSocket &socket) const
+{
+  return sockets_can_connect(*this, socket);
+}
+
+bNodeSocket &Undefined::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
+{
+  if (!STREQ(socket.typeinfo->idname, bke::NodeSocketTypeUndefined.idname)) {
+    return this->build(ntree, node);
+  }
+  this->set_common_flags(socket);
+  return socket;
+}
+
+/** \} */
+
 }  // namespace blender::nodes::decl
