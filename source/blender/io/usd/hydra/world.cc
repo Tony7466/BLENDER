@@ -39,10 +39,9 @@ WorldData::WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &pri
   prim_type_ = pxr::HdPrimTypeTokens->domeLight;
 }
 
-WorldData *WorldData::create()
+bool WorldData::empty() const
 {
-  init();
-  return data_.empty() ? nullptr : this;
+  return data_.empty();
 }
 
 void WorldData::init()
@@ -148,6 +147,10 @@ void WorldData::update()
 {
   ID_LOG(1, "");
   init();
+  if (empty()) {
+    remove();
+    return;
+  }
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdLight::AllDirty);
 }

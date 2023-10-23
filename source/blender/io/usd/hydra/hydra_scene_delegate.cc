@@ -343,7 +343,8 @@ void HydraSceneDelegate::update_world()
   if (!world_data_) {
     if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
       world_data_ = std::make_unique<WorldData>(this, world_prim_id());
-      if (!world_data_->create()) {
+      world_data_->init();
+      if (world_data_->empty()) {
         world_data_ = nullptr;
         return;
       }
@@ -353,6 +354,9 @@ void HydraSceneDelegate::update_world()
   else {
     if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
       world_data_->update();
+      if (world_data_->empty()) {
+        world_data_ = nullptr;
+      }
     }
     else {
       world_data_->remove();

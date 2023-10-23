@@ -25,7 +25,7 @@ class WorldData : public LightData {
  public:
   WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
-  WorldData *create();
+  bool empty() const;
 
   void init() override;
   void update() override;
