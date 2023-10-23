@@ -317,7 +317,7 @@ ccl_device
           fresnel->f90 = one_spectrum();
           fresnel->exponent = -ior;
           fresnel->reflection_tint = one_spectrum();
-          fresnel->transmission_tint = sqrt(rgb_to_spectrum(base_color));
+          fresnel->transmission_tint = sqrt(rgb_to_spectrum(clamped_base_color));
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);

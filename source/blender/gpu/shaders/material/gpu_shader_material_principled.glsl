@@ -176,7 +176,7 @@ void node_bsdf_principled(vec4 base_color,
     vec3 reflectance, transmittance;
     bsdf_lut(F0,
              F90,
-             base_color.rgb,
+             clamped_base_color.rgb,
              NV,
              roughness,
              ior,
