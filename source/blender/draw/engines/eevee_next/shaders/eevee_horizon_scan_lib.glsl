@@ -8,19 +8,20 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 
-uint horizon_scan_angles_bitmask(float theta_min, float theta_max)
+/**
+ * Returns the bitmask for a given ordered pair of angle in [-pi/2..pi/2] range.
+ * Clamps the inputs to the valid range.
+ */
+uint horizon_scan_bitmask(vec2 theta)
 {
-#if 0
-  uint a = uint(floor(32.0 * saturate((theta_min + M_PI_2) / M_PI)));
-  uint b = uint(ceil(32.0 * saturate((theta_max - theta_min) / M_PI)));
+  const int bitmask_len = 32;
+  /* Algorithm 1, line 18. Re-ordered to make sure to clamp to the hemisphere range. */
+  vec2 ratio = saturate(theta * M_1_PI + 0.5);
+  uint a = uint(floor(float(bitmask_len) * ratio.x));
+  /* The paper is wrong here. The additional half Pi is not needed . */
+  uint b = uint(ceil(float(bitmask_len) * (ratio.y - ratio.x)));
+  /* Algorithm 1, line 19. */
   return ((1u << b) - 1u) << a;
-#else
-  theta_min = saturate(theta_min * M_1_PI + 0.5);
-  theta_max = saturate(theta_max * M_1_PI + 0.5);
-  uint a = uint(floor(32.0 * theta_min));
-  uint b = uint(ceil(32.0 * (theta_max - theta_min)));
-  return ((1u << b) - 1u) << a;
-#endif
 }
 
 float bsdf_eval(vec3 N, vec3 L)
@@ -28,53 +29,33 @@ float bsdf_eval(vec3 N, vec3 L)
   return dot(N, L);
 }
 
-float horizon_scan_get_random(ivec2 texel)
-{
-  return interlieved_gradient_noise(vec2(texel), 0, sampling_rng_1D_get(SAMPLING_AO_U));
-}
-
-vec2 horizon_scan_get_dir(float rand)
-{
-  /* Only a quarter of a turn because we integrate using 2 slices.
-   * We use this instead of using utiltex circle noise to improve cache hits
-   * since all tracing direction will be in the same quadrant. */
-  rand *= M_PI_2;
-  return vec2(cos(rand), sin(rand));
-}
-
-struct HorizonScanResult {
-  float visibility;
-  vec3 indirect_lighting;
-  vec3 bent_normal;
-};
-
-float horizon_scan_direction_scan(vec3 vV,
-                                  vec3 vP,
-                                  vec3 vN,
-                                  float angle_vN,
-                                  float noise,
-                                  ScreenSpaceRay ssray,
-                                  sampler2D depth_tx,
-                                  float search_distance,
-                                  float thickness,
-                                  inout vec3 accum_light,
-                                  const bool inverted,
-                                  const int sample_count)
+uint horizon_scan_bitmask_scan(vec3 vV,
+                               vec3 vP,
+                               vec3 vN,
+                               float angle_vN,
+                               float noise,
+                               ScreenSpaceRay ssray,
+                               sampler2D depth_tx,
+                               float search_distance,
+                               float thickness,
+                               inout vec3 accum_light,
+                               const bool inverted,
+                               const int sample_count)
 {
   ssray.max_time -= 1.0;
 
   if (ssray.max_time <= 2.0) {
-    return 1.0;
+    return 0u;
   }
 
   const float bitmask_len = 32.0;
-  uint slice_visbits = 0u;
-  for (int j = 0; j < sample_count; j++) {
-    /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
-    float time = 1.0 + square((float(j) + noise) / float(sample_count)) * ssray.max_time;
-    float lod = float(j >> 2) / (1.0 + uniform_buf.ao.quality);
+  uint slice_bitmask = 0u;
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < sample_count; j++) {
+      /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
+      float time = 1.0 + square((float(j) + noise) / float(sample_count)) * ssray.max_time;
+      float lod = float(j >> 2) / (1.0 + uniform_buf.ao.quality);
 
-    for (int i = 0; i < 2; i++) {
       vec2 sample_uv = ssray.origin.xy + ssray.direction.xy * ((i == 0) ? time : -time);
       float sample_depth =
           textureLod(depth_tx, sample_uv * uniform_buf.hiz.uv_scale, floor(lod)).r;
@@ -88,109 +69,50 @@ float horizon_scan_direction_scan(vec3 vV,
       const float bias = 2.0 * 2.4e-7;
       sample_depth += bias;
 
-      vec3 front_vP = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
-      vec3 back_vP = front_vP - thickness * vV;
+      vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
+      vec3 vP_back = vP_front - thickness * vV;
 
-      if (min(length(front_vP - vP), length(back_vP - vP)) > search_distance) {
-        // continue;
-      }
+      float dist_front, dist_back;
+      vec3 vL_front = normalize_and_get_length(vP_front - vP, dist_front);
+      vec3 vL_back = normalize_and_get_length(vP_back - vP, dist_back);
 
+      /* Ordered pair of angle. Mininum in X, Maximum in Y. */
       vec2 theta;
-      theta.x = acos_fast(dot(normalize(front_vP - vP), vV));
-      theta.y = acos_fast(dot(normalize(back_vP - vP), vV));
-      theta = (i == 0) ? theta : -theta;
+      /* Front will always have the smallest angle here since it is the closest to the view. */
+      theta.x = acos_fast(dot(vL_front, vV));
+      theta.y = acos_fast(dot(vL_back, vV));
+      /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
+      theta = (i == 0) ? theta.xy : -theta.yx;
       theta -= angle_vN;
-      slice_visbits |= horizon_scan_angles_bitmask(reduce_min(theta), reduce_max(theta));
-#if 0 /* SSGI */
-    vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
-    vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
-    vec3 vL = normalize(front_vP - vP);
-    float sample_visibility = float(bitCount(sample_visbits & ~slice_visbits)) / bitmask_len;
-    sample_visibility *= dot(sample_normal, -vL);
-    accum_light += sample_radiance * (bsdf_eval(vN, vL) * sample_visibility);
+
+      uint sample_bitmask = horizon_scan_bitmask(theta);
+#ifdef USE_RADIANCE_ACCUMULATION
+      float sample_visibility = float(bitCount(sample_bitmask & ~slice_bitmask)) / bitmask_len;
+      if (sample_visibility > 0.0) {
+        vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
+#  ifdef USE_NORMAL_MASKING
+        vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
+        sample_visibility *= dot(sample_normal, -vL_front);
+#  endif
+        accum_light += sample_radiance * (bsdf_eval(vN, vL_front) * sample_visibility);
+      }
 #endif
+      slice_bitmask |= horizon_scan_bitmask(theta);
     }
   }
-  return 1.0 - float(bitCount(slice_visbits)) / bitmask_len;
+  return slice_bitmask;
 }
 
-vec2 horizon_scan_search_horizon(vec3 vV,
-                                 vec3 vP,
-                                 vec3 vN,
-                                 float angle_vN,
-                                 float noise,
-                                 ScreenSpaceRay ssray,
-                                 sampler2D depth_tx,
-                                 float search_distance,
-                                 float thickness,
-                                 const bool inverted,
-                                 const int sample_count)
-{
-  const float max_angle = M_PI_2 - 0.05;
-  vec2 h = vec2(max_angle, -max_angle);
-
-  ssray.max_time -= 1.0;
-
-  if (ssray.max_time <= 2.0) {
-    /* Produces self shadowing under this threshold. */
-    return h;
-  }
-
-  const float bitmask_len = 32.0;
-  float prev_time, time = 0.0;
-  uint slice_visbits = 0u;
-  for (float iter = 0.0; time < ssray.max_time && iter < sample_count; iter++) {
-    prev_time = time;
-    /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
-    time = 1.0 + iter + square((iter + noise) / sample_count) * ssray.max_time;
-    float stride = time - prev_time;
-    float lod = (log2(stride) - noise) / (1.0 + uniform_buf.ao.quality);
-
-    for (int i = 0; i < 2; i++) {
-      vec2 sample_uv = ssray.origin.xy + ssray.direction.xy * ((i == 0) ? time : -time);
-      float sample_depth =
-          textureLod(depth_tx, sample_uv * uniform_buf.hiz.uv_scale, floor(lod)).r;
-
-      if (sample_depth == 1.0 && inverted) {
-        /* Skip background. Avoids making shadow on the geometry near the far plane. */
-        continue;
-      }
-
-      /* Bias depth a bit to avoid self shadowing issues. */
-      const float bias = 2.0 * 2.4e-7;
-      sample_depth += bias;
-
-      vec3 front_vP = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
-      vec3 back_vP = front_vP - thickness * vV;
-
-      if (length(front_vP - vP) > search_distance) {
-        // continue;
-      }
-
-      vec2 theta;
-      theta.x = acos_fast(dot(normalize(front_vP - vP), vV));
-      theta.y = acos_fast(dot(normalize(back_vP - vP), vV));
-      theta = (i == 0) ? theta : -theta;
-      theta -= angle_vN;
-      slice_visbits |= horizon_scan_angles_bitmask(reduce_min(theta), reduce_max(theta));
-
-      if (i == 0) {
-        h[i] = min(h[i], theta.x);
-      }
-      else {
-        h[i] = max(h[i], theta.x);
-      }
-    }
-  }
-  // h = vec2(float(clamp(findLSB(slice_visbits >> 16), 0, 16)) * M_PI_2 / 16.0,
-  //          float(clamp(findMSB(slice_visbits << 16), 16, 31) - 31) * M_PI_2 / 16.0);
-  return h;
-}
+struct HorizonScanResult {
+  float visibility;
+  vec3 indirect_lighting;
+  vec3 bent_normal;
+};
 
 HorizonScanResult horizon_scan(vec3 vP,
                                vec3 vN,
                                sampler2D depth_tx,
-                               ivec2 texel,
+                               vec2 noise,
                                vec2 pixel_size,
                                float search_distance,
                                float thickness,
@@ -199,16 +121,18 @@ HorizonScanResult horizon_scan(vec3 vP,
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-  float noise = horizon_scan_get_random(texel);
-  vec2 v_dir = horizon_scan_get_dir(noise);
+  /* Only a quarter of a turn because we integrate using 2 slices.
+   * We use this instead of using full circle noise to improve cache hits
+   * since all tracing direction will be in the same quadrant. */
+  vec2 v_dir = sample_circle(noise.x * 0.25);
 
   float accum_visibility = 0.0;
+  float accum_weight = 0.0;
   vec3 accum_light = vec3(0);
   vec3 accum_bent_normal = vec3(0);
 
   const int slice_count = 2;
   for (int i = 0; i < slice_count; i++) {
-
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
@@ -218,8 +142,8 @@ HorizonScanResult horizon_scan(vec3 vP,
 
     float N_sin = dot(proj_vN, vT);
     float N_cos = saturate(dot(proj_vN, vV));
-    /* Gamma, angle between normalized projected normal and view vector. */
-    float angle_N = sign(N_sin) * acos_fast(N_cos);
+    /* Angle between normalized projected normal and view vector. */
+    float N_angle = sign(N_sin) * acos_fast(N_cos);
 
     Ray ray;
     ray.origin = vP;
@@ -227,51 +151,32 @@ HorizonScanResult horizon_scan(vec3 vP,
     ray.max_time = search_distance;
 
     ScreenSpaceRay ssray = raytrace_screenspace_ray_create(ray, pixel_size);
-#if 0
-    float a = horizon_scan_direction_scan(vV,
-                                          vP,
-                                          vN,
-                                          angle_N,
-                                          noise,
-                                          ssray,
-                                          depth_tx,
-                                          search_distance,
-                                          thickness,
-                                          accum_light,
-                                          inverted,
-                                          sample_count);
 
-#else
-    vec2 h = horizon_scan_search_horizon(vV,
-                                         vP,
-                                         vN,
-                                         angle_N,
-                                         noise,
-                                         ssray,
-                                         depth_tx,
-                                         search_distance,
-                                         thickness,
-                                         inverted,
-                                         sample_count);
+    uint slice_bitmask = horizon_scan_bitmask_scan(vV,
+                                                   vP,
+                                                   vN,
+                                                   N_angle,
+                                                   noise.y,
+                                                   ssray,
+                                                   depth_tx,
+                                                   search_distance,
+                                                   thickness,
+                                                   accum_light,
+                                                   inverted,
+                                                   sample_count);
 
-    float bent_angle = (h.x + h.y + angle_N) * 0.5;
-    /* NOTE: here we multiply z by 0.5 as it shows less difference with the geometric normal.
-     * Also modulate by projected normal length to reduce issues with slanted surfaces.
-     * All of this is ad-hoc and not really grounded. */
-    accum_bent_normal += proj_vN_len * (vT * sin(bent_angle) + vV * 0.5 * cos(bent_angle));
-    /* Inner integral (Eq. 7). */
-    float a = dot(-cos(2.0 * h) + N_cos + 2.0 * (h + angle_N) * N_sin, vec2(0.25));
-    /* Correct normal not on plane (Eq. 8). */
-    // a *= proj_vN_len;
-#endif
-    accum_visibility += a;
+    const int bitmask_len = 32;
+    float visibility = 1.0 - float(bitCount(slice_bitmask)) / float(bitmask_len);
+    /* Correct normal not on plane (Eq. 8 of GTAO paper). */
+    accum_visibility += visibility * proj_vN_len;
+    accum_weight += proj_vN_len;
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);
   }
 
   HorizonScanResult result;
-  result.visibility = accum_visibility / float(slice_count);
+  result.visibility = accum_visibility * safe_rcp(accum_weight);
   result.indirect_lighting = accum_light / float(slice_count);
   result.bent_normal = accum_bent_normal / float(slice_count);
   return result;

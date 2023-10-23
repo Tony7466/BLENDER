@@ -24,31 +24,22 @@ void main()
 
   vec3 P = drw_point_view_to_world(surf.vP);
   vec3 V = drw_world_incident_vector(P);
-  vec3 Ng = drw_normal_view_to_world(surf.vNg);
   vec3 N = imageLoad(in_normal_img, ivec3(texel, in_normal_img_layer_index)).xyz;
   vec3 vN = drw_normal_world_to_view(N);
 
-#if 1
+  vec2 noise = interlieved_gradient_noise(
+      vec2(texel), vec2(1, 3), sampling_rng_2D_get(SAMPLING_AO_U));
+
   HorizonScanResult result = horizon_scan(surf.vP,
                                           vN,
                                           hiz_tx,
-                                          texel,
+                                          noise,
                                           uniform_buf.ao.pixel_size,
                                           uniform_buf.ao.distance,
-                                          1.0,
+                                          uniform_buf.ao.thickness,
                                           false,
-                                          16);
+                                          8);
   float visibility = result.visibility;
-#else
-  OcclusionData data = ambient_occlusion_search(
-      surf.vP, hiz_tx, texel, uniform_buf.ao.distance, 0.0, 8.0);
-
-  float visibility;
-  float unused_visibility_error_out;
-  vec3 unused_bent_normal_out;
-  ambient_occlusion_eval(
-      data, texel, V, N, Ng, 0.0, visibility, unused_visibility_error_out, unused_bent_normal_out);
-#endif
 
   imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(saturate(visibility)));
 }
