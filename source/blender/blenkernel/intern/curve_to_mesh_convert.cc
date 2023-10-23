@@ -790,14 +790,12 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
     return nullptr;
   }
 
-  /* Add the position attribute later so it can be shared in some cases.*/
+  /* Add the position attribute later so it can be shared in some cases. */
   Mesh *mesh = BKE_mesh_new_nomain(
       0, offsets.edge.last(), offsets.face.last(), offsets.loop.last());
   CustomData_free_layer_named(&mesh->vert_data, "position", 0);
   mesh->totvert = offsets.vert.last();
 
-  mesh->flag |= ME_AUTOSMOOTH;
-  mesh->smoothresh = DEG2RADF(180.0f);
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();

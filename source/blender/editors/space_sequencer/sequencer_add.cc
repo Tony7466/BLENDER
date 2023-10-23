@@ -66,8 +66,8 @@
 #  include <AUD_Sequence.h>
 #endif
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 /* Own include. */
 #include "sequencer_intern.hh"
@@ -1482,7 +1482,7 @@ static int sequencer_add_effect_strip_invoke(bContext *C,
 }
 
 static std::string sequencer_add_effect_strip_desc(bContext * /*C*/,
-                                                   wmOperatorType * /*op*/,
+                                                   wmOperatorType * /*ot*/,
                                                    PointerRNA *ptr)
 {
   const int type = RNA_enum_get(ptr, "type");

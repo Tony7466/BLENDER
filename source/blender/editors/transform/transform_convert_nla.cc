@@ -271,8 +271,8 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 
     /** Remove bottom tracks that weren't necessary. */
     LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
-      /** Library override tracks are the first N tracks. They're never temporary and determine
-       * where we start removing temporaries.*/
+      /* Library override tracks are the first N tracks. They're never temporary and determine
+       * where we start removing temporaries. */
       if ((track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
         continue;
       }
@@ -621,49 +621,17 @@ static void createTransNlaData(bContext *C, TransInfo *t)
         if (tdn->handle == 2) {
           tdn += 2;
         }
-        else {
+        else if (tdn->handle) {
           tdn++;
         }
       }
     }
   }
 
+  BLI_assert(tdn <= (((TransDataNla *)tc->custom.type.data) + tc->data_len));
+
   /* cleanup temp list */
   ANIM_animdata_freelist(&anim_data);
-}
-
-static void invert_snap(eSnapMode &snap_mode)
-{
-  if (snap_mode & SCE_SNAP_TO_FRAME) {
-    snap_mode &= ~SCE_SNAP_TO_FRAME;
-    snap_mode |= SCE_SNAP_TO_SECOND;
-  }
-  else if (snap_mode & SCE_SNAP_TO_SECOND) {
-    snap_mode &= ~SCE_SNAP_TO_SECOND;
-    snap_mode |= SCE_SNAP_TO_FRAME;
-  }
-}
-
-static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
-{
-  /* handle auto-snapping
-   * NOTE: only do this when transform is still running, or we can't restore
-   */
-  if (t->state == TRANS_CANCEL) {
-    return;
-  }
-  if ((t->tsnap.flag & SCE_SNAP) == 0) {
-    return;
-  }
-
-  eSnapMode snap_mode = t->tsnap.mode;
-  if (t->modifiers & MOD_SNAP_INVERT) {
-    invert_snap(snap_mode);
-  }
-  TransData *td = tc->data;
-  for (int i = 0; i < tc->data_len; i++, td++) {
-    transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
-  }
 }
 
 static void recalcData_nla(TransInfo *t)
@@ -671,8 +639,6 @@ static void recalcData_nla(TransInfo *t)
   SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-
-  snap_transform_data(t, tc);
 
   /* For each strip we've got, perform some additional validation of the values
    * that got set before using RNA to set the value (which does some special
