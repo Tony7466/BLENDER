@@ -353,6 +353,7 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
   }
 
   const StringRef kind_identifier = "usdkind";
+  const StringRef displayName_identifier = "displayName";
 
   IDProperty *prop;
   for (prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
@@ -361,6 +362,15 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
           prop->data.pointer)
       {
         write_kind(prim, pxr::TfToken(static_cast<char *>(prop->data.pointer)));
+      }
+      continue;
+    }
+
+    if (displayName_identifier == prop->name) {
+      if (prop->type == IDP_STRING && usd_export_context_.export_params.export_usd_kind &&
+          prop->data.pointer)
+      {
+        prim.SetDisplayName(static_cast<char*>(prop->data.pointer));
       }
       continue;
     }
