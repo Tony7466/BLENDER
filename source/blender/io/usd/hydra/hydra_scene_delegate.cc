@@ -215,7 +215,7 @@ void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
     set_light_shading_settings();
     set_world_shading_settings();
     update_collection();
-    update_world();
+    world_data_->update();
   }
 }
 
@@ -339,31 +339,6 @@ InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool c
   return nullptr;
 }
 
-void HydraSceneDelegate::update_world()
-{
-  world_data_->update();
-
-  // if (world_data_->empty()) {
-  //  if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world))
-  //  {
-  //    world_data_->init();
-  //    if (world_data_->empty()) {
-  //      return;
-  //    }
-  //    world_data_->insert();
-  //  }
-  //}
-  // else {
-  //  if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world))
-  //  {
-  //    world_data_->update();
-  //  }
-  //  else {
-  //    world_data_->remove();
-  //  }
-  //}
-}
-
 void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
@@ -427,7 +402,7 @@ void HydraSceneDelegate::check_updates()
   ITER_END;
 
   if (do_update_world) {
-    update_world();
+    world_data_->update();
   }
   if (do_update_collection) {
     update_collection();

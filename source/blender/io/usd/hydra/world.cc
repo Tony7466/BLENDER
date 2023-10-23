@@ -39,11 +39,6 @@ WorldData::WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &pri
   prim_type_ = pxr::HdPrimTypeTokens->domeLight;
 }
 
-bool WorldData::empty() const
-{
-  return data_.empty();
-}
-
 void WorldData::init()
 {
   data_.clear();
@@ -151,7 +146,7 @@ void WorldData::update()
       (scene_delegate_->shading_settings.use_scene_world && scene_delegate_->scene->world))
   {
     init();
-    if (empty()) {
+    if (data_.empty()) {
       remove();
       return;
     }
