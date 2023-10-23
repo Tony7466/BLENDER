@@ -253,18 +253,6 @@ class Custom : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-/**
- * Declare an undefined socket, to handle cases where an unknown builtin socket type is loaded.
- * This should never be added deliberately, is only used as a fallback for forward compatibility.
- */
-class Undefined : public SocketDeclaration {
- public:
-  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
-  bool matches(const bNodeSocket &socket) const override;
-  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
-  bool can_connect(const bNodeSocket &socket) const override;
-};
-
 /* -------------------------------------------------------------------- */
 /** \name #FloatBuilder Inline Methods
  * \{ */

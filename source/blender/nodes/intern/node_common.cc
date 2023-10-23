@@ -262,11 +262,6 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &nt
       dst = std::move(decl);
       break;
     }
-    default: {
-      std::unique_ptr<decl::Undefined> decl = std::make_unique<decl::Undefined>();
-      dst = std::move(decl);
-      break;
-    }
   }
   dst->name = io_socket.name;
   dst->identifier = io_socket.identifier;
