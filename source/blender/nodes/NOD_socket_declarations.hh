@@ -253,7 +253,8 @@ class Custom : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-/* Declare an undefined socket, to handle cases where an unknown builtin socket type is loaded.
+/**
+ * Declare an undefined socket, to handle cases where an unknown builtin socket type is loaded.
  * This should never be added deliberately, is only used as a fallback for forward compatibility.
  */
 class Undefined : public SocketDeclaration {
