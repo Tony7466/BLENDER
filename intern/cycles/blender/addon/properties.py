@@ -1472,7 +1472,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
-    metalrt_setting: EnumProperty(
+    metalrt: EnumProperty(
         name="MetalRT",
         description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
                     "performance in specific cases.",
@@ -1716,7 +1716,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 if is_arm64:
                     col.prop(self, "kernel_optimization_level")
                 if has_rt_api_support:
-                    col.prop(self, "metalrt_setting")
+                    col.prop(self, "metalrt")
 
         if compute_device_type == 'HIP':
             has_cuda, has_optix, has_hip, has_metal, has_oneapi, has_hiprt = _cycles.get_device_types()

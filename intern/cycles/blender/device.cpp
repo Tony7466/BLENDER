@@ -41,7 +41,7 @@ void static adjust_device_info_from_preferences(DeviceInfo &info, PointerRNA cpr
 
   if (info.type == DEVICE_METAL) {
     MetalRTSetting use_metalrt = (MetalRTSetting)get_enum(
-        cpreferences, "metalrt_setting", METALRT_NUM_SETTINGS, METALRT_AUTO);
+        cpreferences, "metalrt", METALRT_NUM_SETTINGS, METALRT_AUTO);
 
     info.use_hardware_raytracing = info.use_metalrt_by_default;
     if (use_metalrt == METALRT_OFF) {
