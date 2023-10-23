@@ -31,6 +31,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curve").supported_type(
       {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
+  b.add_input<decl::Int>("Group ID")
+      .default_value(0)
+      .supports_field()
+      .hide_value()
+      .description(
+          "An index used to group curves together; filling is done separately for each group");
   b.add_output<decl::Geometry>("Mesh");
 }
 
@@ -75,6 +81,72 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
   return result;
 }
 
+static meshintersect::CDT_result<double> do_cdt_with_mask(const bke::CurvesGeometry &curves,
+                                                          const CDT_output_type output_type,
+                                                          const IndexMask &mask)
+{
+  const OffsetIndices points_by_curve = curves.evaluated_points_by_curve();
+  const Span<float3> positions = curves.evaluated_positions();
+
+  int vert_len = 0;
+  mask.foreach_index([&](const int i) { vert_len += points_by_curve[i].size(); });
+
+  meshintersect::CDT_input<double> input;
+  input.need_ids = false;
+  input.vert.reinitialize(vert_len);
+  input.face.reinitialize(mask.size());
+
+  int i_vert = 0;
+  int i_face = 0;
+  mask.foreach_index([&](const int i_curve) {
+    const IndexRange points = points_by_curve[i_curve];
+    Map<int64_t, int> input_vert_index_by_curve_vert_index;
+
+    for (const int i : points) {
+      input.vert[i_vert] = double2(positions[i].x, positions[i].y);
+      input_vert_index_by_curve_vert_index.add(i, i_vert);
+      i_vert++;
+    }
+
+    input.face[i_face].resize(points.size());
+    MutableSpan<int> face_verts = input.face[i_face];
+    for (const int i : face_verts.index_range()) {
+      face_verts[i] = input_vert_index_by_curve_vert_index.lookup(points[i]);
+    }
+    i_face++;
+  });
+  meshintersect::CDT_result<double> result = delaunay_2d_calc(input, output_type);
+  return result;
+}
+
+static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
+    const bke::CurvesGeometry &curves,
+    const CDT_output_type output_type,
+    const Field<int> &group_index_field)
+{
+  const bke::GeometryFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
+  fn::FieldEvaluator data_evaluator{field_context, curves.curves_num()};
+  data_evaluator.add(group_index_field);
+  data_evaluator.evaluate();
+  const VArray<int> curve_group_ids = data_evaluator.get_evaluated<int>(0);
+
+  MultiValueMap<int, int64_t> curve_indices_by_group_id;
+  for (const int64_t curve_i : curve_group_ids.index_range()) {
+    const int group = curve_group_ids[curve_i];
+    curve_indices_by_group_id.add(group, curve_i);
+  }
+
+  Vector<meshintersect::CDT_result<double>> cdt_results;
+  cdt_results.reserve(curve_indices_by_group_id.size());
+  for (const Vector<int64_t> &curve_indices : curve_indices_by_group_id.values()) {
+    IndexMaskMemory memory;
+    const IndexMask mask = IndexMask::from_indices<int64_t>(curve_indices, memory);
+    cdt_results.append(do_cdt_with_mask(curves, output_type, mask));
+  }
+
+  return cdt_results;
+}
+
 /* Converts the CDT result into a Mesh. */
 static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 {
@@ -111,7 +183,68 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
   return mesh;
 }
 
-static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCurveFillMode mode)
+/* Converts multiple CDT results into a single Mesh. */
+static Mesh *cdts_to_mesh(const Vector<meshintersect::CDT_result<double>> &results)
+{
+  if (results.size() == 1) {
+    return cdt_to_mesh(results.first());
+  }
+
+  int vert_len = 0;
+  int edge_len = 0;
+  int face_len = 0;
+  int loop_len = 0;
+  for (const meshintersect::CDT_result<double> &result : results) {
+    vert_len += result.vert.size();
+    edge_len += result.edge.size();
+    face_len += result.face.size();
+    for (const Vector<int> &face : result.face) {
+      loop_len += face.size();
+    }
+  }
+
+  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
+  MutableSpan<float3> positions = mesh->vert_positions_for_write();
+  MutableSpan<int2> edges = mesh->edges_for_write();
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
+  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
+
+  int base_vert_index = 0;
+  int base_edge_index = 0;
+  int base_face_index = 0;
+  int i_face_corner = 0;
+  for (const meshintersect::CDT_result<double> &result : results) {
+    for (const int i : IndexRange(result.vert.size())) {
+      positions[i + base_vert_index] = float3(
+          float(result.vert[i].x), float(result.vert[i].y), 0.0f);
+    }
+    for (const int i : IndexRange(result.edge.size())) {
+      edges[i + base_edge_index] = int2(result.edge[i].first + base_vert_index,
+                                        result.edge[i].second + base_vert_index);
+    }
+    for (const int i : IndexRange(result.face.size())) {
+      face_offsets[i + base_face_index] = i_face_corner;
+      for (const int j : result.face[i].index_range()) {
+        corner_verts[i_face_corner] = result.face[i][j] + base_vert_index;
+        i_face_corner++;
+      }
+    }
+
+    base_vert_index += result.vert.size();
+    base_edge_index += result.edge.size();
+    base_face_index += result.face.size();
+  }
+
+  /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
+   * triangulation mode. */
+  BKE_mesh_calc_edges(mesh, true, false);
+  BKE_mesh_smooth_flag_set(mesh, false);
+  return mesh;
+}
+
+static void curve_fill_calculate(GeometrySet &geometry_set,
+                                 const GeometryNodeCurveFillMode mode,
+                                 const ValueOrField<int> &group_index_value_or_field)
 {
   const CDT_output_type output_type = (mode == GEO_NODE_CURVE_FILL_MODE_NGONS) ?
                                           CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES :
@@ -120,9 +253,17 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
     const Curves &curves_id = *geometry_set.get_curves();
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
     if (curves.curves_num() > 0) {
-      const meshintersect::CDT_result<double> results = do_cdt(curves, output_type);
-      Mesh *mesh = cdt_to_mesh(results);
-      geometry_set.replace_mesh(mesh);
+      if (group_index_value_or_field.is_field()) {
+        const Vector<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
+            curves, output_type, group_index_value_or_field.as_field());
+        Mesh *mesh = cdts_to_mesh(results);
+        geometry_set.replace_mesh(mesh);
+      }
+      else {
+        const meshintersect::CDT_result<double> result = do_cdt(curves, output_type);
+        Mesh *mesh = cdt_to_mesh(result);
+        geometry_set.replace_mesh(mesh);
+      }
     }
     geometry_set.replace_curves(nullptr);
   }
@@ -140,8 +281,15 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
       if (src_curves.curves_num() == 0) {
         continue;
       }
-      const meshintersect::CDT_result<double> results = do_cdt(src_curves, output_type);
-      mesh_by_layer[layer_index] = cdt_to_mesh(results);
+      if (group_index_value_or_field.is_field()) {
+        const Vector<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
+            src_curves, output_type, group_index_value_or_field.as_field());
+        mesh_by_layer[layer_index] = cdts_to_mesh(results);
+      }
+      else {
+        const meshintersect::CDT_result<double> result = do_cdt(src_curves, output_type);
+        mesh_by_layer[layer_index] = cdt_to_mesh(result);
+      }
     }
     if (!mesh_by_layer.is_empty()) {
       InstancesComponent &instances_component =
@@ -172,12 +320,15 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
+  ValueOrField<int> group_index_value_or_field = params.extract_input<ValueOrField<int>>(
+      "Group ID");
 
   const NodeGeometryCurveFill &storage = node_storage(params.node());
   const GeometryNodeCurveFillMode mode = (GeometryNodeCurveFillMode)storage.mode;
 
-  geometry_set.modify_geometry_sets(
-      [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode); });
+  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    curve_fill_calculate(geometry_set, mode, group_index_value_or_field);
+  });
 
   params.set_output("Mesh", std::move(geometry_set));
 }
