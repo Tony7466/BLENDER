@@ -454,6 +454,7 @@ bool RNA_property_collection_type_get(PointerRNA *ptr, PropertyRNA *prop, Pointe
 int RNA_property_collection_raw_array(PointerRNA *ptr,
                                       PropertyRNA *prop,
                                       PropertyRNA *itemprop,
+                                      int set,
                                       RawArray *array);
 int RNA_property_collection_raw_get(struct ReportList *reports,
                                     PointerRNA *ptr,
