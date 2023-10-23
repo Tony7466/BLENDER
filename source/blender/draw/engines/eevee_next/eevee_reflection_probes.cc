@@ -251,6 +251,14 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
 
 void ReflectionProbeModule::sync_world_lookdev()
 {
+  ReflectionProbe &probe = probes_.lookup(world_object_key_);
+  const eLightProbeResolution resolution = reflection_probe_resolution();
+  int layer_subdivision = layer_subdivision_for(max_resolution_, resolution);
+  if (layer_subdivision != probe.atlas_coord.layer_subdivision) {
+    probe.atlas_coord = find_empty_atlas_region(layer_subdivision);
+  }
+  world_probe_coord_ = probe.atlas_coord;
+
   do_world_update_set(true);
 
   if (!update_probes_this_sample_) {
