@@ -29,7 +29,8 @@ namespace blender::realtime_compositor {
  * method should be called to add each of the passes. Additionally, an empty view should be added
  * for each of the views referenced by the passes, using the single-argument overload of the
  * add_view method. Those views are merely empty structure and does not hold any data aside from
- * the view name.
+ * the view name. An exception to this rule is stereo EXR images, which needs to have the same
+ * structure as non-EXR images as explained in the following section.
  *
  * For non-EXR images, the render result needs to composed of views, so the multi-argument overload
  * of the method add_view should be used to add each view.
@@ -56,7 +57,7 @@ class FileOutput {
   void add_view(const char *view_name);
 
   /* Add a view of the given name that stores the given pixel buffer composed of the given number
-   * of channels. This should only be called for non-EXR images. */
+   * of channels. */
   void add_view(const char *view_name, int channels, float *buffer);
 
   /* Add a pass of the given name in the given view that stores the given pixel buffer composed of

@@ -492,12 +492,15 @@ class OutputFileOperation : public NodeOperation {
       const auto &socket = *static_cast<NodeImageMultiFileSocket *>(input->storage);
       get_single_layer_image_base_path(socket.path, base_path);
 
-      /* A single layer multi-view EXR image, needs to be constructed separately due to different
-       * render result structure. In particular, in EXR images, the buffers need to be stored in
-       * passes that are, in turn, stored in a render layer. On the other hand, in non-EXR images,
-       * the buffers need to be stored in views. */
+      /* The image saving code expects EXR images to have a different structure than standard
+       * images. In particular, in EXR images, the buffers need to be stored in passes that are, in
+       * turn, stored in a render layer. On the other hand, in non-EXR images, the buffers need to
+       * be stored in views. An exception to this is stereo images, which needs to have the same
+       * structure as non-EXR images. */
       const auto &format = socket.use_node_format ? node_storage(bnode()).format : socket.format;
-      if (ELEM(format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
+      const bool is_exr = format.imtype == R_IMF_IMTYPE_OPENEXR;
+      const int views_count = BKE_scene_multiview_num_views_get(&context().get_render_data());
+      if (is_exr && !(format.views_format == R_IMF_VIEWS_STEREO_3D && views_count == 2)) {
         execute_single_layer_multi_view_exr(result, format, base_path);
         continue;
       }
@@ -520,19 +523,23 @@ class OutputFileOperation : public NodeOperation {
                                            const ImageFormatData &format,
                                            const char *base_path)
   {
-    /* We are saving all views in a single multi-layer file, so we supply an empty view to make
-     * sure the file name does not contain a view suffix. */
+    const bool has_views = format.views_format != R_IMF_VIEWS_INDIVIDUAL;
+
+    /* The EXR stores all views in the same file, so we supply an empty view to make sure the file
+     * name does not contain a view suffix. */
     char image_path[FILE_MAX];
-    get_multi_layer_exr_image_path(base_path, "", image_path);
+    const char *path_view = has_views ? "" : context().get_view_name().data();
+    get_multi_layer_exr_image_path(base_path, path_view, image_path);
 
     const int2 size = compute_domain().size;
     FileOutput &file_output = context().render_context()->get_file_output(
         image_path, format, size, false);
 
-    const char *pass_view = context().get_view_name().data();
-    file_output.add_view(pass_view);
-
-    add_pass_for_result(file_output, result, "", pass_view);
+    /* The EXR stores all views in the same file, so we add the actual render view. Otherwise, we
+     * add a default unnamed view. */
+    const char *view_name = has_views ? context().get_view_name().data() : "";
+    file_output.add_view(view_name);
+    add_pass_for_result(file_output, result, "", view_name);
   }
 
   /* -----------------------
@@ -573,7 +580,7 @@ class OutputFileOperation : public NodeOperation {
   }
 
   /* Read the data stored in the GPU texture of the given result and add a pass of the given name,
-   * view, and read buffer. */
+   * view, and read buffer. The pass channel identifiers follows the EXR conventions. */
   void add_pass_for_result(FileOutput &file_output,
                            const Result &result,
                            const char *pass_name,
@@ -589,7 +596,13 @@ class OutputFileOperation : public NodeOperation {
         file_output.add_pass(pass_name, view_name, "RGBA", buffer);
         break;
       case ResultType::Vector:
-        file_output.add_pass(pass_name, view_name, "XYZW", buffer);
+        /* Vectors are saved using lowercase rgba identifiers, that's because the Y and Z in XYZW
+         * can be interpreted as luminance and Z Depth channels respectively, which can cause
+         * issues like undesired lossy compression of data passes. Further, lower case rgba seems
+         * to be more portable when sharing saved files with other software. Also note that this
+         * pass can be saved as 3D or 4D depending on the format option that the user chose. Where
+         * the fourth component will be ignored for the 3D case. */
+        file_output.add_pass(pass_name, view_name, "rgba", buffer);
         break;
       case ResultType::Float:
         file_output.add_pass(pass_name, view_name, "V", buffer);
