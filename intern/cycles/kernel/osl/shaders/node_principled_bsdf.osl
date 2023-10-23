@@ -48,12 +48,6 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   float sheen_weight = max(SheenWeight, 0.0);
   color base_color = max(BaseColor, color(0.0));
   color clamped_base_color = min(base_color, color(1.0));
-  float clamped_color_weight = max(metallic, subsurface_weight);
-  if (clamped_color_weight > CLOSURE_WEIGHT_CUTOFF) {
-    /* Metallic and Subsurface Scattering materials behave unpredictably with values greater
-     * than 1.0. */
-    base_color = mix(base_color, clamped_base_color, clamped_color_weight);
-  }
 
   float r2 = clamp(Roughness, 0.0, 1.0);
   r2 = r2 * r2;

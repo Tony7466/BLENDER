@@ -83,11 +83,12 @@ void node_bsdf_principled(vec4 base_color,
 
   base_color = max(base_color, vec4(0.0));
   vec4 clamped_base_color = min(base_color, vec4(1.0));
-  float clamped_color_weight = max(metallic, subsurface_weight);
-  if (clamped_color_weight > 0.0) {
-    /* Metallic and Subsurface Scattering materials behave unpredictably with values greater
-     * than 1.0. */
-    base_color = mix(base_color, clamped_base_color, clamped_color_weight);
+
+  vec4 diffuse_sss_base_color = base_color;
+  if (subsurface_weight > 0.0) {
+    /* Subsurface Scattering materials behave unpredictably with values greater than 1.0 in Cycles.
+     * So it's clamped there and we clamp here for consistency with Cycles. */
+    diffuse_sss_base_color = mix(diffuse_sss_base_color, clamped_base_color, subsurface_weight);
   }
 
   N = safe_normalize(N);
@@ -222,7 +223,7 @@ void node_bsdf_principled(vec4 base_color,
   if (true) {
     diffuse_data.sss_radius = max(subsurface_radius * subsurface_scale, vec3(0.0));
     diffuse_data.sss_id = uint(do_sss);
-    diffuse_data.color += weight * base_color.rgb * coat_tint.rgb;
+    diffuse_data.color += weight * diffuse_sss_base_color.rgb * coat_tint.rgb;
   }
 
   /* Adjust the weight of picking the closure. */
