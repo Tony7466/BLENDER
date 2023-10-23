@@ -1383,6 +1383,68 @@ static void merge_flap_edge_data(BMesh &bm,
   }
 }
 
+/* Find vertex which can be an outer for the flap face: the vertex will become loose when the face
+ * and its edges are removed.
+ * If there are multiple of such vertices nullptr is returned. */
+BMVert *find_outer_flap_vert(BMFace &face)
+{
+  BMVert *flap_vert = nullptr;
+
+  BMIter bm_iter;
+  BMVert *vert;
+  BM_ITER_ELEM (vert, &bm_iter, &face, BM_VERTS_OF_FACE) {
+    if (BM_vert_face_count_at_most(vert, 2) == 1) {
+      if (flap_vert) {
+        /* There are multiple vertices which will become loose on removing the face and its edges.
+         */
+        return nullptr;
+      }
+      flap_vert = vert;
+    }
+  }
+
+  return flap_vert;
+}
+
+/* If the #del_face is a flap merge edge data from edges adjacent to "corner" vertex into the other
+ * edge. The "corner" as it is an "outer", or a vertex which will become loose when the #del_face
+ * and its edges are removed.
+ *
+ * If the face is not a flap then this function does nothing. */
+static void try_merge_flap_edge_data_before_dissolve(BMesh &bm, BMFace &face)
+{
+  /*
+   *           v1                  v2
+   * ... ------ + ----------------- + ------ ...
+   *             \                 /
+   *               \             /
+   *                 \         /
+   *                   \     /
+   *                     \ /
+   *                      + v_flap
+   */
+
+  BMVert *v_flap = find_outer_flap_vert(face);
+  if (!v_flap) {
+    return;
+  }
+
+  BMLoop *l_flap = BM_vert_find_first_loop(v_flap);
+  BLI_assert(l_flap->v == v_flap);
+
+  /* Edges which are adjacent ot the v_flap. */
+  BMEdge *edge_1 = l_flap->prev->e;
+  BMEdge *edge_2 = l_flap->e;
+
+  BLI_assert(BM_edge_face_count(edge_1) == 1);
+  BLI_assert(BM_edge_face_count(edge_2) == 1);
+
+  BMEdge *edge_v1_v2 = l_flap->next->e;
+
+  merge_edge_data(bm, *edge_v1_v2, *edge_1);
+  merge_edge_data(bm, *edge_v1_v2, *edge_2);
+}
+
 /**
  * Merge attributes of edges from #v_del to #f
  *
@@ -1518,6 +1580,11 @@ static void pbvh_bmesh_collapse_edge(
       continue;
     }
 
+    /* Schedule the faces adjacent to the v_del for deletion first.
+     * This way we know that it will be #existing_face which is deleted last when deleting faces
+     * which forms a flap. */
+    deleted_faces.append(f_del);
+
     /* Check if a face using these vertices already exists. If so, skip adding this face and mark
      * the existing one for deletion as well. Prevents extraneous "flaps" from being created.
      * Check is similar to #BM_face_exists. */
@@ -1565,8 +1632,6 @@ static void pbvh_bmesh_collapse_edge(
         n->bm_other_verts.add(v_conn);
       }
     }
-
-    deleted_faces.append(f);
   }
   BM_LOOPS_OF_VERT_ITER_END;
 
@@ -1577,6 +1642,11 @@ static void pbvh_bmesh_collapse_edge(
     BMLoop *l_iter = BM_FACE_FIRST_LOOP(f_del);
     const std::array<BMVert *, 3> v_tri{l_iter->v, l_iter->next->v, l_iter->next->next->v};
     const std::array<BMEdge *, 3> e_tri{l_iter->e, l_iter->next->e, l_iter->next->next->e};
+
+    /* if its sa flap face merge its "outer" edge data into "base", so that boundary is propagated
+     * from edges which are about to be deleted to the base of the triangle and will stay attached
+     * to the mesh. */
+    try_merge_flap_edge_data_before_dissolve(bm, *f_del);
 
     /* Remove the face */
     pbvh_bmesh_face_remove(pbvh, f_del);
