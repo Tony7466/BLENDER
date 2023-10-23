@@ -670,7 +670,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
+  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
