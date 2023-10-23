@@ -11,3 +11,4 @@ Referenced by issue #83853, Blender basic Standard color space converting is wro
 Referenced by issue #82619, Color Channels are different between Materials and Color pickers
 Referenced by issue #69562, Manipulating saturation of colors (e.g via HSV or RGB curves, but also within color picker) shifts HUE
 Referenced by issue #68926, Color Management Improvements
+Referenced by issue #114040, Shader Editor and Vertex Paint Color pickers give different Hex values
