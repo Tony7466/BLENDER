@@ -552,6 +552,9 @@ CacheReader *CacheReader_open_usd_object(CacheArchiveHandle *handle,
   }
 
   pxr::UsdPrim prim = archive->stage()->GetPrimAtPath(pxr::SdfPath(object_path));
+  if (!prim.IsValid()) {
+    return reader;
+  }
 
   if (!prim) {
     WM_reportf(RPT_WARNING, "USD Import: unable to open cache reader for object %s", object_path);
