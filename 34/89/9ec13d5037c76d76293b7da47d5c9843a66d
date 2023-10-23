@@ -1,2 +1,3 @@
 Referenced by issue #113849, Animation player crashes upon launch
 Referenced by commit 4b1d18588798d8f3037b8734dfb15dea7c13af88, Fix crash when the animation player fails to create a texture (take 2)
+Referenced by commit a65f806658818b1ff0bbeb9af53c6c728495e4c0, Revert "Fix crash when the animation player fails to create a texture"
