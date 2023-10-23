@@ -191,8 +191,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   GeometrySet instance = params.get_input<GeometrySet>("Instance");
   instance.ensure_owns_direct_data();
-  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
-      "Instances");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
@@ -213,7 +211,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry_set.gather_attributes_for_propagation(types,
                                                    GeometryComponent::Type::Instance,
                                                    false,
-                                                   propagation_info,
+                                                   params.get_output_propagation_info("Instances"),
                                                    attributes_to_propagate);
     attributes_to_propagate.remove("position");
 
@@ -239,32 +237,18 @@ static void node_geo_exec(GeoNodeExecParams params)
         }
         const bke::CurvesGeometry &src_curves = drawing->strokes();
         if (src_curves.curves_num() == 0) {
-          /* Add an empty reference so the number of layers and instances match.
-           * This makes it easy to reconstruct the layers afterwards and keep their attributes.
-           * Although in this particular case we don't propagate the attributes. */
-          const int handle = dst_instances->add_reference(bke::InstanceReference());
-          dst_instances->add_instance(handle, float4x4::identity());
           continue;
         }
-        /* TODO: Attributes are not propagating from the curves or the points. */
-        bke::Instances *instances = new bke::Instances();
+        /* TODO: Attributes are not propagating from either the layer, the curves or the points. */
         const bke::GreasePencilLayerFieldContext field_context(
             grease_pencil, ATTR_DOMAIN_POINT, layer_index);
-        add_instances_from_component(*instances,
+        add_instances_from_component(*dst_instances,
                                      src_curves.attributes(),
                                      instance,
                                      field_context,
                                      params,
                                      attributes_to_propagate);
-        GeometrySet temp_set = GeometrySet::from_instances(instances);
-        const int handle = dst_instances->add_reference(bke::InstanceReference{temp_set});
-        dst_instances->add_instance(handle, float4x4::identity());
       }
-      GeometrySet::propagate_attributes_from_layer_to_instances(
-          geometry_set.get_grease_pencil()->attributes(),
-          geometry_set.get_instances_for_write()->attributes_for_write(),
-          propagation_info);
-      geometry_set.replace_grease_pencil(nullptr);
     }
     geometry_set.remove_geometry_during_modify();
   });

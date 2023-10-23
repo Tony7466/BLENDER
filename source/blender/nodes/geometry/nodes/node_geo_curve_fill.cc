@@ -14,6 +14,8 @@
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
 
+#include "GEO_realize_instances.hh"
+
 #include "BLI_task.hh"
 
 #include "NOD_rna_define.hh"
@@ -153,11 +155,6 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
       }
       for (Mesh *mesh : mesh_by_layer) {
         if (!mesh) {
-          /* Add an empty reference so the number of layers and instances match.
-           * This makes it easy to reconstruct the layers afterwards and keep their attributes.
-           * Although in this particular case we don't propagate the attributes. */
-          const int handle = instances->add_reference(bke::InstanceReference());
-          instances->add_instance(handle, float4x4::identity());
           continue;
         }
         GeometrySet temp_set = GeometrySet::from_mesh(mesh);
@@ -179,6 +176,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets(
       [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode); });
 
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = false;
+  options.realize_instance_attributes = true;
+  geometry_set = geometry::realize_instances(geometry_set, options);
   params.set_output("Mesh", std::move(geometry_set));
 }
 

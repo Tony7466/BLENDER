@@ -12,6 +12,7 @@
 #include "UI_resources.hh"
 
 #include "GEO_randomize.hh"
+#include "GEO_realize_instances.hh"
 
 #include "node_geometry_util.hh"
 
@@ -120,6 +121,11 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
   });
 
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = false;
+  options.realize_instance_attributes = true;
+  options.propagation_info = propagation_info;
+  curve_set = geometry::realize_instances(curve_set, options);
   params.set_output("Mesh", std::move(curve_set));
 }
 

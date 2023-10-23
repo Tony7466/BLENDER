@@ -13,6 +13,7 @@
 #include "BKE_instances.hh"
 #include "BKE_pointcloud.h"
 
+#include "GEO_realize_instances.hh"
 #include "GEO_resample_curves.hh"
 
 #include "NOD_rna_define.hh"
@@ -332,6 +333,11 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry_set, params, mode, resample_attributes, rotation_anonymous_id, propagation_info);
   }
 
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = false;
+  options.realize_instance_attributes = true;
+  options.propagation_info = propagation_info;
+  geometry_set = geometry::realize_instances(geometry_set, options);
   params.set_output("Points", std::move(geometry_set));
 }
 
