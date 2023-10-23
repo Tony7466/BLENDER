@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -177,11 +177,13 @@ static int SVertex_mathutils_set(BaseMathObject *bmo, int subtype)
     case MATHUTILS_SUBTYPE_POINT3D: {
       Vec3r p(bmo->data[0], bmo->data[1], bmo->data[2]);
       self->sv->setPoint3D(p);
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_POINT2D: {
       Vec3r p(bmo->data[0], bmo->data[1], bmo->data[2]);
       self->sv->setPoint2D(p);
-    } break;
+      break;
+    }
     default:
       return -1;
   }
@@ -236,12 +238,14 @@ static int SVertex_mathutils_set_index(BaseMathObject *bmo, int subtype, int ind
       Vec3r p(self->sv->point3D());
       p[index] = bmo->data[index];
       self->sv->setPoint3D(p);
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_POINT2D: {
       Vec3r p(self->sv->point2D());
       p[index] = bmo->data[index];
       self->sv->setPoint2D(p);
-    } break;
+      break;
+    }
     default:
       return -1;
   }
@@ -445,7 +449,8 @@ static PyGetSetDef BPy_SVertex_getseters[] = {
 /*-----------------------BPy_SVertex type definition ------------------------------*/
 
 PyTypeObject SVertex_Type = {
-    /*tp_name*/ PyVarObject_HEAD_INIT(nullptr, 0) "SVertex",
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "SVertex",
     /*tp_basicsize*/ sizeof(BPy_SVertex),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ nullptr,
@@ -481,7 +486,7 @@ PyTypeObject SVertex_Type = {
     /*tp_dictoffset*/ 0,
     /*tp_init*/ (initproc)SVertex_init,
     /*tp_alloc*/ nullptr,
-    nullptr, /*tp_new*/
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

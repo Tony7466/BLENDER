@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_string.h"
+
 #include "BKE_node.hh"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "COM_ConvertOperation.h"
 #include "COM_CryptomatteNode.h"
