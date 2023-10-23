@@ -32,7 +32,7 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -3034,33 +3034,6 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
 
   BLI_addtail(&g_registered_engines.engines, draw_engine);
   g_registered_engines.len = BLI_listbase_count(&g_registered_engines.engines);
-}
-
-void DRW_engines_register_experimental()
-{
-  if (!U.experimental.enable_eevee_next) {
-    /** Since EEVEE Next is always registered in `DRW_engines_register`,
-     * Here we just have to unregister if it's not actually enabled. */
-    for (auto *type = static_cast<RenderEngineType *>(R_engines.first); type; type = type->next) {
-      if (type == &DRW_engine_viewport_eevee_next_type) {
-        BLI_remlink(&R_engines, type);
-        break;
-      }
-    }
-
-    for (auto *type = static_cast<DRWRegisteredDrawEngine *>(g_registered_engines.engines.first);
-         type != nullptr;
-         type = static_cast<DRWRegisteredDrawEngine *>(type->next))
-    {
-      if (type->draw_engine == DRW_engine_viewport_eevee_next_type.draw_engine) {
-        BLI_remlink(&g_registered_engines.engines, type);
-        type->draw_engine->engine_free();
-        g_registered_engines.len--;
-        MEM_freeN(type);
-        break;
-      }
-    }
-  }
 }
 
 void DRW_engines_register()
