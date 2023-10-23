@@ -14,6 +14,7 @@
 #include "CLG_log.h"
 
 #include "curves.h"
+#include "hair.h"
 #include "instancer.h"
 #include "light.h"
 #include "mesh.h"
@@ -109,6 +110,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
   ParticleSystemData *particle_system_data(pxr::SdfPath const &id) const;
+  HairData *hair_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
 
   void update_world();

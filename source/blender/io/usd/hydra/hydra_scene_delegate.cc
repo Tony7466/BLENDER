@@ -48,9 +48,9 @@ pxr::HdBasisCurvesTopology HydraSceneDelegate::GetBasisCurvesTopology(pxr::SdfPa
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", id.GetText());
 
-  auto p_data = particle_system_data(id);
-  if (p_data) {
-    return p_data->topology();
+  auto h_data = hair_data(id);
+  if (h_data) {
+    return h_data->topology();
   }
 
   CurvesData *c_data = curves_data(id);
@@ -105,9 +105,9 @@ pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
 
-  ParticleSystemData *p_data = particle_system_data(id);
-  if (p_data) {
-    return p_data->primvar_descriptors(interpolation);
+  HairData *h_data = hair_data(id);
+  if (h_data) {
+    return h_data->primvar_descriptors(interpolation);
   }
   MeshData *m_data = mesh_data(id);
   if (m_data) {
@@ -352,6 +352,11 @@ ParticleSystemData *HydraSceneDelegate::particle_system_data(pxr::SdfPath const 
   return psys_data->get();
 }
 
+HairData *HydraSceneDelegate::hair_data(pxr::SdfPath const &id) const
+{
+  return dynamic_cast<HairData *>(particle_system_data(id));
+}
+
 InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
 {
   pxr::SdfPath p_id;
@@ -574,7 +579,8 @@ void HydraSceneDelegate::update_particle_systems()
   for (auto &obj : objects_.values()) {
     Object *object = (Object *)obj->id;
     LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
-      if (ParticleSystemData::is_visible(this, object, psys)) {
+      if (ParticleSystemData::is_supported(psys)
+              && ParticleSystemData::is_visible(this, object, psys)) {
         pxr::SdfPath psys_path = particle_system_prim_id(obj->prim_id, psys);
         ParticleSystemData *psys_data = particle_systems_.contains(psys_path) ?
                                             particle_systems_.lookup_ptr(psys_path)->get() :
@@ -582,11 +588,10 @@ void HydraSceneDelegate::update_particle_systems()
 
         if (!psys_data) {
           psys_data = particle_systems_
-                          .lookup_or_add(
-                              psys_path,
-                              std::make_unique<ParticleSystemData>(this, object, psys_path, psys))
+                          .lookup_or_add(psys_path,
+                                          ParticleSystemData::create(
+                                              this, object, psys_path, psys))
                           .get();
-          psys_data->init();
           psys_data->insert();
         }
         else {
@@ -597,7 +602,8 @@ void HydraSceneDelegate::update_particle_systems()
   }
   particle_systems_.remove_if([&](auto item) {
     Object *object = (Object *)item.value->id;
-    ParticleSystem *psys = item.value->particle_system;
+    HairData *h_data = hair_data(item.value->prim_id);
+    ParticleSystem *psys = h_data->particle_system;
     bool ret = ParticleSystemData::is_supported(psys);
     if (!ret || !ParticleSystemData::is_visible(this, object, psys)) {
       item.value->remove();

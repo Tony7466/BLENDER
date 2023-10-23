@@ -152,6 +152,7 @@ if(WITH_HYDRA)
   list(APPEND SRC
     hydra/camera.cc
     hydra/curves.cc
+    hydra/hair.cc
     hydra/hydra_scene_delegate.cc
     hydra/id.cc
     hydra/image.cc
@@ -168,6 +169,7 @@ if(WITH_HYDRA)
 
     hydra/camera.h
     hydra/curves.h
+    hydra/hair.h
     hydra/hydra_scene_delegate.h
     hydra/id.h
     hydra/image.h
