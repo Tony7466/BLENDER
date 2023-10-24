@@ -347,6 +347,10 @@ void ReflectionProbeModule::end_sync()
 
   const bool do_update = instance_.do_reflection_probe_sync() || (only_world && world_updated);
   if (!do_update) {
+    /* World has changed this sample, but probe update isn't initialized this sample. */
+    if (world_updated && !only_world) {
+      update_probes_next_sample_ = true;
+    }
     if (update_probes_next_sample_) {
       DRW_viewport_request_redraw();
     }
@@ -368,8 +372,8 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.clear(float4(0.0f));
   }
 
-  /* Check reset probe updating as we completed rendering all Probes. */
-  if (update_probes_this_sample_) {
+  /* Check reset probe updating as we will rendering probes. */
+  if (update_probes_this_sample_ || only_world) {
     update_probes_next_sample_ = false;
   }
   data_buf_.push_update();
