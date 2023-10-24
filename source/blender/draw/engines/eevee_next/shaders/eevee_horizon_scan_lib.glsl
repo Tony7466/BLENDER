@@ -66,8 +66,8 @@ uint horizon_scan_bitmask_scan(vec3 vV,
       }
 
       /* Bias depth a bit to avoid self shadowing issues. */
-      const float bias = 2.0 * 2.4e-7;
-      sample_depth += bias;
+      const float bias = 25.0 * 2.4e-7;
+      sample_depth += sqrt(1.0 - square(vN.z)) * bias;
 
       vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
       vec3 vP_back = vP_front - thickness * vV;
