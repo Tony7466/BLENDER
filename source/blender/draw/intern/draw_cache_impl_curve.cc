@@ -526,7 +526,7 @@ static void curve_create_curves_lines(CurveRenderData *rdata, GPUIndexBuf *ibo_c
 
   for (const int i : curves.curves_range()) {
     const IndexRange points = points_by_curve[i];
-    if (cyclic[i] && points.size() > 1) {
+    if (cyclic[i] && points.size() > 2) {
       GPU_indexbuf_add_generic_vert(&elb, points.last());
     }
     for (const int i_point : points) {

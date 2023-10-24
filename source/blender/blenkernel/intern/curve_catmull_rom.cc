@@ -15,13 +15,14 @@ namespace blender::bke::curves::catmull_rom {
 
 int calculate_evaluated_num(const int points_num, const bool cyclic, const int resolution)
 {
-  const int eval_num = resolution * segments_num(points_num, cyclic);
-  if (cyclic) {
-    /* Make sure there is a single evaluated point for the single-point curve case. */
-    return std::max(eval_num, 1);
+  if (points_num == 1) {
+    return 1;
   }
-  /* If the curve isn't cyclic, one last point is added to the final point. */
-  return eval_num + 1;
+  if (points_num == 2) {
+    return resolution + 1;
+  }
+  const int segments = segments_num(points_num, cyclic);
+  return cyclic ? segments * resolution : segments * resolution + 1;
 }
 
 void calculate_basis(const float parameter, float4 &r_weights)
@@ -71,13 +72,7 @@ static void interpolate_to_evaluated(const Span<T> src,
 
   if (src.size() == 2) {
     evaluate_segment(src.first(), src.first(), src.last(), src.last(), dst.slice(first));
-    if (cyclic) {
-      const IndexRange last = range_fn(1);
-      evaluate_segment(src.last(), src.last(), src.first(), src.first(), dst.slice(last));
-    }
-    else {
-      dst.last() = src.last();
-    }
+    dst.last() = src.last();
     return;
   }
 

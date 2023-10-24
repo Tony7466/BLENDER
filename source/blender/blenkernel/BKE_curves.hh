@@ -467,7 +467,7 @@ namespace curves {
 inline int segments_num(const int points_num, const bool cyclic)
 {
   BLI_assert(points_num > 0);
-  return (cyclic && points_num > 1) ? points_num : points_num - 1;
+  return (cyclic && points_num > 2) ? points_num : points_num - 1;
 }
 
 inline float2 encode_surface_bary_coord(const float3 &v)
@@ -573,6 +573,9 @@ bool point_is_sharp(Span<int8_t> handle_types_left, Span<int8_t> handle_types_ri
  * The expectations for the result \a evaluated_offsets are the same as for #OffsetIndices, so the
  * size must be one greater than the number of points. The value at each index is the evaluated
  * point at the start of that segment.
+ *
+ * \note Unlike other curves, Bezier curves with two points can still be cyclic, because of the
+ * separate handle positions.
  */
 void calculate_evaluated_offsets(Span<int8_t> handle_types_left,
                                  Span<int8_t> handle_types_right,
