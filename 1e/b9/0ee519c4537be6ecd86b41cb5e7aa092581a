@@ -1,1 +1,2 @@
 Referenced by issue #114015, The Properties space "search filter" disables checkboxes in panel headers when searching
+Referenced by commit 91124fcff64cc22623bfb0d47842144d9a9ed81e, Fix #114015: Search filter removes panel header checkboxes
