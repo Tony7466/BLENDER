@@ -3939,7 +3939,7 @@ static void rna_def_operator_stroke_element(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "overlap_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Factor used to attenuate strength from spacing.", "");
+  RNA_def_property_ui_text(prop, "Overlap Factor", "Factor used to attenuate strength from spacing");
 
   /* XXX: Tool (this will be for pressing a modifier key for a different brush,
    *      e.g. switching to a Smooth brush in the middle of the stroke */
