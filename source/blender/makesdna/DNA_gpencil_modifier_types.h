@@ -1469,5 +1469,5 @@ enum {
 };
 
 #ifdef __cplusplus
-}
+
 #endif
