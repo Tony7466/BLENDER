@@ -433,6 +433,9 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   const float target_chord_length = 2.0f;
   const float target_chord_length_squared = target_chord_length * target_chord_length;
 
+  // we'll also need the attribute data for the evaluated positions, since we'll be
+  // interpolating between them as we iterate over the curve segments.
+
   const Span<float3> evaluated_positions = src_curves.evaluated_positions();
   const OffsetIndices<int> evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
 
@@ -443,32 +446,49 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
-  Vector<float3> all_positions = {};
+  struct PointSegmentInfo {
+    int segment_index;
+    float segment_t;
+  };
 
   // TODO: this can be threaded, per curve segment.
+  Vector<Vector<float3>> all_curve_sample_points = {};
+  Vector<Vector<PointSegmentInfo>> all_curve_segment_infos = {};
+  all_curve_sample_points.resize(src_curves.curves_num());
   for (int curve_index = 0; curve_index < src_curves.curves_num(); ++curve_index) {
-    const Span<float3> curve_positions = evaluated_positions.slice(evaluated_points_by_curve[curve_index]);
-    Vector<float3> curve_sample_points = {};
-    float3 last_sample_position = curve_positions[0];
+    auto &curve_sample_points = all_curve_sample_points[curve_index];
+    auto &curve_segment_infos = all_curve_segment_infos[curve_index];
+
+    const Span<float3> evaluated_curve_positions = evaluated_positions.slice(evaluated_points_by_curve[curve_index]);
+    float3 last_sample_position = evaluated_curve_positions[0];
     int last_segment_index = 0;
     int segment_index = 0;
-    const int segment_count = curve_positions.size() - 1;
+
+    curve_sample_points.append(evaluated_curve_positions[0]);
+    curve_segment_infos.append({0, 0.0f});
+
+    float t = 0.0f;
+
+    const int segment_count = evaluated_curve_positions.size() - 1;
 
     while (segment_index < segment_count) {
-      const float3 a = curve_positions[segment_index];
-      const float3 b = curve_positions[segment_index + 1];
+      const float3 a = evaluated_curve_positions[segment_index];
+      const float3 b = evaluated_curve_positions[segment_index + 1];
 
       if (last_segment_index == segment_index) {
-        const float3 chord_direction = math::normalize(b - a);
+        float segment_length = 0.0f;
+        const float3 segment_direction = math::normalize_and_get_length(b - a, segment_length);
 
         // Figure out how many samples we can place along the current segment.
         const float Jd = math::distance_squared(b, last_sample_position);
-        int colinear_samples = static_cast<int>(Jd / target_chord_length_squared);
+        int colinear_samples = math::sqrt(static_cast<int>(Jd / target_chord_length_squared));
+        float t_step = 0.0f;
 
         if (colinear_samples > 0) {
           for (int i = 0; i < colinear_samples; ++i) {
-            const float3 k = last_sample_position + chord_direction * (target_chord_length * (i + 1));
-            curve_sample_points.append(k);
+            const float3 sample_point = last_sample_position + segment_direction * (target_chord_length * (i + 1));
+            curve_sample_points.append(sample_point);
+            curve_segment_infos.append({ segment_index, t });
           }
           last_sample_position = curve_sample_points.last();
         }
@@ -500,15 +520,7 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
       last_segment_index = segment_index;
       last_sample_position = curve_sample_points.last();
     }
-
-    all_positions.extend(curve_sample_points);
   }
-
-  //std::cout << "x,y,z" << std::endl;
-
-  //for (auto& p : all_positions) {
-  //  std::cout << p.x << "," << p.y << "," << p.z << std::endl;
-  //}
 
   CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
 
@@ -517,18 +529,31 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
 
   dst_curves.fill_curve_types(selection, CURVE_TYPE_POLY);
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
-  offset_indices::copy_group_sizes(src_evaluated_points_by_curve, selection, dst_offsets);
+
+  // Accumulate offsets.
+  size_t offset = 0;
+  for (int i = 0; i < all_curve_sample_points.size(); ++i) {
+    dst_offsets[i] = offset;
+    offset += all_curve_sample_points[i].size();
+  }
+
   offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_offsets);
-  offset_indices::accumulate_counts_to_offsets(dst_offsets);
-  dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
+  dst_curves.resize(offset, dst_curves.curves_num());
 
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  dst_positions.copy_from(all_positions.as_span());
+  // Copy the samples to the destination.
+  size_t start = 0;
+  for (int i = 0; i < all_curve_sample_points.size(); ++i) {
+    const auto& curve_sample_points = all_curve_sample_points[i];
+    dst_positions.slice(start, curve_sample_points.size()).copy_from(curve_sample_points.as_span());
+    start += curve_sample_points.size();
+  }
+
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
 
   AttributesForInterpolation attributes;
-  gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
-
+  //gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
   copy_or_defaults_for_unselected_curves(src_curves, unselected, attributes, dst_curves);
 
   for (bke::GSpanAttributeWriter& attribute : attributes.dst_attributes) {
