@@ -607,7 +607,7 @@
   { \
     .subdivType = 0, \
     .levels = 1, \
-    .renderLevels = 2, \
+    .renderLevels = 1, \
     .flags = eSubsurfModifierFlag_UseCrease | eSubsurfModifierFlag_ControlEdges, \
     .uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES, \
     .quality = 3, \
