@@ -7,6 +7,7 @@
  */
 
 #include "vk_command_buffer.hh"
+#include "vk_backend.hh"
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_device.hh"
@@ -24,10 +25,11 @@ namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
 {
-  if (vk_device_ != VK_NULL_HANDLE) {
-    VK_ALLOCATION_CALLBACKS;
-    vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);
-    vk_fence_ = VK_NULL_HANDLE;
+  if (vk_command_buffer_ != VK_NULL_HANDLE) {
+    VKDevice &device = VKBackend::get().device_get();
+    vkFreeCommandBuffers(
+        device.device_get(), device.vk_command_pool_get(), 1, &vk_command_buffer_);
+    vk_command_buffer_ = VK_NULL_HANDLE;
   }
 }
 
@@ -36,49 +38,22 @@ bool VKCommandBuffer::is_initialized() const
   return vk_command_buffer_ != VK_NULL_HANDLE;
 }
 
-void VKCommandBuffer::init(const VKDevice &device)
+void VKCommandBuffer::init(const VKDevice &device, VkCommandBuffer vk_command_buffer)
 {
   if (is_initialized()) {
     return;
   }
 
   vk_device_ = device.device_get();
-  vk_queue_ = device.queue_get();
+  vk_command_buffer_ = vk_command_buffer;
 
-  /* When a the last GHOST context is destroyed the device is deallocate. A moment later the GPU
-   * context is destroyed. The first step is to activate it. Activating would retrieve the device
-   * from GHOST which in that case is a #VK_NULL_HANDLE. */
-  if (vk_device_ == VK_NULL_HANDLE) {
-    return;
-  }
-
-  VkCommandBufferAllocateInfo alloc_info = {};
-  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  alloc_info.commandPool = device.vk_command_pool_get();
-  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = 1;
-  vkAllocateCommandBuffers(vk_device_, &alloc_info, &vk_command_buffer_);
-
-  submission_id_.reset();
   state.stage = Stage::Initial;
-
-  if (vk_fence_ == VK_NULL_HANDLE) {
-    VK_ALLOCATION_CALLBACKS;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
-  }
-  else {
-    vkResetFences(vk_device_, 1, &vk_fence_);
-  }
 }
 
 void VKCommandBuffer::begin_recording()
 {
   ensure_no_active_framebuffer();
   if (is_in_stage(Stage::Submitted)) {
-    vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
-    vkResetFences(vk_device_, 1, &vk_fence_);
     stage_transfer(Stage::Submitted, Stage::Executed);
   }
   if (is_in_stage(Stage::Executed)) {
@@ -90,6 +65,7 @@ void VKCommandBuffer::begin_recording()
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   vkBeginCommandBuffer(vk_command_buffer_, &begin_info);
   stage_transfer(Stage::Initial, Stage::Recording);
+  state.recorded_command_counts = 0;
 }
 
 void VKCommandBuffer::end_recording()
@@ -102,6 +78,7 @@ void VKCommandBuffer::end_recording()
 void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_point)
 {
   vkCmdBindPipeline(vk_command_buffer_, bind_point, pipeline.vk_handle());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
@@ -111,6 +88,7 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
   VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
   vkCmdBindDescriptorSets(
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::bind(const uint32_t binding,
@@ -132,6 +110,7 @@ void VKCommandBuffer::bind(const uint32_t binding,
   validate_framebuffer_exists();
   ensure_active_framebuffer();
   vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
@@ -140,6 +119,7 @@ void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType i
   ensure_active_framebuffer();
   vkCmdBindIndexBuffer(
       vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::begin_render_pass(VKFrameBuffer &framebuffer)
@@ -168,12 +148,14 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                      push_constants.offset(),
                      push_constants.layout_get().size_in_bytes(),
                      push_constants.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::fill(VKBuffer &buffer, uint32_t clear_data)
 {
   ensure_no_active_framebuffer();
   vkCmdFillBuffer(vk_command_buffer_, buffer.vk_handle(), 0, buffer.size_in_bytes(), clear_data);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer,
@@ -187,6 +169,7 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                          dst_buffer.vk_handle(),
                          regions.size(),
                          regions.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -200,6 +183,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                          dst_texture.current_layout_get(),
                          regions.size(),
                          regions.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -214,6 +198,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                  dst_texture.current_layout_get(),
                  regions.size(),
                  regions.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions)
@@ -221,6 +206,7 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBuf
   ensure_no_active_framebuffer();
   vkCmdCopyBuffer(
       vk_command_buffer_, src_buffer, dst_buffer.vk_handle(), regions.size(), regions.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::blit(VKTexture &dst_texture,
@@ -249,6 +235,7 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                  regions.size(),
                  regions.data(),
                  VK_FILTER_NEAREST);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::clear(VkImage vk_image,
@@ -263,6 +250,7 @@ void VKCommandBuffer::clear(VkImage vk_image,
                        &vk_clear_color,
                        ranges.size(),
                        ranges.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::clear(VkImage vk_image,
@@ -277,6 +265,7 @@ void VKCommandBuffer::clear(VkImage vk_image,
                               &vk_clear_value,
                               ranges.size(),
                               ranges.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
@@ -285,6 +274,7 @@ void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRec
   ensure_active_framebuffer();
   vkCmdClearAttachments(
       vk_command_buffer_, attachments.size(), attachments.data(), areas.size(), areas.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
@@ -293,6 +283,7 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
   ensure_active_framebuffer();
   vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
   state.draw_counts++;
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::draw_indexed(
@@ -303,6 +294,7 @@ void VKCommandBuffer::draw_indexed(
   vkCmdDrawIndexed(
       vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
   state.draw_counts++;
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::draw_indirect(const VKStorageBuffer &buffer,
@@ -314,6 +306,7 @@ void VKCommandBuffer::draw_indirect(const VKStorageBuffer &buffer,
   ensure_active_framebuffer();
   vkCmdDrawIndirect(vk_command_buffer_, buffer.vk_handle(), offset, draw_count, stride);
   state.draw_counts++;
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::draw_indexed_indirect(const VKStorageBuffer &buffer,
@@ -326,6 +319,7 @@ void VKCommandBuffer::draw_indexed_indirect(const VKStorageBuffer &buffer,
   ensure_active_framebuffer();
   vkCmdDrawIndexedIndirect(vk_command_buffer_, buffer.vk_handle(), offset, draw_count, stride);
   state.draw_counts++;
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
@@ -344,6 +338,7 @@ void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                        nullptr,
                        0,
                        nullptr);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
@@ -359,37 +354,25 @@ void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_b
                        nullptr,
                        image_memory_barriers.size(),
                        image_memory_barriers.data());
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   ensure_no_active_framebuffer();
   vkCmdDispatch(vk_command_buffer_, groups_x_len, groups_y_len, groups_z_len);
+  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer)
 {
   ensure_no_active_framebuffer();
   vkCmdDispatchIndirect(vk_command_buffer_, command_buffer.vk_handle(), 0);
+  state.recorded_command_counts++;
 }
 
-void VKCommandBuffer::submit()
+void VKCommandBuffer::commands_submitted()
 {
-  ensure_no_active_framebuffer();
-  end_recording();
-  submit_commands();
-  begin_recording();
-}
-
-void VKCommandBuffer::submit_commands()
-{
-  VkSubmitInfo submit_info = {};
-  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers = &vk_command_buffer_;
-
-  vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
-  submission_id_.next();
   stage_transfer(Stage::BetweenRecordingAndSubmitting, Stage::Submitted);
 }
 
@@ -415,6 +398,7 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
     vkCmdEndRenderPass(vk_command_buffer_);
     state.framebuffer_active_ = false;
     state.switches_++;
+    state.recorded_command_counts++;
   }
 }
 
@@ -437,6 +421,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
     vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
     state.framebuffer_active_ = true;
     state.switches_++;
+    state.recorded_command_counts++;
   }
 }
 

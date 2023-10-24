@@ -8,41 +8,20 @@
 
 #pragma once
 
+#include "vk_commands.hh"
 #include "vk_common.hh"
 #include "vk_resource_tracker.hh"
 
 #include "BLI_utility_mixins.hh"
 
 namespace blender::gpu {
-class VKBuffer;
-struct VKBufferWithOffset;
-class VKDescriptorSet;
-class VKFrameBuffer;
-class VKIndexBuffer;
-class VKPipeline;
-class VKPushConstants;
-class VKStorageBuffer;
-class VKTexture;
-class VKVertexBuffer;
 class VKDevice;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
-class VKCommandBuffer : NonCopyable, NonMovable {
+class VKCommandBuffer : VKCommands, NonCopyable, NonMovable {
   /** Not owning handle to the command buffer and device. Handle is owned by `GHOST_ContextVK`. */
   VkDevice vk_device_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
-  VkQueue vk_queue_ = VK_NULL_HANDLE;
-
-  /**
-   * Timeout to use when waiting for fences in nanoseconds.
-   *
-   * Currently added as the fence will halt when there are no commands in the command buffer for
-   * the second time. This should be solved and this timeout should be removed.
-   */
-  static constexpr uint64_t FenceTimeout = UINT64_MAX;
-  /** Owning handles */
-  VkFence vk_fence_ = VK_NULL_HANDLE;
-  VKSubmissionID submission_id_;
 
  private:
   enum class Stage {
@@ -94,6 +73,11 @@ class VKCommandBuffer : NonCopyable, NonMovable {
      */
     Stage stage = Stage::Initial;
 
+    /**
+     * The number of command added to the command buffer since last submission.
+     */
+    uint64_t recorded_command_counts = 0;
+
   } state;
   bool is_in_stage(Stage stage)
   {
@@ -134,25 +118,27 @@ class VKCommandBuffer : NonCopyable, NonMovable {
  public:
   virtual ~VKCommandBuffer();
   bool is_initialized() const;
-  void init(const VKDevice &vk_device);
+  void init(const VKDevice &vk_device, VkCommandBuffer vk_command_buffer);
   void begin_recording();
   void end_recording();
 
-  void bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint bind_point);
+  void bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint bind_point) override;
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
-            VkPipelineBindPoint bind_point);
+            VkPipelineBindPoint bind_point) override;
   void bind(const uint32_t binding,
             const VKVertexBuffer &vertex_buffer,
-            const VkDeviceSize offset);
+            const VkDeviceSize offset) override;
   /* Bind the given buffer as a vertex buffer. */
-  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
-  void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
+  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer) override;
+  void bind(const uint32_t binding,
+            const VkBuffer &vk_vertex_buffer,
+            const VkDeviceSize offset) override;
   /* Bind the given buffer as an index buffer. */
-  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type) override;
 
-  void begin_render_pass(VKFrameBuffer &framebuffer);
-  void end_render_pass(const VKFrameBuffer &framebuffer);
+  void begin_render_pass(VKFrameBuffer &framebuffer) override;
+  void end_render_pass(const VKFrameBuffer &framebuffer) override;
 
   /**
    * Add a push constant command to the command buffer.
@@ -161,23 +147,27 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    */
   void push_constants(const VKPushConstants &push_constants,
                       const VkPipelineLayout vk_pipeline_layout,
-                      const VkShaderStageFlags vk_shader_stages);
-  void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
-  void dispatch(VKStorageBuffer &command_buffer);
+                      const VkShaderStageFlags vk_shader_stages) override;
+  void dispatch(int groups_x_len, int groups_y_len, int groups_z_len) override;
+  void dispatch(VKStorageBuffer &command_buffer) override;
   /** Copy the contents of a texture MIP level to the dst buffer. */
-  void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
-  void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
-  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
-  void copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions);
-  void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
+  void copy(VKBuffer &dst_buffer,
+            VKTexture &src_texture,
+            Span<VkBufferImageCopy> regions) override;
+  void copy(VKTexture &dst_texture,
+            VKBuffer &src_buffer,
+            Span<VkBufferImageCopy> regions) override;
+  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions) override;
+  void copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions) override;
+  void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions) override;
   void blit(VKTexture &dst_texture,
             VkImageLayout dst_layout,
             VKTexture &src_texture,
             VkImageLayout src_layout,
-            Span<VkImageBlit> regions);
+            Span<VkImageBlit> regions) override;
   void pipeline_barrier(VkPipelineStageFlags source_stages,
-                        VkPipelineStageFlags destination_stages);
-  void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers);
+                        VkPipelineStageFlags destination_stages) override;
+  void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers) override;
 
   /**
    * Clear color image resource.
@@ -185,7 +175,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void clear(VkImage vk_image,
              VkImageLayout vk_image_layout,
              const VkClearColorValue &vk_clear_color,
-             Span<VkImageSubresourceRange> ranges);
+             Span<VkImageSubresourceRange> ranges) override;
 
   /**
    * Clear depth/stencil aspect of an image resource.
@@ -193,41 +183,46 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void clear(VkImage vk_image,
              VkImageLayout vk_image_layout,
              const VkClearDepthStencilValue &vk_clear_color,
-             Span<VkImageSubresourceRange> ranges);
+             Span<VkImageSubresourceRange> ranges) override;
 
   /**
    * Clear attachments of the active framebuffer.
    */
-  void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
-  void fill(VKBuffer &buffer, uint32_t data);
+  void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas) override;
+  void fill(VKBuffer &buffer, uint32_t data) override;
 
-  void draw(int v_first, int v_count, int i_first, int i_count);
-  void draw_indexed(
-      int index_count, int instance_count, int first_index, int vertex_offset, int first_instance);
+  void draw(int v_first, int v_count, int i_first, int i_count) override;
+  void draw_indexed(int index_count,
+                    int instance_count,
+                    int first_index,
+                    int vertex_offset,
+                    int first_instance) override;
 
   void draw_indirect(const VKStorageBuffer &buffer,
                      VkDeviceSize offset,
                      uint32_t draw_count,
-                     uint32_t stride);
+                     uint32_t stride) override;
   void draw_indexed_indirect(const VKStorageBuffer &buffer,
                              VkDeviceSize offset,
                              uint32_t draw_count,
-                             uint32_t stride);
+                             uint32_t stride) override;
 
   /**
-   * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the
-   * commands have been executed and start the command buffer to accept recordings again.
+   * Receive the vulkan handle of the command buffer.
    */
-  void submit();
-
-  const VKSubmissionID &submission_id_get() const
+  VkCommandBuffer vk_command_buffer() const
   {
-    return submission_id_;
+    return vk_command_buffer_;
   }
 
- private:
-  void submit_commands();
+  bool has_recorded_commands() const
+  {
+    return state.recorded_command_counts != 0;
+  }
 
+  void commands_submitted();
+
+ private:
   /**
    * Validate that there isn't a framebuffer being tracked (bound or not bound).
    *
