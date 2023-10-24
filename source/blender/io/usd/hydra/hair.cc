@@ -2,19 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "curves.h"
-
-#include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/tokens.h>
 
-#include "BLI_string.h"
-
-#include "BKE_customdata.h"
+#include "BKE_particle.h"
 #include "BKE_material.h"
 
-#include "BKE_curves.hh"
-
-#include "DEG_depsgraph_query.hh"
+#include "DNA_particle_types.h"
 
 #include "hair.h"
 #include "hydra_scene_delegate.h"

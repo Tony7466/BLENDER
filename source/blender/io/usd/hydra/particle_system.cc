@@ -2,16 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <pxr/base/gf/vec2f.h>
-#include <pxr/imaging/hd/tokens.h>
+#include "BKE_particle.h"
 
-#include "BLI_string.h"
-
-#include "BKE_customdata.h"
-#include "BKE_material.h"
-
-#include "BKE_curves.hh"
-
+#include "DNA_particle_types.h"
 #include "DEG_depsgraph_query.hh"
 
 #include "particle_system.h"
@@ -98,18 +91,5 @@ bool ParticleSystemData::is_visible(HydraSceneDelegate *scene_delegate,
   return ObjectData::is_visible(scene_delegate, object) &&
          psys_check_enabled(object, particle_system, for_render);
 }
-
-pxr::VtValue ParticleSystemData::get_data(pxr::TfToken const & /*key*/) const
-{
-  return pxr::VtValue();
-}
-
-void ParticleSystemData::init() {}
-
-void ParticleSystemData::insert() {}
-
-void ParticleSystemData::remove() {}
-
-void ParticleSystemData::update() {}
 
 }  // namespace blender::io::hydra

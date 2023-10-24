@@ -7,15 +7,10 @@
 #include <pxr/base/vt/array.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
 
-#include "BLI_set.hh"
-
-#include "BKE_duplilist.h"
-#include "BKE_particle.h"
-
-#include "DNA_particle_types.h"
-
 #include "material.h"
 #include "particle_system.h"
+
+class ParticleSystem;
 
 namespace blender::io::hydra {
 

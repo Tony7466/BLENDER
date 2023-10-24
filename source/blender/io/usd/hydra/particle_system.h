@@ -4,18 +4,11 @@
 
 #pragma once
 
-#include <pxr/base/vt/array.h>
-#include <pxr/imaging/hd/sceneDelegate.h>
-
 #include "BLI_set.hh"
 
-#include "BKE_duplilist.h"
-#include "BKE_particle.h"
-
-#include "DNA_particle_types.h"
-
-#include "material.h"
 #include "object.h"
+
+class ParticleSystem;
 
 namespace blender::io::hydra {
 
@@ -35,12 +28,6 @@ class ParticleSystemData : public ObjectData {
                          Object *object,
                          ParticleSystem *particle_system,
                          int object_mode = OB_VISIBLE_SELF);
-
-  virtual pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  virtual void init() override;
-  virtual void insert() override;
-  virtual void remove() override;
-  virtual void update() override;
 };
 
 using ParticleSystemMap = Map<pxr::SdfPath, std::unique_ptr<ParticleSystemData>>;
