@@ -37,7 +37,7 @@ uint horizon_scan_bitmask_scan(vec3 vV,
                                ScreenSpaceRay ssray,
                                sampler2D depth_tx,
                                float search_distance,
-                               float thickness,
+                               float global_thickness,
                                inout vec3 accum_light,
                                const bool inverted,
                                const int sample_count)
@@ -70,7 +70,7 @@ uint horizon_scan_bitmask_scan(vec3 vV,
       sample_depth += bias;
 
       vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
-      vec3 vP_back = vP_front - thickness * vV;
+      vec3 vP_back = vP_front - global_thickness * vV;
 
       float dist_front, dist_back;
       vec3 vL_front = normalize_and_get_length(vP_front - vP, dist_front);
@@ -127,7 +127,7 @@ vec3 horizon_scan(vec3 vP,
                   vec2 noise,
                   vec2 pixel_size,
                   float search_distance,
-                  float thickness,
+                  float global_thickness,
                   const bool inverted,
                   const int sample_count)
 {
@@ -177,7 +177,7 @@ vec3 horizon_scan(vec3 vP,
                                                    ssray,
                                                    depth_tx,
                                                    search_distance,
-                                                   thickness,
+                                                   global_thickness,
                                                    light_slice,
                                                    inverted,
                                                    sample_count);
