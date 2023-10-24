@@ -159,7 +159,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "BLI_math_vector.h"
-#  include "BLI_string_utils.h"
+#  include "BLI_string_utils.hh"
 
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
@@ -1293,6 +1293,14 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 8.0f, 20.0f, 10.0f, 1);
   RNA_def_property_ui_text(prop, "Points", "Font size in points");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
+
+  prop = RNA_def_property(srna, "character_weight", PROP_INT, PROP_NONE);
+  RNA_def_property_int_default(prop, 400);
+  RNA_def_property_range(prop, 100.0f, 900.0f);
+  RNA_def_property_ui_range(prop, 100.0f, 900.0f, 50, 0);
+  RNA_def_property_ui_text(
+      prop, "Character Weight", "Weight of the characters. 100-900, 400 is normal");
+  RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 0, 5);
