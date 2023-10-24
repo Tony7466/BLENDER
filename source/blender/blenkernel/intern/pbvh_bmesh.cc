@@ -830,16 +830,12 @@ static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
  * priority. Always prefer to handle those edges first. Modifying those edges leads to no
  * distortion to the boundary.
  *
- * If an edge is boundary, then handle it after all non-boundary edges are handled. Splitting such
- * edges does not lead to boundary distortion. Collapsing such edges leads to minimal boundary
- * distortion.
+ * Edges which are adjacent to a boundary with one vertex are handled next, and the vertex which is
+ * on the boundary does not change position as part of the edge collapse algorithm.
  *
- * Once all of that is handled, handle edges which are adjacent to boundary. Modifying those edges
- * will likely lead to boundary distortion, so handle those last, only if absolutely necessary.
- *
- * TODO(@sergey): Is the order actually correct? Maybe for collapse, prefer handling of the
- * adjacent edges, and only collapse boundary edges if needed? Collapse of adjacent edges is done
- * in a way that does not distort boundary at all. */
+ * And last the boundary edges are handled. While subdivision of boundary edges does not change
+ * shape of the boundary, collapsing boundary edges distorts the boundary. Hence they are handled
+ * the last. */
 
 static float long_edge_queue_priority(const BMEdge &edge)
 {
@@ -850,12 +846,11 @@ static float short_edge_queue_priority(const BMEdge &edge)
 {
   float priority = BM_edge_calc_length_squared(&edge);
 
-  /* TODO(@sergey): Find better weighting strategy. Maybe multiplicative? */
   if (is_boundary_edge(edge)) {
-    priority += 500;
+    priority *= 1.5f;
   }
   else if (is_edge_adjacent_to_boundary(edge)) {
-    priority += 1000;
+    priority *= 1.25f;
   }
 
   return priority;
