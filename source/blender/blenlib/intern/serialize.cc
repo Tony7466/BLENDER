@@ -43,7 +43,7 @@ const BooleanValue *Value::as_boolean_value() const
 
 const EnumValue *Value::as_enum_value() const
 {
-  if (type_ != eValueType::Int) {
+  if (type_ != eValueType::Enum) {
     return nullptr;
   }
   return static_cast<const EnumValue *>(this);

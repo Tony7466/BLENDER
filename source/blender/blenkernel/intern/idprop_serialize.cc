@@ -799,6 +799,9 @@ static const IDPropertySerializer &serializer_for(StringRef idprop_typename)
   if (idprop_typename == IDP_PROPERTY_TYPENAME_DOUBLE) {
     return IDP_SERIALIZER_DOUBLE;
   }
+  if (idprop_typename == IDP_PROPERTY_TYPENAME_ENUM) {
+    return IDP_SERIALIZER_ENUM;
+  }
   if (idprop_typename == IDP_PROPERTY_TYPENAME_ARRAY) {
     return IDP_SERIALIZER_ARRAY;
   }

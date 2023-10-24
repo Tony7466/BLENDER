@@ -957,7 +957,7 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
       break;
     case IDP_ENUM:
       prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty enum"));
-      prop->data.val = bool(val->i);
+      prop->data.val = val->i;
       break;
     case IDP_ARRAY: {
       if (ELEM(val->array.type, IDP_FLOAT, IDP_INT, IDP_DOUBLE, IDP_GROUP, IDP_BOOLEAN)) {
