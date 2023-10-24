@@ -8,7 +8,7 @@
 
 #include "object.h"
 
-class ParticleSystem;
+struct ParticleSystem;
 
 namespace blender::io::hydra {
 

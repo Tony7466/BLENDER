@@ -4,10 +4,13 @@
 
 #include <pxr/imaging/hd/tokens.h>
 
+#include "BKE_customdata.h"
 #include "BKE_particle.h"
 #include "BKE_material.h"
 
 #include "DNA_particle_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_mesh_types.h"
 
 #include "hair.h"
 #include "hydra_scene_delegate.h"
@@ -28,6 +31,7 @@ void HairData::init()
   /* NOTE: no need to write_transform here, since we already write actual position. */
   write_hair();
   write_materials();
+  write_uv_maps();
 }
 
 void HairData::insert()
@@ -42,6 +46,7 @@ void HairData::remove()
   ID_LOG(1, "");
   curve_vertex_counts_.clear();
   vertices_.clear();
+  uvs_.clear();
   scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
@@ -80,6 +85,12 @@ pxr::VtValue HairData::get_data(pxr::TfToken const &key) const
   if (key == pxr::HdTokens->points) {
     return pxr::VtValue(vertices_);
   }
+  else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
+    return pxr::VtValue(uvs_);
+  }
+  else if (key == pxr::HdTokens->widths) {
+    return pxr::VtValue(widths_);
+  }
   return pxr::VtValue();
 }
 
@@ -109,6 +120,16 @@ pxr::HdPrimvarDescriptorVector HairData::primvar_descriptors(
       primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
     }
   }
+  else if (interpolation == pxr::HdInterpolationConstant) {
+    if (!widths_.empty()) {
+      primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
+    }
+    if (!uvs_.empty()) {
+      primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
+                            interpolation,
+                            pxr::HdPrimvarRoleTokens->textureCoordinate);
+    }    
+  }
   return primvars;
 }
 
@@ -129,11 +150,11 @@ void HairData::write_hair()
   if (cache == nullptr) {
     return;
   }
-  vertices_.clear();
   curve_vertex_counts_.clear();
+  vertices_.clear();  
 
-  vertices_.reserve(particle_system->totpart);
   curve_vertex_counts_.reserve(particle_system->totpart);
+  vertices_.reserve(particle_system->totpart);  
   ParticleCacheKey *strand;
   for (int strand_index = 0; strand_index < particle_system->totpart; ++strand_index) {
     strand = cache[strand_index];
@@ -145,6 +166,32 @@ void HairData::write_hair()
       vertices_.push_back(pxr::GfVec3f(strand->co));
     }
   }
+}
+
+void HairData::write_uv_maps() {
+  uvs_.clear();
+  uvs_.reserve(particle_system->totpart);
+
+  Object *object = (Object *)id;
+  ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system);
+  int num = ELEM(particle_system->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
+                particle_system->particles->num :
+                particle_system->particles->num_dmcache;
+
+  const MFace *mface = static_cast<const MFace *>(
+      CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE));
+  const MTFace *mtface = static_cast<const MTFace *>(
+      CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MTFACE));
+
+  float r_uv[2];
+  if (mface && mtface) {
+    mtface += num;
+    psys_interpolate_uvs(mtface, mface->v4, particle_system->particles->fuv, r_uv);
+  }
+  for (int i = 0; i < particle_system->totpart; i++) {
+    uvs_.push_back(pxr::GfVec2f(r_uv[0], r_uv[1]));
+  }
+
 }
 
 }  // namespace blender::io::hydra

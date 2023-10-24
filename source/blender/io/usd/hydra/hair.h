@@ -10,15 +10,16 @@
 #include "material.h"
 #include "particle_system.h"
 
-class ParticleSystem;
+struct ParticleSystem;
 
 namespace blender::io::hydra {
 
 class HairData : public ParticleSystemData {
-
  private:
   pxr::VtIntArray curve_vertex_counts_;
   pxr::VtVec3fArray vertices_;
+  pxr::VtVec2fArray uvs_;
+  pxr::VtFloatArray widths_ = pxr::VtFloatArray(1.0f);
 
   MaterialData *mat_data_ = nullptr;
 
@@ -46,6 +47,7 @@ class HairData : public ParticleSystemData {
 
  private:
   void write_hair();
+  void write_uv_maps();
 };
 
 }  // namespace blender::io::hydra
