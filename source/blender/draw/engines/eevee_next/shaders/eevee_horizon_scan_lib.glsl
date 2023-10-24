@@ -66,21 +66,23 @@ uint horizon_scan_bitmask_scan(vec3 vV,
       }
 
       /* Bias depth a bit to avoid self shadowing issues. */
-      const float bias = 25.0 * 2.4e-7;
-      sample_depth += sqrt(1.0 - square(vN.z)) * bias;
+      const float bias = 2.0 * 2.4e-7;
+      sample_depth += bias;
 
       vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
       vec3 vP_back = vP_front - thickness * vV;
+
+      if (distance(vP_front, vP) > search_distance) {
+        continue;
+      }
 
       float dist_front, dist_back;
       vec3 vL_front = normalize_and_get_length(vP_front - vP, dist_front);
       vec3 vL_back = normalize_and_get_length(vP_back - vP, dist_back);
 
-      /* Ordered pair of angle. Mininum in X, Maximum in Y. */
-      vec2 theta;
-      /* Front will always have the smallest angle here since it is the closest to the view. */
-      theta.x = acos_fast(dot(vL_front, vV));
-      theta.y = acos_fast(dot(vL_back, vV));
+      /* Ordered pair of angle. Mininum in X, Maximum in Y.
+       * Front will always have the smallest angle here since it is the closest to the view. */
+      vec2 theta = acos_fast(vec2(dot(vL_front, vV), dot(vL_back, vV)));
       /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
       theta = (i == 0) ? theta.xy : -theta.yx;
       theta -= angle_vN;
@@ -103,36 +105,34 @@ uint horizon_scan_bitmask_scan(vec3 vV,
   return slice_bitmask;
 }
 
-struct HorizonScanResult {
-  float visibility;
-  vec3 indirect_lighting;
-  vec3 bent_normal;
-};
-
-HorizonScanResult horizon_scan(vec3 vP,
-                               vec3 vN,
-                               sampler2D depth_tx,
-                               vec2 noise,
-                               vec2 pixel_size,
-                               float search_distance,
-                               float thickness,
-                               const bool inverted,
-                               const int sample_count)
+vec3 horizon_scan(vec3 vP,
+                  vec3 vN,
+                  sampler2D depth_tx,
+                  vec2 noise,
+                  vec2 pixel_size,
+                  float search_distance,
+                  float thickness,
+                  const bool inverted,
+                  const int sample_count)
 {
   vec3 vV = drw_view_incident_vector(vP);
+
+  /* NOTE(@fclem): This could help in some cases. But don't know how much useful it is right now.
+   * Also doesn't work at every distances. */
+#if 0
+  /* Bias to avoid self shadowing. */
+  vP = vP + vN * 0.02;
+#endif
 
   /* Only a quarter of a turn because we integrate using 2 slices.
    * We use this instead of using full circle noise to improve cache hits
    * since all tracing direction will be in the same quadrant. */
   vec2 v_dir = sample_circle(noise.x * 0.25);
 
-  float accum_visibility = 0.0;
+  vec3 accum_light = vec3(0.0);
   float accum_weight = 0.0;
-  vec3 accum_light = vec3(0);
-  vec3 accum_bent_normal = vec3(0);
 
-  const int slice_count = 2;
-  for (int i = 0; i < slice_count; i++) {
+  for (int i = 0; i < 2; i++) {
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
@@ -152,6 +152,7 @@ HorizonScanResult horizon_scan(vec3 vP,
 
     ScreenSpaceRay ssray = raytrace_screenspace_ray_create(ray, pixel_size);
 
+    vec3 light_slice = vec3(0.0);
     uint slice_bitmask = horizon_scan_bitmask_scan(vV,
                                                    vP,
                                                    vN,
@@ -161,23 +162,31 @@ HorizonScanResult horizon_scan(vec3 vP,
                                                    depth_tx,
                                                    search_distance,
                                                    thickness,
-                                                   accum_light,
+                                                   light_slice,
                                                    inverted,
                                                    sample_count);
 
     const int bitmask_len = 32;
-    float visibility = 1.0 - float(bitCount(slice_bitmask)) / float(bitmask_len);
+    /* Add distant lighting. */
+#if 0
+    /* Uniformly Weighted Occlusion. */
+    light_slice = vec3(1.0 - float(bitCount(slice_bitmask)) / float(bitmask_len));
+#else
+    /* Cosine Weighted Occlusion. */
+    for (int bit = 0; bit < bitmask_len; bit++, slice_bitmask >>= 1u) {
+      if ((slice_bitmask & 1u) == 0u) {
+        float angle = (((float(bit) + 0.5) / float(bitmask_len)) - 0.5) * M_PI;
+        /* Integrating over the hemisphere. */
+        light_slice += cos(angle) * M_PI_2 / float(bitmask_len);
+      }
+    }
+#endif
     /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-    accum_visibility += visibility * proj_vN_len;
+    accum_light += light_slice * proj_vN_len;
     accum_weight += proj_vN_len;
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);
   }
-
-  HorizonScanResult result;
-  result.visibility = accum_visibility * safe_rcp(accum_weight);
-  result.indirect_lighting = accum_light / float(slice_count);
-  result.bent_normal = accum_bent_normal / float(slice_count);
-  return result;
+  return accum_light * safe_rcp(accum_weight);
 }

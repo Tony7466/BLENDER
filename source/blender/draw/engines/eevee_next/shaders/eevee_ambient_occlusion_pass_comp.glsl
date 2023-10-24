@@ -30,17 +30,20 @@ void main()
   vec2 noise = interlieved_gradient_noise(
       vec2(texel), vec2(1, 3), sampling_rng_2D_get(SAMPLING_AO_U));
 
-  HorizonScanResult result = horizon_scan(surf.vP,
-                                          vN,
-                                          hiz_tx,
-                                          noise,
-                                          uniform_buf.ao.pixel_size,
-                                          uniform_buf.ao.distance,
-                                          uniform_buf.ao.thickness,
-                                          false,
-                                          8);
-  /* Scale result a bit to cleanup some float imprecision. */
-  float visibility = saturate(1.01 * result.visibility);
+  vec3 ambient_occlusion = horizon_scan(surf.vP,
+                                        vN,
+                                        hiz_tx,
+                                        noise,
+                                        uniform_buf.ao.pixel_size,
+                                        uniform_buf.ao.distance,
+                                        uniform_buf.ao.thickness,
+                                        false,
+                                        8);
 
-  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(visibility));
+  /* We can have some float imprecision because of the weighted accumulation. */
+  if (ambient_occlusion.r >= 0.95) {
+    ambient_occlusion = vec3(1.0);
+  }
+
+  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), saturate(ambient_occlusion.rrrr));
 }
