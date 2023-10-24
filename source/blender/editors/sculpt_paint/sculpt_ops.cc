@@ -1446,7 +1446,7 @@ static int repeat_last_rel_invoke(bContext *C, wmOperator * /*op*/, const wmEven
   RNA_END;
 
   WM_operator_free_all_after(wm, lastop);
-  WM_operator_repeat_clone(C, lastop, &props_ptr);
+  WM_operator_clone_and_repeat(C, lastop, &props_ptr);
 
   IDP_FreeProperty(properties);
 

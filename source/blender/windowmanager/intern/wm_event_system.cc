@@ -1338,7 +1338,7 @@ int WM_operator_repeat_last(bContext *C, wmOperator *op)
   op->flag &= ~op_flag;
   return ret;
 }
-int WM_operator_repeat_clone(bContext *C, wmOperator *op, PointerRNA *properties)
+int WM_operator_clone_and_repeat(bContext *C, wmOperator *op, PointerRNA *properties)
 {
   return wm_operator_invoke(C,
                             op->type,
