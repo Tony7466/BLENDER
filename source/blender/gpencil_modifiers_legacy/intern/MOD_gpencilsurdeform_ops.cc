@@ -1417,7 +1417,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   current_stroke->stroke_verts_num = verts_num;
   current_stroke->verts = static_cast<SDefGPVert *>(
       MEM_calloc_arrayN(verts_num, sizeof(*current_stroke->verts), "SDefBindVerts"));
-  char error_label[128];
+  char *error_label;
   uint framenum = smd_orig->layers->frames->frame_number;
   const blender::Span<int> corner_verts = target->corner_verts();
   const blender::Span<int> corner_edges = target->corner_edges();
@@ -1487,7 +1487,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
 
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n Out of memory",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1495,7 +1495,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
     
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n Target has edges with more than two polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1503,7 +1503,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
    
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n Target contains concave polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1511,7 +1511,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n Target contains overlapping vertices",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1522,7 +1522,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
      * to explain this with a reasonably sized message.
      * Though it shouldn't really matter all that much,
      * because this is very unlikely to occur */
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n Target contains invalid polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1530,7 +1530,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   }
   else if (current_stroke->stroke_verts_num == 0 || !current_stroke->verts) {
     data.success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-    BLI_sprintfN(error_label,
+    error_label = BLI_sprintfN(
                 "Layer: %s Frame: %u Stroke: %u \n No vertices were bound",
                 smd_orig->layers->layer_info,
                 framenum,

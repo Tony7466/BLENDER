@@ -896,7 +896,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
-  char label[128];
+  char *label;
 
   PointerRNA op_ptr_all;
   PointerRNA op_ptr_curr;
@@ -982,7 +982,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     for (int l = 0; l < smd->num_of_layers; l++)
     {
       row = uiLayoutRow(col, true);
-      BLI_sprintfN(label,
+      label = BLI_sprintfN(
                   "Layer %s, Number of bound frames: %u",
                   smd->layers[l].layer_info, smd->layers[l].num_of_frames);
       uiItemL(row, label, ICON_INFO);
