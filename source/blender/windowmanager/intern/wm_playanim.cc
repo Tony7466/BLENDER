@@ -547,76 +547,66 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
   eGPUTextureFormat format;
   eGPUDataFormat data;
   bool glsl_used = false;
+  GPUVertFormat *imm_format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(imm_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint texCoord = GPU_vertformat_attr_add(
+      imm_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   void *buffer_cache_handle = nullptr;
   void *display_buffer = ocio_transform_ibuf(
       display_ctx, ibuf, &glsl_used, &format, &data, &buffer_cache_handle);
 
+  /* NOTE: This may fail, especially for large images that exceed the GPU's texture size limit.
+   * Large images could be supported although this isn't so common for animation playback. */
   GPUTexture *texture = GPU_texture_create_2d(
       "display_buf", ibuf->x, ibuf->y, 1, format, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
 
-  /* NOTE: This may fail, especially for large images that exceed the GPU's texture size limit.
-   * Large images could be supported although this isn't so common for animation playback. */
-  if (texture != nullptr) {
-    GPUVertFormat *imm_format = immVertexFormat();
-    const uint pos = GPU_vertformat_attr_add(imm_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    const uint texCoord = GPU_vertformat_attr_add(
-        imm_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
+  if (texture) {
     GPU_texture_update(texture, data, display_buffer);
     GPU_texture_filter_mode(texture, false);
 
     GPU_texture_bind(texture, 0);
-
-    if (!glsl_used) {
-      immBindBuiltinProgram(GPU_SHADER_3D_IMAGE_COLOR);
-      immUniformColor3f(1.0f, 1.0f, 1.0f);
-    }
-
-    immBegin(GPU_PRIM_TRI_FAN, 4);
-
-    rctf preview;
-    BLI_rctf_init(&preview, 0.0f, 1.0f, 0.0f, 1.0f);
-    if (draw_flip) {
-      if (draw_flip[0]) {
-        SWAP(float, preview.xmin, preview.xmax);
-      }
-      if (draw_flip[1]) {
-        SWAP(float, preview.ymin, preview.ymax);
-      }
-    }
-
-    immAttr2f(texCoord, preview.xmin, preview.ymin);
-    immVertex2f(pos, canvas->xmin, canvas->ymin);
-
-    immAttr2f(texCoord, preview.xmin, preview.ymax);
-    immVertex2f(pos, canvas->xmin, canvas->ymax);
-
-    immAttr2f(texCoord, preview.xmax, preview.ymax);
-    immVertex2f(pos, canvas->xmax, canvas->ymax);
-
-    immAttr2f(texCoord, preview.xmax, preview.ymin);
-    immVertex2f(pos, canvas->xmax, canvas->ymin);
-
-    immEnd();
-
-    GPU_texture_unbind(texture);
-    GPU_texture_free(texture);
-  }
-  else {
-    /* Show a pink square, to show the texture failed to load. */
-    GPUVertFormat *imm_format = immVertexFormat();
-    const uint pos = GPU_vertformat_attr_add(imm_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformColor3f(1.0f, 0.0f, 1.0f);
-    immRectf(pos, canvas->xmin, canvas->ymin, canvas->xmax, canvas->ymax);
-    immUnbindProgram();
   }
 
   if (!glsl_used) {
-    if (texture != nullptr) {
-      immUnbindProgram();
+    immBindBuiltinProgram(GPU_SHADER_3D_IMAGE_COLOR);
+    immUniformColor3f(1.0f, 1.0f, 1.0f);
+  }
+
+  immBegin(GPU_PRIM_TRI_FAN, 4);
+
+  rctf preview;
+  BLI_rctf_init(&preview, 0.0f, 1.0f, 0.0f, 1.0f);
+  if (draw_flip) {
+    if (draw_flip[0]) {
+      SWAP(float, preview.xmin, preview.xmax);
     }
+    if (draw_flip[1]) {
+      SWAP(float, preview.ymin, preview.ymax);
+    }
+  }
+
+  immAttr2f(texCoord, preview.xmin, preview.ymin);
+  immVertex2f(pos, canvas->xmin, canvas->ymin);
+
+  immAttr2f(texCoord, preview.xmin, preview.ymax);
+  immVertex2f(pos, canvas->xmin, canvas->ymax);
+
+  immAttr2f(texCoord, preview.xmax, preview.ymax);
+  immVertex2f(pos, canvas->xmax, canvas->ymax);
+
+  immAttr2f(texCoord, preview.xmax, preview.ymin);
+  immVertex2f(pos, canvas->xmax, canvas->ymin);
+
+  immEnd();
+
+  if (texture) {
+    GPU_texture_unbind(texture);
+    GPU_texture_free(texture);
+  }
+
+  if (!glsl_used) {
+    immUnbindProgram();
   }
   else {
     IMB_colormanagement_finish_glsl_draw();
@@ -760,7 +750,7 @@ static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
   const bool *draw_flip = nullptr;
 
   playanim_toscreen_ex(
-      ghost_window, display_ctx, picture, ibuf, fstep, font_id, zoom, draw_flip, indicator_factor);
+      ghost_window, display_ctx, picture, ibuf, font_id, fstep, zoom, draw_flip, indicator_factor);
 }
 
 static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf *ibuf)
@@ -1050,6 +1040,34 @@ static void change_frame(PlayState *ps)
   ps->need_frame_update = false;
 }
 
+static void playanim_audio_resume(PlayState *ps)
+{
+#ifdef WITH_AUDASPACE
+  /* TODO: store in ps direct? */
+  const int i = BLI_findindex(&picsbase, ps->picture);
+  if (playback_handle) {
+    AUD_Handle_stop(playback_handle);
+  }
+  playback_handle = AUD_Device_play(audio_device, source, 1);
+  if (playback_handle) {
+    AUD_Handle_setPosition(playback_handle, i / fps_movie);
+  }
+  update_sound_fps();
+#else
+  UNUSED_VARS(ps);
+#endif
+}
+
+static void playanim_audio_stop(PlayState * /*ps*/)
+{
+#ifdef WITH_AUDASPACE
+  if (playback_handle) {
+    AUD_Handle_stop(playback_handle);
+    playback_handle = nullptr;
+  }
+#endif
+}
+
 static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 {
   PlayState *ps = (PlayState *)ps_void;
@@ -1195,6 +1213,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             ps->sstep = true;
             ps->wait2 = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->picture = static_cast<PlayAnimPict *>(picsbase.first);
               ps->next_frame = 0;
@@ -1207,6 +1227,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         case GHOST_kKeyDownArrow:
           if (val) {
             ps->wait2 = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->next_frame = ps->direction = -1;
             }
@@ -1220,6 +1242,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             ps->sstep = true;
             ps->wait2 = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->picture = static_cast<PlayAnimPict *>(picsbase.last);
               ps->next_frame = 0;
@@ -1232,12 +1256,17 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         case GHOST_kKeyUpArrow:
           if (val) {
             ps->wait2 = false;
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->next_frame = ps->direction = 1;
+              if (ps->sstep == false) {
+                playanim_audio_resume(ps);
+              }
             }
             else {
               ps->next_frame = 10;
               ps->sstep = true;
+              playanim_audio_stop(ps);
             }
           }
           break;
@@ -1276,36 +1305,12 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             if (ps->wait2 || ps->sstep) {
               ps->wait2 = ps->sstep = false;
-#ifdef WITH_AUDASPACE
-              {
-                PlayAnimPict *picture = static_cast<PlayAnimPict *>(picsbase.first);
-                /* TODO: store in ps direct? */
-                int i = 0;
-
-                while (picture && picture != ps->picture) {
-                  i++;
-                  picture = picture->next;
-                }
-                if (playback_handle) {
-                  AUD_Handle_stop(playback_handle);
-                }
-                playback_handle = AUD_Device_play(audio_device, source, 1);
-                if (playback_handle) {
-                  AUD_Handle_setPosition(playback_handle, i / fps_movie);
-                }
-                update_sound_fps();
-              }
-#endif
+              playanim_audio_resume(ps);
             }
             else {
               ps->sstep = true;
               ps->wait2 = true;
-#ifdef WITH_AUDASPACE
-              if (playback_handle) {
-                AUD_Handle_stop(playback_handle);
-                playback_handle = nullptr;
-              }
-#endif
+              playanim_audio_stop(ps);
             }
           }
           break;
@@ -1313,25 +1318,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         case GHOST_kKeyNumpadEnter:
           if (val) {
             ps->wait2 = ps->sstep = false;
-#ifdef WITH_AUDASPACE
-            {
-              PlayAnimPict *picture = static_cast<PlayAnimPict *>(picsbase.first);
-              /* TODO: store in ps direct? */
-              int i = 0;
-              while (picture && picture != ps->picture) {
-                i++;
-                picture = picture->next;
-              }
-              if (playback_handle) {
-                AUD_Handle_stop(playback_handle);
-              }
-              playback_handle = AUD_Device_play(audio_device, source, 1);
-              if (playback_handle) {
-                AUD_Handle_setPosition(playback_handle, i / fps_movie);
-              }
-              update_sound_fps();
-            }
-#endif
+            playanim_audio_resume(ps);
           }
           break;
         case GHOST_kKeyPeriod:
@@ -1343,12 +1330,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             else {
               ps->sstep = true;
               ps->wait2 = !ps->wait2;
-#ifdef WITH_AUDASPACE
-              if (playback_handle) {
-                AUD_Handle_stop(playback_handle);
-                playback_handle = nullptr;
-              }
-#endif
+              playanim_audio_stop(ps);
             }
           }
           break;

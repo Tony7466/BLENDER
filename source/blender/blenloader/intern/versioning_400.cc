@@ -311,6 +311,10 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
+    BKE_mesh_legacy_face_map_to_generic(bmain);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -845,8 +849,8 @@ static void version_principled_bsdf_specular_tint(bNodeTree *ntree)
 
     static float one[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    /* If any of the two inputs is dynamic, we add a Mix node. */
-    if (base_color_sock->link || specular_tint_sock->link) {
+    /* Add a mix node when working with dynamic inputs. */
+    if (specular_tint_sock->link || (base_color_sock->link && specular_tint_old != 0)) {
       bNode *mix = nodeAddStaticNode(nullptr, ntree, SH_NODE_MIX);
       static_cast<NodeShaderMix *>(mix->storage)->data_type = SOCK_RGBA;
       mix->locx = node->locx - 170;
@@ -887,7 +891,7 @@ static void version_copy_socket(bNodeTreeInterfaceSocket &dst,
                                 char *identifier)
 {
   /* Node socket copy function based on bNodeTreeInterface::item_copy to avoid using blenkernel. */
-  dst.name = BLI_strdup(src.name);
+  dst.name = BLI_strdup_null(src.name);
   dst.description = BLI_strdup_null(src.description);
   dst.socket_type = BLI_strdup(src.socket_type);
   dst.default_attribute_name = BLI_strdup_null(src.default_attribute_name);
@@ -1089,17 +1093,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
-        ts->snap_mode &= ~SCE_SNAP_TO_FACE;
-        ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
+        ts->snap_mode &= ~(1 << 2); /* SCE_SNAP_TO_FACE */
+        ts->snap_mode |= (1 << 8);  /* SCE_SNAP_INDIVIDUAL_PROJECT */
       }
 #undef SCE_SNAP_PROJECT
     }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 6)) {
-    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      BKE_mesh_legacy_face_map_to_generic(mesh);
-    }
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_replace_legacy_glossy_node(ntree);
       versioning_remove_microfacet_sharp_distribution(ntree);
@@ -1388,7 +1389,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->snap_flag_anim |= SCE_SNAP;
-      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+      scene->toolsettings->snap_anim_mode |= (1 << 10); /* SCE_SNAP_TO_FRAME */
     }
   }
 
@@ -1640,10 +1641,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           snap_to_new |= SCE_SNAP_TO_GRID;
         }
         if (type == IS_DEFAULT && snap_to_old & (1 << 8)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
+          snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
         }
         if (type == IS_DEFAULT && snap_to_old & (1 << 9)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
+          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
         }
         if (snap_to_old & (1 << 10)) {
           snap_to_new |= SCE_SNAP_TO_FRAME;
