@@ -13,36 +13,38 @@
 
 #include "BLI_string.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines.h"
 #include "BLI_task.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_object.h"
+//#include "BKE_object.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 #include "BKE_bvhutils.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_report.h"
 
 #include "MOD_gpencil_legacy_util.h"
 
-#include "DEG_depsgraph_query.h"
-#include "ED_object.h"
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "WM_api.h"
-#include "UI_interface.h"
+#include "DEG_depsgraph_query.hh"
+//#include "ED_object.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "WM_api.hh"
+#include "UI_interface.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -140,7 +142,7 @@ typedef struct SDefBindCalcData {
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_polys;
+  blender::Span<int> looptri_faces;
 
   /** Coordinates to bind to, transformed into local space (compatible with `vertexCos`). */
   float (* targetCos)[3];
@@ -423,10 +425,10 @@ BLI_INLINE uint nearestVert(SDefBindCalcData *const data, const float point_co[3
   BLI_bvhtree_find_nearest(
       data->treeData->tree, t_point, &nearest, data->treeData->nearest_callback, data->treeData);
 
-  const blender::IndexRange poly = data->polys[data->looptri_polys[nearest.index]];
+  const blender::IndexRange face = data->polys[data->looptri_faces[nearest.index]];
 
-  for (int i = 0; i < poly.size(); i++) {
-    const int edge_i = data->corner_edges[poly.start() + i];
+  for (int i = 0; i < face.size(); i++) {
+    const int edge_i = data->corner_edges[face.start() + i];
     const blender::int2 &edge = data->edges[edge_i];
     dist = dist_squared_to_line_segment_v3(
         point_co, data->targetCos[edge[0]], data->targetCos[edge[1]]);
@@ -1451,7 +1453,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   data.corner_verts = corner_verts;
   data.corner_edges = corner_edges;
   data.looptris = target->looptris();
-  data.looptri_polys = target->looptri_polys();
+  data.looptri_faces = target->looptri_faces();
   data.targetCos = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetBindVertArray"));
   data.current_stroke = current_stroke;
