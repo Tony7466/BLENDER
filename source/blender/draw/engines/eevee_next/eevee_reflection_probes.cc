@@ -351,7 +351,7 @@ void ReflectionProbeModule::end_sync()
     if (world_updated && !only_world) {
       update_probes_next_sample_ = true;
     }
-    if (update_probes_next_sample_) {
+    if (update_probes_next_sample_ && !update_probes_this_sample_) {
       DRW_viewport_request_redraw();
     }
 
