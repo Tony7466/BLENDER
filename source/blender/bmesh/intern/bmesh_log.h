@@ -45,24 +45,6 @@ struct BMLogEntry;
 struct BMVert;
 struct CustomData;
 
-struct BMLogCallbacks {
-  void (*on_vert_add)(BMVert *v, void *userdata);
-  void (*on_vert_kill)(BMVert *v, void *userdata);
-  void (*on_vert_change)(BMVert *v, void *userdata, void *old_customdata);
-
-  void (*on_edge_add)(BMEdge *e, void *userdata);
-  void (*on_edge_kill)(BMEdge *e, void *userdata);
-  void (*on_edge_change)(BMEdge *e, void *userdata, void *old_customdata);
-
-  void (*on_face_add)(BMFace *f, void *userdata);
-  void (*on_face_kill)(BMFace *f, void *userdata);
-  void (*on_face_change)(BMFace *f, void *userdata, void *old_customdata, char old_hflag);
-
-  void (*on_full_mesh_load)(void *userdata);
-  void (*on_mesh_customdata_change)(CustomData *domain, char htype, void *userdata);
-  void *userdata;
-};
-
 /* Allocate and initialize a new BMLog */
 BMLog *BM_log_create(BMesh *bm);
 

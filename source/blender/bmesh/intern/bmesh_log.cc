@@ -84,7 +84,7 @@ static bool customdata_layout_is_same(const CustomData *data_a, const CustomData
 /* Copies all customdata layers without allocating data
  * and without respect to type masks or NO_COPY/etc flags.
  */
-static void customdata_copy_all_layout(const struct CustomData *source, struct CustomData *dest)
+static void customdata_copy_all_layout(const CustomData *source, CustomData *dest)
 {
   *dest = *source;
   dest->external = nullptr;
@@ -242,6 +242,8 @@ struct BMLogSetDiff : public BMLogSetBase {
 };
 
 struct BMLogSetFullMesh : public BMLogSetBase {
+  Mesh *mesh = nullptr;
+
   BMLogSetFullMesh(BMesh *bm, BMLogEntry *entry, BMIdMap *idmap)
       : BMLogSetBase(entry, BMLogSetType::LOG_SET_FULL)
   {
@@ -298,11 +300,13 @@ struct BMLogSetFullMesh : public BMLogSetBase {
 
     bm->shapenr = shapenr;
 
+#if 0
     bm->elem_index_dirty |= BM_VERT | BM_EDGE | BM_FACE;
     bm->elem_table_dirty |= BM_VERT | BM_EDGE | BM_FACE;
 
     BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
     BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+#endif
 
     if (current_mesh) {
       BKE_mesh_free_data_for_undo(mesh);
@@ -320,8 +324,6 @@ struct BMLogSetFullMesh : public BMLogSetBase {
   {
     swap(bm);
   }
-
-  Mesh *mesh = nullptr;
 };
 
 static const char *get_elem_htype_str(int htype)
@@ -335,9 +337,10 @@ static const char *get_elem_htype_str(int htype)
       return "loop";
     case BM_FACE:
       return "face";
-    default:
-      return "unknown type";
   }
+
+  BLI_assert_unreachable();
+  return "unknown type";
 }
 
 template<typename T> constexpr char get_elem_type()
@@ -379,10 +382,10 @@ struct BMLogEntry {
   bool cd_layout_changed = false;
 
   BMLogEntry(BMIdMap *_idmap,
-             CustomData *src_vdata,
-             CustomData *src_edata,
-             CustomData *src_ldata,
-             CustomData *src_pdata)
+             const CustomData *src_vdata,
+             const CustomData *src_edata,
+             const CustomData *src_ldata,
+             const CustomData *src_pdata)
       : idmap(_idmap)
   {
     vpool = BLI_mempool_create(sizeof(BMLogVert), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
@@ -475,46 +478,6 @@ struct BMLogEntry {
     CustomData_free(&edata, 0);
     CustomData_free(&ldata, 0);
     CustomData_free(&pdata, 0);
-  }
-
-  void print()
-  {
-    int av = 0, ae = 0, af = 0, mv = 0, me = 0, mf = 0, dv = 0, de = 0, df = 0;
-    int totmesh = 0;
-
-    for (std::unique_ptr<BMLogSetBase> &set : sets) {
-      switch (set->type) {
-        case BMLogSetType::LOG_SET_DIFF: {
-          BMLogSetDiff *diff = static_cast<BMLogSetDiff *>(set.get());
-
-          av += diff->added_verts.size();
-          ae += diff->added_edges.size();
-          af += diff->added_faces.size();
-
-          mv += diff->modified_verts.size();
-          me += diff->modified_edges.size();
-          mf += diff->modified_faces.size();
-
-          dv += diff->removed_verts.size();
-          de += diff->removed_edges.size();
-          df += diff->removed_faces.size();
-          break;
-        }
-        case BMLogSetType::LOG_SET_FULL:
-          totmesh++;
-          break;
-      }
-    }
-
-    if (av + ae + af + mv + me + mf + dv + de + df) {
-      printf("\n  addv: %d, adde: %d, addf: %d\n", av, ae, af);
-      printf("  modv: %d, mode: %d, modf: %d\n", mv, me, mf);
-      printf("  delv: %d, dele: %d, delf: %d\n", dv, de, df);
-    }
-
-    if (totmesh > 0) {
-      printf("  totmesh: %d\n", totmesh);
-    }
   }
 
   template<typename T> T *get_elem_from_id(int id)
@@ -1554,8 +1517,8 @@ BMLogEntry *BM_log_entry_check_customdata(BMesh *bm, BMLog *log)
     return BM_log_entry_add(bm, log);
   }
 
-  CustomData *cd1[4] = {&bm->vdata, &bm->edata, &bm->ldata, &bm->pdata};
-  CustomData *cd2[4] = {&entry->vdata, &entry->edata, &entry->ldata, &entry->pdata};
+  const CustomData *cd1[4] = {&bm->vdata, &bm->edata, &bm->ldata, &bm->pdata};
+  const CustomData *cd2[4] = {&entry->vdata, &entry->edata, &entry->ldata, &entry->pdata};
 
   for (int i = 0; i < 4; i++) {
     if (!customdata_layout_is_same(cd1[i], cd2[i])) {
@@ -1689,7 +1652,6 @@ bool BM_log_entry_drop(BMLogEntry *entry)
 void BM_log_print_entry(BMLogEntry *entry)
 {
   printf("BMLogEntry: %p", entry);
-  entry->print();
   printf("\n");
 }
 
