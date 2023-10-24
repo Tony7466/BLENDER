@@ -1338,10 +1338,15 @@ int WM_operator_repeat_last(bContext *C, wmOperator *op)
   op->flag &= ~op_flag;
   return ret;
 }
-int WM_operator_repeat_clone(bContext *C, wmOperator *op)
+int WM_operator_repeat_clone(bContext *C, wmOperator *op, PointerRNA *properties)
 {
-  return wm_operator_invoke(
-      C, op->type, nullptr, op->ptr, nullptr, false, op->flag & OPTYPE_REGISTER);
+  return wm_operator_invoke(C,
+                            op->type,
+                            nullptr,
+                            properties ? properties : op->ptr,
+                            nullptr,
+                            false,
+                            op->flag & OPTYPE_REGISTER);
 }
 bool WM_operator_repeat_check(const bContext * /*C*/, wmOperator *op)
 {

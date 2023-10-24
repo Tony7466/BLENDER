@@ -32,6 +32,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
@@ -1423,9 +1424,13 @@ static int repeat_last_rel_invoke(bContext *C, wmOperator * /*op*/, const wmEven
   float3 cent_old;
   float3 cent_new = sgi.location;
 
+  /* Copy operator properties. */
+  IDProperty *properties = IDP_CopyProperty(lastop->properties);
+  PointerRNA props_ptr = RNA_pointer_create(&CTX_wm_manager(C)->id, lastop->type->srna, static_cast<void *>(properties));
+
   /* Offset. */
   int i = 0;
-  RNA_BEGIN (lastop->ptr, itemptr, "stroke") {
+  RNA_BEGIN (&props_ptr, itemptr, "stroke") {
     float3 co;
     RNA_float_get_array(&itemptr, "location", co);
 
@@ -1441,7 +1446,9 @@ static int repeat_last_rel_invoke(bContext *C, wmOperator * /*op*/, const wmEven
   RNA_END;
 
   WM_operator_free_all_after(wm, lastop);
-  WM_operator_repeat_clone(C, lastop);
+  WM_operator_repeat_clone(C, lastop, &props_ptr);
+
+  IDP_FreeProperty(properties);
 
   return OPERATOR_CANCELLED;
 }
