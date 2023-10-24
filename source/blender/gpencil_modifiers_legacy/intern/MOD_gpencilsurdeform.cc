@@ -546,7 +546,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   //SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
   
   Mesh *target;
-  uint target_verts_num, target_polys_num;
+  uint target_verts_num, target_faces_num;
   uint verts_num = gps->totpoints;
   uint strokes_num = BLI_listbase_count(&gpf->strokes);
   SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
@@ -663,6 +663,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
   target_verts_num = BKE_mesh_wrapper_vert_len(target);
+  target_faces_num = BKE_mesh_wrapper_face_len(target);
 
   if (!smd->layers)
   {return;}
@@ -707,12 +708,12 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   } 
 
   /* Geometry count on the target mesh. */
-  if (smd->target_polys_num != target_polys_num && smd->target_verts_num == 0) {
+  if (smd->target_polys_num != target_faces_num && smd->target_verts_num == 0) {
     /* Change in the number of polygons does not really imply change in the vertex count, but
      * this is how the modifier worked before the vertex count was known. Follow the legacy
      * logic without requirement to re-bind the mesh. */
     BKE_gpencil_modifier_set_error(
-        md_orig, "Target polygons changed from %u to %u", smd->target_polys_num, target_polys_num);
+        md_orig, "Target polygons changed from %u to %u", smd->target_polys_num, target_faces_num);
     return;
   }
   if (smd->target_verts_num != 0 && smd->target_verts_num != target_verts_num) {
