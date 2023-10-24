@@ -1679,18 +1679,19 @@ static void pbvh_bmesh_collapse_edge(
     }
   }
 
-  /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it may have been
-   * deleted above).
+  /* If the v_conn was not removed above move it to the midpoint of v_conn and v_del. Doing so
+   *  helps avoiding long stretched and degenerated triangles.
    *
-   * If the vertex is on a boundary, do not move it, to preserve the shape of the boundary.
-   *
-   * TODO(@sergey): Explain why we need to move the vertex at all. */
+   * However, if the vertex is on a boundary, do not move it to preserve the shape of the
+   * boundary. */
   if (v_conn != nullptr && !is_boundary_vert(*v_conn)) {
     BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
     add_v3_v3(v_conn->no, v_del->no);
     normalize_v3(v_conn->no);
+  }
 
+  if (v_conn != nullptr) {
     /* Update bounding boxes attached to the connected vertex.
      * Note that we can often get-away without this but causes #48779. */
     BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_conn) {
