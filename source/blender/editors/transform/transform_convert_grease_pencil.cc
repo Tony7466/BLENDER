@@ -27,7 +27,6 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
   Scene *scene = CTX_data_scene(C);
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
   IndexMaskMemory memory;
-  Array<IndexMask> selection_per_layer_per_object(t->data_container_len);
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
   int layer_offset = 0;
@@ -45,9 +44,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
             tc.data_len += curves.point_num;
           }
           else {
-            selection_per_layer_per_object[i + layer_offset] =
-                ed::curves::retrieve_selected_points(curves, memory);
-            tc.data_len += selection_per_layer_per_object[i + layer_offset].size();
+            tc.data_len += ed::curves::retrieve_selected_points(curves, memory).size();
           }
 
           layer_offset++;
@@ -79,7 +76,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         scene->r.cfra, [&](int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
-          const IndexMask selected_indices = selection_per_layer_per_object[i + layer_offset];
+          const IndexMask selected_indices = ed::curves::retrieve_selected_points(curves, memory);
 
           std::optional<MutableSpan<float>> value_attribute;
 
