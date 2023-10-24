@@ -600,7 +600,7 @@ class OutputFileOperation : public NodeOperation {
          * can be interpreted as luminance and Z Depth channels respectively, which can cause
          * issues like undesired lossy compression of data passes. Further, lower case rgba seems
          * to be more portable when sharing saved files with other software. Also note that this
-         * pass can be saved as 3D or 4D depending on the format option that the user chose. Where
+         * pass can be saved as 3D or 4D depending on the format option that the user chose, where
          * the fourth component will be ignored for the 3D case. */
         file_output.add_pass(pass_name, view_name, "rgba", buffer);
         break;
