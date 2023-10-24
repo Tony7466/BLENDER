@@ -616,64 +616,6 @@ blender::Vector<float> ANIM_setting_get_rna_values(PointerRNA *ptr, PropertyRNA 
   return values;
 }
 
-/* Values are casted to float since that is what the animation system deals with. */
-static void get_rna_values(PointerRNA *ptr, PropertyRNA *prop, blender::Vector<float> &values)
-{
-  if (RNA_property_array_check(prop)) {
-    const int length = RNA_property_array_length(ptr, prop);
-
-    switch (RNA_property_type(prop)) {
-      case PROP_BOOLEAN: {
-        bool *tmp_bool = static_cast<bool *>(MEM_malloc_arrayN(length, sizeof(bool), __func__));
-        RNA_property_boolean_get_array(ptr, prop, tmp_bool);
-        for (int i = 0; i < length; i++) {
-          values.append(float(tmp_bool[i]));
-        }
-        MEM_freeN(tmp_bool);
-        break;
-      }
-      case PROP_INT: {
-        int *tmp_int = static_cast<int *>(MEM_malloc_arrayN(length, sizeof(int), __func__));
-        RNA_property_int_get_array(ptr, prop, tmp_int);
-        for (int i = 0; i < length; i++) {
-          values.append(float(tmp_int[i]));
-        }
-        MEM_freeN(tmp_int);
-        break;
-      }
-      case PROP_FLOAT: {
-        float *tmp_float = static_cast<float *>(
-            MEM_malloc_arrayN(length, sizeof(float), __func__));
-        RNA_property_float_get_array(ptr, prop, tmp_float);
-        for (int i = 0; i < length; i++) {
-          values.append(tmp_float[i]);
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  else {
-    switch (RNA_property_type(prop)) {
-      case PROP_BOOLEAN:
-        values.append(float(RNA_property_boolean_get(ptr, prop)));
-        break;
-      case PROP_INT:
-        values.append(float(RNA_property_int_get(ptr, prop)));
-        break;
-      case PROP_FLOAT:
-        values.append(RNA_property_float_get(ptr, prop));
-        break;
-      case PROP_ENUM:
-        values.append(float(RNA_property_enum_get(ptr, prop)));
-        break;
-      default:
-        break;
-    }
-  }
-}
-
 /* ------------------------- Insert Key API ------------------------- */
 
 void ED_keyframes_add(FCurve *fcu, int num_keys_to_add)
@@ -868,8 +810,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
       continue;
     }
     std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
-    Vector<float> rna_values;
-    get_rna_values(&ptr, prop, rna_values);
+    Vector<float> rna_values = ANIM_setting_get_rna_values(&ptr, prop);
 
     const int inserted_keys = animrig::insert_key_action(
         action, rna_pointer, rna_path_id_to_prop, scene_frame, rna_values.as_span());
