@@ -54,7 +54,7 @@ static void fill_mesh_topology(const int vert_offset,
       edge[1] = vert_offset + i + 1;
     }
 
-    if (main_cyclic && main_segment_num > ) {
+    if (main_cyclic && main_segment_num > 2) {
       int2 &edge = edges[edge_offset + main_segment_num - 1];
       edge[0] = vert_offset + main_point_num - 1;
       edge[1] = vert_offset;
