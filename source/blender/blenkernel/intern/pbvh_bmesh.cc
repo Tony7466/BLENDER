@@ -1284,7 +1284,7 @@ static bool pbvh_bmesh_subdivide_long_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh
 }
 
 /* Check whether the #vert is adjacent to any face which are adjacent to the #edge. */
-bool vert_in_face_adjacent_to_edge(BMVert *vert, BMEdge *edge)
+static bool vert_in_face_adjacent_to_edge(BMVert *vert, BMEdge *edge)
 {
   BMIter bm_iter;
   BMFace *face;
@@ -1388,7 +1388,7 @@ static void merge_flap_edge_data(BMesh &bm,
 /* Find vertex which can be an outer for the flap face: the vertex will become loose when the face
  * and its edges are removed.
  * If there are multiple of such vertices nullptr is returned. */
-BMVert *find_outer_flap_vert(BMFace &face)
+static BMVert *find_outer_flap_vert(BMFace &face)
 {
   BMVert *flap_vert = nullptr;
 
