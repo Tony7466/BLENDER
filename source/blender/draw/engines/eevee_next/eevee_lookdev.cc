@@ -128,6 +128,7 @@ bool LookdevModule::sync_world()
     }
 
     parameters_ = new_parameters;
+    inst_.sampling.reset();
   }
 
   if (parameters_.show_scene_world) {

@@ -41,7 +41,7 @@ static CLG_LogRef LOG = {"draw.manager.shader"};
 extern "C" char datatoc_gpu_shader_depth_only_frag_glsl[];
 extern "C" char datatoc_common_fullscreen_vert_glsl[];
 
-#define USE_DEFERRED_COMPILATION 1
+#define USE_DEFERRED_COMPILATION 0
 
 /* -------------------------------------------------------------------- */
 /** \name Deferred Compilation (DRW_deferred)
