@@ -716,6 +716,62 @@ const char *node_cmp_rlayers_sock_to_pass(int sock_index)
 
 namespace blender::nodes::node_composite_render_layer_cc {
 
+
+static void cmp_node_create_sockets(void* userdata , 
+                                          Scene* scene , 
+                                          ViewLayer */*view_layer*/ , 
+                                          const char* name ,
+                                          int /*channels*/ , 
+                                          const char* /*channel_id*/ ,
+                                          eNodeSocketDatatype type)
+{
+  NodeDeclarationBuilder *builder = static_cast<NodeDeclarationBuilder*>(userdata); 
+  const char* tr_name = N_(name) ;
+  if(std::string(name) == std::string("Combined")){
+    builder->add_output<decl::Color>(N_("Image")); 
+    builder->add_output<decl::Float>(N_("Alpha"));
+  }  
+  else{ 
+    switch(type){
+      case SOCK_FLOAT:
+        builder->add_output<decl::Float>(tr_name);
+      break; 
+      case SOCK_VECTOR:
+        builder->add_output<decl::Vector>(tr_name);
+      break;
+      case SOCK_RGBA:
+        builder->add_output<decl::Color>(tr_name);
+      default:
+      break;
+    }
+  } 
+}
+
+static void node_rlayer_declare_dynamic(const bNodeTree &bntree, const bNode &node, blender::nodes::NodeDeclaration& r_declaration)
+{
+  if(!r_declaration.is_valid()){
+    return ; 
+  }
+  Scene* scene = reinterpret_cast<Scene*>(node.id);
+  r_decl.push_back(&r_declaration);  
+  NodeDeclarationBuilder builder(r_declaration); 
+  if(scene){
+    RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
+    if(engine_type && engine_type->update_render_passes){
+      ViewLayer *view_layer = (ViewLayer*) BLI_findlink(&scene->view_layers , node.custom1); 
+      RenderEngine *engine = RE_engine_create(engine_type); 
+      if(view_layer){
+        if(engine){
+          RE_engine_update_render_passes(engine , scene , view_layer , cmp_node_create_sockets , (void*) &builder); 
+        }
+      }
+      RE_engine_free(engine); 
+    } 
+  }
+}
+
+
+
 static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
 {
   Scene *scene = CTX_data_scene(C);
@@ -724,12 +780,12 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
 
   node->id = &scene->id;
   id_us_plus(node->id);
-
+  
   for (bNodeSocket *sock = (bNodeSocket *)node->outputs.first; sock;
        sock = sock->next, sock_index++) {
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
     sock->storage = sockdata;
-
+    
     STRNCPY(sockdata->pass_name, node_cmp_rlayers_sock_to_pass(sock_index));
   }
 }
@@ -788,12 +844,6 @@ static void node_composit_copy_rlayers(bNodeTree * /*dst_ntree*/,
   }
 }
 
-static void cmp_node_rlayers_update(bNodeTree *ntree, bNode *node)
-{
-  cmp_node_image_verify_outputs(ntree, node, true);
-
-  cmp_node_update_default(ntree, node);
-}
 
 static void node_composit_buts_viewlayers(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
@@ -818,7 +868,7 @@ static void node_composit_buts_viewlayers(uiLayout *layout, bContext *C, Pointer
   col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "layer", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-
+  
   PropertyRNA *prop = RNA_struct_find_property(ptr, "layer");
   const char *layer_name;
   if (!RNA_property_enum_identifier(C, ptr, prop, RNA_property_enum_get(ptr, prop), &layer_name)) {
@@ -943,7 +993,6 @@ void register_node_type_cmp_rlayers()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_R_LAYERS, "Render Layers", NODE_CLASS_INPUT);
-  blender::bke::node_type_socket_templates(&ntype, nullptr, cmp_node_rlayers_out);
   ntype.draw_buttons = file_ns::node_composit_buts_viewlayers;
   ntype.initfunc_api = file_ns::node_composit_init_rlayers;
   ntype.poll = file_ns::node_composit_poll_rlayers;
@@ -953,8 +1002,8 @@ void register_node_type_cmp_rlayers()
   ntype.flag |= NODE_PREVIEW;
   node_type_storage(
       &ntype, nullptr, file_ns::node_composit_free_rlayers, file_ns::node_composit_copy_rlayers);
-  ntype.updatefunc = file_ns::cmp_node_rlayers_update;
   ntype.initfunc = node_cmp_rlayers_outputs;
+  ntype.declare_dynamic = file_ns::node_rlayer_declare_dynamic ; 
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
 
   nodeRegisterType(&ntype);
