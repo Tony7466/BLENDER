@@ -12,10 +12,13 @@
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_report.h"
 
 #include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
+
+#include "ANIM_keyframing.hh"
 
 #include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
@@ -317,6 +320,33 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
       append_frame_to_key_edit_data(ked, frame_number, frame);
     }
   }
+}
+
+bool ensure_active_keyframe(const bContext *C, const wmOperator *op, GreasePencil &grease_pencil)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const int current_frame = scene->r.cfra;
+
+  if (!grease_pencil.get_active_layer()->frames().contains(current_frame)) {
+    if (!blender::animrig::is_autokey_on(scene)) {
+      BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+      return false;
+    }
+    const ToolSettings *ts = CTX_data_tool_settings(C);
+    bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer_for_write();
+    if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
+      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
+       * current frame. */
+      grease_pencil.insert_duplicate_frame(
+          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+    }
+    else {
+      /* Otherwise we just insert a blank keyframe. */
+      grease_pencil.insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
+  }
+
+  return true;
 }
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)

@@ -5812,6 +5812,11 @@ class VIEW3D_MT_edit_greasepencil(Menu):
 
         layout.menu("VIEW3D_MT_edit_greasepencil_delete")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
+        layout.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
+
 
 class VIEW3D_MT_edit_greasepencil_stroke(Menu):
     bl_label = "Stroke"
@@ -8035,6 +8040,42 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.reproject", text="Reproject")
 
 
+class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
+    bl_label = ""
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        is_point_mode = tool_settings.gpencil_selectmode_edit == 'POINT'
+        is_stroke_mode = tool_settings.gpencil_selectmode_edit == 'STROKE'
+        is_segment_mode = tool_settings.gpencil_selectmode_edit == 'SEGMENT'
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        row = layout.row()
+
+        if is_point_mode or is_segment_mode:
+            col = row.column(align=True)
+
+            col.label(text="Point", icon='GP_SELECT_POINTS')
+            col.separator()
+
+            # Copy/paste
+            col.operator("grease_pencil.copy", text="Copy", icon="COPYDOWN")
+            col.operator("grease_pencil.paste", text="Paste", icon="PASTEDOWN")
+
+        if is_stroke_mode:
+
+            col = row.column(align=True)
+            col.label(text="Stroke", icon='GP_SELECT_STROKES')
+            col.separator()
+            
+            # Copy/paste
+            col.operator("grease_pencil.copy", text="Copy", icon="COPYDOWN")
+            col.operator("grease_pencil.paste", text="Paste", icon="PASTEDOWN")
+
+
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
     if gpl:
@@ -8729,6 +8770,7 @@ classes = (
     VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_greasepencil_stroke,
     VIEW3D_MT_edit_greasepencil_animation,
+    VIEW3D_MT_greasepencil_edit_context_menu,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
     VIEW3D_MT_edit_curve_segments,

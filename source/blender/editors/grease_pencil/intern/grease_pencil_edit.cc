@@ -955,12 +955,149 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 /** \name Copy and Paste Operator
  * \{ */
 
-static int grease_pencil_strokes_paste_exec(bContext *C, wmOperator *op)
+static bool append_geometry_to_layer(Vector<bke::CurvesGeometry> &sources,
+                                     bke::CurvesGeometry &dest,
+                                     const eAttrDomain selection_domain)
+{
+  /* For safety, remove source geometries with zero points. */
+  sources.remove_if([](const bke::CurvesGeometry source) { return source.points_num() == 0; });
+  const int source_num = sources.size();
+  if (source_num == 0) {
+    return false;
+  }
+
+  /* Calculate the total number of points and curves of the source and destination geometry
+   * together. */
+  Array<IndexRange> source_curve_range(source_num);
+  Array<IndexRange> source_point_range(source_num);
+  const int dest_curves_num_ori = dest.curves_num();
+  const int dest_points_num_ori = dest.points_num();
+  int dest_curves_num = dest_curves_num_ori;
+  int dest_points_num = dest_points_num_ori;
+  for (const int source_index : sources.index_range()) {
+    bke::CurvesGeometry &source = sources[source_index];
+    source_curve_range[source_index] = IndexRange(dest_curves_num, source.curves_num());
+    source_point_range[source_index] = IndexRange(dest_points_num, source.points_num());
+    dest_curves_num += source.curves_num();
+    dest_points_num += source.points_num();
+  }
+  if (dest_points_num == 0) {
+    return false;
+  }
+
+  /* Calculate the curve offsets for the combined geometry. */
+  Array<int> dest_curves_offsets(dest_curves_num + 1);
+  int dest_curve = 0;
+  dest_points_num = dest_points_num_ori;
+  if (dest_points_num_ori > 0) {
+    const OffsetIndices points_by_curve = dest.points_by_curve();
+    for (const int curve : dest.curves_range()) {
+      dest_curves_offsets[dest_curve++] = points_by_curve[curve].first();
+    }
+  }
+  for (const auto &source : sources) {
+    const OffsetIndices points_by_curve = source.points_by_curve();
+    for (const int curve : source.curves_range()) {
+      dest_curves_offsets[dest_curve++] = dest_points_num + points_by_curve[curve].first();
+    }
+    dest_points_num += source.points_num();
+  }
+  dest_curves_offsets[dest_curve] = dest_points_num;
+
+  /* Resize the destination, so that the source geometries will fit in. */
+  dest.resize(dest_points_num, dest_curves_num);
+
+  /* Set the curve offsets for the combined geometry. */
+  array_utils::copy(dest_curves_offsets.as_span(), dest.offsets_for_write());
+
+  /* Prefill the destination attributes with default values. After the resize, the extended part is
+   * uninitialized and that can cause errors in the next step, #bke::gather_attributes. */
+  bke::MutableAttributeAccessor dest_attributes = dest.attributes_for_write();
+  dest_attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
+        bke::GSpanAttributeWriter attribute = dest_attributes.lookup_for_write_span(id);
+        const CPPType &type = attribute.span.type();
+        GMutableSpan new_data = attribute.span.drop_front(
+            attribute.domain == ATTR_DOMAIN_POINT ? dest_points_num_ori : dest_curves_num_ori);
+        type.fill_assign_n(type.default_value(), new_data.data(), new_data.size());
+        attribute.finish();
+
+        return true;
+      });
+
+  /* Prefill the curve type of the added curves. */
+  dest.curve_types_for_write().drop_front(dest_curves_num_ori).fill(CURVE_TYPE_POLY);
+
+  /* Check if all the source attributes exist in the destination. When not, add them with a default
+   * value. */
+  for (const auto &source : sources) {
+    source.attributes().for_all([&](const bke::AttributeIDRef &id,
+                                    const bke::AttributeMetaData meta_data) {
+      if (!dest_attributes.contains(id)) {
+        bke::GSpanAttributeWriter attribute = dest_attributes.lookup_or_add_for_write_only_span(
+            id, meta_data.domain, meta_data.data_type);
+        if (!attribute) {
+          return true;
+        }
+        const CPPType &type = attribute.span.type();
+        type.fill_assign_n(type.default_value(), attribute.span.data(), attribute.span.size());
+        attribute.finish();
+      }
+      return true;
+    });
+  }
+
+  /* Copy the point and curve attributes of the source geometry to the destination. */
+  const bke::AnonymousAttributePropagationInfo propagation_info{};
+  int16_t layer_index = 0;
+  for (const auto &source : sources) {
+    const IndexMask all_curves = IndexMask(source.curves_num());
+    bke::gather_attributes(source.attributes(),
+                           ATTR_DOMAIN_CURVE,
+                           propagation_info,
+                           {},
+                           all_curves,
+                           dest_attributes,
+                           source_curve_range[layer_index]);
+    const IndexMask all_points = IndexMask(source.points_num());
+    bke::gather_attributes(source.attributes(),
+                           ATTR_DOMAIN_POINT,
+                           propagation_info,
+                           {},
+                           all_points,
+                           dest_attributes,
+                           source_point_range[layer_index]);
+    layer_index++;
+  }
+  dest.update_curve_types();
+  dest.remove_attributes_based_on_types();
+
+  /* Automatically select the appended strokes/points, that's convenient for the artist. */
+  bke::GSpanAttributeWriter selected_geometry = ed::curves::ensure_selection_attribute(
+      dest, selection_domain, CD_PROP_BOOL);
+  ed::curves::fill_selection_false(selected_geometry.span);
+  for (const int layer : IndexRange(source_num)) {
+    if (selection_domain == ATTR_DOMAIN_POINT) {
+      const IndexMask selected_points(source_point_range[layer]);
+      ed::curves::fill_selection_true(selected_geometry.span, selected_points);
+    }
+    else if (selection_domain == ATTR_DOMAIN_CURVE) {
+      const IndexMask selected_curves(source_curve_range[layer]);
+      ed::curves::fill_selection_true(selected_geometry.span, selected_curves);
+    }
+  }
+  selected_geometry.finish();
+
+  return true;
+}
+
+static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
 
   const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   /* Check paste buffer. */
@@ -975,134 +1112,34 @@ static int grease_pencil_strokes_paste_exec(bContext *C, wmOperator *op)
   }
 
   /* Ensure active keyframe. */
-  const int current_frame = scene->r.cfra;
-  if (!grease_pencil.get_active_layer()->frames().contains(current_frame)) {
-    if (!blender::animrig::is_autokey_on(scene)) {
-      BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-      return OPERATOR_CANCELLED;
-    }
-    const ToolSettings *ts = CTX_data_tool_settings(C);
-    bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer_for_write();
-    if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
-      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
-       * current frame. */
-      grease_pencil.insert_duplicate_frame(
-          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
-    }
-    else {
-      /* Otherwise we just insert a blank keyframe. */
-      grease_pencil.insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
-    }
+  if (!ensure_active_keyframe(C, op, grease_pencil)) {
+    return OPERATOR_CANCELLED;
   }
 
-  /* Get existing geometry from active layer. */
+  /* Get active layer. */
   const Layer *active_layer = grease_pencil.get_active_layer();
   Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene->r.cfra);
   if (drawing == nullptr) {
     return OPERATOR_CANCELLED;
   }
-  const bke::CurvesGeometry &layer = drawing->strokes();
+  bke::CurvesGeometry &layer = drawing->strokes_for_write();
 
-  /* Create a new curves object with space for the active layer curves and the layers in
-   * the paste buffer. */
-  const int paste_layer_num = grease_pencil.runtime->copy_paste_buffer.size();
-  Array<IndexRange> paste_layer_curve_range(paste_layer_num);
-  Array<IndexRange> paste_layer_point_range(paste_layer_num);
-  int dst_curves_num = layer.curves_num();
-  int dst_points_num = layer.points_num();
-  for (const int paste_layer_index : grease_pencil.runtime->copy_paste_buffer.index_range()) {
-    bke::CurvesGeometry &paste_layer = grease_pencil.runtime->copy_paste_buffer[paste_layer_index];
-    paste_layer_curve_range[paste_layer_index] = IndexRange(dst_curves_num,
-                                                            paste_layer.curves_num());
-    paste_layer_point_range[paste_layer_index] = IndexRange(dst_points_num,
-                                                            paste_layer.points_num());
-    dst_curves_num += paste_layer.curves_num();
-    dst_points_num += paste_layer.points_num();
-  }
-  if (dst_points_num == 0) {
-    return OPERATOR_CANCELLED;
-  }
-  bke::CurvesGeometry dst;
-  dst.resize(dst_points_num, dst_curves_num);
+  /* Append the geometry in the paste buffer to the active layer. */
+  const bool success = append_geometry_to_layer(
+      grease_pencil.runtime->copy_paste_buffer, layer, selection_domain);
 
-  /* Calculate the curve offsets for the combined geometry. */
-  Array<int> dst_curves_offsets(dst_curves_num + 1);
-  int dst_curve = 0;
-  if (layer.points_num() > 0) {
-    const OffsetIndices layer_offsets = layer.points_by_curve();
-    for (const int curve_offset : layer_offsets.data().drop_back(1)) {
-      dst_curves_offsets[dst_curve++] = curve_offset;
-    }
+  if (success) {
+    drawing->tag_topology_changed();
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+    return OPERATOR_FINISHED;
   }
 
-  dst_points_num = layer.points_num();
-  int16_t layer_index = 0;
-  for (const auto &paste_layer : grease_pencil.runtime->copy_paste_buffer) {
-    const OffsetIndices layer_offsets = paste_layer.points_by_curve();
-    for (const int curve_offset : layer_offsets.data().drop_back(1)) {
-      dst_curves_offsets[dst_curve++] = dst_points_num + curve_offset;
-    }
-    dst_points_num += paste_layer.points_num();
-  }
-  dst_curves_offsets[dst_curve] = dst_points_num;
-
-  /* Set the curve offsets for the combined geometry. */
-  array_utils::copy(dst_curves_offsets.as_span(), dst.offsets_for_write());
-
-  /* Copy the point and curve attributes of the paste layers to the new geometry. */
-  const bke::AnonymousAttributePropagationInfo propagation_info{};
-  bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
-  layer_index = 0;
-  for (const auto &paste_layer : grease_pencil.runtime->copy_paste_buffer) {
-    const IndexMask all_points = IndexMask(paste_layer.points_num());
-    bke::gather_attributes(paste_layer.attributes(),
-                           ATTR_DOMAIN_POINT,
-                           propagation_info,
-                           {".selection"},
-                           all_points,
-                           dst.attributes_for_write(),
-                           paste_layer_point_range[layer_index]);
-    const IndexMask all_curves = IndexMask(paste_layer.curves_num());
-    bke::gather_attributes(paste_layer.attributes(),
-                           ATTR_DOMAIN_CURVE,
-                           propagation_info,
-                           {".selection"},
-                           all_curves,
-                           dst.attributes_for_write(),
-                           paste_layer_curve_range[layer_index]);
-    layer_index++;
-  }
-  dst.update_curve_types();
-  dst.remove_attributes_based_on_types();
-
-  /* Automatically select the pasted strokes/points, that's convenient for the artist. */
-  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
-  bke::GSpanAttributeWriter selected_geometry = ed::curves::ensure_selection_attribute(
-      dst, selection_domain, CD_PROP_BOOL);
-  ed::curves::fill_selection_false(selected_geometry.span);
-  for (const int layer : IndexRange(paste_layer_num)) {
-    if (selection_domain == ATTR_DOMAIN_POINT) {
-      const IndexMask selected_points(paste_layer_point_range[layer]);
-      ed::curves::fill_selection_true(selected_geometry.span, selected_points);
-    }
-    else if (selection_domain == ATTR_DOMAIN_CURVE) {
-      const IndexMask selected_curves(paste_layer_curve_range[layer]);
-      ed::curves::fill_selection_true(selected_geometry.span, selected_curves);
-    }
-  }
-  selected_geometry.finish();
-
-  /* Insert the new geometry. */
-  drawing->geometry.wrap() = std::move(dst);
-  drawing->tag_topology_changed();
-
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
-
-  return OPERATOR_FINISHED;
+  return OPERATOR_CANCELLED;
 }
 
-static int grease_pencil_strokes_copy_exec(bContext *C, wmOperator *op)
+static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
@@ -1169,6 +1206,18 @@ static int grease_pencil_strokes_copy_exec(bContext *C, wmOperator *op)
   return (anything_copied ? OPERATOR_FINISHED : OPERATOR_CANCELLED);
 }
 
+static bool grease_pencil_paste_strokes_poll(bContext *C)
+{
+  if (!editable_grease_pencil_poll(C)) {
+    return false;
+  }
+
+  /* Check content in copy-paste-buffer. */
+  const Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  return !grease_pencil.runtime->copy_paste_buffer.is_empty();
+}
+
 static void GREASE_PENCIL_OT_paste(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -1178,8 +1227,8 @@ static void GREASE_PENCIL_OT_paste(wmOperatorType *ot)
       "Paste Grease Pencil points or strokes from the internal clipboard to the active layer";
 
   /* Callbacks. */
-  ot->exec = grease_pencil_strokes_paste_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->exec = grease_pencil_paste_strokes_exec;
+  ot->poll = grease_pencil_paste_strokes_poll;
 }
 
 static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
@@ -1190,7 +1239,7 @@ static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
   ot->description = "Copy the selected Grease Pencil points or strokes to the internal clipboard";
 
   /* Callbacks. */
-  ot->exec = grease_pencil_strokes_copy_exec;
+  ot->exec = grease_pencil_copy_strokes_exec;
   ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
