@@ -5,9 +5,9 @@
  */
 #define DNA_DEPRECATED_ALLOW
 #include <stdlib.h>
+#include <cstdio>
 
 #include "MOD_gpencil_surdeform_header.h"
-//#include "object_intern.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,7 +22,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
-//#include "BKE_object.h"
+
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
@@ -36,8 +36,8 @@
 #include "MOD_gpencil_legacy_util.h"
 
 #include "DEG_depsgraph_query.hh"
-//#include "ED_object.h"
 #include "ED_anim_api.hh"
+#include "ED_object.hh"
 #include "ED_keyframes_edit.hh"
 #include "WM_api.hh"
 #include "UI_interface.hh"
@@ -59,7 +59,7 @@ static void freeData_a(SurDeformGpencilModifierData *smd)
   GpencilModifierData *md = (GpencilModifierData *)smd;
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
       static_cast<GpencilModifierType>(md->type));
-  mti->freeData(md);
+  mti->free_data(md);
   return;
 }
 
@@ -230,16 +230,6 @@ typedef struct SDefBindWeightData {
   uint binds_num;
 } SDefBindWeightData;
 
-typedef struct SDefDeformData {
-  const SDefGPVert *const bind_verts;
-  float (*const targetCos)[3];
-  float (*const vertexCos)[3];
-  const MDeformVert *const dvert;
-  int const defgrp_index;
-  bool const invert_vgroup;
-  float const strength;
-  bGPDstroke *gps;
-} SDefDeformData;
 
 /* Bind result values */
 enum {
@@ -1469,7 +1459,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   if (data.targetCos == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     BKE_gpencil_modifier_get_info(static_cast<GpencilModifierType>(md->type))
-        ->freeData((GpencilModifierData *)smd_orig);
+        ->free_data((GpencilModifierData *)smd_orig);
     return false;
   }
 
@@ -1495,7 +1485,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
 
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n Out of memory",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1503,7 +1493,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
     
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n Target has edges with more than two polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1511,7 +1501,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
    
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n Target contains concave polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1519,7 +1509,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n Target contains overlapping vertices",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1530,7 +1520,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
      * to explain this with a reasonably sized message.
      * Though it shouldn't really matter all that much,
      * because this is very unlikely to occur */
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n Target contains invalid polygons",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1538,7 +1528,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   }
   else if (current_stroke->stroke_verts_num == 0 || !current_stroke->verts) {
     data.success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-    BLI_sprintf(error_label,
+    BLI_sprintfN(error_label,
                 "Layer: %s Frame: %u Stroke: %u \n No vertices were bound",
                 smd_orig->layers->layer_info,
                 framenum,
@@ -1683,7 +1673,7 @@ static bool surfacedeformBind(bContext *C,
 
    const float(*positions)[3] = BKE_mesh_vert_positions(target);
    blender::Span<blender::int2> edges = target->edges();
-   blender::OffsetIndices polys = target->polys();
+   blender::OffsetIndices polys = target->faces();
    blender::Span<int> corner_verts = target->corner_verts();
    blender::Span<int> corner_edges = target->corner_edges();
   uint tedges_num = target->totedge;
@@ -1781,7 +1771,7 @@ static bool surfacedeformBind(bContext *C,
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
         positions = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.6 +
         edges = mesh_target->edges();
-        polys = mesh_target->polys();
+        polys = mesh_target->faces();;
         corner_verts = mesh_target->corner_verts();
         corner_edges = mesh_target->corner_edges();
         tedges_num = mesh_target->totedge;
@@ -1851,7 +1841,7 @@ static bool surfacedeformBind(bContext *C,
     else {
       positions = BKE_mesh_vert_positions(target);  //  FOR 3.6 +
       edges = target->edges();
-      polys = target->polys();
+      polys = target->faces();
       corner_verts = target->corner_verts();
       corner_edges = target->corner_edges();
       if (!makeTreeData(&treeData,
@@ -2101,7 +2091,7 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   uint target_verts_num = BKE_mesh_wrapper_vert_len(target);
-  uint target_polys_num = BKE_mesh_wrapper_poly_len(target);
+  uint target_faces_num = BKE_mesh_wrapper_face_len(target);
   //Mesh *target = <
 
   if (!surfacedeformBind(C,
@@ -2109,7 +2099,7 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
                          depsgraph,
                          smd_orig,
                          smd_eval,
-                         target_polys_num,
+                         target_faces_num,
                          target_verts_num,
                          target)) {
     printf("bind failed \n");
