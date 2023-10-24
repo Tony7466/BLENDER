@@ -33,6 +33,8 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_report.h"
 
+#include "MOD_gpencil_legacy_modifiertypes.h"
+#include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
 #include "DEG_depsgraph_query.hh"

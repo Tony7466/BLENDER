@@ -16,9 +16,6 @@
 
 #include "BLT_translation.h"
 
-#include "MOD_gpencil_legacy_modifiertypes.h"
-#include "MOD_gpencil_legacy_ui_common.h"
-#include "MOD_gpencil_legacy_util.h"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -36,18 +33,26 @@
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.hh"
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
+
+#include "MEM_guardedalloc.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
 
-#include "MEM_guardedalloc.h"
+#include "MOD_gpencil_legacy_modifiertypes.h"
+#include "MOD_gpencil_legacy_ui_common.h"
+#include "MOD_gpencil_legacy_util.h"
 
-#include "WM_api.hh"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
+
+
+
+
+//#include "WM_api.hh"
 
 /* HEADER FROM MOD_surfacedeform.c */
 
