@@ -39,7 +39,8 @@ void main()
                                           uniform_buf.ao.thickness,
                                           false,
                                           8);
-  float visibility = result.visibility;
+  /* Scale result a bit to cleanup some float imprecision. */
+  float visibility = saturate(1.01 * result.visibility);
 
-  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(saturate(visibility)));
+  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(visibility));
 }
