@@ -72,13 +72,13 @@
 
 
 typedef struct SDefDeformData {
-  const SDefGPVert *const bind_verts;
-  float (*const targetCos)[3];
-  float (*const vertexCos)[3];
-  const MDeformVert *const dvert;
-  int const defgrp_index;
-  bool const invert_vgroup;
-  float const strength;
+  const SDefGPVert *bind_verts;
+  float (*targetCos)[3];
+  float (*vertexCos)[3];
+  const MDeformVert *dvert;
+  int defgrp_index;
+  bool invert_vgroup;
+  float strength;
   bGPDstroke *gps;
 } SDefDeformData;
 
@@ -86,7 +86,7 @@ typedef struct SDefDeformData {
 
 void rollback_layers(SurDeformGpencilModifierData *smd)
 {
-  if (smd->layers == NULL)
+  if (smd->layers == nullptr)
     return;
   smd->layers = smd->layers->first;
 
@@ -94,7 +94,7 @@ void rollback_layers(SurDeformGpencilModifierData *smd)
 
 static void rollback_frames(SurDeformGpencilModifierData *smd, SDefGPLayer *layer)
 {
-  if (layer->frames == NULL)
+  if (layer->frames == nullptr)
     return;
   layer->frames = layer->frames->first;
   return;
@@ -104,7 +104,7 @@ static void rollback_frames(SurDeformGpencilModifierData *smd, SDefGPLayer *laye
 static void rollback_strokes(SurDeformGpencilModifierData *smd, SDefGPFrame *frame)
 {
   
-  if (frame->strokes == NULL) return;
+  if (frame->strokes == nullptr) return;
   frame->strokes = frame->strokes->first;
   return;
   
@@ -134,7 +134,7 @@ static bool free_frame_b(SurDeformGpencilModifierData *smd_orig,
                        SDefGPLayer *sdef_layer,
                        uint framenum)
 {
-  if (sdef_layer->frames == NULL)
+  if (sdef_layer->frames == nullptr)
     return true;
   /* If we're not on the first frame, rollback the pointer*/
   if (sdef_layer->frames->frame_idx > 0) {
@@ -142,10 +142,10 @@ static bool free_frame_b(SurDeformGpencilModifierData *smd_orig,
   }
   /*Do the same thing as add, but in reverse */
   sdef_layer->num_of_frames--;
-  SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
-      sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
+  SDefGPFrame *temp_frames_pointer = static_cast<SDefGPFrame *>(
+      MEM_calloc_arrayN(sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames"));
 
-  if (temp_frames_pointer == NULL) {
+  if (temp_frames_pointer == nullptr) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     return false;
   }
@@ -246,46 +246,58 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   if (smd->layers)
   { 
     rollback_layers(smd);
-    tsmd->layers = MEM_dupallocN(smd->layers);
+    tsmd->layers = static_cast<SDefGPLayer *>(MEM_dupallocN(smd->layers));
     for(int l = 0; l < smd->num_of_layers; l++)
     {
       tsmd->layers[l].first = tsmd->layers;
       if (smd->layers[l].frames)
       {
         rollback_frames(smd, &smd->layers[l]);
-        tsmd->layers[l].frames = MEM_dupallocN(smd->layers[l].frames);
+        tsmd->layers[l].frames = static_cast<SDefGPFrame *>(MEM_dupallocN(smd->layers[l].frames));
         for (int f = 0; f < smd->layers[l].num_of_frames; f++)
         {
           tsmd->layers[l].frames[f].first = tsmd->layers[l].frames;
           if (smd->layers[l].frames[f].strokes)  
           {
             rollback_strokes(smd, &smd->layers[l].frames[f] );
-            tsmd->layers[l].frames[f].strokes = MEM_dupallocN(smd->layers[l].frames[f].strokes);
+            tsmd->layers[l].frames[f].strokes = static_cast<SDefGPStroke *>(
+                MEM_dupallocN(smd->layers[l].frames[f].strokes));
 
             for(int k = 0; k < smd->layers[l].frames[f].strokes_num; k++)
             {
               tsmd->layers[l].frames[f].strokes[k].first = tsmd->layers[l].frames[f].strokes;
               if (smd->layers[l].frames[f].strokes[k].verts) 
               {
-                tsmd->layers[l].frames[f].strokes[k].verts = MEM_dupallocN(smd->layers[l].frames[f].strokes[k].verts);
+                tsmd->layers[l].frames[f].strokes[k].verts = static_cast<SDefGPVert *>(
+                    MEM_dupallocN(
+                    smd->layers[l].frames[f].strokes[k].verts));
 
                 for (int i = 0; i < smd->layers[l].frames[f].strokes[k].stroke_verts_num; i++) 
                 {
                   if (smd->layers[l].frames[f].strokes[k].verts[i].binds) 
                   {
-                    tsmd->layers[l].frames[f].strokes[k].verts[i].binds = MEM_dupallocN(smd->layers[l].frames[f].strokes[k].verts[i].binds);
+                    tsmd->layers[l].frames[f].strokes[k].verts[i].binds =
+                        static_cast<SDefGPBind *>(
+                            MEM_dupallocN(
+                        smd->layers[l].frames[f].strokes[k].verts[i].binds));
                     for (int j = 0; j < smd->layers[l].frames[f].strokes[k].verts[i].binds_num; j++) 
                     {
                       if (smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_inds) 
                       {
-                        tsmd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_inds = MEM_dupallocN(
-                            smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_inds);
+                        tsmd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_inds =
+                            static_cast<uint *>(MEM_dupallocN(
+                                smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_inds));
                       }
 
                       if (smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_weights) 
                       {
-                        tsmd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_weights = MEM_dupallocN(
-                            smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_weights);
+                        tsmd->layers[l]
+                            .frames[f]
+                            .strokes[k]
+                            .verts[i]
+                            .binds[j]
+                            .vert_weights = static_cast<float *>(MEM_dupallocN(
+                            smd->layers[l].frames[f].strokes[k].verts[i].binds[j].vert_weights));
                       }
                     }
                   }
@@ -305,10 +317,12 @@ static bool dependsOnTime(GpencilModifierData *md)
   return true;
 }
 
-static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx, const int UNUSED(mode))
+static void updateDepsgraph(GpencilModifierData *md,
+                            const ModifierUpdateDepsgraphContext *ctx,
+                            const int /*mode*/)
 {
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
-  if (smd->target != NULL) {
+  if (smd->target != nullptr) {
     DEG_add_object_relation(
         ctx->node, smd->target, DEG_OB_COMP_GEOMETRY, "Surface Deform GP Modifier");
     DEG_add_object_relation(
@@ -323,7 +337,7 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
                                 Object *ob)
 {
   smd->bound_flags = 0;
-  if (smd->layers == NULL) 
+  if (smd->layers == nullptr) 
   {return;}
   rollback_layers(smd);
 
@@ -331,9 +345,9 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
   smd->bound_flags |= GP_MOD_SDEF_SOMETHING_BOUND;
 
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  bGPdata *gpd = ob_orig->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob_orig->data);
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
-  bGPDlayer *blender_layer = NULL;
+  bGPDlayer *blender_layer = nullptr;
   //bGPDframe *blender_frame;
 
   int num_of_layers_with_all_their_frames_bound = 0;
@@ -349,9 +363,9 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
         break;
       }
     }
-     if (blender_layer == NULL) 
+     if (blender_layer == nullptr) 
     {
-      printf("NULL blender LAYER IN CHECK bind situation");
+      printf("nullptr blender LAYER IN CHECK bind situation");
       continue;
     }
     if (BLI_listbase_is_empty(&blender_layer->frames)) continue;
@@ -366,7 +380,7 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
     
     for (int f = 0; f < smd->layers[l].num_of_frames; f++)
     {
-      smd->layers[l].frames[f].blender_frame = NULL;
+      smd->layers[l].frames[f].blender_frame = nullptr;
       bGPDframe *blender_frame = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, blender_layer);
       if (blender_frame->framenum
           == smd->layers[l].frames[f].frame_number    )
@@ -398,7 +412,7 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
 
 static void deformVert(void *__restrict userdata,
                        const int index,
-                       const TaskParallelTLS *__restrict UNUSED(tls))
+                       const TaskParallelTLS *__restrict /*tls*/)
 {
   const SDefDeformData *const data = (SDefDeformData *)userdata;
   const SDefGPBind *sdbind = data->bind_verts[index].binds;
@@ -434,7 +448,8 @@ static void deformVert(void *__restrict userdata,
   const bool big_buffer = max_verts > 256;
   float(*coords_buffer)[3];
   if (UNLIKELY(big_buffer)) {
-    coords_buffer = MEM_malloc_arrayN(max_verts, sizeof(*coords_buffer), __func__);
+    coords_buffer = static_cast<float (*)[3]>(
+        MEM_malloc_arrayN(max_verts, sizeof(*coords_buffer), __func__));
   }
   else {
     coords_buffer = BLI_array_alloca(coords_buffer, max_verts);
@@ -496,8 +511,8 @@ static void deformVert(void *__restrict userdata,
 
 static void end_stroke_evaluation(SurDeformGpencilModifierData *smd, bGPDframe *gpf)
 {
-  if (smd->layers->frames == NULL) return;
-  if (smd->layers->frames->strokes == NULL) return;
+  if (smd->layers->frames == nullptr) return;
+  if (smd->layers->frames->strokes == nullptr) return;
 
   if (smd->layers->frames->strokes->stroke_idx == smd->layers->frames->strokes_num-1)/*If we are on the last stroke...*/
   {
@@ -532,15 +547,15 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
   GpencilModifierData *md_orig = (GpencilModifierData *)smd_orig;
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  bGPdata *gpd_orig = ob_orig->data;
+  bGPdata *gpd_orig = static_cast<bGPdata *>(ob_orig->data);
 
   /* if (md_orig->error)
   {
     MEM_freeN(md_orig->error);
-    md_orig->error = NULL;
+    md_orig->error = nullptr;
   }*/
 
-  if (smd->layers == NULL)
+  if (smd->layers == nullptr)
   {
     smd_orig->flags = 0;
     return;
@@ -570,12 +585,12 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   if (!layer_found)
     return;
   /*Make it point to the right frame*/
-  if (smd->layers->frames == NULL) {
+  if (smd->layers->frames == nullptr) {
     end_stroke_evaluation(smd, gpf);
     return;
   }
   rollback_frames(smd, smd->layers);
-  if (smd->layers->frames != NULL)
+  if (smd->layers->frames != nullptr)
   {
     int i = 0;
     while (smd->layers->frames->frame_number != gpf->framenum &&
@@ -643,7 +658,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
   target_verts_num = BKE_mesh_wrapper_vert_len(target);
-  target_polys_num = BKE_mesh_wrapper_poly_len(target);
 
   if (!smd->layers)
   {return;}
@@ -669,7 +683,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
           md_orig, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
       bGPDstroke *gps_ptr_copy = gps;
       int i = 0;
-      while (gps_ptr_copy->prev != NULL) {
+      while (gps_ptr_copy->prev != nullptr) {
         gps_ptr_copy = gps_ptr_copy->prev;
         i++;
       }
@@ -734,13 +748,13 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   const bool invert_vgroup = (smd->flags & GP_MOD_SDEF_INVERT_VGROUP) != 0;
 
   /* Actual vertex location update starts here */
-  SDefGPLayer *curr_layer = NULL;
-  SDefGPFrame *curr_frame = NULL;
+  SDefGPLayer *curr_layer = nullptr;
+  SDefGPFrame *curr_frame = nullptr;
   
 
   /*If we are on stroke 0, check all the current frames of all the layers in memory with their pointer
   to bGPDframe to find the right one and point to that. */
-  if (gps->prev == NULL)
+  if (gps->prev == nullptr)
   {
     rollback_layers(smd);
     for (int l= 0; l < smd->num_of_layers; l++)
@@ -779,17 +793,19 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
   
   SDefGPStroke *current_sdef_stroke = smd->layers->frames->strokes;
-  SDefDeformData data = {
-      .bind_verts = current_sdef_stroke->verts,
-      .targetCos = MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetVertArray"),
-      .gps = gps,
-      .dvert = dvert,
-      .defgrp_index = defgrp_index,
-      .invert_vgroup = invert_vgroup,
-      .strength = smd->strength,
-  };
+  SDefDeformData data{};
+
+  data.bind_verts = current_sdef_stroke->verts;
+  data.targetCos = static_cast<float (*)[3]>(
+      MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetVertArray"));
+  data.gps = gps;
+  data.dvert = dvert;
+  data.defgrp_index = defgrp_index;
+  data.invert_vgroup = invert_vgroup;
+  data.strength = smd->strength;
   
-  if (data.targetCos != NULL) {
+  
+  if (data.targetCos != nullptr) {
     float tmp_mat[4][4] = {
         {1.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 1.0, -1.0}, {0.0, -1.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 1.0}};
     BKE_mesh_wrapper_vert_coords_copy_with_mat4(
@@ -803,7 +819,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     MEM_freeN(data.targetCos);
   }
 
-  BKE_gpencil_stroke_geometry_update(ob->data, gps);
+  BKE_gpencil_stroke_geometry_update(static_cast<bGPdata *>(ob->data), gps);
   
   end_stroke_evaluation(smd, gpf);
   
@@ -824,16 +840,16 @@ static void deformStroke(GpencilModifierData *md,
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
   if (smd->flags & GP_MOD_SDEF_WITHHOLD_EVALUATION) return;
 
-  surfacedeformModifier_do(md, smd, depsgraph, gps, gpf, gpl, ob, NULL /*, mesh_src*/);
+  surfacedeformModifier_do(md, smd, depsgraph, gps, gpf, gpl, ob, nullptr /*, mesh_src*/);
 
-  /*if (!ELEM(mesh_src, NULL, mesh)) {
-    BKE_id_free(NULL, mesh_src);
+  /*if (!ELEM(mesh_src, nullptr, mesh)) {
+    BKE_id_free(nullptr, mesh_src);
   }*/
   
 
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -842,7 +858,7 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 }
 
 /* uses original modifer */
-static bool isDisabled(GpencilModifierData *md, bool UNUSED(useRenderParams))
+static bool isDisabled(GpencilModifierData *md, bool /*use_render_params*/)
 {
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
 
@@ -851,11 +867,11 @@ static bool isDisabled(GpencilModifierData *md, bool UNUSED(useRenderParams))
    *
    * In other cases it should be impossible to have a type mismatch.
    */
-  return (smd->target == NULL || smd->target->type != OB_MESH) &&
-         (smd->layers == NULL || smd->bound_flags ==0);
+  return (smd->target == nullptr || smd->target->type != OB_MESH) &&
+         (smd->layers == nullptr || smd->bound_flags ==0);
 }
 
-static void frame_list_item(struct uiList *UNUSED(ui_list),
+/* static void frame_list_item(struct uiList *UNUSED(ui_list),
                               const struct bContext *UNUSED(C),
                               struct uiLayout *layout,
                               struct PointerRNA *UNUSED(idataptr),
@@ -868,7 +884,7 @@ static void frame_list_item(struct uiList *UNUSED(ui_list),
 {
   uiLayout *row = uiLayoutRow(layout, true);
   uiItemR(row, itemptr, "name", UI_ITEM_R_NO_BG, "", ICON_OUTLINER_DATA_GP_LAYER);
-}
+}*/
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
@@ -898,23 +914,23 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, !smd->layers);
-  uiItemR(col, ptr, "target", 0, NULL, ICON_NONE); // TODO: disable layout if bound
+  uiItemR(col, ptr, "target", UI_ITEM_NONE, nullptr, ICON_NONE);  // TODO: disable layout if bound
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "falloff", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "falloff", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   bool display_unbind = false;
 
-  uiItemR(layout, ptr, "strength", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
-  uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-  //modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+  uiItemR(sub, ptr, "invert_vertex_group", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+  //modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 
   /*col = uiLayoutColumn(layout, false);
   uiLayoutSetEnabled(col, !is_bound);
   uiLayoutSetActive(col, !is_bound && RNA_string_length(ptr, "vertex_group") != 0);
-  uiItemR(col, ptr, "use_sparse_bind", 0, NULL, ICON_NONE); */
+  uiItemR(col, ptr, "use_sparse_bind", 0, nullptr, ICON_NONE); */
 
   uiItemS(layout);
 
@@ -923,26 +939,34 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   /* BIND */
   row = uiLayoutRow(col, true);
-  uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
+  uiLayoutSetActive(col, !(&target_ptr==nullptr));
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_bind",
-               IFACE_("Bind All"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
+               IFACE_("Bind All"), ICON_NONE, nullptr,
+              WM_OP_INVOKE_DEFAULT,
+              UI_ITEM_NONE,
+              &op_ptr_all);
   RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_bind",
-              IFACE_("Bind Current Frame"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT,  0, &op_ptr_curr);
+              IFACE_("Bind Current Frame"), ICON_NONE, nullptr,
+              WM_OP_INVOKE_DEFAULT,
+              UI_ITEM_NONE,
+              &op_ptr_curr);
   RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
   /*UNBIND*/
   row = uiLayoutRow(col, true);
-  uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
+  uiLayoutSetActive(col, !(&target_ptr == nullptr));
   uiItemFullO(row, "GPENCIL_OT_gpencilsurdeform_unbind", 
-              IFACE_("Unbind All"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
+              IFACE_("Unbind All"), ICON_NONE, nullptr,
+              WM_OP_INVOKE_DEFAULT,
+              UI_ITEM_NONE,
+              &op_ptr_all);
   RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_unbind",
-              IFACE_("Unbind current Frame"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0,  &op_ptr_curr);
+              IFACE_("Unbind current Frame"), ICON_NONE, nullptr,
+              WM_OP_INVOKE_DEFAULT,
+              UI_ITEM_NONE,
+              &op_ptr_curr);
   RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
   row = uiLayoutRow(col, true);
@@ -974,13 +998,13 @@ static void panel_draw(const bContext *C, Panel *panel)
                  "uilist_frames",
                  ptr,
                  "uilist_frame_active_index",
-                 NULL,
+                 nullptr,
                  3,
                  10,
                  0,
                  1,
                  UI_TEMPLATE_LIST_FLAG_NONE);
-  if (smd->uilist_frame_active_index != NULL) {
+  if (smd->uilist_frame_active_index != nullptr) {
 
     /*Show layers
     row = uiLayoutRow(col, true);
@@ -996,7 +1020,7 @@ static void panel_draw(const bContext *C, Panel *panel)
                 "GPENCIL_OT_gpencilsurdeform_unbind",
                 IFACE_("Unbind"),
                 ICON_NONE,
-                NULL,
+                nullptr,
                 WM_OP_INVOKE_DEFAULT,
                 0,
                 &op_ptr_curr);
@@ -1015,7 +1039,7 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
   PointerRNA bake_op;
 
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   Scene *scene = CTX_data_scene(C);
 
   col = uiLayoutColumn(layout, false);
@@ -1027,9 +1051,9 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
               "GPENCIL_OT_gpencilsurdeform_bake",
               IFACE_("Bake Current Frame"),
               ICON_NONE,
-              NULL,
+              nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &bake_op);
   int current_frame_num = (int)BKE_scene_frame_get(scene);
   RNA_int_set(&bake_op, "frame_start", current_frame_num);
@@ -1040,9 +1064,9 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
               "GPENCIL_OT_gpencilsurdeform_bake",
               IFACE_("Bake Range"),
               ICON_NONE,
-              NULL,
+              nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &bake_op);
   RNA_int_set(&bake_op, "frame_start", RNA_int_get(ptr, "bake_range_start"));
   RNA_int_set(&bake_op, "frame_end", RNA_int_get(ptr, "bake_range_end"));
@@ -1050,18 +1074,18 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
   row = uiLayoutRow(col, true);
   uiItemL(row, "Range:", ICON_NONE);
   row = uiLayoutRow(col, true);
-  uiItemR(row, ptr, "bake_range_start", 0, "Start", ICON_NONE);
+  uiItemR(row, ptr, "bake_range_start", UI_ITEM_NONE, "Start", ICON_NONE);
   sub = uiLayoutRow(row, true);
-  uiItemR(sub, ptr, "bake_range_end", 0, "End", ICON_NONE);
+  uiItemR(sub, ptr, "bake_range_end", UI_ITEM_NONE, "End", ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiItemFullO(sub,
               "GPENCIL_OT_gpencilsurdeform_fillrange",
               IFACE_(""),
               ICON_PREVIEW_RANGE,
-              NULL,
+              nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
-              NULL);
+              UI_ITEM_NONE,
+              nullptr);
 
   row = uiLayoutRow(col, true);
   uiItemL(row, "Note that baked frames are unbound. Please bind the freshly baked frame if desired", ICON_INFO);
@@ -1076,12 +1100,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_SurDeform, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "bake", "Bake", NULL, bake_panel_draw, panel_type);
-
-  uiListType *list_type = MEM_callocN(sizeof(uiListType), "dash modifier segment uilist");
-  strcpy(list_type->idname, "MOD_UL_gpsurdef");
-  list_type->draw_item = frame_list_item;
-  WM_uilisttype_add(list_type);
+      region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
 
 }
 
@@ -1097,14 +1116,14 @@ GpencilModifierTypeInfo modifierType_Gpencil_SurDeform = {
     /* structName */ "SurDeformGpencilModifierData",
     /* structSize */ sizeof(SurDeformGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
-    /* flags */ 0,
+    /* flags */ static_cast<GpencilModifierTypeFlag>(0),
 
     /* copyData */ copyData,
 
     /* deformStroke */ deformStroke,
-    /* generateStrokes */ NULL,
+    /* generateStrokes */ nullptr,
     /* bakeModifier */ bakeModifier,
-    /* remapTime */ NULL,
+    /* remapTime */ nullptr,
 
     /* initData */ initData,
     /* freeData */ freeData,
@@ -1112,7 +1131,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_SurDeform = {
     /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ dependsOnTime,
     /* foreachIDLink */ foreachIDLink,
-    /* foreachTexLink */ NULL,
+    /* foreachTexLink */ nullptr,
     /* panelRegister */ panelRegister,
 };
 
