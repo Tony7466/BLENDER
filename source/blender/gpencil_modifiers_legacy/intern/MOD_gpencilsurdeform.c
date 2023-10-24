@@ -5,15 +5,20 @@
  */
 
 #include <stdio.h>
+#include <cstdio>
 
+#include "BLI_utildefines.h"
 #include "BLI_string.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "MOD_gpencil_legacy_modifiertypes.h"
+#include "MOD_gpencil_legacy_ui_common.h"
+#include "MOD_gpencil_legacy_util.h"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -31,28 +36,22 @@
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.hh"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-
-#include "RNA_access.h"
-
-#include "MOD_gpencil_legacy_modifiertypes.h"
-#include "MOD_gpencil_legacy_ui_common.h"
-#include "MOD_gpencil_legacy_util.h"
+#include "RNA_access.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /* HEADER FROM MOD_surfacedeform.c */
 
 #include "BLI_alloca.h"
-#include "BLI_math.h"
 #include "BLI_task.h"
 
 
@@ -62,13 +61,13 @@
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 
 
 /*#include "BLO_read_write.h"*/
 
-#include "RNA_prototypes.h"
+//#include "RNA_prototypes.h"
 
 
 
@@ -953,7 +952,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     for (int l = 0; l < smd->num_of_layers; l++)
     {
       row = uiLayoutRow(col, true);
-      BLI_sprintf(label,
+      BLI_sprintfN(label,
                   "Layer %s, Number of bound frames: %u",
                   smd->layers[l].layer_info, smd->layers[l].num_of_frames);
       uiItemL(row, label, ICON_INFO);
@@ -985,7 +984,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     /*Show layers
     row = uiLayoutRow(col, true);
-    BLI_sprintf(label,
+    BLI_sprintfN(label,
                 "Layers: %s,",
                 smd->layers[l].layer_info,);
     uiItemL(row, label, ICON_NONE);
