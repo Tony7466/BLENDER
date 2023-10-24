@@ -4569,8 +4569,8 @@ static int ui_do_but_BUT(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       return WM_UI_HANDLER_BREAK;
     }
     if (event->type == LEFTMOUSE && event->val == KM_RELEASE && but->block->handle) {
-      /* regular buttons will be 'UI_SELECT', menu items 'UI_HOVER_FOCUS' */
-      if (!(but->flag & (UI_SELECT | UI_HOVER_FOCUS))) {
+      /* regular buttons will be 'UI_SELECT', menu items 'UI_HOVER' */
+      if (!(but->flag & (UI_SELECT | UI_HOVER))) {
         data->cancel = true;
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);
@@ -8624,7 +8624,7 @@ static void button_activate_init(bContext *C,
   data->state = BUTTON_STATE_INIT;
 
   /* activate button */
-  but->flag |= UI_HOVER_FOCUS;
+  but->flag |= UI_HOVER;
   but->active = data;
 
   /* we disable auto_open in the block after a threshold, because we still
@@ -8812,7 +8812,7 @@ static void button_activate_exit(
   /* clean up button */
   MEM_SAFE_FREE(but->active);
 
-  but->flag &= ~(UI_HOVER_FOCUS | UI_SELECT);
+  but->flag &= ~(UI_HOVER | UI_SELECT);
   but->flag |= UI_BUT_LAST_ACTIVE;
   if (!onfree) {
     ui_but_update(but);
@@ -9410,14 +9410,14 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
           }
 
           if (!(but->flag & UI_SELECT)) {
-            but->flag |= (UI_SELECT | UI_HOVER_FOCUS);
+            but->flag |= (UI_SELECT | UI_HOVER);
             data->cancel = false;
             ED_region_tag_redraw_no_rebuild(data->region);
           }
         }
         else {
           if (but->flag & UI_SELECT) {
-            but->flag &= ~(UI_SELECT | UI_HOVER_FOCUS);
+            but->flag &= ~(UI_SELECT | UI_HOVER);
             data->cancel = true;
             ED_region_tag_redraw_no_rebuild(data->region);
           }
@@ -9830,7 +9830,7 @@ static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *r
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       if (ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
-        but->flag &= ~UI_HOVER_FOCUS;
+        but->flag &= ~UI_HOVER;
         has_item = true;
       }
     }
@@ -9847,7 +9847,7 @@ static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *r
     hovered_row_but = ui_list_row_find_mouse_over(region, event->xy);
   }
   if (hovered_row_but) {
-    hovered_row_but->flag |= UI_HOVER_FOCUS;
+    hovered_row_but->flag |= UI_HOVER;
   }
 
   return WM_UI_HANDLER_CONTINUE;

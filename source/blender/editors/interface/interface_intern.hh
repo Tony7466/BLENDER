@@ -71,12 +71,12 @@ enum {
   /** Temporarily hidden (scrolled out of the view). */
   UI_SCROLLED = (1 << 1),
   /**
-   * Button is in focus because the mouse is hovering it (or sometimes just to enforce
-   * highlighting/focus) while input isn't blocked by other handlers/buttons. Typically makes the
-   * button draw highlighted. Note that in Blender a hovered button is considered "active" for
-   * event handling, and can receive shortcuts and other input. Hence the term "focus".
+   * The button is hovered by the mouse and should be drawn with a hover highlight. Mostly managed
+   * by UI handling code. Note that this handling code will also make the button active/focused so
+   * that events will be forwarded to it and other handlers/shortcuts can be used while hovering
+   * it.
    */
-  UI_HOVER_FOCUS = (1 << 2),
+  UI_HOVER = (1 << 2),
   UI_HAS_ICON = (1 << 3),
   UI_HIDDEN = (1 << 4),
   /** Display selected, doesn't impact interaction. */
@@ -1221,7 +1221,7 @@ enum uiMenuItemSeparatorType {
  * Helper call to draw a menu item without a button.
  *
  * \param but_flag: Button flags (#uiBut.flag) indicating the state of the item, typically
- *                  #UI_HOVER_FOCUS, #UI_BUT_DISABLED, #UI_BUT_INACTIVE.
+ *                  #UI_HOVER, #UI_BUT_DISABLED, #UI_BUT_INACTIVE.
  * \param separator_type: The kind of separator which controls if and how the string is clipped.
  * \param r_xmax: The right hand position of the text, this takes into the icon, padding and text
  *                clipping when there is not enough room to display the full text.
