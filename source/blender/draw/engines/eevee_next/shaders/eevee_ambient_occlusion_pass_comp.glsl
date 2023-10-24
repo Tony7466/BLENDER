@@ -41,7 +41,7 @@ void main()
                                         8);
 
   /* We can have some float imprecision because of the weighted accumulation. */
-  if (ambient_occlusion.r >= 0.95) {
+  if (ambient_occlusion.r >= 0.98) {
     ambient_occlusion = vec3(1.0);
   }
 

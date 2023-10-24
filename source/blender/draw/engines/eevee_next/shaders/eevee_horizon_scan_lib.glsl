@@ -20,6 +20,10 @@ uint horizon_scan_bitmask(vec2 theta)
   uint a = uint(floor(float(bitmask_len) * ratio.x));
   /* The paper is wrong here. The additional half Pi is not needed . */
   uint b = uint(ceil(float(bitmask_len) * (ratio.y - ratio.x)));
+  /* Special case where this algorithm fails. Happens often because of angular bias. */
+  if (b == 32) {
+    return 0xFFFFFFFFu;
+  }
   /* Algorithm 1, line 19. */
   return ((1u << b) - 1u) << a;
 }
@@ -32,7 +36,7 @@ float bsdf_eval(vec3 N, vec3 L)
 uint horizon_scan_bitmask_scan(vec3 vV,
                                vec3 vP,
                                vec3 vN,
-                               float angle_vN,
+                               float vN_angle,
                                float noise,
                                ScreenSpaceRay ssray,
                                sampler2D depth_tx,
@@ -101,8 +105,9 @@ uint horizon_scan_bitmask_scan(vec3 vV,
       vec2 theta = acos_fast(vec2(dot(vL_front, vV), dot(vL_back, vV)));
       /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
       theta = (i == 0) ? theta.xy : -theta.yx;
-      theta -= angle_vN;
-
+      theta -= vN_angle;
+      /* Angular bias. */
+      theta *= 1.05;
       uint sample_bitmask = horizon_scan_bitmask(theta);
 #ifdef USE_RADIANCE_ACCUMULATION
       float sample_visibility = float(bitCount(sample_bitmask & ~slice_bitmask)) / bitmask_len;
@@ -115,7 +120,7 @@ uint horizon_scan_bitmask_scan(vec3 vV,
         accum_light += sample_radiance * (bsdf_eval(vN, vL_front) * sample_visibility);
       }
 #endif
-      slice_bitmask |= horizon_scan_bitmask(theta);
+      slice_bitmask |= sample_bitmask;
     }
   }
   return slice_bitmask;
@@ -153,13 +158,13 @@ vec3 horizon_scan(vec3 vP,
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
     /* Projected view normal onto the integration plane. */
-    float proj_vN_len;
-    vec3 proj_vN = normalize_and_get_length(vN - vB * dot(vN, vB), proj_vN_len);
+    float vN_proj_len;
+    vec3 vN_proj = normalize_and_get_length(vN - vB * dot(vN, vB), vN_proj_len);
 
-    float N_sin = dot(proj_vN, vT);
-    float N_cos = saturate(dot(proj_vN, vV));
+    float vN_sin = dot(vN_proj, vT);
+    float vN_cos = saturate(dot(vN_proj, vV));
     /* Angle between normalized projected normal and view vector. */
-    float N_angle = sign(N_sin) * acos_fast(N_cos);
+    float vN_angle = sign(vN_sin) * acos_fast(vN_cos);
 
     Ray ray;
     ray.origin = vP;
@@ -171,8 +176,8 @@ vec3 horizon_scan(vec3 vP,
     vec3 light_slice = vec3(0.0);
     uint slice_bitmask = horizon_scan_bitmask_scan(vV,
                                                    vP,
-                                                   vN,
-                                                   N_angle,
+                                                   vN_proj,
+                                                   vN_angle,
                                                    noise.y,
                                                    ssray,
                                                    depth_tx,
@@ -198,8 +203,8 @@ vec3 horizon_scan(vec3 vP,
     }
 #endif
     /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-    accum_light += light_slice * proj_vN_len;
-    accum_weight += proj_vN_len;
+    accum_light += light_slice * vN_proj_len;
+    accum_weight += vN_proj_len;
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);
