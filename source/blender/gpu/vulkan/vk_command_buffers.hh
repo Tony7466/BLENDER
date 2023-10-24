@@ -157,14 +157,6 @@ class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
   }
 
   /**
-   * Ensure that no compute or draw commands are scheduled.
-   *
-   * To ensure correct operation all compute and draw commands should be flushed when adding a new
-   * data transfer command.
-   */
-  void ensure_no_compute_or_draw_commands();
-
-  /**
    * Ensure that no compute commands are scheduled.
    *
    * To ensure correct operation all compute commands should be flushed when adding a new draw

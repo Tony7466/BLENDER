@@ -141,15 +141,6 @@ void VKCommandBuffers::submit()
   }
 }
 
-void VKCommandBuffers::ensure_no_compute_or_draw_commands()
-{
-  if (command_buffer_get(Type::Compute).has_recorded_commands() ||
-      command_buffer_get(Type::Graphics).has_recorded_commands())
-  {
-    submit();
-  }
-}
-
 void VKCommandBuffers::ensure_no_compute_commands()
 {
   if (command_buffer_get(Type::Compute).has_recorded_commands()) {
@@ -271,7 +262,6 @@ void VKCommandBuffers::copy(VKBuffer &dst_buffer,
                             VKTexture &src_texture,
                             Span<VkBufferImageCopy> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).copy(dst_buffer, src_texture, regions);
 }
 
@@ -279,7 +269,6 @@ void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKBuffer &src_buffer,
                             Span<VkBufferImageCopy> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).copy(dst_texture, src_buffer, regions);
 }
 
@@ -287,13 +276,11 @@ void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKTexture &src_texture,
                             Span<VkImageCopy> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).copy(dst_texture, src_texture, regions);
 }
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).copy(dst_buffer, src_buffer, regions);
 }
 
@@ -301,7 +288,6 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
                             VKTexture &src_texture,
                             Span<VkImageBlit> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).blit(dst_texture, src_texture, regions);
 }
 
@@ -311,7 +297,6 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
                             VkImageLayout src_layout,
                             Span<VkImageBlit> regions)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer)
       .blit(dst_texture, dst_layout, src_texture, src_layout, regions);
 }
@@ -320,13 +305,11 @@ void VKCommandBuffers::pipeline_barrier(VkPipelineStageFlags source_stages,
                                         VkPipelineStageFlags destination_stages)
 {
   /* TODO: Command isn't used.*/
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).pipeline_barrier(source_stages, destination_stages);
 }
 
 void VKCommandBuffers::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).pipeline_barrier(image_memory_barriers);
 }
 
@@ -335,7 +318,6 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearColorValue &vk_clear_color,
                              Span<VkImageSubresourceRange> ranges)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).clear(vk_image, vk_image_layout, vk_clear_color, ranges);
 }
 
@@ -344,7 +326,6 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearDepthStencilValue &vk_clear_depth_stencil,
                              Span<VkImageSubresourceRange> ranges)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer)
       .clear(vk_image, vk_image_layout, vk_clear_depth_stencil, ranges);
 }
@@ -357,7 +338,6 @@ void VKCommandBuffers::clear(Span<VkClearAttachment> attachments, Span<VkClearRe
 
 void VKCommandBuffers::fill(VKBuffer &buffer, uint32_t data)
 {
-  ensure_no_compute_or_draw_commands();
   command_buffer_get(Type::DataTransfer).fill(buffer, data);
 }
 
