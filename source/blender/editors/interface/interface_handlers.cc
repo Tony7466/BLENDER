@@ -5347,7 +5347,7 @@ static bool ui_numedit_but_NUM(uiButNumber *but,
 static void ui_numedit_set_active(uiBut *but)
 {
   const int oldflag = but->drawflag;
-  but->drawflag &= ~(UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT);
+  but->drawflag &= ~(UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT);
 
   uiHandleButtonData *data = but->active;
   if (!data) {
@@ -5365,16 +5365,16 @@ static void ui_numedit_set_active(uiBut *but)
     ui_window_to_block(data->region, but->block, &mx, &my);
 
     if (mx < (but->rect.xmin + handle_width)) {
-      but->drawflag |= UI_BUT_ACTIVE_LEFT;
+      but->drawflag |= UI_BUT_HOVER_LEFT;
     }
     else if (mx > (but->rect.xmax - handle_width)) {
-      but->drawflag |= UI_BUT_ACTIVE_RIGHT;
+      but->drawflag |= UI_BUT_HOVER_RIGHT;
     }
   }
 
   /* Don't change the cursor once pressed. */
   if ((but->flag & UI_SELECT) == 0) {
-    if ((but->drawflag & UI_BUT_ACTIVE_LEFT) || (but->drawflag & UI_BUT_ACTIVE_RIGHT)) {
+    if ((but->drawflag & UI_BUT_HOVER_LEFT) || (but->drawflag & UI_BUT_HOVER_RIGHT)) {
       if (data->changed_cursor) {
         WM_cursor_modal_restore(data->window);
         data->changed_cursor = false;
@@ -5425,14 +5425,14 @@ static int ui_do_but_NUM(
     }
     else if (type == WHEELDOWNMOUSE && (event->modifier & KM_CTRL)) {
       mx = but->rect.xmin;
-      but->drawflag &= ~UI_BUT_ACTIVE_RIGHT;
-      but->drawflag |= UI_BUT_ACTIVE_LEFT;
+      but->drawflag &= ~UI_BUT_HOVER_RIGHT;
+      but->drawflag |= UI_BUT_HOVER_LEFT;
       click = 1;
     }
     else if ((type == WHEELUPMOUSE) && (event->modifier & KM_CTRL)) {
       mx = but->rect.xmax;
-      but->drawflag &= ~UI_BUT_ACTIVE_LEFT;
-      but->drawflag |= UI_BUT_ACTIVE_RIGHT;
+      but->drawflag &= ~UI_BUT_HOVER_LEFT;
+      but->drawflag |= UI_BUT_HOVER_RIGHT;
       click = 1;
     }
     else if (event->val == KM_PRESS) {
@@ -5534,14 +5534,14 @@ static int ui_do_but_NUM(
 
     if (!ui_but_is_float(but)) {
       /* Integer Value. */
-      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
+      if (but->drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT)) {
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
         const int value_step = int(number_but->step_size);
         BLI_assert(value_step > 0);
         const int softmin = round_fl_to_int_clamp(but->softmin);
         const int softmax = round_fl_to_int_clamp(but->softmax);
-        const double value_test = (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+        const double value_test = (but->drawflag & UI_BUT_HOVER_LEFT) ?
                                       double(max_ii(softmin, int(data->value) - value_step)) :
                                       double(min_ii(softmax, int(data->value) + value_step));
         if (value_test != data->value) {
@@ -5558,7 +5558,7 @@ static int ui_do_but_NUM(
     }
     else {
       /* Float Value. */
-      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
+      if (but->drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT)) {
         const PropertyScaleType scale_type = ui_but_scale_type(but);
 
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
@@ -5578,7 +5578,7 @@ static int ui_do_but_NUM(
         }
         BLI_assert(value_step > 0.0f);
         const double value_test =
-            (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+            (but->drawflag & UI_BUT_HOVER_LEFT) ?
                 double(max_ff(but->softmin, float(data->value - value_step))) :
                 double(min_ff(but->softmax, float(data->value + value_step)));
         if (value_test != data->value) {

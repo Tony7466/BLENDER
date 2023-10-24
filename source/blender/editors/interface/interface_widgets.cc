@@ -3457,7 +3457,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (state->but_drawflag & UI_BUT_ACTIVE_LEFT) {
+    if (state->but_drawflag & UI_BUT_HOVER_LEFT) {
       widget_active_color(&wcol_zone);
     }
 
@@ -3477,7 +3477,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (state->but_drawflag & UI_BUT_ACTIVE_RIGHT) {
+    if (state->but_drawflag & UI_BUT_HOVER_RIGHT) {
       widget_active_color(&wcol_zone);
     }
 
@@ -3496,7 +3496,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (!(state->but_drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT))) {
+    if (!(state->but_drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT))) {
       widget_active_color(&wcol_zone);
     }
 
