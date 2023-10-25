@@ -111,6 +111,12 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.operator("object.lightprobe_cache_free").subset = 'ACTIVE'
 
             col.separator()
+            
+            row = col.row(align=True)
+            row.prop(probe, "show_data_size", text="Display Data")
+            row.prop(probe, "show_data", text="", toggle=True)
+            
+            col.separator()
 
             col.prop(probe, "grid_bake_samples")
             col.prop(probe, "surfel_density")

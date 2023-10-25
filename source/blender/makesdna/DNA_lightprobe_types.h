@@ -77,6 +77,10 @@ typedef struct LightProbe {
 
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
+
+  /** LIGHTPROBE_FLAG_SHOW_DATA display size. */
+  float show_data_size;
+  char _pad1[4];
 } LightProbe;
 
 /* Probe->type */
