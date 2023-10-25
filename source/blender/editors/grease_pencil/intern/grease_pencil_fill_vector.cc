@@ -21,6 +21,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
+#include "ANIM_keyframing.hh"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
@@ -307,6 +309,8 @@ struct VectorFillData {
   ViewContext vc;
   /* Fill brush. */
   Brush *brush;
+  /* Additive drawing (from tool settings). */
+  bool additive_drawing;
 
   /* Draw handle for 3D viewport overlay. */
   void *draw_handle = nullptr;
@@ -723,9 +727,19 @@ static void create_fill_geometry(VectorFillData *vf)
 {
   /* Ensure active frame (autokey is on, we checked on operator invoke). */
   const bke::greasepencil::Layer *active_layer = vf->grease_pencil->get_active_layer();
-  if (active_layer->drawing_index_at(vf->vc.scene->r.cfra) == -1) {
-    bke::greasepencil::Layer *layer = vf->grease_pencil->get_active_layer_for_write();
-    vf->grease_pencil->insert_blank_frame(*layer, vf->vc.scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
+  const int current_frame = vf->vc.scene->r.cfra;
+  if (!vf->grease_pencil->get_active_layer()->frames().contains(current_frame)) {
+    bke::greasepencil::Layer &active_layer = *vf->grease_pencil->get_active_layer_for_write();
+    if (vf->additive_drawing) {
+      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
+       * current frame. */
+      vf->grease_pencil->insert_duplicate_frame(
+          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+    }
+    else {
+      /* Otherwise we just insert a blank keyframe. */
+      vf->grease_pencil->insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
   }
 
   /* Get the edge points in 3D space. */
@@ -790,10 +804,7 @@ static void create_fill_geometry(VectorFillData *vf)
                                                     vf->brush->gpencil_settings->vertex_factor) :
                                                 ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f);
 
-  bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", ATTR_DOMAIN_POINT);
-  vertex_colors.span.slice(new_points_range).fill(vertex_color_stroke);
-  vertex_colors.finish();
+  drawing.vertex_colors_for_write().slice(new_points_range).fill(vertex_color_stroke);
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
   fill_colors.span.slice(new_curves_range).fill(vertex_color_fill);
@@ -832,8 +843,11 @@ static void create_fill_geometry(VectorFillData *vf)
         return true;
       });
 
+  curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
+  curves.update_curve_types();
+
   /* Set notifiers. */
-  drawing.tag_positions_changed();
+  drawing.tag_topology_changed();
   DEG_id_tag_update(&vf->grease_pencil->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GEOM | ND_DATA, &vf->grease_pencil->id);
 }
@@ -2547,7 +2561,7 @@ static bool init(bContext *C, wmOperator *op)
 
   /* Get view context. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ED_view3d_viewcontext_init(C, &vf->vc, depsgraph);
+  vf->vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   /* Get active GP object. */
   vf->grease_pencil = static_cast<GreasePencil *>(vf->vc.obact->data);
@@ -2555,6 +2569,7 @@ static bool init(bContext *C, wmOperator *op)
   /* Get tool brush. */
   ToolSettings *ts = CTX_data_tool_settings(C);
   vf->brush = BKE_paint_brush(&ts->gp_paint->paint);
+  vf->additive_drawing = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
 
   /* Init vector fill flags. */
   vf->gap_close_extend = (vf->brush->gpencil_settings->fill_extend_mode == GP_FILL_EMODE_EXTEND);
@@ -2735,8 +2750,8 @@ static int invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
   }
 
   /* Check active frame. */
-  if (active_layer->drawing_index_at(scene->r.cfra) == -1) {
-    if (!IS_AUTOKEY_ON(scene)) {
+  if (!grease_pencil.get_active_layer()->frames().contains(scene->r.cfra)) {
+    if (!blender::animrig::is_autokey_on(scene)) {
       BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
       return OPERATOR_CANCELLED;
     }

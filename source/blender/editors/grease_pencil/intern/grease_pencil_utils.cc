@@ -20,6 +20,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "DEG_depsgraph_query.hh"
+
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
