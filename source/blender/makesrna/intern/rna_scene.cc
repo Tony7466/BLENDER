@@ -7867,11 +7867,23 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "gtao_thickness", PROP_FLOAT, PROP_DISTANCE);
-  RNA_def_property_ui_text(
-      prop, "Thickness", "Distance of object that contribute to the ambient occlusion effect");
+  /* Horizon Scan */
+
+  prop = RNA_def_property(srna, "horizon_thickness", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "gtao_thickness");
+  RNA_def_property_ui_text(prop,
+                           "Thickness",
+                           "Constant thickness of the surfaces considered when doing horizon scan "
+                           "and by extension ambient occlusion");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0f, 100.0f, 1, 3);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "horizon_quality", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "gtao_quality");
+  RNA_def_property_ui_text(prop, "Trace Precision", "Precision of the horizon scan");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 

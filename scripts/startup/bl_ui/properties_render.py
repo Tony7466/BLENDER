@@ -193,8 +193,8 @@ class RENDER_PT_eevee_next_horizon_scan(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.prop(props, "gtao_quality", text="Precision")
-        col.prop(props, "gtao_thickness", text="Thickness")
+        col.prop(props, "horizon_quality", text="Precision")
+        col.prop(props, "horizon_thickness", text="Thickness")
 
 
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
