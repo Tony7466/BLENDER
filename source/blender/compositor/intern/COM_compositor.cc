@@ -16,10 +16,6 @@
 
 #include "RE_compositor.hh"
 
-namespace blender::realtime_compositor {
-class RenderContext;
-}
-
 static struct {
   bool is_initialized = false;
   ThreadMutex mutex;
@@ -100,7 +96,7 @@ void COM_execute(Render *render,
     const bool twopass = (node_tree->flag & NTREE_TWO_PASS) && !rendering;
     if (twopass) {
       blender::compositor::ExecutionSystem fast_pass(
-          render_data, scene, node_tree, rendering, true, view_name);
+          render_data, scene, node_tree, rendering, true, view_name, render_context);
       fast_pass.execute();
 
       if (node_tree->runtime->test_break(node_tree->runtime->tbh)) {
@@ -110,7 +106,7 @@ void COM_execute(Render *render,
     }
 
     blender::compositor::ExecutionSystem system(
-        render_data, scene, node_tree, rendering, false, view_name);
+        render_data, scene, node_tree, rendering, false, view_name, render_context);
     system.execute();
   }
 

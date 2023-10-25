@@ -38,10 +38,6 @@
 #  include "COM_compositor.hh"
 #endif
 
-namespace blender::realtime_compositor {
-class RenderContext;
-}
-
 static void composite_get_from_context(
     const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
