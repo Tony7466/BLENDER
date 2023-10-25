@@ -1744,5 +1744,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                                          MA_SURFACE_METHOD_DEFERRED;
       }
     }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "gtao_thickness")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gtao_thickness = default_eevee.gtao_thickness;
+      }
+    }
   }
 }
