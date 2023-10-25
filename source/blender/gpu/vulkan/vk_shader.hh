@@ -60,6 +60,16 @@ class VKShader : public Shader {
   std::string geometry_layout_declare(const shader::ShaderCreateInfo &info) const override;
   std::string compute_layout_declare(const shader::ShaderCreateInfo &info) const override;
 
+  /* Unused: SSBO vertex fetch draw parameters. */
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
+    return false;
+  }
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
+    return 0;
+  }
+
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
@@ -95,6 +105,13 @@ class VKShader : public Shader {
   {
     return compute_module_ != VK_NULL_HANDLE;
   }
+
+  /**
+   * \brief features available on newer implementation such as native barycentric coordinates
+   * and layered rendering, necessitate a geometry shader to work on older hardware.
+   */
+  std::string workaround_geometry_shader_source_create(const shader::ShaderCreateInfo &info);
+  bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
 };
 
 static inline VKShader &unwrap(Shader &shader)

@@ -12,8 +12,8 @@
 #include "GHOST_DropTargetWin32.hh"
 #include "GHOST_SystemWin32.hh"
 #include "GHOST_WindowManager.hh"
-#include "utf_winfunc.h"
-#include "utfconv.h"
+#include "utf_winfunc.hh"
+#include "utfconv.hh"
 
 #ifdef WITH_OPENGL_BACKEND
 #  include "GHOST_ContextWGL.hh"
@@ -128,12 +128,12 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   if (!setDrawingContextType(type)) {
     const char *title = "Blender - Unsupported Graphics Card Configuration";
     const char *text =
-        "A graphics card and driver with support for OpenGL 3.3 or higher is "
+        "A graphics card and driver with support for OpenGL 4.3 or higher is "
         "required.\n\nInstalling the latest driver for your graphics card might resolve the "
         "issue.";
     if (GetSystemMetrics(SM_CMONITORS) > 1) {
       text =
-          "A graphics card and driver with support for OpenGL 3.3 or higher is "
+          "A graphics card and driver with support for OpenGL 4.3 or higher is "
           "required.\n\nPlugging all monitors into your primary graphics card might resolve "
           "this issue. Installing the latest driver for your graphics card could also help.";
     }

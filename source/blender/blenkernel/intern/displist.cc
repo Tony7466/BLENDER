@@ -39,13 +39,13 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_vfont.h"
 
 #include "BLI_sys_types.h" /* For #intptr_t support. */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 using blender::IndexRange;
 
@@ -758,9 +758,6 @@ static blender::bke::GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
 
   if (geometry_set.has_mesh()) {
     Mesh *final_mesh = geometry_set.get_mesh_for_write();
-
-    BKE_mesh_ensure_normals_for_display(final_mesh);
-
     STRNCPY(final_mesh->id.name, cu->id.name);
     *((short *)final_mesh->id.name) = ID_ME;
   }

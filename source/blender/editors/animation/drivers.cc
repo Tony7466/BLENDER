@@ -27,8 +27,8 @@
 #include "BKE_fcurve_driver.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_keyframing.hh"
 
@@ -177,7 +177,7 @@ static int add_driver_with_target(ReportList * /*reports*/,
     if ((RNA_property_unit(dst_prop) == PROP_UNIT_ROTATION) &&
         (RNA_property_unit(src_prop) != PROP_UNIT_ROTATION))
     {
-      /* Rotation Destination:  normal -> radians,  so convert src to radians
+      /* Rotation Destination: normal -> radians, so convert src to radians
        * (However, if both input and output is a rotation, don't apply such corrections)
        */
       STRNCPY(driver->expression, "radians(var)");
