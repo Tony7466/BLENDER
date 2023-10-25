@@ -11,8 +11,18 @@
 #include "vk_command_buffer.hh"
 
 namespace blender::gpu {
+class VKFrameBuffer;
+class VKStorageBuffer;
+class VKBuffer;
+class VKVertexBuffer;
+class VKIndexBuffer;
+class VKTexture;
+class VKPushConstants;
+struct VKBufferWithOffset;
+class VKPipeline;
+class VKDescriptorSet;
 
-class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
+class VKCommandBuffers : public NonCopyable, NonMovable {
   enum class Type {
     DataTransfer = 0,
     Compute = 1,
@@ -55,23 +65,21 @@ class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
     return initialized_;
   }
 
-  void bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint bind_point) override;
+  void bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint bind_point);
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
-            VkPipelineBindPoint bind_point) override;
+            VkPipelineBindPoint bind_point);
   void bind(const uint32_t binding,
             const VKVertexBuffer &vertex_buffer,
-            const VkDeviceSize offset) override;
+            const VkDeviceSize offset);
   /* Bind the given buffer as a vertex buffer. */
-  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer) override;
-  void bind(const uint32_t binding,
-            const VkBuffer &vk_vertex_buffer,
-            const VkDeviceSize offset) override;
+  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
+  void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
   /* Bind the given buffer as an index buffer. */
-  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type) override;
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
-  void begin_render_pass(VKFrameBuffer &framebuffer) override;
-  void end_render_pass(const VKFrameBuffer &framebuffer) override;
+  void begin_render_pass(VKFrameBuffer &framebuffer);
+  void end_render_pass(const VKFrameBuffer &framebuffer);
 
   /**
    * Add a push constant command to the command buffer.
@@ -80,27 +88,23 @@ class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
    */
   void push_constants(const VKPushConstants &push_constants,
                       const VkPipelineLayout vk_pipeline_layout,
-                      const VkShaderStageFlags vk_shader_stages) override;
-  void dispatch(int groups_x_len, int groups_y_len, int groups_z_len) override;
-  void dispatch(VKStorageBuffer &command_buffer) override;
+                      const VkShaderStageFlags vk_shader_stages);
+  void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
+  void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */
-  void copy(VKBuffer &dst_buffer,
-            VKTexture &src_texture,
-            Span<VkBufferImageCopy> regions) override;
-  void copy(VKTexture &dst_texture,
-            VKBuffer &src_buffer,
-            Span<VkBufferImageCopy> regions) override;
-  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions) override;
-  void copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions) override;
-  void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions) override;
+  void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
+  void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
+  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
+  void copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions);
+  void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
   void blit(VKTexture &dst_texture,
             VkImageLayout dst_layout,
             VKTexture &src_texture,
             VkImageLayout src_layout,
-            Span<VkImageBlit> regions) override;
+            Span<VkImageBlit> regions);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
-                        VkPipelineStageFlags destination_stages) override;
-  void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers) override;
+                        VkPipelineStageFlags destination_stages);
+  void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers);
 
   /**
    * Clear color image resource.
@@ -108,7 +112,7 @@ class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
   void clear(VkImage vk_image,
              VkImageLayout vk_image_layout,
              const VkClearColorValue &vk_clear_color,
-             Span<VkImageSubresourceRange> ranges) override;
+             Span<VkImageSubresourceRange> ranges);
 
   /**
    * Clear depth/stencil aspect of an image resource.
@@ -116,29 +120,26 @@ class VKCommandBuffers : public VKCommands, NonCopyable, NonMovable {
   void clear(VkImage vk_image,
              VkImageLayout vk_image_layout,
              const VkClearDepthStencilValue &vk_clear_color,
-             Span<VkImageSubresourceRange> ranges) override;
+             Span<VkImageSubresourceRange> ranges);
 
   /**
    * Clear attachments of the active framebuffer.
    */
-  void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas) override;
-  void fill(VKBuffer &buffer, uint32_t data) override;
+  void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
+  void fill(VKBuffer &buffer, uint32_t data);
 
-  void draw(int v_first, int v_count, int i_first, int i_count) override;
-  void draw_indexed(int index_count,
-                    int instance_count,
-                    int first_index,
-                    int vertex_offset,
-                    int first_instance) override;
+  void draw(int v_first, int v_count, int i_first, int i_count);
+  void draw_indexed(
+      int index_count, int instance_count, int first_index, int vertex_offset, int first_instance);
 
   void draw_indirect(const VKStorageBuffer &buffer,
                      VkDeviceSize offset,
                      uint32_t draw_count,
-                     uint32_t stride) override;
+                     uint32_t stride);
   void draw_indexed_indirect(const VKStorageBuffer &buffer,
                              VkDeviceSize offset,
                              uint32_t draw_count,
-                             uint32_t stride) override;
+                             uint32_t stride);
 
   void submit();
 

@@ -9,6 +9,10 @@
 #include "vk_command_buffers.hh"
 #include "vk_device.hh"
 #include "vk_memory.hh"
+#include "vk_pipeline.hh"
+#include "vk_storage_buffer.hh"
+#include "vk_texture.hh"
+#include "vk_vertex_buffer.hh"
 
 #include "BLI_assert.h"
 
@@ -167,11 +171,14 @@ void VKCommandBuffers::bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint b
     ensure_no_draw_commands();
     type = Type::Compute;
   }
-  if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+  else if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
     ensure_no_compute_commands();
     type = Type::Graphics;
   }
-  command_buffer_get(type).bind(vk_pipeline, bind_point);
+
+  VKCommandBuffer &command_buffer = command_buffer_get(type);
+  vkCmdBindPipeline(command_buffer.vk_command_buffer(), bind_point, vk_pipeline.vk_handle());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::bind(const VKDescriptorSet &descriptor_set,
@@ -187,21 +194,30 @@ void VKCommandBuffers::bind(const VKDescriptorSet &descriptor_set,
     ensure_no_compute_commands();
     type = Type::Graphics;
   }
-  command_buffer_get(type).bind(descriptor_set, vk_pipeline_layout, bind_point);
+
+  VKCommandBuffer &command_buffer = command_buffer_get(type);
+  VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
+  vkCmdBindDescriptorSets(command_buffer.vk_command_buffer(),
+                          bind_point,
+                          vk_pipeline_layout,
+                          0,
+                          1,
+                          &vk_descriptor_set,
+                          0,
+                          0);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::bind(const uint32_t binding,
                             const VKVertexBuffer &vertex_buffer,
                             const VkDeviceSize offset)
 {
-  ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).bind(binding, vertex_buffer, offset);
+  bind(binding, vertex_buffer.vk_handle(), offset);
 }
 
 void VKCommandBuffers::bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer)
 {
-  ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).bind(binding, vertex_buffer);
+  bind(binding, vertex_buffer.buffer.vk_handle(), vertex_buffer.offset);
 }
 
 void VKCommandBuffers::bind(const uint32_t binding,
@@ -209,25 +225,41 @@ void VKCommandBuffers::bind(const uint32_t binding,
                             const VkDeviceSize offset)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).bind(binding, vk_vertex_buffer, offset);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdBindVertexBuffers(
+      command_buffer.vk_command_buffer(), binding, 1, &vk_vertex_buffer, &offset);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).bind(index_buffer, index_type);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdBindIndexBuffer(command_buffer.vk_command_buffer(),
+                       index_buffer.buffer.vk_handle(),
+                       index_buffer.offset,
+                       index_type);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::begin_render_pass(VKFrameBuffer &framebuffer)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).begin_render_pass(framebuffer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.begin_render_pass(framebuffer);
 }
 
 void VKCommandBuffers::end_render_pass(const VKFrameBuffer &framebuffer)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).end_render_pass(framebuffer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.end_render_pass(framebuffer);
 }
 
 void VKCommandBuffers::push_constants(const VKPushConstants &push_constants,
@@ -243,52 +275,104 @@ void VKCommandBuffers::push_constants(const VKPushConstants &push_constants,
     ensure_no_compute_commands();
     type = Type::Graphics;
   }
-  command_buffer_get(type).push_constants(push_constants, vk_pipeline_layout, vk_shader_stages);
+
+  VKCommandBuffer &command_buffer = command_buffer_get(type);
+  BLI_assert(push_constants.layout_get().storage_type_get() ==
+             VKPushConstants::StorageType::PUSH_CONSTANTS);
+  vkCmdPushConstants(command_buffer.vk_command_buffer(),
+                     vk_pipeline_layout,
+                     vk_shader_stages,
+                     push_constants.offset(),
+                     push_constants.layout_get().size_in_bytes(),
+                     push_constants.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   ensure_no_draw_commands();
-  command_buffer_get(Type::Compute).dispatch(groups_x_len, groups_y_len, groups_z_len);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Compute);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdDispatch(command_buffer.vk_command_buffer(), groups_x_len, groups_y_len, groups_z_len);
+  command_buffer.command_recorded();
 }
 
-void VKCommandBuffers::dispatch(VKStorageBuffer &command_buffer)
+void VKCommandBuffers::dispatch(VKStorageBuffer &command_storage_buffer)
 {
   ensure_no_draw_commands();
-  command_buffer_get(Type::Compute).dispatch(command_buffer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Compute);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdDispatchIndirect(command_buffer.vk_command_buffer(), command_storage_buffer.vk_handle(), 0);
+  command_buffer.commands_submitted();
 }
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer,
                             VKTexture &src_texture,
                             Span<VkBufferImageCopy> regions)
 {
-  command_buffer_get(Type::DataTransfer).copy(dst_buffer, src_texture, regions);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdCopyImageToBuffer(command_buffer.vk_command_buffer(),
+                         src_texture.vk_image_handle(),
+                         src_texture.current_layout_get(),
+                         dst_buffer.vk_handle(),
+                         regions.size(),
+                         regions.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKBuffer &src_buffer,
                             Span<VkBufferImageCopy> regions)
 {
-  command_buffer_get(Type::DataTransfer).copy(dst_texture, src_buffer, regions);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdCopyBufferToImage(command_buffer.vk_command_buffer(),
+                         src_buffer.vk_handle(),
+                         dst_texture.vk_image_handle(),
+                         dst_texture.current_layout_get(),
+                         regions.size(),
+                         regions.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKTexture &src_texture,
                             Span<VkImageCopy> regions)
 {
-  command_buffer_get(Type::DataTransfer).copy(dst_texture, src_texture, regions);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdCopyImage(command_buffer.vk_command_buffer(),
+                 src_texture.vk_image_handle(),
+                 src_texture.current_layout_get(),
+                 dst_texture.vk_image_handle(),
+                 dst_texture.current_layout_get(),
+                 regions.size(),
+                 regions.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions)
 {
-  command_buffer_get(Type::DataTransfer).copy(dst_buffer, src_buffer, regions);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdCopyBuffer(command_buffer.vk_command_buffer(),
+                  src_buffer,
+                  dst_buffer.vk_handle(),
+                  regions.size(),
+                  regions.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::blit(VKTexture &dst_texture,
                             VKTexture &src_texture,
                             Span<VkImageBlit> regions)
 {
-  command_buffer_get(Type::DataTransfer).blit(dst_texture, src_texture, regions);
+  blit(dst_texture,
+       dst_texture.current_layout_get(),
+       src_texture,
+       src_texture.current_layout_get(),
+       regions);
 }
 
 void VKCommandBuffers::blit(VKTexture &dst_texture,
@@ -297,20 +381,53 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
                             VkImageLayout src_layout,
                             Span<VkImageBlit> regions)
 {
-  command_buffer_get(Type::DataTransfer)
-      .blit(dst_texture, dst_layout, src_texture, src_layout, regions);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdBlitImage(command_buffer.vk_command_buffer(),
+                 src_texture.vk_image_handle(),
+                 src_layout,
+                 dst_texture.vk_image_handle(),
+                 dst_layout,
+                 regions.size(),
+                 regions.data(),
+                 VK_FILTER_NEAREST);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::pipeline_barrier(VkPipelineStageFlags source_stages,
                                         VkPipelineStageFlags destination_stages)
 {
   /* TODO: Command isn't used.*/
-  command_buffer_get(Type::DataTransfer).pipeline_barrier(source_stages, destination_stages);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
+                       source_stages,
+                       destination_stages,
+                       0,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
 {
   command_buffer_get(Type::DataTransfer).pipeline_barrier(image_memory_barriers);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
+                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_DEPENDENCY_BY_REGION_BIT,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       image_memory_barriers.size(),
+                       image_memory_barriers.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::clear(VkImage vk_image,

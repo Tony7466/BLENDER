@@ -239,7 +239,6 @@ set(VULKAN_SRC
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
   vulkan/vk_command_buffers.hh
-  vulkan/vk_commands.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh

@@ -75,52 +75,29 @@ void VKCommandBuffer::end_recording()
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
 }
 
-void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_point)
-{
-  vkCmdBindPipeline(vk_command_buffer_, bind_point, pipeline.vk_handle());
-  state.recorded_command_counts++;
-}
+void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_point) {}
 
 void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
                            const VkPipelineLayout vk_pipeline_layout,
                            VkPipelineBindPoint bind_point)
 {
-  VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
-  vkCmdBindDescriptorSets(
-      vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::bind(const uint32_t binding,
                            const VKVertexBuffer &vertex_buffer,
                            const VkDeviceSize offset)
 {
-  bind(binding, vertex_buffer.vk_handle(), offset);
 }
 
-void VKCommandBuffer::bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer)
-{
-  bind(binding, vertex_buffer.buffer.vk_handle(), vertex_buffer.offset);
-}
+void VKCommandBuffer::bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer) {}
 
 void VKCommandBuffer::bind(const uint32_t binding,
                            const VkBuffer &vk_vertex_buffer,
                            const VkDeviceSize offset)
 {
-  validate_framebuffer_exists();
-  ensure_active_framebuffer();
-  vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
-  state.recorded_command_counts++;
 }
 
-void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
-{
-  validate_framebuffer_exists();
-  ensure_active_framebuffer();
-  vkCmdBindIndexBuffer(
-      vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
-  state.recorded_command_counts++;
-}
+void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type) {}
 
 void VKCommandBuffer::begin_render_pass(VKFrameBuffer &framebuffer)
 {
@@ -140,15 +117,6 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                                      const VkPipelineLayout vk_pipeline_layout,
                                      const VkShaderStageFlags vk_shader_stages)
 {
-  BLI_assert(push_constants.layout_get().storage_type_get() ==
-             VKPushConstants::StorageType::PUSH_CONSTANTS);
-  vkCmdPushConstants(vk_command_buffer_,
-                     vk_pipeline_layout,
-                     vk_shader_stages,
-                     push_constants.offset(),
-                     push_constants.layout_get().size_in_bytes(),
-                     push_constants.data());
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::fill(VKBuffer &buffer, uint32_t clear_data)
@@ -162,62 +130,28 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                            VKTexture &src_texture,
                            Span<VkBufferImageCopy> regions)
 {
-  ensure_no_active_framebuffer();
-  vkCmdCopyImageToBuffer(vk_command_buffer_,
-                         src_texture.vk_image_handle(),
-                         src_texture.current_layout_get(),
-                         dst_buffer.vk_handle(),
-                         regions.size(),
-                         regions.data());
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
                            VKBuffer &src_buffer,
                            Span<VkBufferImageCopy> regions)
 {
-  ensure_no_active_framebuffer();
-  vkCmdCopyBufferToImage(vk_command_buffer_,
-                         src_buffer.vk_handle(),
-                         dst_texture.vk_image_handle(),
-                         dst_texture.current_layout_get(),
-                         regions.size(),
-                         regions.data());
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
                            VKTexture &src_texture,
                            Span<VkImageCopy> regions)
 {
-  ensure_no_active_framebuffer();
-  vkCmdCopyImage(vk_command_buffer_,
-                 src_texture.vk_image_handle(),
-                 src_texture.current_layout_get(),
-                 dst_texture.vk_image_handle(),
-                 dst_texture.current_layout_get(),
-                 regions.size(),
-                 regions.data());
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions)
 {
-  ensure_no_active_framebuffer();
-  vkCmdCopyBuffer(
-      vk_command_buffer_, src_buffer, dst_buffer.vk_handle(), regions.size(), regions.data());
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::blit(VKTexture &dst_texture,
                            VKTexture &src_texture,
                            Span<VkImageBlit> regions)
 {
-  blit(dst_texture,
-       dst_texture.current_layout_get(),
-       src_texture,
-       src_texture.current_layout_get(),
-       regions);
 }
 
 void VKCommandBuffer::blit(VKTexture &dst_texture,
@@ -226,16 +160,6 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                            VkImageLayout src_layout,
                            Span<VkImageBlit> regions)
 {
-  ensure_no_active_framebuffer();
-  vkCmdBlitImage(vk_command_buffer_,
-                 src_texture.vk_image_handle(),
-                 src_layout,
-                 dst_texture.vk_image_handle(),
-                 dst_layout,
-                 regions.size(),
-                 regions.data(),
-                 VK_FILTER_NEAREST);
-  state.recorded_command_counts++;
 }
 
 void VKCommandBuffer::clear(VkImage vk_image,
@@ -325,51 +249,13 @@ void VKCommandBuffer::draw_indexed_indirect(const VKStorageBuffer &buffer,
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                                        VkPipelineStageFlags destination_stages)
 {
-  if (state.framebuffer_) {
-    ensure_active_framebuffer();
-  }
-  vkCmdPipelineBarrier(vk_command_buffer_,
-                       source_stages,
-                       destination_stages,
-                       0,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr);
-  state.recorded_command_counts++;
 }
 
-void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
-{
-  ensure_no_active_framebuffer();
-  vkCmdPipelineBarrier(vk_command_buffer_,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_DEPENDENCY_BY_REGION_BIT,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       image_memory_barriers.size(),
-                       image_memory_barriers.data());
-  state.recorded_command_counts++;
-}
+void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers) {}
 
-void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
-{
-  ensure_no_active_framebuffer();
-  vkCmdDispatch(vk_command_buffer_, groups_x_len, groups_y_len, groups_z_len);
-  state.recorded_command_counts++;
-}
+void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_len) {}
 
-void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer)
-{
-  ensure_no_active_framebuffer();
-  vkCmdDispatchIndirect(vk_command_buffer_, command_buffer.vk_handle(), 0);
-  state.recorded_command_counts++;
-}
+void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer) {}
 
 void VKCommandBuffer::commands_submitted()
 {
