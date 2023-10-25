@@ -962,15 +962,13 @@ static int grease_pencil_stroke_flip_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
-          return;
-        }
-        if (!ed::curves::has_anything_selected(curves)) {
-          return;
-        }
-
+        
         IndexMaskMemory memory;
         IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+
+        if (selected_curves.is_empty()) {
+          return;
+        }
 
         /* Switch stroke direction. */       
         curves.reverse_curves(selected_curves);
