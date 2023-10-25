@@ -29,22 +29,28 @@ uint horizon_scan_angles_to_bitmask(vec2 theta)
   return (((b < 32u) ? 1u << b : 0u) - 1u) << a;
 }
 
+float horizon_scan_bitmask_to_visibility_uniform(uint bitmask)
+{
+  const int bitmask_len = 32;
+  /* Algorithm 1, line 26. */
+  return float(bitCount(bitmask)) / float(bitmask_len);
+}
+
 /**
  * For a given visibility bitmask storing localy occluded sectors,
  * returns the uniform (non-cosine weighted) occlusion (visibility).
  */
-float horizon_scan_bitmask_to_occlusion_uniform(uint slice_bitmask)
+float horizon_scan_bitmask_to_occlusion_uniform(uint bitmask)
 {
-  const int bitmask_len = 32;
-  /* Algorithm 1, line 26. */
-  return 1.0 - float(bitCount(slice_bitmask)) / float(bitmask_len);
+  /* Occlusion is the opposite of visibility. */
+  return 1.0 - horizon_scan_bitmask_to_visibility_uniform(bitmask);
 }
 
 /**
  * For a given visibility bitmask storing localy occluded sectors,
  * returns the cosine weighted occlusion (visibility).
  */
-float horizon_scan_bitmask_to_occlusion_cosine(uint slice_bitmask)
+float horizon_scan_bitmask_to_occlusion_cosine(uint bitmask)
 {
   const int bitmask_len = 32;
   /* This is not described in the paper. Another solution would be to change the sector
@@ -56,7 +62,7 @@ float horizon_scan_bitmask_to_occlusion_cosine(uint slice_bitmask)
   for (int bit = 0; bit < bitmask_len; bit++) {
     float angle = (((float(bit) + 0.5) / float(bitmask_len)) - 0.5) * M_PI;
     /* Integrating over the hemisphere. */
-    if (((slice_bitmask >> bit) & 1u) == 0u) {
+    if (((bitmask >> bit) & 1u) == 0u) {
       visibility += cos(angle) * M_PI_2 / float(bitmask_len);
     }
   }
@@ -67,7 +73,7 @@ float horizon_scan_bitmask_to_occlusion_cosine(uint slice_bitmask)
    * This is like a 4 peice-wise linear approximation of the cosine lobe. */
   const vec4 weights = vec4(0.0095061, 0.0270951, 0.0405571, 0.0478421);
   const uvec4 masks = uvec4(0xF000000Fu, 0x0F0000F0u, 0x00F00F00u, 0x000FF000u);
-  return saturate(1.0 - dot(vec4(bitCount(uvec4(slice_bitmask) & masks)), weights));
+  return saturate(1.0 - dot(vec4(bitCount(uvec4(bitmask) & masks)), weights));
 #endif
 }
 
