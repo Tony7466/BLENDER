@@ -414,7 +414,6 @@ void VKCommandBuffers::pipeline_barrier(VkPipelineStageFlags source_stages,
 
 void VKCommandBuffers::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
 {
-  command_buffer_get(Type::DataTransfer).pipeline_barrier(image_memory_barriers);
   VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
   command_buffer.ensure_no_active_framebuffer();
   vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
@@ -435,7 +434,15 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearColorValue &vk_clear_color,
                              Span<VkImageSubresourceRange> ranges)
 {
-  command_buffer_get(Type::DataTransfer).clear(vk_image, vk_image_layout, vk_clear_color, ranges);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdClearColorImage(command_buffer.vk_command_buffer(),
+                       vk_image,
+                       vk_image_layout,
+                       &vk_clear_color,
+                       ranges.size(),
+                       ranges.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::clear(VkImage vk_image,
@@ -443,33 +450,68 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearDepthStencilValue &vk_clear_depth_stencil,
                              Span<VkImageSubresourceRange> ranges)
 {
-  command_buffer_get(Type::DataTransfer)
-      .clear(vk_image, vk_image_layout, vk_clear_depth_stencil, ranges);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdClearDepthStencilImage(command_buffer.vk_command_buffer(),
+                              vk_image,
+                              vk_image_layout,
+                              &vk_clear_depth_stencil,
+                              ranges.size(),
+                              ranges.data());
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).clear(attachments, areas);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdClearAttachments(command_buffer.vk_command_buffer(),
+                        attachments.size(),
+                        attachments.data(),
+                        areas.size(),
+                        areas.data());
+  command_buffer.command_recorded();
 }
 
-void VKCommandBuffers::fill(VKBuffer &buffer, uint32_t data)
+void VKCommandBuffers::fill(VKBuffer &buffer, uint32_t clear_data)
 {
-  command_buffer_get(Type::DataTransfer).fill(buffer, data);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  command_buffer.ensure_no_active_framebuffer();
+  vkCmdFillBuffer(command_buffer.vk_command_buffer(),
+                  buffer.vk_handle(),
+                  0,
+                  buffer.size_in_bytes(),
+                  clear_data);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::draw(int v_first, int v_count, int i_first, int i_count)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).draw(v_first, v_count, i_first, i_count);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+
+  vkCmdDraw(command_buffer.vk_command_buffer(), v_count, i_count, v_first, i_first);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::draw_indexed(
     int index_count, int instance_count, int first_index, int vertex_offset, int first_instance)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics)
-      .draw_indexed(index_count, instance_count, first_index, vertex_offset, first_instance);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdDrawIndexed(command_buffer.vk_command_buffer(),
+                   index_count,
+                   instance_count,
+                   first_index,
+                   vertex_offset,
+                   first_instance);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::draw_indirect(const VKStorageBuffer &buffer,
@@ -478,7 +520,12 @@ void VKCommandBuffers::draw_indirect(const VKStorageBuffer &buffer,
                                      uint32_t stride)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).draw_indirect(buffer, offset, draw_count, stride);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdDrawIndirect(
+      command_buffer.vk_command_buffer(), buffer.vk_handle(), offset, draw_count, stride);
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::draw_indexed_indirect(const VKStorageBuffer &buffer,
@@ -487,7 +534,12 @@ void VKCommandBuffers::draw_indexed_indirect(const VKStorageBuffer &buffer,
                                              uint32_t stride)
 {
   ensure_no_compute_commands();
-  command_buffer_get(Type::Graphics).draw_indexed_indirect(buffer, offset, draw_count, stride);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  command_buffer.validate_framebuffer_exists();
+  command_buffer.ensure_active_framebuffer();
+  vkCmdDrawIndexedIndirect(
+      command_buffer.vk_command_buffer(), buffer.vk_handle(), offset, draw_count, stride);
+  command_buffer.command_recorded();
 }
 
 /** \} */
