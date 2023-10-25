@@ -1790,6 +1790,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   /* Init Blender GPU context. */
   ps.ghost_data.gpu_context = GPU_context_create(ps.ghost_data.window, nullptr);
+  GPU_render_begin();
   GPU_init();
 
   /* initialize the font */
@@ -2051,6 +2052,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   if (ps.ghost_data.gpu_context) {
     GPU_context_active_set(ps.ghost_data.gpu_context);
+    GPU_render_end();
     GPU_exit();
     GPU_context_discard(ps.ghost_data.gpu_context);
     ps.ghost_data.gpu_context = nullptr;
