@@ -52,6 +52,12 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket);
 
+// Array<GMutablePointer> get_param_inputs(const bNodeTree &btree,
+//                                         const GeometryNodesGroupFunction &function,
+//                                         const IDProperty *properties,
+//                                         LinearAllocator<> &allocator,
+//                                         Vector<GMutablePointer> inputs_to_destruct);
+
 bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,

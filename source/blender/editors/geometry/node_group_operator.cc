@@ -29,16 +29,21 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
+#include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
+#include "DNA_collection_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
@@ -167,6 +172,7 @@ static void store_result_geometry(Main &bmain,
                                   Object &object,
                                   bke::GeometrySet geometry)
 {
+  geometry.ensure_owns_direct_data();
   switch (object.type) {
     case OB_CURVES: {
       Curves &curves = *static_cast<Curves *>(object.data);
@@ -225,10 +231,156 @@ static void store_result_geometry(Main &bmain,
   }
 }
 
+static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
+{
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
+    switch (socket->type) {
+      case SOCK_OBJECT: {
+        if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
+          ids.add(&object->id);
+        }
+        break;
+      }
+      case SOCK_COLLECTION: {
+        if (Collection *collection = ((bNodeSocketValueCollection *)socket->default_value)->value)
+        {
+          ids.add(&collection->id);
+        }
+        break;
+      }
+      case SOCK_MATERIAL: {
+        if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
+          ids.add(&material->id);
+        }
+        break;
+      }
+      case SOCK_TEXTURE: {
+        if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
+          ids.add(&texture->id);
+        }
+        break;
+      }
+      case SOCK_IMAGE: {
+        if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
+          ids.add(&image->id);
+        }
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * \note We can only check properties here that cause the dependency graph to update relations when
+ * they are changed, otherwise there may be a missing relation after editing. So this could check
+ * more properties like whether the node is muted, but we would have to accept the cost of updating
+ * relations when those properties are changed.
+ */
+static bool node_needs_own_transform_relation(const bNode &node)
+{
+  if (node.type == GEO_NODE_COLLECTION_INFO) {
+    const NodeGeometryCollectionInfo &storage = *static_cast<const NodeGeometryCollectionInfo *>(
+        node.storage);
+    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+  }
+
+  if (node.type == GEO_NODE_OBJECT_INFO) {
+    const NodeGeometryObjectInfo &storage = *static_cast<const NodeGeometryObjectInfo *>(
+        node.storage);
+    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+  }
+
+  if (node.type == GEO_NODE_SELF_OBJECT) {
+    return true;
+  }
+  if (node.type == GEO_NODE_DEFORM_CURVES_ON_SURFACE) {
+    return true;
+  }
+
+  return false;
+}
+
+static void process_nodes_for_depsgraph(const bNodeTree &tree,
+                                        Set<ID *> &ids,
+                                        bool &r_needs_own_transform_relation,
+                                        Set<const bNodeTree *> &checked_groups)
+{
+  if (!checked_groups.add(&tree)) {
+    return;
+  }
+
+  tree.ensure_topology_cache();
+  for (const bNode *node : tree.all_nodes()) {
+    add_used_ids_from_sockets(node->inputs, ids);
+    add_used_ids_from_sockets(node->outputs, ids);
+    r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
+  }
+
+  for (const bNode *node : tree.group_nodes()) {
+    if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
+      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
+    }
+  }
+}
+
+/* We don't know exactly what attributes from the other object we will need. */
+static const CustomData_MeshMasks dependency_data_mask{CD_MASK_PROP_ALL | CD_MASK_MDEFORMVERT,
+                                                       CD_MASK_PROP_ALL,
+                                                       CD_MASK_PROP_ALL,
+                                                       CD_MASK_PROP_ALL,
+                                                       CD_MASK_PROP_ALL};
+
+static void add_collection_relation(DepsNodeHandle &node, Collection &collection)
+{
+  DEG_add_collection_geometry_relation(&node, &collection, "Nodes Modifier");
+  DEG_add_collection_geometry_customdata_mask(&node, &collection, &dependency_data_mask);
+}
+
+static void add_object_relation(DepsNodeHandle &node, Object &object)
+{
+  DEG_add_object_relation(&node, &object, DEG_OB_COMP_TRANSFORM, "Nodes Modifier");
+  if (&(ID &)object != &object.id) {
+    if (object.type == OB_EMPTY && object.instance_collection != nullptr) {
+      add_collection_relation(node, *object.instance_collection);
+    }
+    else if (DEG_object_has_geometry_component(&object)) {
+      DEG_add_object_relation(&node, &object, DEG_OB_COMP_GEOMETRY, "Nodes Modifier");
+      DEG_add_customdata_mask(&node, &object, &dependency_data_mask);
+    }
+  }
+}
+
+static void add_id_relations(const Set<ID *> used_ids)
+{
+  for (ID *id : used_ids) {
+    switch ((ID_Type)GS(id->name)) {
+      case ID_OB: {
+        Object *object = reinterpret_cast<Object *>(id);
+        add_object_relation(ctx, *object);
+        break;
+      }
+      case ID_GR: {
+        Collection *collection = reinterpret_cast<Collection *>(id);
+        add_collection_relation(ctx, *collection);
+        break;
+      }
+      case ID_IM:
+      case ID_TE: {
+        DEG_add_generic_id_relation(ctx->node, id, "Nodes Modifier");
+        break;
+      }
+      default: {
+        /* Purposefully don't add relations for materials. While there are material sockets,
+         * the pointers are only passed around as handles rather than dereferenced. */
+        break;
+      }
+    }
+  }
+}
+
 static int run_node_group_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *active_object = CTX_data_active_object(C);
@@ -240,19 +392,13 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   }
   const eObjectMode mode = eObjectMode(active_object->mode);
 
-  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, op->reports);
-  if (!node_tree) {
+  const bNodeTree *node_tree_orig = get_node_group(*C, *op->ptr, op->reports);
+
+  if (!node_tree_orig) {
     return OPERATOR_CANCELLED;
   }
 
-  const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
-      nodes::ensure_geometry_nodes_lazy_function_graph(*node_tree);
-  if (lf_graph_info == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot evaluate node group");
-    return OPERATOR_CANCELLED;
-  }
-
-  if (!node_tree->group_output_node()) {
+  if (!node_tree_orig->group_output_node()) {
     BKE_report(op->reports, RPT_ERROR, "Node group must have a group output node");
     return OPERATOR_CANCELLED;
   }
@@ -261,7 +407,33 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C), &objects_len, mode);
 
+  Vector<const ID *> ids;
+  ids.append(&node_tree_orig->id);
+  ids.extend({reinterpret_cast<ID **>(objects), objects_len});
+
+  Depsgraph *depsgraph = DEG_graph_new(
+      bmain, scene, view_layer, eEvaluationMode::DAG_EVAL_VIEWPORT);
+  DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(ids.data()), ids.size());
+  {
+    Set<ID *> ids_for_relations;
+    bool needs_own_transform_relation;
+    Set<const bNodeTree *> checked_groups;
+    process_nodes_for_depsgraph(
+        *node_tree_orig, ids_for_relations, needs_own_transform_relation, checked_groups);
+    add_id_relations(ids_for_relations);
+  }
+
   OperatorComputeContext compute_context(op->type->idname);
+
+  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
+      DEG_get_evaluated_id(depsgraph, const_cast<ID *>(&node_tree_orig->id)));
+
+  const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
+      nodes::ensure_geometry_nodes_lazy_function_graph(*node_tree);
+  if (lf_graph_info == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "Cannot evaluate node group");
+    return OPERATOR_CANCELLED;
+  }
 
   for (Object *object : Span(objects, objects_len)) {
     if (!ELEM(object->type, OB_CURVES, OB_POINTCLOUD, OB_MESH)) {
@@ -269,8 +441,8 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     }
     nodes::GeoNodesOperatorData operator_eval_data{};
     operator_eval_data.depsgraph = depsgraph;
-    operator_eval_data.self_object = object;
-    operator_eval_data.scene = scene;
+    operator_eval_data.self_object = DEG_get_evaluated_object(depsgraph, object);
+    operator_eval_data.scene = DEG_get_evaluated_scene(depsgraph);
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object);
 
@@ -291,6 +463,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   }
 
   MEM_SAFE_FREE(objects);
+  DEG_graph_free(depsgraph);
 
   return OPERATOR_FINISHED;
 }

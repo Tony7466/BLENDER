@@ -560,6 +560,51 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
+// Array<GMutablePointer> get_param_inputs(const bNodeTree &btree,
+//                                         const GeometryNodesGroupFunction &function,
+//                                         const IDProperty *properties,
+//                                         LinearAllocator<> &allocator,
+//                                         Vector<GMutablePointer> inputs_to_destruct)
+// {
+//   const lf::LazyFunction &lazy_function = *function.function;
+//   Array<GMutablePointer> param_inputs(lazy_function.inputs().size());
+
+//   /* Prepare main inputs. */
+//   for (const int i : btree.interface_inputs().index_range()) {
+//     const bNodeTreeInterfaceSocket &interface_socket = *btree.interface_inputs()[i];
+//     const bNodeSocketType *typeinfo = interface_socket.socket_typeinfo();
+//     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
+//                                                        SOCK_CUSTOM;
+//     if (socket_type == SOCK_GEOMETRY && i == 0) {
+//       param_inputs[function.inputs.main[0]] = &input_geometry;
+//       continue;
+//     }
+
+//     const CPPType *type = typeinfo->geometry_nodes_cpp_type;
+//     BLI_assert(type != nullptr);
+//     void *value = allocator.allocate(type->size(), type->alignment());
+//     initialize_group_input(btree, properties, i, value);
+//     param_inputs[function.inputs.main[i]] = {type, value};
+//     inputs_to_destruct.append({type, value});
+//   }
+
+//   /* Prepare used-outputs inputs. */
+//   Array<bool> output_used_inputs(btree.interface_outputs().size(), true);
+//   for (const int i : btree.interface_outputs().index_range()) {
+//     param_inputs[function.inputs.output_usages[i]] = &output_used_inputs[i];
+//   }
+
+//   /* No anonymous attributes have to be propagated. */
+//   Array<bke::AnonymousAttributeSet> attributes_to_propagate(
+//       function.inputs.attributes_to_propagate.geometry_outputs.size());
+//   for (const int i : attributes_to_propagate.index_range()) {
+//     param_inputs[function.inputs.attributes_to_propagate.range[i]] =
+//     &attributes_to_propagate[i];
+//   }
+
+//   return param_inputs;
+// }
+
 bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,
