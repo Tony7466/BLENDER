@@ -81,3 +81,29 @@ float bsdf_eval(vec3 N, vec3 L)
 {
   return dot(N, L);
 }
+
+void horizon_scan_occluder_clip_segment_to_sphere(inout vec3 segment_start,
+                                                  inout vec3 segment_end,
+                                                  vec3 sphere_center,
+                                                  float sphere_radius)
+{
+  /* TODO(fclem): This will not fade object correctly.
+   * The correct way is to clip front and back to the sphere intersection. */
+  if (segment_start.z > sphere_center.z && sphere_center.z > segment_end.z) {
+    /* The segment is interesecting the sphere. */
+  }
+  else if (segment_start.z > sphere_center.z) {
+    /* The segment is in-front of the sphere center. */
+    if (distance(segment_end, sphere_center) > sphere_radius) {
+      /* No intersection with the sphere. */
+      segment_start = segment_end;
+    }
+  }
+  else if (segment_start.z > sphere_center.z) {
+    /* The segment is behind of the sphere center. */
+    if (distance(segment_start, sphere_center) > sphere_radius) {
+      /* No intersection with the sphere. */
+      segment_start = segment_end;
+    }
+  }
+}

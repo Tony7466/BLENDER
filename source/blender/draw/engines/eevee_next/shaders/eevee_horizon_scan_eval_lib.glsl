@@ -88,29 +88,11 @@ vec3 horizon_scan_eval(vec3 vP,
         vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
         vec3 vP_back = vP_front - global_thickness * vV;
 
+        horizon_scan_occluder_clip_segment_to_sphere(vP_front, vP_back, vP, search_distance);
+
         float dist_front, dist_back;
         vec3 vL_front = normalize_and_get_length(vP_front - vP, dist_front);
         vec3 vL_back = normalize_and_get_length(vP_back - vP, dist_back);
-
-        /* TODO(fclem): This will not fade object correctly.
-         * The correct way is to clip front and back to the sphere intersection. */
-        if (vP_front.z > vP.z && vP.z > vP_back.z) {
-          /* The surface is interesecting the search_distance sphere. */
-        }
-        else if (vP_front.z > vP.z) {
-          /* The surface is in-front of the search_distance sphere center. */
-          if (dist_back > search_distance) {
-            /* No intersection with the search_distance sphere. */
-            continue;
-          }
-        }
-        else if (vP_front.z > vP.z) {
-          /* The surface is behind of the search_distance sphere center. */
-          if (dist_front > search_distance) {
-            /* No intersection with the search_distance sphere. */
-            continue;
-          }
-        }
 
         /* Ordered pair of angle. Mininum in X, Maximum in Y.
          * Front will always have the smallest angle here since it is the closest to the view. */
