@@ -10,13 +10,41 @@
  * by Olivier Therrien, Yannick Levesque, Guillaume Gilet
  */
 
+#pragma BLENDER_REQUIRE(common_shape_lib.glsl)
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_horizon_scan_lib.glsl)
 
 /**
+ * Returns the start and end point of a ray clipped to its intersection
+ * with a sphere.
  */
+void horizon_scan_occluder_intersection_ray_sphere_clip(RayScan ray,
+                                                        Sphere sphere,
+                                                        out vec3 P_entry,
+                                                        out vec3 P_exit)
+{
+  vec3 f = ray.origin - sphere.center;
+  float a = length_squared(ray.direction);
+  float b = 2.0 * dot(ray.direction, f);
+  float c = length_squared(f) - square(sphere.radius);
+  float determinant = b * b - 4.0 * a * c;
+  if (determinant <= 0.0) {
+    /* No intersection. Return null segment. */
+    P_entry = P_exit = ray.origin;
+    return;
+  }
+  /* Using fast sqrt_fast doesn't seem to cause artifact here. */
+  float t_min = (-b - sqrt_fast(determinant)) / (2.0 * a);
+  float t_max = (-b + sqrt_fast(determinant)) / (2.0 * a);
+  /* Clip segment to the intersection range. */
+  float t_entry = clamp(0.0, t_min, t_max);
+  float t_exit = clamp(ray.max_time, t_min, t_max);
+
+  P_entry = ray.origin + ray.direction * t_entry;
+  P_exit = ray.origin + ray.direction * t_exit;
+}
+
 vec3 horizon_scan_eval(vec3 vP,
                        vec3 vN,
                        sampler2D depth_tx,
@@ -85,14 +113,20 @@ vec3 horizon_scan_eval(vec3 vP,
         const float bias = 2.0 * 2.4e-7;
         sample_depth += front_facing ? bias : -bias;
 
-        vec3 vP_front = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
-        vec3 vP_back = vP_front - global_thickness * vV;
+        vec3 vP_sample = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
 
-        horizon_scan_occluder_clip_segment_to_sphere(vP_front, vP_back, vP, search_distance);
+        RayScan ray;
+        ray.origin = vP_sample;
+        ray.direction = -vV;
+        ray.max_time = global_thickness;
 
-        float dist_front, dist_back;
-        vec3 vL_front = normalize_and_get_length(vP_front - vP, dist_front);
-        vec3 vL_back = normalize_and_get_length(vP_back - vP, dist_back);
+        Sphere sphere = shape_sphere(vP, search_distance);
+
+        vec3 vP_front, vP_back;
+        horizon_scan_occluder_intersection_ray_sphere_clip(ray, sphere, vP_front, vP_back);
+
+        vec3 vL_front = normalize(vP_front - vP);
+        vec3 vL_back = normalize(vP_back - vP);
 
         /* Ordered pair of angle. Mininum in X, Maximum in Y.
          * Front will always have the smallest angle here since it is the closest to the view. */
