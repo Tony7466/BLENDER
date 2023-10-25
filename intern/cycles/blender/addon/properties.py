@@ -1019,6 +1019,11 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         "disabling will render faster but not give accurate shadows",
         default=True,
     )
+    use_bump_map_correction: BoolProperty(
+        name="Bump Map Correction",
+        description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
+        default=True,
+    )
     homogeneous_volume: BoolProperty(
         name="Homogeneous Volume",
         description="When using volume rendering, assume volume has the same density everywhere "
@@ -1472,11 +1477,16 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
-    use_metalrt: BoolProperty(
-        name="MetalRT (Experimental)",
+    metalrt: EnumProperty(
+        name="MetalRT",
         description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
-                    "performance in specific cases. However this support is experimental and some scenes may render incorrectly",
-        default=False,
+                    "performance in specific cases.",
+        default='AUTO',
+        items=(
+            ('OFF', "Off", "Disable MetalRT (uses BVH2 layout for intersection queries)"),
+            ('ON', "On", "Enable MetalRT for intersection queries"),
+            ('AUTO', "Auto", "Automatically pick the fastest intersection method"),
+        ),
     )
 
     use_hiprt: BoolProperty(
@@ -1638,7 +1648,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
-                    driver_version = "XX.X.101.4644"
+                    driver_version = "XX.X.101.4824"
                     col.label(text="Requires Intel GPU with Xe-HPG architecture", icon='BLANK1')
                     col.label(text=iface_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)
@@ -1711,7 +1721,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 if is_arm64:
                     col.prop(self, "kernel_optimization_level")
                 if has_rt_api_support:
-                    col.prop(self, "use_metalrt")
+                    col.prop(self, "metalrt")
 
         if compute_device_type == 'HIP':
             has_cuda, has_optix, has_hip, has_metal, has_oneapi, has_hiprt = _cycles.get_device_types()

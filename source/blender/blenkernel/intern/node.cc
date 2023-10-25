@@ -41,7 +41,7 @@
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
@@ -79,7 +79,7 @@
 #include "RNA_prototypes.h"
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
@@ -87,9 +87,10 @@
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
+#include "NOD_zone_socket_items.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "BLO_read_write.hh"
 
@@ -513,7 +514,7 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
   auto make_legacy_socket = [&](const bNodeTreeInterfaceSocket &socket,
                                 eNodeSocketInOut in_out) -> bNodeSocket * {
     bNodeSocket *iosock = make_socket(
-        ntree, in_out, socket.socket_type, socket.name, socket.identifier);
+        ntree, in_out, socket.socket_type, socket.name ? socket.name : "", socket.identifier);
     if (!iosock) {
       return nullptr;
     }
@@ -782,20 +783,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       }
     }
     if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      const NodeGeometrySimulationOutput &storage =
-          *static_cast<const NodeGeometrySimulationOutput *>(node->storage);
-      BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
-      for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
+      blender::nodes::SimulationItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_REPEAT_OUTPUT) {
-      const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
-          node->storage);
-      BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
-      for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
+      blender::nodes::RepeatItemsAccessor::blend_write(writer, *node);
     }
   }
 
@@ -987,21 +978,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_SIMULATION_OUTPUT: {
-          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
+          blender::nodes::SimulationItemsAccessor::blend_read_data(reader, *node);
           break;
         }
         case GEO_NODE_REPEAT_OUTPUT: {
-          NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
+          blender::nodes::RepeatItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
@@ -1106,11 +1087,11 @@ void node_update_asset_metadata(bNodeTree &node_tree)
   auto outputs = idprop::create_group("outputs");
   node_tree.ensure_interface_cache();
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_inputs()) {
-    auto property = idprop::create(socket->name, socket->socket_type);
+    auto property = idprop::create(socket->name ? socket->name : "", socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
   }
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_outputs()) {
-    auto property = idprop::create(socket->name, socket->socket_type);
+    auto property = idprop::create(socket->name ? socket->name : "", socket->socket_type);
     IDP_AddToGroup(outputs.get(), property.release());
   }
   BKE_asset_metadata_idprop_ensure(asset_data, inputs.release());
@@ -1127,10 +1108,16 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_da
   node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
 }
 
+static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
+{
+  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
+}
+
 }  // namespace blender::bke
 
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
+    /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {
@@ -1139,7 +1126,7 @@ IDTypeInfo IDType_ID_NT = {
     /*main_listbase_index*/ INDEX_ID_NT,
     /*struct_size*/ sizeof(bNodeTree),
     /*name*/ "NodeTree",
-    /*name_plural*/ "node_groups",
+    /*name_plural*/ N_("node_groups"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_NODETREE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ &AssetType_NT,
@@ -1166,7 +1153,7 @@ namespace blender::bke {
 
 static void node_add_sockets_from_type(bNodeTree *ntree, bNode *node, bNodeType *ntype)
 {
-  if (ntype->declare || ntype->declare_dynamic) {
+  if (ntype->declare) {
     node_verify_sockets(ntree, node, true);
     return;
   }
@@ -1468,8 +1455,8 @@ static void node_free_type(void *nodetype_v)
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
   blender::bke::update_typeinfo(G_MAIN, nullptr, nullptr, nodetype, nullptr, true);
 
-  delete nodetype->fixed_declaration;
-  nodetype->fixed_declaration = nullptr;
+  delete nodetype->static_declaration;
+  nodetype->static_declaration = nullptr;
 
   /* Can be null when the type is not dynamically allocated. */
   if (nodetype->free_self) {
@@ -1483,11 +1470,9 @@ void nodeRegisterType(bNodeType *nt)
   BLI_assert(nt->idname[0] != '\0');
   BLI_assert(nt->poll != nullptr);
 
-  if (nt->declare && !nt->declare_dynamic) {
-    if (nt->fixed_declaration == nullptr) {
-      nt->fixed_declaration = new blender::nodes::NodeDeclaration();
-      blender::nodes::build_node_declaration(*nt, *nt->fixed_declaration);
-    }
+  if (nt->declare) {
+    nt->static_declaration = new blender::nodes::NodeDeclaration();
+    blender::nodes::build_node_declaration(*nt, *nt->static_declaration, nullptr, nullptr);
   }
 
   BLI_ghash_insert(blender::bke::nodetypes_hash, nt->idname, nt);
@@ -2550,6 +2535,11 @@ static void *node_static_value_storage_for(bNode &node, const bNodeSocket &socke
   switch (node.type) {
     case FN_NODE_INPUT_BOOL:
       return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
+    case SH_NODE_VALUE:
+      /* The value is stored in the default value of the first output socket. */
+      return &static_cast<bNodeSocket *>(node.outputs.first)
+                  ->default_value_typed<bNodeSocketValueFloat>()
+                  ->value;
     case FN_NODE_INPUT_INT:
       return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
     case FN_NODE_INPUT_VECTOR:
@@ -3276,8 +3266,12 @@ void node_free_node(bNodeTree *ntree, bNode *node)
     MEM_freeN(node->prop);
   }
 
-  if (node->typeinfo->declare_dynamic) {
-    delete node->runtime->declaration;
+  if (node->runtime->declaration) {
+    /* Only free if this declaration is not shared with the node type, which can happen if it does
+     * not depend on any context. */
+    if (node->runtime->declaration != node->typeinfo->static_declaration) {
+      delete node->runtime->declaration;
+    }
   }
 
   MEM_delete(node->runtime);
@@ -3742,16 +3736,18 @@ bool nodeDeclarationEnsureOnOutdatedNode(bNodeTree *ntree, bNode *node)
   if (node->runtime->declaration != nullptr) {
     return false;
   }
-  if (node->typeinfo->declare_dynamic) {
+  if (node->typeinfo->declare) {
+    if (node->typeinfo->static_declaration) {
+      if (!node->typeinfo->static_declaration->is_context_dependent) {
+        node->runtime->declaration = node->typeinfo->static_declaration;
+        return true;
+      }
+    }
+  }
+  if (node->typeinfo->declare) {
     BLI_assert(ntree != nullptr);
     BLI_assert(node != nullptr);
     blender::nodes::update_node_declaration_and_sockets(*ntree, *node);
-    return true;
-  }
-  if (node->typeinfo->declare) {
-    /* Declaration should have been created in #nodeRegisterType. */
-    BLI_assert(node->typeinfo->fixed_declaration != nullptr);
-    node->runtime->declaration = node->typeinfo->fixed_declaration;
     return true;
   }
   return false;
@@ -4010,6 +4006,17 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
   BLI_strncpy(label, IFACE_(node->typeinfo->ui_name), label_maxncpy);
 }
 
+const char *nodeSocketShortLabel(const bNodeSocket *sock)
+{
+  if (sock->runtime->declaration != nullptr) {
+    blender::StringRefNull short_label = sock->runtime->declaration->short_label;
+    if (!short_label.is_empty()) {
+      return sock->runtime->declaration->short_label.data();
+    }
+  }
+  return nullptr;
+}
+
 const char *nodeSocketLabel(const bNodeSocket *sock)
 {
   return (sock->label[0] != '\0') ? sock->label : sock->name;
@@ -4096,6 +4103,52 @@ void node_type_base_custom(bNodeType *ntype,
 }
 
 namespace blender::bke {
+
+std::optional<eCustomDataType> socket_type_to_custom_data_type(eNodeSocketDatatype type)
+{
+  switch (type) {
+    case SOCK_FLOAT:
+      return CD_PROP_FLOAT;
+    case SOCK_VECTOR:
+      return CD_PROP_FLOAT3;
+    case SOCK_RGBA:
+      return CD_PROP_COLOR;
+    case SOCK_BOOLEAN:
+      return CD_PROP_BOOL;
+    case SOCK_ROTATION:
+      return CD_PROP_QUATERNION;
+    case SOCK_INT:
+      return CD_PROP_INT32;
+    case SOCK_STRING:
+      return CD_PROP_STRING;
+    default:
+      return std::nullopt;
+  }
+}
+
+std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataType type)
+{
+  switch (type) {
+    case CD_PROP_FLOAT:
+      return SOCK_FLOAT;
+    case CD_PROP_INT32:
+      return SOCK_INT;
+    case CD_PROP_FLOAT3:
+      return SOCK_VECTOR;
+    case CD_PROP_FLOAT2:
+      return SOCK_VECTOR;
+    case CD_PROP_BOOL:
+      return SOCK_BOOLEAN;
+    case CD_PROP_COLOR:
+      return SOCK_RGBA;
+    case CD_PROP_BYTE_COLOR:
+      return SOCK_RGBA;
+    case CD_PROP_QUATERNION:
+      return SOCK_ROTATION;
+    default:
+      return std::nullopt;
+  }
+}
 
 struct SocketTemplateIdentifierCallbackData {
   bNodeSocketTemplate *list;

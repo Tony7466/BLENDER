@@ -24,10 +24,10 @@
 
 #include "BKE_camera.h"
 
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_framebuffer.h"
 #include "GPU_texture.h"

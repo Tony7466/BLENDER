@@ -96,7 +96,7 @@ struct SpaceNode_Runtime {
   bool recalc_auto_compositing;
 
   /**
-   * Indicates that the compositing int the space  tree needs to be re-evaluated using
+   * Indicates that the compositing int the space tree needs to be re-evaluated using
    * regular compositing pipeline.
    */
   bool recalc_regular_compositing;
@@ -158,23 +158,30 @@ ENUM_OPERATORS(NodeResizeDirection, NODE_RESIZE_LEFT);
 float2 space_node_group_offset(const SpaceNode &snode);
 
 int node_get_resize_cursor(NodeResizeDirection directions);
+
+/* `node_draw.cc` */
+
 /**
  * Usual convention here would be #node_socket_get_color(),
  * but that's already used (for setting a color property socket).
  */
 void node_socket_color_get(const bNodeSocketType &type, float r_color[4]);
 
-/* `node_draw.cc` */
+const char *node_socket_get_label(const bNodeSocket *socket, const char *panel_label);
 
 void node_draw_space(const bContext &C, ARegion &region);
 
 void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, uiLayout &layout);
 
 /**
- * Sort nodes by selection: unselected nodes first, then selected,
+ * Update node draw order nodes based on selection: unselected nodes first, then selected,
  * then the active node at the very end. Relative order is kept intact.
  */
-void node_sort(bNodeTree &ntree);
+void tree_draw_order_update(bNodeTree &ntree);
+/** Return the nodes in draw order, with the top nodes at the end. */
+Array<bNode *> tree_draw_order_calc_nodes(bNodeTree &ntree);
+/** Return the nodes in reverse draw order, with the top nodes at the start. */
+Array<bNode *> tree_draw_order_calc_nodes_reversed(bNodeTree &ntree);
 
 void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor);
 /* DPI scaled coords */
