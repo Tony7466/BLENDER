@@ -122,9 +122,6 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
     if (!vertices_.empty()) {
       primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
     }
-    printf("width: %d\n", widths_.size());
-    printf("curve_vertex_counts_: %d\n", curve_vertex_counts_.size());
-    printf("vertices_: %d\n", vertices_.size());
     if (!widths_.empty()) {
       primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
     }
@@ -222,12 +219,10 @@ bool HairData::is_supported(const ParticleSystem *particle_system)
 
 bool HairData::is_visible(HydraSceneDelegate *scene_delegate,
                           Object *object,
-                          ParticleSystem *particle_system,
-                          int object_mode)
+                          ParticleSystem *particle_system)
 {
   const bool for_render = (DEG_get_mode(scene_delegate->depsgraph) == DAG_EVAL_RENDER);
-  return ObjectData::is_visible(scene_delegate, object) &&
-         psys_check_enabled(object, particle_system, for_render);
+  return psys_check_enabled(object, particle_system, for_render);
 }
 
 void HairData::init()

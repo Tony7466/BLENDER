@@ -226,7 +226,6 @@ void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
     set_light_shading_settings();
     set_world_shading_settings();
     update_collection();
-    update_particle_systems();
     update_world();
   }
 }
@@ -387,7 +386,6 @@ void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
   bool do_update_world = false;
-  bool do_update_particle_systems = false;
 
   if (set_world_shading_settings()) {
     do_update_world = true;
@@ -411,7 +409,6 @@ void HydraSceneDelegate::check_updates()
     switch (GS(id->name)) {
       case ID_OB: {
         do_update_collection = true;
-        do_update_particle_systems = true;
         break;
       }
       case ID_MA: {
@@ -432,17 +429,12 @@ void HydraSceneDelegate::check_updates()
             id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_BASE_FLAGS))
         {
           do_update_collection = true;
-          do_update_particle_systems = true;
         }
         if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
             ((scene->world && !world_data_) || (!scene->world && world_data_)))
         {
           do_update_world = true;
         }
-        break;
-      }
-      case ID_PA: {
-        do_update_particle_systems = true;
         break;
       }
 
@@ -457,9 +449,6 @@ void HydraSceneDelegate::check_updates()
   }
   if (do_update_collection) {
     update_collection();
-  }
-  if (do_update_particle_systems) {
-    update_particle_systems();
   }
 }
 
@@ -484,6 +473,7 @@ void HydraSceneDelegate::update_collection()
               Object *,
               object)
   {
+    update_hair(available_objects, object);
     if (data.dupli_object_current) {
       DupliObject *dupli = data.dupli_object_current;
       if (!ObjectData::is_supported(dupli->ob) ||
@@ -555,45 +545,26 @@ void HydraSceneDelegate::update_collection()
   });
 }
 
-void HydraSceneDelegate::update_particle_systems()
+void HydraSceneDelegate::update_hair(Set<std::string> &available_objects, Object *object)
 {
-  const bool for_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  for (auto &obj : objects_.values()) {
-    Object *object = (Object *)obj->id;
-    LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
-      if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
-        pxr::SdfPath psys_path = particle_system_prim_id(obj->prim_id, psys);
-        // HairData *psys_data = objects_.contains(psys_path) ?
-        //                                    objects_.lookup_ptr(psys_path)->get() :
-        //                                    nullptr;
-        ObjectData *psys_data = object_data(psys_path);
-        if (!psys_data) {
-          psys_data = objects_
-                          .lookup_or_add(psys_path,
-                                         std::make_unique<HairData>(this, object, psys_path, psys))
-                          .get();
-          psys_data->init();
-          psys_data->insert();
-        }
-        else {
-          psys_data->update();
-        }
+  LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+    if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
+      pxr::SdfPath psys_path = particle_system_prim_id(object_prim_id(object), psys);
+      ObjectData *psys_data = object_data(psys_path);
+      if (psys_data) {
+        psys_data->update();
       }
+      else {
+        psys_data = objects_
+                        .lookup_or_add(psys_path,
+                                       std::make_unique<HairData>(this, object, psys_path, psys))
+                        .get();
+        psys_data->init();
+        psys_data->insert();
+      }
+      available_objects.add(psys_path.GetName());
     }
   }
-  objects_.remove_if([&](auto item) {
-    Object *object = (Object *)item.value->id;
-    HairData *h_data = hair_data(item.value->prim_id);
-    if (h_data) {
-      ParticleSystem *psys = h_data->particle_system;
-      bool ret = HairData::is_supported(psys);
-      if (!ret || !HairData::is_visible(this, object, psys)) {
-        item.value->remove();
-      }
-      return !ret;
-    }
-    return false;
-  });
 }
 
 bool HydraSceneDelegate::set_light_shading_settings()

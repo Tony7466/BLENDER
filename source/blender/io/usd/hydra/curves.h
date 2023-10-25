@@ -63,8 +63,7 @@ class HairData : public CurvesData {
   static bool is_supported(const ParticleSystem *particle_system);
   static bool is_visible(HydraSceneDelegate *scene_delegate,
                          Object *object,
-                         ParticleSystem *particle_system,
-                         int object_mode = OB_VISIBLE_SELF);
+                         ParticleSystem *particle_system);
 
   void init() override;
   void update() override;

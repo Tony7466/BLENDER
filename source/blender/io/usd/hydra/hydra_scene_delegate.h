@@ -112,7 +112,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   void update_world();
   void check_updates();
   void update_collection();
-  void update_particle_systems();
+  void update_hair(Set<std::string> &available_objects, Object *object);
   bool set_light_shading_settings();
   bool set_world_shading_settings();
 };
