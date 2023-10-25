@@ -39,8 +39,8 @@ void main()
                                              uniform_buf.ao.pixel_size,
                                              uniform_buf.ao.distance,
                                              uniform_buf.ao.thickness,
-                                             false,
-                                             8);
+                                             uniform_buf.ao.angle_bias,
+                                             10);
 
   /* We can have some float imprecision because of the weighted accumulation. */
   if (ambient_occlusion.r >= 0.98) {

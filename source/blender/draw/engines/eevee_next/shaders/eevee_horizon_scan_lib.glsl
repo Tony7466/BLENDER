@@ -70,7 +70,7 @@ float horizon_scan_bitmask_to_occlusion_cosine(uint bitmask)
 #else
   /* The precomputed weights are the accumulated weights from the reference loop for each of the
    * samples in the mask. The weight is distributed evenly for each sample inside a mask.
-   * This is like a 4 peice-wise linear approximation of the cosine lobe. */
+   * This is like a 4 piecewise linear approximation of the cosine lobe. */
   const vec4 weights = vec4(0.0095061, 0.0270951, 0.0405571, 0.0478421);
   const uvec4 masks = uvec4(0xF000000Fu, 0x0F0000F0u, 0x00F00F00u, 0x000FF000u);
   return saturate(1.0 - dot(vec4(bitCount(uvec4(bitmask) & masks)), weights));

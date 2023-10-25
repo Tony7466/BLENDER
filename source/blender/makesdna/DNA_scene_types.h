@@ -1861,7 +1861,7 @@ typedef struct SceneEEVEE {
   float gtao_factor;
   float gtao_quality;
   float gtao_thickness;
-  char _pad[4];
+  float gtao_focus;
 
   float bokeh_overblur;
   float bokeh_max_size;

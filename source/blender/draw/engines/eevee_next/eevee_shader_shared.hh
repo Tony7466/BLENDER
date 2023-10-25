@@ -1223,7 +1223,7 @@ struct AOData {
   float quality;
 
   float thickness;
-  float _pad0;
+  float angle_bias;
   float _pad1;
   float _pad2;
 };

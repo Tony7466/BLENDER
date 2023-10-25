@@ -24,7 +24,7 @@ vec3 horizon_scan_eval(vec3 vP,
                        vec2 pixel_size,
                        float search_distance,
                        float global_thickness,
-                       const bool inverted,
+                       float angle_bias,
                        const int sample_count)
 {
   vec3 vV = drw_view_incident_vector(vP);
@@ -101,7 +101,7 @@ vec3 horizon_scan_eval(vec3 vP,
         theta = (side == 0) ? theta.xy : -theta.yx;
         theta -= vN_angle;
         /* Angular bias. */
-        theta *= 1.05;
+        theta *= angle_bias;
 
         uint sample_bitmask = horizon_scan_angles_to_bitmask(theta);
 #ifdef USE_RADIANCE_ACCUMULATION
