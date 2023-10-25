@@ -309,6 +309,9 @@ static void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna, "flat_caps", false, "Flat Caps", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
+  prop = RNA_def_boolean(
+      ot->srna, "active_layer", false, "Active Layer", "Only edit the active layer of the object");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /** \} */

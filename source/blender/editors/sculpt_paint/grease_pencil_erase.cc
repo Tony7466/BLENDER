@@ -1337,6 +1337,7 @@ struct EraseOperationExecutor {
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
     const bool keep_caps = !RNA_boolean_get(op->ptr, "flat_caps");
+    const bool active_layer_only = RNA_boolean_get(op->ptr, "active_layer");
     const int current_frame = scene->r.cfra;
     bool changed = false;
 
@@ -1416,8 +1417,20 @@ struct EraseOperationExecutor {
       }
     };
 
-    /* Apply cutter on every editable drawing. */
-    grease_pencil.foreach_editable_drawing(current_frame, execute_cutter_on_drawing);
+    if (active_layer_only) {
+      /* Apply cutter on active layer. */
+      const Layer *active_layer = grease_pencil.get_active_layer();
+      Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene->r.cfra);
+      if (drawing == nullptr) {
+        return OPERATOR_CANCELLED;
+      }
+
+      execute_cutter_on_drawing(active_layer->drawing_index_at(scene->r.cfra), *drawing);
+    }
+    else {
+      /* Apply cutter on every editable drawing. */
+      grease_pencil.foreach_editable_drawing(current_frame, execute_cutter_on_drawing);
+    }
 
     if (changed) {
       DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
