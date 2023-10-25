@@ -24,7 +24,7 @@ uint horizon_scan_angles_bitmask(float theta_min, float theta_max)
   /* The paper is wrong here. The additional half Pi is not needed . */
   uint b = uint(ceil(float(bitmask_len) * (ratio.y - ratio.x)));
   /* Algorithm 1, line 19. */
-  return ((1u << b) - 1u) << a;
+  return (((b < 32u) ? 1u << b : 0u) - 1u) << a;
 }
 
 void main()

@@ -20,12 +20,8 @@ uint horizon_scan_bitmask(vec2 theta)
   uint a = uint(floor(float(bitmask_len) * ratio.x));
   /* The paper is wrong here. The additional half Pi is not needed . */
   uint b = uint(ceil(float(bitmask_len) * (ratio.y - ratio.x)));
-  /* Special case where this algorithm fails. Happens often because of angular bias. */
-  if (b == 32) {
-    return 0xFFFFFFFFu;
-  }
   /* Algorithm 1, line 19. */
-  return ((1u << b) - 1u) << a;
+  return (((b < 32u) ? 1u << b : 0u) - 1u) << a;
 }
 
 float bsdf_eval(vec3 N, vec3 L)
