@@ -30,6 +30,11 @@ class ModifierComputeContext : public ComputeContext {
  public:
   ModifierComputeContext(const ComputeContext *parent, std::string modifier_name);
 
+  StringRefNull modifier_name() const
+  {
+    return modifier_name_;
+  }
+
  private:
   void print_current_in_line(std::ostream &stream) const override;
 };
@@ -49,6 +54,31 @@ class NodeGroupComputeContext : public ComputeContext {
                           int32_t node_id,
                           const std::optional<ComputeContextHash> &cached_hash = {});
   NodeGroupComputeContext(const ComputeContext *parent, const bNode &node);
+
+  int32_t node_id() const
+  {
+    return node_id_;
+  }
+
+ private:
+  void print_current_in_line(std::ostream &stream) const override;
+};
+
+class NodeViewerGroupComputeContext : public NodeGroupComputeContext {
+ private:
+  static constexpr const char *s_static_type = "NODE_GROUP";
+
+  int32_t node_id_;
+
+#ifdef DEBUG
+  std::string debug_node_name_;
+#endif
+
+ public:
+  NodeViewerGroupComputeContext(const ComputeContext *parent,
+                                int32_t node_id,
+                                const std::optional<ComputeContextHash> &cached_hash = {});
+  NodeViewerGroupComputeContext(const ComputeContext *parent, const bNode &node);
 
   int32_t node_id() const
   {

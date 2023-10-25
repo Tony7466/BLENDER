@@ -8,6 +8,7 @@
 
 #define DNA_DEPRECATED_ALLOW
 
+#include <algorithm>
 #include <cmath>
 
 #include "CLG_log.h"
@@ -21,6 +22,7 @@
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
@@ -308,6 +310,10 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
       version_bonelayers_to_bonecollections(bmain);
       version_bonegroups_to_bonecollections(bmain);
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
+    BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
   /**
@@ -618,7 +624,13 @@ static void version_principled_bsdf_subsurface(bNodeTree *ntree)
 
     bNodeSocket *subsurf = nodeFindSocket(node, SOCK_IN, "Subsurface");
     float *subsurf_val = version_cycles_node_socket_float_value(subsurf);
-    *version_cycles_node_socket_float_value(scale_in) = *subsurf_val;
+
+    if (!subsurf->link && *subsurf_val == 0.0f) {
+      *version_cycles_node_socket_float_value(scale_in) = 0.05f;
+    }
+    else {
+      *version_cycles_node_socket_float_value(scale_in) = *subsurf_val;
+    }
 
     if (subsurf->link == nullptr && *subsurf_val == 0.0f) {
       /* Node doesn't use Subsurf, we're done here. */
@@ -838,8 +850,8 @@ static void version_principled_bsdf_specular_tint(bNodeTree *ntree)
 
     static float one[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    /* If any of the two inputs is dynamic, we add a Mix node. */
-    if (base_color_sock->link || specular_tint_sock->link) {
+    /* Add a mix node when working with dynamic inputs. */
+    if (specular_tint_sock->link || (base_color_sock->link && specular_tint_old != 0)) {
       bNode *mix = nodeAddStaticNode(nullptr, ntree, SH_NODE_MIX);
       static_cast<NodeShaderMix *>(mix->storage)->data_type = SOCK_RGBA;
       mix->locx = node->locx - 170;
@@ -880,7 +892,7 @@ static void version_copy_socket(bNodeTreeInterfaceSocket &dst,
                                 char *identifier)
 {
   /* Node socket copy function based on bNodeTreeInterface::item_copy to avoid using blenkernel. */
-  dst.name = BLI_strdup(src.name);
+  dst.name = BLI_strdup_null(src.name);
   dst.description = BLI_strdup_null(src.description);
   dst.socket_type = BLI_strdup(src.socket_type);
   dst.default_attribute_name = BLI_strdup_null(src.default_attribute_name);
@@ -984,6 +996,42 @@ static void version_node_group_split_socket(bNodeTreeInterface &tree_interface,
   csocket->flag &= ~NODE_INTERFACE_SOCKET_OUTPUT;
 }
 
+static void versioning_node_group_sort_sockets_recursive(bNodeTreeInterfacePanel &panel)
+{
+  /* True if item a should be above item b. */
+  auto item_compare = [](const bNodeTreeInterfaceItem *a,
+                         const bNodeTreeInterfaceItem *b) -> bool {
+    if (a->item_type != b->item_type) {
+      /* Keep sockets above panels. */
+      return a->item_type == NODE_INTERFACE_SOCKET;
+    }
+    else {
+      /* Keep outputs above inputs. */
+      if (a->item_type == NODE_INTERFACE_SOCKET) {
+        const bNodeTreeInterfaceSocket *sa = reinterpret_cast<const bNodeTreeInterfaceSocket *>(a);
+        const bNodeTreeInterfaceSocket *sb = reinterpret_cast<const bNodeTreeInterfaceSocket *>(b);
+        const bool is_output_a = sa->flag & NODE_INTERFACE_SOCKET_OUTPUT;
+        const bool is_output_b = sb->flag & NODE_INTERFACE_SOCKET_OUTPUT;
+        if (is_output_a != is_output_b) {
+          return is_output_a;
+        }
+      }
+    }
+    return false;
+  };
+
+  /* Sort panel content. */
+  std::stable_sort(panel.items().begin(), panel.items().end(), item_compare);
+
+  /* Sort any child panels too. */
+  for (bNodeTreeInterfaceItem *item : panel.items()) {
+    if (item->item_type == NODE_INTERFACE_PANEL) {
+      versioning_node_group_sort_sockets_recursive(
+          *reinterpret_cast<bNodeTreeInterfacePanel *>(item));
+    }
+  }
+}
+
 static void enable_geometry_nodes_is_modifier(Main &bmain)
 {
   /* Any node group with a first socket geometry output can potentially be a modifier. Previously
@@ -1008,6 +1056,30 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
       }
       group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
       return false;
+    });
+  }
+}
+
+static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
+{
+  using namespace blender;
+  /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
+   * the brush size which would be stored in the stroke thickness and then scaled by the point
+   * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
+   * going from a thickness to a radius, hence the factor of two) to convert back into blender
+   * units.
+   * Store the radius now directly in blender units. This makes it consistent with how hair curves
+   * handle the radius. */
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    MutableSpan<float> radii = drawing.radii_for_write();
+    threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
+      for (const int i : range) {
+        radii[i] /= 2000.0f;
+      }
     });
   }
 }
@@ -1046,17 +1118,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
-        ts->snap_mode &= ~SCE_SNAP_TO_FACE;
-        ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
+        ts->snap_mode &= ~(1 << 2); /* SCE_SNAP_TO_FACE */
+        ts->snap_mode |= (1 << 8);  /* SCE_SNAP_INDIVIDUAL_PROJECT */
       }
 #undef SCE_SNAP_PROJECT
     }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 6)) {
-    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      BKE_mesh_legacy_face_map_to_generic(mesh);
-    }
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_replace_legacy_glossy_node(ntree);
       versioning_remove_microfacet_sharp_distribution(ntree);
@@ -1123,12 +1192,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     /* Set default bake resolution. */
-    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "int", "resolution")) {
-      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
-        lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
-      }
-    }
-
     if (!DNA_struct_member_exists(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
         world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
@@ -1345,7 +1408,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->snap_flag_anim |= SCE_SNAP;
-      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+      scene->toolsettings->snap_anim_mode |= (1 << 10); /* SCE_SNAP_TO_FRAME */
     }
   }
 
@@ -1565,37 +1628,42 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 30)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *ts = scene->toolsettings;
-      auto versioning_snap_to = [](short snap_to_old, bool is_node = false) {
-        short snap_to_new = SCE_SNAP_TO_NONE;
+      enum { IS_DEFAULT = 0, IS_UV, IS_NODE, IS_ANIM };
+      auto versioning_snap_to = [](short snap_to_old, int type) {
+        eSnapMode snap_to_new = SCE_SNAP_TO_NONE;
         if (snap_to_old & (1 << 0)) {
-          snap_to_new |= is_node ? SCE_SNAP_TO_NODE_X : SCE_SNAP_TO_VERTEX;
+          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NODE_X :
+                         type == IS_ANIM ? SCE_SNAP_TO_FRAME :
+                                           SCE_SNAP_TO_VERTEX;
         }
         if (snap_to_old & (1 << 1)) {
-          snap_to_new |= is_node ? SCE_SNAP_TO_NODE_Y : SCE_SNAP_TO_EDGE;
+          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NODE_Y :
+                         type == IS_ANIM ? SCE_SNAP_TO_SECOND :
+                                           SCE_SNAP_TO_EDGE;
         }
-        if (snap_to_old & (1 << 2)) {
-          snap_to_new |= SCE_SNAP_TO_FACE;
+        if (ELEM(type, IS_DEFAULT, IS_ANIM) && snap_to_old & (1 << 2)) {
+          snap_to_new |= type == IS_DEFAULT ? SCE_SNAP_TO_FACE : SCE_SNAP_TO_MARKERS;
         }
-        if (snap_to_old & (1 << 3)) {
+        if (type == IS_DEFAULT && snap_to_old & (1 << 3)) {
           snap_to_new |= SCE_SNAP_TO_VOLUME;
         }
-        if (snap_to_old & (1 << 4)) {
+        if (type == IS_DEFAULT && snap_to_old & (1 << 4)) {
           snap_to_new |= SCE_SNAP_TO_EDGE_MIDPOINT;
         }
-        if (snap_to_old & (1 << 5)) {
+        if (type == IS_DEFAULT && snap_to_old & (1 << 5)) {
           snap_to_new |= SCE_SNAP_TO_EDGE_PERPENDICULAR;
         }
-        if (snap_to_old & (1 << 6)) {
+        if (ELEM(type, IS_DEFAULT, IS_UV, IS_NODE) && snap_to_old & (1 << 6)) {
           snap_to_new |= SCE_SNAP_TO_INCREMENT;
         }
-        if (snap_to_old & (1 << 7)) {
+        if (ELEM(type, IS_DEFAULT, IS_UV, IS_NODE) && snap_to_old & (1 << 7)) {
           snap_to_new |= SCE_SNAP_TO_GRID;
         }
-        if (snap_to_old & (1 << 8)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
-        }
-        if (snap_to_old & (1 << 9)) {
+        if (type == IS_DEFAULT && snap_to_old & (1 << 8)) {
           snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
+        }
+        if (type == IS_DEFAULT && snap_to_old & (1 << 9)) {
+          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
         }
         if (snap_to_old & (1 << 10)) {
           snap_to_new |= SCE_SNAP_TO_FRAME;
@@ -1606,13 +1674,18 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (snap_to_old & (1 << 12)) {
           snap_to_new |= SCE_SNAP_TO_MARKERS;
         }
+
+        if (!snap_to_new) {
+          snap_to_new = eSnapMode(1 << 0);
+        }
+
         return snap_to_new;
       };
 
-      ts->snap_mode = versioning_snap_to(ts->snap_mode);
-      ts->snap_uv_mode = versioning_snap_to(ts->snap_uv_mode);
-      ts->snap_node_mode = versioning_snap_to(ts->snap_node_mode, true);
-      ts->snap_anim_mode = versioning_snap_to(ts->snap_anim_mode);
+      ts->snap_mode = versioning_snap_to(ts->snap_mode, IS_DEFAULT);
+      ts->snap_uv_mode = versioning_snap_to(ts->snap_uv_mode, IS_UV);
+      ts->snap_node_mode = versioning_snap_to(ts->snap_node_mode, IS_NODE);
+      ts->snap_anim_mode = versioning_snap_to(ts->snap_anim_mode, IS_ANIM);
     }
   }
 
@@ -1630,6 +1703,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 33)) {
+    /* Fix node group socket order by sorting outputs and inputs. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      versioning_node_group_sort_sockets_recursive(ntree->tree_interface.root_panel);
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1642,5 +1729,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "volumetric_ray_depth")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.volumetric_ray_depth = default_eevee.volumetric_ray_depth;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "Material", "char", "surface_render_method")) {
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
+                                         MA_SURFACE_METHOD_FORWARD :
+                                         MA_SURFACE_METHOD_DEFERRED;
+      }
+    }
   }
 }

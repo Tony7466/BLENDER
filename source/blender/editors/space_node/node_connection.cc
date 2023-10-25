@@ -6,13 +6,15 @@
  * \ingroup spnode
  */
 
-#include "DNA_node_types.h"
+#if (0)
 
-#include "BLI_offset_indices.hh"
+#  include "DNA_node_types.h"
 
-#include "BKE_node_runtime.hh"
+#  include "BLI_offset_indices.hh"
 
-#include "NOD_node_declaration.hh"
+#  include "BKE_node_runtime.hh"
+
+#  include "NOD_node_declaration.hh"
 
 namespace blender::ed::space_node::connection {
 
@@ -410,3 +412,5 @@ static std::optional<Socket> lookup_socket_for_context(const Span<NodePtr> nodes
 }
 
 }  // namespace blender::ed::space_node::connection
+
+#endif

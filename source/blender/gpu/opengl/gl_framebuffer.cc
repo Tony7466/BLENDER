@@ -275,8 +275,8 @@ void GLFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment
     /* The only way to have correct visibility without extensions and ensure defined behavior, is
      * to unbind the textures and update the frame-buffer. This is a slow operation but that's all
      * we can do to emulate the sub-pass input. */
-    /* TODO(fclem): Could avoid the framebuffer reconfiguration by creating multiple framebuffers
-     * internally.  */
+    /* TODO(@fclem): Could avoid the frame-buffer reconfiguration by creating multiple
+     * frame-buffers internally.  */
     for (int i : color_attachment_states.index_range()) {
       GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
 
@@ -287,18 +287,46 @@ void GLFrameBuffer::subpass_transition(const GPUAttachmentState depth_attachment
           tmp_detached_[type] = GPU_ATTACHMENT_NONE;
         }
       }
-      else {
+      else if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
         tmp_detached_[type] = this->attachments_[type];
         unwrap(tmp_detached_[type].tex)->detach_from(this);
-      }
-
-      if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
         GPU_texture_bind_ex(tmp_detached_[type].tex, GPUSamplerState::default_sampler(), i);
       }
     }
     if (dirty_attachments_) {
       this->update_attachments();
     }
+  }
+}
+
+void GLFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls)
+{
+  BLI_assert(context_->active_fb == this);
+
+  /* TODO(fclem): Add support for other ops. */
+  if (ls.load_action == eGPULoadOp::GPU_LOADACTION_CLEAR) {
+    if (tmp_detached_[type].tex != nullptr) {
+      /* #GPULoadStore is used to define the frame-buffer before it is used for rendering.
+       * Binding back unattached attachment makes its state undefined. This is described by the
+       * documentation and the user-land code should specify a sub-pass at the start of the drawing
+       * to explicitly set attachment state. */
+      if (GLContext::framebuffer_fetch_support) {
+        /* NOOP. */
+      }
+      else if (GLContext::texture_barrier_support) {
+        /* Reset default attachment state. */
+        for (int i : IndexRange(ARRAY_SIZE(tmp_detached_))) {
+          tmp_detached_[i] = GPU_ATTACHMENT_NONE;
+        }
+        glDrawBuffers(ARRAY_SIZE(gl_attachments_), gl_attachments_);
+      }
+      else {
+        tmp_detached_[type] = GPU_ATTACHMENT_NONE;
+        this->attachment_set(type, tmp_detached_[type]);
+        this->update_attachments();
+      }
+    }
+    clear_attachment(type, GPU_DATA_FLOAT, ls.clear_value);
   }
 }
 
@@ -440,6 +468,8 @@ void GLFrameBuffer::clear_attachment(GPUAttachmentType type,
   /* Save and restore the state. */
   eGPUWriteMask write_mask = GPU_write_mask_get();
   GPU_color_mask(true, true, true, true);
+  bool depth_mask = GPU_depth_mask_get();
+  GPU_depth_mask(true);
 
   context_->state_manager->apply_state();
 
@@ -480,6 +510,7 @@ void GLFrameBuffer::clear_attachment(GPUAttachmentType type,
   }
 
   GPU_write_mask(write_mask);
+  GPU_depth_mask(depth_mask);
 }
 
 void GLFrameBuffer::clear_multi(const float (*clear_cols)[4])

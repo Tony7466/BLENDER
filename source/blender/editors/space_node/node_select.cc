@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdlib>
+#include <iostream>
 
 #include "DNA_node_types.h"
 #include "DNA_windowmanager_types.h"
@@ -128,8 +129,7 @@ static bool node_frame_select_isect_mouse(const SpaceNode &snode,
 
 static bNode *node_under_mouse_select(const SpaceNode &snode, const float2 mouse)
 {
-  const bNodeTree &ntree = *snode.edittree;
-  LISTBASE_FOREACH_BACKWARD (bNode *, node, &ntree.nodes) {
+  for (bNode *node : tree_draw_order_calc_nodes_reversed(*snode.edittree)) {
     switch (node->type) {
       case NODE_FRAME: {
         if (node_frame_select_isect_mouse(snode, *node, mouse)) {
@@ -150,8 +150,7 @@ static bNode *node_under_mouse_select(const SpaceNode &snode, const float2 mouse
 
 static bool node_under_mouse_tweak(const SpaceNode &snode, const float2 &mouse)
 {
-  const bNodeTree &ntree = *snode.edittree;
-  LISTBASE_FOREACH_BACKWARD (const bNode *, node, &ntree.nodes) {
+  for (bNode *node : tree_draw_order_calc_nodes_reversed(*snode.edittree)) {
     switch (node->type) {
       case NODE_REROUTE: {
         const float2 location = node_to_view(*node, {node->locx, node->locy});
@@ -463,7 +462,7 @@ static int node_select_grouped_exec(bContext *C, wmOperator *op)
   }
 
   if (changed) {
-    node_sort(node_tree);
+    tree_draw_order_update(node_tree);
     WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
     return OPERATOR_FINISHED;
   }
@@ -531,7 +530,7 @@ void node_select_single(bContext &C, bNode &node)
   ED_node_set_active(bmain, &snode, &node_tree, &node, &active_texture_changed);
   ED_node_set_active_viewer_key(&snode);
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
   if (active_texture_changed && has_workbench_in_texture_color(wm, scene, ob)) {
     DEG_id_tag_update(&node_tree.id, ID_RECALC_COPY_ON_WRITE);
   }
@@ -693,7 +692,7 @@ static bool node_mouse_select(bContext *C,
     std::cout << __LINE__ << std::endl;
   }
   ED_node_set_active_viewer_key(&snode);
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
   if ((active_texture_changed && has_workbench_in_texture_color(wm, scene, ob)) ||
       viewer_node_changed)
   {
@@ -825,7 +824,7 @@ static int node_box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
 
@@ -1135,7 +1134,7 @@ static int node_select_all_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
@@ -1187,7 +1186,7 @@ static int node_select_linked_to_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
@@ -1237,7 +1236,7 @@ static int node_select_linked_from_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
