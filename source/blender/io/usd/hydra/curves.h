@@ -12,6 +12,7 @@
 #include "BKE_duplilist.h"
 
 #include "DNA_curves_types.h"
+#include "DNA_particle_types.h"
 
 #include "material.h"
 #include "object.h"
@@ -19,7 +20,7 @@
 namespace blender::io::hydra {
 
 class CurvesData : public ObjectData {
- private:
+ protected:
   pxr::VtIntArray curve_vertex_counts_;
   pxr::VtVec3fArray vertices_;
   pxr::VtVec2fArray uvs_;
@@ -32,16 +33,16 @@ class CurvesData : public ObjectData {
              const Object *object,
              pxr::SdfPath const &prim_id);
 
-  void init() override;
+  virtual void init() override;
   void insert() override;
   void remove() override;
-  void update() override;
+  virtual void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   pxr::SdfPath material_id() const override;
   void available_materials(Set<pxr::SdfPath> &paths) const override;
 
-  pxr::HdBasisCurvesTopology topology() const;
+  virtual pxr::HdBasisCurvesTopology topology() const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
 
  protected:
@@ -50,6 +51,31 @@ class CurvesData : public ObjectData {
  private:
   void write_curves(const Curves *curves_id);
   void write_uv_maps(const Curves *curves_id);
+};
+
+class HairData : public CurvesData {
+ public:
+  HairData(HydraSceneDelegate *scene_delegate,
+           const Object *object,
+           pxr::SdfPath const &prim_id,
+           ParticleSystem *particle_system);
+
+  static bool is_supported(const ParticleSystem *particle_system);
+  static bool is_visible(HydraSceneDelegate *scene_delegate,
+                         Object *object,
+                         ParticleSystem *particle_system,
+                         int object_mode = OB_VISIBLE_SELF);
+
+  void init() override;
+  void update() override;
+
+  pxr::HdBasisCurvesTopology topology() const override;
+
+  ParticleSystem *particle_system;
+
+ private:
+  void write_curves();
+  void write_uv_maps();
 };
 
 }  // namespace blender::io::hydra

@@ -14,12 +14,10 @@
 #include "CLG_log.h"
 
 #include "curves.h"
-#include "hair.h"
 #include "instancer.h"
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
-#include "particle_system.h"
 #include "volume.h"
 #include "volume_modifier.h"
 #include "world.h"
@@ -38,7 +36,6 @@ class Engine;
 class HydraSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
-  friend MeshData;     /* has access to particle systems */
 
  public:
   struct ShadingSettings {
@@ -62,7 +59,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
  private:
   ObjectDataMap objects_;
   MaterialDataMap materials_;
-  ParticleSystemMap particle_systems_;
   std::unique_ptr<InstancerData> instancer_data_;
   std::unique_ptr<WorldData> world_data_;
 
@@ -109,7 +105,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   VolumeData *volume_data(pxr::SdfPath const &id) const;
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
-  ParticleSystemData *particle_system_data(pxr::SdfPath const &id) const;
+  HairData *particle_system_data(pxr::SdfPath const &id) const;
   HairData *hair_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
 

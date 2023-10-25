@@ -152,7 +152,6 @@ if(WITH_HYDRA)
   list(APPEND SRC
     hydra/camera.cc
     hydra/curves.cc
-    hydra/hair.cc
     hydra/hydra_scene_delegate.cc
     hydra/id.cc
     hydra/image.cc
@@ -161,7 +160,6 @@ if(WITH_HYDRA)
     hydra/material.cc
     hydra/mesh.cc
     hydra/object.cc
-    hydra/particle_system.cc
     hydra/usd_scene_delegate.cc
     hydra/volume.cc
     hydra/volume_modifier.cc
@@ -169,7 +167,6 @@ if(WITH_HYDRA)
 
     hydra/camera.h
     hydra/curves.h
-    hydra/hair.h
     hydra/hydra_scene_delegate.h
     hydra/id.h
     hydra/image.h
@@ -178,7 +175,6 @@ if(WITH_HYDRA)
     hydra/material.h
     hydra/mesh.h
     hydra/object.h
-    hydra/particle_system.h
     hydra/usd_scene_delegate.h
     hydra/volume.h
     hydra/volume_modifier.h

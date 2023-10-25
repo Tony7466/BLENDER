@@ -7,10 +7,15 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/tokens.h>
 
+#include "BKE_curves.hh"
 #include "BKE_customdata.h"
 #include "BKE_material.h"
+#include "BKE_particle.h"
 
-#include "BKE_curves.hh"
+#include "DEG_depsgraph_query.hh"
+
+#include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 
 #include "hydra_scene_delegate.h"
 
@@ -117,6 +122,9 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
     if (!vertices_.empty()) {
       primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
     }
+    printf("width: %d\n", widths_.size());
+    printf("curve_vertex_counts_: %d\n", curve_vertex_counts_.size());
+    printf("vertices_: %d\n", vertices_.size());
     if (!widths_.empty()) {
       primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
     }
@@ -177,6 +185,151 @@ void CurvesData::write_uv_maps(const Curves *curves_id)
 
   uvs_.resize(curves.curves_num());
   MutableSpan(uvs_.data(), uvs_.size()).copy_from(surface_uv_coords.cast<pxr::GfVec2f>());
+}
+
+HairData::HairData(HydraSceneDelegate *scene_delegate,
+                   const Object *object,
+                   pxr::SdfPath const &prim_id,
+                   ParticleSystem *particle_system)
+    : CurvesData(scene_delegate, object, prim_id), particle_system(particle_system)
+{
+}
+
+bool HairData::is_supported(const ParticleSystem *particle_system)
+{
+  if (particle_system->part) {
+    switch (particle_system->part->type) {
+      case PART_HAIR:
+        return true;
+      case PART_EMITTER:
+      case PART_FLUID_FLIP:
+      case PART_FLUID_SPRAY:
+      case PART_FLUID_BUBBLE:
+      case PART_FLUID_FOAM:
+      case PART_FLUID_TRACER:
+      case PART_FLUID_SPRAYFOAM:
+      case PART_FLUID_SPRAYBUBBLE:
+      case PART_FLUID_FOAMBUBBLE:
+      case PART_FLUID_SPRAYFOAMBUBBLE:
+        return false;
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+  }
+  return false;
+}
+
+bool HairData::is_visible(HydraSceneDelegate *scene_delegate,
+                          Object *object,
+                          ParticleSystem *particle_system,
+                          int object_mode)
+{
+  const bool for_render = (DEG_get_mode(scene_delegate->depsgraph) == DAG_EVAL_RENDER);
+  return ObjectData::is_visible(scene_delegate, object) &&
+         psys_check_enabled(object, particle_system, for_render);
+}
+
+void HairData::init()
+{
+  ID_LOGN(1, "");
+  /* NOTE: no need to write_transform here, since we already write actual position. */
+  write_curves();
+  write_materials();
+  write_uv_maps();
+}
+
+void HairData::update()
+{
+  init();
+  switch (particle_system->part->type) {
+    case PART_HAIR:
+      if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
+        insert();
+      }
+      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+          prim_id, pxr::HdChangeTracker::AllDirty);
+      break;
+    case PART_EMITTER:
+    case PART_FLUID_FLIP:
+    case PART_FLUID_SPRAY:
+    case PART_FLUID_BUBBLE:
+    case PART_FLUID_FOAM:
+    case PART_FLUID_TRACER:
+    case PART_FLUID_SPRAYFOAM:
+    case PART_FLUID_SPRAYBUBBLE:
+    case PART_FLUID_FOAMBUBBLE:
+    case PART_FLUID_SPRAYFOAMBUBBLE:
+      CLOG_WARN(LOG_HYDRA_SCENE, "Unsupported particle type: %d", particle_system->part->type);
+      remove();
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+
+  ID_LOGN(1, "");
+}
+
+pxr::HdBasisCurvesTopology HairData::topology() const
+{
+  return pxr::HdBasisCurvesTopology(pxr::HdTokens->cubic,
+                                    pxr::UsdGeomTokens->bspline,
+                                    pxr::HdTokens->nonperiodic,
+                                    curve_vertex_counts_,
+                                    pxr::VtIntArray());
+}
+
+void HairData::write_curves()
+{
+  ParticleCacheKey **cache = particle_system->pathcache;
+  if (cache == nullptr) {
+    return;
+
+  }
+  curve_vertex_counts_.clear();
+  curve_vertex_counts_.reserve(particle_system->totpart);  
+  vertices_.clear();
+  widths_.clear();
+
+  ParticleCacheKey *strand;
+  for (int strand_index = 0; strand_index < particle_system->totpart; ++strand_index) {
+    strand = cache[strand_index];
+
+    int point_count = strand->segments + 1;
+    curve_vertex_counts_.push_back(point_count);
+
+    for (int point_index = 0; point_index < point_count; ++point_index, ++strand) {
+      vertices_.push_back(pxr::GfVec3f(strand->co));
+      widths_.push_back(particle_system->part->rad_root * particle_system->part->rad_scale);
+    }
+  }
+}
+
+void HairData::write_uv_maps()
+{
+  uvs_.clear();
+  uvs_.reserve(particle_system->totpart);
+  if (particle_system->particles) {
+    Object *object = (Object *)id;
+    ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system);
+    int num = ELEM(particle_system->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
+                  particle_system->particles->num :
+                  particle_system->particles->num_dmcache;
+
+    const MFace *mface = static_cast<const MFace *>(
+        CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE));
+    const MTFace *mtface = static_cast<const MTFace *>(
+        CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MTFACE));
+
+    float r_uv[2];
+    if (mface && mtface) {
+      mtface += num;
+      psys_interpolate_uvs(mtface, mface->v4, particle_system->particles->fuv, r_uv);
+    }
+    for (int i = 0; i < particle_system->totpart; i++) {
+      uvs_.push_back(pxr::GfVec2f(r_uv[0], r_uv[1]));
+    }
+  }
 }
 
 }  // namespace blender::io::hydra

@@ -132,7 +132,8 @@ pxr::HdMeshTopology MeshData::topology(pxr::SdfPath const &id) const
                              sm.face_vertex_indices);
 }
 
-pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(pxr::HdInterpolation interpolation) const
+pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
+    pxr::HdInterpolation interpolation) const
 {
   pxr::HdPrimvarDescriptorVector primvars;
   if (interpolation == pxr::HdInterpolationVertex) {

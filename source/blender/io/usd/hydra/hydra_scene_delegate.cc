@@ -237,10 +237,6 @@ void HydraSceneDelegate::clear()
     obj_data->remove();
   }
   objects_.clear();
-  for (auto &psys_data : particle_systems_.values()) {
-    psys_data->remove();
-  }
-  particle_systems_.clear();
   instancer_data_->remove();
   for (auto &mat_data : materials_.values()) {
     mat_data->remove();
@@ -271,7 +267,8 @@ pxr::SdfPath HydraSceneDelegate::material_prim_id(const Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
-pxr::SdfPath HydraSceneDelegate::particle_system_prim_id(const pxr::SdfPath parent_obj, const ParticleSystem *psys) const
+pxr::SdfPath HydraSceneDelegate::particle_system_prim_id(const pxr::SdfPath parent_obj,
+                                                         const ParticleSystem *psys) const
 {
   return parent_obj.AppendPath(pxr::SdfPath(prim_id((ID *)psys, "PS").GetName()));
 }
@@ -293,12 +290,6 @@ ObjectData *HydraSceneDelegate::object_data(pxr::SdfPath const &id) const
   }
 
   auto name = id.GetName();
-  if (STRPREFIX(name.c_str(), "PS_")) {
-    auto particle_data = particle_systems_.lookup_ptr(id);
-    if (particle_data) {
-      return particle_data->get();
-    }
-  }  
   pxr::SdfPath p_id = (STRPREFIX(name.c_str(), "SM_") || STRPREFIX(name.c_str(), "VF_")) ?
                           id.GetParentPath() :
                           id;
@@ -343,18 +334,9 @@ MaterialData *HydraSceneDelegate::material_data(pxr::SdfPath const &id) const
   return mat_data->get();
 }
 
-ParticleSystemData *HydraSceneDelegate::particle_system_data(pxr::SdfPath const &id) const
-{
-  auto psys_data = particle_systems_.lookup_ptr(id);
-  if (!psys_data) {
-    return nullptr;
-  }
-  return psys_data->get();
-}
-
 HairData *HydraSceneDelegate::hair_data(pxr::SdfPath const &id) const
 {
-  return dynamic_cast<HairData *>(particle_system_data(id));
+  return dynamic_cast<HairData *>(object_data(id));
 }
 
 InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
@@ -459,7 +441,7 @@ void HydraSceneDelegate::check_updates()
         }
         break;
       }
-      case ID_PA : {
+      case ID_PA: {
         do_update_particle_systems = true;
         break;
       }
@@ -579,19 +561,18 @@ void HydraSceneDelegate::update_particle_systems()
   for (auto &obj : objects_.values()) {
     Object *object = (Object *)obj->id;
     LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
-      if (ParticleSystemData::is_supported(psys)
-              && ParticleSystemData::is_visible(this, object, psys)) {
+      if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
         pxr::SdfPath psys_path = particle_system_prim_id(obj->prim_id, psys);
-        ParticleSystemData *psys_data = particle_systems_.contains(psys_path) ?
-                                            particle_systems_.lookup_ptr(psys_path)->get() :
-                                            nullptr;
-
+        // HairData *psys_data = objects_.contains(psys_path) ?
+        //                                    objects_.lookup_ptr(psys_path)->get() :
+        //                                    nullptr;
+        ObjectData *psys_data = object_data(psys_path);
         if (!psys_data) {
-          psys_data = particle_systems_
+          psys_data = objects_
                           .lookup_or_add(psys_path,
-                                          ParticleSystemData::create(
-                                              this, object, psys_path, psys))
+                                         std::make_unique<HairData>(this, object, psys_path, psys))
                           .get();
+          psys_data->init();
           psys_data->insert();
         }
         else {
@@ -600,15 +581,18 @@ void HydraSceneDelegate::update_particle_systems()
       }
     }
   }
-  particle_systems_.remove_if([&](auto item) {
+  objects_.remove_if([&](auto item) {
     Object *object = (Object *)item.value->id;
     HairData *h_data = hair_data(item.value->prim_id);
-    ParticleSystem *psys = h_data->particle_system;
-    bool ret = ParticleSystemData::is_supported(psys);
-    if (!ret || !ParticleSystemData::is_visible(this, object, psys)) {
-      item.value->remove();
+    if (h_data) {
+      ParticleSystem *psys = h_data->particle_system;
+      bool ret = HairData::is_supported(psys);
+      if (!ret || !HairData::is_visible(this, object, psys)) {
+        item.value->remove();
+      }
+      return !ret;
     }
-    return !ret;
+    return false;
   });
 }
 
