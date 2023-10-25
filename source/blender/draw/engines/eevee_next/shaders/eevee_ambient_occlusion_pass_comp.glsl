@@ -5,7 +5,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(draw_view_reconstruction_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_horizon_scan_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_horizon_scan_eval_lib.glsl)
 
 void main()
 {
@@ -28,17 +28,17 @@ void main()
   vec3 vN = drw_normal_world_to_view(N);
 
   vec2 noise = interlieved_gradient_noise(
-      vec2(texel), vec2(1, 3), sampling_rng_2D_get(SAMPLING_AO_U));
+      vec2(texel), vec2(3, 5), sampling_rng_2D_get(SAMPLING_AO_U));
 
-  vec3 ambient_occlusion = horizon_scan(surf.vP,
-                                        vN,
-                                        hiz_tx,
-                                        noise,
-                                        uniform_buf.ao.pixel_size,
-                                        uniform_buf.ao.distance,
-                                        uniform_buf.ao.thickness,
-                                        false,
-                                        8);
+  vec3 ambient_occlusion = horizon_scan_eval(surf.vP,
+                                             vN,
+                                             hiz_tx,
+                                             noise,
+                                             uniform_buf.ao.pixel_size,
+                                             uniform_buf.ao.distance,
+                                             uniform_buf.ao.thickness,
+                                             false,
+                                             8);
 
   /* We can have some float imprecision because of the weighted accumulation. */
   if (ambient_occlusion.r >= 0.98) {
