@@ -45,6 +45,10 @@ void horizon_scan_occluder_intersection_ray_sphere_clip(Ray ray,
   P_exit = ray.origin + ray.direction * t_exit;
 }
 
+/**
+ * Scans the horizon in many directions and returns the indirect lighting radiance.
+ * Returned lighting depends on configuration.
+ */
 vec3 horizon_scan_eval(vec3 vP,
                        vec3 vN,
                        sampler2D depth_tx,
@@ -134,7 +138,7 @@ vec3 horizon_scan_eval(vec3 vP,
         /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
         theta = (side == 0) ? theta.xy : -theta.yx;
         theta -= vN_angle;
-        /* Angular bias. */
+        /* Angular bias. Shrink the visibility bitmask around the projected normal. */
         theta *= angle_bias;
 
         uint sample_bitmask = horizon_scan_angles_to_bitmask(theta);
