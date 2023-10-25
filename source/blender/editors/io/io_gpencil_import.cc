@@ -138,7 +138,7 @@ static void ui_gpencil_import_svg_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_gpencil_import_svg_draw(bContext *C, wmOperator *op)
 {
-  files_drop_label_draw(C, op, ICON_FILE_3D, ".svg");
+  io_util_drop_file_label_draw(C, op, ICON_FILE_3D, ".svg");
   ui_gpencil_import_svg_settings(op->layout, op->ptr);
 }
 
@@ -157,7 +157,7 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
   ot->description = "Import SVG into grease pencil";
   ot->idname = "WM_OT_gpencil_import_svg";
 
-  ot->invoke = wm_io_import_invoke;
+  ot->invoke = io_util_import_invoke;
   ot->exec = wm_gpencil_import_svg_exec;
   ot->poll = wm_gpencil_import_svg_poll;
   ot->ui = wm_gpencil_import_svg_draw;
@@ -171,7 +171,7 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
                                      WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-  skip_filesel_props(
+  io_util_skip_save_filesel_props(
       ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
 
   RNA_def_int(ot->srna,

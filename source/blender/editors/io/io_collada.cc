@@ -791,7 +791,7 @@ static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_collada_import_draw(bContext *C, wmOperator *op)
 {
-  files_drop_label_draw(C, op, ICON_FILE_3D, "dae");
+  io_util_drop_file_label_draw(C, op, ICON_FILE_3D, "dae");
   uiCollada_importSettings(op->layout, op->ptr);
 }
 
@@ -802,7 +802,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
   ot->idname = "WM_OT_collada_import";
   ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_io_import_invoke;
+  ot->invoke = io_util_import_invoke;
   ot->exec = wm_collada_import_exec;
   ot->poll = WM_operator_winactive;
 
@@ -815,7 +815,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-  skip_filesel_props(ot, WM_FILESEL_FILEPATH);
+  io_util_skip_save_filesel_props(ot, WM_FILESEL_FILEPATH);
 
   PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.dae", 0, "", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);

@@ -111,7 +111,7 @@ static void wm_stl_import_draw(bContext *C, wmOperator *op)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
-  files_drop_label_draw(C, op, ICON_FILE_3D, ".stl");
+  io_util_drop_file_label_draw(C, op, ICON_FILE_3D, ".stl");
   ui_stl_import_settings(op->layout, &ptr);
 }
 
@@ -123,7 +123,7 @@ void WM_OT_stl_import(wmOperatorType *ot)
   ot->description = "Import an STL file as an object";
   ot->idname = "WM_OT_stl_import";
 
-  ot->invoke = wm_io_import_invoke;
+  ot->invoke = io_util_import_invoke;
   ot->exec = wm_stl_import_exec;
   ot->poll = WM_operator_winactive;
   ot->check = wm_stl_import_check;
@@ -138,7 +138,8 @@ void WM_OT_stl_import(wmOperatorType *ot)
                                      WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY);
+  io_util_skip_save_filesel_props(ot,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY);
 
   RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
   RNA_def_boolean(ot->srna,

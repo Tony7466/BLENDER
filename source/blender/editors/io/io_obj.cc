@@ -478,7 +478,7 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->idname = "WM_OT_obj_import";
   ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_io_import_invoke;
+  ot->invoke = io_util_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
@@ -492,7 +492,8 @@ void WM_OT_obj_import(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
+  io_util_skip_save_filesel_props(ot,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
 
   RNA_def_float(
       ot->srna,

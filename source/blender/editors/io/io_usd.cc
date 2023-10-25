@@ -394,7 +394,7 @@ static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
   options->as_background_job = true;
   op->customdata = options;
 
-  return wm_io_import_invoke(C, op, event);
+  return io_util_import_invoke(C, op, event);
 }
 
 static int wm_usd_import_exec(bContext *C, wmOperator *op)
@@ -538,7 +538,7 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   PointerRNA *ptr = op->ptr;
 
-  files_drop_label_draw(C, op, ICON_FILE_3D, ".usd");
+  io_util_drop_file_label_draw(C, op, ICON_FILE_3D, ".usd");
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -620,7 +620,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH);
+  io_util_skip_save_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH);
 
   PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.usd", 0, "", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);

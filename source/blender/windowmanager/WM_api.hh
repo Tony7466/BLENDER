@@ -1426,6 +1426,7 @@ const char *WM_drag_get_item_name(wmDrag *drag);
  * may be destructed. Only paths that share the same extension of the first file will be copied.
  */
 wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths);
+const char *WM_drag_get_single_path(const wmDrag *drag);
 const blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag);
 /**
  * Note that even though the enum return type uses bit-flags, this should never have multiple

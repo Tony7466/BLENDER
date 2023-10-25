@@ -1,35 +1,34 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#if defined(WITH_COLLADA) || defined(WITH_IO_GPENCIL) || defined(WITH_IO_WAVEFRONT_OBJ) || \
-    defined(WITH_IO_PLY) || defined(WITH_IO_STL) || defined(WITH_USD)
+#include "BKE_context.h"
 
-#  include "BKE_context.h"
+#include "BLI_path_util.h"
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
 
-#  include "BLI_path_util.h"
-#  include "BLI_string.h"
-#  include "BLI_utildefines.h"
+#include "BLT_translation.h"
 
-#  include "BLT_translation.h"
+#include "DNA_space_types.h"
 
-#  include "DNA_space_types.h"
+#include "ED_fileselect.hh"
 
-#  include "ED_fileselect.hh"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#  include "RNA_access.hh"
-#  include "RNA_define.hh"
+#include "UI_interface.hh"
 
-#  include "UI_interface.hh"
+#include "WM_api.hh"
 
-#  include "WM_api.hh"
+#include "io_utils.hh"
 
-#  include "io_utils.hh"
-
-int wm_io_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */)
+int io_util_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */)
 {
-  char filepath[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filepath);
 
-  if (filepath[0]) {
+  PropertyRNA *filepath_prop = RNA_struct_find_property(op->ptr, "filepath");
+  PropertyRNA *directory_prop = RNA_struct_find_property(op->ptr, "directory");
+  if ((filepath_prop && RNA_property_is_set(op->ptr, filepath_prop)) ||
+      (directory_prop && RNA_property_is_set(op->ptr, directory_prop)))
+  {
     return WM_operator_props_dialog_popup(C, op, 300);
   }
 
@@ -37,7 +36,7 @@ int wm_io_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */
   return OPERATOR_RUNNING_MODAL;
 }
 
-void skip_filesel_props(wmOperatorType *ot, const eFileSel_Flag flag)
+void io_util_skip_save_filesel_props(wmOperatorType *ot, const eFileSel_Flag flag)
 {
   PropertyRNA *prop;
   if (flag & WM_FILESEL_FILEPATH) {
@@ -62,7 +61,7 @@ void skip_filesel_props(wmOperatorType *ot, const eFileSel_Flag flag)
   }
 }
 
-void files_drop_label_draw(bContext *C, wmOperator *op, int icon, const char *extension)
+void io_util_drop_file_label_draw(bContext *C, wmOperator *op, int icon, const char *extension)
 {
   ScrArea *area = CTX_wm_area(C);
 
@@ -81,5 +80,3 @@ void files_drop_label_draw(bContext *C, wmOperator *op, int icon, const char *ex
   uiLayout *box = uiLayoutBox(op->layout);
   uiItemL(box, label, icon);
 }
-
-#endif

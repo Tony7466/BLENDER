@@ -588,7 +588,7 @@ static void ui_alembic_import_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_alembic_import_draw(bContext *C, wmOperator *op)
 {
-  files_drop_label_draw(C, op, ICON_FILE_3D, ".abc");
+  io_util_drop_file_label_draw(C, op, ICON_FILE_3D, ".abc");
   ui_alembic_import_settings(op->layout, op->ptr);
 }
 
@@ -598,7 +598,7 @@ static int wm_alembic_import_invoke(bContext *C, wmOperator *op, const wmEvent *
   if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
     RNA_boolean_set(op->ptr, "as_background_job", true);
   }
-  return wm_io_import_invoke(C, op, event);
+  return io_util_import_invoke(C, op, event);
 }
 
 static int wm_alembic_import_exec(bContext *C, wmOperator *op)
@@ -668,7 +668,7 @@ void WM_OT_alembic_import(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH);
+  io_util_skip_save_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH);
 
   PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.abc", 0, "", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
