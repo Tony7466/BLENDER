@@ -606,8 +606,8 @@
 #define _DNA_DEFAULT_SubsurfModifierData \
   { \
     .subdivType = 0, \
-    .levels = 1, \
-    .renderLevels = 1, \
+    .levels = 2, \
+    .renderLevels = 2, \
     .flags = eSubsurfModifierFlag_UseCrease | eSubsurfModifierFlag_ControlEdges, \
     .uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES, \
     .quality = 3, \
