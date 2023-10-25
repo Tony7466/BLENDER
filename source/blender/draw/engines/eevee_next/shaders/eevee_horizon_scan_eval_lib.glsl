@@ -19,7 +19,7 @@
  * Returns the start and end point of a ray clipped to its intersection
  * with a sphere.
  */
-void horizon_scan_occluder_intersection_ray_sphere_clip(RayScan ray,
+void horizon_scan_occluder_intersection_ray_sphere_clip(Ray ray,
                                                         Sphere sphere,
                                                         out vec3 P_entry,
                                                         out vec3 P_exit)
@@ -115,7 +115,7 @@ vec3 horizon_scan_eval(vec3 vP,
 
         vec3 vP_sample = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
 
-        RayScan ray;
+        Ray ray;
         ray.origin = vP_sample;
         ray.direction = -vV;
         ray.max_time = global_thickness;
