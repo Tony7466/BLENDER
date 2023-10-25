@@ -71,10 +71,11 @@ enum {
   /** Temporarily hidden (scrolled out of the view). */
   UI_SCROLLED = (1 << 1),
   /**
-   * The button is hovered by the mouse and should be drawn with a hover highlight. Mostly managed
-   * by UI handling code. Note that this handling code will also make the button active/focused so
-   * that events will be forwarded to it and other handlers/shortcuts can be used while hovering
-   * it.
+   * The button is hovered by the mouse and should be drawn with a hover highlight. Also set
+   * sometimes to highlight buttons without actually hovering it (e.g. for arrow navigation in
+   * menus). UI handling code manages this mostly and usually does this together with making the
+   * button active/focused (see #uiBut::active). This means events will be forwarded to it and
+   * further handlers/shortcuts can be used while hovering it.
    */
   UI_HOVER = (1 << 2),
   UI_HAS_ICON = (1 << 3),
@@ -289,7 +290,10 @@ struct uiBut {
   const ImBuf *imb = nullptr;
   float imb_scale = 0;
 
-  /** Active button data (set when the user is hovering or interacting with a button). */
+  /**
+   * Active button data, set when the user is hovering or interacting with a button (#UI_HOVER and
+   * #UI_SELECT state mostly).
+   */
   uiHandleButtonData *active = nullptr;
 
   /** Custom button data (borrowed, not owned). */

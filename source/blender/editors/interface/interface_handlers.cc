@@ -8623,7 +8623,8 @@ static void button_activate_init(bContext *C,
 
   data->state = BUTTON_STATE_INIT;
 
-  /* activate button */
+  /* Activate button. Sets the hover flag to enable button highlights, usually the button is
+   * initially activated because it's hovered. */
   but->flag |= UI_HOVER;
   but->active = data;
 
