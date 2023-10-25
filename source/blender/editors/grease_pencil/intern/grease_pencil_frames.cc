@@ -17,6 +17,7 @@
 
 #include "DNA_scene_types.h"
 
+#include "ED_anim_api.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_markers.hh"
@@ -377,6 +378,140 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
       ot->srna, "all_layers", false, "All Layers", "Insert a blank frame in all editable layers");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
+}
+
+/* Datatype for use in copy/paste buffer */
+struct BufferItem {
+  Vector<int> frame_numbers;
+  std::string layer_name;
+};
+
+/* Globals for copy/paste data (like for other copy/paste buffers) */
+static Vector<BufferItem> copy_buffer = {};
+static int copy_buffer_first_frame = INT_MAX;
+static int copy_buffer_last_frame = INT_MIN;
+static int copy_buffer_cfra = 0.0;
+
+bool grease_pencil_copy_keyframes(bAnimContext *ac)
+{
+  using namespace bke::greasepencil;
+
+  ListBase anim_data = {nullptr, nullptr};
+  int filter;
+
+  /* clear buffer first */
+  copy_buffer.clear();
+  copy_buffer_first_frame = INT_MAX;
+  copy_buffer_last_frame = INT_MIN;
+
+  Scene *scene = ac->scene;
+  Object *object = ac->obact;
+
+  /* filter data */
+  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    /* This function only deals with grease pencil layer frames.
+     * This check is needed in the case of a call from the main dopesheet. */
+    if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
+      continue;
+    }
+
+    GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+    blender::Span<const Layer *> layers = grease_pencil->layers();
+    for (const Layer *layer : layers) {
+      BufferItem buf = {{}, layer->name()};
+      for (auto [frame_number, frame] : layer->frames().items()) {
+        if (frame.is_selected()) {
+          buf.frame_numbers.append(frame_number);
+
+          /* Check if this is the earliest frame encountered so far */
+          if (frame_number < copy_buffer_first_frame) {
+            copy_buffer_first_frame = frame_number;
+          }
+          if (frame_number > copy_buffer_last_frame) {
+            copy_buffer_last_frame = frame_number;
+          }
+        }
+      }
+      if (!buf.frame_numbers.is_empty()) {
+        copy_buffer.append(buf);
+      }
+    }
+  }
+
+  /* In case 'relative' paste method is used */
+  copy_buffer_cfra = scene->r.cfra;
+
+  /* Clean up */
+  ANIM_animdata_freelist(&anim_data);
+
+  /* If nothing ended up in the buffer, copy failed */
+  return !copy_buffer.is_empty();
+}
+
+bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
+{
+  using namespace bke::greasepencil;
+
+  ListBase anim_data = {nullptr, nullptr};
+  int filter;
+
+  /* Check if buffer is empty */
+  if (copy_buffer.is_empty()) {
+    return false;
+  }
+
+  Scene *scene = ac->scene;
+  Object *object = ac->obact;
+  int offset = 0;
+
+  /* methods of offset (eKeyPasteOffset) */
+  switch (offset_mode) {
+    case KEYFRAME_PASTE_OFFSET_CFRA_START:
+      offset = (scene->r.cfra - copy_buffer_first_frame);
+      break;
+    case KEYFRAME_PASTE_OFFSET_CFRA_END:
+      offset = (scene->r.cfra - copy_buffer_last_frame);
+      break;
+    case KEYFRAME_PASTE_OFFSET_CFRA_RELATIVE:
+      offset = (scene->r.cfra - copy_buffer_cfra);
+      break;
+    case KEYFRAME_PASTE_OFFSET_NONE:
+      offset = 0;
+      break;
+  }
+
+  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
+
+  /* from selected channels */
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    /* only deal with GPlayers (case of calls from general dopesheet) */
+    if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
+      continue;
+    }
+    GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+    blender::Span<Layer *> layers = grease_pencil->layers_for_write();
+    for (const BufferItem buffer : copy_buffer) {
+      for (Layer *layer : layers) {
+        if (layer->name() == buffer.layer_name) {
+          for (auto frame_number : buffer.frame_numbers) {
+            grease_pencil->insert_duplicate_frame(
+                *layer, frame_number, frame_number + offset, false);
+          }
+        }
+      }
+    }
+  }
+
+  /* Clean up */
+  ANIM_animdata_freelist(&anim_data);
+
+  return true;
 }
 
 }  // namespace blender::ed::greasepencil

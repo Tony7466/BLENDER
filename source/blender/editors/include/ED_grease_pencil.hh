@@ -120,6 +120,10 @@ bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::
 
 void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer);
 
+bool grease_pencil_copy_keyframes(bAnimContext *ac);
+
+bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode);
+
 /**
  * Sets the selection flag, according to \a selection_mode to the frame at \a frame_number in the
  * \a layer if such frame exists. Returns false if no such frame exists.
