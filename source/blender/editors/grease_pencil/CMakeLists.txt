@@ -13,6 +13,7 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../windowmanager
+  ../../../../extern/curve_fit_nd
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -25,6 +26,7 @@ set(SRC
   intern/grease_pencil_edit.cc
   intern/grease_pencil_fill_vector.cc
   intern/grease_pencil_frames.cc
+  intern/grease_pencil_geom.cc
   intern/grease_pencil_layers.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_select.cc
@@ -36,6 +38,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  extern_curve_fit_nd
 )
 
 blender_add_lib(bf_editor_grease_pencil "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

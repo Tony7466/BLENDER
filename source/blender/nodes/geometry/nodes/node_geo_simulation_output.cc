@@ -4,7 +4,7 @@
 
 #include "BLI_math_matrix.hh"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -15,7 +15,7 @@
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -49,60 +49,6 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
-
-std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item)
-{
-  return SimulationItemsAccessor::socket_identifier_for_item(item);
-}
-
-static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
-    const NodeSimulationItem &item,
-    const eNodeSocketInOut in_out,
-    const int corresponding_input = -1)
-{
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-  BLI_assert(SimulationItemsAccessor::supports_socket_type(socket_type));
-
-  std::unique_ptr<SocketDeclaration> decl = make_declaration_for_socket_type(socket_type);
-  BLI_assert(decl);
-
-  if (socket_type_supports_fields(socket_type)) {
-    if (in_out == SOCK_IN) {
-      decl->input_field_type = InputSocketFieldType::IsSupported;
-    }
-    else {
-      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
-          {corresponding_input});
-    }
-  }
-
-  decl->name = item.name ? item.name : "";
-  decl->identifier = socket_identifier_for_simulation_item(item);
-  decl->in_out = in_out;
-  return decl;
-}
-
-void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
-                                              NodeDeclaration &r_declaration)
-{
-  const int inputs_offset = r_declaration.inputs.size();
-  for (const int i : items.index_range()) {
-    const NodeSimulationItem &item = items[i];
-    SocketDeclarationPtr input_decl = socket_declaration_for_simulation_item(item, SOCK_IN);
-    SocketDeclarationPtr output_decl = socket_declaration_for_simulation_item(
-        item, SOCK_OUT, inputs_offset + i);
-    r_declaration.inputs.append(input_decl.get());
-    r_declaration.items.append(std::move(input_decl));
-    r_declaration.outputs.append(output_decl.get());
-    r_declaration.items.append(std::move(output_decl));
-  }
-  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
-  r_declaration.inputs.append(input_extend_decl.get());
-  r_declaration.items.append(std::move(input_extend_decl));
-  r_declaration.outputs.append(output_extend_decl.get());
-  r_declaration.items.append(std::move(output_extend_decl));
-}
 
 const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
@@ -726,23 +672,33 @@ std::unique_ptr<LazyFunction> get_simulation_output_lazy_function(
 
 namespace blender::nodes::node_geo_simulation_output_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclaration &r_declaration)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeGeometrySimulationOutput &storage = node_storage(node);
-  {
-    SocketDeclarationPtr skip_decl = std::make_unique<decl::Bool>();
-    skip_decl->name = N_("Skip");
-    skip_decl->identifier = skip_decl->name;
-    skip_decl->description = N_(
-        "Forward the output of the simulation input node directly to the output node and ignore "
-        "the nodes in the simulation zone");
-    skip_decl->in_out = SOCK_IN;
-    r_declaration.inputs.append(skip_decl.get());
-    r_declaration.items.append(std::move(skip_decl));
+  b.add_input<decl::Bool>("Skip").description(
+      "Forward the output of the simulation input node directly to the output node and ignore "
+      "the nodes in the simulation zone");
+
+  const bNode *node = b.node_or_null();
+  if (node == nullptr) {
+    return;
   }
-  socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
+
+  const NodeGeometrySimulationOutput &storage = node_storage(*node);
+
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeSimulationItem &item = storage.items[i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const StringRef name = item.name;
+    const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier);
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
+      output_decl.dependent_field({input_decl.input_index()});
+    }
+  }
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -924,7 +880,7 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_SIMULATION_OUTPUT, "Simulation Output", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;

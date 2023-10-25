@@ -36,7 +36,7 @@
 #include "BKE_mesh_mirror.hh"
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
@@ -748,7 +748,7 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
     const float new_mask = mask_by_color_floodfill[vd.index];
     const float mask = sculpt_mask_by_color_final_mask_get(
         current_mask, new_mask, invert, preserve_mask);
-    if (current_mask == current_mask) {
+    if (current_mask == mask) {
       continue;
     }
 
@@ -861,7 +861,7 @@ static void do_mask_by_color_task(Object *ob,
     const float new_mask = sculpt_mask_by_color_delta_get(active_color, col, threshold, invert);
     const float mask = sculpt_mask_by_color_final_mask_get(
         current_mask, new_mask, invert, preserve_mask);
-    if (current_mask == vd.mask) {
+    if (current_mask == mask) {
       continue;
     }
 

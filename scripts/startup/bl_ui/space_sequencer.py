@@ -20,7 +20,6 @@ from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
 )
 from rna_prop_ui import PropertyPanel
-from bl_ui_utils.layout import operator_context
 
 
 def _space_view_types(st):
@@ -964,11 +963,12 @@ class SEQUENCER_MT_strip_retiming(Menu):
         )
 
 
-
 class SEQUENCER_MT_strip(Menu):
     bl_label = "Strip"
 
     def draw(self, context):
+        from bl_ui_utils.layout import operator_context
+
         layout = self.layout
         st = context.space_data
         has_sequencer, _has_preview = _space_view_types(st)
@@ -2256,6 +2256,7 @@ class SEQUENCER_PT_adjust_color(SequencerButtonsPanel, Panel):
         col = layout.column()
         col.prop(strip, "color_saturation", text="Saturation")
         col.prop(strip, "color_multiply", text="Multiply")
+        col.prop(strip, "multiply_alpha")
         col.prop(strip, "use_float", text="Convert to Float")
 
 

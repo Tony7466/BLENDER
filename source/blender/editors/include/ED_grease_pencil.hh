@@ -12,19 +12,20 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_generic_span.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_rect.h"
 
 #include "ED_keyframes_edit.hh"
 
 struct bContext;
-
 struct GreasePencilDrawing;
 struct Main;
 struct Object;
 struct KeyframeEditData;
 struct ViewContext;
 struct wmKeyConfig;
+struct ToolSettings;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -46,7 +47,7 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
-eAttrDomain ED_grease_pencil_selection_domain_get(bContext *C);
+eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
 
 /** \} */
 
@@ -106,11 +107,12 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
 
+float brush_radius_world_space(bContext &C, int x, int y);
+
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
-bool grease_pencil_painting_fill_poll(bContext *C);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
@@ -126,8 +128,19 @@ void gaussian_blur_1D(const GSpan src,
 
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,
-                                       FunctionRef<float(IndexRange, int64_t)> dist_function,
+                                       FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
                                        MutableSpan<bool> dst);
+
+Array<float2> polyline_fit_curve(Span<float2> points,
+                                 float error_threshold,
+                                 const IndexMask &corner_mask);
+
+IndexMask polyline_detect_corners(Span<float2> points,
+                                  float radius_min,
+                                  float radius_max,
+                                  int samples_max,
+                                  float angle_threshold,
+                                  IndexMaskMemory &memory);
 
 /**
  * Structure for curves converted to viewport 2D space.

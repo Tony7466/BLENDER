@@ -25,7 +25,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -1173,7 +1173,6 @@ bool MeshImporter::write_geometry(const COLLADAFW::Geometry *geom)
     }
     else {
       BKE_mesh_set_custom_normals(me, reinterpret_cast<float(*)[3]>(loop_normals.data()));
-      me->flag |= ME_AUTOSMOOTH;
     }
   }
 

@@ -9,12 +9,12 @@
  * \brief A BVH for high poly meshes.
  */
 
+#include <optional>
 #include <string>
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
-#include "BLI_ghash.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_vector.hh"
@@ -89,7 +89,11 @@ struct PBVHPixelsNode {
   void *node_data = nullptr;
 };
 
-struct PBVHAttrReq {
+class PBVHAttrReq {
+ public:
+  PBVHAttrReq() = default;
+  PBVHAttrReq(const eAttrDomain domain, const eCustomDataType type) : domain(domain), type(type) {}
+
   std::string name;
   eAttrDomain domain;
   eCustomDataType type;
@@ -301,7 +305,8 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *pbvh,
 void BKE_pbvh_set_frustum_planes(PBVH *pbvh, PBVHFrustumPlanes *planes);
 void BKE_pbvh_get_frustum_planes(PBVH *pbvh, PBVHFrustumPlanes *planes);
 
-void BKE_pbvh_draw_cb(PBVH *pbvh,
+void BKE_pbvh_draw_cb(const Mesh &mesh,
+                      PBVH *pbvh,
                       bool update_only_visible,
                       PBVHFrustumPlanes *update_frustum,
                       PBVHFrustumPlanes *draw_frustum,
@@ -398,8 +403,12 @@ void BKE_pbvh_node_get_grids(PBVH *pbvh,
                              int *maxgrid,
                              int *gridsize,
                              CCGElem ***r_griddata);
-void BKE_pbvh_node_num_verts(PBVH *pbvh, PBVHNode *node, int *r_uniquevert, int *r_totvert);
-const int *BKE_pbvh_node_get_vert_indices(PBVHNode *node);
+void BKE_pbvh_node_num_verts(const PBVH *pbvh,
+                             const PBVHNode *node,
+                             int *r_uniquevert,
+                             int *r_totvert);
+blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node);
+blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node);
 void BKE_pbvh_node_get_loops(PBVH *pbvh,
                              PBVHNode *node,
                              const int **r_loop_indices,
@@ -424,9 +433,10 @@ bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, PBVHFrustumPlanes *frust
  */
 bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *frustum);
 
-GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
-GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
-GSet *BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
+const blender::Set<BMFace *, 0> &BKE_pbvh_bmesh_node_faces(PBVHNode *node);
+
 /**
  * In order to perform operations on the original node coordinates
  * (currently just ray-cast), store the node's triangles and vertices.
@@ -508,8 +518,10 @@ struct PBVHVertexIter {
   bool is_mesh;
 
   /* bmesh */
-  GSetIterator bm_unique_verts;
-  GSetIterator bm_other_verts;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_unique_verts;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_unique_verts_end;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_other_verts;
+  std::optional<blender::Set<BMVert *, 0>::Iterator> bm_other_verts_end;
   CustomData *bm_vdata;
   int cd_vert_mask_offset;
 
@@ -570,13 +582,13 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           vi.mask = vi.vmask ? vi.vmask[vi.index] : 0.0f; \
         } \
         else { \
-          if (!BLI_gsetIterator_done(&vi.bm_unique_verts)) { \
-            vi.bm_vert = (BMVert *)BLI_gsetIterator_getKey(&vi.bm_unique_verts); \
-            BLI_gsetIterator_step(&vi.bm_unique_verts); \
+          if (*vi.bm_unique_verts != *vi.bm_unique_verts_end) { \
+            vi.bm_vert = **vi.bm_unique_verts; \
+            (*vi.bm_unique_verts)++; \
           } \
           else { \
-            vi.bm_vert = (BMVert *)BLI_gsetIterator_getKey(&vi.bm_other_verts); \
-            BLI_gsetIterator_step(&vi.bm_other_verts); \
+            vi.bm_vert = **vi.bm_other_verts; \
+            (*vi.bm_other_verts)++; \
           } \
           vi.visible = !BM_elem_flag_test_bool(vi.bm_vert, BM_ELEM_HIDDEN); \
           if (mode == PBVH_ITER_UNIQUE && !vi.visible) { \
@@ -611,7 +623,7 @@ struct PBVHFaceIter {
   const PBVHNode *node_;
   PBVHType pbvh_type_;
   int verts_size_;
-  GSetIterator bm_faces_iter_;
+  std::optional<blender::Set<BMFace *, 0>::Iterator> bm_faces_iter_;
   int cd_hide_poly_, cd_face_set_;
   bool *hide_poly_;
   int *face_sets_;
@@ -686,22 +698,19 @@ bool BKE_pbvh_get_color_layer(Mesh *me, CustomDataLayer **r_layer, eAttrDomain *
 /* Swaps colors at each element in indices (of domain pbvh->vcol_domain)
  * with values in colors. */
 void BKE_pbvh_swap_colors(PBVH *pbvh,
-                          const int *indices,
-                          const int indices_num,
-                          float (*colors)[4]);
+                          blender::Span<int> indices,
+                          blender::MutableSpan<blender::float4> r_colors);
 
 /* Stores colors from the elements in indices (of domain pbvh->vcol_domain)
  * into colors. */
 void BKE_pbvh_store_colors(PBVH *pbvh,
-                           const int *indices,
-                           const int indices_num,
-                           float (*colors)[4]);
+                           blender::Span<int> indices,
+                           blender::MutableSpan<blender::float4> r_colors);
 
 /* Like BKE_pbvh_store_colors but handles loop->vert conversion */
 void BKE_pbvh_store_colors_vertex(PBVH *pbvh,
-                                  const int *indices,
-                                  const int indices_num,
-                                  float (*colors)[4]);
+                                  blender::Span<int> indices,
+                                  blender::MutableSpan<blender::float4> r_colors);
 
 bool BKE_pbvh_is_drawing(const PBVH *pbvh);
 
