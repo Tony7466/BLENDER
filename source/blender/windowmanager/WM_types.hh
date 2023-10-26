@@ -1173,15 +1173,11 @@ struct wmDragAssetListItem {
 };
 
 struct wmDragPath {
-  const blender::Vector<std::string> paths;
+  blender::Vector<std::string> paths;
   /* Note that even though the enum type uses bit-flags, this should never have multiple type-bits
    * set, so `ELEM()` like comparison is possible. */
-  const int file_type; /* eFileSel_File_Types */
-  const std::string tooltip;
-  wmDragPath(const blender::Vector<std::string> &paths, const std::string &tooltip, int file_type)
-      : paths(std::move(paths)), file_type(file_type), tooltip(tooltip)
-  {
-  }
+  int file_type; /* eFileSel_File_Types */
+  std::string tooltip;
 };
 
 struct wmDragGreasePencilLayer {

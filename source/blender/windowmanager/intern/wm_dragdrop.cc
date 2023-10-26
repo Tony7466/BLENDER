@@ -761,27 +761,32 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag)
 
 wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 {
+  wmDragPath *path_data = MEM_new<wmDragPath>("wmDragPath");
+
+  path_data->file_type = ED_path_extension_type(paths[0]);
+
   const char *extension = BLI_path_extension(paths[0]);
-  blender::Vector<std::string> filtered_paths;
+
   for (auto path : paths) {
     const char *test_ext = BLI_path_extension(path);
     if (extension == test_ext || (extension && test_ext && STREQ(extension, test_ext))) {
-      filtered_paths.append(path);
+      path_data->paths.append(path);
     }
   }
-  const char *tooltip = paths[0];
+
+  const char *tooltip = path_data->paths[0].c_str();
   char tooltip_buffer[256];
-  if (filtered_paths.size() > 1) {
+
+  if (path_data->paths.size() > 1) {
     BLI_snprintf(tooltip_buffer,
                  ARRAY_SIZE(tooltip_buffer),
                  TIP_("Dragging %d %s files."),
-                 filtered_paths.size(),
+                 path_data->paths.size(),
                  extension ? extension : TIP_("Folder"));
     tooltip = tooltip_buffer;
   }
 
-  wmDragPath *path_data = MEM_new<wmDragPath>(
-      "wmDragPath", filtered_paths, tooltip, ED_path_extension_type(paths[0]));
+  path_data->tooltip = tooltip;
 
   return path_data;
 }
