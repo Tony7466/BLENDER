@@ -187,12 +187,6 @@ class CurvesGeometry : public ::CurvesGeometry {
   Span<float3> positions() const;
   MutableSpan<float3> positions_for_write();
 
-  /**
-   * Radii of the points. Values are expected to be in blender units.
-   */
-  VArray<float> radii() const;
-  MutableSpan<float> radii_for_write();
-
   /** Whether the curve loops around to connect to itself, on the curve domain. */
   VArray<bool> cyclic() const;
   /** Mutable access to curve cyclic values. Call #tag_topology_changed after changes. */
