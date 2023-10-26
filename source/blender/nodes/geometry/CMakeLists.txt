@@ -207,6 +207,8 @@ set(SRC
   node_geometry_util.cc
 
   node_geometry_util.hh
+  
+  nodes/node_geo_sort_elements.cc
 )
 
 set(LIB

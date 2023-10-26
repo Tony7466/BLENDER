@@ -465,6 +465,8 @@ DefNode(GeometryNode, GEO_NODE_INTERPOLATE_CURVES, 0, "INTERPOLATE_CURVES", Inte
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_CURVES, 0, "POINTS_TO_CURVES", PointsToCurves, "Points to Curves", "Split all points to curve by its group ID and reorder by weight")
 DefNode(GeometryNode, GEO_NODE_INPUT_EDGE_SMOOTH, 0, "INPUT_EDGE_SMOOTH", InputEdgeSmooth, "Is Edge Smooth", "Retrieve whether each edge is marked for smooth or split normals")
 
+DefNode(GeometryNode, GEO_NODE_SORT_ELEMENTS, 0, "SORT_ELEMENTS", SortElements, "Sort Elements", "")
+
 /* undefine macros */
 #undef DefNode
 

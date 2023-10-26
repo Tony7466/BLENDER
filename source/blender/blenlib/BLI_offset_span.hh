@@ -45,6 +45,11 @@ template<typename T, typename BaseT> class OffsetSpan {
     return data_.size();
   }
 
+  T first(const int64_t n = 0) const
+  {
+    return offset_ + data_[n];
+  }
+
   T last(const int64_t n = 0) const
   {
     return offset_ + data_.last(n);
