@@ -8,8 +8,11 @@
 #include <pxr/imaging/hd/light.h>
 
 #include "BLI_string.h"
+#include "BLI_math_matrix.h"
 
 #include "DEG_depsgraph_query.hh"
+
+#include "DNA_particle_types.h"
 
 #include "hydra_scene_delegate.h"
 
@@ -150,6 +153,20 @@ void InstancerData::update_instance(DupliObject *dupli)
     ID_LOG(2, "Mesh %s %d", m_inst->data->id->name, int(mesh_transforms_.size()));
     m_inst->indices.push_back(mesh_transforms_.size());
     mesh_transforms_.push_back(gf_matrix_from_transform(dupli->mat));
+
+    LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+      if (HairData::is_supported(psys) && HairData::is_visible(scene_delegate_, object, psys)) {
+        pxr::SdfPath h_id = hair_prim_id(p_id, psys);
+        NonmeshInstance *nm_inst = nonmesh_instance(h_id);
+        if (!nm_inst) {
+          nm_inst = &nonmesh_instances_.lookup_or_add_default(h_id);
+          nm_inst->data = std::make_unique<HairData>(scene_delegate_, object, h_id, psys);
+          nm_inst->data->init();
+        }
+        ID_LOG(2, "Nonmesh %s %d", nm_inst->data->id->name, int(nm_inst->transforms.size()));
+        nm_inst->transforms.push_back(gf_matrix_from_transform(dupli->mat));
+      }
+    }
   }
   else {
     NonmeshInstance *nm_inst = nonmesh_instance(p_id);
@@ -205,6 +222,15 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
   SNPRINTF(name, "O_%p", object);
+  return prim_id.AppendElementString(name);
+}
+
+pxr::SdfPath InstancerData::hair_prim_id(const pxr::SdfPath parent_obj,
+                                           const ParticleSystem *psys) const
+{
+  /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
+  char name[32];
+  SNPRINTF(name, "PS_%p", psys);
   return prim_id.AppendElementString(name);
 }
 
