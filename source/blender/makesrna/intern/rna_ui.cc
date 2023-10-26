@@ -13,10 +13,12 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_file_handler.hh"
 #include "BKE_idprop.h"
 #include "BKE_screen.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 
 #include "RNA_define.hh"
 
@@ -1454,13 +1456,13 @@ static void rna_UILayout_property_decorate_set(PointerRNA *ptr, bool value)
 
 /* File Handler */
 
-static bool file_handler_poll(const bContext *C, FileHandlerType *file_handler_type)
+static bool file_handler_poll_drop(const bContext *C, FileHandlerType *file_handler_type)
 {
-  extern FunctionRNA rna_FileHandler_poll_func;
+  extern FunctionRNA rna_FileHandler_poll_drop_func;
 
   PointerRNA ptr = RNA_pointer_create(
       nullptr, file_handler_type->rna_ext.srna, nullptr); /* dummy */
-  FunctionRNA *func = &rna_FileHandler_poll_func;
+  FunctionRNA *func = &rna_FileHandler_poll_drop_func;
 
   ParameterList list;
   RNA_parameter_list_create(&list, &ptr, func);
@@ -1549,21 +1551,19 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   FileHandlerType *file_handler_type = MEM_new<FileHandlerType>(__func__);
   *file_handler_type = dummy_file_handler_type;
 
-  /* Load all file extensions defined in the IDProperty. */
-  int extensions_len = RNA_collection_length(&dummy_file_handler_ptr, "bl_file_extensions");
-  PropertyRNA *prop = RNA_struct_find_property(&dummy_file_handler_ptr, "bl_file_extensions");
-
-  for (int i = 0; i < extensions_len; i++) {
-    PointerRNA fileptr;
-    bFileExtension extension;
-
-    RNA_property_collection_lookup_int(&dummy_file_handler_ptr, prop, i, &fileptr);
-    RNA_string_get(&fileptr, "extension", extension.extension);
-
-    file_handler_type->file_extensions.append(extension);
+  /* Gather all extensions from a string into a list. */
+  const char char_separator = ';';
+  const char *char_begin = file_handler_type->file_extensions_str;
+  const char *char_end = BLI_strchr_or_end(char_begin, char_separator);
+  while (char_begin[0]) {
+    if (char_end - char_begin > 1) {
+      bFileExtension extension;
+      BLI_strncpy(extension.extension, char_begin, char_end - char_begin + 1);
+      file_handler_type->file_extensions.append(extension);
+    }
+    char_begin = char_end[0] ? char_end + 1 : char_end;
+    char_end = BLI_strchr_or_end(char_begin, char_separator);
   }
-
-  RNA_collection_clear(&dummy_file_handler_ptr, "bl_file_extensions");
 
   file_handler_type->rna_ext.srna = RNA_def_struct_ptr(
       &BLENDER_RNA, file_handler_type->idname, &RNA_FileHandler);
@@ -1572,7 +1572,7 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   file_handler_type->rna_ext.free = free;
   RNA_struct_blender_type_set(file_handler_type->rna_ext.srna, file_handler_type);
 
-  file_handler_type->poll = have_function[0] ? file_handler_poll : nullptr;
+  file_handler_type->poll_drop = have_function[0] ? file_handler_poll_drop : nullptr;
 
   BKE_file_handler_add(file_handler_type);
 
@@ -1584,12 +1584,6 @@ static StructRNA *rna_FileHandler_refine(PointerRNA *file_handler_ptr)
   FileHandler *file_handler = (FileHandler *)file_handler_ptr->data;
   return (file_handler && file_handler->type->rna_ext.srna) ? file_handler->type->rna_ext.srna :
                                                               &RNA_FileHandler;
-}
-
-static IDProperty **rna_FileHandler_idprops(PointerRNA *ptr)
-{
-  FileHandler *file_handler = (FileHandler *)ptr->data;
-  return &file_handler->type->id_properties;
 }
 
 #else /* RNA_RUNTIME */
@@ -2338,21 +2332,6 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_REGIONS_ASSET_SHELF, nullptr);
 }
 
-static void rna_def_file_extension(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-  srna = RNA_def_struct(brna, "FileExtension", nullptr);
-  RNA_def_struct_sdna(srna, "bFileExtension");
-  RNA_def_struct_ui_text(srna, "File Extension", "File extension for file handlers");
-
-  RNA_define_verify_sdna(false); /* not in sdna */
-  prop = RNA_def_property(srna, "extension", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "extension");
-  RNA_def_property_ui_text(prop, "Extension", "File extension");
-  RNA_define_verify_sdna(true);
-}
-
 static void rna_def_file_handler(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2362,7 +2341,6 @@ static void rna_def_file_handler(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "File Handler Type", "I/O File handler");
   RNA_def_struct_sdna(srna, "FileHandler");
   RNA_def_struct_refine_func(srna, "rna_FileHandler_refine");
-  RNA_def_struct_idprops_func(srna, "rna_FileHandler_idprops");
   RNA_def_struct_register_funcs(
       srna, "rna_FileHandler_register", "rna_FileHandler_unregister", nullptr);
 
@@ -2394,15 +2372,18 @@ static void rna_def_file_handler(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_property_ui_text(prop, "Label", "The file handler label");
 
-  prop = RNA_def_property(srna, "bl_file_extensions", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_REGISTER | PROP_IDPROPERTY);
-  RNA_def_property_struct_type(prop, "FileExtension");
-  RNA_def_property_ui_text(prop, "File Extensions", "List of file extensions supported");
+  prop = RNA_def_property(srna, "bl_file_extensions", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "type->file_extensions_str");
+  RNA_def_property_flag(prop, PROP_REGISTER);
+  RNA_def_property_ui_text(prop,
+                           "File Extensions",
+                           "List of file extensions supported separated by semicolon.\n"
+                           "Example \".blend;.ble\"");
 
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  func = RNA_def_function(srna, "poll", nullptr);
+  func = RNA_def_function(srna, "poll_drop", nullptr);
   RNA_def_function_ui_description(
       func, "If this method returns a non-null output, then the file hanlder can be used");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
@@ -2419,7 +2400,6 @@ void RNA_def_ui(BlenderRNA *brna)
   rna_def_header(brna);
   rna_def_menu(brna);
   rna_def_asset_shelf(brna);
-  rna_def_file_extension(brna);
   rna_def_file_handler(brna);
 }
 
