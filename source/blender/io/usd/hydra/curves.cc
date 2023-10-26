@@ -312,13 +312,13 @@ void HairData::write_uv_maps()
 
     float r_uv[2] = {0.0f, 0.0f};
     if (ELEM(psmd->psys->part->from, PART_FROM_FACE, PART_FROM_VOLUME) &&
-        !ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
+        !ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD))
+    {
       const MFace *mface = static_cast<const MFace *>(
           CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE));
       const MTFace *mtface = static_cast<const MTFace *>(
           CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MTFACE));
 
-      
       if (mface && mtface) {
         mtface += num;
         psys_interpolate_uvs(mtface, mface->v4, particle_system->particles->fuv, r_uv);
