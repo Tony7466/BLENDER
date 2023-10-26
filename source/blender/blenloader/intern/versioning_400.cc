@@ -1744,5 +1744,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                                          MA_SURFACE_METHOD_DEFERRED;
       }
     }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "float", "show_data_size")) {
+      LightProbe default_probe = *DNA_struct_default_get(LightProbe);
+      LISTBASE_FOREACH (LightProbe *, probe, &bmain->lightprobes) {
+        probe->show_data_size = default_probe.show_data_size;
+      }
+    }
   }
 }
