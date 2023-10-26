@@ -16,7 +16,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
@@ -384,7 +384,6 @@ void MeshFromGeometry::create_normals(Mesh *mesh)
       tot_loop_idx++;
     }
   }
-  mesh->flag |= ME_AUTOSMOOTH;
   BKE_mesh_set_custom_normals(mesh, loop_normals);
   MEM_freeN(loop_normals);
 }

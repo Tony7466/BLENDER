@@ -250,6 +250,25 @@ struct ScheduledNodes {
   {
     return this->priority_.is_empty() && this->normal_.is_empty();
   }
+
+  int64_t nodes_num() const
+  {
+    return priority_.size() + normal_.size();
+  }
+
+  /**
+   * Split up the scheduled nodes into two groups that can be worked on in parallel.
+   */
+  void split_into(ScheduledNodes &other)
+  {
+    BLI_assert(this != &other);
+    const int64_t priority_split = priority_.size() / 2;
+    const int64_t normal_split = normal_.size() / 2;
+    other.priority_.extend(priority_.as_span().drop_front(priority_split));
+    other.normal_.extend(normal_.as_span().drop_front(normal_split));
+    priority_.resize(priority_split);
+    normal_.resize(normal_split);
+  }
 };
 
 struct CurrentTask {
@@ -656,8 +675,8 @@ class Executor {
 
     /* The notified output socket might be an input of the entire graph. In this case, notify the
      * caller that the input is required. */
-    if (node.is_dummy()) {
-      const int graph_input_index = self_.graph_inputs_.index_of(&socket);
+    if (node.is_interface()) {
+      const int graph_input_index = self_.graph_input_index_by_socket_index_[socket.index()];
       std::atomic<uint8_t> &was_loaded = loaded_inputs_[graph_input_index];
       if (was_loaded.load()) {
         return;
@@ -701,8 +720,9 @@ class Executor {
             BLI_assert(output_state.usage != ValueUsage::Unused);
             if (output_state.usage == ValueUsage::Maybe) {
               output_state.usage = ValueUsage::Unused;
-              if (node.is_dummy()) {
-                const int graph_input_index = self_.graph_inputs_.index_of(&socket);
+              if (node.is_interface()) {
+                const int graph_input_index =
+                    self_.graph_input_index_by_socket_index_[socket.index()];
                 params_->set_input_unused(graph_input_index);
               }
               else {
@@ -793,6 +813,16 @@ class Executor {
         current_task.has_scheduled_nodes.store(false, std::memory_order_relaxed);
       }
       this->run_node_task(*node, current_task, local_data);
+
+      /* If there are many nodes scheduled at the same time, it's beneficial to let multiple
+       * threads work on those. */
+      if (current_task.scheduled_nodes.nodes_num() > 128) {
+        if (this->try_enable_multi_threading()) {
+          std::unique_ptr<ScheduledNodes> split_nodes = std::make_unique<ScheduledNodes>();
+          current_task.scheduled_nodes.split_into(*split_nodes);
+          this->push_to_task_pool(std::move(split_nodes));
+        }
+      }
     }
   }
 
@@ -1113,9 +1143,10 @@ class Executor {
       if (self_.logger_ != nullptr) {
         self_.logger_->log_socket_value(*target_socket, value_to_forward, local_context);
       }
-      if (target_node.is_dummy()) {
+      if (target_node.is_interface()) {
         /* Forward the value to the outside of the graph. */
-        const int graph_output_index = self_.graph_outputs_.index_of_try(target_socket);
+        const int graph_output_index =
+            self_.graph_output_index_by_socket_index_[target_socket->index()];
         if (graph_output_index != -1 &&
             params_->get_output_usage(graph_output_index) != ValueUsage::Unused)
         {
@@ -1227,10 +1258,10 @@ class Executor {
   /**
    * Allow other threads to steal all the nodes that are currently scheduled on this thread.
    */
-  void move_scheduled_nodes_to_task_pool(CurrentTask &current_task)
+  void push_all_scheduled_nodes_to_task_pool(CurrentTask &current_task)
   {
     BLI_assert(this->use_multi_threading());
-    ScheduledNodes *scheduled_nodes = MEM_new<ScheduledNodes>(__func__);
+    std::unique_ptr<ScheduledNodes> scheduled_nodes = std::make_unique<ScheduledNodes>();
     {
       std::lock_guard lock{current_task.mutex};
       if (current_task.scheduled_nodes.is_empty()) {
@@ -1239,6 +1270,11 @@ class Executor {
       *scheduled_nodes = std::move(current_task.scheduled_nodes);
       current_task.has_scheduled_nodes.store(false, std::memory_order_relaxed);
     }
+    this->push_to_task_pool(std::move(scheduled_nodes));
+  }
+
+  void push_to_task_pool(std::unique_ptr<ScheduledNodes> scheduled_nodes)
+  {
     /* All nodes are pushed as a single task in the pool. This avoids unnecessary threading
      * overhead when the nodes are fast to compute. */
     BLI_task_pool_push(
@@ -1252,9 +1288,9 @@ class Executor {
           const LocalData local_data = executor.get_local_data();
           executor.run_task(new_current_task, local_data);
         },
-        scheduled_nodes,
+        scheduled_nodes.release(),
         true,
-        [](TaskPool * /*pool*/, void *data) { MEM_delete(static_cast<ScheduledNodes *>(data)); });
+        [](TaskPool * /*pool*/, void *data) { delete static_cast<ScheduledNodes *>(data); });
   }
 
   LocalData get_local_data()
@@ -1408,7 +1444,7 @@ inline void Executor::execute_node(const FunctionNode &node,
     if (!this->try_enable_multi_threading()) {
       return;
     }
-    this->move_scheduled_nodes_to_task_pool(current_task);
+    this->push_all_scheduled_nodes_to_task_pool(current_task);
   };
 
   lazy_threading::HintReceiver blocking_hint_receiver{blocking_hint_fn};
@@ -1425,14 +1461,16 @@ inline void Executor::execute_node(const FunctionNode &node,
 }
 
 GraphExecutor::GraphExecutor(const Graph &graph,
-                             const Span<const OutputSocket *> graph_inputs,
-                             const Span<const InputSocket *> graph_outputs,
+                             Vector<const GraphInputSocket *> graph_inputs,
+                             Vector<const GraphOutputSocket *> graph_outputs,
                              const Logger *logger,
                              const SideEffectProvider *side_effect_provider,
                              const NodeExecuteWrapper *node_execute_wrapper)
     : graph_(graph),
-      graph_inputs_(graph_inputs),
-      graph_outputs_(graph_outputs),
+      graph_inputs_(std::move(graph_inputs)),
+      graph_outputs_(std::move(graph_outputs)),
+      graph_input_index_by_socket_index_(graph.graph_inputs().size(), -1),
+      graph_output_index_by_socket_index_(graph.graph_outputs().size(), -1),
       logger_(logger),
       side_effect_provider_(side_effect_provider),
       node_execute_wrapper_(node_execute_wrapper)
@@ -1440,13 +1478,17 @@ GraphExecutor::GraphExecutor(const Graph &graph,
   /* The graph executor can handle partial execution when there are still missing inputs. */
   allow_missing_requested_inputs_ = true;
 
-  for (const OutputSocket *socket : graph_inputs_) {
-    BLI_assert(socket->node().is_dummy());
-    inputs_.append({"In", socket->type(), ValueUsage::Maybe});
+  for (const int i : graph_inputs_.index_range()) {
+    const OutputSocket &socket = *graph_inputs_[i];
+    BLI_assert(socket.node().is_interface());
+    inputs_.append({"In", socket.type(), ValueUsage::Maybe});
+    graph_input_index_by_socket_index_[socket.index()] = i;
   }
-  for (const InputSocket *socket : graph_outputs_) {
-    BLI_assert(socket->node().is_dummy());
-    outputs_.append({"Out", socket->type()});
+  for (const int i : graph_outputs_.index_range()) {
+    const InputSocket &socket = *graph_outputs_[i];
+    BLI_assert(socket.node().is_interface());
+    outputs_.append({"Out", socket.type()});
+    graph_output_index_by_socket_index_[socket.index()] = i;
   }
 
   /* Preprocess buffer offsets. */
@@ -1495,17 +1537,13 @@ void GraphExecutor::destruct_storage(void *storage) const
 std::string GraphExecutor::input_name(const int index) const
 {
   const lf::OutputSocket &socket = *graph_inputs_[index];
-  std::stringstream ss;
-  ss << socket.node().name() << " - " << socket.name();
-  return ss.str();
+  return socket.name();
 }
 
 std::string GraphExecutor::output_name(const int index) const
 {
   const lf::InputSocket &socket = *graph_outputs_[index];
-  std::stringstream ss;
-  ss << socket.node().name() << " - " << socket.name();
-  return ss.str();
+  return socket.name();
 }
 
 void GraphExecutorLogger::log_socket_value(const Socket &socket,

@@ -42,9 +42,10 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 #  include "DNA_material_types.h"
 
 #  include "BKE_node.h"
+#  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_update.h"
 
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_node.hh"
 
@@ -293,6 +294,15 @@ static void rna_NodeSocket_hide_set(PointerRNA *ptr, bool value)
     return;
   }
 
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node;
+  nodeFindNode(ntree, sock, &node, nullptr);
+
+  /* The Reroute node is the socket itself, do not hide this. */
+  if (node->is_reroute()) {
+    return;
+  }
+
   if (value) {
     sock->flag |= SOCK_HIDDEN;
   }
@@ -396,6 +406,9 @@ static void rna_NodeSocketStandard_value_and_relation_update(bContext *C, Pointe
 
 bool rna_NodeSocketMaterial_default_value_poll(PointerRNA * /*ptr*/, PointerRNA value)
 {
+  if (U.experimental.use_grease_pencil_version3) {
+    return true;
+  }
   /* Do not show grease pencil materials for now. */
   Material *ma = static_cast<Material *>(value.data);
   return ma->gp_style == nullptr;
