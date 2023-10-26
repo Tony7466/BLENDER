@@ -1153,6 +1153,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.template_node_operator_asset_root_items()
             elif mode_string == 'EDIT_GREASE_PENCIL':
                 layout.menu("VIEW3D_MT_edit_greasepencil_stroke")
+                layout.menu("VIEW3D_MT_edit_greasepencil_point")
 
         elif obj:
             if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES'}:
@@ -5017,6 +5018,8 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
 
         layout.operator_enum("grease_pencil.dissolve", "type")
 
+        layout.separator()
+
         layout.operator(
             "grease_pencil.delete_frame",
             text="Delete Active Keyframe (Active Layer)",
@@ -5817,13 +5820,19 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
     bl_label = "Stroke"
 
     def draw(self, _context):
-        layout = self.layout
-        layout.operator("grease_pencil.stroke_smooth")
-        layout.operator("grease_pencil.stroke_simplify")
+        layout = self.layout        
+        layout.operator("grease_pencil.stroke_simplify", text="Simplify")
 
         layout.separator()
 
         layout.operator("grease_pencil.cyclical_set", text="Toggle Cyclic").type='TOGGLE'
+
+class VIEW3D_MT_edit_greasepencil_point(Menu):
+    bl_label = "Point"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.operator("grease_pencil.stroke_smooth", text="Smooth Points")
 
 
 class VIEW3D_MT_edit_curves(Menu):
@@ -8051,18 +8060,48 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
         if is_point_mode:
             col = row.column(align=True)
-
             col.label(text="Point", icon='GP_SELECT_POINTS')
+
+            # Main Strokes Operators
+            col.operator("grease_pencil.stroke_simplify", text="Simplify")                      
+
             col.separator()
+
+            # Deform Operators
+            col.operator("transform.tosphere", text="To Sphere")    
+            col.operator("transform.shear", text="Shear")
+            col.operator("transform.bend", text="Bend")                        
+            col.operator("transform.Push_Pull", text="Push/Pull")
+            col.operator("transform.transform", text="Radius").mode = 'GPENCIL_SHRINKFATTEN'
+            col.operator("grease_pencil.stroke_smooth", text="Smooth Points")
+
+            col.separator()
+
+            col.menu("VIEW3D_MT_mirror", text="Mirror Points")
+
+            # Removal Operators
+            col.separator()
+
+            col.operator("grease_pencil.delete", text="Delete").type = 'POINTS'
+            col.operator_enum("grease_pencil.dissolve", "type")
 
         if is_stroke_mode:
             col = row.column(align=True)
             col.label(text="Stroke", icon='GP_SELECT_STROKES')
+            
+            # Main Strokes Operators
+            col.operator("grease_pencil.stroke_simplify", text="Simplify")
+
             col.separator()
 
-            # Main Strokes Operators
-            # col.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
-            col.operator("grease_pencil.stroke_simplify")
+            # Deform Operators
+            col.operator("grease_pencil.stroke_smooth", text="Smooth Points")
+            col.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
+
+            col.separator()
+
+            col.menu("VIEW3D_MT_mirror")
+        
 
 
 def draw_gpencil_layer_active(context, layout):
@@ -8759,6 +8798,7 @@ classes = (
     VIEW3D_MT_edit_greasepencil,
     VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_greasepencil_stroke,
+    VIEW3D_MT_edit_greasepencil_point,
     VIEW3D_MT_edit_greasepencil_animation,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
