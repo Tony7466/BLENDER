@@ -8082,7 +8082,6 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             # Removal Operators
             col.separator()
 
-            col.operator("grease_pencil.delete", text="Delete").type = 'POINTS'
             col.operator_enum("grease_pencil.dissolve", "type")
 
         if is_stroke_mode:
