@@ -29,6 +29,7 @@
 #include "BKE_brush.hh"
 #include "BKE_cachefile.h"
 #include "BKE_callbacks.h"
+#include "BKE_file_handler.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
@@ -70,7 +71,6 @@ void BKE_blender_free()
   }
 
   BKE_spacetypes_free(); /* after free main, it uses space callbacks */
-  BKE_file_handlers_free();
   IMB_exit();
   BKE_cachefiles_exit();
   DEG_free_node_types();
@@ -83,6 +83,8 @@ void BKE_blender_free()
   IMB_moviecache_destruct();
 
   BKE_node_system_exit();
+
+  BKE_file_handlers_free();
 }
 
 /** \} */

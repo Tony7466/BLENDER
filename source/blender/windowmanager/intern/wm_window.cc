@@ -1568,17 +1568,17 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
       if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
         const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
 
-          if (stra->count) {
-            printf("drop file %s\n", stra->strings[0]);
-            /* try to get icon type from extension */
-            int icon = ED_file_extension_icon((char *)stra->strings[0]);
-            wmDragPath *path_data = WM_drag_create_path_data(
-                blender::Span((char **)stra->strings, stra->count));
-            WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
-            /* Void pointer should point to string, it makes a copy. */
-            break; /* only one drop element supported now */
-          }
+        if (stra->count) {
+          printf("drop file %s\n", stra->strings[0]);
+          /* try to get icon type from extension */
+          int icon = ED_file_extension_icon((char *)stra->strings[0]);
+          wmDragPath *path_data = WM_drag_create_path_data(
+              blender::Span((char **)stra->strings, stra->count));
+          WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
+          /* Void pointer should point to string, it makes a copy. */
+          break; /* only one drop element supported now */
         }
+      }
 
       break;
     }

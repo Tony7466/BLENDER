@@ -37,7 +37,7 @@ set(SRC
   io_stl_ops.cc
   io_usd.cc
   io_utils.cc
-  io_drop_import_helper.cc
+  io_drop_file_import.cc
 
   io_alembic.hh
   io_cache.hh
@@ -49,7 +49,7 @@ set(SRC
   io_stl_ops.hh
   io_usd.hh
   io_utils.hh
-  io_drop_import_helper.hh
+  io_drop_file_import.hh
 )
 
 set(LIB

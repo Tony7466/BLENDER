@@ -5,10 +5,12 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_context.h"
+#include "BKE_file_handler.hh"
 #include "BKE_main.h"
 #include "BKE_preferences.h"
-#include "BKE_screen.h"
 
 #include "ED_fileselect.hh"
 
@@ -20,7 +22,7 @@
 
 #include "UI_interface.hh"
 
-#include "io_drop_import_helper.hh"
+#include "io_drop_file_import.hh"
 
 static bool poll_extension(blender::Span<bFileExtension> file_extensions, const char *extension)
 {
@@ -37,15 +39,15 @@ static blender::Vector<FileHandlerType *> poll_file_handlers_for_extension(bCont
 {
   blender::Vector<FileHandlerType *> result;
   for (auto *file_handler : BKE_file_handlers()) {
-    if (!poll_extension(file_handler->extensions, extension)) {
+    if (!poll_extension(file_handler->file_extensions, extension)) {
       continue;
     }
-    if (!(file_handler->poll && file_handler->poll(C, file_handler))) {
+    if (!(file_handler->poll_drop && file_handler->poll_drop(C, file_handler))) {
       continue;
     }
     wmOperatorType *test_operator = WM_operatortype_find(file_handler->import_operator, false);
     if (!test_operator) {
-      /* Discard if import operator does not exist. */
+      /* Discard if operators that does not exist. */
       continue;
     }
     result.append(file_handler);
@@ -85,7 +87,7 @@ static PointerRNA copy_file_properties_to_operator_type_pointer(wmOperator *op, 
   return op_props;
 }
 
-static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
+static int wm_drop_file_import_exec(bContext *C, wmOperator *op)
 {
   char extension[MAX_NAME];
   RNA_string_get(op->ptr, "extension", extension);
@@ -106,7 +108,7 @@ static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int wm_drop_file_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   char extension[MAX_NAME];
   RNA_string_get(op->ptr, "extension", extension);
@@ -115,7 +117,7 @@ static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEve
                                                                                       extension);
 
   if (file_handlers.size() == 1) {
-    return wm_drop_import_helper_exec(C, op);
+    return wm_drop_file_import_exec(C, op);
   }
 
   uiPopupMenu *pup = UI_popup_menu_begin(C, "", ICON_NONE);
@@ -125,7 +127,7 @@ static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEve
   for (auto *file_handler : file_handlers) {
     wmOperatorType *ot = WM_operatortype_find(file_handler->import_operator, false);
     PointerRNA op_props = copy_file_properties_to_operator_type_pointer(op, ot);
-    char *import_label = BLI_sprintfN("Import %s", file_handler->label);
+    char *import_label = BLI_sprintfN(IFACE_("Import %s"), file_handler->label);
     uiItemFullO_ptr(layout,
                     ot,
                     import_label,
@@ -140,16 +142,17 @@ static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEve
   UI_popup_menu_end(C, pup);
   return OPERATOR_INTERFACE;
 }
-void WM_OT_drop_import_helper(wmOperatorType *ot)
-{
-  ot->name = "Drop Import Herlper";
-  ot->description =
-      "Helper operator that handles file drops and uses file handler information to call "
-      "operators that can import a file with extension.";
-  ot->idname = "WM_OT_drop_import_helper";
 
-  ot->exec = wm_drop_import_helper_exec;
-  ot->invoke = wm_drop_import_helper_invoke;
+void WM_OT_drop_file_import(wmOperatorType *ot)
+{
+  ot->name = "Drop File to Import";
+  ot->description =
+      "Operator that handles file drops and uses file handler information to call "
+      "operators that can import a file with extension.";
+  ot->idname = "WM_OT_drop_file_import";
+  ot->flag = OPTYPE_INTERNAL;
+  ot->exec = wm_drop_file_import_exec;
+  ot->invoke = wm_drop_file_import_invoke;
   PropertyRNA *prop;
 
   prop = RNA_def_string(ot->srna, "extension", nullptr, MAX_NAME, "extension", "extension");
@@ -165,7 +168,7 @@ void WM_OT_drop_import_helper(wmOperatorType *ot)
                                  FILE_SORT_DEFAULT);
 }
 
-void files_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+void drop_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   const auto paths = WM_drag_get_paths(drag);
   RNA_string_set(drop->ptr, "filepath", paths[0].c_str());
@@ -186,7 +189,7 @@ void files_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   }
 }
 
-static bool poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
+static bool drop_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
   if (drag->type != WM_DRAG_PATH) {
     return false;
@@ -196,7 +199,11 @@ static bool poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 
   return extension && poll_file_handlers_for_extension(C, extension).size() > 0;
 }
-static char *tooltip(bContext *C, wmDrag *drag, const int /*xy*/[2], wmDropBox * /*drop*/)
+
+static char *drop_file_tooltip(bContext *C,
+                                wmDrag *drag,
+                                const int /*xy*/[2],
+                                wmDropBox * /*drop*/)
 {
   const auto paths = WM_drag_get_paths(drag);
   const char *extension = BLI_path_extension(paths[0].c_str());
@@ -213,8 +220,9 @@ static char *tooltip(bContext *C, wmDrag *drag, const int /*xy*/[2], wmDropBox *
   return BLI_strdup("Multiple operators can handle this file(s), drop to pick which to use");
 }
 
-void ED_dropbox_import_helper()
+void ED_dropbox_drop_file_import()
 {
   ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
-  WM_dropbox_add(lb, "WM_OT_drop_import_helper", poll, files_drop_copy, nullptr, tooltip);
+  WM_dropbox_add(
+      lb, "WM_OT_drop_file_import", drop_file_poll, drop_file_copy, nullptr, drop_file_tooltip);
 }

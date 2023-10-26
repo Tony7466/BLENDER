@@ -59,6 +59,7 @@
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
+#include "BKE_file_handler.hh"
 #include "BKE_mask.h"     /* free mask clipboard */
 #include "BKE_material.h" /* BKE_material_copybuf_clear */
 #include "BKE_studiolight.h"
@@ -219,6 +220,8 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   wm_operatortype_init();
   wm_operatortypes_register();
+
+  BKE_file_handlers_init();
 
   WM_paneltype_init(); /* Lookup table only. */
   WM_menutype_init();

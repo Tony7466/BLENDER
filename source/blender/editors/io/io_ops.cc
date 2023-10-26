@@ -23,7 +23,7 @@
 #endif
 
 #include "io_cache.hh"
-#include "io_drop_import_helper.hh"
+#include "io_drop_file_import.hh"
 #include "io_gpencil.hh"
 #include "io_obj.hh"
 #include "io_ply_ops.hh"
@@ -74,6 +74,6 @@ void ED_operatortypes_io()
 #ifdef WITH_IO_STL
   WM_operatortype_append(WM_OT_stl_import);
 #endif
-  WM_operatortype_append(WM_OT_drop_import_helper);
-  ED_dropbox_import_helper();
+  WM_operatortype_append(WM_OT_drop_file_import);
+  ED_dropbox_drop_file_import();
 }
