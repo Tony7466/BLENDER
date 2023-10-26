@@ -5810,9 +5810,9 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
-        
+
         layout.separator()
-        
+
         layout.menu("VIEW3D_MT_edit_greasepencil_delete")
 
 
@@ -5820,7 +5820,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
     bl_label = "Stroke"
 
     def draw(self, _context):
-        layout = self.layout        
+        layout = self.layout
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
 
         layout.separator()
@@ -8050,7 +8050,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-        
+
         is_point_mode = tool_settings.gpencil_selectmode_edit == 'POINT'
         is_stroke_mode = tool_settings.gpencil_selectmode_edit == 'STROKE'
 
@@ -8063,15 +8063,15 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.label(text="Point", icon='GP_SELECT_POINTS')
 
             # Main Strokes Operators
-            col.operator("grease_pencil.stroke_simplify", text="Simplify")                      
+            col.operator("grease_pencil.stroke_simplify", text="Simplify")
 
             col.separator()
 
             # Deform Operators
-            col.operator("transform.tosphere", text="To Sphere")    
+            col.operator("transform.tosphere", text="To Sphere")
             col.operator("transform.shear", text="Shear")
-            col.operator("transform.bend", text="Bend")                        
-            col.operator("transform.Push_Pull", text="Push/Pull")
+            col.operator("transform.bend", text="Bend")
+            col.operator("transform.push_pull", text="Push/Pull")
             col.operator("transform.transform", text="Radius").mode = 'GPENCIL_SHRINKFATTEN'
             col.operator("grease_pencil.stroke_smooth", text="Smooth Points")
 
@@ -8087,7 +8087,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
         if is_stroke_mode:
             col = row.column(align=True)
             col.label(text="Stroke", icon='GP_SELECT_STROKES')
-            
+
             # Main Strokes Operators
             col.operator("grease_pencil.stroke_simplify", text="Simplify")
 
@@ -8100,7 +8100,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.separator()
 
             col.menu("VIEW3D_MT_mirror")
-        
+
 
 
 def draw_gpencil_layer_active(context, layout):
