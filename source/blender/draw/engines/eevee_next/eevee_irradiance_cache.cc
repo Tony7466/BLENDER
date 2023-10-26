@@ -23,8 +23,7 @@ namespace blender::eevee {
 
 void IrradianceCache::init()
 {
-  display_grids_enabled_ = DRW_state_draw_support() &&
-                           (inst_.scene->eevee.flag & SCE_EEVEE_SHOW_IRRADIANCE);
+  display_grids_enabled_ = DRW_state_draw_support();
 
   int atlas_byte_size = 1024 * 1024 * inst_.scene->eevee.gi_irradiance_pool_size;
   /* This might become an option in the future. */
