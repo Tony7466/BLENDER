@@ -1,2 +1,3 @@
 Referenced by issue #113661, Node Tools in sculpt mode act weird when you join geometry
 Referenced by issue #113684, Wayland and Xwayland mouse pointer stuttering
+Referenced by issue #105554, Optix fails when geometry nodes instance has animated translation and scale 0 and motion blur is on
