@@ -208,7 +208,8 @@ void Instance::object_sync(Object *ob)
 
   /* TODO cleanup. */
   ObjectRef ob_ref = DRW_object_ref_get(ob);
-  ResourceHandle res_handle = manager->resource_handle(ob_ref);
+  ResourceHandle res_handle = manager->resource_handle(ob_ref,
+                                                       ob_ref.object->culling_bounds_extra);
 
   ObjectHandle &ob_handle = sync.sync_object(ob);
 

@@ -119,7 +119,7 @@ class Manager {
   /**
    * Create a new resource handle for the given object.
    */
-  ResourceHandle resource_handle(const ObjectRef ref);
+  ResourceHandle resource_handle(const ObjectRef ref, float inflate_bounds = 0.0f);
   /**
    * Create a new resource handle for the given object, but optionally override model matrix and
    * bounds.
@@ -206,11 +206,12 @@ class Manager {
   void sync_layer_attributes();
 };
 
-inline ResourceHandle Manager::resource_handle(const ObjectRef ref)
+inline ResourceHandle Manager::resource_handle(const ObjectRef ref,
+                                               float inflate_bounds /* = 0.0f*/)
 {
   bool is_active_object = (ref.dupli_object ? ref.dupli_parent : ref.object) == object_active;
   matrix_buf.current().get_or_resize(resource_len_).sync(*ref.object);
-  bounds_buf.current().get_or_resize(resource_len_).sync(*ref.object);
+  bounds_buf.current().get_or_resize(resource_len_).sync(*ref.object, inflate_bounds);
   infos_buf.current().get_or_resize(resource_len_).sync(ref, is_active_object);
   return ResourceHandle(resource_len_++, (ref.object->transflag & OB_NEG_SCALE) != 0);
 }

@@ -3686,6 +3686,16 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "In Front", "Make the object display in front of others");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_GPencil_update");
 
+  prop = RNA_def_property(srna, "culling_bounds_extra", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "culling_bounds_extra");
+  RNA_def_property_range(prop, 0.0f, 1000.0f);
+  RNA_def_property_ui_text(prop,
+                           "Inflate Bounds",
+                           "Extends the bounds used for frustum culling."
+                           "This should at least as large as the largest vertex shader "
+                           "displacement applied to this object.");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update");
+
   /* pose */
   prop = RNA_def_property(srna, "pose", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, nullptr, "pose");

@@ -210,6 +210,7 @@ bool SyncModule::sync_sculpt(Object *ob,
   BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
   float3 center = (min + max) * 0.5;
   float3 half_extent = max - center;
+  half_extent += float3(ob->culling_bounds_extra);
   res_handle = inst_.manager->resource_handle(ob_ref, nullptr, &center, &half_extent);
 
   bool has_motion = false;
