@@ -266,10 +266,10 @@ pxr::SdfPath HydraSceneDelegate::material_prim_id(const Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
-pxr::SdfPath HydraSceneDelegate::particle_system_prim_id(const pxr::SdfPath parent_obj,
-                                                         const ParticleSystem *psys) const
+pxr::SdfPath HydraSceneDelegate::hair_prim_id(const pxr::SdfPath parent_obj,
+                                              const ParticleSystem *psys) const
 {
-  return parent_obj.AppendPath(pxr::SdfPath(prim_id((ID *)psys, "PS").GetName()));
+  return parent_obj.AppendPath(pxr::SdfPath(prim_id((ID *)psys, "H").GetName()));
 }
 
 pxr::SdfPath HydraSceneDelegate::instancer_prim_id() const
@@ -473,7 +473,6 @@ void HydraSceneDelegate::update_collection()
               Object *,
               object)
   {
-    update_hair(available_objects, object);
     if (data.dupli_object_current) {
       DupliObject *dupli = data.dupli_object_current;
       if (!ObjectData::is_supported(dupli->ob) ||
@@ -486,24 +485,7 @@ void HydraSceneDelegate::update_collection()
       instancer_data_->update_instance(dupli);
       continue;
     }
-
-    if (!ObjectData::is_supported(object) || !ObjectData::is_visible(this, object) ||
-        (!shading_settings.use_scene_lights && object->type == OB_LAMP))
-    {
-      continue;
-    }
-
-    available_objects.add(object_prim_id(object).GetName());
-
-    pxr::SdfPath id = object_prim_id(object);
-    ObjectData *obj_data = object_data(id);
-    if (obj_data) {
-      obj_data->update();
-    }
-    else {
-      obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
-      obj_data->insert();
-    }
+    update_object(available_objects, object);
   }
   ITER_END;
 
@@ -545,11 +527,11 @@ void HydraSceneDelegate::update_collection()
   });
 }
 
-void HydraSceneDelegate::update_hair(Set<std::string> &available_objects, Object *object)
+void HydraSceneDelegate::update_object(Set<std::string> &available_objects, Object *object)
 {
   LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
     if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
-      pxr::SdfPath psys_path = particle_system_prim_id(object_prim_id(object), psys);
+      pxr::SdfPath psys_path = hair_prim_id(object_prim_id(object), psys);
       ObjectData *psys_data = object_data(psys_path);
       if (psys_data) {
         psys_data->update();
@@ -564,6 +546,24 @@ void HydraSceneDelegate::update_hair(Set<std::string> &available_objects, Object
       }
       available_objects.add(psys_path.GetName());
     }
+  }
+
+  if (!ObjectData::is_supported(object) || !ObjectData::is_visible(this, object) ||
+      (!shading_settings.use_scene_lights && object->type == OB_LAMP))
+  {
+    return;
+  }
+
+  available_objects.add(object_prim_id(object).GetName());
+
+  pxr::SdfPath id = object_prim_id(object);
+  ObjectData *obj_data = object_data(id);
+  if (obj_data) {
+    obj_data->update();
+  }
+  else {
+    obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
+    obj_data->insert();
   }
 }
 

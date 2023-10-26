@@ -7,8 +7,8 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
 
-#include "BLI_string.h"
 #include "BLI_math_matrix.h"
+#include "BLI_string.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -226,7 +226,7 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 }
 
 pxr::SdfPath InstancerData::hair_prim_id(const pxr::SdfPath parent_obj,
-                                           const ParticleSystem *psys) const
+                                         const ParticleSystem *psys) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];

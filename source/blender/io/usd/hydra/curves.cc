@@ -267,8 +267,8 @@ void HairData::update()
 
 pxr::HdBasisCurvesTopology HairData::topology() const
 {
-  return pxr::HdBasisCurvesTopology(pxr::HdTokens->cubic,
-                                    pxr::UsdGeomTokens->bspline,
+  return pxr::HdBasisCurvesTopology(pxr::HdTokens->linear,
+                                    pxr::TfToken(),
                                     pxr::HdTokens->nonperiodic,
                                     curve_vertex_counts_,
                                     pxr::VtIntArray());
@@ -279,10 +279,9 @@ void HairData::write_curves()
   ParticleCacheKey **cache = particle_system->pathcache;
   if (cache == nullptr) {
     return;
-
   }
   curve_vertex_counts_.clear();
-  curve_vertex_counts_.reserve(particle_system->totpart);  
+  curve_vertex_counts_.reserve(particle_system->totpart);
   vertices_.clear();
   widths_.clear();
 
