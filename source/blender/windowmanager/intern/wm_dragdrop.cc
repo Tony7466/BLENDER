@@ -792,6 +792,16 @@ static void wm_drag_free_path_data(wmDragPath **path_data)
   *path_data = nullptr;
 }
 
+const char *WM_drag_get_single_path(const wmDrag *drag)
+{
+  if (drag->type != WM_DRAG_PATH) {
+    nullptr;
+  }
+
+  const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
+  return path_data->paths[0].c_str();
+}
+
 const blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
