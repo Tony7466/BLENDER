@@ -238,7 +238,8 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>) {
+                  std::is_same_v<T, float3>)
+    {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -948,6 +949,55 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Set selected material as active material
+ * \{ */
+static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        const bke::CurvesGeometry &curves = drawing.strokes();
+
+        IndexMaskMemory memory;
+        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+        if (selected_curves.is_empty()) {
+          return;
+        }
+        const blender::VArray<int> materials = *curves.attributes().lookup_or_default<int>(
+            "material_index", ATTR_DOMAIN_CURVE, -1);
+
+        selected_curves.foreach_index([&](const int curve_index) {
+          if (materials[curve_index] != -1) {
+            object->actcol = materials[curve_index] + 1;
+            return OPERATOR_FINISHED;
+          }
+        });
+      });
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_set_active_material(wmOperatorType *ot)
+{
+  ot->name = "Set Active Material";
+  ot->idname = "GREASE_PENCIL_OT_set_active_material";
+  ot->description = "Set the selected stroke material as the active material";
+
+  ot->exec = grease_pencil_set_active_material_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -959,6 +1009,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_active_material);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
