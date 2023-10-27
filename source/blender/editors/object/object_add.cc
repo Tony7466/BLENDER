@@ -454,7 +454,7 @@ void ED_object_add_generic_props(wmOperatorType *ot, bool do_editmode)
                                   "Scale for the newly added object",
                                   -1000.0f,
                                   1000.0f);
-  RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
+  RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE));
 }
 
 void ED_object_add_mesh_props(wmOperatorType *ot)
