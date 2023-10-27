@@ -40,20 +40,15 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static bool indices_are_range(const Span<int> indices, const IndexRange range)
 {
-  if (indices.size() != range.size()) {
-    return false;
-  }
-  return threading::parallel_reduce(
-      range,
-      4096,
-      true,
-      [&](const IndexRange range, const bool init) {
-        if (init) {
-          return std::equal(indices.begin(), indices.end(), range.begin());
-        }
-        return true;
-      },
-      [](const bool a, const bool b) { return a && b; });
+  const auto cmp_span_range = [](const Span<int> indices, const IndexRange range) {
+    return std::equal(indices.begin(), indices.end(), range.begin());
+  };
+  const auto is_range_if = [&](const IndexRange part, const bool is_range) {
+    return is_range && cmp_span_range(indices.slice(part), range.slice(part));
+  };
+  const bool same_size = indices.size() == range.size();
+  return same_size && threading::parallel_reduce(
+                          range.index_range(), 4096, true, is_range_if, std::logical_and());
 }
 
 static void grouped_sort(const OffsetIndices<int> offsets,
@@ -84,31 +79,6 @@ static void find_points_by_group_index(const Span<int> indices_of_curves,
   }
 }
 
-static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
-{
-  const VectorSet<int> deduplicated_groups(r_identifiers_to_indices);
-  threading::parallel_for(
-      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
-        for (int &value : r_identifiers_to_indices.slice(range)) {
-          value = deduplicated_groups.index_of(value);
-        }
-      });
-
-  Array<int> indices(deduplicated_groups.size());
-  std::iota(indices.begin(), indices.end(), 0);
-  parallel_sort(indices.begin(), indices.end(), [&](const int index_a, const int index_b) {
-    return deduplicated_groups[index_a] < deduplicated_groups[index_b];
-  });
-
-  threading::parallel_for(
-      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
-        for (int &value : r_identifiers_to_indices.slice(range)) {
-          value = indices[value];
-        }
-      });
-  return deduplicated_groups.size();
-}
-
 template<typename T, typename Func>
 static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, const Func &func)
 {
@@ -116,6 +86,24 @@ static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, 
     MutableSpan<T> values_range = values.slice(range);
     std::transform(values_range.begin(), values_range.end(), values_range.begin(), func);
   });
+}
+
+static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
+{
+  const VectorSet<int> deduplicated_identifiers(r_identifiers_to_indices);
+  parallel_transform(r_identifiers_to_indices, 2048, [&](const int identifier) {
+    return deduplicated_identifiers.index_of(identifier);
+  });
+
+  Array<int> indices(deduplicated_identifiers.size());
+  array_utils::fill_index_range<int>(indices);
+  parallel_sort(indices.begin(), indices.end(), [&](const int index_a, const int index_b) {
+    return deduplicated_identifiers[index_a] < deduplicated_identifiers[index_b];
+  });
+
+  parallel_transform(
+      r_identifiers_to_indices, 2048, [&](const int index) { return indices[index]; });
+  return deduplicated_identifiers.size();
 }
 
 static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &component,
@@ -146,17 +134,9 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     return std::nullopt;
   }
 
-  IndexMaskMemory memory;
-  const IndexMask unselected = mask.complement(IndexRange(domain_size), memory);
-
   Array<float> weight_span(domain_size);
   array_utils::copy(weight, mask, weight_span.as_mutable_span());
-  unselected.foreach_segment(GrainSize(2048), [&](const IndexMaskSegment segment) {
-    const IndexRange segment_range = segment.index_range().shift(segment.first());
-    weight_span.as_mutable_span().slice(segment_range).fill(0.0f);
-  });
 
-  Array<int> indices(domain_size);
   Array<int> gathered_indices(mask.size());
 
   if (group_id.is_single()) {
@@ -175,9 +155,13 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     }
   }
 
+  IndexMaskMemory memory;
+  const IndexMask unselected = mask.complement(IndexRange(domain_size), memory);
+
+  Array<int> indices(domain_size);
+
   unselected.foreach_index_optimized<int>(GrainSize(2048),
                                           [&](const int index) { indices[index] = index; });
-
   mask.foreach_index_optimized<int>(GrainSize(2048), [&](const int index, const int pos) {
     indices[index] = gathered_indices[pos];
   });
@@ -262,13 +246,37 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
+template<typename T, typename Convert>
+static Array<EnumPropertyItem> items_value_in(const Span<T> values,
+                                              const EnumPropertyItem *src_items,
+                                              Convert convert)
+{
+  Vector<EnumPropertyItem> items;
+  for (const EnumPropertyItem *item = src_items; item->identifier != nullptr; item++) {
+    if (values.contains(convert(item->value))) {
+      items.append(*item);
+    }
+  }
+  items.append({0, nullptr, 0, nullptr, nullptr});
+  return items.as_span();
+}
+
 static void node_rna(StructRNA *srna)
 {
+  static const Array<EnumPropertyItem> supported_items = items_value_in<eAttrDomain>(
+      {ATTR_DOMAIN_POINT,
+       ATTR_DOMAIN_EDGE,
+       ATTR_DOMAIN_FACE,
+       ATTR_DOMAIN_CURVE,
+       ATTR_DOMAIN_INSTANCE},
+      rna_enum_attribute_domain_items,
+      [](const int value) { return eAttrDomain(value); });
+
   RNA_def_node_enum(srna,
                     "domain",
                     "Domain",
                     "",
-                    rna_enum_attribute_domain_items,
+                    supported_items.data(),
                     NOD_inline_enum_accessors(custom1),
                     ATTR_DOMAIN_POINT);
 }
