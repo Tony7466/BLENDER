@@ -8,6 +8,8 @@
 
 #include "DNA_scene_types.h"
 
+#include "BKE_particle.h"
+
 #include "BLI_set.hh"
 #include "BLI_string.h"
 
@@ -530,6 +532,9 @@ void HydraSceneDelegate::update_collection()
 void HydraSceneDelegate::update_object(Set<std::string> &available_objects, Object *object)
 {
   LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+    if (psys_in_edit_mode(depsgraph, psys)) {
+      continue;
+    }
     if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
       pxr::SdfPath psys_path = hair_prim_id(object_prim_id(object), psys);
       ObjectData *psys_data = object_data(psys_path);

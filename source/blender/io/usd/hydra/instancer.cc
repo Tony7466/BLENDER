@@ -7,6 +7,8 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
 
+#include "BKE_particle.h"
+
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 
@@ -165,6 +167,9 @@ void InstancerData::update_instance(DupliObject *dupli)
   }
 
   LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+    if (psys_in_edit_mode(scene_delegate_->depsgraph, psys)) {
+      continue;
+    }
     if (HairData::is_supported(psys) && HairData::is_visible(scene_delegate_, object, psys)) {
       pxr::SdfPath h_id = hair_prim_id(p_id, psys);
       NonmeshInstance *nm_inst = nonmesh_instance(h_id);

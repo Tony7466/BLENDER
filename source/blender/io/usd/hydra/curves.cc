@@ -228,6 +228,11 @@ bool HairData::is_visible(HydraSceneDelegate *scene_delegate,
 void HairData::init()
 {
   ID_LOGN(1, "");
+
+  if (psys_in_edit_mode(scene_delegate_->depsgraph, particle_system)) {
+    return;
+  }
+
   /* NOTE: no need to write_transform here, since we already write actual position. */
   write_curves();
   write_materials();
@@ -285,6 +290,18 @@ void HairData::write_curves()
   vertices_.clear();
   widths_.clear();
 
+  Object *object = (Object *)id;
+  float scale = particle_system->part->rad_scale *
+                (std::abs(object->object_to_world[0][0]) +
+                 std::abs(object->object_to_world[1][1]) +
+                 std::abs(object->object_to_world[2][2])) /
+                3;
+  float root = scale * particle_system->part->rad_root;
+  float tip = scale * particle_system->part->rad_tip;
+  float shape = particle_system->part->shape;
+
+  auto radius = [&shape](float x) { return pow(x, pow(10.0f, -shape)); };
+
   ParticleCacheKey *strand;
   for (int strand_index = 0; strand_index < particle_system->totpart; ++strand_index) {
     strand = cache[strand_index];
@@ -294,7 +311,11 @@ void HairData::write_curves()
 
     for (int point_index = 0; point_index < point_count; ++point_index, ++strand) {
       vertices_.push_back(pxr::GfVec3f(strand->co));
-      widths_.push_back(particle_system->part->rad_root * particle_system->part->rad_scale);
+      widths_.push_back(root + (tip - root) * radius(float(point_index) / (point_count - 1)));
+    }
+    if (particle_system->part->shape_flag & PART_SHAPE_CLOSE_TIP) {
+      widths_.pop_back();
+      widths_.push_back(0.0f);
     }
   }
 }
