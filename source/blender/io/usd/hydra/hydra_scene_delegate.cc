@@ -50,11 +50,6 @@ pxr::HdBasisCurvesTopology HydraSceneDelegate::GetBasisCurvesTopology(pxr::SdfPa
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", id.GetText());
 
-  auto h_data = hair_data(id);
-  if (h_data) {
-    return h_data->topology();
-  }
-
   CurvesData *c_data = curves_data(id);
   return c_data->topology();
 };
@@ -106,11 +101,6 @@ pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
-
-  HairData *h_data = hair_data(id);
-  if (h_data) {
-    return h_data->primvar_descriptors(interpolation);
-  }
   MeshData *m_data = mesh_data(id);
   if (m_data) {
     return m_data->primvar_descriptors(interpolation);
@@ -129,7 +119,6 @@ pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
 pxr::SdfPath HydraSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
-
   ObjectData *obj_data = object_data(rprim_id);
   if (obj_data) {
     return obj_data->material_id(rprim_id);
@@ -298,7 +287,6 @@ ObjectData *HydraSceneDelegate::object_data(pxr::SdfPath const &id) const
   if (obj_data) {
     return obj_data->get();
   }
-
   InstancerData *i_data = instancer_data(p_id, true);
   if (i_data) {
     return i_data->object_data(id);

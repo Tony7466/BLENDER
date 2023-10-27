@@ -188,31 +188,14 @@ HairData::HairData(HydraSceneDelegate *scene_delegate,
                    const Object *object,
                    pxr::SdfPath const &prim_id,
                    ParticleSystem *particle_system)
-    : CurvesData(scene_delegate, object, prim_id), particle_system(particle_system)
+    : CurvesData(scene_delegate, object, prim_id), particle_system_(particle_system)
 {
 }
 
 bool HairData::is_supported(const ParticleSystem *particle_system)
 {
-  if (particle_system->part) {
-    switch (particle_system->part->type) {
-      case PART_HAIR:
-        return true;
-      case PART_EMITTER:
-      case PART_FLUID_FLIP:
-      case PART_FLUID_SPRAY:
-      case PART_FLUID_BUBBLE:
-      case PART_FLUID_FOAM:
-      case PART_FLUID_TRACER:
-      case PART_FLUID_SPRAYFOAM:
-      case PART_FLUID_SPRAYBUBBLE:
-      case PART_FLUID_FOAMBUBBLE:
-      case PART_FLUID_SPRAYFOAMBUBBLE:
-        return false;
-        break;
-      default:
-        BLI_assert_unreachable();
-    }
+  if (particle_system->part && particle_system->part->type == PART_HAIR) {
+    return true;
   }
   return false;
 }
@@ -229,7 +212,7 @@ void HairData::init()
 {
   ID_LOGN(1, "");
 
-  if (psys_in_edit_mode(scene_delegate_->depsgraph, particle_system)) {
+  if (psys_in_edit_mode(scene_delegate_->depsgraph, particle_system_)) {
     return;
   }
 
@@ -241,69 +224,48 @@ void HairData::init()
 
 void HairData::update()
 {
-  init();
-  switch (particle_system->part->type) {
-    case PART_HAIR:
-      if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
-        insert();
-      }
-      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-          prim_id, pxr::HdChangeTracker::AllDirty);
-      break;
-    case PART_EMITTER:
-    case PART_FLUID_FLIP:
-    case PART_FLUID_SPRAY:
-    case PART_FLUID_BUBBLE:
-    case PART_FLUID_FOAM:
-    case PART_FLUID_TRACER:
-    case PART_FLUID_SPRAYFOAM:
-    case PART_FLUID_SPRAYBUBBLE:
-    case PART_FLUID_FOAMBUBBLE:
-    case PART_FLUID_SPRAYFOAMBUBBLE:
-      CLOG_WARN(LOG_HYDRA_SCENE, "Unsupported particle type: %d", particle_system->part->type);
+  if (particle_system_->part->type != PART_HAIR) {
+    CLOG_WARN(LOG_HYDRA_SCENE, "Unsupported particle type: %d", particle_system_->part->type);
+    if (scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
       remove();
-      break;
-    default:
-      BLI_assert_unreachable();
+    }
+    return;
   }
+  init();
+  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
+    insert();
+  }
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+      prim_id, pxr::HdChangeTracker::AllDirty);
 
   ID_LOGN(1, "");
 }
 
-pxr::HdBasisCurvesTopology HairData::topology() const
-{
-  return pxr::HdBasisCurvesTopology(pxr::HdTokens->linear,
-                                    pxr::TfToken(),
-                                    pxr::HdTokens->nonperiodic,
-                                    curve_vertex_counts_,
-                                    pxr::VtIntArray());
-}
-
 void HairData::write_curves()
 {
-  ParticleCacheKey **cache = particle_system->pathcache;
+  ParticleCacheKey **cache = particle_system_->pathcache;
   if (cache == nullptr) {
     return;
   }
   curve_vertex_counts_.clear();
-  curve_vertex_counts_.reserve(particle_system->totpart);
+  curve_vertex_counts_.reserve(particle_system_->totpart);
   vertices_.clear();
   widths_.clear();
 
   Object *object = (Object *)id;
-  float scale = particle_system->part->rad_scale *
+  float scale = particle_system_->part->rad_scale *
                 (std::abs(object->object_to_world[0][0]) +
                  std::abs(object->object_to_world[1][1]) +
                  std::abs(object->object_to_world[2][2])) /
                 3;
-  float root = scale * particle_system->part->rad_root;
-  float tip = scale * particle_system->part->rad_tip;
-  float shape = particle_system->part->shape;
+  float root = scale * particle_system_->part->rad_root;
+  float tip = scale * particle_system_->part->rad_tip;
+  float shape = particle_system_->part->shape;
 
   auto radius = [&shape](float x) { return pow(x, pow(10.0f, -shape)); };
 
   ParticleCacheKey *strand;
-  for (int strand_index = 0; strand_index < particle_system->totpart; ++strand_index) {
+  for (int strand_index = 0; strand_index < particle_system_->totpart; ++strand_index) {
     strand = cache[strand_index];
 
     int point_count = strand->segments + 1;
@@ -313,7 +275,7 @@ void HairData::write_curves()
       vertices_.push_back(pxr::GfVec3f(strand->co));
       widths_.push_back(root + (tip - root) * radius(float(point_index) / (point_count - 1)));
     }
-    if (particle_system->part->shape_flag & PART_SHAPE_CLOSE_TIP) {
+    if (particle_system_->part->shape_flag & PART_SHAPE_CLOSE_TIP) {
       widths_.pop_back();
       widths_.push_back(0.0f);
     }
@@ -323,13 +285,13 @@ void HairData::write_curves()
 void HairData::write_uv_maps()
 {
   uvs_.clear();
-  uvs_.reserve(particle_system->totpart);
-  if (particle_system->particles) {
+  uvs_.reserve(particle_system_->totpart);
+  if (particle_system_->particles) {
     Object *object = (Object *)id;
-    ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system);
-    int num = ELEM(particle_system->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
-                  particle_system->particles->num :
-                  particle_system->particles->num_dmcache;
+    ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system_);
+    int num = ELEM(particle_system_->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
+                  particle_system_->particles->num :
+                  particle_system_->particles->num_dmcache;
 
     float r_uv[2] = {0.0f, 0.0f};
     if (ELEM(psmd->psys->part->from, PART_FROM_FACE, PART_FROM_VOLUME) &&
@@ -342,7 +304,7 @@ void HairData::write_uv_maps()
 
       if (mface && mtface) {
         mtface += num;
-        psys_interpolate_uvs(mtface, mface->v4, particle_system->particles->fuv, r_uv);
+        psys_interpolate_uvs(mtface, mface->v4, particle_system_->particles->fuv, r_uv);
       }
     }
     uvs_.push_back(pxr::GfVec2f(r_uv[0], r_uv[1]));

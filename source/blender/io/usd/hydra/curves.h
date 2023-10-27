@@ -42,7 +42,7 @@ class CurvesData : public ObjectData {
   pxr::SdfPath material_id() const override;
   void available_materials(Set<pxr::SdfPath> &paths) const override;
 
-  virtual pxr::HdBasisCurvesTopology topology() const;
+  pxr::HdBasisCurvesTopology topology() const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
 
  protected:
@@ -54,6 +54,9 @@ class CurvesData : public ObjectData {
 };
 
 class HairData : public CurvesData {
+ private:
+  ParticleSystem *particle_system_;
+
  public:
   HairData(HydraSceneDelegate *scene_delegate,
            const Object *object,
@@ -67,10 +70,6 @@ class HairData : public CurvesData {
 
   void init() override;
   void update() override;
-
-  pxr::HdBasisCurvesTopology topology() const override;
-
-  ParticleSystem *particle_system;
 
  private:
   void write_curves();
