@@ -29,8 +29,6 @@ class VKDescriptorSet;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
-  /** Not owning handle to the command buffer and device. Handle is owned by `GHOST_ContextVK`. */
-  VkDevice vk_device_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
 
  private:
@@ -66,18 +64,6 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    * it.
    */
   struct {
-    /* Reference to the last_framebuffer where begin_render_pass was called for. */
-    VKFrameBuffer *framebuffer_ = nullptr;
-    /* Is last_framebuffer_ currently bound. Each call should ensure the correct state. */
-    bool framebuffer_active_ = false;
-    /* Amount of times a check has been requested. */
-    uint64_t checks_ = 0;
-    /* Amount of times a check required to change the render pass. */
-    uint64_t switches_ = 0;
-
-    /* Number of times a vkDraw command has been recorded. */
-    uint64_t draw_counts = 0;
-
     /**
      * Current stage of the command buffer to keep track of inconsistencies & incorrect usage.
      */
@@ -87,8 +73,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
      * The number of command added to the command buffer since last submission.
      */
     uint64_t recorded_command_counts = 0;
-
   } state;
+
   bool is_in_stage(Stage stage)
   {
     return state.stage == stage;
@@ -128,12 +114,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
  public:
   virtual ~VKCommandBuffer();
   bool is_initialized() const;
-  void init(const VKDevice &vk_device, VkCommandBuffer vk_command_buffer);
+  void init(VkCommandBuffer vk_command_buffer);
   void begin_recording();
   void end_recording();
-
-  void begin_render_pass(VKFrameBuffer &framebuffer);
-  void end_render_pass(const VKFrameBuffer &framebuffer);
 
   /**
    * Receive the vulkan handle of the command buffer.
@@ -154,31 +137,6 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   }
 
   void commands_submitted();
-
- public:
-  /**
-   * Validate that there isn't a framebuffer being tracked (bound or not bound).
-   *
-   * Raises an assert in debug when a framebuffer is being tracked.
-   */
-  void validate_framebuffer_not_exists();
-
-  /**
-   * Validate that there is a framebuffer being tracked (bound or not bound).
-   *
-   * Raises an assert in debug when no framebuffer is being tracked.
-   */
-  void validate_framebuffer_exists();
-
-  /**
-   * Ensure that there is no framebuffer being tracked or the tracked framebuffer isn't bound.
-   */
-  void ensure_no_active_framebuffer();
-
-  /**
-   * Ensure that the tracked framebuffer is bound.
-   */
-  void ensure_active_framebuffer();
 };
 
 }  // namespace blender::gpu

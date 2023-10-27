@@ -48,6 +48,12 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   /* Fence for CPU GPU synchronization when submitting the command buffers. */
   VkFence vk_fence_ = VK_NULL_HANDLE;
 
+  /**
+   * Active framebuffer for graphics command buffer.
+   */
+  VKFrameBuffer *framebuffer_ = nullptr;
+  bool framebuffer_bound_ = false;
+
   /* TODO: General command buffer should not be used, but is added to help during the transition.*/
   VKCommandBuffer buffers_[(int)Type::Max];
   VKSubmissionID submission_id_;
@@ -172,6 +178,31 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    * command.
    */
   void ensure_no_draw_commands();
+
+  /**
+   * Validate that there isn't a framebuffer being tracked (bound or not bound).
+   *
+   * Raises an assert in debug when a framebuffer is being tracked.
+   */
+  void validate_framebuffer_not_exists();
+
+  /**
+   * Validate that there is a framebuffer being tracked (bound or not bound).
+   *
+   * Raises an assert in debug when no framebuffer is being tracked.
+   */
+  void validate_framebuffer_exists();
+
+  /**
+   * Ensure that there is no framebuffer being tracked or the tracked framebuffer isn't bound.
+   */
+  void ensure_no_active_framebuffer();
+
+  /**
+   * Ensure that the tracked framebuffer is bound.
+   */
+  void ensure_active_framebuffer();
+
 };
 
 }  // namespace blender::gpu
