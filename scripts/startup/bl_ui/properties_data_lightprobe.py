@@ -166,6 +166,10 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub.prop(probe, "clip_start", text="Clipping Start")
             sub.prop(probe, "clip_end", text="End")
 
+            row = col.row(align=True)
+            row.prop(probe, "show_data_size", text="Display Data")
+            row.prop(probe, "show_data", text="", toggle=True)
+
         elif probe.type == 'PLANE':
             col = layout.column()
             row = col.row()
