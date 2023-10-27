@@ -49,7 +49,6 @@ pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 pxr::HdBasisCurvesTopology HydraSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_HYDRA_SCENE, 3, "%s", id.GetText());
-
   CurvesData *c_data = curves_data(id);
   return c_data->topology();
 };
