@@ -2,14 +2,17 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 
 #include "BLI_array_utils.hh"
-#include "BLI_sort.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_sort.hh"
 #include "BLI_task.hh"
 
 #include "DNA_mesh_types.h"
+
+#include "GEO_reorder.hh"
 
 #include "node_geometry_util.hh"
 
@@ -106,19 +109,27 @@ static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
   return deduplicated_groups.size();
 }
 
-static std::optional<VArray<int>> sorted_indices(const Mesh &mesh,
+template<typename T, typename Func>
+static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, const Func &func)
+{
+  threading::parallel_for(values.index_range(), grain_size, [&](const IndexRange range) {
+    MutableSpan<T> values_range = values.slice(range);
+    std::transform(values_range.begin(), values_range.end(), values_range.begin(), func);
+  });
+}
+
+static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &component,
                                                 const Field<bool> selection_field,
                                                 const Field<int> group_id_field,
                                                 const Field<float> weight_field,
                                                 const eAttrDomain domain)
 {
-  const int domain_size = mesh.attributes().domain_size(domain);
+  const int domain_size = component.attribute_domain_size(domain);
   if (domain_size == 0) {
-    printf("Zero domain.\n");
     return std::nullopt;
   }
 
-  const bke::MeshFieldContext context(mesh, domain);
+  const bke::GeometryFieldContext context(component, domain);
   FieldEvaluator evaluator(context, domain_size);
   evaluator.set_selection(selection_field);
   evaluator.add(group_id_field);
@@ -129,54 +140,53 @@ static std::optional<VArray<int>> sorted_indices(const Mesh &mesh,
   const VArray<float> weight = evaluator.get_evaluated<float>(1);
 
   if (group_id.is_single() && weight.is_single()) {
-    printf("Single sort data.\n");
     return std::nullopt;
   }
   if (mask.is_empty()) {
-    printf("Empty selection.\n");
     return std::nullopt;
-  }
-
-  Array<float> gathered_weight(mask.size());
-  array_utils::gather(weight, mask, gathered_weight.as_mutable_span());
-
-  Array<int> gathered_indices(domain_size);
-
-  Array<int> indices(domain_size);
-
-  if (group_id.is_single()) {
-    printf("Single group sort.\n");
-    array_utils::fill_index_range<int>(gathered_indices);
-    grouped_sort(Span<int>({0, domain_size}), gathered_weight, gathered_indices);
-  } else {
-    printf("Multi group sort.\n");
-    Array<int> gathered_group_id(mask.size());
-    array_utils::gather(group_id, mask, gathered_group_id.as_mutable_span());
-    const int total_groups = identifiers_to_indices(gathered_group_id);
-    Array<int> gathered_offsets(total_groups + 1, 0);
-    find_points_by_group_index(gathered_group_id, gathered_offsets, gathered_indices);
-    grouped_sort(OffsetIndices<int>(gathered_offsets), gathered_weight, gathered_indices);
   }
 
   IndexMaskMemory memory;
   const IndexMask unselected = mask.complement(IndexRange(domain_size), memory);
 
+  Array<float> weight_span(domain_size);
+  array_utils::copy(weight, mask, weight_span.as_mutable_span());
   unselected.foreach_segment(GrainSize(2048), [&](const IndexMaskSegment segment) {
     const IndexRange segment_range = segment.index_range().shift(segment.first());
-    MutableSpan<int> segment_indices = indices.as_mutable_span().slice(segment_range);
-    std::iota(segment_indices.begin(), segment_indices.end(), segment_range.first());
+    weight_span.as_mutable_span().slice(segment_range).fill(0.0f);
   });
 
-  mask.foreach_index_optimized<int>(GrainSize(2048), [&](const int index, const int pos){
+  Array<int> indices(domain_size);
+  Array<int> gathered_indices(mask.size());
+
+  if (group_id.is_single()) {
+    mask.to_indices<int>(gathered_indices);
+    grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
+  }
+  else {
+    Array<int> gathered_group_id(mask.size());
+    array_utils::gather(group_id, mask, gathered_group_id.as_mutable_span());
+    const int total_groups = identifiers_to_indices(gathered_group_id);
+    Array<int> gathered_offsets(total_groups + 1, 0);
+    find_points_by_group_index(gathered_group_id, gathered_offsets, gathered_indices);
+    parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
+    if (!weight.is_single()) {
+      grouped_sort(OffsetIndices<int>(gathered_offsets), weight_span, gathered_indices);
+    }
+  }
+
+  unselected.foreach_index_optimized<int>(GrainSize(2048),
+                                          [&](const int index) { indices[index] = index; });
+
+  mask.foreach_index_optimized<int>(GrainSize(2048), [&](const int index, const int pos) {
     indices[index] = gathered_indices[pos];
   });
 
   if (indices_are_range(indices, indices.index_range())) {
-    printf("No sort.\n");
     return std::nullopt;
   }
 
-  return VArray<int>::ForContainer(std::move(indices));
+  return indices;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -187,36 +197,65 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<float> weight_field = params.extract_input<Field<float>>("Sort Weight");
   const eAttrDomain domain = eAttrDomain(params.node().custom1);
 
-  const bke::AnonymousAttributePropagationInfo propagation_info =params.get_output_propagation_info("Geometry");
+  using ComponentType = bke::GeometryComponent::Type;
+
+  static const MultiValueMap<ComponentType, eAttrDomain> supported_types_and_domains = []() {
+    MultiValueMap<ComponentType, eAttrDomain> supported_types_and_domains;
+    supported_types_and_domains.add_multiple(
+        ComponentType::Mesh, {ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE});
+    supported_types_and_domains.add(ComponentType::Curve, ATTR_DOMAIN_CURVE);
+    supported_types_and_domains.add(ComponentType::PointCloud, ATTR_DOMAIN_POINT);
+    supported_types_and_domains.add(ComponentType::Instance, ATTR_DOMAIN_INSTANCE);
+    return supported_types_and_domains;
+  }();
+
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
-    /* TODO: All components with this domain. */
-    const Mesh *src_mesh = geometry_set.get_mesh();
-    if (src_mesh == nullptr) {
-      return;
-    }
-    const std::optional<VArray<int>> indices = sorted_indices(*src_mesh, selection_field, group_id_field, weight_field, domain);
-    if (!indices.has_value()) {
-      return;
-    }
-    Mesh *dst_mesh = geometry_set.get_mesh_for_write();
-    switch (bke::GeometryComponent::Type()) {
-      case bke::GeometryComponent::Type::Mesh:
-        switch (domain) {
-          case ATTR_DOMAIN_POINT:
-            //...
-            break;
-          //case ATTR_DOMAIN_POINT:
-            break;
-          //case ATTR_DOMAIN_POINT:
-            break;
-          default:
-            BLI_assert_unreachable();
-            break;
+    for (const auto [type, domains] : supported_types_and_domains.items()) {
+      if (!domains.contains(domain)) {
+        continue;
+      }
+      const bke::GeometryComponent *component = geometry_set.get_component(type);
+      if (component == nullptr || component->is_empty()) {
+        continue;
+      }
+      const std::optional<Array<int>> indices = sorted_indices(
+          *component, selection_field, group_id_field, weight_field, domain);
+      if (!indices.has_value()) {
+        continue;
+      }
+      switch (type) {
+        case ComponentType::Mesh: {
+          Mesh &mesh = *geometry_set.get_mesh_for_write();
+          switch (domain) {
+            case ATTR_DOMAIN_POINT:
+              geometry::reorder_mesh_verts(indices->as_span(), mesh);
+              break;
+            case ATTR_DOMAIN_EDGE:
+              geometry::reorder_mesh_edges(indices->as_span(), mesh);
+              break;
+            case ATTR_DOMAIN_FACE:
+              geometry::reorder_mesh_faces(indices->as_span(), mesh);
+              break;
+            default:
+              BLI_assert_unreachable();
+              break;
+          }
+          break;
         }
-        break;
-      default: /// todo: delete thie
-        break;
+        case ComponentType::Curve:
+          geometry::reorder_curves(indices->as_span(),
+                                   geometry_set.get_curves_for_write()->geometry.wrap());
+          break;
+        case ComponentType::PointCloud:
+          geometry::reorder_points(indices->as_span(), *geometry_set.get_pointcloud_for_write());
+          break;
+        case ComponentType::Instance:
+          geometry::reorder_instaces(indices->as_span(), *geometry_set.get_instances_for_write());
+          break;
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
     }
   });
 
