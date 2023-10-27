@@ -189,7 +189,8 @@ void SyncModule::sync_mesh(Object *ob,
 bool SyncModule::sync_sculpt(Object *ob,
                              ObjectHandle &ob_handle,
                              ResourceHandle res_handle,
-                             const ObjectRef &ob_ref)
+                             const ObjectRef &ob_ref,
+                             float inflate_bounds)
 {
   bool pbvh_draw = BKE_sculptsession_use_pbvh_draw(ob, inst_.rv3d) && !DRW_state_is_image_render();
   /* Needed for mesh cache validation, to prevent two copies of
@@ -210,7 +211,7 @@ bool SyncModule::sync_sculpt(Object *ob,
   BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
   float3 center = (min + max) * 0.5;
   float3 half_extent = max - center;
-  half_extent += float3(ob->culling_bounds_extra);
+  half_extent += float3(inflate_bounds);
   res_handle = inst_.manager->resource_handle(ob_ref, nullptr, &center, &half_extent);
 
   bool has_motion = false;

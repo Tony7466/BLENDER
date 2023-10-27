@@ -196,6 +196,7 @@ void Instance::object_sync(Object *ob)
                                        OB_VOLUME,
                                        OB_LAMP,
                                        OB_LIGHTPROBE);
+  const bool is_drawable_type = is_renderable_type && !ELEM(ob->type, OB_LAMP, OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
@@ -208,9 +209,6 @@ void Instance::object_sync(Object *ob)
 
   /* TODO cleanup. */
   ObjectRef ob_ref = DRW_object_ref_get(ob);
-  ResourceHandle res_handle = manager->resource_handle(ob_ref,
-                                                       ob_ref.object->culling_bounds_extra);
-
   ObjectHandle &ob_handle = sync.sync_object(ob);
 
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
@@ -223,12 +221,24 @@ void Instance::object_sync(Object *ob)
   }
 
   if (object_is_visible) {
+    ResourceHandle res_handle = {0};
+    float inflate_bounds = 0.0f;
+
+    if (is_drawable_type) {
+      for (auto i : IndexRange(DRW_cache_object_material_count_get(ob))) {
+        if (::Material *material = BKE_object_material_get(ob, i + 1)) {
+          inflate_bounds = math::max(inflate_bounds, material->inflate_bounds);
+        }
+      }
+      res_handle = manager->resource_handle(ob_ref, inflate_bounds);
+    }
+
     switch (ob->type) {
       case OB_LAMP:
         lights.sync_light(ob, ob_handle);
         break;
       case OB_MESH:
-        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref)) {
+        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref, inflate_bounds)) {
           sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
         }
         break;

@@ -151,7 +151,8 @@ class SyncModule {
   bool sync_sculpt(Object *ob,
                    ObjectHandle &ob_handle,
                    ResourceHandle res_handle,
-                   const ObjectRef &ob_ref);
+                   const ObjectRef &ob_ref,
+                   float inflate_bounds);
   void sync_point_cloud(Object *ob,
                         ObjectHandle &ob_handle,
                         ResourceHandle res_handle,

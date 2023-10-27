@@ -405,11 +405,6 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = layout.column(heading="Mask")
         col.prop(ob, "is_holdout")
 
-        if context.engine == 'BLENDER_EEVEE_NEXT':
-            if ob.type in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD', 'VOLUME', 'LIGHT'}:
-                layout.separator()
-                layout.prop(ob, "culling_bounds_extra")
-
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}

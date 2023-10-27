@@ -506,9 +506,7 @@ typedef struct Object {
 
   /** ObjectModifierFlag */
   uint8_t modifier_flag;
-
-  /** Extra bounds area for frustum culling. Needed for shader displaced meshes. */
-  float culling_bounds_extra;
+  char _pad8[4];
 
   struct PreviewImage *preview;
 
