@@ -8,12 +8,12 @@
 
 #include "vk_command_buffers.hh"
 #include "vk_device.hh"
+#include "vk_framebuffer.hh"
 #include "vk_memory.hh"
 #include "vk_pipeline.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
-#include "vk_framebuffer.hh"
 
 #include "BLI_assert.h"
 
@@ -133,7 +133,10 @@ void VKCommandBuffers::submit()
 
   VKCommandBuffer &graphics = command_buffer_get(Type::Graphics);
   if (graphics.has_recorded_commands()) {
+    VKFrameBuffer *framebuffer = framebuffer_;
+    end_render_pass(*framebuffer);
     submit_command_buffer(vk_device_, vk_queue_, graphics, vk_fence_, FenceTimeout);
+    begin_render_pass(*framebuffer);
     work_submitted = true;
   }
 
@@ -167,20 +170,10 @@ void VKCommandBuffers::validate_framebuffer_exists()
   BLI_assert_msg(framebuffer_, "State error: expected framebuffer being tracked.");
 }
 
-void VKCommandBuffers::ensure_no_active_framebuffer()
-{
-  if (framebuffer_ && framebuffer_bound_) {
-    VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
-    vkCmdEndRenderPass(command_buffer.vk_command_buffer());
-    framebuffer_bound_ = false;
-    command_buffer.command_recorded();
-  }
-}
-
 void VKCommandBuffers::ensure_active_framebuffer()
 {
   BLI_assert(framebuffer_);
-  if (!framebuffer_bound_) {
+  if (framebuffer_ && !framebuffer_bound_) {
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     framebuffer_->vk_render_pass_ensure();
@@ -296,19 +289,23 @@ void VKCommandBuffers::begin_render_pass(VKFrameBuffer &framebuffer)
   framebuffer_bound_ = false;
 }
 
+void VKCommandBuffers::ensure_no_active_framebuffer()
+{
+  if (framebuffer_ && framebuffer_bound_) {
+    VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+    vkCmdEndRenderPass(command_buffer.vk_command_buffer());
+    command_buffer.command_recorded();
+    framebuffer_bound_ = false;
+  }
+}
+
 void VKCommandBuffers::end_render_pass(const VKFrameBuffer &framebuffer)
 {
   ensure_no_compute_commands();
   UNUSED_VARS_NDEBUG(framebuffer);
   BLI_assert(framebuffer_ == nullptr || framebuffer_ == &framebuffer);
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
-  if (framebuffer_ && framebuffer_bound_) {
-    vkCmdEndRenderPass(command_buffer.vk_command_buffer());
-    command_buffer.command_recorded();
-  }
-
+  ensure_no_active_framebuffer();
   framebuffer_ = nullptr;
-  framebuffer_bound_ = false;
 }
 
 void VKCommandBuffers::push_constants(const VKPushConstants &push_constants,

@@ -194,15 +194,13 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void validate_framebuffer_exists();
 
   /**
-   * Ensure that there is no framebuffer being tracked or the tracked framebuffer isn't bound.
-   */
-  void ensure_no_active_framebuffer();
-
-  /**
    * Ensure that the tracked framebuffer is bound.
    */
   void ensure_active_framebuffer();
-
+  /**
+   * Ensure that the tracked framebuffer is bound.
+   */
+  void ensure_no_active_framebuffer();
 };
 
 }  // namespace blender::gpu
