@@ -58,7 +58,7 @@ void MeshData::remove()
 
 void MeshData::update()
 {
-  const Object *object = (Object *)id;
+  Object *object = (Object *)id;
   if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
     update_prims();

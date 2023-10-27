@@ -171,7 +171,7 @@ void InstancerData::update_instance(DupliObject *dupli)
       continue;
     }
     if (HairData::is_supported(psys) && HairData::is_visible(scene_delegate_, object, psys)) {
-      pxr::SdfPath h_id = hair_prim_id(p_id, psys);
+      pxr::SdfPath h_id = psys_prim_id(object, psys);
       NonmeshInstance *nm_inst = nonmesh_instance(h_id);
       if (!nm_inst) {
         nm_inst = &nonmesh_instances_.lookup_or_add_default(h_id);
@@ -232,12 +232,11 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
   return prim_id.AppendElementString(name);
 }
 
-pxr::SdfPath InstancerData::hair_prim_id(const pxr::SdfPath parent_obj,
-                                         const ParticleSystem *psys) const
+pxr::SdfPath InstancerData::psys_prim_id(Object *parent_obj, const ParticleSystem *psys) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
-  char name[32];
-  SNPRINTF(name, "H_%p", psys);
+  char name[128];
+  SNPRINTF(name, "%s_PS_%p", object_prim_id(parent_obj).GetName().c_str(), psys);
   return prim_id.AppendElementString(name);
 }
 

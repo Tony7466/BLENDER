@@ -33,10 +33,10 @@ class CurvesData : public ObjectData {
              const Object *object,
              pxr::SdfPath const &prim_id);
 
-  virtual void init() override;
+  void init() override;
   void insert() override;
   void remove() override;
-  virtual void update() override;
+  void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   pxr::SdfPath material_id() const override;

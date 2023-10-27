@@ -94,7 +94,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPath prim_id(const ID *id, const char *prefix) const;
   pxr::SdfPath object_prim_id(const Object *object) const;
   pxr::SdfPath material_prim_id(const Material *mat) const;
-  pxr::SdfPath hair_prim_id(const pxr::SdfPath parent_obj, const ParticleSystem *mat) const;
+  pxr::SdfPath psys_prim_id(Object *parent_obj, const ParticleSystem *mat) const;
   pxr::SdfPath instancer_prim_id() const;
   pxr::SdfPath world_prim_id() const;
 
@@ -110,7 +110,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   void update_world();
   void check_updates();
   void update_collection();
-  void update_object(Set<std::string> &available_objects, Object *object);
   bool set_light_shading_settings();
   bool set_world_shading_settings();
 };
