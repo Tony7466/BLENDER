@@ -237,14 +237,12 @@ static int hipewHipInit(void) {
 #elif defined(__APPLE__)
   /* Default installation path. */
   const char *hip_paths[] = {"", NULL};
-#else
+#elif #if HIP_VERSION_MAJOR >= 6
   const char *hip_paths[] = {"libamdhip64.so.6",
-                             "/opt/rocm/lib/libamdhip64.so.6",
-                             "libamdhip64.so.5",
-                             "/opt/rocm/hip/lib/libamdhip64.so.5",
-                             "libamdhip64.so",
-                             "/opt/rocm/lib/libamdhip64.so",
-                             "/opt/rocm/hip/lib/libamdhip64.so", NULL};
+                             "/opt/rocm/lib/libamdhip64.so.6", NULL};
+#else 
+  const char *hip_paths[] = {"libamdhip64.so.5",
+                             "/opt/rocm/lib/libamdhip64.so.5", NULL};
 #endif
   static int initialized = 0;
   static int result = 0;

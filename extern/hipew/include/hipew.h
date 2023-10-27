@@ -187,12 +187,11 @@ typedef textureReference* hipTexRef;
 
 #if HIP_VERSION_MAJOR >= 6
 typedef enum hipMemoryType {
-  hipMemoryTypeUnregistered = 0x00,
-  hipMemoryTypeHost = 0x01,
-  hipMemoryTypeDevice = 0x02,
-  hipMemoryTypeManaged = 0x03,
-  hipMemoryTypeArray = 0x10,
-  hipMemoryTypeUnified = 0x11,
+  hipMemoryTypeHost = 0,
+  hipMemoryTypeDevice = 1,
+  hipMemoryTypeArray = 2,
+  hipMemoryTypeUnified = 3,
+  hipMemoryTypeManaged = 4,
 } hipMemoryType;
 #else
 typedef enum hipMemoryType {
