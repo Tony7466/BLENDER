@@ -116,31 +116,32 @@ static void submit_command_buffer(VkDevice vk_device,
 
 void VKCommandBuffers::submit()
 {
-  bool work_submitted = false;
+  VKCommandBuffer &data_transfer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &compute = command_buffer_get(Type::Compute);
+  VKCommandBuffer &graphics = command_buffer_get(Type::Graphics);
+
+  const bool has_transfer_work = data_transfer.has_recorded_commands();
+  const bool has_compute_work = compute.has_recorded_commands();
+  const bool has_graphics_work = graphics.has_recorded_commands();
+  const bool reset_submission_id = has_transfer_work || has_compute_work || has_graphics_work;
 
   /* TODO data transfers should be queued together with compute or draw commands. */
-  VKCommandBuffer &data_transfer = command_buffer_get(Type::DataTransfer);
-  if (data_transfer.has_recorded_commands()) {
+  if (has_transfer_work) {
     submit_command_buffer(vk_device_, vk_queue_, data_transfer, vk_fence_, FenceTimeout);
-    work_submitted = true;
   }
 
-  VKCommandBuffer &compute = command_buffer_get(Type::Compute);
-  if (compute.has_recorded_commands()) {
+  if (has_compute_work) {
     submit_command_buffer(vk_device_, vk_queue_, compute, vk_fence_, FenceTimeout);
-    work_submitted = true;
   }
 
-  VKCommandBuffer &graphics = command_buffer_get(Type::Graphics);
-  if (graphics.has_recorded_commands()) {
+  if (has_graphics_work) {
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
     submit_command_buffer(vk_device_, vk_queue_, graphics, vk_fence_, FenceTimeout);
     begin_render_pass(*framebuffer);
-    work_submitted = true;
   }
 
-  if (work_submitted) {
+  if (reset_submission_id) {
     submission_id_.next();
   }
 }
