@@ -28,8 +28,12 @@ GPU_SHADER_CREATE_INFO(compositor_kuwahara_classic_convolution_variable_size)
 GPU_SHADER_CREATE_INFO(compositor_kuwahara_classic_summed_area_table_shared)
     .additional_info("compositor_kuwahara_classic_shared")
     .define("SUMMED_AREA_TABLE")
-    .sampler(0, ImageType::FLOAT_2D, "table_tx")
-    .sampler(1, ImageType::FLOAT_2D, "squared_table_tx");
+    .sampler(0, ImageType::FLOAT_2D, "blocks_tx")
+    .sampler(1, ImageType::FLOAT_2D, "x_prologues_tx")
+    .sampler(2, ImageType::FLOAT_2D, "y_prologues_tx")
+    .sampler(3, ImageType::FLOAT_2D, "squared_blocks_tx")
+    .sampler(4, ImageType::FLOAT_2D, "squared_x_prologues_tx")
+    .sampler(5, ImageType::FLOAT_2D, "squared_y_prologues_tx");
 
 GPU_SHADER_CREATE_INFO(compositor_kuwahara_classic_summed_area_table_constant_size)
     .additional_info("compositor_kuwahara_classic_summed_area_table_shared")
@@ -39,7 +43,7 @@ GPU_SHADER_CREATE_INFO(compositor_kuwahara_classic_summed_area_table_constant_si
 
 GPU_SHADER_CREATE_INFO(compositor_kuwahara_classic_summed_area_table_variable_size)
     .additional_info("compositor_kuwahara_classic_summed_area_table_shared")
-    .sampler(2, ImageType::FLOAT_2D, "size_tx")
+    .sampler(6, ImageType::FLOAT_2D, "size_tx")
     .define("VARIABLE_SIZE")
     .do_static_compilation(true);
 

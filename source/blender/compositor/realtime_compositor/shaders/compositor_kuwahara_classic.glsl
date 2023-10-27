@@ -35,9 +35,13 @@ void main()
     int quadrant_pixel_count = region_size.x * region_size.y;
 
 #if defined(SUMMED_AREA_TABLE)
-    mean_of_color_of_quadrants[q] = summed_area_table_sum(table_tx, lower_bound, upper_bound);
-    mean_of_squared_color_of_quadrants[q] = summed_area_table_sum(
-        squared_table_tx, lower_bound, upper_bound);
+    mean_of_color_of_quadrants[q] = summed_area_table_sum(
+        blocks_tx, x_prologues_tx, y_prologues_tx, lower_bound, upper_bound);
+    mean_of_squared_color_of_quadrants[q] = summed_area_table_sum(squared_blocks_tx,
+                                                                  squared_x_prologues_tx,
+                                                                  squared_y_prologues_tx,
+                                                                  lower_bound,
+                                                                  upper_bound);
 #else
     for (int j = 0; j <= radius; j++) {
       for (int i = 0; i <= radius; i++) {

@@ -41,6 +41,8 @@ void main()
     vec4 y_accumulated_color = vec4(0.0);
     for (int i = 0; i < gl_WorkGroupSize.y; i++) {
       y_accumulated_color += block[gl_LocalInvocationID.x][i];
+      ivec2 texel = ivec2(gl_GlobalInvocationID.x, gl_WorkGroupID.y * gl_WorkGroupSize.y + i);
+      imageStore(blocks_img, texel, y_accumulated_color);
     }
 
     /* Note that the first row of prologues is the result of accumulating a virtual block that is

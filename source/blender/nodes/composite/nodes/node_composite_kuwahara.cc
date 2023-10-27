@@ -122,13 +122,25 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic_summed_area_table()
   {
-    Result table = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
-    summed_area_table(context(), get_input("Image"), table);
-
-    Result squared_table = Result::Temporary(
+    Result blocks = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
+    Result x_prologues = Result::Temporary(
         ResultType::Color, texture_pool(), ResultPrecision::Full);
-    summed_area_table(
-        context(), get_input("Image"), squared_table, SummedAreaTableOperation::Square);
+    Result y_prologues = Result::Temporary(
+        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    summed_area_table(context(), get_input("Image"), blocks, x_prologues, y_prologues);
+
+    Result squared_blocks = Result::Temporary(
+        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    Result squared_x_prologues = Result::Temporary(
+        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    Result squared_y_prologues = Result::Temporary(
+        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    summed_area_table(context(),
+                      get_input("Image"),
+                      squared_blocks,
+                      squared_x_prologues,
+                      squared_y_prologues,
+                      SummedAreaTableOperation::Square);
 
     GPUShader *shader = shader_manager().get(get_classic_summed_area_table_shader_name());
     GPU_shader_bind(shader);
@@ -141,8 +153,13 @@ class ConvertKuwaharaOperation : public NodeOperation {
       size_input.bind_as_texture(shader, "size_tx");
     }
 
-    table.bind_as_texture(shader, "table_tx");
-    squared_table.bind_as_texture(shader, "squared_table_tx");
+    blocks.bind_as_texture(shader, "blocks_tx");
+    x_prologues.bind_as_texture(shader, "x_prologues_tx");
+    y_prologues.bind_as_texture(shader, "y_prologues_tx");
+
+    squared_blocks.bind_as_texture(shader, "squared_blocks_tx");
+    squared_x_prologues.bind_as_texture(shader, "squared_x_prologues_tx");
+    squared_y_prologues.bind_as_texture(shader, "squared_y_prologues_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
@@ -151,13 +168,21 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    table.unbind_as_texture();
-    squared_table.unbind_as_texture();
+    blocks.unbind_as_texture();
+    x_prologues.unbind_as_texture();
+    y_prologues.unbind_as_texture();
+    squared_blocks.unbind_as_texture();
+    squared_x_prologues.unbind_as_texture();
+    squared_y_prologues.unbind_as_texture();
     output_image.unbind_as_image();
     GPU_shader_unbind();
 
-    table.release();
-    squared_table.release();
+    blocks.release();
+    x_prologues.release();
+    y_prologues.release();
+    squared_blocks.release();
+    squared_x_prologues.release();
+    squared_y_prologues.release();
   }
 
   /* An implementation of the Anisotropic Kuwahara filter described in the paper:

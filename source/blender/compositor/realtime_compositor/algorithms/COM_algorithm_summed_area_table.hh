@@ -23,7 +23,9 @@ enum class SummedAreaTableOperation : uint8_t {
  * a box filter. */
 void summed_area_table(Context &context,
                        Result &input,
-                       Result &output,
+                       Result &blocks,
+                       Result &x_prologues,
+                       Result &y_prologues,
                        SummedAreaTableOperation operation = SummedAreaTableOperation::Identity);
 
 }  // namespace blender::realtime_compositor

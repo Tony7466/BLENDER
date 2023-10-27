@@ -54,6 +54,7 @@ static const char *get_compute_incomplete_prologues_shader(SummedAreaTableOperat
 static void compute_incomplete_prologues(Context &context,
                                          Result &input,
                                          SummedAreaTableOperation operation,
+                                         Result &blocks,
                                          Result &incomplete_x_prologues,
                                          Result &incomplete_y_prologues)
 {
@@ -66,6 +67,9 @@ static void compute_incomplete_prologues(Context &context,
   const int2 group_size = int2(16);
   const int2 input_size = input.domain().size;
   const int2 number_of_groups = math::divide_ceil(input_size, group_size);
+
+  blocks.allocate_texture(input.domain());
+  blocks.bind_as_image(shader, "blocks_img");
 
   incomplete_x_prologues.allocate_texture(Domain(int2(input_size.y, number_of_groups.x)));
   incomplete_x_prologues.bind_as_image(shader, "incomplete_x_prologues_img");
@@ -151,56 +155,11 @@ static void compute_complete_y_prologues(Context &context,
   complete_y_prologues.unbind_as_image();
 }
 
-static const char *get_compute_complete_blocks_shader(SummedAreaTableOperation operation)
-{
-  switch (operation) {
-    case SummedAreaTableOperation::Identity:
-      return "compositor_summed_area_table_compute_complete_blocks_identity";
-    case SummedAreaTableOperation::Square:
-      return "compositor_summed_area_table_compute_complete_blocks_square";
-  }
-
-  BLI_assert_unreachable();
-  return "";
-}
-
-/* Computes the final summed area table blocks from the complete X and Y prologues using equation
- * (41) to implement the fourth pass of Algorithm SAT. That equation simply uses an intermediate
- * shared memory to cascade the accumulation of rows and then column in each block using the
- * prologues as initial values and writes each step of the latter accumulation to the output. */
-static void compute_complete_blocks(Context &context,
-                                    Result &input,
-                                    Result &complete_x_prologues,
-                                    Result &complete_y_prologues,
-                                    SummedAreaTableOperation operation,
-                                    Result &output)
-{
-  GPUShader *shader = context.shader_manager().get(get_compute_complete_blocks_shader(operation));
-  GPU_shader_bind(shader);
-
-  input.bind_as_texture(shader, "input_tx");
-  complete_x_prologues.bind_as_texture(shader, "complete_x_prologues_tx");
-  complete_y_prologues.bind_as_texture(shader, "complete_y_prologues_tx");
-
-  output.allocate_texture(input.domain());
-  output.bind_as_image(shader, "output_img", true);
-
-  const int2 group_size = int2(16);
-  const int2 input_size = input.domain().size;
-  const int2 number_of_groups = math::divide_ceil(input_size, group_size);
-
-  GPU_compute_dispatch(shader, number_of_groups.x, number_of_groups.y, 1);
-
-  GPU_shader_unbind();
-  input.unbind_as_texture();
-  complete_x_prologues.unbind_as_texture();
-  complete_y_prologues.unbind_as_texture();
-  output.unbind_as_image();
-}
-
 void summed_area_table(Context &context,
                        Result &input,
-                       Result &output,
+                       Result &blocks,
+                       Result &x_prologues,
+                       Result &y_prologues,
                        SummedAreaTableOperation operation)
 {
   Result incomplete_x_prologues = Result::Temporary(
@@ -208,27 +167,18 @@ void summed_area_table(Context &context,
   Result incomplete_y_prologues = Result::Temporary(
       ResultType::Color, context.texture_pool(), ResultPrecision::Full);
   compute_incomplete_prologues(
-      context, input, operation, incomplete_x_prologues, incomplete_y_prologues);
+      context, input, operation, blocks, incomplete_x_prologues, incomplete_y_prologues);
 
-  Result complete_x_prologues = Result::Temporary(
-      ResultType::Color, context.texture_pool(), ResultPrecision::Full);
   Result complete_x_prologues_sum = Result::Temporary(
       ResultType::Color, context.texture_pool(), ResultPrecision::Full);
   compute_complete_x_prologues(
-      context, input, incomplete_x_prologues, complete_x_prologues, complete_x_prologues_sum);
+      context, input, incomplete_x_prologues, x_prologues, complete_x_prologues_sum);
   incomplete_x_prologues.release();
 
-  Result complete_y_prologues = Result::Temporary(
-      ResultType::Color, context.texture_pool(), ResultPrecision::Full);
   compute_complete_y_prologues(
-      context, input, incomplete_y_prologues, complete_x_prologues_sum, complete_y_prologues);
+      context, input, incomplete_y_prologues, complete_x_prologues_sum, y_prologues);
   incomplete_y_prologues.release();
   complete_x_prologues_sum.release();
-
-  compute_complete_blocks(
-      context, input, complete_x_prologues, complete_y_prologues, operation, output);
-  complete_x_prologues.release();
-  complete_y_prologues.release();
 }
 
 }  // namespace blender::realtime_compositor
