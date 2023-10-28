@@ -1062,11 +1062,9 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
 static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type != SH_NODE_TEX_NOISE) {
-      continue;
-    }
-
-    if ((static_cast<NodeTexNoise *>(node->storage))->type == SHD_NOISE_FBM) {
+    if ((node->type != SH_NODE_TEX_NOISE) ||
+        ((static_cast<NodeTexNoise *>(node->storage))->type == SHD_NOISE_FBM))
+    {
       continue;
     }
 
@@ -1088,7 +1086,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     MEM_freeN(node->storage);
     node->storage = data;
 
-    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Dimension");
+    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
     STRNCPY(dimension_socket->identifier, "Dimension");
     STRNCPY(dimension_socket->name, "Dimension");
 
@@ -1142,7 +1140,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       add_node->parent = node->parent;
       add_node->custom1 = NODE_MATH_ADD;
       add_node->locx = node->locx;
-      add_node->locy = node->locy - 320.0f;
+      add_node->locy = node->locy - 280.0f;
       add_node->flag |= NODE_HIDDEN;
       bNodeSocket *add_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&add_node->inputs, 0));
       bNodeSocket *add_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&add_node->inputs, 1));
@@ -1158,7 +1156,6 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       *detail = std::clamp(*detail + 1.0f, 0.0f, 15.0f);
     }
 
-    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Dimension");
     float *dimension = version_cycles_node_socket_float_value(dimension_socket);
     bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
     float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
@@ -1170,7 +1167,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       log_node->parent = node->parent;
       log_node->custom1 = NODE_MATH_LOGARITHM;
       log_node->locx = node->locx;
-      log_node->locy = node->locy - 400.0f + locy_offset;
+      log_node->locy = node->locy - 320.0f + locy_offset;
       log_node->flag |= NODE_HIDDEN;
       bNodeSocket *log_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&log_node->inputs, 0));
       bNodeSocket *log_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&log_node->inputs, 1));
@@ -1180,7 +1177,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       mul_node->parent = node->parent;
       mul_node->custom1 = NODE_MATH_MULTIPLY;
       mul_node->locx = node->locx;
-      mul_node->locy = node->locy - 360.0f + locy_offset;
+      mul_node->locy = node->locy - 280.0f + locy_offset;
       mul_node->flag |= NODE_HIDDEN;
       bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 0));
       bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 1));
