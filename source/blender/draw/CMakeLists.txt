@@ -505,6 +505,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_hiz_debug_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_update_comp.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_eval_lib.glsl
+  engines/eevee_next/shaders/eevee_horizon_scan_comp.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_lib.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_test.glsl
   engines/eevee_next/shaders/eevee_light_culling_debug_frag.glsl

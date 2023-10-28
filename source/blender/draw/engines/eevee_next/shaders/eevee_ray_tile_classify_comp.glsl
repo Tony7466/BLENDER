@@ -30,6 +30,9 @@ void main()
     denoise_dispatch_buf.num_groups_x = 0u;
     denoise_dispatch_buf.num_groups_y = 1u;
     denoise_dispatch_buf.num_groups_z = 1u;
+    horizon_dispatch_buf.num_groups_x = 0u;
+    horizon_dispatch_buf.num_groups_y = 1u;
+    horizon_dispatch_buf.num_groups_z = 1u;
     ray_dispatch_buf.num_groups_x = 0u;
     ray_dispatch_buf.num_groups_y = 1u;
     ray_dispatch_buf.num_groups_z = 1u;

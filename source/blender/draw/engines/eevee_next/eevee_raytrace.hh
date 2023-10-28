@@ -117,6 +117,9 @@ class RayTraceModule {
   draw::PassSimple denoise_bilateral_diffuse_ps_ = {"DenoiseBilateral.Diffuse"};
   draw::PassSimple denoise_bilateral_reflect_ps_ = {"DenoiseBilateral.Reflection"};
   draw::PassSimple denoise_bilateral_refract_ps_ = {"DenoiseBilateral.Refraction"};
+  draw::PassSimple horizon_scan_diffuse_ps_ = {"HorizonScan.Diffuse"};
+  draw::PassSimple horizon_scan_reflect_ps_ = {"HorizonScan.Reflection"};
+  draw::PassSimple horizon_scan_refract_ps_ = {"HorizonScan.Refraction"};
 
   /** Dispatch with enough tiles for the whole screen. */
   int3 tile_classify_dispatch_size_ = int3(1);
@@ -128,9 +131,14 @@ class RayTraceModule {
   DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
   /** Indirect dispatch denoise full-resolution tiles. */
   DispatchIndirectBuf denoise_dispatch_buf_ = {"denoise_dispatch_buf_"};
+  /** Indirect dispatch horizon scan. Avoid dispatching work-groups that will not scan anything.*/
+  DispatchIndirectBuf horizon_dispatch_buf_ = {"horizon_dispatch_buf_"};
+  /** Pointer to the texture to store the result of horizon scan in. */
+  GPUTexture *horizon_scan_output_tx_ = nullptr;
   /** Tile buffer that contains tile coordinates. */
   RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
   RayTraceTileBuf denoise_tiles_buf_ = {"denoise_tiles_buf_"};
+  RayTraceTileBuf horizon_tiles_buf_ = {"horizon_tiles_buf_"};
   /** Texture containing the ray direction and PDF. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit time. */

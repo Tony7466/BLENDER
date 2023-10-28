@@ -39,6 +39,11 @@ void main()
               uint tile_index = atomicAdd(denoise_dispatch_buf.num_groups_x, 1u);
               denoise_tiles_buf[tile_index] = packUvec2x16(uvec2(full_res_tile));
               tile_is_tracing = true;
+
+              /* Dispatch full resolution horizon scan. */
+              /* TODO(fclem): Limit that to high roughness pixels. */
+              uint tile_horizon_index = atomicAdd(horizon_dispatch_buf.num_groups_x, 1u);
+              horizon_tiles_buf[tile_horizon_index] = packUvec2x16(uvec2(full_res_tile));
             }
             else {
               /* This denoise tile will sample the target tracing tile. Make sure it is cleared. */

@@ -34,6 +34,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_classify)
     .image(0, RAYTRACE_TILEMASK_FORMAT, Qualifier::WRITE, ImageType::UINT_2D, "tile_mask_img")
     .storage_buf(0, Qualifier::WRITE, "DispatchCommand", "ray_dispatch_buf")
     .storage_buf(1, Qualifier::WRITE, "DispatchCommand", "denoise_dispatch_buf")
+    .storage_buf(2, Qualifier::WRITE, "DispatchCommand", "horizon_dispatch_buf")
     .compute_source("eevee_ray_tile_classify_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_tile_compact)
@@ -44,8 +45,10 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_compact)
     .image(0, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D, "tile_mask_img")
     .storage_buf(0, Qualifier::READ_WRITE, "DispatchCommand", "ray_dispatch_buf")
     .storage_buf(1, Qualifier::READ_WRITE, "DispatchCommand", "denoise_dispatch_buf")
-    .storage_buf(2, Qualifier::WRITE, "uint", "ray_tiles_buf[]")
-    .storage_buf(3, Qualifier::WRITE, "uint", "denoise_tiles_buf[]")
+    .storage_buf(2, Qualifier::READ_WRITE, "DispatchCommand", "horizon_dispatch_buf")
+    .storage_buf(3, Qualifier::WRITE, "uint", "ray_tiles_buf[]")
+    .storage_buf(4, Qualifier::WRITE, "uint", "denoise_tiles_buf[]")
+    .storage_buf(5, Qualifier::WRITE, "uint", "horizon_tiles_buf[]")
     .compute_source("eevee_ray_tile_compact_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_generate)
@@ -161,5 +164,25 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
     .compute_source("eevee_ray_denoise_bilateral_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_bilateral)
+
+GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
+    .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared",
+                     "eevee_gbuffer_data",
+                     "eevee_global_ubo",
+                     "eevee_sampling_data",
+                     "eevee_utility_texture",
+                     "eevee_hiz_data",
+                     "draw_view")
+    .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
+    .image(2,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ_WRITE,
+           ImageType::FLOAT_2D,
+           "out_radiance_img")
+    .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .compute_source("eevee_horizon_scan_comp.glsl");
+
+EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_horizon_scan)
 
 /** \} */

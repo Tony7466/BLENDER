@@ -14,6 +14,199 @@
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_horizon_scan_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+
+#ifdef RAYTRACE_DIFFUSE
+#  define HORIZON_DIFFUSE
+#endif
+#ifdef RAYTRACE_REFLECT
+#  define HORIZON_REFLECT
+#endif
+#ifdef RAYTRACE_REFRACT
+#  define HORIZON_REFRACT
+#endif
+
+vec3 horizon_scan_sample_radiance(vec2 uv)
+{
+#ifndef HORIZON_OCCLUSION
+  return texture(screen_radiance_tx, uv).rgb;
+#else
+  return vec3(0.0);
+#endif
+}
+
+vec3 horizon_scan_sample_normal(vec2 uv)
+{
+  return vec3(0.0);
+}
+
+/* Note: Expects all normals to be in view-space. */
+struct HorizonScanContextCommon {
+  float N_angle;
+  float N_length;
+  uint bitmask;
+  vec3 light_slice;
+  vec4 light_accum;
+};
+
+struct HorizonScanContext {
+#ifdef HORIZON_OCCLUSION
+  ClosureOcclusion occlusion;
+  HorizonScanContextCommon occlusion_common;
+  vec3 occlusion_result;
+#endif
+#ifdef HORIZON_DIFFUSE
+  ClosureDiffuse diffuse;
+  HorizonScanContextCommon diffuse_common;
+  vec3 diffuse_result;
+#endif
+#ifdef HORIZON_REFLECT
+  ClosureReflection reflection;
+  HorizonScanContextCommon reflection_common;
+  vec3 reflection_result;
+#endif
+#ifdef HORIZON_REFRACT
+  ClosureRefraction refraction;
+  HorizonScanContextCommon refraction_common;
+  vec3 refraction_result;
+#endif
+};
+
+void horizon_scan_context_accumulation_reset(inout HorizonScanContext context)
+{
+#ifdef HORIZON_OCCLUSION
+  context.occlusion_common.light_accum = vec4(0.0);
+#endif
+#ifdef HORIZON_DIFFUSE
+  context.diffuse_common.light_accum = vec4(0.0);
+#endif
+#ifdef HORIZON_REFLECT
+  context.reflection_common.light_accum = vec4(0.0);
+#endif
+#ifdef HORIZON_REFRACT
+  context.refraction_common.light_accum = vec4(0.0);
+#endif
+}
+
+void horizon_scan_context_slice_start(
+    inout HorizonScanContextCommon context, vec3 vN, vec3 vV, vec3 vT, vec3 vB)
+{
+  context.bitmask = 0u;
+  context.light_slice = vec3(0.0);
+  horizon_scan_projected_normal_to_plane_angle_and_length(
+      vN, vV, vT, vB, context.N_length, context.N_angle);
+}
+
+void horizon_scan_context_slice_start(inout HorizonScanContext context, vec3 vV, vec3 vT, vec3 vB)
+{
+#ifdef HORIZON_OCCLUSION
+  horizon_scan_context_slice_start(context.occlusion_common, context.occlusion.N, vV, vT, vB);
+#endif
+#ifdef HORIZON_DIFFUSE
+  horizon_scan_context_slice_start(context.diffuse_common, context.diffuse.N, vV, vT, vB);
+#endif
+#ifdef HORIZON_REFLECT
+  horizon_scan_context_slice_start(context.reflection_common, context.reflection.N, vV, vT, vB);
+#endif
+#ifdef HORIZON_REFRACT
+  horizon_scan_context_slice_start(context.refraction_common, context.refraction.N, vV, vT, vB);
+#endif
+}
+
+void horizon_scan_context_sample_finish(inout HorizonScanContextCommon context,
+                                        vec3 sample_radiance,
+                                        vec2 sample_theta,
+                                        float angle_bias)
+{
+  /* Angular bias shrinks the visibility bitmask around the projected normal. */
+  sample_theta = (sample_theta - context.N_angle) * angle_bias;
+  uint sample_bitmask = horizon_scan_angles_to_bitmask(sample_theta);
+  float sample_visibility = horizon_scan_bitmask_to_visibility_uniform(sample_bitmask &
+                                                                       ~context.bitmask);
+  context.light_slice += sample_radiance * sample_visibility;
+  context.bitmask |= sample_bitmask;
+}
+
+void horizon_scan_context_sample_finish(
+    inout HorizonScanContext context, vec3 L, vec3 V, vec2 sample_uv, vec2 theta, float bias)
+{
+  vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
+#if 0
+  /* TODO: Optionally take emitter surface normal into consideration. */
+  vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
+  sample_radiance *= dot(sample_normal, -L);
+#endif
+#ifdef HORIZON_OCCLUSION
+  horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
+#endif
+#ifdef HORIZON_DIFFUSE
+  sample_radiance *= bsdf_eval(context.diffuse.N, L, V);
+  horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
+#endif
+#ifdef HORIZON_REFLECT
+  sample_radiance *= bsdf_ggx(context.reflection.N, L, V, context.reflection.roughness);
+  horizon_scan_context_sample_finish(context.reflection_common, sample_radiance, theta, bias);
+#endif
+#ifdef HORIZON_REFRACT
+  sample_radiance *= bsdf_eval(context.refraction.N, L, V);
+  horizon_scan_context_sample_finish(context.refraction_common, sample_radiance, theta, bias);
+#endif
+}
+
+void horizon_scan_context_slice_finish_occlusion(inout HorizonScanContextCommon context)
+{
+  float slice_occlusion = horizon_scan_bitmask_to_occlusion_cosine(context.bitmask);
+  /* Correct normal not on plane (Eq. 8 of GTAO paper). */
+  context.light_accum += vec4(vec3(slice_occlusion), 1.0) * context.N_length;
+}
+
+void horizon_scan_context_slice_finish_distant_light(inout HorizonScanContextCommon context)
+{
+  /* Add distant lighting. */
+  /* TODO(fclem): Add missing lighting from missing sectors. */
+  vec3 slice = context.light_slice;
+  /* Correct normal not on plane (Eq. 8 of GTAO paper). */
+  context.light_accum += vec4(slice, 1.0) * context.N_length;
+}
+
+void horizon_scan_context_slice_finish(inout HorizonScanContext context)
+{
+#ifdef HORIZON_OCCLUSION
+  horizon_scan_context_slice_finish_occlusion(context.occlusion_common);
+#endif
+#ifdef HORIZON_DIFFUSE
+  horizon_scan_context_slice_finish_distant_light(context.diffuse_common);
+#endif
+#ifdef HORIZON_REFLECT
+  horizon_scan_context_slice_finish_distant_light(context.reflection_common);
+#endif
+#ifdef HORIZON_REFRACT
+  horizon_scan_context_slice_finish_distant_light(context.refraction_common);
+#endif
+}
+
+void horizon_scan_context_accumulation_finish(HorizonScanContextCommon context, out vec3 result)
+{
+  result = context.light_accum.xyz * safe_rcp(context.light_accum.w);
+}
+
+void horizon_scan_context_accumulation_finish(inout HorizonScanContext context)
+{
+#ifdef HORIZON_OCCLUSION
+  horizon_scan_context_accumulation_finish(context.occlusion_common, context.occlusion_result);
+#endif
+#ifdef HORIZON_DIFFUSE
+  horizon_scan_context_accumulation_finish(context.diffuse_common, context.diffuse_result);
+#endif
+#ifdef HORIZON_REFLECT
+  horizon_scan_context_accumulation_finish(context.reflection_common, context.reflection_result);
+#endif
+#ifdef HORIZON_REFRACT
+  horizon_scan_context_accumulation_finish(context.refraction_common, context.refraction_result);
+#endif
+}
 
 /**
  * Returns the start and end point of a ray clipped to its intersection
@@ -47,10 +240,10 @@ void horizon_scan_occluder_intersection_ray_sphere_clip(Ray ray,
 
 /**
  * Scans the horizon in many directions and returns the indirect lighting radiance.
- * Returned lighting depends on configuration.
+ * Returned lighting is stored inside the context in `_accum` members already normalized.
  */
-vec3 horizon_scan_eval(vec3 vP,
-                       vec3 vN,
+void horizon_scan_eval(vec3 vP,
+                       inout HorizonScanContext context,
                        sampler2D depth_tx,
                        vec2 noise,
                        vec2 pixel_size,
@@ -66,24 +259,14 @@ vec3 horizon_scan_eval(vec3 vP,
    * since all tracing direction will be in the same quadrant. */
   vec2 v_dir = sample_circle(noise.x * 0.25);
 
-  vec3 accum_light = vec3(0.0);
-  float accum_weight = 0.0;
+  horizon_scan_context_accumulation_reset(context);
 
   for (int i = 0; i < 2; i++) {
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
-    /* Projected view normal onto the integration plane. */
-    float vN_proj_len;
-    vec3 vN_proj = normalize_and_get_length(vN - vB * dot(vN, vB), vN_proj_len);
 
-    float vN_sin = dot(vN_proj, vT);
-    float vN_cos = saturate(dot(vN_proj, vV));
-    /* Angle between normalized projected normal and view vector. */
-    float vN_angle = sign(vN_sin) * acos_fast(vN_cos);
-
-    vec3 slice_light = vec3(0.0);
-    uint slice_bitmask = 0u;
+    horizon_scan_context_slice_start(context, vV, vT, vB);
 
     /* For both sides of the view vector. */
     for (int side = 0; side < 2; side++) {
@@ -111,7 +294,8 @@ vec3 horizon_scan_eval(vec3 vP,
           continue;
         }
 
-        bool front_facing = vN.z > 0.0;
+        /* TODO(fclem): Re-introduce bias. But this is difficult to do per closure. */
+        bool front_facing = true;  // vN.z > 0.0;
 
         /* Bias depth a bit to avoid self shadowing issues. */
         const float bias = 2.0 * 2.4e-7;
@@ -137,35 +321,16 @@ vec3 horizon_scan_eval(vec3 vP,
         vec2 theta = acos_fast(vec2(dot(vL_front, vV), dot(vL_back, vV)));
         /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
         theta = (side == 0) ? theta.xy : -theta.yx;
-        theta -= vN_angle;
-        /* Angular bias. Shrink the visibility bitmask around the projected normal. */
-        theta *= angle_bias;
 
-        uint sample_bitmask = horizon_scan_angles_to_bitmask(theta);
-#ifdef USE_RADIANCE_ACCUMULATION
-        float sample_visibility = horizon_scan_bitmask_to_visibility_uniform(sample_bitmask &
-                                                                             ~slice_bitmask);
-        if (sample_visibility > 0.0) {
-          vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
-#  ifdef USE_NORMAL_MASKING
-          vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
-          sample_visibility *= dot(sample_normal, -vL_front);
-#  endif
-          slice_light += sample_radiance * (bsdf_eval(vN, vL_front) * sample_visibility);
-        }
-#endif
-        slice_bitmask |= sample_bitmask;
+        horizon_scan_context_sample_finish(context, vL_front, vV, sample_uv, theta, angle_bias);
       }
     }
 
-    /* Add distant lighting. */
-    slice_light = vec3(horizon_scan_bitmask_to_occlusion_cosine(slice_bitmask));
-    /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-    accum_light += slice_light * vN_proj_len;
-    accum_weight += vN_proj_len;
+    horizon_scan_context_slice_finish(context);
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);
   }
-  return accum_light * safe_rcp(accum_weight);
+
+  horizon_scan_context_accumulation_finish(context);
 }
