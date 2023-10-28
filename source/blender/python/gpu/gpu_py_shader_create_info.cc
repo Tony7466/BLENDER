@@ -20,8 +20,9 @@
 #include "../generic/python_compat.h"
 
 #include "gpu_py_shader.h" /* own include */
+#include "gpu_py_texture.h"
 
-//#define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
+#define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
 
 using blender::gpu::shader::DualBlend;
 using blender::gpu::shader::Frequency;
@@ -607,7 +608,7 @@ PyDoc_STRVAR(
     "   :arg slot: The image resource index.\n"
     "   :type slot: int\n"
     "   :arg format: The GPUTexture format that is passed to the shader. Possible values are:\n"
-    "" PYDOC_TEX_FORMAT_ITEMS
+    "\n" // PYDOC_TEX_FORMAT_ITEMS
     "   :type format: str\n"
     "   :arg type: The data type describing how the image is to be read in the shader. "
     "Possible values are:\n"
@@ -903,6 +904,51 @@ static PyObject *pygpu_shader_info_vertex_source(BPyGPUShaderCreateInfo *self, P
 }
 
 PyDoc_STRVAR(
+    pygpu_shader_info_compute_source_doc,
+    ".. method:: compute_source(source)\n"
+    "\n"
+    "   compute shader source code written in GLSL.\n"
+    "\n"
+    "   Example:\n"
+    "\n"
+    "   .. code-block:: python\n"
+    "\n"
+    "      \"void main() {"
+    "          int index = int(gl_GlobalInvocationID.x);\n"
+    "          vec4 pos = vec4(gl_GlobalInvocationID.x);\n"
+    "          imageStore(img_output, index, pos);\n"
+    "      }\"\n"
+    "\n"
+    "   :arg source: The compute shader source code.\n"
+    "   :type source: str\n"
+    "\n"
+    "   .. seealso:: `GLSL Cross Compilation "
+    "<https://wiki.blender.org/wiki/EEVEE_%26_Viewport/GPU_Module/GLSL_Cross_Compilation>`__\n");
+static PyObject *pygpu_shader_info_compute_source(BPyGPUShaderCreateInfo *self, PyObject *o)
+{
+  const char *compute_source = PyUnicode_AsUTF8(o);
+  if (compute_source == nullptr) {
+    PyErr_Format(PyExc_ValueError, "expected a string, got %s", Py_TYPE(o)->tp_name);
+    return nullptr;
+  }
+
+#ifdef USE_GPU_PY_REFERENCES
+  if (self->compute_source) {
+    Py_DECREF(self->compute_source);
+  }
+
+  self->compute_source = o;
+  Py_INCREF(o);
+#endif
+
+  ShaderCreateInfo *info = reinterpret_cast<ShaderCreateInfo *>(self->info);
+  info->compute_source("common_colormanagement_lib.glsl");
+  info->compute_source_generated = compute_source;
+
+  Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(
     pygpu_shader_info_fragment_source_doc,
     ".. method:: fragment_source(source)\n"
     "\n"
@@ -1064,6 +1110,10 @@ static PyMethodDef pygpu_shader_info__tp_methods[] = {
      (PyCFunction)pygpu_shader_info_fragment_source,
      METH_O,
      pygpu_shader_info_fragment_source_doc},
+    {"compute_source",
+      (PyCFunction)pygpu_shader_info_compute_source,
+      METH_O,
+      pygpu_shader_info_compute_source_doc},
     {"typedef_source",
      (PyCFunction)pygpu_shader_info_typedef_source,
      METH_O,
@@ -1231,6 +1281,7 @@ PyObject *BPyGPUShaderCreateInfo_CreatePyObject(GPUShaderCreateInfo *info)
   self = (BPyGPUShaderCreateInfo *)_PyObject_GC_New(&BPyGPUShaderCreateInfo_Type);
   self->vertex_source = nullptr;
   self->fragment_source = nullptr;
+  self->compute_source = nullptr;
   self->typedef_source = nullptr;
   self->references = PyList_New(0);
 #else

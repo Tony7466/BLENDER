@@ -1,0 +1,83 @@
+"""
+Custom compute shader (using image store) and vertex/fragment shader
+--------------------------------
+
+This is a simple example of how to use a custom compute shader to write to a texture and then use that texture in a vertex/fragment shader.
+"""
+import bpy
+import gpu
+from mathutils import Matrix
+from gpu_extras.batch import batch_for_shader
+import array
+import time
+
+start_time = time.time() 
+
+size = 128
+pixels = size * size * array.array('f', [0.0, 0.0, 0.0, 1.0])
+pixels = gpu.types.Buffer('FLOAT', size * size * 4, pixels)
+texture = gpu.types.GPUTexture((size, size), format='RGBA32F', data=pixels)
+compute_shader_info = gpu.types.GPUShaderCreateInfo()
+compute_shader_info.image(1, 'RGBA32F', "FLOAT_2D", "img_output", qualifiers={"WRITE"})
+compute_shader_info.compute_source('''
+void main()
+{
+  vec4 pixel = vec4(
+    gl_GlobalInvocationID.x/128.0, 
+    gl_GlobalInvocationID.y/128.0, 
+    0.0, 
+    1.0
+  );
+  imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
+}''')
+
+compute_shader = gpu.shader.create_from_info(compute_shader_info)
+compute_shader.image('img_output', texture);
+
+gpu.compute.dispatch(compute_shader, 128, 128, 1)
+gpu.state.memory_barrier('TEXTURE_UPDATE')
+
+# Drawing the compute output in viewport
+vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
+vert_out.smooth('VEC2', "uvInterp")
+shader_info = gpu.types.GPUShaderCreateInfo()
+shader_info.push_constant('MAT4', "viewProjectionMatrix")
+shader_info.push_constant('MAT4', "modelMatrix")
+shader_info.sampler(1, 'FLOAT_2D', "img_output")
+shader_info.vertex_in(0, 'VEC2', "position")
+shader_info.vertex_in(1, 'VEC2', "uv")
+shader_info.vertex_out(vert_out)
+shader_info.fragment_out(0, 'VEC4', "FragColor")
+
+shader_info.vertex_source(
+    "void main()"
+    "{"
+    "  uvInterp = uv;"
+    "  gl_Position = viewProjectionMatrix * modelMatrix * vec4(position, 0.0, 1.0);"
+    "}"
+)
+
+shader_info.fragment_source(
+    "void main()"
+    "{"
+    "  FragColor = texture(img_output, uvInterp);"
+    "}"
+)
+
+shader = gpu.shader.create_from_info(shader_info)
+
+batch = batch_for_shader(
+    shader, 'TRI_FAN',
+    {
+        "position": ((-1, -1), (1, -1), (1, 1), (-1, 1)),
+        "uv": ((0, 0), (1, 0), (1, 1), (0, 1)),
+    },
+)
+
+def draw(): 
+    shader.uniform_float("modelMatrix", Matrix.Translation((0, 0, 0)) @ Matrix.Scale(3, 4))
+    shader.uniform_float("viewProjectionMatrix", bpy.context.region_data.perspective_matrix)
+    shader.uniform_sampler("img_output", texture) 
+    batch.draw(shader)
+
+bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')

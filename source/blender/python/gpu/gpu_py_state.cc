@@ -63,6 +63,19 @@ static const PyC_StringEnumItems pygpu_state_faceculling_items[] = {
     {0, nullptr},
 };
 
+static const PyC_StringEnumItems pygpu_state_memory_barrier_items[] = {
+    {GPU_BARRIER_FRAMEBUFFER, "FRAMEBUFFER"},
+    {GPU_BARRIER_SHADER_IMAGE_ACCESS, "SHADER_IMAGE_ACCESS"},
+    {GPU_BARRIER_TEXTURE_FETCH, "TEXTURE_FETCH"},
+    {GPU_BARRIER_TEXTURE_UPDATE, "TEXTURE_UPDATE"},
+    {GPU_BARRIER_COMMAND, "COMMAND"},
+    {GPU_BARRIER_SHADER_STORAGE, "SHADER_STORAGE"},
+    {GPU_BARRIER_VERTEX_ATTRIB_ARRAY, "VERTEX_ATTRIB_ARRAY"},
+    {GPU_BARRIER_ELEMENT_ARRAY, "ELEMENT_ARRAY"},
+    {GPU_BARRIER_UNIFORM, "UNIFORM"},
+    {GPU_BARRIER_BUFFER_UPDATE, "BUFFER_UPDATE"},
+    {0, nullptr},
+};
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -424,6 +437,27 @@ static PyObject *pygpu_state_framebuffer_active_get(PyObject * /*self*/)
   return BPyGPUFrameBuffer_CreatePyObject(fb, true);
 }
 
+PyDoc_STRVAR(pygpu_state_memory_barrier_doc,
+             ".. function:: memory_barrier(barrier)\n"
+             "\n"
+             "   Memory barrier synchronization util.\n"
+             "\n"
+             "   :arg mode: Type of barrier.\n"
+             "     Possible values are `FRAMEBUFFER`, `SHADER_IMAGE_ACCESS`, `TEXTURE_FETCH`, "
+    "`TEXTURE_UPDATE`, `COMMAND`, `SHADER_STORAGE`, `VERTEX_ATTRIB_ARRAY`, "
+    "`ELEMENT_ARRAY`, `UNIFORM`, and `BUFFER_UPDATE`.\n"
+             "   :type mode: str\n");
+static PyObject *pygpu_state_memory_barrier(PyObject * /*self*/, PyObject *value)
+{
+  PyC_StringEnum pygpu_memory_barrier = {pygpu_state_memory_barrier_items};
+  if (!PyC_ParseStringEnum(value, &pygpu_memory_barrier)) {
+    return nullptr;
+  }
+  GPU_memory_barrier(eGPUBarrier(pygpu_memory_barrier.value_found));
+  Py_RETURN_NONE;
+}
+
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -511,6 +545,10 @@ static PyMethodDef pygpu_state__tp_methods[] = {
      (PyCFunction)pygpu_state_framebuffer_active_get,
      METH_NOARGS,
      pygpu_state_framebuffer_active_get_doc},
+    {"memory_barrier",
+     (PyCFunction)pygpu_state_memory_barrier,
+     METH_O,
+     pygpu_state_memory_barrier_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
