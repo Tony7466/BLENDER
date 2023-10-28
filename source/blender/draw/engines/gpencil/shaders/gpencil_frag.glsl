@@ -54,12 +54,6 @@ vec3 gpencil_lighting(void)
   return clamp(light_accum, 0.0, 1e10);
 }
 
-vec4 debug_texture(vec2 uv)
-{
-  vec4 col = vec4(mod(uv.xy, 1.0), 0.0, 1.0);
-  return col * min(length(uv.xy * 2 - 1), 1);
-}
-
 void main()
 {
   vec4 col;
@@ -72,9 +66,6 @@ void main()
     vec2 uvs = (use_clip) ? clamp(gp_interp.uv, 0.0, 1.0) : gp_interp.uv;
     bool premul = flag_test(gp_interp_flat.mat_flag, GP_FILL_TEXTURE_PREMUL);
     col = texture_read_as_linearrgb(gpFillTexture, premul, uvs);
-
-    /* Debug color. (Because textures are not yet implemented) */
-    col = debug_texture(gp_interp.uv);
   }
   else if (flag_test(gp_interp_flat.mat_flag, GP_FILL_GRADIENT_USE)) {
     bool radial = flag_test(gp_interp_flat.mat_flag, GP_FILL_GRADIENT_RADIAL);
