@@ -958,11 +958,14 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-
+  bool changed = false;
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        /* If was already changed, exit.*/
+        if (changed) {
+          return;
+        }
         const bke::CurvesGeometry &curves = drawing.strokes();
-
         IndexMaskMemory memory;
         IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
         if (selected_curves.is_empty()) {
@@ -974,12 +977,12 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
         selected_curves.foreach_index([&](const int curve_index) {
           if (materials[curve_index] != -1) {
             object->actcol = materials[curve_index] + 1;
-            return OPERATOR_FINISHED;
+            changed = true;
+            return;
           }
         });
       });
 
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
 
   return OPERATOR_FINISHED;
