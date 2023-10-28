@@ -703,18 +703,18 @@ void MESH_OT_extrude_faces_indiv(wmOperatorType *ot)
 static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   BMVert *v1;
   BMIter iter;
   float center[3];
   uint verts_len;
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   const Object *object_active = vc.obact;
 
   const bool rot_src = RNA_boolean_get(op->ptr, "rotate_source");
   const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                         (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                         (vc.scene->toolsettings->snap_mode &
+                          (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
   /* First calculate the center of transformation. */
   zero_v3(center);
