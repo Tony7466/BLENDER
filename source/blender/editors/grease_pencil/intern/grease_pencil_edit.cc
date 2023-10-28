@@ -844,7 +844,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op
 
 static void GREASE_PENCIL_OT_stroke_material_set(wmOperatorType *ot)
 {
-  ot->name = "Change Assigned Material";
+  ot->name = "Assign Material";
   ot->idname = "GREASE_PENCIL_OT_stroke_material_set";
   ot->description = "Change Stroke material with selected material";
 
