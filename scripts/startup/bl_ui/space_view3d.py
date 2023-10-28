@@ -6211,6 +6211,9 @@ class VIEW3D_PT_view3d_properties(Panel):
         col.prop(view, "use_render_border")
         col.active = view.region_3d.view_perspective != 'CAMERA'
 
+        col = layout.column(align=True)
+        col.prop(view.region_3d, "view_mirror_x")
+
 
 class VIEW3D_PT_view3d_lock(Panel):
     bl_space_type = 'VIEW_3D'

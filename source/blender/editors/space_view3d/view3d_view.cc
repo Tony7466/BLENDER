@@ -371,6 +371,14 @@ static void obmat_to_viewmat(RegionView3D *rv3d, Object *ob)
   rv3d->view = RV3D_VIEW_USER; /* don't show the grid */
 
   normalize_m4_m4(bmat, ob->object_to_world);
+
+  if (rv3d->rflag & RV3D_MIRROR_X) {
+    float scale_mat[4][4];
+    float scale_vec[2] = {-1.0f, 1.0f};
+    scale_m4_v2(scale_mat, scale_vec);
+    mul_m4_m4_post(bmat, scale_mat);
+  }
+
   invert_m4_m4(rv3d->viewmat, bmat);
 
   /* view quat calculation, needed for add object */
@@ -428,6 +436,13 @@ void view3d_viewmatrix_set(Depsgraph *depsgraph,
     }
     else {
       translate_m4(rv3d->viewmat, rv3d->ofs[0], rv3d->ofs[1], rv3d->ofs[2]);
+    }
+
+    if (rv3d->rflag & RV3D_MIRROR_X) {
+      float scale_mat[4][4];
+      float scale_vec[2] = {-1.0f, 1.0f};
+      scale_m4_v2(scale_mat, scale_vec);
+      mul_m4_m4_pre(rv3d->viewmat, scale_mat);
     }
 
     /* lock offset */

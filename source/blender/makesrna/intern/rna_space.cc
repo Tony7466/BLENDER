@@ -5346,6 +5346,11 @@ static void rna_def_space_view3d(BlenderRNA *brna)
       "(does not check whether the view is orthographic, use \"is_perspective\" for that). "
       "Setting this will rotate the view to the closest axis");
 
+  prop = RNA_def_property(srna, "view_mirror_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "rflag", RV3D_MIRROR_X);
+  RNA_def_property_ui_text(prop, "Mirror View Horizontally", "Mirror view horizontally");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
   /* This isn't directly accessible from the UI, only an operator. */
   prop = RNA_def_property(srna, "use_clip_planes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "rflag", RV3D_CLIPPING);

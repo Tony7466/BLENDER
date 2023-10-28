@@ -412,6 +412,7 @@ enum {
    * Use when precise surface depth is needed and picking bias isn't, see #45434).
    */
   RV3D_ZOFFSET_DISABLED = 1 << 6,
+  RV3D_MIRROR_X = 1 << 7,
 };
 
 /** #RegionView3D.viewlock */

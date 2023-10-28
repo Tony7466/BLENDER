@@ -577,6 +577,10 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
   uint shdr_pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
+  if ((rv3d->rflag & RV3D_MIRROR_X) != 0) {
+    GPU_matrix_scale_2f(-1.0f, 1.0f);
+  }
+
   /* First, solid lines. */
   {
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
@@ -1260,7 +1264,7 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   const char *name = view3d_get_name(v3d, rv3d);
-  const char *name_array[3] = {name, nullptr, nullptr};
+  const char *name_array[4] = {name, nullptr, nullptr, nullptr};
   int name_array_len = 1;
   const int font_id = BLF_default();
 
@@ -1295,6 +1299,11 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
   /* Indicate that clipping region is enabled. */
   if (rv3d->rflag & RV3D_CLIPPING) {
     name_array[name_array_len++] = IFACE_(" (Clipped)");
+  }
+
+  /* Indicate that the view is mirrored horizontally. */
+  if (rv3d->rflag & RV3D_MIRROR_X) {
+    name_array[name_array_len++] = IFACE_(" (Mirrored)");
   }
 
   if (name_array_len > 1) {
