@@ -2831,15 +2831,6 @@ static void rna_def_audio_options(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Volume", "Playback volume of the sound");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
-
-  prop = RNA_def_property(srna, "pan", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "pan");
-  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
-  RNA_def_property_ui_range(prop, -2, 2, 1, 2);
-  RNA_def_property_ui_text(prop, "Pan", "Playback panning of the sound (only for Mono sources)");
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
-  RNA_def_property_float_funcs(prop, nullptr, nullptr, "rna_Sequence_pan_range");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 }
 
 static void rna_def_scene(BlenderRNA *brna)
@@ -3055,6 +3046,15 @@ static void rna_def_sound(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_sound_update");
 
   rna_def_audio_options(srna);
+
+  prop = RNA_def_property(srna, "pan", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "pan");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, -2, 2, 1, 2);
+  RNA_def_property_ui_text(prop, "Pan", "Playback panning of the sound (only for Mono sources)");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
+  RNA_def_property_float_funcs(prop, nullptr, nullptr, "rna_Sequence_pan_range");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "show_waveform", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_AUDIO_DRAW_WAVEFORM);
