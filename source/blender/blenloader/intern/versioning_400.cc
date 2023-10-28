@@ -1070,6 +1070,15 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       continue;
     }
 
+    LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+      /* Delete links to sockets that don't exist in Blender 4.0. */
+      if (((link->tonode == node) && STREQ(link->tosock->identifier, "Distortion")) ||
+          ((link->fromnode == node) && STREQ(link->fromsock->identifier, "Color")))
+      {
+        nodeRemLink(ntree, link);
+      }
+    }
+
     STRNCPY(node->idname, "ShaderNodeTexMusgrave");
     node->type = SH_NODE_TEX_MUSGRAVE;
     NodeTexMusgrave *data = MEM_cnew<NodeTexMusgrave>(__func__);
