@@ -1059,6 +1059,147 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
+static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_TEX_NOISE) {
+      continue;
+    }
+
+    if ((static_cast<NodeTexNoise *>(node->storage))->type == SHD_NOISE_FBM) {
+      continue;
+    }
+
+    STRNCPY(node->idname, "ShaderNodeTexMusgrave");
+    node->type = SH_NODE_TEX_MUSGRAVE;
+    NodeTexMusgrave *data = MEM_cnew<NodeTexMusgrave>(__func__);
+    data->base = (static_cast<NodeTexNoise *>(node->storage))->base;
+    data->musgrave_type = (static_cast<NodeTexNoise *>(node->storage))->type;
+    data->dimensions = (static_cast<NodeTexNoise *>(node->storage))->dimensions;
+    MEM_freeN(node->storage);
+    node->storage = data;
+
+    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Dimension");
+    STRNCPY(dimension_socket->identifier, "Dimension");
+    STRNCPY(dimension_socket->name, "Dimension");
+
+    bNodeSocket *height_socket = nodeFindSocket(node, SOCK_OUT, "Fac");
+    STRNCPY(height_socket->label, "Height");
+
+    bNodeLink *detail_link = nullptr;
+    bNode *detail_from_node = nullptr;
+    bNodeSocket *detail_from_socket = nullptr;
+
+    bNodeLink *dimension_link = nullptr;
+    bNode *dimension_from_node = nullptr;
+    bNodeSocket *dimension_from_socket = nullptr;
+
+    bNodeLink *lacunarity_link = nullptr;
+    bNode *lacunarity_from_node = nullptr;
+    bNodeSocket *lacunarity_from_socket = nullptr;
+
+    LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+      /* Find links, nodes and sockets. */
+      if (link->tonode == node) {
+        if (STREQ(link->tosock->identifier, "Detail")) {
+          detail_link = link;
+          detail_from_node = link->fromnode;
+          detail_from_socket = link->fromsock;
+        }
+        if (STREQ(link->tosock->identifier, "Dimension")) {
+          dimension_link = link;
+          dimension_from_node = link->fromnode;
+          dimension_from_socket = link->fromsock;
+        }
+        if (STREQ(link->tosock->identifier, "Lacunarity")) {
+          lacunarity_link = link;
+          lacunarity_from_node = link->fromnode;
+          lacunarity_from_socket = link->fromsock;
+        }
+      }
+    }
+
+    float locy_offset = 0.0f;
+
+    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
+    float *detail = version_cycles_node_socket_float_value(detail_socket);
+
+    if (detail_link != nullptr) {
+      locy_offset -= 40.0f;
+
+      /* Add Add Math node before Detail input. */
+
+      bNode *add_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      add_node->parent = node->parent;
+      add_node->custom1 = NODE_MATH_ADD;
+      add_node->locx = node->locx;
+      add_node->locy = node->locy - 320.0f;
+      add_node->flag |= NODE_HIDDEN;
+      bNodeSocket *add_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&add_node->inputs, 0));
+      bNodeSocket *add_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&add_node->inputs, 1));
+      bNodeSocket *add_socket_out = nodeFindSocket(add_node, SOCK_OUT, "Value");
+
+      *version_cycles_node_socket_float_value(add_socket_B) = 1.0f;
+
+      nodeRemLink(ntree, detail_link);
+      nodeAddLink(ntree, detail_from_node, detail_from_socket, add_node, add_socket_A);
+      nodeAddLink(ntree, add_node, add_socket_out, node, detail_socket);
+    }
+    else {
+      *detail = std::clamp(*detail + 1.0f, 0.0f, 15.0f);
+    }
+
+    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Dimension");
+    float *dimension = version_cycles_node_socket_float_value(dimension_socket);
+    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
+    float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
+
+    if ((dimension_link != nullptr) || (lacunarity_link != nullptr)) {
+      /* Add Logarithm Math node and Multiply Math node before Roughness input. */
+
+      bNode *log_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      log_node->parent = node->parent;
+      log_node->custom1 = NODE_MATH_LOGARITHM;
+      log_node->locx = node->locx;
+      log_node->locy = node->locy - 400.0f + locy_offset;
+      log_node->flag |= NODE_HIDDEN;
+      bNodeSocket *log_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&log_node->inputs, 0));
+      bNodeSocket *log_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&log_node->inputs, 1));
+      bNodeSocket *log_socket_out = nodeFindSocket(log_node, SOCK_OUT, "Value");
+
+      bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      mul_node->parent = node->parent;
+      mul_node->custom1 = NODE_MATH_MULTIPLY;
+      mul_node->locx = node->locx;
+      mul_node->locy = node->locy - 360.0f + locy_offset;
+      mul_node->flag |= NODE_HIDDEN;
+      bNodeSocket *mul_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 0));
+      bNodeSocket *mul_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&mul_node->inputs, 1));
+      bNodeSocket *mul_socket_out = nodeFindSocket(mul_node, SOCK_OUT, "Value");
+
+      *version_cycles_node_socket_float_value(log_socket_A) = *dimension;
+      *version_cycles_node_socket_float_value(log_socket_B) = *lacunarity;
+      *version_cycles_node_socket_float_value(mul_socket_B) = -1.0f;
+
+      if (dimension_link) {
+        nodeRemLink(ntree, dimension_link);
+        nodeAddLink(ntree, dimension_from_node, dimension_from_socket, log_node, log_socket_A);
+      }
+      nodeAddLink(ntree, log_node, log_socket_out, mul_node, mul_socket_A);
+      nodeAddLink(ntree, mul_node, mul_socket_out, node, dimension_socket);
+
+      if (lacunarity_link != nullptr) {
+        nodeAddLink(ntree, lacunarity_from_node, lacunarity_from_socket, log_node, log_socket_B);
+      }
+    }
+    else {
+      *dimension = -(std::logf(*dimension) / std::logf(*lacunarity));
+    }
+  }
+
+  version_socket_update_is_used(ntree);
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1690,6 +1831,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       versioning_node_group_sort_sockets_recursive(ntree->tree_interface.root_panel);
     }
+  }
+
+  if (MAIN_VERSION_FILE_ATLEAST(bmain, 401, 0)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        /* Convert combined Noise Texture nodes back to Musgrave and Noise Texture nodes. */
+        versioning_convert_combined_noise_texture_node(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
