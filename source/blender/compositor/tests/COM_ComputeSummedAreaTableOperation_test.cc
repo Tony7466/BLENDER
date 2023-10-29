@@ -130,7 +130,7 @@ TEST_F(SummedAreaTableSumTest, FullyInside)
   area.ymin = 1;
   area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 9);
+  EXPECT_EQ(sum[0], 9);
 }
 
 TEST_F(SummedAreaTableSumTest, LeftEdge)
@@ -141,7 +141,7 @@ TEST_F(SummedAreaTableSumTest, LeftEdge)
   area.ymin = 0;
   area.ymax = 2;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 9);
+  EXPECT_EQ(sum[0], 9);
 }
 
 TEST_F(SummedAreaTableSumTest, RightEdge)
@@ -152,7 +152,7 @@ TEST_F(SummedAreaTableSumTest, RightEdge)
   area.ymin = 0;
   area.ymax = 2;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 6);
+  EXPECT_EQ(sum[0], 6);
 }
 
 TEST_F(SummedAreaTableSumTest, LowerRightCorner)
@@ -163,7 +163,7 @@ TEST_F(SummedAreaTableSumTest, LowerRightCorner)
   area.ymin = area_.ymax - 1;
   area.ymax = area_.ymax;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 1);
+  EXPECT_EQ(sum[0], 1);
 }
 
 TEST_F(SummedAreaTableSumTest, TopLine)
@@ -174,7 +174,7 @@ TEST_F(SummedAreaTableSumTest, TopLine)
   area.ymin = 0;
   area.ymax = 0;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 2);
+  EXPECT_EQ(sum[0], 2);
 }
 
 TEST_F(SummedAreaTableSumTest, ButtomLine)
@@ -185,7 +185,7 @@ TEST_F(SummedAreaTableSumTest, ButtomLine)
   area.ymin = 3;
   area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 5);
+  EXPECT_EQ(sum[0], 5);
 }
 
 }  // namespace blender::compositor::tests

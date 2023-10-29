@@ -13,7 +13,6 @@ namespace blender::compositor {
 SummedAreaTableOperation::SummedAreaTableOperation()
 {
   this->add_input_socket(DataType::Color);
-  this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
   mode_ = eMode::Identity;
@@ -78,11 +77,11 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
   /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area.xmin, area.xmax), 1, [&](const IndexRange range_x) {
     for (const int x : range_x) {
+      float4 accumulated_color = float4(0.0f);
       for (const int y : IndexRange(area.ymin, area.ymax)) {
-        float4 color;
-        output->read_elem_checked(x, y - 1, &color.x);
-        float *out = output->get_elem(x, y);
-        copy_v4_v4(out, float4(out) + color);
+        const float4 color = float4(output->get_elem(x, y));
+        accumulated_color += color;
+        copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
   });
@@ -92,16 +91,14 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
 {
   /* Note: although this is a single threaded call, multithreading is used. */
   MemoryBuffer *output = new MemoryBuffer(DataType::Color, *area);
-  PixelSampler sampler = PixelSampler::Nearest;
 
   /* First pass: copy input to output and sum horizontally. */
   threading::parallel_for(IndexRange(area->ymin, area->ymax), 1, [&](const IndexRange range_y) {
     for (const int y : range_y) {
       float4 accumulated_color = float4(0.0f);
       for (const int x : IndexRange(area->xmin, area->xmax)) {
-
         float4 color;
-        image_reader_->read_sampled(&color.x, x, y, sampler);
+        image_reader_->read(&color.x, x, y, nullptr);
         accumulated_color += mode_ == eMode::Squared ? color * color : color;
         copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
@@ -111,11 +108,11 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
   /* Second pass: vertical sum. */
   threading::parallel_for(IndexRange(area->xmin, area->xmax), 1, [&](const IndexRange range_x) {
     for (const int x : range_x) {
+      float4 accumulated_color = float4(0.0f);
       for (const int y : IndexRange(area->ymin, area->ymax)) {
-        float4 color;
-        output->read_elem_checked(x, y - 1, &color.x);
-        float *out = output->get_elem(x, y);
-        copy_v4_v4(out, float4(out) + color);
+
+        accumulated_color += float4(output->get_elem(x, y));
+        copy_v4_v4(output->get_elem(x, y), accumulated_color);
       }
     }
   });
@@ -162,16 +159,12 @@ float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area)
   corrected_upper_bound[1] = math::min((int)buffer->get_height() - 1, upper_bound[1]);
 
   float4 a, b, c, d, addend, substrahend;
-  buffer->read_sampled(
-      &a.x, corrected_upper_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
-  buffer->read_sampled(
-      &d.x, corrected_lower_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
+  buffer->read_sampled(&a.x, UNPACK2(corrected_upper_bound), PixelSampler::Nearest);
+  buffer->read_sampled(&d.x, UNPACK2(corrected_lower_bound), PixelSampler::Nearest);
   addend = a + d;
 
-  buffer->read_sampled(
-      &b.x, corrected_lower_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
-  buffer->read_sampled(
-      &c.x, corrected_upper_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
+  buffer->read_sampled(&b.x, UNPACK2(corrected_lower_bound), PixelSampler::Nearest);
+  buffer->read_sampled(&c.x, UNPACK2(corrected_upper_bound), PixelSampler::Nearest);
   substrahend = b + c;
 
   float4 sum = addend - substrahend;
@@ -208,12 +201,12 @@ float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area)
   corrected_upper_bound[1] = math::min(buffer->get_height() - 1, upper_bound[1]);
 
   float4 a, b, c, d, addend, substrahend;
-  buffer->read_elem_checked(corrected_upper_bound[0], corrected_upper_bound[1], a);
-  buffer->read_elem_checked(corrected_lower_bound[0], corrected_lower_bound[1], d);
+  buffer->read_elem_checked(UNPACK2(corrected_upper_bound), a);
+  buffer->read_elem_checked(UNPACK2(corrected_lower_bound), d);
   addend = a + d;
 
-  buffer->read_elem_checked(corrected_lower_bound[0], corrected_upper_bound[1], b);
-  buffer->read_elem_checked(corrected_upper_bound[0], corrected_lower_bound[1], c);
+  buffer->read_elem_checked(UNPACK2(corrected_lower_bound), b);
+  buffer->read_elem_checked(UNPACK2(corrected_upper_bound), c);
   substrahend = b + c;
 
   float4 sum = addend - substrahend;

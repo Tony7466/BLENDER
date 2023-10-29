@@ -7,7 +7,6 @@
 
 #include "COM_KuwaharaNode.h"
 
-#include "COM_CalculateMeanOperation.h"
 #include "COM_GaussianXBlurOperation.h"
 #include "COM_GaussianYBlurOperation.h"
 #include "COM_KuwaharaAnisotropicOperation.h"

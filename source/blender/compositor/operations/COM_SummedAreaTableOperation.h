@@ -9,8 +9,7 @@
 namespace blender::compositor {
 
 /**
- * \brief base class of CalculateMean, implementing the simple CalculateMean
- * \ingroup operation
+ * \brief SummedAreaTableOperation class computes the summed area table.
  */
 class SummedAreaTableOperation : public SingleThreadedOperation {
 
