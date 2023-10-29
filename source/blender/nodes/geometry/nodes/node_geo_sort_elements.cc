@@ -40,27 +40,40 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static bool indices_are_range(const Span<int> indices, const IndexRange range)
 {
-  const auto cmp_span_range = [](const Span<int> indices, const IndexRange range) {
-    return std::equal(indices.begin(), indices.end(), range.begin());
-  };
-  const auto is_range_if = [&](const IndexRange part, const bool is_range) {
-    return is_range && cmp_span_range(indices.slice(part), range.slice(part));
-  };
-  const bool same_size = indices.size() == range.size();
-  return same_size && threading::parallel_reduce(
-                          range.index_range(), 4096, true, is_range_if, std::logical_and());
+  if (indices.size() != range.size()) {
+    return false;
+  }
+  return threading::parallel_reduce(
+      range.index_range(),
+      4096,
+      true,
+      [&](const IndexRange part, const bool is_range) {
+        const Span<int> local_indices = indices.slice(part);
+        const IndexRange local_range = range.slice(part);
+        return is_range &&
+               std::equal(local_indices.begin(), local_indices.end(), local_range.begin());
+      },
+      std::logical_and());
 }
 
 static void grouped_sort(const OffsetIndices<int> offsets,
                          const Span<float> weights,
                          MutableSpan<int> indices)
 {
+  const auto comparator = [&](const int index_a, const int index_b) {
+    const float weight_a = weights[index_a];
+    const float weight_b = weights[index_b];
+    if (UNLIKELY(weight_a == weight_b)) {
+      /* Approach to make it stable. */
+      return index_a < index_b;
+    }
+    return weight_a < weight_b;
+  };
+
   threading::parallel_for(offsets.index_range(), 250, [&](const IndexRange range) {
     for (const int group_index : range) {
       MutableSpan<int> group = indices.slice(offsets[group_index]);
-      parallel_sort(group.begin(), group.end(), [&](const int index_a, const int index_b) {
-        return weights[index_a] < weights[index_b];
-      });
+      parallel_sort(group.begin(), group.end(), comparator);
     }
   });
 }
@@ -246,14 +259,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
-template<typename T, typename Convert>
+template<typename T>
 static Array<EnumPropertyItem> items_value_in(const Span<T> values,
-                                              const EnumPropertyItem *src_items,
-                                              Convert convert)
+                                              const EnumPropertyItem *src_items)
 {
   Vector<EnumPropertyItem> items;
   for (const EnumPropertyItem *item = src_items; item->identifier != nullptr; item++) {
-    if (values.contains(convert(item->value))) {
+    if (values.contains(T(item->value))) {
       items.append(*item);
     }
   }
@@ -269,8 +281,7 @@ static void node_rna(StructRNA *srna)
        ATTR_DOMAIN_FACE,
        ATTR_DOMAIN_CURVE,
        ATTR_DOMAIN_INSTANCE},
-      rna_enum_attribute_domain_items,
-      [](const int value) { return eAttrDomain(value); });
+      rna_enum_attribute_domain_items);
 
   RNA_def_node_enum(srna,
                     "domain",
