@@ -75,10 +75,6 @@ class SplitOperation : public NodeOperation {
     first_image.bind_as_texture(shader, "first_image_tx");
     const Result &second_image = get_input("Image_001");
     second_image.bind_as_texture(shader, "second_image_tx");
-//
-//    GPUTexture *output_texture = context().get_viewer_output_texture();
-//    const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
-//    GPU_texture_image_bind(output_texture, image_unit);
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
@@ -90,15 +86,20 @@ class SplitOperation : public NodeOperation {
     first_image.unbind_as_texture();
     second_image.unbind_as_texture();
     output_image.unbind_as_image();
-//    GPU_texture_image_unbind(output_texture);
     GPU_shader_unbind();
   }
 
-  /* The operation domain has the same size as the compositing region without any transformations
-   * applied. */
   Domain compute_domain() override
   {
-    return Domain(context().get_compositing_region_size());
+    /* The context can use the composite output and thus has a dedicated viewer of an arbitrary
+     * size, so use the input directly. Otherwise, no dedicated viewer exist so the input should be
+     * in the domain of the compositing region. */
+    if (context().use_composite_output()) {
+      return NodeOperation::compute_domain();
+    }
+    else {
+      return Domain(context().get_compositing_region_size());
+    }
   }
 
   GPUShader *get_split_shader()

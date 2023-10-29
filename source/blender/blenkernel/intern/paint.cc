@@ -56,15 +56,15 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_enum_types.hh"
 
@@ -144,7 +144,7 @@ IDTypeInfo IDType_ID_PAL = {
     /*main_listbase_index*/ INDEX_ID_PAL,
     /*struct_size*/ sizeof(Palette),
     /*name*/ "Palette",
-    /*name_plural*/ "palettes",
+    /*name_plural*/ N_("palettes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_PALETTE,
     /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
@@ -211,7 +211,7 @@ IDTypeInfo IDType_ID_PC = {
     /*main_listbase_index*/ INDEX_ID_PC,
     /*struct_size*/ sizeof(PaintCurve),
     /*name*/ "PaintCurve",
-    /*name_plural*/ "paint_curves",
+    /*name_plural*/ N_("paint curves"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_PAINTCURVE,
     /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
@@ -1085,6 +1085,8 @@ eObjectMode BKE_paint_object_mode_from_paintmode(ePaintMode mode)
       return OB_MODE_EDIT;
     case PAINT_MODE_SCULPT_CURVES:
       return OB_MODE_SCULPT_CURVES;
+    case PAINT_MODE_GPENCIL:
+      return OB_MODE_PAINT_GREASE_PENCIL;
     case PAINT_MODE_INVALID:
     default:
       return OB_MODE_OBJECT;
