@@ -29,30 +29,42 @@ static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, 
   });
 }
 
-static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
-{
-  CustomData new_data;
-  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
-
-  for (const int old_i : new_by_old_map.index_range()) {
-    const int new_i = new_by_old_map[old_i];
-    CustomData_copy_data(&data, &new_data, old_i, new_i, 1);
-  }
-  CustomData_free(&data, new_by_old_map.size());
-  data = new_data;
-}
-
 static Array<int> reorder_offset_indices(const OffsetIndices<int> old_offsets,
                                          const Span<int> old_by_new_map)
 {
-  Array<int> old_total(old_offsets.data().size());
-  Array<int> new_total(old_offsets.data().size());
-  array_utils::copy(old_offsets.data(), old_total.as_mutable_span());
-  offset_indices::reduce_offsets_to_counts(old_total.as_mutable_span());
-  array_utils::gather(
-      old_total.as_span().drop_back(1), old_by_new_map, new_total.as_mutable_span().drop_back(1));
-  offset_indices::accumulate_counts_to_offsets(new_total.as_mutable_span());
-  return new_total;
+  Array<int> old_counts(old_offsets.data().size());
+  Array<int> new_counts(old_offsets.data().size());
+  array_utils::copy(old_offsets.data(), old_counts.as_mutable_span());
+  offset_indices::reduce_offsets_to_counts(old_counts.as_mutable_span());
+  array_utils::gather(old_counts.as_span().drop_back(1),
+                      old_by_new_map,
+                      new_counts.as_mutable_span().drop_back(1));
+  offset_indices::accumulate_counts_to_offsets(new_counts.as_mutable_span());
+  return new_counts;
+}
+
+static void reorder_customdata(CustomData &data, const Span<int> old_by_new_map)
+{
+  CustomData new_data;
+  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, old_by_new_map.size());
+
+  for (const int new_i : old_by_new_map.index_range()) {
+    const int old_i = old_by_new_map[new_i];
+    CustomData_copy_data(&data, &new_data, old_i, new_i, 1);
+  }
+  CustomData_free(&data, old_by_new_map.size());
+  data = new_data;
+}
+
+static Array<int> invert_permutation(const Span<int> permutation)
+{
+  Array<int> data(permutation.size());
+  threading::parallel_for(permutation.index_range(), 2048, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      data[permutation[i]] = i;
+    }
+  });
+  return data;
 }
 
 static void reorder_customdata_groups(CustomData &data,
@@ -79,7 +91,8 @@ void reorder_mesh_verts(const Span<int> old_by_new_map, Mesh &mesh)
 {
   reorder_customdata(mesh.vert_data, old_by_new_map);
 
-  const auto old_index_to_new = [&](const int old_i) { return old_by_new_map[old_i]; };
+  const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
+  const auto old_index_to_new = [&](const int old_i) { return new_by_old_map[old_i]; };
   parallel_transform(mesh.edges_for_write().cast<int>(), 4098, old_index_to_new);
   parallel_transform(mesh.corner_verts_for_write(), 4098, old_index_to_new);
 
@@ -90,8 +103,9 @@ void reorder_mesh_edges(const Span<int> old_by_new_map, Mesh &mesh)
 {
   reorder_customdata(mesh.edge_data, old_by_new_map);
 
+  const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
   parallel_transform(
-      mesh.corner_edges_for_write(), 4098, [&](const int old_i) { return old_by_new_map[old_i]; });
+      mesh.corner_edges_for_write(), 4098, [&](const int old_i) { return new_by_old_map[old_i]; });
 
   BKE_mesh_tag_topology_changed(&mesh);
 }
