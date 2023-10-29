@@ -20,7 +20,7 @@
 
 #include "node_composite_util.hh"
 
-/* **************** SPLIT VIEWER ******************** */
+/* **************** SPLIT NODE ******************** */
 
 namespace blender::nodes::node_composite_split_cc {
 
