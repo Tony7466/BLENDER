@@ -5348,7 +5348,7 @@ static void rna_def_space_view3d(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "view_mirror_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "rflag", RV3D_MIRROR_X);
-  RNA_def_property_ui_text(prop, "Mirror View Horizontally", "Mirror view horizontally");
+  RNA_def_property_ui_text(prop, "Mirror Horizontally", "Mirror view horizontally");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   /* This isn't directly accessible from the UI, only an operator. */
@@ -5385,6 +5385,11 @@ static void rna_def_space_view3d(BlenderRNA *brna)
 #  endif
   RNA_def_property_ui_text(prop, "View Rotation", "Rotation in quaternions (keep normalized)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "view_roll_angle", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "rot_angle");
+  RNA_def_property_ui_text(prop, "View Roll Angle", "View roll angle (in radians)");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   /* not sure we need rna access to these but adding anyway */
   prop = RNA_def_property(srna, "view_distance", PROP_FLOAT, PROP_UNSIGNED);
