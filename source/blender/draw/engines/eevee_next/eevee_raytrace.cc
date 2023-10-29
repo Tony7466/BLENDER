@@ -215,6 +215,8 @@ void RayTraceModule::sync()
     inst_.hiz_buffer.bind_resources(pass);
     inst_.sampling.bind_resources(pass);
     inst_.gbuffer.bind_resources(pass);
+    inst_.irradiance_cache.bind_resources(pass);
+    inst_.reflection_probes.bind_resources(pass);
     pass.dispatch(horizon_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }

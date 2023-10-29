@@ -173,6 +173,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
                      "eevee_sampling_data",
                      "eevee_utility_texture",
                      "eevee_hiz_data",
+                     "eevee_lightprobe_data",
                      "draw_view")
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .image(2,
@@ -180,7 +181,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
            Qualifier::READ_WRITE,
            ImageType::FLOAT_2D,
            "out_radiance_img")
-    .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .compute_source("eevee_horizon_scan_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_horizon_scan)

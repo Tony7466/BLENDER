@@ -17,6 +17,7 @@
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 #ifdef RAYTRACE_DIFFUSE
 #  define HORIZON_DIFFUSE
@@ -72,6 +73,7 @@ struct HorizonScanContext {
   HorizonScanContextCommon refraction_common;
   vec3 refraction_result;
 #endif
+  SphericalHarmonicL1 irradiance_distant;
 };
 
 void horizon_scan_context_accumulation_reset(inout HorizonScanContext context)
@@ -129,6 +131,21 @@ void horizon_scan_context_sample_finish(inout HorizonScanContextCommon context,
   context.bitmask |= sample_bitmask;
 }
 
+float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
+{
+  return bsdf_lambert(closure.N, L);
+}
+
+float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
+{
+  return btdf_ggx(closure.N, L, V, closure.roughness, closure.ior);
+}
+
+float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
+{
+  return bsdf_ggx(closure.N, L, V, closure.roughness);
+}
+
 void horizon_scan_context_sample_finish(
     inout HorizonScanContext context, vec3 L, vec3 V, vec2 sample_uv, vec2 theta, float bias)
 {
@@ -142,15 +159,17 @@ void horizon_scan_context_sample_finish(
   horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bsdf_eval(context.diffuse.N, L, V);
+  sample_radiance *= bxdf_eval(context.diffuse, L, V) * M_PI;
   horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
-  sample_radiance *= bsdf_ggx(context.reflection.N, L, V, context.reflection.roughness);
+  /* TODO(fclem): Loosing energy here. */
+  sample_radiance *= bxdf_eval(context.reflection, L, V) * M_PI;
   horizon_scan_context_sample_finish(context.reflection_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFRACT
-  sample_radiance *= bsdf_eval(context.refraction.N, L, V);
+  /* TODO(fclem): Broken: Black. */
+  sample_radiance *= bxdf_eval(context.refraction, L, V) * M_PI;
   horizon_scan_context_sample_finish(context.refraction_common, sample_radiance, theta, bias);
 #endif
 }
@@ -162,28 +181,38 @@ void horizon_scan_context_slice_finish_occlusion(inout HorizonScanContextCommon 
   context.light_accum += vec4(vec3(slice_occlusion), 1.0) * context.N_length;
 }
 
-void horizon_scan_context_slice_finish_distant_light(inout HorizonScanContextCommon context)
+void horizon_scan_context_slice_finish_distant_light(HorizonScanContext context,
+                                                     inout HorizonScanContextCommon common_ctx,
+                                                     vec3 vN,
+                                                     vec3 vV,
+                                                     vec3 vT)
 {
+  vec3 N = drw_normal_view_to_world(vN);
+  vec3 light_distant = spherical_harmonics_evaluate_lambert(N, context.irradiance_distant);
+  float visibility = horizon_scan_bitmask_to_visibility_uniform(~common_ctx.bitmask);
+
   /* Add distant lighting. */
-  /* TODO(fclem): Add missing lighting from missing sectors. */
-  vec3 slice = context.light_slice;
+  vec3 slice = common_ctx.light_slice + light_distant * visibility;
   /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-  context.light_accum += vec4(slice, 1.0) * context.N_length;
+  common_ctx.light_accum += vec4(slice, 1.0) * common_ctx.N_length;
 }
 
-void horizon_scan_context_slice_finish(inout HorizonScanContext context)
+void horizon_scan_context_slice_finish(inout HorizonScanContext context, vec3 vV, vec3 vT)
 {
 #ifdef HORIZON_OCCLUSION
   horizon_scan_context_slice_finish_occlusion(context.occlusion_common);
 #endif
 #ifdef HORIZON_DIFFUSE
-  horizon_scan_context_slice_finish_distant_light(context.diffuse_common);
+  horizon_scan_context_slice_finish_distant_light(
+      context, context.diffuse_common, context.diffuse.N, vV, vT);
 #endif
 #ifdef HORIZON_REFLECT
-  horizon_scan_context_slice_finish_distant_light(context.reflection_common);
+  horizon_scan_context_slice_finish_distant_light(
+      context, context.reflection_common, context.reflection.N, vV, vT);
 #endif
 #ifdef HORIZON_REFRACT
-  horizon_scan_context_slice_finish_distant_light(context.refraction_common);
+  horizon_scan_context_slice_finish_distant_light(
+      context, context.refraction_common, context.refraction.N, vV, vT);
 #endif
 }
 
@@ -254,14 +283,18 @@ void horizon_scan_eval(vec3 vP,
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-  /* Only a quarter of a turn because we integrate using 2 slices.
-   * We use this instead of using full circle noise to improve cache hits
-   * since all tracing direction will be in the same quadrant. */
-  vec2 v_dir = sample_circle(noise.x * 0.25);
+#ifdef HORIZON_OCCLUSION
+  const int slice_len = 2;
+#else
+  /* Cost of having another iteration is too high. Prefer denoising. */
+  const int slice_len = 2;
+#endif
+
+  vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
 
   horizon_scan_context_accumulation_reset(context);
 
-  for (int i = 0; i < 2; i++) {
+  for (int slice = 0; slice < slice_len; slice++) {
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
@@ -326,7 +359,7 @@ void horizon_scan_eval(vec3 vP,
       }
     }
 
-    horizon_scan_context_slice_finish(context);
+    horizon_scan_context_slice_finish(context, vV, vT);
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);
