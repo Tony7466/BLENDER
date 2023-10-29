@@ -558,6 +558,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     /* Keyframes */
     if (but->flag & UI_BUT_ANIMATED_KEY) {
       /* Replace/delete keyframes. */
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show in Graph Editor"),
+              ICON_NONE,
+              "ANIM_OT_prop_view");
       if (is_array_component) {
         uiItemBooleanO(layout,
                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Replace Keyframes"),
@@ -606,6 +610,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       /* pass */
     }
     else if (is_anim) {
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show in Graph Editor"),
+              ICON_NONE,
+              "ANIM_OT_prop_view");
       if (is_array_component) {
         uiItemBooleanO(layout,
                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Insert Keyframes"),
