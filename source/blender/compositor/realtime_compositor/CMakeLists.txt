@@ -163,7 +163,7 @@ set(GLSL_SRC
   shaders/compositor_smaa_blending_weight_calculation.glsl
   shaders/compositor_smaa_edge_detection.glsl
   shaders/compositor_smaa_neighborhood_blending.glsl
-  shaders/compositor_split_viewer.glsl
+  shaders/compositor_split.glsl
   shaders/compositor_summed_area_table_compute_complete_blocks.glsl
   shaders/compositor_summed_area_table_compute_complete_x_prologues.glsl
   shaders/compositor_summed_area_table_compute_complete_y_prologues.glsl

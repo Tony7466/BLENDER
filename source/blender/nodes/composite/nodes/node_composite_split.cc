@@ -22,25 +22,24 @@
 
 /* **************** SPLIT VIEWER ******************** */
 
-namespace blender::nodes::node_composite_split_viewer_cc {
+namespace blender::nodes::node_composite_split_cc {
 
-static void cmp_node_split_viewer_declare(NodeDeclarationBuilder &b)
+static void cmp_node_split_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Image");
   b.add_input<decl::Color>("Image", "Image_001");
+  b.add_output<decl::Color>("Image");
 }
 
-static void node_composit_init_splitviewer(bNodeTree * /*ntree*/, bNode *node)
+static void node_composit_init_split(bNodeTree * /*ntree*/, bNode *node)
 {
   ImageUser *iuser = MEM_cnew<ImageUser>(__func__);
   node->storage = iuser;
   iuser->sfra = 1;
   node->custom1 = 50; /* default 50% split */
-
-  node->id = (ID *)BKE_image_ensure_viewer(G.main, IMA_TYPE_COMPOSITE, "Viewer Node");
 }
 
-static void node_composit_buts_splitviewer(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_composit_buts_split(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayout *row, *col;
 
@@ -52,13 +51,13 @@ static void node_composit_buts_splitviewer(uiLayout *layout, bContext * /*C*/, P
 
 using namespace blender::realtime_compositor;
 
-class ViewerOperation : public NodeOperation {
+class SplitOperation : public NodeOperation {
  public:
   using NodeOperation::NodeOperation;
 
   void execute() override
   {
-    GPUShader *shader = get_split_viewer_shader();
+    GPUShader *shader = get_split_shader();
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the output texture, so only write into
@@ -76,16 +75,22 @@ class ViewerOperation : public NodeOperation {
     first_image.bind_as_texture(shader, "first_image_tx");
     const Result &second_image = get_input("Image_001");
     second_image.bind_as_texture(shader, "second_image_tx");
+//
+//    GPUTexture *output_texture = context().get_viewer_output_texture();
+//    const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
+//    GPU_texture_image_bind(output_texture, image_unit);
 
-    GPUTexture *output_texture = context().get_viewer_output_texture();
-    const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
-    GPU_texture_image_bind(output_texture, image_unit);
+    const Domain domain = compute_domain();
+    Result &output_image = get_result("Image");
+    output_image.allocate_texture(domain);
+    output_image.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
     first_image.unbind_as_texture();
     second_image.unbind_as_texture();
-    GPU_texture_image_unbind(output_texture);
+    output_image.unbind_as_image();
+//    GPU_texture_image_unbind(output_texture);
     GPU_shader_unbind();
   }
 
@@ -96,18 +101,18 @@ class ViewerOperation : public NodeOperation {
     return Domain(context().get_compositing_region_size());
   }
 
-  GPUShader *get_split_viewer_shader()
+  GPUShader *get_split_shader()
   {
     if (get_split_axis() == CMP_NODE_SPLIT_VIEWER_HORIZONTAL) {
-      return shader_manager().get("compositor_split_viewer_horizontal");
+      return shader_manager().get("compositor_split_horizontal");
     }
 
-    return shader_manager().get("compositor_split_viewer_vertical");
+    return shader_manager().get("compositor_split_vertical");
   }
 
-  CMPNodeSplitViewerAxis get_split_axis()
+  CMPNodeSplitAxis get_split_axis()
   {
-    return (CMPNodeSplitViewerAxis)bnode().custom2;
+    return (CMPNodeSplitAxis)bnode().custom2;
   }
 
   float get_split_ratio()
@@ -118,22 +123,22 @@ class ViewerOperation : public NodeOperation {
 
 static NodeOperation *get_compositor_operation(Context &context, DNode node)
 {
-  return new ViewerOperation(context, node);
+  return new SplitOperation(context, node);
 }
 
-}  // namespace blender::nodes::node_composite_split_viewer_cc
+}  // namespace blender::nodes::node_composite_split_cc
 
-void register_node_type_cmp_splitviewer()
+void register_node_type_cmp_split()
 {
-  namespace file_ns = blender::nodes::node_composite_split_viewer_cc;
+  namespace file_ns = blender::nodes::node_composite_split_cc;
 
   static bNodeType ntype;
 
-  cmp_node_type_base(&ntype, CMP_NODE_SPLITVIEWER, "Split Viewer", NODE_CLASS_OUTPUT);
-  ntype.declare = file_ns::cmp_node_split_viewer_declare;
-  ntype.draw_buttons = file_ns::node_composit_buts_splitviewer;
+  cmp_node_type_base(&ntype, CMP_NODE_SPLIT, "Split Node", NODE_CLASS_LAYOUT);
+  ntype.declare = file_ns::cmp_node_split_declare;
+  ntype.draw_buttons = file_ns::node_composit_buts_split;
   ntype.flag |= NODE_PREVIEW;
-  ntype.initfunc = file_ns::node_composit_init_splitviewer;
+  ntype.initfunc = file_ns::node_composit_init_split;
   node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 

@@ -2326,10 +2326,10 @@ enum {
 };
 
 /** Split Viewer Node. Stored in `custom2`. */
-typedef enum CMPNodeSplitViewerAxis {
+typedef enum CMPNodeSplitAxis {
   CMP_NODE_SPLIT_VIEWER_HORIZONTAL = 0,
   CMP_NODE_SPLIT_VIEWER_VERTICAL = 1,
-} CMPNodeSplitViewerAxis;
+} CMPNodeSplitAxis;
 
 /** Color Balance Node. Stored in `custom1`. */
 typedef enum CMPNodeColorBalanceMethod {
