@@ -372,6 +372,12 @@ static void obmat_to_viewmat(RegionView3D *rv3d, Object *ob)
 
   normalize_m4_m4(bmat, ob->object_to_world);
 
+  /* Apply view roll. */
+  const float eul[3] = {0, 0, -rv3d->rot_angle};
+  float rot[4][4];
+  eul_to_mat4(rot, eul);
+  mul_m4_m4_post(bmat, rot);
+
   if (rv3d->rflag & RV3D_MIRROR_X) {
     float scale_mat[4][4];
     float scale_vec[2] = {-1.0f, 1.0f};
@@ -409,7 +415,13 @@ void view3d_viewmatrix_set(Depsgraph *depsgraph,
       ED_view3d_lock(rv3d);
     }
 
+    /* Apply view roll. */
+    const float eul[3] = {0, 0, rv3d->rot_angle};
+    float rot[4][4];
+    eul_to_mat4(rot, eul);
     quat_to_mat4(rv3d->viewmat, rv3d->viewquat);
+    mul_m4_m4_pre(rv3d->viewmat, rot);
+
     if (rv3d->persp == RV3D_PERSP) {
       rv3d->viewmat[3][2] -= rv3d->dist;
     }

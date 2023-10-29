@@ -31,6 +31,7 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
+#include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_unit.h"
 
@@ -577,9 +578,26 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
   uint shdr_pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
+  /* Push matrix for view roll. */
+  GPU_matrix_push();
+  float cx = (region->winx / 2.0f);
+  float cy = (region->winy / 2.0f);
+  const float fac = 2.0f * BKE_screen_view3d_zoom_to_fac(rv3d->camzoom);
+  const float sx = (region->winx) * rv3d->camdx * fac;
+  const float sy = (region->winy) * rv3d->camdy * fac;
+
+  cx -= sx;
+  cy -= sy;
+
+  GPU_matrix_translate_2f(cx, cy);
   if ((rv3d->rflag & RV3D_MIRROR_X) != 0) {
     GPU_matrix_scale_2f(-1.0f, 1.0f);
   }
+  GPU_matrix_rotate_2d(RAD2DEGF(rv3d->rot_angle));
+  if ((rv3d->rflag & RV3D_MIRROR_X) != 0) {
+    GPU_matrix_scale_2f(-1.0f, 1.0f);
+  }
+  GPU_matrix_translate_2f(-cx, -cy);
 
   /* First, solid lines. */
   {
@@ -590,6 +608,15 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
       const float winx = (region->winx + 1);
       const float winy = (region->winy + 1);
 
+      /* TODO: passpartout is not playing well with view roll.
+       * This is a first attempt at making it work. */
+      rctf win = {0.0f, winx, 0.0f, winy};
+      rctf win_r = {0.0f, winx, 0.0f, winy};
+      rctf view_rect = {x1i, x2i, y1i, y2i};
+
+      BLI_rctf_rotate_expand(&win_r, &win_r, rv3d->rot_angle);
+      BLI_rctf_union(&win, &win_r);
+
       float alpha = 1.0f;
 
       if (ca->passepartalpha != 1.0f) {
@@ -599,17 +626,17 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
 
       immUniformThemeColorAlpha(TH_CAMERA_PASSEPARTOUT, alpha);
 
-      if (x1i > 0.0f) {
-        immRectf(shdr_pos, 0.0f, winy, x1i, 0.0f);
+      if (view_rect.xmin > win.xmin) {
+        immRectf(shdr_pos, win.xmin, win.ymax, view_rect.xmin, win.ymin);
       }
-      if (x2i < winx) {
-        immRectf(shdr_pos, x2i, winy, winx, 0.0f);
+      if (view_rect.xmax < win.xmax) {
+        immRectf(shdr_pos, view_rect.xmax, win.ymax, win.xmax, win.ymin);
       }
-      if (y2i < winy) {
-        immRectf(shdr_pos, x1i, winy, x2i, y2i);
+      if (view_rect.ymax < win.ymax) {
+        immRectf(shdr_pos, view_rect.xmin, win.ymax, view_rect.xmax, view_rect.ymax);
       }
-      if (y2i > 0.0f) {
-        immRectf(shdr_pos, x1i, y1i, x2i, 0.0f);
+      if (view_rect.ymax > win.ymin) {
+        immRectf(shdr_pos, view_rect.xmin, view_rect.ymin, view_rect.xmax, win.ymin);
       }
 
       GPU_blend(GPU_BLEND_NONE);
@@ -630,6 +657,8 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
 
   /* When overlays are disabled, only show camera outline & passepartout. */
   if (v3d->flag2 & V3D_HIDE_OVERLAYS) {
+    /* Pop view roll matrix. */
+    GPU_matrix_pop();
     return;
   }
 
@@ -805,6 +834,9 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
                      v3d->camera->id.name + 2,
                      sizeof(v3d->camera->id.name) - 2);
   }
+
+  /* Pop view roll matrix. */
+  GPU_matrix_pop();
 }
 
 static void drawrenderborder(ARegion *region, View3D *v3d)
