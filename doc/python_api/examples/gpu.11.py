@@ -35,7 +35,7 @@ compute_shader = gpu.shader.create_from_info(compute_shader_info)
 compute_shader.image('img_output', texture);
 
 gpu.compute.dispatch(compute_shader, 128, 128, 1)
-gpu.state.memory_barrier('TEXTURE_UPDATE')
+gpu.state.memory_barrier('TEXTURE_FETCH')
 
 # Drawing the compute output in viewport
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
