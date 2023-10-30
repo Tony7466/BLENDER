@@ -76,4 +76,102 @@ float brush_radius_world_space(bContext &C, int x, int y)
   return radius;
 }
 
+static Array<int> get_frame_numbers_for_layer(const blender::bke::greasepencil::Layer *layer,
+                                              const int frame,
+                                              const bool use_multi_frame_editing)
+{
+  if (!use_multi_frame_editing) {
+    return Array<int>({frame});
+  }
+  Vector<int> frame_numbers;
+  for (const auto &[frame_number, frame] : layer->frames().items()) {
+    if (frame.is_selected()) {
+      frame_numbers.append_unchecked(frame_number);
+    }
+  }
+  return frame_numbers.as_span();
+}
+
+static void foreach_editable_drawing_ex(
+    const GreasePencil &grease_pencil,
+    const int frame,
+    const bool use_multi_frame_editing,
+    blender::FunctionRef<void(const int, const int, const blender::bke::greasepencil::Drawing &)>
+        function)
+{
+  using namespace blender::bke::greasepencil;
+
+  blender::Span<const Layer *> layers = grease_pencil.layers();
+  for (const int layer_i : layers.index_range()) {
+    const Layer *layer = layers[layer_i];
+    if (!layer->is_editable()) {
+      continue;
+    }
+
+    Array<int> frame_numbers = get_frame_numbers_for_layer(layer, frame, use_multi_frame_editing);
+    for (const int frame_number : frame_numbers) {
+      if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
+        function(layer_i, frame_number, *drawing);
+      }
+    }
+  }
+}
+
+static void foreach_visible_drawing_ex(
+    const GreasePencil &grease_pencil,
+    const int frame,
+    const bool use_multi_frame_editing,
+    blender::FunctionRef<void(const int, const int, const blender::bke::greasepencil::Drawing &)>
+        function)
+{
+  using namespace blender::bke::greasepencil;
+
+  blender::Span<const Layer *> layers = grease_pencil.layers();
+  for (const int layer_i : layers.index_range()) {
+    const Layer *layer = layers[layer_i];
+    if (!layer->is_visible()) {
+      continue;
+    }
+
+    Array<int> frame_numbers = get_frame_numbers_for_layer(layer, frame, use_multi_frame_editing);
+    for (const int frame_number : frame_numbers) {
+      if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
+        function(layer_i, frame_number, *drawing);
+      }
+    }
+  }
+}
+
+void foreach_editable_drawing(const Scene *scene,
+                              GreasePencil &grease_pencil,
+                              FunctionRef<void(int, int, bke::greasepencil::Drawing &)> function)
+{
+  const int current_frame = scene->r.cfra;
+  const ToolSettings *toolsettings = scene->toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  foreach_editable_drawing_ex(
+      grease_pencil,
+      current_frame,
+      use_multi_frame_editing,
+      [&](const int layer_index,
+          const int frame_number,
+          const blender::bke::greasepencil::Drawing &drawing) {
+        function(
+            layer_index, frame_number, const_cast<blender::bke::greasepencil::Drawing &>(drawing));
+      });
+}
+
+void foreach_visible_drawing(
+    const Scene &scene,
+    const GreasePencil &grease_pencil,
+    FunctionRef<void(const int, const int, const bke::greasepencil::Drawing &)> function)
+{
+  const int current_frame = scene.r.cfra;
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  foreach_visible_drawing_ex(grease_pencil, current_frame, use_multi_frame_editing, function);
+}
+
 }  // namespace blender::ed::greasepencil

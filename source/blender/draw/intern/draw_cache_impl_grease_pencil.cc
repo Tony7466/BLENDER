@@ -19,6 +19,8 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "ED_grease_pencil.hh"
+
 #include "GPU_batch.h"
 
 #include "draw_cache_impl.hh"
@@ -250,7 +252,7 @@ static void grease_pencil_edit_lines_batch_ensure(
 }
 
 static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil,
-                                            int cfra,
+                                            const Scene &scene,
                                             const bool lines)
 {
   using namespace blender::bke::greasepencil;
@@ -268,8 +270,12 @@ static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil,
 
   /* Get the visible drawings. */
   Vector<const Drawing *> drawings;
-  grease_pencil.foreach_visible_drawing(
-      cfra, [&](const int /*layer_index*/, const Drawing &drawing) { drawings.append(&drawing); });
+  ed::greasepencil::foreach_visible_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/, const int /*frame_number*/, const Drawing &drawing) {
+        drawings.append(&drawing);
+      });
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
    * offsets into the curves for the vertices and triangles. */
@@ -547,52 +553,52 @@ void DRW_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
   grease_pencil->runtime->batch_cache = nullptr;
 }
 
-GPUBatch *DRW_cache_grease_pencil_get(Object *ob, int cfra)
+GPUBatch *DRW_cache_grease_pencil_get(Object *ob, const Scene *scene)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
-  grease_pencil_geom_batch_ensure(grease_pencil, cfra, false);
+  grease_pencil_geom_batch_ensure(grease_pencil, *scene, false);
 
   return cache->geom_batch;
 }
 
-GPUBatch *DRW_cache_grease_pencil_edit_points_get(Object *ob, int cfra)
+GPUBatch *DRW_cache_grease_pencil_edit_points_get(Object *ob, const Scene *scene)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
-  grease_pencil_geom_batch_ensure(grease_pencil, cfra, false);
+  grease_pencil_geom_batch_ensure(grease_pencil, *scene, false);
 
   return cache->edit_points;
 }
 
-GPUBatch *DRW_cache_grease_pencil_edit_lines_get(Object *ob, int cfra)
+GPUBatch *DRW_cache_grease_pencil_edit_lines_get(Object *ob, const Scene *scene)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
-  grease_pencil_geom_batch_ensure(grease_pencil, cfra, true);
+  grease_pencil_geom_batch_ensure(grease_pencil, *scene, true);
 
   return cache->edit_lines;
 }
 
-GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(Object *ob, int cfra)
+GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(Object *ob, const Scene *scene)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
-  grease_pencil_geom_batch_ensure(grease_pencil, cfra, true);
+  grease_pencil_geom_batch_ensure(grease_pencil, *scene, true);
 
   return cache->vbo;
 }
 
-GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(Object *ob, int cfra)
+GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(Object *ob, const Scene *scene)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
-  grease_pencil_geom_batch_ensure(grease_pencil, cfra, false);
+  grease_pencil_geom_batch_ensure(grease_pencil, *scene, false);
 
   return cache->vbo_col;
 }

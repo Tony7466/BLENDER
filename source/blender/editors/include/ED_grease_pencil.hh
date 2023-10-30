@@ -110,6 +110,14 @@ bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 
+void foreach_editable_drawing(const Scene *scene,
+                              GreasePencil &grease_pencil,
+                              FunctionRef<void(int, int, bke::greasepencil::Drawing &)> function);
+void foreach_visible_drawing(
+    const Scene &scene,
+    const GreasePencil &grease_pencil,
+    FunctionRef<void(const int, const int, const bke::greasepencil::Drawing &)> function);
+
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
 void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_number);

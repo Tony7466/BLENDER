@@ -305,8 +305,12 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -453,8 +457,12 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
   const float epsilon = RNA_float_get(op->ptr, "factor");
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -659,8 +667,12 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
   const DissolveMode mode = DissolveMode(RNA_enum_get(op->ptr, "type"));
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -810,8 +822,12 @@ static int grease_pencil_stroke_change_color_exec(bContext *C, wmOperator * /*op
     return OPERATOR_CANCELLED;
   }
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (curves.points_num() == 0) {
@@ -879,8 +895,12 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
   const CyclicalMode mode = CyclicalMode(RNA_enum_get(op->ptr, "type"));
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {

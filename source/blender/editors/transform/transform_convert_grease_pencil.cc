@@ -35,10 +35,12 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     TransDataContainer &tc = trans_data_contrainers[i];
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
-    grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing & /*drawing*/) {
-          number_of_layers_total++;
-        });
+    ed::greasepencil::foreach_editable_drawing(
+        scene,
+        grease_pencil,
+        [&](const int /*layer_index*/,
+            const int /*frame_number*/,
+            bke::greasepencil::Drawing & /*drawing*/) { number_of_layers_total++; });
   }
 
   int layer_offset = 0;
@@ -50,8 +52,12 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     TransDataContainer &tc = trans_data_contrainers[i];
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
-    grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+    ed::greasepencil::foreach_editable_drawing(
+        scene,
+        grease_pencil,
+        [&](const int /*layer_index*/,
+            const int /*frame_number*/,
+            bke::greasepencil::Drawing &drawing) {
           const bke::CurvesGeometry &curves = drawing.strokes();
 
           if (use_proportional_edit) {
@@ -88,8 +94,12 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
     int layer_points_offset = 0;
 
-    grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+    ed::greasepencil::foreach_editable_drawing(
+        scene,
+        grease_pencil,
+        [&](const int /*layer_index*/,
+            const int /*frame_number*/,
+            bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
           const IndexMask selected_indices = selection_per_layer_per_object[layer_offset];
 
@@ -131,8 +141,12 @@ static void recalcData_grease_pencil(TransInfo *t)
   for (const TransDataContainer &tc : trans_data_contrainers) {
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
-    grease_pencil.foreach_editable_drawing(
-        scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+    ed::greasepencil::foreach_editable_drawing(
+        scene,
+        grease_pencil,
+        [&](const int /*layer_index*/,
+            const int /*frame_number*/,
+            bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
           curves.calculate_bezier_auto_handles();

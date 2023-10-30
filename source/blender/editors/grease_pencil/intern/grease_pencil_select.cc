@@ -36,8 +36,12 @@ static int select_all_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          blender::bke::greasepencil::Drawing &drawing) {
         blender::ed::curves::select_all(drawing.strokes_for_write(), selection_domain, action);
       });
 
@@ -69,10 +73,14 @@ static int select_more_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
-        blender::ed::curves::select_adjacent(drawing.strokes_for_write(), false);
-      });
+  ed::greasepencil::foreach_editable_drawing(scene,
+                                             grease_pencil,
+                                             [](const int /*layer_index*/,
+                                                const int /*frame_number*/,
+                                                blender::bke::greasepencil::Drawing &drawing) {
+                                               blender::ed::curves::select_adjacent(
+                                                   drawing.strokes_for_write(), false);
+                                             });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
@@ -100,10 +108,14 @@ static int select_less_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
-        blender::ed::curves::select_adjacent(drawing.strokes_for_write(), true);
-      });
+  ed::greasepencil::foreach_editable_drawing(scene,
+                                             grease_pencil,
+                                             [](const int /*layer_index*/,
+                                                const int /*frame_number*/,
+                                                blender::bke::greasepencil::Drawing &drawing) {
+                                               blender::ed::curves::select_adjacent(
+                                                   drawing.strokes_for_write(), true);
+                                             });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
@@ -131,10 +143,14 @@ static int select_linked_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
-        blender::ed::curves::select_linked(drawing.strokes_for_write());
-      });
+  ed::greasepencil::foreach_editable_drawing(scene,
+                                             grease_pencil,
+                                             [](const int /*layer_index*/,
+                                                const int /*frame_number*/,
+                                                blender::bke::greasepencil::Drawing &drawing) {
+                                               blender::ed::curves::select_linked(
+                                                   drawing.strokes_for_write());
+                                             });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
@@ -166,8 +182,10 @@ static int select_random_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int layer_index, bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int layer_index, const int /*frame_number*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         IndexMaskMemory memory;
@@ -218,10 +236,14 @@ static int select_alternate_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
-        blender::ed::curves::select_alternate(drawing.strokes_for_write(), deselect_ends);
-      });
+  ed::greasepencil::foreach_editable_drawing(scene,
+                                             grease_pencil,
+                                             [&](const int /*layer_index*/,
+                                                 const int /*frame_number*/,
+                                                 blender::bke::greasepencil::Drawing &drawing) {
+                                               blender::ed::curves::select_alternate(
+                                                   drawing.strokes_for_write(), deselect_ends);
+                                             });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
@@ -257,8 +279,12 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
+  ed::greasepencil::foreach_editable_drawing(
+      scene,
+      grease_pencil,
+      [&](const int /*layer_index*/,
+          const int /*frame_number*/,
+          blender::bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         IndexMaskMemory memory;

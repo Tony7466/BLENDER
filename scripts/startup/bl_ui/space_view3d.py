@@ -825,6 +825,9 @@ class VIEW3D_HT_header(Header):
                     icon='GP_SELECT_STROKES',
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
+                
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_grease_pencil_multi_frame_editing", text="")
 
             if object_mode == 'PAINT_GREASE_PENCIL':
                 row = layout.row()
