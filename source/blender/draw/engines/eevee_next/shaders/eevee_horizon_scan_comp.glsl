@@ -16,7 +16,7 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  ivec2 extent = imageSize(gbuf_header_tx).xy;
+  ivec2 extent = textureSize(gbuf_header_tx, 0).xy;
   if (any(greaterThanEqual(texel, extent))) {
     return;
   }
