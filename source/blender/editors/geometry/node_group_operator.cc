@@ -227,6 +227,11 @@ static void store_result_geometry(Main &bmain,
   }
 }
 
+/**
+ * Create a dependency graph referencing all data-blocks used by the tree, and all selected
+ * objects. Adding the selected objects is necessary because they are currently compared by pointer
+ * to other evaluated objects inside of geometry nodes.
+ */
 static Depsgraph *create_depsgraph_from_indirect_ids(Main &bmain,
                                                      Scene &scene,
                                                      ViewLayer &view_layer,
