@@ -89,31 +89,38 @@ void VKCommandBuffers::init_fence(const VKDevice &device)
   }
 }
 
-static void submit_command_buffer(const VKDevice &device,
-                                  VKCommandBuffer &command_buffer,
-                                  VkFence vk_fence,
-                                  uint64_t timeout)
+static void submit_command_buffers(const VKDevice &device,
+                                   MutableSpan<VKCommandBuffer *> command_buffers,
+                                   VkFence vk_fence,
+                                   uint64_t timeout)
 {
-  VkCommandBuffer handles[1];
-  command_buffer.end_recording();
+  BLI_assert(ELEM(command_buffers.size(), 1, 2));
+  VkCommandBuffer handles[2];
+  int num_command_buffers = 0;
+  for (VKCommandBuffer *command_buffer : command_buffers) {
+    command_buffer->end_recording();
+    handles[num_command_buffers++] = command_buffer->vk_command_buffer();
+  }
 
-  handles[0] = command_buffer.vk_command_buffer();
   VkSubmitInfo submit_info = {};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.commandBufferCount = 1;
+  submit_info.commandBufferCount = num_command_buffers;
   submit_info.pCommandBuffers = handles;
 
   vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence);
-  command_buffer.commands_submitted();
 
   vkWaitForFences(device.device_get(), 1, &vk_fence, VK_TRUE, timeout);
   vkResetFences(device.device_get(), 1, &vk_fence);
 
-  command_buffer.begin_recording();
+  for (VKCommandBuffer *command_buffer : command_buffers) {
+    command_buffer->commands_submitted();
+    command_buffer->begin_recording();
+  }
 }
 
 void VKCommandBuffers::submit()
 {
+  const VKDevice &device = VKBackend::get().device_get();
   VKCommandBuffer &data_transfer = command_buffer_get(Type::DataTransfer);
   VKCommandBuffer &compute = command_buffer_get(Type::Compute);
   VKCommandBuffer &graphics = command_buffer_get(Type::Graphics);
@@ -121,25 +128,45 @@ void VKCommandBuffers::submit()
   const bool has_transfer_work = data_transfer.has_recorded_commands();
   const bool has_compute_work = compute.has_recorded_commands();
   const bool has_graphics_work = graphics.has_recorded_commands();
-  const bool reset_submission_id = has_transfer_work || has_compute_work || has_graphics_work;
-  const VKDevice &device = VKBackend::get().device_get();
+  BLI_assert_msg((has_compute_work && !has_graphics_work) ||
+                     (!has_compute_work && has_graphics_work) ||
+                     !(has_compute_work || has_graphics_work),
+                 "Cannot determine dependency when compute and graphics work needs to be done");
 
-  /* TODO data transfers should be queued together with compute or draw commands. */
+  VKCommandBuffer *command_buffers[2] = {nullptr, nullptr};
+  int command_buffer_index = 0;
+
   if (has_transfer_work) {
-    submit_command_buffer(device, data_transfer, vk_fence_, FenceTimeout);
+    command_buffers[command_buffer_index++] = &data_transfer;
   }
 
   if (has_compute_work) {
-    submit_command_buffer(device, compute, vk_fence_, FenceTimeout);
+    command_buffers[command_buffer_index++] = &compute;
+    submit_command_buffers(device,
+                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
+                           vk_fence_,
+                           FenceTimeout);
   }
-
-  if (has_graphics_work) {
+  else if (has_graphics_work) {
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
-    submit_command_buffer(device, graphics, vk_fence_, FenceTimeout);
+    command_buffers[command_buffer_index++] = &graphics;
+    submit_command_buffers(device,
+                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
+                           vk_fence_,
+                           FenceTimeout);
     begin_render_pass(*framebuffer);
   }
+  /* Check needs to go as last, transfer work is already included with the compute/graphics
+   * submission. */
+  else if (has_transfer_work) {
+    submit_command_buffers(device,
+                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
+                           vk_fence_,
+                           FenceTimeout);
+  }
 
+  const bool reset_submission_id = has_compute_work || has_graphics_work;
   if (reset_submission_id) {
     submission_id_.next();
   }
