@@ -141,7 +141,7 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
     const int cd_offset = CustomData_get_offset_named(
         &ss->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
 
-    GSET_FOREACH_BEGIN (BMFace *, f, BKE_pbvh_bmesh_node_faces(node)) {
+    for (BMFace *f : BKE_pbvh_bmesh_node_faces(node)) {
       if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
         continue;
       }
@@ -183,7 +183,6 @@ static void do_draw_face_sets_brush_task(Object *ob, const Brush *brush, PBVHNod
         changed = true;
       }
     }
-    GSET_FOREACH_END();
   }
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
