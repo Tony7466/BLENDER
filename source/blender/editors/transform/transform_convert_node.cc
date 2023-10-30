@@ -434,15 +434,18 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
 
   const bool canceled = (t->state == TRANS_CANCEL);
 
-  if (canceled && t->remove_on_cancel) {
-    /* remove selected nodes on cancel */
+  if (canceled) {
     if (ntree) {
-      LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
-        if (node->flag & NODE_SELECT) {
-          nodeRemoveNode(bmain, ntree, node, true);
+      node_transform_restore_parenting_hierarchy(t->data_container, *ntree);
+      if (t->remove_on_cancel) {
+        /* remove selected nodes on cancel */
+        LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+          if (node->flag & NODE_SELECT) {
+            nodeRemoveNode(bmain, ntree, node, true);
+          }
         }
+        ED_node_tree_propagate_change(C, bmain, ntree);
       }
-      ED_node_tree_propagate_change(C, bmain, ntree);
     }
   }
 
