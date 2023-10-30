@@ -1865,7 +1865,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (MAIN_VERSION_FILE_ATLEAST(bmain, 401, 0)) {
+  if (MAIN_VERSION_FILE_ATLEAST(bmain, 401, 4)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
         /* Convert combined Noise Texture nodes back to Musgrave and Noise Texture nodes. */
