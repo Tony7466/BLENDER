@@ -2231,6 +2231,8 @@ def km_node_editor(params):
         ("node.translate_attach",
          {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
          {"properties": [("TRANSFORM_OT_translate", [("view2d_edge_pan", True)])]}),
+        ("node.select_translate_attach",
+         {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG', "shift": True}, None),
         # Avoid duplicating the previous item.
         *([] if params.select_mouse == 'LEFTMOUSE' else (
             ("node.translate_attach", {"type": params.select_mouse, "value": 'CLICK_DRAG'},

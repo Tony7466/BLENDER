@@ -152,6 +152,17 @@ void ED_operatormacros_node()
   RNA_boolean_set(mot->ptr, "remove_on_cancel", true);
   RNA_boolean_set(mot->ptr, "view2d_edge_pan", true);
 
+  /* NODE_OT_translate_attach with additional selection to allow pressing the modifier key to
+   * remove nodes from frames before clicking. */
+  ot = WM_operatortype_append_macro("NODE_OT_select_translate_attach",
+                                    "Select and Move",
+                                    "Add node to selection, move and attach to frame",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  mot = WM_operatortype_macro_define(ot, "NODE_OT_select");
+  RNA_boolean_set(mot->ptr, "extend", true);
+  mot = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
+  RNA_boolean_set(mot->ptr, "view2d_edge_pan", true);
+
   /* NOTE: Currently not in a default keymap or menu due to messy keymaps
    * and tricky invoke functionality.
    * Kept around in case users want to make own shortcuts.
