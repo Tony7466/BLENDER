@@ -380,7 +380,6 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                   VK_IMAGE_ASPECT_DEPTH_BIT);
     }
   }
-  context.flush();
 }
 
 /** \} */

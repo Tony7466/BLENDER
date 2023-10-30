@@ -350,7 +350,7 @@ void VKCommandBuffers::dispatch(VKStorageBuffer &command_storage_buffer)
 
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Compute);
   vkCmdDispatchIndirect(command_buffer.vk_command_buffer(), command_storage_buffer.vk_handle(), 0);
-  command_buffer.commands_submitted();
+  command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer,

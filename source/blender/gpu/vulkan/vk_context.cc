@@ -238,6 +238,12 @@ void VKContext::swap_buffers_post_callback()
 
 void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
 {
+  /*
+   * Ensure no graphics/compute commands are scheduled. They could use the back buffer, which
+   * layout is altered here.
+   */
+  command_buffers_get().submit();
+
   VKFrameBuffer &framebuffer = *unwrap(back_left);
 
   VKTexture wrapper("display_texture");
@@ -247,7 +253,6 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   framebuffer.color_attachment_layout_ensure(*this, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
-  color_attachment->layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   VkImageBlit image_blit = {};
   image_blit.srcOffsets[0] = {0, color_attachment->height_get() - 1, 0};
