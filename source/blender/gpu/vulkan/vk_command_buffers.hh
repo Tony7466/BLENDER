@@ -39,10 +39,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    */
   static constexpr uint64_t FenceTimeout = UINT64_MAX;
 
-  /* Not owning handle */
-  VkQueue vk_queue_ = VK_NULL_HANDLE;
-
-  /* Owning handles */
   /* Fence for CPU GPU synchronization when submitting the command buffers. */
   VkFence vk_fence_ = VK_NULL_HANDLE;
 

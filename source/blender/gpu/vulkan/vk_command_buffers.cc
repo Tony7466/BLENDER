@@ -24,7 +24,7 @@ VKCommandBuffers::~VKCommandBuffers()
 {
   if (vk_fence_ != VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
-   const VKDevice &device = VKBackend::get().device_get();
+    const VKDevice &device = VKBackend::get().device_get();
     vkDestroyFence(device.device_get(), vk_fence_, vk_allocation_callbacks);
     vk_fence_ = VK_NULL_HANDLE;
   }
@@ -43,8 +43,6 @@ void VKCommandBuffers::init(const VKDevice &device)
   if (!device.is_initialized()) {
     return;
   }
-
-  vk_queue_ = device.queue_get();
 
   init_command_buffers(device);
   init_fence(device);
@@ -91,8 +89,7 @@ void VKCommandBuffers::init_fence(const VKDevice &device)
   }
 }
 
-static void submit_command_buffer(VkDevice vk_device,
-                                  VkQueue vk_queue,
+static void submit_command_buffer(const VKDevice &device,
                                   VKCommandBuffer &command_buffer,
                                   VkFence vk_fence,
                                   uint64_t timeout)
@@ -106,11 +103,11 @@ static void submit_command_buffer(VkDevice vk_device,
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers = handles;
 
-  vkQueueSubmit(vk_queue, 1, &submit_info, vk_fence);
+  vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence);
   command_buffer.commands_submitted();
 
-  vkWaitForFences(vk_device, 1, &vk_fence, VK_TRUE, timeout);
-  vkResetFences(vk_device, 1, &vk_fence);
+  vkWaitForFences(device.device_get(), 1, &vk_fence, VK_TRUE, timeout);
+  vkResetFences(device.device_get(), 1, &vk_fence);
 
   command_buffer.begin_recording();
 }
@@ -129,17 +126,17 @@ void VKCommandBuffers::submit()
 
   /* TODO data transfers should be queued together with compute or draw commands. */
   if (has_transfer_work) {
-    submit_command_buffer(device.device_get(), vk_queue_, data_transfer, vk_fence_, FenceTimeout);
+    submit_command_buffer(device, data_transfer, vk_fence_, FenceTimeout);
   }
 
   if (has_compute_work) {
-    submit_command_buffer(device.device_get(), vk_queue_, compute, vk_fence_, FenceTimeout);
+    submit_command_buffer(device, compute, vk_fence_, FenceTimeout);
   }
 
   if (has_graphics_work) {
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
-    submit_command_buffer(device.device_get(), vk_queue_, graphics, vk_fence_, FenceTimeout);
+    submit_command_buffer(device, graphics, vk_fence_, FenceTimeout);
     begin_render_pass(*framebuffer);
   }
 
