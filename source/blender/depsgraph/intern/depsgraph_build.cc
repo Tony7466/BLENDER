@@ -218,12 +218,6 @@ ID *DEG_get_id_from_handle(DepsNodeHandle *node_handle)
   return deg_handle->node->owner->owner->id_orig;
 }
 
-DepsNodeHandle *DEG_get_handle_from_id(ID *id)
-{
-  deg::DepsNodeHandle *deg_handle = get_node_handle(node_handle);
-  return deg_handle->node->owner->owner->id_orig;
-}
-
 Depsgraph *DEG_get_graph_from_handle(DepsNodeHandle *node_handle)
 {
   deg::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);

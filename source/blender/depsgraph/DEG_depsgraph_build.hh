@@ -172,7 +172,6 @@ void DEG_add_customdata_mask(DepsNodeHandle *handle,
                              const CustomData_MeshMasks *masks);
 
 ID *DEG_get_id_from_handle(DepsNodeHandle *node_handle);
-DepsNodeHandle *DEG_get_handle_from_id(ID *id);
 Depsgraph *DEG_get_graph_from_handle(DepsNodeHandle *node_handle);
 
 bool DEG_object_has_geometry_component(Object *object);

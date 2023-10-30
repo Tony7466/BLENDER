@@ -7,6 +7,7 @@
 #include "BLI_compute_context.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_set.hh"
 
 #include "BKE_idprop.hh"
 #include "BKE_node.h"
@@ -28,6 +29,10 @@ class GeoModifierLog;
 }  // namespace blender::nodes
 
 namespace blender::nodes {
+
+void find_used_ids_in_tree(const bNodeTree &tree,
+                           Set<ID *> &r_ids,
+                           bool &r_needs_own_transform_relation);
 
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();
@@ -51,12 +56,6 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
 
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket);
-
-// Array<GMutablePointer> get_param_inputs(const bNodeTree &btree,
-//                                         const GeometryNodesGroupFunction &function,
-//                                         const IDProperty *properties,
-//                                         LinearAllocator<> &allocator,
-//                                         Vector<GMutablePointer> inputs_to_destruct);
 
 bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
