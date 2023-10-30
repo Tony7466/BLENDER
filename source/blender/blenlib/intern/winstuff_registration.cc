@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifdef WIN32
 #  include <Windows.h>
 
@@ -24,7 +28,7 @@
  * just un-pin and re-pin that should clear that right up! It doesn't, it'll keep using the
  * outdated path till the end of time and there's no window API call we can do to update this
  * information. However this shortcut is stored in the user profile in a sub-foder we can easily
- * query, from there, we iterate over all files, look for the one that has our appid in it,
+ * query, from there, we can iterate over all files, look for the one that has our appid in it,
  * and when we find it, update the path to the blender launcher to the current installation, bit
  * of a hack, but Microsoft seemingly offers no other way to deal with this problem.
  *
