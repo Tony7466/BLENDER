@@ -482,15 +482,6 @@ bool ED_operator_editmesh_region_view3d(bContext *C)
   return false;
 }
 
-bool ED_operator_editmesh_auto_smooth(bContext *C)
-{
-  Object *obedit = CTX_data_edit_object(C);
-  if (obedit && obedit->type == OB_MESH && (((Mesh *)(obedit->data))->flag & ME_AUTOSMOOTH)) {
-    return nullptr != BKE_editmesh_from_object(obedit);
-  }
-  return false;
-}
-
 bool ED_operator_editarmature(bContext *C)
 {
   Object *obedit = CTX_data_edit_object(C);
@@ -859,11 +850,11 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
         const ARegion *region = az->region;
         const int local_xy[2] = {xy[0] - region->winrct.xmin, xy[1] - region->winrct.ymin};
 
-        /* Respect button sections: If the mouse is horizontally hovering empty space defined by a
-         * separator-spacer between buttons, don't allow scaling the region from there. Used for
-         * regions that have a transparent background between such button sections, users don't
-         * expect to be able to resize from there. */
-        if (region->visible && (region->flag & RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS) &&
+        /* Respect button sections: Clusters of buttons (separated using separator-spacers) are
+         * drawn with a background, in-between them the region is fully transparent (if "Region
+         * Overlap" is enabled). Only allow dragging visible edges, so at the button sections. */
+        if (region->visible && region->overlap &&
+            (region->flag & RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS) &&
             !UI_region_button_sections_is_inside_x(az->region, local_xy[0]))
         {
           az = nullptr;

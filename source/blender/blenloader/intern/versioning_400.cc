@@ -22,6 +22,7 @@
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
@@ -1080,9 +1081,10 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     STRNCPY(node->idname, "ShaderNodeTexMusgrave");
     node->type = SH_NODE_TEX_MUSGRAVE;
     NodeTexMusgrave *data = MEM_cnew<NodeTexMusgrave>(__func__);
-    data->base = (static_cast<NodeTexNoise *>(node->storage))->base;
-    data->musgrave_type = (static_cast<NodeTexNoise *>(node->storage))->type;
-    data->dimensions = (static_cast<NodeTexNoise *>(node->storage))->dimensions;
+    const NodeTexNoise *noise_data = static_cast<const NodeTexNoise *>(node->storage);
+    data->base = noise_data->base;
+    data->musgrave_type = noise_data->type;
+    data->dimensions = noise_data->dimensions;
     MEM_freeN(node->storage);
     node->storage = data;
 
@@ -1096,29 +1098,34 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     bNodeLink *detail_link = nullptr;
     bNode *detail_from_node = nullptr;
     bNodeSocket *detail_from_socket = nullptr;
+    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
+    float *detail = version_cycles_node_socket_float_value(detail_socket);
 
     bNodeLink *dimension_link = nullptr;
     bNode *dimension_from_node = nullptr;
     bNodeSocket *dimension_from_socket = nullptr;
+    float *dimension = version_cycles_node_socket_float_value(dimension_socket);
 
     bNodeLink *lacunarity_link = nullptr;
     bNode *lacunarity_from_node = nullptr;
     bNodeSocket *lacunarity_from_socket = nullptr;
+    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
+    float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
       /* Find links, nodes and sockets. */
       if (link->tonode == node) {
-        if (STREQ(link->tosock->identifier, "Detail")) {
+        if (link->tosock == detail_socket) {
           detail_link = link;
           detail_from_node = link->fromnode;
           detail_from_socket = link->fromsock;
         }
-        if (STREQ(link->tosock->identifier, "Dimension")) {
+        if (link->tosock == dimension_socket) {
           dimension_link = link;
           dimension_from_node = link->fromnode;
           dimension_from_socket = link->fromsock;
         }
-        if (STREQ(link->tosock->identifier, "Lacunarity")) {
+        if (link->tosock == lacunarity_socket) {
           lacunarity_link = link;
           lacunarity_from_node = link->fromnode;
           lacunarity_from_socket = link->fromsock;
@@ -1127,9 +1134,6 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     }
 
     float locy_offset = 0.0f;
-
-    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
-    float *detail = version_cycles_node_socket_float_value(detail_socket);
 
     if (detail_link != nullptr) {
       locy_offset -= 40.0f;
@@ -1155,10 +1159,6 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     else {
       *detail = std::clamp(*detail + 1.0f, 0.0f, 15.0f);
     }
-
-    float *dimension = version_cycles_node_socket_float_value(dimension_socket);
-    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
-    float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
 
     if ((dimension_link != nullptr) || (lacunarity_link != nullptr)) {
       /* Add Logarithm Math node and Multiply Math node before Roughness input. */
@@ -1199,11 +1199,37 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       }
     }
     else {
-      *dimension = -(std::logf(*dimension) / std::logf(*lacunarity));
+      *dimension = (*dimension == 0.0f) || (*lacunarity == 0.0f) || (*lacunarity == 1.0f) ?
+                       0.0f :
+                       -(std::logf(*dimension) / std::logf(*lacunarity));
     }
   }
 
   version_socket_update_is_used(ntree);
+}
+
+static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
+{
+  using namespace blender;
+  /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
+   * the brush size which would be stored in the stroke thickness and then scaled by the point
+   * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
+   * going from a thickness to a radius, hence the factor of two) to convert back into blender
+   * units.
+   * Store the radius now directly in blender units. This makes it consistent with how hair curves
+   * handle the radius. */
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    MutableSpan<float> radii = drawing.radii_for_write();
+    threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
+      for (const int i : range) {
+        radii[i] /= 2000.0f;
+      }
+    });
+  }
 }
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
@@ -1314,12 +1340,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     /* Set default bake resolution. */
-    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "int", "resolution")) {
-      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
-        lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
-      }
-    }
-
     if (!DNA_struct_member_exists(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
         world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
@@ -1839,6 +1859,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
+    }
+  }
+
   if (MAIN_VERSION_FILE_ATLEAST(bmain, 401, 0)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
@@ -1861,5 +1887,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "volumetric_ray_depth")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.volumetric_ray_depth = default_eevee.volumetric_ray_depth;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "Material", "char", "surface_render_method")) {
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
+                                         MA_SURFACE_METHOD_FORWARD :
+                                         MA_SURFACE_METHOD_DEFERRED;
+      }
+    }
   }
 }
