@@ -104,7 +104,7 @@ class SplitOperation : public NodeOperation {
 
   GPUShader *get_split_shader()
   {
-    if (get_split_axis() == CMP_NODE_SPLIT_VIEWER_HORIZONTAL) {
+    if (get_split_axis() == CMP_NODE_SPLIT_HORIZONTAL) {
       return shader_manager().get("compositor_split_horizontal");
     }
 

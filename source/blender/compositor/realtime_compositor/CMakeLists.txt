@@ -291,7 +291,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_realize_on_domain_info.hh
   shaders/infos/compositor_screen_lens_distortion_info.hh
   shaders/infos/compositor_smaa_info.hh
-  shaders/infos/compositor_split_viewer_info.hh
+  shaders/infos/compositor_split_info.hh
   shaders/infos/compositor_summed_area_table_info.hh
   shaders/infos/compositor_sun_beams_info.hh
   shaders/infos/compositor_symmetric_blur_info.hh
