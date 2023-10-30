@@ -82,7 +82,8 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   self->ctx_init.area_is_set = (self->ctx_init.area != area);
   self->ctx_init.region_is_set = (self->ctx_init.region != region);
 
-  bScreen *screen = win ? WM_window_get_active_screen(win) : nullptr;
+  bScreen *screen = CTX_wm_screen(C);
+  screen = screen != nullptr ? screen : WM_window_get_active_screen(win);
 
   /* Sanity check, the region is in the screen/area. */
   if (self->ctx_temp.region_is_set && (region != nullptr)) {
