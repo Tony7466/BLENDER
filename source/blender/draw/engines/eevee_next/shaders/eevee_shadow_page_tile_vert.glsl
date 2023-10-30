@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Virtual Shadow map tile shader.
@@ -20,8 +23,8 @@ void main()
   /* Load where fragment should write the tile data. */
   uvec3 dst_page_co = shadow_page_unpack(dst_coord_buf[tile_id]);
   /* Interpolate output texel  */
-  out_texel_xy = (vec2(dst_page_co.xy) + tile_corner) * vec2(SHADOW_PAGE_RES);
-  out_page_z = dst_page_co.z;
+  interp_noperspective.out_texel_xy = (vec2(dst_page_co.xy) + tile_corner) * vec2(SHADOW_PAGE_RES);
+  interp_flat.out_page_z = dst_page_co.z;
 #endif
 
   /* Load where the quad should be positioned. */

@@ -182,25 +182,37 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
 
 namespace blender::nodes::node_geo_simulation_input_cc {
 
-static void node_declare_dynamic(const bNodeTree &node_tree,
-                                 const bNode &node,
-                                 NodeDeclaration &r_declaration)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *output_node = node_tree.node_by_id(node_storage(node).output_node_id);
-  if (!output_node) {
+  b.add_output<decl::Float>("Delta Time");
+
+  const bNode *node = b.node_or_null();
+  const bNodeTree *node_tree = b.tree_or_null();
+  if (ELEM(nullptr, node, node_tree)) {
     return;
   }
 
-  std::unique_ptr<decl::Float> delta_time = std::make_unique<decl::Float>();
-  delta_time->identifier = "Delta Time";
-  delta_time->name = DATA_("Delta Time");
-  delta_time->in_out = SOCK_OUT;
-  r_declaration.outputs.append(delta_time.get());
-  r_declaration.items.append(std::move(delta_time));
-
-  const NodeGeometrySimulationOutput &storage = *static_cast<const NodeGeometrySimulationOutput *>(
+  const bNode *output_node = node_tree->node_by_id(node_storage(*node).output_node_id);
+  if (!output_node) {
+    return;
+  }
+  const auto &output_storage = *static_cast<const NodeGeometrySimulationOutput *>(
       output_node->storage);
-  socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
+
+  for (const int i : IndexRange(output_storage.items_num)) {
+    const NodeSimulationItem &item = output_storage.items[i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const StringRef name = item.name;
+    const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
+    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier);
+    if (socket_type_supports_fields(socket_type)) {
+      input_decl.supports_field();
+      output_decl.dependent_field({input_decl.input_index()});
+    }
+  }
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -226,7 +238,7 @@ static void node_register()
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_SIMULATION_INPUT, "Simulation Input", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
   node_type_storage(&ntype,
