@@ -2137,6 +2137,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 4)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
         /* versioning_update_noise_texture_node must be done before
@@ -2148,10 +2154,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
-
-    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
-      versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
-    }
   }
 
   /**
