@@ -1160,8 +1160,6 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
-static void versioning_material_transparent_shadow(Material *material) {}
-
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
