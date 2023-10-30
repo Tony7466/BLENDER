@@ -960,7 +960,7 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         /* If was already changed, exit.*/
         if (changed) {
           return;
