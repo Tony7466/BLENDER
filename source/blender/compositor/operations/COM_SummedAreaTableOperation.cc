@@ -159,12 +159,12 @@ float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area)
   corrected_upper_bound[1] = math::min((int)buffer->get_height() - 1, upper_bound[1]);
 
   float4 a, b, c, d, addend, substrahend;
-  buffer->read_sampled(&a.x, UNPACK2(corrected_upper_bound), PixelSampler::Nearest);
-  buffer->read_sampled(&d.x, UNPACK2(corrected_lower_bound), PixelSampler::Nearest);
+  buffer->read_sampled(&a.x, corrected_upper_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
+  buffer->read_sampled(&d.x, corrected_lower_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
   addend = a + d;
 
-  buffer->read_sampled(&b.x, UNPACK2(corrected_lower_bound), PixelSampler::Nearest);
-  buffer->read_sampled(&c.x, UNPACK2(corrected_upper_bound), PixelSampler::Nearest);
+  buffer->read_sampled(&b.x, corrected_lower_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
+  buffer->read_sampled(&c.x, corrected_upper_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
   substrahend = b + c;
 
   float4 sum = addend - substrahend;
@@ -201,12 +201,12 @@ float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area)
   corrected_upper_bound[1] = math::min(buffer->get_height() - 1, upper_bound[1]);
 
   float4 a, b, c, d, addend, substrahend;
-  buffer->read_elem_checked(UNPACK2(corrected_upper_bound), a);
-  buffer->read_elem_checked(UNPACK2(corrected_lower_bound), d);
+  buffer->read_elem_checked(corrected_upper_bound[0], corrected_upper_bound[1], a);
+  buffer->read_elem_checked(corrected_lower_bound[0], corrected_lower_bound[1], d);
   addend = a + d;
 
-  buffer->read_elem_checked(UNPACK2(corrected_lower_bound), b);
-  buffer->read_elem_checked(UNPACK2(corrected_upper_bound), c);
+  buffer->read_elem_checked(corrected_lower_bound[0], corrected_upper_bound[1], b);
+  buffer->read_elem_checked(corrected_upper_bound[0], corrected_lower_bound[1], c);
   substrahend = b + c;
 
   float4 sum = addend - substrahend;
