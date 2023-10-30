@@ -59,7 +59,7 @@ class InstancerData : public IdData {
 
  private:
   pxr::SdfPath object_prim_id(Object *object) const;
-  pxr::SdfPath psys_prim_id(Object *parent_obj, const ParticleSystem *psys) const;
+  pxr::SdfPath hair_prim_id(Object *parent_obj, const ParticleSystem *psys) const;
   pxr::SdfPath nonmesh_prim_id(pxr::SdfPath const &prim_id, int index) const;
   int nonmesh_prim_id_index(pxr::SdfPath const &id) const;
   void update_nonmesh_instance(NonmeshInstance &inst);

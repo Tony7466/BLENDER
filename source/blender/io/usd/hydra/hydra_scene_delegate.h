@@ -94,7 +94,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPath prim_id(const ID *id, const char *prefix) const;
   pxr::SdfPath object_prim_id(const Object *object) const;
   pxr::SdfPath material_prim_id(const Material *mat) const;
-  pxr::SdfPath psys_prim_id(Object *parent_obj, const ParticleSystem *mat) const;
+  pxr::SdfPath hair_prim_id(Object *parent_obj, const ParticleSystem *mat) const;
   pxr::SdfPath instancer_prim_id() const;
   pxr::SdfPath world_prim_id() const;
 

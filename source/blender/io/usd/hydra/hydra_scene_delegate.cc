@@ -256,7 +256,7 @@ pxr::SdfPath HydraSceneDelegate::material_prim_id(const Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
-pxr::SdfPath HydraSceneDelegate::psys_prim_id(Object *parent_obj, const ParticleSystem *psys) const
+pxr::SdfPath HydraSceneDelegate::hair_prim_id(Object *parent_obj, const ParticleSystem *psys) const
 {
   char name[128];
   SNPRINTF(name,
@@ -464,7 +464,7 @@ void HydraSceneDelegate::update_collection()
         continue;
       }
       if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
-        pxr::SdfPath id = psys_prim_id(object, psys);
+        pxr::SdfPath id = hair_prim_id(object, psys);
         HairData *h_data = hair_data(id);
         if (h_data) {
           h_data->update();

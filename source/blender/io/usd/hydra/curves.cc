@@ -194,10 +194,7 @@ HairData::HairData(HydraSceneDelegate *scene_delegate,
 
 bool HairData::is_supported(const ParticleSystem *particle_system)
 {
-  if (particle_system->part && particle_system->part->type == PART_HAIR) {
-    return true;
-  }
-  return false;
+  return particle_system->part && particle_system->part->type == PART_HAIR;
 }
 
 bool HairData::is_visible(HydraSceneDelegate *scene_delegate,
@@ -212,10 +209,6 @@ void HairData::init()
 {
   ID_LOGN(1, "");
 
-  if (psys_in_edit_mode(scene_delegate_->depsgraph, particle_system_)) {
-    return;
-  }
-
   /* NOTE: no need to write_transform here, since we already write actual position. */
   write_curves();
   write_materials();
@@ -224,17 +217,7 @@ void HairData::init()
 
 void HairData::update()
 {
-  if (particle_system_->part->type != PART_HAIR) {
-    CLOG_WARN(LOG_HYDRA_SCENE, "Unsupported particle type: %d", particle_system_->part->type);
-    if (scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
-      remove();
-    }
-    return;
-  }
   init();
-  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
-    insert();
-  }
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
       prim_id, pxr::HdChangeTracker::AllDirty);
 
