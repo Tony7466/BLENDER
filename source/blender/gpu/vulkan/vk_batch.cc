@@ -61,7 +61,7 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
     command_buffers.draw(vertex_first, vertex_count, instance_first, instance_count);
   }
 
-  context.flush();
+  command_buffers.submit();
 }
 
 void VKBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
@@ -86,7 +86,8 @@ void VKBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
   else {
     command_buffers.draw_indirect(indirect_buffer, offset, count, stride);
   }
-  context.flush();
+
+  command_buffers.submit();
 }
 
 VKVertexBuffer *VKBatch::vertex_buffer_get(int index)

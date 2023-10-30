@@ -8,18 +8,6 @@
 
 #include "vk_command_buffer.hh"
 #include "vk_backend.hh"
-#include "vk_buffer.hh"
-#include "vk_context.hh"
-#include "vk_device.hh"
-#include "vk_framebuffer.hh"
-#include "vk_index_buffer.hh"
-#include "vk_memory.hh"
-#include "vk_pipeline.hh"
-#include "vk_storage_buffer.hh"
-#include "vk_texture.hh"
-#include "vk_vertex_buffer.hh"
-
-#include "BLI_assert.h"
 
 namespace blender::gpu {
 

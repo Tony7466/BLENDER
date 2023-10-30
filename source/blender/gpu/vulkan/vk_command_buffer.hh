@@ -15,17 +15,6 @@
 
 namespace blender::gpu {
 class VKDevice;
-class VKStorageBuffer;
-class VKFrameBuffer;
-class VKStorageBuffer;
-class VKBuffer;
-class VKVertexBuffer;
-class VKIndexBuffer;
-class VKTexture;
-class VKPushConstants;
-struct VKBufferWithOffset;
-class VKPipeline;
-class VKDescriptorSet;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {

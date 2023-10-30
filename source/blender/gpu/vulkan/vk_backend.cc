@@ -131,7 +131,6 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   context.bind_compute_pipeline();
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.dispatch(groups_x_len, groups_y_len, groups_z_len);
-  context.flush();
 }
 
 void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
@@ -143,7 +142,6 @@ void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
   VKStorageBuffer &indirect_buffer = *unwrap(indirect_buf);
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.dispatch(indirect_buffer);
-  context.flush();
 }
 
 Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)

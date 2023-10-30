@@ -40,8 +40,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   static constexpr uint64_t FenceTimeout = UINT64_MAX;
 
   /* Not owning handle */
-  /** Handles to the command queue and device. Handle is owned by `GHOST_ContextVK`. */
-  VkDevice vk_device_ = VK_NULL_HANDLE;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
 
   /* Owning handles */
@@ -155,7 +153,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   }
 
  private:
-  void init_fence();
+  void init_fence(const VKDevice &device);
   void init_command_buffers(const VKDevice &device);
 
   VKCommandBuffer &command_buffer_get(Type type)

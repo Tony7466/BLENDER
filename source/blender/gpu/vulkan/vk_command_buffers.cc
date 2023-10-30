@@ -7,6 +7,7 @@
  */
 
 #include "vk_command_buffers.hh"
+#include "vk_backend.hh"
 #include "vk_device.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
@@ -23,7 +24,8 @@ VKCommandBuffers::~VKCommandBuffers()
 {
   if (vk_fence_ != VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
-    vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);
+   const VKDevice &device = VKBackend::get().device_get();
+    vkDestroyFence(device.device_get(), vk_fence_, vk_allocation_callbacks);
     vk_fence_ = VK_NULL_HANDLE;
   }
 }
@@ -35,18 +37,17 @@ void VKCommandBuffers::init(const VKDevice &device)
   }
   initialized_ = true;
 
-  vk_device_ = device.device_get();
-  vk_queue_ = device.queue_get();
-
   /* When a the last GHOST context is destroyed the device is deallocate. A moment later the GPU
    * context is destroyed. The first step is to activate it. Activating would retrieve the device
    * from GHOST which in that case is a #VK_NULL_HANDLE. */
-  if (vk_device_ == VK_NULL_HANDLE) {
+  if (!device.is_initialized()) {
     return;
   }
 
+  vk_queue_ = device.queue_get();
+
   init_command_buffers(device);
-  init_fence();
+  init_fence(device);
   submission_id_.reset();
 }
 
@@ -67,7 +68,7 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device)
   alloc_info.commandPool = device.vk_command_pool_get();
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   alloc_info.commandBufferCount = (uint32_t)Type::Max;
-  vkAllocateCommandBuffers(vk_device_, &alloc_info, vk_command_buffers);
+  vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers);
 
   init_command_buffer(command_buffer_get(Type::DataTransfer),
                       vk_command_buffers[(int)Type::DataTransfer],
@@ -80,13 +81,13 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device)
                       "Graphics Command Buffer");
 }
 
-void VKCommandBuffers::init_fence()
+void VKCommandBuffers::init_fence(const VKDevice &device)
 {
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
+    vkCreateFence(device.device_get(), &fenceInfo, vk_allocation_callbacks, &vk_fence_);
   }
 }
 
@@ -124,20 +125,21 @@ void VKCommandBuffers::submit()
   const bool has_compute_work = compute.has_recorded_commands();
   const bool has_graphics_work = graphics.has_recorded_commands();
   const bool reset_submission_id = has_transfer_work || has_compute_work || has_graphics_work;
+  const VKDevice &device = VKBackend::get().device_get();
 
   /* TODO data transfers should be queued together with compute or draw commands. */
   if (has_transfer_work) {
-    submit_command_buffer(vk_device_, vk_queue_, data_transfer, vk_fence_, FenceTimeout);
+    submit_command_buffer(device.device_get(), vk_queue_, data_transfer, vk_fence_, FenceTimeout);
   }
 
   if (has_compute_work) {
-    submit_command_buffer(vk_device_, vk_queue_, compute, vk_fence_, FenceTimeout);
+    submit_command_buffer(device.device_get(), vk_queue_, compute, vk_fence_, FenceTimeout);
   }
 
   if (has_graphics_work) {
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
-    submit_command_buffer(vk_device_, vk_queue_, graphics, vk_fence_, FenceTimeout);
+    submit_command_buffer(device.device_get(), vk_queue_, graphics, vk_fence_, FenceTimeout);
     begin_render_pass(*framebuffer);
   }
 
