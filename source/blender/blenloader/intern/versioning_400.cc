@@ -276,8 +276,13 @@ static void versioning_eevee_shadow_settings(Object *object)
     if (!material || material->blend_shadow != MA_BS_NONE) {
       hide_shadows = false;
     }
-    if (material && material->blend_shadow == MA_BS_SOLID) {
-      material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
+    if (material) {
+      if (material->blend_shadow == MA_BS_SOLID) {
+        material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
+      }
+      else {
+        material->blend_flag |= MA_BL_TRANSPARENT_SHADOW;
+      }
     }
   }
 
@@ -362,6 +367,20 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+    /* Update Cycles settings first. */
+    const Material &default_mat = *DNA_struct_default_get(Material);
+    const bool transparent_shadows = default_mat.blend_flag & MA_BL_TRANSPARENT_SHADOW;
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+        if (version_cycles_property_boolean(cmat, "use_transparent_shadow", transparent_shadows)) {
+          material->blend_flag |= MA_BL_TRANSPARENT_SHADOW;
+        }
+        else {
+          material->blend_flag &= ~MA_BL_TRANSPARENT_SHADOW;
+        }
+      }
+    }
+    /* Now override EEVEE scenes. */
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (!STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
         continue;
