@@ -17,3 +17,4 @@ Referenced by issue #113532, Undo Performance regression related to Geometry Nod
 Referenced by issue #113763, Spline attribute not rendered in Cycles (regression from 3.6)
 Referenced by issue #114096, Asset Browser thumbnail has a weird shadow when created at world origin
 Referenced by pull request #114148, Fix #112716: Custom sockets ignore draw_color method
+Referenced by issue #112716, Regression: Custom sockets ignore the draw_color method and are always Magenta
