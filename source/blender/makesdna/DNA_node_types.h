@@ -157,6 +157,7 @@ typedef struct bNodeSocket {
 
   /** Custom dynamic defined label, MAX_NAME. */
   char label[64];
+  char short_label[64];
   char description[64];
 
   /**
@@ -369,7 +370,11 @@ typedef struct bNode {
    */
   int16_t type;
 
-  char _pad1[2];
+  /**
+   * Depth of the node in the node editor, used to keep recently selected nodes at the front, and
+   * to order frame nodes properly.
+   */
+  int16_t ui_order;
 
   /** Used for some builtin nodes that store properties but don't have a storage struct. */
   int16_t custom1, custom2;
@@ -786,9 +791,12 @@ typedef struct bNodeTree {
   void ensure_interface_cache() const;
 
   /* Cached interface item lists. */
-  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
-  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs() const;
-  blender::Span<bNodeTreeInterfaceItem *> interface_items() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_inputs() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_outputs() const;
+  blender::Span<bNodeTreeInterfaceItem *> interface_items();
+  blender::Span<const bNodeTreeInterfaceItem *> interface_items() const;
 #endif
 } bNodeTree;
 
@@ -917,7 +925,7 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
   GEO_NODE_ASSET_MODIFIER = (1 << 6),
 } GeometryNodeAssetTraitFlag;
-ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_MODIFIER);
 
 /* Data structs, for `node->storage`. */
 
@@ -1046,7 +1054,7 @@ typedef struct NodeBilateralBlurData {
 } NodeBilateralBlurData;
 
 typedef struct NodeKuwaharaData {
-  short size;
+  short size DNA_DEPRECATED;
   short variation;
   int uniformity;
   float sharpness;
@@ -1805,7 +1813,6 @@ typedef struct NodeGeometrySimulationOutput {
 #ifdef __cplusplus
   blender::Span<NodeSimulationItem> items_span() const;
   blender::MutableSpan<NodeSimulationItem> items_span();
-  blender::IndexRange items_range() const;
 #endif
 } NodeGeometrySimulationOutput;
 
@@ -1819,11 +1826,6 @@ typedef struct NodeRepeatItem {
    * names change.
    */
   int identifier;
-
-#ifdef __cplusplus
-  static bool supports_type(eNodeSocketDatatype type);
-  std::string identifier_str() const;
-#endif
 } NodeRepeatItem;
 
 typedef struct NodeGeometryRepeatInput {
@@ -1842,8 +1844,6 @@ typedef struct NodeGeometryRepeatOutput {
 #ifdef __cplusplus
   blender::Span<NodeRepeatItem> items_span() const;
   blender::MutableSpan<NodeRepeatItem> items_span();
-  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
-  void set_item_name(NodeRepeatItem &item, const char *name);
 #endif
 } NodeGeometryRepeatOutput;
 

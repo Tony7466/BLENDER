@@ -435,27 +435,6 @@ static bool socket_can_be_viewed(const bNode &node, const bNodeSocket &socket)
               SOCK_RGBA);
 }
 
-static eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype socket_type)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return CD_PROP_FLOAT;
-    case SOCK_INT:
-      return CD_PROP_INT32;
-    case SOCK_VECTOR:
-      return CD_PROP_FLOAT3;
-    case SOCK_BOOLEAN:
-      return CD_PROP_BOOL;
-    case SOCK_RGBA:
-      return CD_PROP_COLOR;
-    case SOCK_ROTATION:
-      return CD_PROP_QUATERNION;
-    default:
-      /* Fallback. */
-      return CD_AUTO_FROM_NAME;
-  }
-}
-
 /**
  * Find the socket to link to in a viewer node.
  */
@@ -474,8 +453,8 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
         return viewer_socket;
       }
       NodeGeometryViewer *storage = (NodeGeometryViewer *)viewer_node.storage;
-      const eCustomDataType data_type = socket_type_to_custom_data_type(
-          (eNodeSocketDatatype)src_socket.type);
+      const eCustomDataType data_type = *bke::socket_type_to_custom_data_type(
+          eNodeSocketDatatype(src_socket.type));
       BLI_assert(data_type != CD_AUTO_FROM_NAME);
       storage->data_type = data_type;
       viewer_node.typeinfo->updatefunc(&ntree, &viewer_node);
@@ -1782,7 +1761,7 @@ static int node_parent_set_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
   return OPERATOR_FINISHED;
@@ -1869,7 +1848,7 @@ static int node_join_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   ED_node_tree_propagate_change(C, &bmain, snode.edittree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
@@ -2004,7 +1983,7 @@ void node_insert_on_frame_flags(bNodeTree &node_tree)
     }
   }
 
-  node_sort(node_tree);
+  tree_draw_order_update(node_tree);
 }
 
 /** \} */
@@ -2060,7 +2039,7 @@ static int node_detach_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
   return OPERATOR_FINISHED;
