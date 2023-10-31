@@ -143,11 +143,18 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   IndexMaskMemory &memory);
 
 /**
- * Structure for curves converted to viewport 2D space.
+ * Structure for the accumulated curves of a set of drawings (layers) converted to
+ * viewport 2D space.
+ * All points of all curves of all drawings are put in one contiguous array. Curve points are
+ * accessible by offset indices. E.g. curve no. 7 of drawing no. 3 can be accessed by:
+ * curve_contiguous = curve_offset[3 (= drawing index)] + 7 (= curve index)
+ * point_contiguous = point_offset[curve_contiguous]
+ * first_point_of_curve = points_2d[point_contiguous]
  */
 struct Curves2DSpace {
   Vector<GreasePencilDrawing *> drawings;
-  /* Curve index offset for each GP drawing. */
+  /* Curve offset for each drawing (layer). So when there are three drawings with 12, 15 and 8
+   * curves, the curve offsets will be [0, 12, 27 (= 12 + 15)]. */
   Vector<int> curve_offset;
   /* Point index offset for each curve. */
   Array<int> point_offset;
@@ -173,7 +180,7 @@ struct Curves2DSpace {
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
-                                     Vector<int> &drawing_indices,
+                                     Vector<int> &layer_index,
                                      const bool get_stroke_flag = false);
 
 }  // namespace blender::ed::greasepencil

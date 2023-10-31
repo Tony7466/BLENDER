@@ -2531,17 +2531,16 @@ class VIEW3D_PT_tools_grease_pencil_fill_gap_closure(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
 
         col = layout.column()
-
+        col.prop(gp_settings, "fill_proximity_distance")
+        col.separator()
+        
+        col.prop(gp_settings, "fill_extend_mode", text="End Mode")
         col.prop(gp_settings, "extend_stroke_factor", text="Size")
-        row = col.row(align=True)
-        row.prop(gp_settings, "fill_extend_mode", text="Mode")
-        row = col.row(align=True)
-        row.prop(gp_settings, "show_fill_extend", text="Visual Aids")
-
+        
+        col.prop(gp_settings, "show_fill_extend", text="Visual Aids")
         if gp_settings.fill_extend_mode == 'EXTEND':
-            row = col.row(align=True)
-            row.prop(gp_settings, "use_collide_strokes")
-
+            col.prop(gp_settings, "use_collide_strokes")
+        
 
 classes = (
     VIEW3D_MT_brush_context_menu,

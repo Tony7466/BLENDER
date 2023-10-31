@@ -120,6 +120,9 @@ typedef struct BrushGpencilSettings {
   float fill_extend_fac;
   /** Number of pixels to dilate fill area. */
   int dilate_pixels;
+  /** Distance of curves to be considered in proximity (pixels). */
+  int fill_proximity_distance;
+  char _pad3[4];
 
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;

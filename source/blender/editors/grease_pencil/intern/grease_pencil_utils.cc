@@ -86,7 +86,7 @@ float brush_radius_world_space(bContext &C, int x, int y)
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
-                                     Vector<int> &drawing_indices,
+                                     Vector<int> &layer_index,
                                      const bool get_stroke_flag)
 {
   /* Get viewport projection matrix and evaluated GP object. */
@@ -128,7 +128,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
       const VArray<bool> cyclic = curves.cyclic();
       const bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *ob, drawing_indices[drawing_i]);
+              ob_eval, *ob, layer_index[drawing_i]);
 
       /* Get the curve materials. */
       VArray<int> materials;
@@ -137,26 +137,27 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
             "material_index", ATTR_DOMAIN_CURVE, 0);
       }
 
-      /* Get the initial point index in the 2D point array for curves in this drawing. */
-      int point_cont = curve_point_offset[drawing_i];
+      /* Get the initial point index in the contiguous 2D point array for the curves in this
+       * drawing. */
+      int point_contiguous = curve_point_offset[drawing_i];
 
       /* Loop all curves. */
       for (const int curve_i : curves.curves_range()) {
-        const int cv_cont = curve_i + cv2d.curve_offset[drawing_i];
+        const int curve_contiguous = cv2d.curve_offset[drawing_i] + curve_i;
         const IndexRange points = points_by_curve[curve_i];
 
         /* Set curve data. */
-        BLI_rctf_init_minmax(&cv2d.curve_bbox[cv_cont]);
-        cv2d.point_size[cv_cont] = points.size();
-        cv2d.point_offset[cv_cont] = point_cont;
-        cv2d.is_cyclic[cv_cont] = cyclic[curve_i];
-        cv2d.drawing_index_2d[cv_cont] = drawing_i;
+        BLI_rctf_init_minmax(&cv2d.curve_bbox[curve_contiguous]);
+        cv2d.point_size[curve_contiguous] = points.size();
+        cv2d.point_offset[curve_contiguous] = point_contiguous;
+        cv2d.is_cyclic[curve_contiguous] = cyclic[curve_i];
+        cv2d.drawing_index_2d[curve_contiguous] = drawing_i;
 
         /* Set stroke flag: true when the stroke property is active in the curve material. */
         if (get_stroke_flag) {
           Material *material = BKE_object_material_get(ob, materials[curve_i] + 1);
-          cv2d.has_stroke[cv_cont] = (material &&
-                                      (material->gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
+          cv2d.has_stroke[curve_contiguous] = (material && (material->gp_style->flag &
+                                                            GP_MATERIAL_STROKE_SHOW) != 0);
         }
 
         /* Loop all stroke points. */
@@ -168,12 +169,12 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
               vc->region, deformation.positions[point_i], pos, projection.ptr());
 
           /* Store 2D point in contiguous array. */
-          cv2d.points_2d[point_cont] = pos;
+          cv2d.points_2d[point_contiguous] = pos;
 
           /* Update stroke bounding box. */
-          BLI_rctf_do_minmax_v(&cv2d.curve_bbox[cv_cont], pos);
+          BLI_rctf_do_minmax_v(&cv2d.curve_bbox[curve_contiguous], pos);
 
-          point_cont++;
+          point_contiguous++;
         }
       }
     }

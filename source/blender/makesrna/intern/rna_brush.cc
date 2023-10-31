@@ -1790,6 +1790,19 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
+  /* Number of pixels to consider curves to be in proximity - used for gap closure in the
+   * fill tool. */
+  prop = RNA_def_property(srna, "fill_proximity_distance", PROP_INT, PROP_PIXEL);
+  RNA_def_property_int_sdna(prop, nullptr, "fill_proximity_distance");
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_int_default(prop, 0);
+  RNA_def_property_ui_text(
+      prop,
+      "By Proximity",
+      "Close gaps when strokes are less than this distance apart. Use zero to disable");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+
   /* Factor to determine outline external perimeter thickness. */
   prop = RNA_def_property(srna, "outline_thickness_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "outline_fac");
