@@ -1450,10 +1450,10 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
     echan->chan_id = BLI_toupper_ascii(name[0]);
     layname[0] = '\0';
 
-    if (ELEM(name[0], 'R', 'G', 'B', 'A')) {
+    if (ELEM(echan->chan_id, 'R', 'G', 'B', 'A', 'V')) {
       BLI_strncpy(passname, "Combined", passname_maxncpy);
     }
-    else if (name[0] == 'Z') {
+    else if (echan->chan_id == 'Z') {
       BLI_strncpy(passname, "Depth", passname_maxncpy);
     }
     else {
@@ -1776,8 +1776,23 @@ static const char *exr_rgba_channelname(MultiPartInputFile &file, const char *ch
 static int exr_has_rgb(MultiPartInputFile &file, const char *rgb_channels[3])
 {
   /* Common names for RGB-like channels in order. */
-  static const char *channel_names[] = {
-      "R", "Red", "G", "Green", "B", "Blue", "AR", "RA", "AG", "GA", "AB", "BA", nullptr};
+  static const char *channel_names[] = {"V",
+                                        "R",
+                                        "r",
+                                        "Red",
+                                        "G",
+                                        "g",
+                                        "Green",
+                                        "B",
+                                        "b",
+                                        "Blue",
+                                        "AR",
+                                        "RA",
+                                        "AG",
+                                        "GA",
+                                        "AB",
+                                        "BA",
+                                        nullptr};
 
   const Header &header = file.header(0);
   int num_channels = 0;
