@@ -58,10 +58,7 @@
 #define MAX_PBVH_BATCH_KEY 512
 #define MAX_PBVH_VBOS 16
 
-using blender::char3;
-using blender::float2;
 using blender::float3;
-using blender::float4;
 using blender::FunctionRef;
 using blender::IndexRange;
 using blender::Map;
@@ -73,8 +70,6 @@ using blender::StringRef;
 using blender::StringRefNull;
 using blender::uchar3;
 using blender::uchar4;
-using blender::ushort3;
-using blender::ushort4;
 using blender::Vector;
 
 static bool pbvh_attr_supported(int type, const eAttrDomain domain)
@@ -974,8 +969,7 @@ struct PBVHBatches {
     PBVHVbo vbo(domain, type, name);
     GPUVertFormat format;
 
-    bool need_aliases = !ELEM(
-        type, CD_PBVH_CO_TYPE, CD_PBVH_NO_TYPE, CD_PBVH_FSET_TYPE, CD_PBVH_MASK_TYPE);
+    bool need_aliases = false;
 
     GPU_vertformat_clear(&format);
 

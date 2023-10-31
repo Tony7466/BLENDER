@@ -296,16 +296,16 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
 {
   using namespace blender;
   const bke::AttributeAccessor attributes = pointcloud.attributes();
-  const StringRefNull name = request.attribute_name;
   const eCustomDataType data_type = request.cd_type;
-  const GVArraySpan attribute = *attributes.lookup_or_default(name, ATTR_DOMAIN_POINT, data_type);
+
+  GPUVertFormat format = draw::init_format_for_attribute(data_type, "data");
 
   GPUVertBuf &vbo = *cache.eval_cache.attributes_buf[index];
-
-  GPUVertFormat format = draw::init_format_for_attribute(data_type, name);
   GPU_vertbuf_init_with_format_ex(
       &vbo, &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
+  const StringRefNull name = request.attribute_name;
+  const GVArraySpan attribute = *attributes.lookup_or_default(name, ATTR_DOMAIN_POINT, data_type);
   draw::alloc_vertbuf_data_and_extract_direct(attribute, vbo);
 }
 

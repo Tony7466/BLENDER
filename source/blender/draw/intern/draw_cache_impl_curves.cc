@@ -322,14 +322,14 @@ static void curves_batch_ensure_attribute(const Curves &curves,
                                           const int index)
 {
   const bke::AttributeAccessor attributes = curves.geometry.wrap().attributes();
-  const StringRef name = request.attribute_name;
+  const StringRefNull name = request.attribute_name;
   const eCustomDataType data_type = request.cd_type;
   const eAttrDomain domain = request.domain;
   const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
 
   GPU_VERTBUF_DISCARD_SAFE(cache.proc_attributes_buf[index]);
 
-  GPUVertFormat format = init_format_for_attribute(data_type, request.attribute_name);
+  GPUVertFormat format = init_format_for_attribute(data_type, name);
   GPU_vertformat_deinterleave(&format);
 
   cache.proc_attributes_buf[index] = GPU_vertbuf_create_with_format_ex(
