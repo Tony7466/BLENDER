@@ -1610,7 +1610,7 @@ static void pbvh_bmesh_collapse_edge(
     /* Get vertices, replace use of v_del with v_conn */
     BMFace *f = l->f;
 
-    if (BMFace *existing_face = bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
+    if (bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
       /* This case is handled above. */
     }
     else {
