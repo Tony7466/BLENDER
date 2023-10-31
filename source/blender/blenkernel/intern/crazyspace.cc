@@ -674,7 +674,6 @@ GeometryDeformation get_evaluated_grease_pencil_drawing_deformation(const Object
                                                                     const int frame)
 {
   BLI_assert(ob_orig.type == OB_GREASE_PENCIL);
-  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(ob_eval->data);
   const GreasePencil &grease_pencil_orig = *static_cast<const GreasePencil *>(ob_orig.data);
 
   const Span<const bke::greasepencil::Layer *> layers_orig = grease_pencil_orig.layers();
