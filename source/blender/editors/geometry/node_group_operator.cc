@@ -240,7 +240,7 @@ static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
 {
   Set<ID *> ids_for_relations;
   bool needs_own_transform_relation = false;
-  nodes::find_used_ids_in_tree(node_tree_orig, ids_for_relations, needs_own_transform_relation);
+  nodes::find_node_tree_dependencies(node_tree_orig, ids_for_relations, needs_own_transform_relation);
 
   Vector<const ID *> ids;
   ids.append(&node_tree_orig.id);

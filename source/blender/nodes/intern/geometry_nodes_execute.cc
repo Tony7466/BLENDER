@@ -122,7 +122,7 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
   }
 }
 
-void find_used_ids_in_tree(const bNodeTree &tree,
+void find_node_tree_dependencies(const bNodeTree &tree,
                            Set<ID *> &r_ids,
                            bool &r_needs_own_transform_relation)
 {

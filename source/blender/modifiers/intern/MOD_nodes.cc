@@ -167,7 +167,7 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   bool needs_own_transform_relation = false;
   Set<ID *> used_ids;
   find_used_ids_from_settings(nmd->settings, used_ids);
-  nodes::find_used_ids_in_tree(*nmd->node_group, used_ids, needs_own_transform_relation);
+  nodes::find_node_tree_dependencies(*nmd->node_group, used_ids, needs_own_transform_relation);
 
   if (ctx->object->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(ctx->object->data);
