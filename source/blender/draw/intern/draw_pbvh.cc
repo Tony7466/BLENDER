@@ -87,7 +87,7 @@ namespace blender::draw {
 
 /** Similar to #AttributeTypeConverter. */
 template<typename T> struct AttributeConverter {
-  using VBOT = float4;
+  using VBOT = void;
 };
 
 template<> struct AttributeConverter<bool> {
