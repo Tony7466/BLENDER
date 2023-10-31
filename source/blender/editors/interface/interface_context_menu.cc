@@ -658,10 +658,12 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     if (is_anim || but->flag & UI_BUT_ANIMATED_KEY) {
       uiItemS(layout);
       if (is_array_component) {
-        uiItemO(layout,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show Single in Graph Editor"),
-                ICON_NONE,
-                "ANIM_OT_prop_view");
+        uiItemBooleanO(layout,
+                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show Single in Graph Editor"),
+                       ICON_NONE,
+                       "ANIM_OT_prop_view",
+                       "all",
+                       false);
         uiItemBooleanO(layout,
                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show All in Graph Editor"),
                        ICON_NONE,
@@ -670,10 +672,12 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                        true);
       }
       else {
-        uiItemO(layout,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show in Graph Editor"),
-                ICON_NONE,
-                "ANIM_OT_prop_view");
+        uiItemBooleanO(layout,
+                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show in Graph Editor"),
+                       ICON_NONE,
+                       "ANIM_OT_prop_view",
+                       "all",
+                       false);
       }
     }
 

@@ -4370,6 +4370,8 @@ static int prop_view_exec(bContext *C, wmOperator *op)
   float frame_range[2];
   get_view_range(scene, true, frame_range);
 
+  const bool whole_array = RNA_boolean_get(op->ptr, "all");
+
   LISTBASE_FOREACH (CollectionPointerLink *, selected, &selection) {
     ID *selected_id = selected->ptr.owner_id;
     if (!BKE_animdata_id_is_animated(selected_id)) {
@@ -4379,16 +4381,36 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     char *path = RNA_path_from_ID_to_property(&selected->ptr, prop);
     bAction *action;
     bool driven;
-    FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-        anim_data, path, index, &action, &driven);
-    fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
 
-    rctf fcu_bounds;
-    BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
-    BLI_rctf_union(&bounds, &fcu_bounds);
+    blender::Vector<FCurve *> fcurves;
+
+    if (RNA_property_array_check(prop) && whole_array) {
+      const int length = RNA_property_array_length(&selected->ptr, prop);
+      for (int i = 0; i < length; i++) {
+        FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
+            anim_data, path, i, &action, &driven);
+        if (fcurve != nullptr) {
+          fcurves.append(fcurve);
+        }
+      }
+    }
+    else {
+      FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
+          anim_data, path, index, &action, &driven);
+      if (fcurve != nullptr) {
+        fcurves.append(fcurve);
+      }
+    }
+
     MEM_freeN(path);
-  }
 
+    for (FCurve *fcurve : fcurves) {
+      fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
+      rctf fcu_bounds;
+      BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
+      BLI_rctf_union(&bounds, &fcu_bounds);
+    }
+  }
   BLI_freelistN(&selection);
 
   if (!BLI_rctf_is_valid(&bounds)) {
@@ -4413,6 +4435,7 @@ static int prop_view_exec(bContext *C, wmOperator *op)
       /* Setting the window to the context is needed for the case when the Graph Editor is found in
        * a different window. Otherwise smooth view wouldn't work. */
       CTX_wm_window_set(C, win);
+      CTX_wm_area_set(C, area);
       const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
       UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
       ED_area_tag_redraw(area);
