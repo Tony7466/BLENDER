@@ -425,8 +425,17 @@ MTLSafeFreeList *MTLBufferPool::get_current_safe_list()
 void MTLBufferPool::begin_new_safe_list()
 {
   safelist_lock_.lock();
+  MTLSafeFreeList *previous_list = prev_free_buffer_list_;
+  MTLSafeFreeList *active_list = get_current_safe_list();
   current_free_list_ = new MTLSafeFreeList();
+  prev_free_buffer_list_ = active_list;
   safelist_lock_.unlock();
+
+  /* Release final reference for previous list.
+   * Note: Outside of lock as this function itself locks. */
+  if (previous_list) {
+    previous_list->decrement_reference();
+  }
 }
 
 void MTLBufferPool::ensure_buffer_pool(MTLResourceOptions options)
@@ -549,6 +558,8 @@ MTLSafeFreeList::MTLSafeFreeList()
   in_free_queue_ = false;
   current_list_index_ = 0;
   next_ = nullptr;
+
+  printf("SAFE FREE LIST CREATED %p\n", this);
 }
 
 void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
@@ -605,6 +616,7 @@ void MTLSafeFreeList::decrement_reference()
   int ref_count = --reference_count_;
 
   if (ref_count == 0) {
+    printf("SAFE FREE LIST RELEASED %p\n", this);
     MTLContext::get_global_memory_manager()->push_completed_safe_list(this);
   }
   lock_.unlock();
