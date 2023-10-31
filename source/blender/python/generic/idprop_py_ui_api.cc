@@ -509,7 +509,7 @@ static bool try_parse_enum_item(PyObject *py_item, const int index, IDPropertyUI
   return true;
 }
 
-static IDPropertyUIDataEnumItem *idprop_enum_items_from_py(PyObject *seq_fast)
+static IDPropertyUIDataEnumItem *idprop_enum_items_from_py(PyObject *seq_fast, int &r_items_num)
 {
   IDPropertyUIDataEnumItem *items;
 
@@ -517,7 +517,8 @@ static IDPropertyUIDataEnumItem *idprop_enum_items_from_py(PyObject *seq_fast)
   PyObject **seq_fast_items = PySequence_Fast_ITEMS(seq_fast);
   int i;
 
-  items = MEM_cnew_array<IDPropertyUIDataEnumItem>(seq_len + 1, __func__);
+  items = MEM_cnew_array<IDPropertyUIDataEnumItem>(seq_len, __func__);
+  r_items_num = seq_len;
 
   for (i = 0; i < seq_len; i++) {
     IDPropertyUIDataEnumItem item = {nullptr, nullptr, nullptr, 0, 0};
@@ -576,11 +577,14 @@ static bool idprop_ui_data_update_enum(IDProperty *idprop, PyObject *args, PyObj
     return false;
   }
 
-  IDPropertyUIDataEnumItem *idprop_items = idprop_enum_items_from_py(items_fast);
+  int idprop_items_num = 0;
+  IDPropertyUIDataEnumItem *idprop_items = idprop_enum_items_from_py(items_fast, idprop_items_num);
   if (!idprop_items) {
     Py_DECREF(items_fast);
     return false;
   }
+  ui_data.items = idprop_items;
+  ui_data.items_num = idprop_items_num;
 
   /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
@@ -791,20 +795,13 @@ static void idprop_ui_data_to_dict_enum(IDProperty *property, PyObject *dict)
     const IDPropertyUIDataEnumItem &item = ui_data->items[i];
 
     PyObject *item_tuple = PyTuple_New(5);
-    PyObject *v;
-    PyTuple_SET_ITEM(item_tuple, 0, v = PyUnicode_FromString(item.identifier));
-    Py_DECREF(v);
-    PyTuple_SET_ITEM(item_tuple, 1, v = PyUnicode_FromString(item.name));
-    Py_DECREF(v);
-    PyTuple_SET_ITEM(item_tuple, 2, v = PyUnicode_FromString(item.description));
-    Py_DECREF(v);
-    PyTuple_SET_ITEM(item_tuple, 3, v = PyLong_FromLong(item.icon));
-    Py_DECREF(v);
-    PyTuple_SET_ITEM(item_tuple, 4, v = PyLong_FromLong(item.value));
-    Py_DECREF(v);
+    PyTuple_SET_ITEM(item_tuple, 0, PyUnicode_FromString(item.identifier));
+    PyTuple_SET_ITEM(item_tuple, 1, PyUnicode_FromString(item.name));
+    PyTuple_SET_ITEM(item_tuple, 2, PyUnicode_FromString(item.description));
+    PyTuple_SET_ITEM(item_tuple, 3, PyLong_FromLong(item.icon));
+    PyTuple_SET_ITEM(item_tuple, 4, PyLong_FromLong(item.value));
 
     PyList_SET_ITEM(items_list, i, item_tuple);
-    Py_DECREF(item_tuple);
   }
   PyDict_SetItemString(dict, "items", items_list);
   Py_DECREF(items_list);
