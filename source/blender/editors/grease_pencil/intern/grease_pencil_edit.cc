@@ -1023,13 +1023,18 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
         MutableSpan<float> radii = drawing.radii_for_write();
         MutableSpan<float> opacities = drawing.opacities_for_write();
 
-        if (mode == NormalizeMode::THICKNESS) {
-          bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+        switch (mode) {
+          case NormalizeMode::THICKNESS:
+            bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+            changed = true;
+            break;
+          case NormalizeMode::OPACITY:
+            bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
+            changed = true;
+            break;
+          default:
+            break;
         }
-        if (mode == NormalizeMode::OPACITY) {
-          bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
-        }
-        changed = true;
       });
 
   if (changed) {
