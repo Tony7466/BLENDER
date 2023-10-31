@@ -780,17 +780,14 @@ static bool is_boundary_edge(const BMEdge &edge)
   if (edge.head.hflag & BM_ELEM_SEAM) {
     return true;
   }
-
   if ((edge.head.hflag & BM_ELEM_SMOOTH) == 0) {
     return true;
   }
-
   if (!BM_edge_is_manifold(&edge)) {
     return true;
   }
 
-  /* TODO(@sergey): Other boundaries? For example, boundary edges between two different face sets.
-   */
+  /* TODO(@sergey): Other boundaries? For example, edges between two different face sets. */
 
   return false;
 }
@@ -798,10 +795,8 @@ static bool is_boundary_edge(const BMEdge &edge)
 /* Return true if the vertex is adjacent to a boundary edge. */
 static bool is_boundary_vert(const BMVert &vertex)
 {
-  BMEdge *edge;
-  BMEdge *first_edge;
-
-  edge = first_edge = vertex.e;
+  BMEdge *edge = vertex.e;
+  BMEdge *first_edge = edge;
   do {
     if (is_boundary_edge(*edge)) {
       return true;
@@ -820,22 +815,22 @@ static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
 /* Notes on edge priority.
  *
  * The priority is used to control the order in which edges are handled for both splitting of long
- * edges and collapsing of short edges. For the long edges we start with splitting the longest
- * edge and for collapsing we start with the shortest edge.
+ * edges and collapsing of short edges. For long edges we start by splitting the longest edge and
+ * for collapsing we start with the shortest.
  *
  * A heap-like data structure is used to accelerate such ordering. A bit confusingly, this data
  * structure gives the higher priorities to elements with lower numbers.
  *
- * When edges do not belong to and are not adjacent to boundaries, use their length as the
- * priority. Always prefer to handle those edges first. Modifying those edges leads to no
+ * When edges do not belong to and are not adjacent to boundaries, their length is used as the
+ * priority directly. Prefer to handle those edges first. Modifying those edges leads to no
  * distortion to the boundary.
  *
- * Edges which are adjacent to a boundary with one vertex are handled next, and the vertex which is
+ * Edges adjacent to a boundary with one vertex are handled next, and the vertex which is
  * on the boundary does not change position as part of the edge collapse algorithm.
  *
- * And last the boundary edges are handled. While subdivision of boundary edges does not change
- * shape of the boundary, collapsing boundary edges distorts the boundary. Hence they are handled
- * the last. */
+ * And last, the boundary edges are handled. While subdivision of boundary edges does not change
+ * the shape of the boundary, collapsing boundary edges distorts the boundary. Hence they are
+ * handled last. */
 
 static float long_edge_queue_priority(const BMEdge &edge)
 {
@@ -1283,13 +1278,13 @@ static bool pbvh_bmesh_subdivide_long_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh
   return any_subdivided;
 }
 
-/* Check whether the #vert is adjacent to any face which are adjacent to the #edge. */
-static bool vert_in_face_adjacent_to_edge(BMVert *vert, BMEdge *edge)
+/** Check whether the \a vert is adjacent to any face which are adjacent to the #edge. */
+static bool vert_in_face_adjacent_to_edge(BMVert &vert, BMEdge &edge)
 {
   BMIter bm_iter;
   BMFace *face;
-  BM_ITER_ELEM (face, &bm_iter, edge, BM_FACES_OF_EDGE) {
-    if (BM_vert_in_face(vert, face)) {
+  BM_ITER_ELEM (face, &bm_iter, &edge, BM_FACES_OF_EDGE) {
+    if (BM_vert_in_face(&vert, face)) {
       return true;
     }
   }
@@ -1300,15 +1295,14 @@ static bool vert_in_face_adjacent_to_edge(BMVert *vert, BMEdge *edge)
  * Merge attributes of a flap face into an edge which will remain after the edge collapse in
  * #pbvh_bmesh_collapse_edge.
  *
- * This function is to be called before faces adjacent to #e are deleted.
- * This function only handles edge attributes. and does not handle face deletion.
+ * This function is to be called before faces adjacent to \a e are deleted.
+ * This function only handles edge attributes and does not handle face deletion.
 
- * \param bm: BMesh data structure
- * \param del_face: Face which is adjacent to #v_del and will form a flap when merging #v_del to
- *                  #v_conn.
- * \param flap_face: Face which is adjacent to #v_conn and will form a flap when merging #v_del to
- *                   #v_conn.
- * \param e: An edge which is being collapsed. It connects #v_del and #v_conn.
+ * \param del_face: Face which is adjacent to \a v_del and will form a flap when merging \a v_del
+ *     to \a v_conn.
+ * \param flap_face: Face which is adjacent to \a v_conn and will form a flap when merging \a v_del
+ *     to \a v_conn.
+ * \param e: An edge which is being collapsed. It connects \a v_del and \a v_conn.
  * \param v_del: A vertex which will be removed after the edge collapse.
  * \param l_del: A loop of del_face which is adjacent to v_del.
  * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
@@ -1340,7 +1334,7 @@ static void merge_flap_edge_data(BMesh &bm,
 
   UNUSED_VARS_NDEBUG(del_face, flap_face);
 
-  /* Faces around #e (which connects #v_del to #v_conn) are to the handled separately from this
+  /* Faces around `e` (which connects `v_del` to `v_conn`) are to the handled separately from this
    * function. Help troubleshooting cases where these faces are mistakingly considered flaps.  */
   BLI_assert(!BM_edge_in_face(e, del_face));
   BLI_assert(!BM_edge_in_face(e, flap_face));
@@ -1356,21 +1350,22 @@ static void merge_flap_edge_data(BMesh &bm,
   BLI_assert(BM_edge_in_face(edge_v1_v2, flap_face));
 
   /* Disambiguate v1 from v2: the v2 is adjacent to a face around #e. */
-  BMVert *v2 = vert_in_face_adjacent_to_edge(edge_v1_v2->v1, e) ? edge_v1_v2->v1 : edge_v1_v2->v2;
+  BMVert *v2 = vert_in_face_adjacent_to_edge(*edge_v1_v2->v1, *e) ? edge_v1_v2->v1 :
+                                                                    edge_v1_v2->v2;
   BMVert *v1 = BM_edge_other_vert(edge_v1_v2, v2);
 
   /* Merge attributes into an edge (v1, v_conn). */
   BMEdge *dst_edge = BM_edge_exists(v1, v_conn);
 
   const std::array<const BMEdge *, 4> source_edges{
-      /* Edges of the #flap_face.
+      /* Edges of the `flap_face`.
        * The face will be deleted, effectively being "collapsed" into an edge. */
       edge_v1_v2,
       BM_edge_exists(v2, v_conn),
 
-      /* Edges of the #del_face.
-       * These edges are implicitly merged with the ones from the #flap_face upon collapsing edge
-       * #e. */
+      /* Edges of the `del_face`.
+       * These edges are implicitly merged with the ones from the `flap_face` upon collapsing edge
+       * `e`. */
       BM_edge_exists(v1, v_del),
       BM_edge_exists(v2, v_del),
   };
@@ -1385,9 +1380,11 @@ static void merge_flap_edge_data(BMesh &bm,
   }
 }
 
-/* Find vertex which can be an outer for the flap face: the vertex will become loose when the face
+/**
+ * Find vertex which can be an outer for the flap face: the vertex will become loose when the face
  * and its edges are removed.
- * If there are multiple of such vertices nullptr is returned. */
+ * If there are multiple of such vertices, return null.
+ */
 static BMVert *find_outer_flap_vert(BMFace &face)
 {
   BMVert *flap_vert = nullptr;
@@ -1397,8 +1394,7 @@ static BMVert *find_outer_flap_vert(BMFace &face)
   BM_ITER_ELEM (vert, &bm_iter, &face, BM_VERTS_OF_FACE) {
     if (BM_vert_face_count_at_most(vert, 2) == 1) {
       if (flap_vert) {
-        /* There are multiple vertices which will become loose on removing the face and its edges.
-         */
+        /* There are multiple vertices which become loose on removing the face and its edges.*/
         return nullptr;
       }
       flap_vert = vert;
@@ -1408,9 +1404,9 @@ static BMVert *find_outer_flap_vert(BMFace &face)
   return flap_vert;
 }
 
-/* If the #del_face is a flap merge edge data from edges adjacent to "corner" vertex into the other
- * edge. The "corner" as it is an "outer", or a vertex which will become loose when the #del_face
- * and its edges are removed.
+/* If the `del_face` is a flap, merge edge data from edges adjacent to "corner" vertex into the
+ * other edge. The "corner" as it is an "outer", or a vertex which will become loose when the
+ * `del_face` and its edges are removed.
  *
  * If the face is not a flap then this function does nothing. */
 static void try_merge_flap_edge_data_before_dissolve(BMesh &bm, BMFace &face)
@@ -1448,15 +1444,15 @@ static void try_merge_flap_edge_data_before_dissolve(BMesh &bm, BMFace &face)
 }
 
 /**
- * Merge attributes of edges from #v_del to #f
+ * Merge attributes of edges from \a v_del to \a f
  *
- * This function is to be called before faces adjacent to #e are deleted.
+ * This function is to be called before faces adjacent to \a e are deleted.
  * This function only handles edge attributes. and does not handle face deletion.
 
- * \param bm: BMesh data structure
- * \param del_face: Face which is adjacent to #v_del and will be deleted as part of merging #v_del
- *                  to #v_conn.
- * \param new_face: A new face which is created from #del_face by replacing #v_del with #v_conn.
+ * \param del_face: Face which is adjacent to \a v_del and will be deleted as part of merging
+*      \a v_del to \a v_conn.
+ * \param new_face: A new face which is created from \a del_face by replacing \a v_del with
+ *     \a v_conn.
  * \param v_del: A vertex which will be removed after the edge collapse.
  * \param l_del: A loop of del_face which is adjacent to v_del.
  * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
@@ -1567,16 +1563,15 @@ static void pbvh_bmesh_collapse_edge(
 
   /* For all remaining faces of v_del, create a new face that is the
    * same except it uses v_conn instead of v_del */
-  /* NOTE: this could be done with BM_vert_splice(), but that
-   * requires handling other issues like duplicate edges, so doesn't
-   * really buy anything. */
+  /* NOTE: this could be done with BM_vert_splice(), but that requires handling other issues like
+   * duplicate edges, so it wouldn't really buy anything. */
   Vector<BMFace *, 16> deleted_faces;
 
   BMLoop *l;
   BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_del) {
     BMFace *f_del = l->f;
 
-    /* Ignore faces around #e: they will be deleted explicitly later on.
+    /* Ignore faces around `e`: they will be deleted explicitly later on.
      * Without ignoring these faces the #bm_face_exists_tri_from_loop_vert() triggers an assert. */
     if (BM_edge_in_face(e, f_del)) {
       continue;
