@@ -1,0 +1,58 @@
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup gpu
+ */
+
+#include "BLI_array_utils.hh"
+
+#include "BKE_attribute_math.hh"
+
+#include "GPU_vertex_buffer.h"
+
+#include "attribute_convert.hh"
+
+namespace blender::draw {
+
+GPUVertFormat init_format_for_attribute(const eCustomDataType data_type,
+                                        const StringRefNull vbo_name)
+{
+  GPUVertFormat format{};
+  bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+    using T = decltype(dummy);
+    using Converter = AttributeConverter<T>;
+    GPU_vertformat_attr_add(&format,
+                            vbo_name.c_str(),
+                            Converter::gpu_component_type,
+                            Converter::gpu_component_len,
+                            Converter::gpu_fetch_mode);
+  });
+  return format;
+}
+
+void alloc_vertbuf_data_and_extract_direct(const GSpan attribute, GPUVertBuf &vbo)
+{
+  GPU_vertbuf_data_alloc(&vbo, attribute.size());
+
+  bke::attribute_math::convert_to_static_type(attribute.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    using Converter = AttributeConverter<T>;
+    using VBOT = typename Converter::VBOT;
+    const Span<T> src = attribute.typed<T>();
+    MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), attribute.size());
+    if constexpr (std::is_same_v<T, VBOT>) {
+      array_utils::copy(src, data);
+    }
+    else {
+      threading::parallel_for(src.index_range(), 8192, [&](const IndexRange range) {
+        for (const int i : range) {
+          data[i] = Converter::convert(src[i]);
+        }
+      });
+    }
+  });
+}
+
+}  // namespace blender::draw
