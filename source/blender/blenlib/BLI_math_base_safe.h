@@ -20,7 +20,7 @@ extern "C" {
 MINLINE float safe_divide(float a, float b);
 MINLINE float safe_modf(float a, float b);
 MINLINE float safe_logf(float a, float base);
-MINLINE float safe_logf(float a);
+MINLINE float safe_logef(float a);
 MINLINE float safe_sqrtf(float a);
 MINLINE float safe_inverse_sqrtf(float a);
 MINLINE float safe_asinf(float a);

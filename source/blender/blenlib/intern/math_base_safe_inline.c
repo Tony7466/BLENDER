@@ -35,7 +35,7 @@ MINLINE float safe_logf(float a, float base)
   return safe_divide(logf(a), logf(base));
 }
 
-MINLINE float safe_logf(float a)
+MINLINE float safe_logef(float a)
 {
   if (UNLIKELY(a <= 0.0f)) {
     return 0.0f;

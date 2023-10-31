@@ -1212,7 +1212,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       }
     }
     else {
-      *dimension = -safe_divide(safe_logf(*dimension), safe_logf(*lacunarity));
+      *dimension = -safe_divide(safe_logef(*dimension), safe_logef(*lacunarity));
     }
   }
 
