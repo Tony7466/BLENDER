@@ -19,11 +19,13 @@ void main()
   ivec2 tile = ivec2(gl_GlobalInvocationID.xy);
 
   /* True if an adjacent tile is tracing and will need this tile data for denoising. */
-  bool tile_is_sampled = false;
+  bool tile_is_ray_sampled = false;
   /* True if this tile is shooting and tracing rays. */
-  bool tile_is_tracing = false;
+  bool tile_is_ray_tracing = false;
   /* True if this tile is using horizon scan. */
-  bool tile_is_scaning = false;
+  bool tile_is_horizon_tracing = false;
+  /* True if an adjacent tile is tracing and will need this tile data for denoising (horizon). */
+  bool tile_is_horizon_sampled = false;
   /* Could be optimized if that becomes an issue. */
   for (int x_tile = -1; x_tile <= 1; x_tile++) {
     for (int y_tile = -1; y_tile <= 1; y_tile++) {
@@ -39,31 +41,27 @@ void main()
           bool tile_uses_horizon_scan = flag_test(tile_mask, 1u << 1u);
           if (tile_uses_ray_tracing) {
             if (x_tile == 0 && y_tile == 0) {
-              if (tile_uses_ray_tracing) {
-                /* Dispatch full resolution denoise tile. */
-                uint tile_index = atomicAdd(denoise_dispatch_buf.num_groups_x, 1u);
-                denoise_tiles_buf[tile_index] = packUvec2x16(uvec2(full_res_tile));
-                tile_is_tracing = true;
-              }
+              /* Dispatch full resolution denoise tile. */
+              uint tile_index = atomicAdd(ray_denoise_dispatch_buf.num_groups_x, 1u);
+              ray_denoise_tiles_buf[tile_index] = packUvec2x16(uvec2(full_res_tile));
+              tile_is_ray_tracing = true;
             }
             else {
               /* This denoise tile will sample the target tracing tile. Make sure it is cleared. */
-              tile_is_sampled = true;
+              tile_is_ray_sampled = true;
             }
           }
 
           if (tile_uses_horizon_scan) {
             if (x_tile == 0 && y_tile == 0) {
-              if (tile_uses_ray_tracing) {
-                /* Dispatch full resolution horizon scan. */
-                uint tile_horizon_index = atomicAdd(horizon_dispatch_buf.num_groups_x, 1u);
-                horizon_tiles_buf[tile_horizon_index] = packUvec2x16(uvec2(full_res_tile));
-                tile_is_scaning = true;
-              }
+              /* Dispatch full resolution horizon scan. */
+              uint tile_horizon_index = atomicAdd(horizon_denoise_dispatch_buf.num_groups_x, 1u);
+              horizon_denoise_tiles_buf[tile_horizon_index] = packUvec2x16(uvec2(full_res_tile));
+              tile_is_horizon_tracing = true;
             }
             else {
               /* This denoise tile will sample the target tracing tile. Make sure it is cleared. */
-              tile_is_sampled = true;
+              tile_is_horizon_sampled = true;
             }
           }
         }
@@ -72,9 +70,16 @@ void main()
   }
 
   /* TODO(fclem): we might want to dispatch another type of shader only for clearing. */
-  if (tile_is_tracing || tile_is_sampled) {
+  if (tile_is_ray_tracing || tile_is_ray_sampled) {
     /* Dispatch trace resolution tracing tile. */
     uint tile_index = atomicAdd(ray_dispatch_buf.num_groups_x, 1u);
     ray_tiles_buf[tile_index] = packUvec2x16(uvec2(tile));
+  }
+
+  /* TODO(fclem): we might want to dispatch another type of shader only for clearing. */
+  if (tile_is_horizon_tracing || tile_is_horizon_sampled) {
+    /* Dispatch trace resolution tracing tile. */
+    uint tile_index = atomicAdd(horizon_dispatch_buf.num_groups_x, 1u);
+    horizon_tiles_buf[tile_index] = packUvec2x16(uvec2(tile));
   }
 }

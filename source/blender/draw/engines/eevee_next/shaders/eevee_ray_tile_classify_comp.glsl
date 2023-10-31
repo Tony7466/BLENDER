@@ -27,15 +27,18 @@ void main()
     /* Clear num_groups_x to 0 so that we can use it as counter in the compaction phase.
      * Note that these writes are subject to race condition, but we write the same value
      * from all work-groups. */
-    denoise_dispatch_buf.num_groups_x = 0u;
-    denoise_dispatch_buf.num_groups_y = 1u;
-    denoise_dispatch_buf.num_groups_z = 1u;
-    horizon_dispatch_buf.num_groups_x = 0u;
-    horizon_dispatch_buf.num_groups_y = 1u;
-    horizon_dispatch_buf.num_groups_z = 1u;
+    ray_denoise_dispatch_buf.num_groups_x = 0u;
+    ray_denoise_dispatch_buf.num_groups_y = 1u;
+    ray_denoise_dispatch_buf.num_groups_z = 1u;
     ray_dispatch_buf.num_groups_x = 0u;
     ray_dispatch_buf.num_groups_y = 1u;
     ray_dispatch_buf.num_groups_z = 1u;
+    horizon_dispatch_buf.num_groups_x = 0u;
+    horizon_dispatch_buf.num_groups_y = 1u;
+    horizon_dispatch_buf.num_groups_z = 1u;
+    horizon_denoise_dispatch_buf.num_groups_x = 0u;
+    horizon_denoise_dispatch_buf.num_groups_y = 1u;
+    horizon_denoise_dispatch_buf.num_groups_z = 1u;
 
     /* Init shared variables. */
     tile_contains_ray_tracing = 0;
@@ -61,11 +64,11 @@ void main()
     float ray_glossy_factor = ray_glossy_factor(uniform_buf.raytrace, roughness);
     if (ray_glossy_factor > 0.0) {
       /* We don't care about race condition here. */
-      tile_contains_ray_tracing = 1;
+      tile_contains_horizon_scan = 1;
     }
     if (ray_glossy_factor < 1.0) {
       /* We don't care about race condition here. */
-      tile_contains_horizon_scan = 1;
+      tile_contains_ray_tracing = 1;
     }
   }
 

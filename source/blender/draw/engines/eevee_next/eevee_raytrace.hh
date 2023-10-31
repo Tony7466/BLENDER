@@ -130,21 +130,28 @@ class RayTraceModule {
   /** Indirect dispatch rays. Avoid dispatching work-groups that will not trace anything.*/
   DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
   /** Indirect dispatch denoise full-resolution tiles. */
-  DispatchIndirectBuf denoise_dispatch_buf_ = {"denoise_dispatch_buf_"};
+  DispatchIndirectBuf ray_denoise_dispatch_buf_ = {"ray_denoise_dispatch_buf_"};
   /** Indirect dispatch horizon scan. Avoid dispatching work-groups that will not scan anything.*/
   DispatchIndirectBuf horizon_dispatch_buf_ = {"horizon_dispatch_buf_"};
+  /** Indirect dispatch denoise full-resolution tiles. */
+  DispatchIndirectBuf horizon_denoise_dispatch_buf_ = {"horizon_denoise_dispatch_buf_"};
   /** Pointer to the texture to store the result of horizon scan in. */
   GPUTexture *horizon_scan_output_tx_ = nullptr;
   /** Tile buffer that contains tile coordinates. */
   RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
-  RayTraceTileBuf denoise_tiles_buf_ = {"denoise_tiles_buf_"};
+  RayTraceTileBuf ray_denoise_tiles_buf_ = {"ray_denoise_tiles_buf_"};
   RayTraceTileBuf horizon_tiles_buf_ = {"horizon_tiles_buf_"};
+  RayTraceTileBuf horizon_denoise_tiles_buf_ = {"horizon_denoise_tiles_buf_"};
   /** Texture containing the ray direction and PDF. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit time. */
   TextureFromPool ray_time_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit radiance (tracing-res). */
   TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
+  /** Texture containing the horizon visibility mask. */
+  TextureFromPool horizon_data_tx_ = {"horizon_data_tx_"};
+  /** Texture containing the horizon local radiance. */
+  TextureFromPool horizon_radiance_tx_ = {"horizon_radiance_tx_"};
   /** Textures containing the ray hit radiance denoised (full-res). One of them is result_tx. */
   GPUTexture *denoised_spatial_tx_ = nullptr;
   GPUTexture *denoised_temporal_tx_ = nullptr;

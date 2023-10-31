@@ -16,21 +16,24 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
+  ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
+                        uniform_buf.raytrace.resolution_bias;
+
   ivec2 extent = textureSize(gbuf_header_tx, 0).xy;
-  if (any(greaterThanEqual(texel, extent))) {
+  if (any(greaterThanEqual(texel_fullres, extent))) {
     return;
   }
 
-  vec2 uv = (vec2(texel) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
-  float depth = texelFetch(hiz_tx, texel, 0).r;
+  vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
+  float depth = texelFetch(hiz_tx, texel_fullres, 0).r;
 
   if (depth == 1.0) {
     /* Do not trace for background */
-    imageStore(radiance_img, texel, vec4(0.0));
+    // imageStore(radiance_img, texel_fullres, vec4(0.0));
     return;
   }
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
 
   HorizonScanContext ctx;
 #ifdef HORIZON_DIFFUSE
@@ -38,6 +41,7 @@ void main()
     return;
   }
   vec3 Ng = gbuf.diffuse.N;
+  float roughness = 1.0;
   ctx.diffuse = gbuf.diffuse;
   ctx.diffuse.N = drw_normal_world_to_view(ctx.diffuse.N);
 #endif
@@ -46,6 +50,7 @@ void main()
     return;
   }
   vec3 Ng = gbuf.reflection.N;
+  float roughness = ctx.reflection.roughness;
   ctx.reflection = gbuf.reflection;
   ctx.reflection.roughness = max(ctx.reflection.roughness, 1e-4);
   ctx.reflection.N = drw_normal_world_to_view(ctx.reflection.N);
@@ -55,6 +60,7 @@ void main()
     return;
   }
   vec3 Ng = gbuf.refraction.N;
+  float roughness = 1.0; /* TODO(fclem): Apparent roughness. */
   ctx.refraction = gbuf.refraction;
   ctx.refraction.N = drw_normal_world_to_view(ctx.refraction.N);
 #endif
@@ -81,22 +87,26 @@ void main()
 
   float mix_fac = saturate(roughness * uniform_buf.raytrace.roughness_mask_scale -
                            uniform_buf.raytrace.roughness_mask_bias);
-
-  vec4 radiance_raytrace = tile_use_ray_tracing ? imageLoad(radiance_img, texel) : vec4(0.0);
+  bool tile_use_ray_tracing = mix_fac < 1.0;
+  vec4 radiance_raytrace = tile_use_ray_tracing ? imageLoad(radiance_img, texel_fullres) :
+                                                  vec4(0.0);
   vec4 radiance_horizon = vec4(1.0, 0.0, 1.0, 1.0);
 #ifdef HORIZON_DIFFUSE
   radiance_horizon = vec4(ctx.diffuse_result, 1.0);
-  float roughness = 1.0;
 #endif
 #ifdef HORIZON_REFLECT
   radiance_horizon = vec4(ctx.reflection_result, 1.0);
-  float roughness = ctx.reflection.roughness;
 #endif
 #ifdef HORIZON_REFRACT
   radiance_horizon = vec4(ctx.refraction_result, 1.0);
-  float roughness = 1.0; /* TODO(fclem): Apparent roughness. */
 #endif
   vec4 radiance = mix(radiance_raytrace, radiance_horizon, mix_fac);
+  radiance = clamp(radiance, vec4(0.0), vec4(10.0));
 
-  imageStore(radiance_img, texel, radiance);
+  for (int i = 0; i < uniform_buf.raytrace.resolution_scale; i++) {
+    for (int j = 0; j < uniform_buf.raytrace.resolution_scale; j++) {
+      imageStore(
+          radiance_img, texel * uniform_buf.raytrace.resolution_scale + ivec2(i, j), radiance);
+    }
+  }
 }
