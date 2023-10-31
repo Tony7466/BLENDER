@@ -158,7 +158,7 @@ const EnumPropertyItem rna_enum_mesh_select_mode_uv_items[] = {
   {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
   {SCE_SNAP_TO_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
   {SCE_SNAP_TO_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
-  {SCE_SNAP_TO_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}, \
+  {SCE_SNAP_TO_VOLUME, "VOLUME", ICON_BLANK1, "Volume", "Snap to volume"}, \
   {SCE_SNAP_TO_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
   {SCE_SNAP_TO_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}
 /* clang-format on */
