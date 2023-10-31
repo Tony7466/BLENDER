@@ -964,7 +964,7 @@ static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator *o
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         
         IndexMaskMemory memory;
-        IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
         if (selected_curves.is_empty()) {
           return;
