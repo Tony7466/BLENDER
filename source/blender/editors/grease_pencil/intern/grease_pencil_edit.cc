@@ -15,6 +15,7 @@
 #include "BLI_stack.hh"
 
 #include "BKE_context.h"
+#include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 
 #include "RNA_access.hh"
@@ -1019,19 +1020,15 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
         }
 
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        selected_curves.foreach_index([&](const int curve_index) {
-          if (mode == NormalizeMode::THICKNESS) {
-            MutableSpan<float> radii = drawing.radii_for_write().slice(
-                points_by_curve[curve_index]);
-            radii.fill(radius);
-          }
-          if (mode == NormalizeMode::OPACITY) {
-            MutableSpan<float> opacities = drawing.opacities_for_write().slice(
-                points_by_curve[curve_index]);
-            opacities.fill(opacity);
-          }
-        });
+        MutableSpan<float> radii = drawing.radii_for_write();
+        MutableSpan<float> opacities = drawing.opacities_for_write();
 
+        if (mode == NormalizeMode::THICKNESS) {
+          bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+        }
+        if (mode == NormalizeMode::OPACITY) {
+          bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
+        }
         changed = true;
       });
 
