@@ -79,10 +79,10 @@ void main()
 
     uint tile_mask = 0u;
     if (tile_contains_ray_tracing > 0) {
-      tile_mask = 1u << 0u;
+      tile_mask |= 1u << 0u;
     }
     if (tile_contains_horizon_scan > 0) {
-      tile_mask = 1u << 1u;
+      tile_mask |= 1u << 1u;
     }
 
     imageStore(tile_mask_img, tile_co, uvec4(tile_mask));

@@ -210,8 +210,8 @@ void RayTraceModule::sync()
     PassSimple &pass = PASS_VARIATION(horizon_scan_, type, _ps_);
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(SHADER_VARIATION(HORIZON_SCAN_, type)));
-    pass.bind_image("radiance_img", &horizon_scan_output_tx_);
-    pass.bind_image("tile_mask_img", &tile_mask_tx_);
+    pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
+    pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_tiles_buf_);
     pass.bind_texture("screen_radiance_tx", &screen_radiance_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
@@ -219,9 +219,26 @@ void RayTraceModule::sync()
     inst_.hiz_buffer.bind_resources(pass);
     inst_.sampling.bind_resources(pass);
     inst_.gbuffer.bind_resources(pass);
+    pass.dispatch(horizon_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  }
+  {
+    PassSimple &pass = horizon_denoise_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(HORIZON_DENOISE));
+    inst_.bind_uniform_data(&pass);
+    pass.bind_texture("depth_tx", &depth_tx);
+    pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
+    pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
+    pass.bind_image("radiance_img", &horizon_scan_output_tx_);
+    pass.bind_image("tile_mask_img", &tile_mask_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
+    inst_.bind_uniform_data(&pass);
+    inst_.sampling.bind_resources(pass);
+    inst_.gbuffer.bind_resources(pass);
     inst_.irradiance_cache.bind_resources(pass);
     inst_.reflection_probes.bind_resources(pass);
-    pass.dispatch(horizon_dispatch_buf_);
+    pass.dispatch(horizon_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 #undef SHADER_VARIATION
@@ -445,17 +462,16 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
-    horizon_scan_output_tx_ = result.get();
-
-    horizon_data_tx_.acquire(tracing_res, GPU_R32UI);
+    horizon_occlusion_tx_.acquire(tracing_res, GPU_R8);
     horizon_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
 
     inst_.manager->submit(*horizon_scan_ps, render_view);
 
-    /* TODO denoise. */
-    // inst_.manager->submit(*horizon_scan_ps, render_view);
+    horizon_scan_output_tx_ = result.get();
 
-    horizon_data_tx_.release();
+    inst_.manager->submit(horizon_denoise_ps_, render_view);
+
+    horizon_occlusion_tx_.release();
     horizon_radiance_tx_.release();
   }
 

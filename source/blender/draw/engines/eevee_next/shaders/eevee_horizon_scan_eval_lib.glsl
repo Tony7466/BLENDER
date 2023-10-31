@@ -73,7 +73,6 @@ struct HorizonScanContext {
   HorizonScanContextCommon refraction_common;
   vec3 refraction_result;
 #endif
-  SphericalHarmonicL1 irradiance_distant;
 };
 
 void horizon_scan_context_accumulation_reset(inout HorizonScanContext context)
@@ -187,12 +186,12 @@ void horizon_scan_context_slice_finish_distant_light(HorizonScanContext context,
                                                      vec3 vV,
                                                      vec3 vT)
 {
-  vec3 N = drw_normal_view_to_world(vN);
-  vec3 light_distant = spherical_harmonics_evaluate_lambert(N, context.irradiance_distant);
-  float visibility = horizon_scan_bitmask_to_visibility_uniform(~common_ctx.bitmask);
+  // vec3 N = drw_normal_view_to_world(vN);
+  // vec3 light_distant = spherical_harmonics_evaluate_lambert(N, context.irradiance_distant);
+  // float visibility = horizon_scan_bitmask_to_visibility_uniform(~common_ctx.bitmask);
 
   /* Add distant lighting. */
-  vec3 slice = common_ctx.light_slice + light_distant * visibility;
+  vec3 slice = common_ctx.light_slice; /* + light_distant * visibility; */
   /* Correct normal not on plane (Eq. 8 of GTAO paper). */
   common_ctx.light_accum += vec4(slice, 1.0) * common_ctx.N_length;
 }
@@ -283,12 +282,7 @@ void horizon_scan_eval(vec3 vP,
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-#ifdef HORIZON_OCCLUSION
   const int slice_len = 2;
-#else
-  /* Cost of having another iteration is too high. Prefer denoising. */
-  const int slice_len = 2;
-#endif
 
   vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
 

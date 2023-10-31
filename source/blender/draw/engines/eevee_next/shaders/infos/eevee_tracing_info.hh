@@ -176,14 +176,31 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
                      "eevee_sampling_data",
                      "eevee_utility_texture",
                      "eevee_hiz_data",
-                     "eevee_lightprobe_data",
                      "draw_view")
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
-    .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_img")
-    .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D, "tile_mask_img")
+    .image(
+        2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_img")
+    .image(3, GPU_R8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_occlusion_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .compute_source("eevee_horizon_scan_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_horizon_scan)
+
+GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
+    .do_static_compilation(true)
+    .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared",
+                     "eevee_gbuffer_data",
+                     "eevee_global_ubo",
+                     "eevee_lightprobe_data",
+                     "draw_view")
+    .sampler(1, ImageType::DEPTH_2D, "depth_tx")
+    .image(
+        2, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "horizon_radiance_img")
+    .image(3, GPU_R8, Qualifier::READ, ImageType::FLOAT_2D, "horizon_occlusion_img")
+    .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_img")
+    .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D, "tile_mask_img")
+    .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .compute_source("eevee_horizon_denoise_comp.glsl");
 
 /** \} */

@@ -120,6 +120,7 @@ class RayTraceModule {
   draw::PassSimple horizon_scan_diffuse_ps_ = {"HorizonScan.Diffuse"};
   draw::PassSimple horizon_scan_reflect_ps_ = {"HorizonScan.Reflection"};
   draw::PassSimple horizon_scan_refract_ps_ = {"HorizonScan.Refraction"};
+  draw::PassSimple horizon_denoise_ps_ = {"HorizonScan.Denoise"};
 
   /** Dispatch with enough tiles for the whole screen. */
   int3 tile_classify_dispatch_size_ = int3(1);
@@ -149,7 +150,7 @@ class RayTraceModule {
   /** Texture containing the ray hit radiance (tracing-res). */
   TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
   /** Texture containing the horizon visibility mask. */
-  TextureFromPool horizon_data_tx_ = {"horizon_data_tx_"};
+  TextureFromPool horizon_occlusion_tx_ = {"horizon_occlusion_tx_"};
   /** Texture containing the horizon local radiance. */
   TextureFromPool horizon_radiance_tx_ = {"horizon_radiance_tx_"};
   /** Textures containing the ray hit radiance denoised (full-res). One of them is result_tx. */
