@@ -177,7 +177,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
           attr.data[i] = typed[i];
         }
         r_attributes.append(attr);
-      } break;
+        break;
+      }
       case CD_PROP_INT8: {
         PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<int8_t>();
@@ -185,7 +186,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
           attr.data[i] = typed[i];
         }
         r_attributes.append(attr);
-      } break;
+        break;
+      }
       case CD_PROP_INT32: {
         PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<int32_t>();
@@ -193,7 +195,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
           attr.data[i] = typed[i];
         }
         r_attributes.append(attr);
-      } break;
+        break;
+      }
       case CD_PROP_INT32_2D: {
         PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
         PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
@@ -204,7 +207,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         }
         r_attributes.append(attr_x);
         r_attributes.append(attr_y);
-      } break;
+        break;
+      }
       case CD_PROP_FLOAT2: {
         PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
         PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
@@ -215,7 +219,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         }
         r_attributes.append(attr_x);
         r_attributes.append(attr_y);
-      } break;
+        break;
+      }
       case CD_PROP_FLOAT3: {
         PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
         PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
@@ -229,7 +234,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_x);
         r_attributes.append(attr_y);
         r_attributes.append(attr_z);
-      } break;
+        break;
+      }
       case CD_PROP_BYTE_COLOR: {
         PlyCustomAttribute attr_r(attribute_id.name() + "_r", size);
         PlyCustomAttribute attr_g(attribute_id.name() + "_g", size);
@@ -247,7 +253,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_g);
         r_attributes.append(attr_b);
         r_attributes.append(attr_a);
-      } break;
+        break;
+      }
       case CD_PROP_COLOR: {
         PlyCustomAttribute attr_r(attribute_id.name() + "_r", size);
         PlyCustomAttribute attr_g(attribute_id.name() + "_g", size);
@@ -265,7 +272,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_g);
         r_attributes.append(attr_b);
         r_attributes.append(attr_a);
-      } break;
+        break;
+      }
       case CD_PROP_BOOL: {
         PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<bool>();
@@ -273,7 +281,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
           attr.data[i] = typed[i] ? 1.0f : 0.0f;
         }
         r_attributes.append(attr);
-      } break;
+        break;
+      }
       case CD_PROP_QUATERNION: {
         PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
         PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
@@ -290,7 +299,8 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_y);
         r_attributes.append(attr_z);
         r_attributes.append(attr_w);
-      } break;
+        break;
+      }
       default:
         BLI_assert_msg(0, "Unsupported attribute type for PLY export.");
     }
