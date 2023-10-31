@@ -641,7 +641,31 @@ class Mesh(bpy_types.ID):
 
     @property
     def edge_keys(self):
-        return [ed.key for ed in self.edges]
+        import numpy as np
+        from struct import iter_unpack
+        # Get the vertex indices of each edge from the ".edge_verts" attribute.
+        edge_verts_data = _name_convention_attribute_ensure(self.attributes, ".edge_verts", 'EDGE', 'INT32_2D').data
+        # Matching the property's C type makes `foreach_get` faster because it can copy memory directly into the buffer.
+        edge_verts_value_dtype = np.intc
+        # `foreach_get` flattens the data and each INT32_2D value has two elements, so the needed array will be twice as
+        # long as the attribute data.
+        edge_verts_flat = np.empty(len(edge_verts_data) * 2, dtype=edge_verts_value_dtype)
+        edge_verts_data.foreach_get("value", edge_verts_flat)
+
+        # Each pair of vertex indices needs its vertex indices sorted in increasing order because this is a property of
+        # edge keys.
+        # Create a 2D view of the same memory as `edge_verts_flat` that is half the length, but where each element is a
+        # 2-length sub-array.
+        edge_verts_2d_pair_view = edge_verts_flat.view()
+        edge_verts_2d_pair_view.shape = (-1, 2)
+        # Sort each 2-element sub-array in-place. For this specific use case, heapsort is slightly faster than the other
+        # sorting algorithms.
+        edge_verts_2d_pair_view.sort(axis=1, kind='heapsort')
+
+        # The sorted array needs to be converted to the desired return type, which is a `list[tuple[int, int]]`.
+        # The `struct` module unpacks into tuples and can unpack from buffers.
+        pair_format = "2%s" % np.sctype2char(edge_verts_flat)
+        return list(iter_unpack(pair_format, edge_verts_flat))
 
     @property
     def vertex_creases(self):
