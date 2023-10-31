@@ -6681,6 +6681,10 @@ static void template_keymap_item_properties(uiLayout *layout, const char *title,
   uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
 
   RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
+    if (RNA_property_flag(prop) & PROP_HIDDEN) {
+      continue;
+    }
+
     const bool is_set = RNA_property_is_set(ptr, prop);
     uiBut *but;
 
