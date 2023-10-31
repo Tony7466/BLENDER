@@ -47,10 +47,7 @@ class CurvesData : public ObjectData {
 
  protected:
   void write_materials() override;
-
- private:
-  void write_curves(const Curves *curves_id);
-  void write_uv_maps(const Curves *curves_id);
+  virtual void write_curves();
 };
 
 class HairData : public CurvesData {
@@ -68,12 +65,11 @@ class HairData : public CurvesData {
                          Object *object,
                          ParticleSystem *particle_system);
 
-  void init() override;
   void update() override;
 
- private:
-  void write_curves();
-  void write_uv_maps();
+ protected:
+  void write_transform() override;
+  void write_curves() override;
 };
 
 }  // namespace blender::io::hydra

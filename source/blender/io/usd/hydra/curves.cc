@@ -32,8 +32,7 @@ void CurvesData::init()
 {
   ID_LOGN(1, "");
 
-  const Object *object = (const Object *)id;
-  write_curves((const Curves *)object->data);
+  write_curves();
   write_transform();
   write_materials();
 }
@@ -147,8 +146,10 @@ void CurvesData::write_materials()
   mat_data_ = get_or_create_material(mat);
 }
 
-void CurvesData::write_curves(const Curves *curves_id)
+void CurvesData::write_curves()
 {
+  Object *object = (Object *)id;
+  Curves *curves_id = (Curves *)object->data;
   const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
   curve_vertex_counts_.resize(curves.curves_num());
@@ -168,12 +169,6 @@ void CurvesData::write_curves(const Curves *curves_id)
     widths_[i] = radii[i] * 2.0f;
   }
 
-  write_uv_maps(curves_id);
-}
-
-void CurvesData::write_uv_maps(const Curves *curves_id)
-{
-  const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   const Span<float2> surface_uv_coords = curves.surface_uv_coords();
   if (surface_uv_coords.is_empty()) {
     uvs_.clear();
@@ -205,16 +200,6 @@ bool HairData::is_visible(HydraSceneDelegate *scene_delegate,
   return psys_check_enabled(object, particle_system, for_render);
 }
 
-void HairData::init()
-{
-  ID_LOGN(1, "");
-
-  /* NOTE: no need to write_transform here, since we already write actual position. */
-  write_curves();
-  write_materials();
-  write_uv_maps();
-}
-
 void HairData::update()
 {
   init();
@@ -222,6 +207,11 @@ void HairData::update()
       prim_id, pxr::HdChangeTracker::AllDirty);
 
   ID_LOGN(1, "");
+}
+
+void HairData::write_transform()
+{
+  transform = pxr::GfMatrix4d(1.0);
 }
 
 void HairData::write_curves()
@@ -234,6 +224,8 @@ void HairData::write_curves()
   curve_vertex_counts_.reserve(particle_system_->totpart);
   vertices_.clear();
   widths_.clear();
+  uvs_.clear();
+  uvs_.reserve(particle_system_->totpart);
 
   Object *object = (Object *)id;
   float scale = particle_system_->part->rad_scale *
@@ -245,8 +237,6 @@ void HairData::write_curves()
   float tip = scale * particle_system_->part->rad_tip;
   float shape = particle_system_->part->shape;
 
-  auto radius = [&shape](float x) { return pow(x, pow(10.0f, -shape)); };
-
   ParticleCacheKey *strand;
   for (int strand_index = 0; strand_index < particle_system_->totpart; ++strand_index) {
     strand = cache[strand_index];
@@ -256,21 +246,17 @@ void HairData::write_curves()
 
     for (int point_index = 0; point_index < point_count; ++point_index, ++strand) {
       vertices_.push_back(pxr::GfVec3f(strand->co));
-      widths_.push_back(root + (tip - root) * radius(float(point_index) / (point_count - 1)));
+      float x = float(point_index) / (point_count - 1);
+      float radius = pow(x, pow(10.0f, -shape));
+      widths_.push_back(root + (tip - root) * radius);
     }
+
     if (particle_system_->part->shape_flag & PART_SHAPE_CLOSE_TIP) {
-      widths_.pop_back();
-      widths_.push_back(0.0f);
+      widths_[widths_.size() - 1] = 0.0f;
     }
   }
-}
 
-void HairData::write_uv_maps()
-{
-  uvs_.clear();
-  uvs_.reserve(particle_system_->totpart);
   if (particle_system_->particles) {
-    Object *object = (Object *)id;
     ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system_);
     int num = ELEM(particle_system_->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
                   particle_system_->particles->num :
