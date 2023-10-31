@@ -159,17 +159,17 @@ void horizon_scan_context_sample_finish(
   horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bxdf_eval(context.diffuse, L, V) * M_PI;
+  sample_radiance *= bxdf_eval(context.diffuse, L, V);
   horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
   /* TODO(fclem): Loosing energy here. */
-  sample_radiance *= bxdf_eval(context.reflection, L, V) * M_PI;
+  sample_radiance *= bxdf_eval(context.reflection, L, V);
   horizon_scan_context_sample_finish(context.reflection_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFRACT
   /* TODO(fclem): Broken: Black. */
-  sample_radiance *= bxdf_eval(context.refraction, L, V) * M_PI;
+  sample_radiance *= bxdf_eval(context.refraction, L, V);
   horizon_scan_context_sample_finish(context.refraction_common, sample_radiance, theta, bias);
 #endif
 }

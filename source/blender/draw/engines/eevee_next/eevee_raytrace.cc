@@ -207,7 +207,8 @@ void RayTraceModule::sync()
     PassSimple &pass = PASS_VARIATION(horizon_scan_, type, _ps_);
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(SHADER_VARIATION(HORIZON_SCAN_, type)));
-    pass.bind_image("out_radiance_img", &horizon_scan_output_tx_);
+    pass.bind_image("radiance_img", &horizon_scan_output_tx_);
+    pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_tiles_buf_);
     pass.bind_texture("screen_radiance_tx", &screen_radiance_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
@@ -326,7 +327,11 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   data_.thickness = options.screen_trace_thickness;
   data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
   data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
-  data_.max_trace_roughness = 1.0f;
+
+  float roughness_mask_start = 0.2f; /* TODO option. */
+  float roughness_mask_fade = 0.2f;
+  data_.roughness_mask_scale = 1.0 / roughness_mask_fade;
+  data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
 
   data_.resolution_scale = resolution_scale;
   data_.closure_active = raytrace_closure;
@@ -433,13 +438,14 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_temporal_tx.release();
   }
 
-  tile_mask_tx_.release();
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
     horizon_scan_output_tx_ = result.get();
     inst_.manager->submit(*horizon_scan_ps, render_view);
   }
+
+  tile_mask_tx_.release();
 
   DRW_stats_group_end();
 

@@ -12,13 +12,13 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 
-shared uint tile_contains_glossy_rays;
+shared uint tile_contains_ray_tracing;
+shared uint tile_contains_horizon_scan;
 
-/* Returns a blend factor between different irradiance fetching method for reflections. */
-float ray_glossy_factor(float roughness)
+/* Returns a blend factor between different tracing method. */
+float ray_glossy_factor(RayTraceData raytrace, float roughness)
 {
-  /* TODO */
-  return 1.0;
+  return saturate(roughness * raytrace.roughness_mask_scale - raytrace.roughness_mask_bias);
 }
 
 void main()
@@ -38,7 +38,8 @@ void main()
     ray_dispatch_buf.num_groups_z = 1u;
 
     /* Init shared variables. */
-    tile_contains_glossy_rays = 0;
+    tile_contains_ray_tracing = 0;
+    tile_contains_horizon_scan = 0;
   }
 
   barrier();
@@ -51,13 +52,20 @@ void main()
   if (flag_test(closure_bits, uniform_buf.raytrace.closure_active)) {
     GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
-    float roughness = (uniform_buf.raytrace.closure_active == CLOSURE_REFRACTION) ?
-                          gbuf.refraction.roughness :
-                          gbuf.reflection.roughness;
+    float roughness = (uniform_buf.raytrace.closure_active == CLOSURE_DIFFUSE) ?
+                          1.0 :
+                          ((uniform_buf.raytrace.closure_active == CLOSURE_REFRACTION) ?
+                               gbuf.refraction.roughness :
+                               gbuf.reflection.roughness);
 
-    if (ray_glossy_factor(roughness) > 0.0) {
+    float ray_glossy_factor = ray_glossy_factor(uniform_buf.raytrace, roughness);
+    if (ray_glossy_factor > 0.0) {
       /* We don't care about race condition here. */
-      tile_contains_glossy_rays = 1;
+      tile_contains_ray_tracing = 1;
+    }
+    if (ray_glossy_factor < 1.0) {
+      /* We don't care about race condition here. */
+      tile_contains_horizon_scan = 1;
     }
   }
 
@@ -67,8 +75,11 @@ void main()
     ivec2 tile_co = ivec2(gl_WorkGroupID.xy);
 
     uint tile_mask = 0u;
-    if (tile_contains_glossy_rays > 0) {
-      tile_mask = 1u;
+    if (tile_contains_ray_tracing > 0) {
+      tile_mask = 1u << 0u;
+    }
+    if (tile_contains_horizon_scan > 0) {
+      tile_mask = 1u << 1u;
     }
 
     imageStore(tile_mask_img, tile_co, uvec4(tile_mask));

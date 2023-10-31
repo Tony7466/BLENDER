@@ -26,7 +26,7 @@ void main()
 
   if (depth == 1.0) {
     /* Do not trace for background */
-    imageStore(out_radiance_img, texel, vec4(0.0));
+    imageStore(radiance_img, texel, vec4(0.0));
     return;
   }
 
@@ -79,22 +79,24 @@ void main()
                     uniform_buf.ao.angle_bias,
                     8);
 
-  /* TODO(fclem): Do not load non traced tiles. */
-  vec4 radiance_raytrace = imageLoad(out_radiance_img, texel);
+  float mix_fac = saturate(roughness * uniform_buf.raytrace.roughness_mask_scale -
+                           uniform_buf.raytrace.roughness_mask_bias);
+
+  vec4 radiance_raytrace = tile_use_ray_tracing ? imageLoad(radiance_img, texel) : vec4(0.0);
   vec4 radiance_horizon = vec4(1.0, 0.0, 1.0, 1.0);
 #ifdef HORIZON_DIFFUSE
   radiance_horizon = vec4(ctx.diffuse_result, 1.0);
-  float mix_fac = 1.0;
+  float roughness = 1.0;
 #endif
 #ifdef HORIZON_REFLECT
   radiance_horizon = vec4(ctx.reflection_result, 1.0);
-  float mix_fac = saturate(ctx.reflection.roughness * 8.0 - 2.0);
+  float roughness = ctx.reflection.roughness;
 #endif
 #ifdef HORIZON_REFRACT
   radiance_horizon = vec4(ctx.refraction_result, 1.0);
-  float mix_fac = saturate(ctx.refraction.roughness * 8.0 - 2.0);
+  float roughness = 1.0; /* TODO(fclem): Apparent roughness. */
 #endif
   vec4 radiance = mix(radiance_raytrace, radiance_horizon, mix_fac);
 
-  imageStore(out_radiance_img, texel, radiance);
+  imageStore(radiance_img, texel, radiance);
 }
