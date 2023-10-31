@@ -853,112 +853,6 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static int prop_view_exec(bContext *C, wmOperator *op)
-{
-  PointerRNA ptr = {nullptr};
-  PropertyRNA *prop = nullptr;
-  uiBut *but;
-  int index;
-
-  if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
-    /* pass event on if no active button found */
-    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
-  }
-
-  ListBase selection = {nullptr, nullptr};
-  if (CTX_data_mode_enum(C) == CTX_MODE_POSE) {
-    CTX_data_selected_pose_bones(C, &selection);
-  }
-  else {
-    CTX_data_selected_objects(C, &selection);
-  }
-
-  rctf bounds{};
-  bounds.xmin = INFINITY;
-  bounds.xmax = -INFINITY;
-  bounds.ymin = INFINITY;
-  bounds.ymax = -INFINITY;
-  const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
-
-  LISTBASE_FOREACH (CollectionPointerLink *, selected, &selection) {
-    ID *selected_id = selected->ptr.owner_id;
-    if (!BKE_animdata_id_is_animated(selected_id)) {
-      continue;
-    }
-    AnimData *anim_data = BKE_animdata_from_id(selected_id);
-    char *path = RNA_path_from_ID_to_property(&selected->ptr, prop);
-    bAction *action;
-    bool driven;
-    FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-        anim_data, path, index, &action, &driven);
-    fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
-
-    rctf fcu_bounds;
-    BKE_fcurve_calc_bounds(fcurve, false, include_handles, nullptr, &fcu_bounds);
-    BLI_rctf_union(&bounds, &fcu_bounds);
-    MEM_freeN(path);
-  }
-
-  BLI_freelistN(&selection);
-
-  if (!BLI_rctf_is_valid(&bounds)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
-    const bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
-
-    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-      if (area->spacetype != SPACE_GRAPH) {
-        continue;
-      }
-      ARegion *window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
-      if (!window_region) {
-        continue;
-      }
-      add_region_padding(C, window_region, &bounds);
-      const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-      UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
-      ED_area_tag_redraw(area);
-      break;
-    }
-  }
-
-  return OPERATOR_FINISHED;
-}
-
-static bool prop_view_poll(bContext *C)
-{
-  return true;
-}
-
-static void ANIM_OT_prop_view(wmOperatorType *ot)
-{
-  /* Identifiers */
-  ot->name = "Frame In Graph Editor";
-  ot->idname = "ANIM_OT_prop_view";
-  ot->description = "Frame the property under the cursor in the Graph Editor";
-
-  /* API callbacks */
-  ot->exec = prop_view_exec;
-  ot->poll = prop_view_poll;
-
-  ot->flag = 0;
-
-  ot->prop = RNA_def_boolean(ot->srna,
-                             "include_handles",
-                             true,
-                             "Include Handles",
-                             "Include handles of keyframes when calculating extents");
-
-  ot->prop = RNA_def_boolean(ot->srna,
-                             "use_preview_range",
-                             true,
-                             "Use Preview Range",
-                             "Ignore frames outside of the preview range");
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -4443,6 +4337,110 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              true,
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
+}
+
+static int prop_view_exec(bContext *C, wmOperator *op)
+{
+  PointerRNA ptr = {nullptr};
+  PropertyRNA *prop = nullptr;
+  uiBut *but;
+  int index;
+
+  if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
+    /* pass event on if no active button found */
+    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
+  }
+
+  ListBase selection = {nullptr, nullptr};
+  if (CTX_data_mode_enum(C) == CTX_MODE_POSE) {
+    CTX_data_selected_pose_bones(C, &selection);
+  }
+  else {
+    CTX_data_selected_objects(C, &selection);
+  }
+
+  rctf bounds{};
+  bounds.xmin = INFINITY;
+  bounds.xmax = -INFINITY;
+  bounds.ymin = INFINITY;
+  bounds.ymax = -INFINITY;
+  const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
+
+  Scene *scene = CTX_data_scene(C);
+  float frame_range[2];
+  get_view_range(scene, true, frame_range);
+
+  LISTBASE_FOREACH (CollectionPointerLink *, selected, &selection) {
+    ID *selected_id = selected->ptr.owner_id;
+    if (!BKE_animdata_id_is_animated(selected_id)) {
+      continue;
+    }
+    AnimData *anim_data = BKE_animdata_from_id(selected_id);
+    char *path = RNA_path_from_ID_to_property(&selected->ptr, prop);
+    bAction *action;
+    bool driven;
+    FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
+        anim_data, path, index, &action, &driven);
+    fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
+
+    rctf fcu_bounds;
+    BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
+    BLI_rctf_union(&bounds, &fcu_bounds);
+    MEM_freeN(path);
+  }
+
+  BLI_freelistN(&selection);
+
+  if (!BLI_rctf_is_valid(&bounds)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
+    const bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
+
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      if (area->spacetype != SPACE_GRAPH) {
+        continue;
+      }
+      ARegion *window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+
+      if (!window_region) {
+        continue;
+      }
+      add_region_padding(C, window_region, &bounds);
+      const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+      UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
+      ED_area_tag_redraw(area);
+      break;
+    }
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_prop_view(wmOperatorType *ot)
+{
+  /* Identifiers */
+  ot->name = "Frame In Graph Editor";
+  ot->idname = "ANIM_OT_prop_view";
+  ot->description = "Frame the property under the cursor in the Graph Editor";
+
+  /* API callbacks */
+  ot->exec = prop_view_exec;
+
+  ot->flag = 0;
+
+  RNA_def_boolean(ot->srna,
+                  "include_handles",
+                  true,
+                  "Include Handles",
+                  "Include handles of keyframes when calculating extents");
+
+  RNA_def_boolean(ot->srna,
+                  "all",
+                  false,
+                  "Show All",
+                  "Frame the whole array property instead of only the index under the cursor");
 }
 
 /** \} */
