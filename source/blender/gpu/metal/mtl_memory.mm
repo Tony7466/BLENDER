@@ -558,8 +558,6 @@ MTLSafeFreeList::MTLSafeFreeList()
   in_free_queue_ = false;
   current_list_index_ = 0;
   next_ = nullptr;
-
-  printf("SAFE FREE LIST CREATED %p\n", this);
 }
 
 void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
@@ -616,7 +614,6 @@ void MTLSafeFreeList::decrement_reference()
   int ref_count = --reference_count_;
 
   if (ref_count == 0) {
-    printf("SAFE FREE LIST RELEASED %p\n", this);
     MTLContext::get_global_memory_manager()->push_completed_safe_list(this);
   }
   lock_.unlock();
