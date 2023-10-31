@@ -37,6 +37,7 @@
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
@@ -1061,15 +1062,29 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
 
 static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
 {
+  /* Convert future combined Noise Texture back to Musgrave and Noise Texture nodes. */
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if ((node->type != SH_NODE_TEX_NOISE) ||
-        ((static_cast<NodeTexNoise *>(node->storage))->type == SHD_NOISE_FBM))
-    {
+    if (node->type != SH_NODE_TEX_NOISE) {
       continue;
     }
 
+    const NodeTexNoise *noise_data = static_cast<const NodeTexNoise *>(node->storage);
+    if (!noise_data || noise_data->type == SHD_NOISE_FBM) {
+      continue;
+    }
+
+    /* Does the node have the expected new sockets? */
+    bNodeSocket *height_socket = nodeFindSocket(node, SOCK_OUT, "Fac");
+    bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
+    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
+
+    if (!(height_socket && roughness_socket && detail_socket && lacunarity_socket)) {
+      continue;
+    }
+
+    /* Delete links to sockets that don't exist in Blender 4.0. */
     LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-      /* Delete links to sockets that don't exist in Blender 4.0. */
       if (((link->tonode == node) && STREQ(link->tosock->identifier, "Distortion")) ||
           ((link->fromnode == node) && STREQ(link->fromsock->identifier, "Color")))
       {
@@ -1077,27 +1092,27 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       }
     }
 
+    /* Change node idname and storage to Musgrave. */
     STRNCPY(node->idname, "ShaderNodeTexMusgrave");
     node->type = SH_NODE_TEX_MUSGRAVE;
     NodeTexMusgrave *data = MEM_cnew<NodeTexMusgrave>(__func__);
-    const NodeTexNoise *noise_data = static_cast<const NodeTexNoise *>(node->storage);
     data->base = noise_data->base;
     data->musgrave_type = noise_data->type;
     data->dimensions = noise_data->dimensions;
     MEM_freeN(node->storage);
     node->storage = data;
 
-    bNodeSocket *dimension_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+    /* Convert socket names and labels. */
+    bNodeSocket *dimension_socket = roughness_socket;
     STRNCPY(dimension_socket->identifier, "Dimension");
     STRNCPY(dimension_socket->name, "Dimension");
 
-    bNodeSocket *height_socket = nodeFindSocket(node, SOCK_OUT, "Fac");
     STRNCPY(height_socket->label, "Height");
 
+    /* Find links to convert. */
     bNodeLink *detail_link = nullptr;
     bNode *detail_from_node = nullptr;
     bNodeSocket *detail_from_socket = nullptr;
-    bNodeSocket *detail_socket = nodeFindSocket(node, SOCK_IN, "Detail");
     float *detail = version_cycles_node_socket_float_value(detail_socket);
 
     bNodeLink *dimension_link = nullptr;
@@ -1108,7 +1123,6 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
     bNodeLink *lacunarity_link = nullptr;
     bNode *lacunarity_from_node = nullptr;
     bNodeSocket *lacunarity_from_socket = nullptr;
-    bNodeSocket *lacunarity_socket = nodeFindSocket(node, SOCK_IN, "Lacunarity");
     float *lacunarity = version_cycles_node_socket_float_value(lacunarity_socket);
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1198,9 +1212,7 @@ static void versioning_convert_combined_noise_texture_node(bNodeTree *ntree)
       }
     }
     else {
-      *dimension = (*dimension == 0.0f) || (*lacunarity == 0.0f) || (*lacunarity == 1.0f) ?
-                       0.0f :
-                       -(std::logf(*dimension) / std::logf(*lacunarity));
+      *dimension = -safe_divide(safe_logf(*dimension), safe_logf(*lacunarity));
     }
   }
 
@@ -1843,7 +1855,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (MAIN_VERSION_FILE_ATLEAST(bmain, 401, 4)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type != NTREE_CUSTOM) {
-        /* Convert combined Noise Texture nodes back to Musgrave and Noise Texture nodes. */
         versioning_convert_combined_noise_texture_node(ntree);
       }
     }
