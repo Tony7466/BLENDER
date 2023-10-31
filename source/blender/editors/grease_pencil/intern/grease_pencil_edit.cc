@@ -1032,8 +1032,6 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
             bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
             changed = true;
             break;
-          default:
-            break;
         }
       });
 
