@@ -36,7 +36,4 @@ TEST(math_base, SafeLogf)
   EXPECT_FLOAT_EQ(safe_logf(-2.0f, 4.3f), 0.0f);
   EXPECT_FLOAT_EQ(safe_logf(2.0f, -4.3f), 0.0f);
   EXPECT_FLOAT_EQ(safe_logf(-2.0f, -4.3f), 0.0f);
-  EXPECT_FLOAT_EQ(safe_logef(3.3f), 1.1939224f);
-  EXPECT_FLOAT_EQ(safe_logef(0.0f), 0.0f);
-  EXPECT_FLOAT_EQ(safe_logef(-2.0f), 0.0f);
 }

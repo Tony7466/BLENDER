@@ -35,14 +35,6 @@ MINLINE float safe_logf(float a, float base)
   return safe_divide(logf(a), logf(base));
 }
 
-MINLINE float safe_logef(float a)
-{
-  if (UNLIKELY(a <= 0.0f)) {
-    return 0.0f;
-  }
-  return logf(a);
-}
-
 MINLINE float safe_sqrtf(float a)
 {
   return sqrtf(MAX2(a, 0.0f));
