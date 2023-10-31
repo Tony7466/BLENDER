@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include "BLI_array.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 namespace blender::io::ply {
@@ -16,8 +18,9 @@ namespace blender::io::ply {
 enum PlyDataTypes { NONE, CHAR, UCHAR, SHORT, USHORT, INT, UINT, FLOAT, DOUBLE, PLY_TYPE_COUNT };
 
 struct PlyCustomAttribute {
+  PlyCustomAttribute(const StringRef name_, int64_t size) : name(name_), data(size) {}
   std::string name;
-  Vector<float> data; /* Any custom PLY attributes are converted to floats. */
+  Array<float> data; /* Any custom PLY attributes are converted to floats. */
 };
 
 struct PlyData {

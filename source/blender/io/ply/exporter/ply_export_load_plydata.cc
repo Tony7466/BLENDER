@@ -165,43 +165,39 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
 
     const GVArraySpan attribute = *mesh->attributes().lookup(
         attribute_id, meta_data.domain, meta_data.data_type);
-    if (attribute.is_empty()) {
+    const int64_t size = attribute.size();
+    if (size == 0) {
       return true;
     }
     switch (meta_data.data_type) {
       case CD_PROP_FLOAT: {
-        PlyCustomAttribute attr;
-        attr.name = attribute_id.name();
-        attr.data.extend(attribute.typed<float>());
+        PlyCustomAttribute attr(attribute_id.name(), size);
+        auto typed = attribute.typed<float>();
+        for (const int64_t i : typed.index_range()) {
+          attr.data[i] = typed[i];
+        }
         r_attributes.append(attr);
       } break;
       case CD_PROP_INT8: {
-        PlyCustomAttribute attr;
-        attr.name = attribute_id.name();
+        PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<int8_t>();
-        attr.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr.data[i] = typed[i];
         }
         r_attributes.append(attr);
       } break;
       case CD_PROP_INT32: {
-        PlyCustomAttribute attr;
-        attr.name = attribute_id.name();
+        PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<int32_t>();
-        attr.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr.data[i] = typed[i];
         }
         r_attributes.append(attr);
       } break;
       case CD_PROP_INT32_2D: {
-        PlyCustomAttribute attr_x, attr_y;
-        attr_x.name = attribute_id.name() + "_x";
-        attr_y.name = attribute_id.name() + "_y";
+        PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
+        PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
         auto typed = attribute.typed<int2>();
-        attr_x.data.resize(typed.size());
-        attr_y.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr_x.data[i] = typed[i].x;
           attr_y.data[i] = typed[i].y;
@@ -210,12 +206,9 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_y);
       } break;
       case CD_PROP_FLOAT2: {
-        PlyCustomAttribute attr_x, attr_y;
-        attr_x.name = attribute_id.name() + "_x";
-        attr_y.name = attribute_id.name() + "_y";
+        PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
+        PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
         auto typed = attribute.typed<float2>();
-        attr_x.data.resize(typed.size());
-        attr_y.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr_x.data[i] = typed[i].x;
           attr_y.data[i] = typed[i].y;
@@ -224,14 +217,10 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_y);
       } break;
       case CD_PROP_FLOAT3: {
-        PlyCustomAttribute attr_x, attr_y, attr_z;
-        attr_x.name = attribute_id.name() + "_x";
-        attr_y.name = attribute_id.name() + "_y";
-        attr_z.name = attribute_id.name() + "_z";
+        PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
+        PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
+        PlyCustomAttribute attr_z(attribute_id.name() + "_z", size);
         auto typed = attribute.typed<float3>();
-        attr_x.data.resize(typed.size());
-        attr_y.data.resize(typed.size());
-        attr_z.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr_x.data[i] = typed[i].x;
           attr_y.data[i] = typed[i].y;
@@ -242,16 +231,11 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_z);
       } break;
       case CD_PROP_BYTE_COLOR: {
-        PlyCustomAttribute attr_r, attr_g, attr_b, attr_a;
-        attr_r.name = attribute_id.name() + "_r";
-        attr_g.name = attribute_id.name() + "_g";
-        attr_b.name = attribute_id.name() + "_b";
-        attr_a.name = attribute_id.name() + "_a";
+        PlyCustomAttribute attr_r(attribute_id.name() + "_r", size);
+        PlyCustomAttribute attr_g(attribute_id.name() + "_g", size);
+        PlyCustomAttribute attr_b(attribute_id.name() + "_b", size);
+        PlyCustomAttribute attr_a(attribute_id.name() + "_a", size);
         auto typed = attribute.typed<ColorGeometry4b>();
-        attr_r.data.resize(typed.size());
-        attr_g.data.resize(typed.size());
-        attr_b.data.resize(typed.size());
-        attr_a.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           ColorGeometry4f col = typed[i].decode();
           attr_r.data[i] = col.r;
@@ -265,16 +249,11 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_a);
       } break;
       case CD_PROP_COLOR: {
-        PlyCustomAttribute attr_r, attr_g, attr_b, attr_a;
-        attr_r.name = attribute_id.name() + "_r";
-        attr_g.name = attribute_id.name() + "_g";
-        attr_b.name = attribute_id.name() + "_b";
-        attr_a.name = attribute_id.name() + "_a";
+        PlyCustomAttribute attr_r(attribute_id.name() + "_r", size);
+        PlyCustomAttribute attr_g(attribute_id.name() + "_g", size);
+        PlyCustomAttribute attr_b(attribute_id.name() + "_b", size);
+        PlyCustomAttribute attr_a(attribute_id.name() + "_a", size);
         auto typed = attribute.typed<ColorGeometry4f>();
-        attr_r.data.resize(typed.size());
-        attr_g.data.resize(typed.size());
-        attr_b.data.resize(typed.size());
-        attr_a.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           ColorGeometry4f col = typed[i];
           attr_r.data[i] = col.r;
@@ -288,26 +267,19 @@ static void load_custom_attributes(const Mesh *mesh, Vector<PlyCustomAttribute> 
         r_attributes.append(attr_a);
       } break;
       case CD_PROP_BOOL: {
-        PlyCustomAttribute attr;
-        attr.name = attribute_id.name();
+        PlyCustomAttribute attr(attribute_id.name(), size);
         auto typed = attribute.typed<bool>();
-        attr.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr.data[i] = typed[i] ? 1.0f : 0.0f;
         }
         r_attributes.append(attr);
       } break;
       case CD_PROP_QUATERNION: {
-        PlyCustomAttribute attr_x, attr_y, attr_z, attr_w;
-        attr_x.name = attribute_id.name() + "_x";
-        attr_y.name = attribute_id.name() + "_y";
-        attr_z.name = attribute_id.name() + "_z";
-        attr_w.name = attribute_id.name() + "_w";
+        PlyCustomAttribute attr_x(attribute_id.name() + "_x", size);
+        PlyCustomAttribute attr_y(attribute_id.name() + "_y", size);
+        PlyCustomAttribute attr_z(attribute_id.name() + "_z", size);
+        PlyCustomAttribute attr_w(attribute_id.name() + "_w", size);
         auto typed = attribute.typed<math::Quaternion>();
-        attr_x.data.resize(typed.size());
-        attr_y.data.resize(typed.size());
-        attr_z.data.resize(typed.size());
-        attr_w.data.resize(typed.size());
         for (const int64_t i : typed.index_range()) {
           attr_x.data[i] = typed[i].x;
           attr_y.data[i] = typed[i].y;

@@ -103,12 +103,9 @@ Mesh *convert_ply_to_mesh(PlyData &data, const PLYImportParams &params)
   /* Custom attributes */
   if (params.import_attributes && !data.vertex_custom_attr.is_empty()) {
     for (const PlyCustomAttribute &attr : data.vertex_custom_attr) {
-      bke::SpanAttributeWriter<float> attr_writer =
-          attributes.lookup_or_add_for_write_only_span<float>(attr.name, ATTR_DOMAIN_POINT);
-      for (const int i : attr.data.index_range()) {
-        attr_writer.span[i] = attr.data[i];
-      }
-      attr_writer.finish();
+      attributes.add<float>(attr.name,
+                            ATTR_DOMAIN_POINT,
+                            bke::AttributeInitVArray(VArray<float>::ForSpan(attr.data)));
     }
   }
 

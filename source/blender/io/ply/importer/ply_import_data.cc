@@ -252,7 +252,7 @@ static const char *load_vertex_element(PlyReadBuffer &file,
   }
 
   Vector<int64_t> custom_attr_indices;
-  for (int64_t prop_idx = 0, n_props = element.properties.size(); prop_idx < n_props; ++prop_idx) {
+  for (const int64_t prop_idx : element.properties.index_range()) {
     const PlyProperty &prop = element.properties[prop_idx];
     bool is_standard = ELEM(
         prop.name, "x", "y", "z", "nx", "ny", "nz", "red", "green", "blue", "alpha", "s", "t");
@@ -260,8 +260,7 @@ static const char *load_vertex_element(PlyReadBuffer &file,
       continue;
 
     custom_attr_indices.append(prop_idx);
-    PlyCustomAttribute attr;
-    attr.name = prop.name;
+    PlyCustomAttribute attr(prop.name, element.count);
     data->vertex_custom_attr.append(attr);
   }
 
@@ -345,9 +344,9 @@ static const char *load_vertex_element(PlyReadBuffer &file,
     }
 
     /* Custom attributes */
-    for (int64_t ci = 0; ci < custom_attr_indices.size(); ++ci) {
+    for (const int64_t ci : custom_attr_indices.index_range()) {
       float value = value_vec[custom_attr_indices[ci]];
-      data->vertex_custom_attr[ci].data.append(value);
+      data->vertex_custom_attr[ci].data[i] = value;
     }
   }
   return nullptr;
