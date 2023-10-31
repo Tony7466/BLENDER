@@ -245,8 +245,18 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
 
+  /* Disable auto-masking code path which rely on an undo step to access original data.
+   *
+   * This is because the dynamic topology uses BMesh Log based undo system, which creates a single
+   * node for the undo step, and its type could be different for the needs of the brush undo and
+   * the original data access.
+   *
+   * For the brushes like Draw the ss->cache->automasking is set to nullptr at the first step of
+   * the brush, as there is an explicit check there for the brushes which support dynamic topology.
+   * Do it locally here for the Draw Face Set brush here, to mimic the behavior of the other
+   * brushes but without marking the brush as supporting dynamic topology. */
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss, nullptr, &automask_data, node);
 
   bool changed = false;
 
@@ -260,6 +270,9 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
 
     bool is_face_fully_covered = true;
 
+    float3 face_center;
+    BM_face_calc_center_median(f, face_center);
+
     const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
     do {
       if (!sculpt_brush_test_sq_fn(&test, l_iter->v->co)) {
@@ -267,21 +280,28 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
         break;
       }
 
-#if 0
-      const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                  brush,
-                                                                  face_center,
-                                                                  sqrtf(test.dist),
-                                                                  f->no,
-                                                                  f->no,
-                                                                  0.0f,
-                                                                  vd.vertex,
-                                                                  thread_id,
-                                                                  &automask_data);
-#else
-      const float fade = bstrength;
-      (void)thread_id;
-#endif
+      BMVert *vert = l_iter->v;
+
+      /* There is no need to update the automasking data as it is disabled above. Additionally,
+       * there is no access to the PBVHVertexIter as iteration happens over faces.
+       *
+       * The full auto-masking support would be very good to be implemented here, so keeping the
+       * typical code flow for it here for the reference, and ease of looking at what needs to be
+       * done for such integration.
+       *
+       * SCULPT_automasking_node_update(ss, &automask_data, &vd); */
+
+      const float fade = bstrength *
+                         SCULPT_brush_strength_factor(ss,
+                                                      brush,
+                                                      face_center,
+                                                      sqrtf(test.dist),
+                                                      f->no,
+                                                      f->no,
+                                                      0.0f,
+                                                      BKE_pbvh_make_vref(intptr_t(vert)),
+                                                      thread_id,
+                                                      &automask_data);
 
       if (fade <= FACE_SET_BRUSH_MIN_FADE) {
         is_face_fully_covered = false;
