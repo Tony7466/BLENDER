@@ -89,19 +89,6 @@ class SplitOperation : public NodeOperation {
     GPU_shader_unbind();
   }
 
-  Domain compute_domain() override
-  {
-    /* The context can use the composite output and thus has a dedicated viewer of an arbitrary
-     * size, so use the input directly. Otherwise, no dedicated viewer exist so the input should be
-     * in the domain of the compositing region. */
-    if (context().use_composite_output()) {
-      return NodeOperation::compute_domain();
-    }
-    else {
-      return Domain(context().get_compositing_region_size());
-    }
-  }
-
   GPUShader *get_split_shader()
   {
     if (get_split_axis() == CMP_NODE_SPLIT_HORIZONTAL) {
