@@ -4339,6 +4339,53 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Ignore frames outside of the preview range");
 }
 
+static short get_normalization_flags(SpaceLink *sl)
+{
+  if (sl->spacetype == SPACE_GRAPH) {
+    SpaceGraph *sipo = (SpaceGraph *)sl;
+    bool use_normalization = (sipo->flag & SIPO_NORMALIZE) != 0;
+    bool freeze_normalization = (sipo->flag & SIPO_NORMALIZE_FREEZE) != 0;
+    return use_normalization ? (ANIM_UNITCONV_NORMALIZE |
+                                (freeze_normalization ? ANIM_UNITCONV_NORMALIZE_FREEZE : 0)) :
+                               0;
+  }
+
+  return 0;
+}
+
+static bool get_normalized_fcurve_bounds_foo(FCurve *fcu,
+                                             SpaceLink *sl,
+                                             Scene *scene,
+                                             ID *id,
+                                             const bool include_handles,
+                                             const float range[2],
+                                             rctf *r_bounds)
+{
+  const bool fcu_selection_only = false;
+  const bool found_bounds = BKE_fcurve_calc_bounds(
+      fcu, fcu_selection_only, include_handles, range, r_bounds);
+
+  if (!found_bounds) {
+    return false;
+  }
+
+  const short mapping_flag = get_normalization_flags(sl);
+
+  float offset;
+  const float unit_fac = ANIM_unit_mapping_get_factor(scene, id, fcu, mapping_flag, &offset);
+
+  r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
+  r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
+
+  const float min_height = 0.01f;
+  const float height = BLI_rctf_size_y(r_bounds);
+  if (height < min_height) {
+    r_bounds->ymin -= (min_height - height) / 2;
+    r_bounds->ymax += (min_height - height) / 2;
+  }
+  return true;
+}
+
 static int prop_view_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = {nullptr};
@@ -4349,6 +4396,43 @@ static int prop_view_exec(bContext *C, wmOperator *op)
   if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
+  }
+
+  bool found_graph_editor = false;
+
+  wmWindow *found_window;
+  bScreen *screen;
+  ScrArea *graph_editor_area;
+  ARegion *ge_window_region;
+  SpaceLink *ge;
+
+  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
+    screen = BKE_workspace_active_screen_get(win->workspace_hook);
+
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      if (area->spacetype != SPACE_GRAPH) {
+        continue;
+      }
+      ge_window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+
+      if (!ge_window_region) {
+        continue;
+      }
+
+      graph_editor_area = area;
+      found_window = win;
+      ge = (SpaceLink *)area->spacedata.first;
+      found_graph_editor = true;
+      break;
+    }
+
+    if (found_graph_editor) {
+      break;
+    }
+  }
+
+  if (!found_graph_editor) {
+    WM_report(RPT_WARNING, "No open Graph Editor window found");
   }
 
   ListBase selection = {nullptr, nullptr};
@@ -4407,7 +4491,9 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
-      BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
+      get_normalized_fcurve_bounds_foo(
+          fcurve, ge, scene, selected_id, include_handles, frame_range, &fcu_bounds);
+      // BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
       BLI_rctf_union(&bounds, &fcu_bounds);
     }
   }
@@ -4417,40 +4503,14 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bool found_graph_editor = false;
-
-  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
-    const bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
-
-    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-      if (area->spacetype != SPACE_GRAPH) {
-        continue;
-      }
-      ARegion *window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
-      if (!window_region) {
-        continue;
-      }
-      add_region_padding(C, window_region, &bounds);
-      /* Setting the window to the context is needed for the case when the Graph Editor is found in
-       * a different window. Otherwise smooth view wouldn't work. */
-      CTX_wm_window_set(C, win);
-      CTX_wm_area_set(C, area);
-      const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-      UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
-      ED_area_tag_redraw(area);
-      found_graph_editor = true;
-      break;
-    }
-
-    if (found_graph_editor) {
-      break;
-    }
-  }
-
-  if (!found_graph_editor) {
-    WM_report(RPT_WARNING, "No open Graph Editor window found");
-  }
+  add_region_padding(C, ge_window_region, &bounds);
+  /* Setting the window to the context is needed for the case when the Graph Editor is found in
+   * a different window. Otherwise smooth view wouldn't work. */
+  CTX_wm_window_set(C, found_window);
+  CTX_wm_area_set(C, graph_editor_area);
+  const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+  UI_view2d_smooth_view(C, ge_window_region, &bounds, smooth_viewtx);
+  ED_area_tag_redraw(graph_editor_area);
 
   return OPERATOR_FINISHED;
 }
