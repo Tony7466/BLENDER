@@ -77,6 +77,11 @@ typedef struct BPy_IDGroup_View {
   bool reversed;
 } BPy_IDGroup_View;
 
+/** Integer type to unambiguously create an enum ID property by assignment. */
+typedef struct BPy_EnumValue {
+  int value;
+} BPy_EnumValue;
+
 PyObject *BPy_Wrap_GetKeys(struct IDProperty *prop);
 PyObject *BPy_Wrap_GetValues(struct ID *id, struct IDProperty *prop);
 PyObject *BPy_Wrap_GetItems(struct ID *id, struct IDProperty *prop);
