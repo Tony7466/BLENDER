@@ -5819,7 +5819,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.separator()
 
         layout.operator("grease_pencil.cyclical_set", text="Toggle Cyclic")
-        layout.operator("grease_pencil.stroke_flip")
+        layout.operator("grease_pencil.stroke_switch_direction")
 
 
 class VIEW3D_MT_edit_curves(Menu):

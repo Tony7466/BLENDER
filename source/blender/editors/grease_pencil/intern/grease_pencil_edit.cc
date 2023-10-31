@@ -952,7 +952,7 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 /** \name Switch Direction Operator
  * \{ */
 
-static int grease_pencil_stroke_flip_exec(bContext *C, wmOperator *op)
+static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -984,15 +984,15 @@ static int grease_pencil_stroke_flip_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_stroke_flip(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Switch Direction";
-  ot->idname = "GREASE_PENCIL_OT_stroke_flip";
+  ot->idname = "GREASE_PENCIL_OT_stroke_switch_direction";
   ot->description = "Change direction of the points of the selected strokes";
 
   /* Callbacks. */
-  ot->exec = grease_pencil_stroke_flip_exec;
+  ot->exec = grease_pencil_stroke_switch_direction_exec;
   ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1011,7 +1011,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
-  WM_operatortype_append(GREASE_PENCIL_OT_stroke_flip);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_switch_direction);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
