@@ -973,8 +973,9 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
         }
         const blender::VArray<int> materials = *curves.attributes().lookup_or_default<int>(
             "material_index", ATTR_DOMAIN_CURVE, 0);
-
-        object->actcol = materials[selected_curves.first()] + 1;
+        if (object->totcol > 0) {
+          object->actcol = materials[selected_curves.first()] + 1;
+        }
         changed = true;
         return;
       });
