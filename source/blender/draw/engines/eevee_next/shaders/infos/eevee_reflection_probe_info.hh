@@ -63,4 +63,15 @@ GPU_SHADER_CREATE_INFO(eevee_display_probe_reflection)
     .fragment_out(0, Type::VEC4, "out_color")
     .do_static_compilation(true);
 
+GPU_SHADER_INTERFACE_INFO(eevee_display_probe_planar_iface, "").flat(Type::INT, "probe_index");
+
+GPU_SHADER_CREATE_INFO(eevee_display_probe_planar)
+    .additional_info("eevee_shared", "draw_view", "eevee_lightprobe_planar_data")
+    .storage_buf(0, Qualifier::READ, "ProbePlanarDisplayData", "display_data_buf[]")
+    .vertex_source("eevee_display_probe_planar_vert.glsl")
+    .vertex_out(eevee_display_probe_planar_iface)
+    .fragment_source("eevee_display_probe_planar_frag.glsl")
+    .fragment_out(0, Type::VEC4, "out_color")
+    .do_static_compilation(true);
+
 /** \} */

@@ -172,9 +172,9 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
         elif probe.type == 'PLANE':
             col = layout.column()
-            row = col.row()
             col.prop(probe, "clip_start", text="Clipping Offset")
             col.prop(probe, "influence_distance", text="Distance")
+            col.prop(probe, "show_data", toggle=True)
             pass
         else:
             # Currently unsupported
