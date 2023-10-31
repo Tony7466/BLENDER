@@ -669,7 +669,6 @@ static void ntree_blend_write(BlendWriter *writer, ID *id, const void *id_addres
  */
 static bool is_node_socket_supported(const bNodeSocket *sock)
 {
-  bool is_known_builtin_type = false;
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_FLOAT:
     case SOCK_VECTOR:
@@ -686,10 +685,9 @@ static bool is_node_socket_supported(const bNodeSocket *sock)
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
-      is_known_builtin_type = true;
-      break;
+      return true;
   }
-  return is_known_builtin_type || sock->default_value == nullptr;
+  return false;
 }
 
 static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
