@@ -306,11 +306,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
   }
 
   ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/,
-          const int /*frame_number*/,
-          bke::greasepencil::Drawing &drawing) {
+      scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -458,11 +454,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/,
-          const int /*frame_number*/,
-          bke::greasepencil::Drawing &drawing) {
+      scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -668,11 +660,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/,
-          const int /*frame_number*/,
-          bke::greasepencil::Drawing &drawing) {
+      scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
@@ -823,11 +811,7 @@ static int grease_pencil_stroke_change_color_exec(bContext *C, wmOperator * /*op
   }
 
   ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/,
-          const int /*frame_number*/,
-          bke::greasepencil::Drawing &drawing) {
+      scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (curves.points_num() == 0) {
@@ -896,11 +880,7 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/,
-          const int /*frame_number*/,
-          bke::greasepencil::Drawing &drawing) {
+      scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {

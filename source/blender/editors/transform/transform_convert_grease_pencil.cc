@@ -36,11 +36,9 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     ed::greasepencil::foreach_editable_drawing(
-        scene,
-        grease_pencil,
-        [&](const int /*layer_index*/,
-            const int /*frame_number*/,
-            bke::greasepencil::Drawing & /*drawing*/) { number_of_layers_total++; });
+        scene, grease_pencil, [&](bke::greasepencil::Drawing & /*drawing*/) {
+          number_of_layers_total++;
+        });
   }
 
   int layer_offset = 0;
@@ -53,11 +51,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     ed::greasepencil::foreach_editable_drawing(
-        scene,
-        grease_pencil,
-        [&](const int /*layer_index*/,
-            const int /*frame_number*/,
-            bke::greasepencil::Drawing &drawing) {
+        scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
           const bke::CurvesGeometry &curves = drawing.strokes();
 
           if (use_proportional_edit) {
@@ -95,11 +89,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     int layer_points_offset = 0;
 
     ed::greasepencil::foreach_editable_drawing(
-        scene,
-        grease_pencil,
-        [&](const int /*layer_index*/,
-            const int /*frame_number*/,
-            bke::greasepencil::Drawing &drawing) {
+        scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
           const IndexMask selected_indices = selection_per_layer_per_object[layer_offset];
 
@@ -142,11 +132,7 @@ static void recalcData_grease_pencil(TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     ed::greasepencil::foreach_editable_drawing(
-        scene,
-        grease_pencil,
-        [&](const int /*layer_index*/,
-            const int /*frame_number*/,
-            bke::greasepencil::Drawing &drawing) {
+        scene, grease_pencil, [&](bke::greasepencil::Drawing &drawing) {
           bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
           curves.calculate_bezier_auto_handles();

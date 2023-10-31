@@ -110,9 +110,18 @@ bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 
+void foreach_editable_drawing(
+    const Scene *scene,
+    GreasePencil &grease_pencil,
+    FunctionRef<void(int, int, blender::bke::greasepencil::Drawing &)> &&function);
+void foreach_editable_drawing(
+    const Scene *scene,
+    GreasePencil &grease_pencil,
+    FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> &&function);
 void foreach_editable_drawing(const Scene *scene,
                               GreasePencil &grease_pencil,
-                              FunctionRef<void(int, int, bke::greasepencil::Drawing &)> function);
+                              FunctionRef<void(blender::bke::greasepencil::Drawing &)> &&function);
+
 void foreach_visible_drawing(
     const Scene &scene,
     const GreasePencil &grease_pencil,

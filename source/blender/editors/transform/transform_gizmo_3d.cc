@@ -821,7 +821,9 @@ static int gizmo_3d_foreach_selected(const bContext *C,
         ed::greasepencil::foreach_editable_drawing(
             scene,
             grease_pencil,
-            [&](const int layer_index, const int frame_number, blender::bke::greasepencil::Drawing &drawing) {
+            [&](const int layer_index,
+                const int frame_number,
+                blender::bke::greasepencil::Drawing &drawing) {
               const bke::CurvesGeometry &curves = drawing.strokes();
 
               const bke::crazyspace::GeometryDeformation deformation =

@@ -92,12 +92,11 @@ static Array<int> get_frame_numbers_for_layer(const blender::bke::greasepencil::
   return frame_numbers.as_span();
 }
 
-static void foreach_editable_drawing_ex(
-    const GreasePencil &grease_pencil,
-    const int frame,
-    const bool use_multi_frame_editing,
-    blender::FunctionRef<void(const int, const int, const blender::bke::greasepencil::Drawing &)>
-        function)
+template<typename Fn>
+static void foreach_editable_drawing_ex(const GreasePencil &grease_pencil,
+                                        const int frame,
+                                        const bool use_multi_frame_editing,
+                                        Fn &&function)
 {
   using namespace blender::bke::greasepencil;
 
@@ -111,7 +110,26 @@ static void foreach_editable_drawing_ex(
     Array<int> frame_numbers = get_frame_numbers_for_layer(layer, frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
-        function(layer_i, frame_number, *drawing);
+        if constexpr (std::is_invocable_r_v<void,
+                                            Fn,
+                                            const int,
+                                            const int,
+                                            const blender::bke::greasepencil::Drawing &>)
+        {
+          function(layer_i, frame_number, *drawing);
+        }
+        else if constexpr (std::is_invocable_r_v<void,
+                                                 Fn,
+                                                 const int,
+                                                 const blender::bke::greasepencil::Drawing &>)
+        {
+          function(layer_i, *drawing);
+        }
+        else if constexpr (std::is_invocable_r_v<void,
+                                                 Fn,
+                                                 const blender::bke::greasepencil::Drawing &>) {
+          function(*drawing);
+        }
       }
     }
   }
@@ -144,7 +162,7 @@ static void foreach_visible_drawing_ex(
 
 void foreach_editable_drawing(const Scene *scene,
                               GreasePencil &grease_pencil,
-                              FunctionRef<void(int, int, bke::greasepencil::Drawing &)> function)
+                              FunctionRef<void(int, int, bke::greasepencil::Drawing &)> &&function)
 {
   const int current_frame = scene->r.cfra;
   const ToolSettings *toolsettings = scene->toolsettings;
@@ -160,6 +178,38 @@ void foreach_editable_drawing(const Scene *scene,
         function(
             layer_index, frame_number, const_cast<blender::bke::greasepencil::Drawing &>(drawing));
       });
+}
+void foreach_editable_drawing(const Scene *scene,
+                              GreasePencil &grease_pencil,
+                              FunctionRef<void(int, bke::greasepencil::Drawing &)> &&function)
+{
+  const int current_frame = scene->r.cfra;
+  const ToolSettings *toolsettings = scene->toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  foreach_editable_drawing_ex(
+      grease_pencil,
+      current_frame,
+      use_multi_frame_editing,
+      [&](const int layer_index, const blender::bke::greasepencil::Drawing &drawing) {
+        function(layer_index, const_cast<blender::bke::greasepencil::Drawing &>(drawing));
+      });
+}
+void foreach_editable_drawing(const Scene *scene,
+                              GreasePencil &grease_pencil,
+                              FunctionRef<void(bke::greasepencil::Drawing &)> &&function)
+{
+  const int current_frame = scene->r.cfra;
+  const ToolSettings *toolsettings = scene->toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  foreach_editable_drawing_ex(grease_pencil,
+                              current_frame,
+                              use_multi_frame_editing,
+                              [&](const blender::bke::greasepencil::Drawing &drawing) {
+                                function(
+                                    const_cast<blender::bke::greasepencil::Drawing &>(drawing));
+                              });
 }
 
 void foreach_visible_drawing(
