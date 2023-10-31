@@ -519,6 +519,10 @@ class ImageOperation : public NodeOperation {
     const int2 lower_bound = int2(0);
     GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
+    if (result.type() == ResultType::Color) {
+      GPU_shader_uniform_1b(shader, "premultiply_alpha", should_premultiply_alpha(image_user));
+    }
+
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(image_texture, input_unit);
 
@@ -568,6 +572,23 @@ class ImageOperation : public NodeOperation {
     else {
       return "compositor_read_input_float";
     }
+  }
+
+  /* Compositor image inputs are expected to be always premultiplied, so identify if the GPU
+   * texture returned by the image module is straight and needs to be premultiplied. */
+  bool should_premultiply_alpha(ImageUser &image_user)
+  {
+    Image *image = get_image();
+    ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user, nullptr);
+    if (!image_buffer) {
+      return false;
+    }
+
+    const bool has_premultiplied_alpha = BKE_image_has_gpu_texture_premultiplied_alpha(
+        image, image_buffer);
+    BKE_image_release_ibuf(image, image_buffer, nullptr);
+
+    return !has_premultiplied_alpha;
   }
 
   Image *get_image()
