@@ -122,10 +122,9 @@ void foreach_editable_drawing(const Scene *scene,
                               GreasePencil &grease_pencil,
                               FunctionRef<void(blender::bke::greasepencil::Drawing &)> &&function);
 
-void foreach_visible_drawing(
-    const Scene &scene,
-    const GreasePencil &grease_pencil,
-    FunctionRef<void(const int, const int, const bke::greasepencil::Drawing &)> function);
+void foreach_visible_drawing(const Scene &scene,
+                             const GreasePencil &grease_pencil,
+                             FunctionRef<void(const bke::greasepencil::Drawing &)> function);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);

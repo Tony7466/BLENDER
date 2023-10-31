@@ -271,11 +271,7 @@ static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil,
   /* Get the visible drawings. */
   Vector<const Drawing *> drawings;
   ed::greasepencil::foreach_visible_drawing(
-      scene,
-      grease_pencil,
-      [&](const int /*layer_index*/, const int /*frame_number*/, const Drawing &drawing) {
-        drawings.append(&drawing);
-      });
+      scene, grease_pencil, [&](const Drawing &drawing) { drawings.append(&drawing); });
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
    * offsets into the curves for the vertices and triangles. */
