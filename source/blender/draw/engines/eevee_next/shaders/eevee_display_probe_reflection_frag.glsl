@@ -19,4 +19,5 @@ void main()
   vec3 N = drw_normal_view_to_world(vN);
 
   out_color = reflection_probes_sample(N, 0, reflection_probe_buf[probe_index].atlas_coord);
+  out_color.a = 0.0;
 }
