@@ -4395,6 +4395,8 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  bool found_graph_editor = false;
+
   LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
     const bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
 
@@ -4408,11 +4410,23 @@ static int prop_view_exec(bContext *C, wmOperator *op)
         continue;
       }
       add_region_padding(C, window_region, &bounds);
+      /* Setting the window to the context is needed for the case when the Graph Editor is found in
+       * a different window. Otherwise smooth view wouldn't work. */
+      CTX_wm_window_set(C, win);
       const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
       UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
       ED_area_tag_redraw(area);
+      found_graph_editor = true;
       break;
     }
+
+    if (found_graph_editor) {
+      break;
+    }
+  }
+
+  if (!found_graph_editor) {
+    WM_report(RPT_WARNING, "No open Graph Editor window found");
   }
 
   return OPERATOR_FINISHED;
