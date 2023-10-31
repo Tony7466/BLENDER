@@ -232,11 +232,11 @@ static void store_result_geometry(Main &bmain,
  * objects. Adding the selected objects is necessary because they are currently compared by pointer
  * to other evaluated objects inside of geometry nodes.
  */
-static Depsgraph *create_depsgraph_from_indirect_ids(Main &bmain,
-                                                     Scene &scene,
-                                                     ViewLayer &view_layer,
-                                                     const bNodeTree &node_tree_orig,
-                                                     const Span<const Object *> objects)
+static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
+                                                    Scene &scene,
+                                                    ViewLayer &view_layer,
+                                                    const bNodeTree &node_tree_orig,
+                                                    const Span<const Object *> objects)
 {
   Set<ID *> ids_for_relations;
   bool needs_own_transform_relation = false;
@@ -249,7 +249,6 @@ static Depsgraph *create_depsgraph_from_indirect_ids(Main &bmain,
 
   Depsgraph *depsgraph = DEG_graph_new(&bmain, &scene, &view_layer, DAG_EVAL_VIEWPORT);
   DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(ids.data()), ids.size());
-  DEG_evaluate_on_refresh(depsgraph);
   return depsgraph;
 }
 
@@ -277,8 +276,9 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C), &objects_len, mode);
   BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(objects); });
 
-  Depsgraph *depsgraph = create_depsgraph_from_indirect_ids(
+  Depsgraph *depsgraph = build_depsgraph_from_indirect_ids(
       *bmain, *scene, *view_layer, *node_tree_orig, {objects, objects_len});
+  DEG_evaluate_on_refresh(depsgraph);
   BLI_SCOPED_DEFER([&]() { DEG_graph_free(depsgraph); });
 
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
