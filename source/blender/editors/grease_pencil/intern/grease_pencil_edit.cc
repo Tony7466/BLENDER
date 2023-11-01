@@ -953,44 +953,73 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Normalize stroke Operator
+/** \name Set stroke Thickness
  * \{ */
 
-enum class NormalizeMode : int8_t {
-  THICKNESS,
-  OPACITY,
-};
-
-static void grease_pencil_stroke_normalize_ui(bContext * /*C*/, wmOperator *op)
-{
-  uiLayout *layout = op->layout;
-  uiLayout *row;
-
-  const NormalizeMode mode = NormalizeMode(RNA_enum_get(op->ptr, "mode"));
-
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  if (mode == NormalizeMode::THICKNESS) {
-    row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "radius", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-  else if (mode == NormalizeMode::OPACITY) {
-    row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "opacity", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-}
-
-static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
+static int grease_pencil_set_thickness_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const NormalizeMode mode = NormalizeMode(RNA_enum_get(op->ptr, "mode"));
   const float radius = RNA_float_get(op->ptr, "radius");
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+        IndexMaskMemory memory;
+        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+
+        if (selected_curves.is_empty()) {
+          return;
+        }
+
+        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        MutableSpan<float> radii = drawing.radii_for_write();
+        bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+        changed = true;
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_set_thickness(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Set Thickness";
+  ot->idname = "GREASE_PENCIL_OT_set_thickness";
+  ot->description = "Set all stroke points to same thickness";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_set_thickness_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* props */
+  ot->prop = RNA_def_float(
+      ot->srna, "radius", 0.05f, 0.0f, 1000.0f, "Radius", "Radius", 0.0f, 1000.0f);
+}
+
+/** \} */
+/* -------------------------------------------------------------------- */
+/** \name Set stroke Opacity
+ * \{ */
+
+static int grease_pencil_set_opacity_exec(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
   const float opacity = RNA_float_get(op->ptr, "opacity");
 
   bool changed = false;
@@ -1006,20 +1035,9 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
         }
 
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        switch (mode) {
-          case NormalizeMode::THICKNESS: {
-            MutableSpan<float> radii = drawing.radii_for_write();
-            bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
-            changed = true;
-            break;
-          }
-          case NormalizeMode::OPACITY: {
-            MutableSpan<float> opacities = drawing.opacities_for_write();
-            bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
-            changed = true;
-            break;
-          }
-        }
+        MutableSpan<float> opacities = drawing.opacities_for_write();
+        bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
+        changed = true;
       });
 
   if (changed) {
@@ -1030,41 +1048,22 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_stroke_normalize(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_set_opacity(wmOperatorType *ot)
 {
-  static const EnumPropertyItem prop_normalize_modes[] = {
-      {int(NormalizeMode::THICKNESS),
-       "THICKNESS",
-       0,
-       "Thickness",
-       "Normalizes the stroke thickness by making all points use the same thickness value"},
-      {int(NormalizeMode::OPACITY),
-       "OPACITY",
-       0,
-       "Opacity",
-       "Normalizes the stroke opacity by making all points use the same opacity value"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   /* Identifiers. */
-  ot->name = "Normalize Stroke";
-  ot->idname = "GREASE_PENCIL_OT_stroke_normalize";
-  ot->description = "Normalize stroke attributes";
+  ot->name = "Set Opacity";
+  ot->idname = "GREASE_PENCIL_OT_set_opacity";
+  ot->description = "Set all stroke points to same opacity";
 
   /* Callbacks. */
-  ot->invoke = WM_menu_invoke;
-  ot->exec = grease_pencil_stroke_normalize_exec;
+  ot->exec = grease_pencil_set_opacity_exec;
   ot->poll = editable_grease_pencil_poll;
-  ot->ui = grease_pencil_stroke_normalize_ui;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  ot->prop = RNA_def_enum(
-      ot->srna, "mode", prop_normalize_modes, 0, "Mode", "Attribute to be normalized");
-  RNA_def_float(ot->srna, "opacity", 1.0f, 0.0f, 1.0f, "Opacity", "", 0.0f, 1.0f);
-  RNA_def_float(ot->srna, "radius", 0.05f, 0.0f, 1000.0f, "Radius", "Radius", 0.0f, 1000.0f);
+  ot->prop = RNA_def_float(ot->srna, "opacity", 1.0f, 0.0f, 1.0f, "Opacity", "", 0.0f, 1.0f);
 }
 
 /** \} */
@@ -1080,7 +1079,8 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
-  WM_operatortype_append(GREASE_PENCIL_OT_stroke_normalize);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_thickness);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_opacity);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
