@@ -51,6 +51,10 @@ static void init_vbo_for_attribute(const MeshRenderData &mr,
   if (build_on_device) {
     GPU_vertbuf_init_build_on_device(vbo, &format, len);
   }
+  else {
+    GPU_vertbuf_init_with_format(vbo, &format);
+    GPU_vertbuf_data_alloc(vbo, len);
+  }
 }
 
 template<typename T>
@@ -211,19 +215,16 @@ static void extract_attr(const MeshRenderData &mr,
       using T = decltype(dummy);
       switch (request.domain) {
         case ATTR_DOMAIN_POINT:
-          GPU_vertbuf_data_alloc(&vbo, mr.loop_len);
           extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_verts, vbo);
           break;
         case ATTR_DOMAIN_EDGE:
-          GPU_vertbuf_data_alloc(&vbo, mr.loop_len);
           extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_edges, vbo);
           break;
         case ATTR_DOMAIN_FACE:
-          GPU_vertbuf_data_alloc(&vbo, mr.loop_len);
           extract_data_mesh_face(mr.faces, attribute.typed<T>(), vbo);
           break;
         case ATTR_DOMAIN_CORNER:
-          alloc_vertbuf_data_and_extract_direct(attribute.typed<T>(), vbo);
+          vertbuf_data_extract_direct(attribute.typed<T>(), vbo);
           break;
         default:
           BLI_assert_unreachable();
@@ -235,7 +236,6 @@ static void extract_attr(const MeshRenderData &mr,
     const char *name = request.attribute_name;
     const int cd_offset = CustomData_get_offset_named(&custom_data, request.cd_type, name);
 
-    GPU_vertbuf_data_alloc(&vbo, mr.loop_len);
     bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
       using T = decltype(dummy);
       switch (request.domain) {
@@ -278,10 +278,13 @@ static void extract_attr_init_subdiv(const DRWSubdivCache &subdiv_cache,
   const DRW_Attributes *attrs_used = &cache.attr_used;
   const DRW_AttributeRequest &request = attrs_used->requests[index];
 
+  Mesh *coarse_mesh = subdiv_cache.mesh;
+
   /* Prepare VBO for coarse data. The compute shader only expects floats. */
   GPUVertBuf *src_data = GPU_vertbuf_calloc();
   GPUVertFormat coarse_format = draw::init_format_for_attribute(request.cd_type, "data");
   GPU_vertbuf_init_with_format_ex(src_data, &coarse_format, GPU_USAGE_STATIC);
+  GPU_vertbuf_data_alloc(src_data, uint32_t(coarse_mesh->totloop));
 
   extract_attr(mr, request, *src_data);
 

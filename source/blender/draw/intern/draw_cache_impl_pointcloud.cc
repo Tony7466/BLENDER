@@ -303,10 +303,11 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
   GPUVertBuf &vbo = *cache.eval_cache.attributes_buf[index];
   GPU_vertbuf_init_with_format_ex(
       &vbo, &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(&vbo, pointcloud.totpoint);
 
   const StringRefNull name = request.attribute_name;
   const GVArraySpan attribute = *attributes.lookup_or_default(name, ATTR_DOMAIN_POINT, data_type);
-  draw::alloc_vertbuf_data_and_extract_direct(attribute, vbo);
+  draw::vertbuf_data_extract_direct(attribute, vbo);
 }
 
 /** \} */

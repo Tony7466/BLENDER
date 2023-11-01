@@ -334,8 +334,11 @@ static void curves_batch_ensure_attribute(const Curves &curves,
 
   cache.proc_attributes_buf[index] = GPU_vertbuf_create_with_format_ex(
       &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPUVertBuf *attr_vbo = cache.proc_attributes_buf[index];
 
-  draw::alloc_vertbuf_data_and_extract_direct(attribute, *cache.proc_attributes_buf[index]);
+  GPU_vertbuf_data_alloc(attr_vbo, attributes.domain_size(domain));
+
+  draw::vertbuf_data_extract_direct(attribute, *attr_vbo);
 
   /* Existing final data may have been for a different attribute (with a different name or domain),
    * free the data. */

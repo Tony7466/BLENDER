@@ -139,6 +139,6 @@ template<> struct AttributeConverter<math::Quaternion> {
 
 GPUVertFormat init_format_for_attribute(eCustomDataType data_type, StringRefNull vbo_name);
 
-void alloc_vertbuf_data_and_extract_direct(GSpan attribute, GPUVertBuf &vbo);
+void vertbuf_data_extract_direct(GSpan attribute, GPUVertBuf &vbo);
 
 }  // namespace blender::draw
