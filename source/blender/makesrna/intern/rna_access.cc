@@ -1508,6 +1508,36 @@ void RNA_property_enum_items_ex(bContext *C,
                                 int *r_totitem,
                                 bool *r_free)
 {
+  if (!use_static && prop->magic != RNA_MAGIC) {
+    const IDProperty *idprop = (IDProperty *)prop;
+    if (idprop->type == IDP_ENUM) {
+      IDPropertyUIDataEnum *ui_data = reinterpret_cast<IDPropertyUIDataEnum *>(idprop->ui_data);
+
+      int totitem = 0;
+      EnumPropertyItem *result = nullptr;
+      if (ui_data) {
+        for (const IDPropertyUIDataEnumItem &idprop_item :
+             blender::Span(ui_data->items, ui_data->items_num))
+        {
+          const EnumPropertyItem item = {idprop_item.value,
+                                         idprop_item.identifier,
+                                         idprop_item.icon,
+                                         idprop_item.name,
+                                         idprop_item.description};
+          RNA_enum_item_add(&result, &totitem, &item);
+        }
+      }
+
+      RNA_enum_item_end(&result, &totitem);
+      *r_item = result;
+      if (r_totitem) {
+        *r_totitem = totitem;
+      }
+      *r_free = true;
+      return;
+    }
+  }
+
   EnumPropertyRNA *eprop = (EnumPropertyRNA *)rna_ensure_property(prop);
 
   *r_free = false;
