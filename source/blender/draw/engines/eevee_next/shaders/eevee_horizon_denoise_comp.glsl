@@ -40,11 +40,17 @@ float bilateral_normal_weight(vec3 center_N, vec3 sample_N)
 /* In order to remove some more fireflies, "tone-map" the color samples during the accumulation. */
 vec3 to_accumulation_space(vec3 color)
 {
-  return color / (1.0 + reduce_add(color));
+  /* This 4 factor is to avoid killing too much energy. */
+  /* TODO(fclem): Parameter? */
+  color /= 4.0;
+  color = color / (1.0 + reduce_add(color));
+  return color;
 }
 vec3 from_accumulation_space(vec3 color)
 {
-  return color / (1.0 - reduce_add(color));
+  color = color / (1.0 - reduce_add(color));
+  color *= 4.0;
+  return color;
 }
 
 vec3 load_normal(ivec2 texel)
@@ -116,7 +122,7 @@ void main()
 
   vec3 accum_radiance = vec3(0.0);
   float accum_occlusion = 0.0;
-  float accum_weight = 1.0;
+  float accum_weight = 0.0;
   for (int x = -1; x <= 1; x++) {
     for (int y = -1; y <= 1; y++) {
       ivec2 offset = ivec2(x, y);
@@ -161,7 +167,7 @@ void main()
     }
   }
   float occlusion = accum_occlusion * safe_rcp(accum_weight);
-  vec3 radiance = accum_radiance * safe_rcp(accum_weight);
+  vec3 radiance = from_accumulation_space(accum_radiance * safe_rcp(accum_weight));
 
   vec3 P = center_P;
   vec3 N = center_N;

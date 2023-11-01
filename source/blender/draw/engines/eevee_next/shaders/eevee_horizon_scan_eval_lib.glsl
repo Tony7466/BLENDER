@@ -163,7 +163,7 @@ void horizon_scan_context_sample_finish(
   horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bxdf_eval(context.diffuse, L, V);
+  sample_radiance *= bxdf_eval(context.diffuse, L, V) * M_PI;
   horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
