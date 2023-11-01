@@ -1124,6 +1124,34 @@ void **rna_ID_instance(PointerRNA *ptr)
 }
 #  endif
 
+static const EnumPropertyItem *rna_IDPEnum_itemf(bContext * /*C*/,
+                                                 PointerRNA *ptr,
+                                                 PropertyRNA * /*prop*/,
+                                                 bool *r_free)
+{
+  const IDProperty *idprop = static_cast<IDProperty *>(ptr->data);
+  IDPropertyUIDataEnum *ui_data = reinterpret_cast<IDPropertyUIDataEnum *>(idprop->ui_data);
+
+  int totitem = 0;
+  EnumPropertyItem *result = nullptr;
+  if (ui_data) {
+    for (const IDPropertyUIDataEnumItem &idprop_item :
+         blender::Span(ui_data->items, ui_data->items_num))
+    {
+      const EnumPropertyItem item = {idprop_item.value,
+                                     idprop_item.identifier,
+                                     idprop_item.icon,
+                                     idprop_item.name,
+                                     idprop_item.description};
+      RNA_enum_item_add(&result, &totitem, &item);
+    }
+  }
+
+  RNA_enum_item_end(&result, &totitem);
+  *r_free = true;
+  return result;
+}
+
 static void rna_IDPArray_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   IDProperty *prop = (IDProperty *)ptr->data;
@@ -1576,6 +1604,12 @@ static void rna_def_ID_properties(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bool_array", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_IDPROPERTY);
   RNA_def_property_array(prop, 1);
+
+  /* IDP_ENUM */
+  prop = RNA_def_property(srna, "enum", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_IDPEnum_itemf");
+  RNA_def_property_flag(prop, PROP_IDPROPERTY);
 
   /* IDP_GROUP */
   prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);

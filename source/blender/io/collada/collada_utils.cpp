@@ -712,6 +712,9 @@ float bc_get_property(Bone *bone, std::string key, float def)
       case IDP_BOOLEAN:
         result = float(IDP_Bool(property));
         break;
+      case IDP_ENUM:
+        result = float(IDP_Enum(property));
+        break;
       default:
         result = def;
     }

@@ -432,6 +432,172 @@ static bool idprop_ui_data_update_string(IDProperty *idprop, PyObject *args, PyO
   return true;
 }
 
+static int icon_id_from_name(const char *name)
+{
+  const EnumPropertyItem *item;
+  int id;
+
+  if (name[0]) {
+    for (item = rna_enum_icon_items, id = 0; item->identifier; item++, id++) {
+      if (STREQ(item->name, name)) {
+        return item->value;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/* Utility function for parsing ints in an if statement. */
+static bool py_long_as_int(PyObject *py_long, int *r_int)
+{
+  if (PyLong_CheckExact(py_long)) {
+    *r_int = int(PyLong_AS_LONG(py_long));
+    return true;
+  }
+  return false;
+}
+
+static bool try_parse_enum_item(PyObject *py_item, const int index, IDPropertyUIDataEnumItem &item)
+{
+  if (!PyTuple_CheckExact(py_item)) {
+    return false;
+  }
+  Py_ssize_t item_size = PyTuple_GET_SIZE(py_item);
+  if (item_size < 3 || item_size > 5) {
+    return false;
+  }
+
+  Py_ssize_t identifier_len;
+  Py_ssize_t name_len;
+  Py_ssize_t description_len;
+  const char *identifier = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(py_item, 0), &identifier_len);
+  const char *name = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(py_item, 1), &name_len);
+  const char *description = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(py_item, 2),
+                                                    &description_len);
+  if (!identifier || !name || !description) {
+    return false;
+  }
+
+  const char *icon_name = nullptr;
+  if (item_size <= 3) {
+    item.value = index;
+  }
+  else if (item_size == 4) {
+    if (!py_long_as_int(PyTuple_GET_ITEM(py_item, 3), &item.value)) {
+      return false;
+    }
+  }
+  else if (item_size == 5) {
+    /* Must have icon value or name. */
+    if (!py_long_as_int(PyTuple_GET_ITEM(py_item, 3), &item.icon) &&
+        !(icon_name = PyUnicode_AsUTF8(PyTuple_GET_ITEM(py_item, 3))))
+    {
+      return false;
+    }
+    if (!py_long_as_int(PyTuple_GET_ITEM(py_item, 4), &item.value)) {
+      return false;
+    }
+  }
+
+  item.identifier = BLI_strdup(identifier);
+  item.name = BLI_strdup(name);
+  item.description = BLI_strdup(description);
+  if (icon_name) {
+    item.icon = icon_id_from_name(icon_name);
+  }
+  return true;
+}
+
+static IDPropertyUIDataEnumItem *idprop_enum_items_from_py(PyObject *seq_fast, int &r_items_num)
+{
+  IDPropertyUIDataEnumItem *items;
+
+  const Py_ssize_t seq_len = PySequence_Fast_GET_SIZE(seq_fast);
+  PyObject **seq_fast_items = PySequence_Fast_ITEMS(seq_fast);
+  int i;
+
+  items = MEM_cnew_array<IDPropertyUIDataEnumItem>(seq_len, __func__);
+  r_items_num = seq_len;
+
+  for (i = 0; i < seq_len; i++) {
+    IDPropertyUIDataEnumItem item = {nullptr, nullptr, nullptr, 0, 0};
+    PyObject *py_item = seq_fast_items[i];
+    if (try_parse_enum_item(py_item, i, item)) {
+      items[i] = item;
+    }
+    else if (py_item == Py_None) {
+      items[i].identifier = nullptr;
+    }
+    else {
+      MEM_freeN(items);
+      PyErr_SetString(PyExc_TypeError,
+                      "expected a tuple containing "
+                      "(identifier, name, description) and optionally an "
+                      "icon name and unique number");
+      return nullptr;
+    }
+  }
+
+  return items;
+}
+
+/**
+ * \return False when parsing fails, in which case caller should return nullptr.
+ */
+static bool idprop_ui_data_update_enum(IDProperty *idprop, PyObject *args, PyObject *kwargs)
+{
+  PyObject *items;
+  const char *description = nullptr;
+  const char *kwlist[] = {"items", "description", nullptr};
+  if (!PyArg_ParseTupleAndKeywords(args,
+                                   kwargs,
+                                   "|$" /* Optional keyword only arguments. */
+                                   "O"  /* items */
+                                   "z"  /* description */
+                                   ":update",
+                                   (char **)kwlist,
+                                   &items,
+                                   &description))
+  {
+    return false;
+  }
+
+  /* Write to a temporary copy of the UI data in case some part of the parsing fails. */
+  IDPropertyUIDataEnum *ui_data_orig = (IDPropertyUIDataEnum *)idprop->ui_data;
+  IDPropertyUIDataEnum ui_data = *ui_data_orig;
+
+  if (!idprop_ui_data_update_base(&ui_data.base, nullptr, description)) {
+    IDP_ui_data_free_unique_contents(&ui_data.base, IDP_ui_data_type(idprop), &ui_data_orig->base);
+    return false;
+  }
+
+  PyObject *items_fast;
+  if (!(items_fast = PySequence_Fast(items, "expected a sequence of tuples for the enum items"))) {
+    return false;
+  }
+
+  int idprop_items_num = 0;
+  IDPropertyUIDataEnumItem *idprop_items = idprop_enum_items_from_py(items_fast, idprop_items_num);
+  if (!idprop_items) {
+    Py_DECREF(items_fast);
+    return false;
+  }
+  if (!IDP_EnumItemsValidate(idprop_items, idprop_items_num, [](const char *msg) {
+        PyErr_SetString(PyExc_ValueError, msg);
+      }))
+  {
+    return false;
+  }
+  ui_data.items = idprop_items;
+  ui_data.items_num = idprop_items_num;
+
+  /* Write back to the property's UI data. */
+  IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
+  *ui_data_orig = ui_data;
+  return true;
+}
+
 /**
  * \return False when parsing fails, in which case caller should return nullptr.
  */
@@ -482,6 +648,7 @@ PyDoc_STRVAR(BPy_IDPropertyUIManager_update_doc,
              "step=None, "
              "default=None, "
              "id_type=None, "
+             "items=None, "
              "description=None)\n"
              "\n"
              "   Update the RNA information of the IDProperty used for interaction and\n"
@@ -516,6 +683,12 @@ static PyObject *BPy_IDPropertyUIManager_update(BPy_IDPropertyUIManager *self,
     case IDP_UI_DATA_TYPE_STRING:
       IDP_ui_data_ensure(property);
       if (!idprop_ui_data_update_string(property, args, kwargs)) {
+        return nullptr;
+      }
+      Py_RETURN_NONE;
+    case IDP_UI_DATA_TYPE_ENUM:
+      IDP_ui_data_ensure(property);
+      if (!idprop_ui_data_update_enum(property, args, kwargs)) {
         return nullptr;
       }
       Py_RETURN_NONE;
@@ -619,6 +792,27 @@ static void idprop_ui_data_to_dict_float(IDProperty *property, PyObject *dict)
   }
 }
 
+static void idprop_ui_data_to_dict_enum(IDProperty *property, PyObject *dict)
+{
+  IDPropertyUIDataEnum *ui_data = reinterpret_cast<IDPropertyUIDataEnum *>(property->ui_data);
+
+  PyObject *items_list = PyList_New(ui_data->items_num);
+  for (int i = 0; i < ui_data->items_num; ++i) {
+    const IDPropertyUIDataEnumItem &item = ui_data->items[i];
+
+    PyObject *item_tuple = PyTuple_New(5);
+    PyTuple_SET_ITEM(item_tuple, 0, PyUnicode_FromString(item.identifier));
+    PyTuple_SET_ITEM(item_tuple, 1, PyUnicode_FromString(item.name));
+    PyTuple_SET_ITEM(item_tuple, 2, PyUnicode_FromString(item.description));
+    PyTuple_SET_ITEM(item_tuple, 3, PyLong_FromLong(item.icon));
+    PyTuple_SET_ITEM(item_tuple, 4, PyLong_FromLong(item.value));
+
+    PyList_SET_ITEM(items_list, i, item_tuple);
+  }
+  PyDict_SetItemString(dict, "items", items_list);
+  Py_DECREF(items_list);
+}
+
 static void idprop_ui_data_to_dict_string(IDProperty *property, PyObject *dict)
 {
   IDPropertyUIDataString *ui_data = (IDPropertyUIDataString *)property->ui_data;
@@ -696,6 +890,9 @@ static PyObject *BPy_IDIDPropertyUIManager_as_dict(BPy_IDPropertyUIManager *self
       break;
     case IDP_UI_DATA_TYPE_FLOAT:
       idprop_ui_data_to_dict_float(property, dict);
+      break;
+    case IDP_UI_DATA_TYPE_ENUM:
+      idprop_ui_data_to_dict_enum(property, dict);
       break;
     case IDP_UI_DATA_TYPE_UNSUPPORTED:
       BLI_assert_unreachable();

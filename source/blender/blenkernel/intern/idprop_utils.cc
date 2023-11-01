@@ -115,6 +115,16 @@ static void idp_repr_fn_recursive(ReprState *state, const IDProperty *prop)
       STR_APPEND_FMT("%s", IDP_Bool(prop) ? "True" : "False");
       break;
     }
+    case IDP_ENUM: {
+      const IDPropertyUIDataEnumItem *item = IDP_EnumItemFind(prop);
+      if (item) {
+        STR_APPEND_FMT("%s", item->name);
+      }
+      else {
+        STR_APPEND_FMT("%d", IDP_Enum(prop));
+      }
+      break;
+    }
     case IDP_ARRAY: {
       STR_APPEND_STR("[");
       switch (prop->subtype) {
