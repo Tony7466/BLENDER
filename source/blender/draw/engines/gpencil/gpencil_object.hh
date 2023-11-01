@@ -94,7 +94,7 @@ class ObjectModule {
     }
   }
 
-  void begin_sync(Depsgraph */*depsgraph*/, const View &main_view)
+  void begin_sync(Depsgraph * /*depsgraph*/, const View &main_view)
   {
     camera_forward_ = main_view.forward();
     camera_pos_ = main_view.location();
