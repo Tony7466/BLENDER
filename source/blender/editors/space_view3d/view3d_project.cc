@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,14 +14,17 @@
 
 #include "BLI_sys_types.h" /* int64_t */
 
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_camera.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "GPU_matrix.h"
 
-#include "ED_view3d.h" /* own include */
+#include "ED_view3d.hh" /* own include */
 
 #define BL_ZERO_CLIP 0.001
 
@@ -37,13 +40,13 @@ void ED_view3d_project_float_v2_m4(const ARegion *region,
 
   copy_v3_v3(vec4, co);
   vec4[3] = 1.0;
-  /* r_co[0] = IS_CLIPPED; */ /* always overwritten */
+  // r_co[0] = IS_CLIPPED; /* Always overwritten. */
 
   mul_m4_v4(mat, vec4);
 
   if (vec4[3] > FLT_EPSILON) {
-    r_co[0] = (float)(region->winx / 2.0f) + (region->winx / 2.0f) * vec4[0] / vec4[3];
-    r_co[1] = (float)(region->winy / 2.0f) + (region->winy / 2.0f) * vec4[1] / vec4[3];
+    r_co[0] = float(region->winx / 2.0f) + (region->winx / 2.0f) * vec4[0] / vec4[3];
+    r_co[1] = float(region->winy / 2.0f) + (region->winy / 2.0f) * vec4[1] / vec4[3];
   }
   else {
     zero_v2(r_co);
@@ -59,13 +62,13 @@ void ED_view3d_project_float_v3_m4(const ARegion *region,
 
   copy_v3_v3(vec4, co);
   vec4[3] = 1.0;
-  /* r_co[0] = IS_CLIPPED; */ /* always overwritten */
+  // r_co[0] = IS_CLIPPED; /* Always overwritten. */
 
   mul_m4_v4(mat, vec4);
 
   if (vec4[3] > FLT_EPSILON) {
-    r_co[0] = (float)(region->winx / 2.0f) + (region->winx / 2.0f) * vec4[0] / vec4[3];
-    r_co[1] = (float)(region->winy / 2.0f) + (region->winy / 2.0f) * vec4[1] / vec4[3];
+    r_co[0] = float(region->winx / 2.0f) + (region->winx / 2.0f) * vec4[0] / vec4[3];
+    r_co[1] = float(region->winy / 2.0f) + (region->winy / 2.0f) * vec4[1] / vec4[3];
     r_co[2] = vec4[2] / vec4[3];
   }
   else {
@@ -91,9 +94,10 @@ eV3DProjStatus ED_view3d_project_base(const ARegion *region, Base *base, float r
   return ret;
 }
 
-/* perspmat is typically...
- * - 'rv3d->perspmat',   is_local == false
- * - 'rv3d->persmatob', is_local == true
+/**
+ * `perspmat` is typically either:
+ * - 'rv3d->perspmat',  is_local == false.
+ * - 'rv3d->persmatob', is_local == true.
  */
 static eV3DProjStatus ed_view3d_project__internal(const ARegion *region,
                                                   const float perspmat[4][4],
@@ -134,11 +138,11 @@ static eV3DProjStatus ed_view3d_project__internal(const ARegion *region,
   }
 
   const float scalar = (w != 0.0f) ? (1.0f / w) : 0.0f;
-  const float fx = ((float)region->winx / 2.0f) * (1.0f + (vec4[0] * scalar));
-  const float fy = ((float)region->winy / 2.0f) * (1.0f + (vec4[1] * scalar));
+  const float fx = (float(region->winx) / 2.0f) * (1.0f + (vec4[0] * scalar));
+  const float fy = (float(region->winy) / 2.0f) * (1.0f + (vec4[1] * scalar));
 
   if ((flag & V3D_PROJ_TEST_CLIP_WIN) &&
-      (fx <= 0.0f || fy <= 0.0f || fx >= (float)region->winx || fy >= (float)region->winy))
+      (fx <= 0.0f || fy <= 0.0f || fx >= float(region->winx) || fy >= float(region->winy)))
   {
     return V3D_PROJ_RET_CLIP_WIN;
   }
@@ -161,8 +165,8 @@ eV3DProjStatus ED_view3d_project_short_ex(const ARegion *region,
   if (ret == V3D_PROJ_RET_OK) {
     if ((tvec[0] > -32700.0f && tvec[0] < 32700.0f) && (tvec[1] > -32700.0f && tvec[1] < 32700.0f))
     {
-      r_co[0] = (short)floorf(tvec[0]);
-      r_co[1] = (short)floorf(tvec[1]);
+      r_co[0] = short(floorf(tvec[0]));
+      r_co[1] = short(floorf(tvec[1]));
     }
     else {
       ret = V3D_PROJ_RET_OVERFLOW;
@@ -184,8 +188,8 @@ eV3DProjStatus ED_view3d_project_int_ex(const ARegion *region,
     if ((tvec[0] > -2140000000.0f && tvec[0] < 2140000000.0f) &&
         (tvec[1] > -2140000000.0f && tvec[1] < 2140000000.0f))
     {
-      r_co[0] = (int)floorf(tvec[0]);
-      r_co[1] = (int)floorf(tvec[1]);
+      r_co[0] = int(floorf(tvec[0]));
+      r_co[1] = int(floorf(tvec[1]));
     }
     else {
       ret = V3D_PROJ_RET_OVERFLOW;
@@ -317,7 +321,7 @@ float ED_view3d_calc_depth_for_comparison(const RegionView3D *rv3d, const float 
   return -dot_v3v3(rv3d->viewinv[2], co);
 }
 
-static void view3d_win_to_ray_segment(const struct Depsgraph *depsgraph,
+static void view3d_win_to_ray_segment(const Depsgraph *depsgraph,
                                       const ARegion *region,
                                       const View3D *v3d,
                                       const float mval[2],
@@ -365,30 +369,29 @@ bool ED_view3d_clip_segment(const RegionView3D *rv3d, float ray_start[3], float 
   return true;
 }
 
-bool ED_view3d_win_to_ray_clipped_ex(struct Depsgraph *depsgraph,
+bool ED_view3d_win_to_ray_clipped_ex(Depsgraph *depsgraph,
                                      const ARegion *region,
                                      const View3D *v3d,
                                      const float mval[2],
+                                     const bool do_clip_planes,
                                      float r_ray_co[3],
                                      float r_ray_normal[3],
                                      float r_ray_start[3],
-                                     bool do_clip_planes)
+                                     float r_ray_end[3])
 {
-  float ray_end[3];
-
   view3d_win_to_ray_segment(
-      depsgraph, region, v3d, mval, r_ray_co, r_ray_normal, r_ray_start, ray_end);
+      depsgraph, region, v3d, mval, r_ray_co, r_ray_normal, r_ray_start, r_ray_end);
 
   /* bounds clipping */
   if (do_clip_planes) {
     return ED_view3d_clip_segment(
-        static_cast<const RegionView3D *>(region->regiondata), r_ray_start, ray_end);
+        static_cast<const RegionView3D *>(region->regiondata), r_ray_start, r_ray_end);
   }
 
   return true;
 }
 
-bool ED_view3d_win_to_ray_clipped(struct Depsgraph *depsgraph,
+bool ED_view3d_win_to_ray_clipped(Depsgraph *depsgraph,
                                   const ARegion *region,
                                   const View3D *v3d,
                                   const float mval[2],
@@ -397,7 +400,7 @@ bool ED_view3d_win_to_ray_clipped(struct Depsgraph *depsgraph,
                                   const bool do_clip_planes)
 {
   return ED_view3d_win_to_ray_clipped_ex(
-      depsgraph, region, v3d, mval, nullptr, r_ray_normal, r_ray_start, do_clip_planes);
+      depsgraph, region, v3d, mval, do_clip_planes, nullptr, r_ray_normal, r_ray_start, nullptr);
 }
 
 void ED_view3d_win_to_ray(const ARegion *region,
@@ -447,7 +450,7 @@ bool view3d_get_view_aligned_coordinate(ARegion *region,
   ret = ED_view3d_project_int_global(region, fp, mval_cpy, V3D_PROJ_TEST_NOP);
 
   if (ret == V3D_PROJ_RET_OK) {
-    const float mval_f[2] = {(float)(mval_cpy[0] - mval[0]), (float)(mval_cpy[1] - mval[1])};
+    const float mval_f[2] = {float(mval_cpy[0] - mval[0]), float(mval_cpy[1] - mval[1])};
     const float zfac = ED_view3d_calc_zfac(rv3d, fp);
     ED_view3d_win_to_delta(region, mval_f, zfac, dvec);
     sub_v3_v3(fp, dvec);
@@ -494,16 +497,16 @@ void ED_view3d_win_to_3d(const View3D *v3d,
     lambda = fabsf(lambda);
   }
   else {
-    float dx = (2.0f * mval[0] / (float)region->winx) - 1.0f;
-    float dy = (2.0f * mval[1] / (float)region->winy) - 1.0f;
+    float dx = (2.0f * mval[0] / float(region->winx)) - 1.0f;
+    float dy = (2.0f * mval[1] / float(region->winy)) - 1.0f;
 
     if (rv3d->persp == RV3D_CAMOB) {
       /* ortho camera needs offset applied */
       const Camera *cam = static_cast<const Camera *>(v3d->camera->data);
       const int sensor_fit = BKE_camera_sensor_fit(cam->sensor_fit, region->winx, region->winy);
       const float zoomfac = BKE_screen_view3d_zoom_to_fac(rv3d->camzoom) * 4.0f;
-      const float aspx = region->winx / (float)region->winy;
-      const float aspy = region->winy / (float)region->winx;
+      const float aspx = region->winx / float(region->winy);
+      const float aspy = region->winy / float(region->winx);
       const float shiftx = cam->shiftx * 0.5f *
                            (sensor_fit == CAMERA_SENSOR_FIT_HOR ? 1.0f : aspy);
       const float shifty = cam->shifty * 0.5f *
@@ -664,7 +667,7 @@ void ED_view3d_win_to_vector(const ARegion *region, const float mval[2], float r
   normalize_v3(r_out);
 }
 
-bool ED_view3d_win_to_segment_clipped(const struct Depsgraph *depsgraph,
+bool ED_view3d_win_to_segment_clipped(const Depsgraph *depsgraph,
                                       const ARegion *region,
                                       const View3D *v3d,
                                       const float mval[2],

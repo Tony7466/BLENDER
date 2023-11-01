@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,6 @@
  * \ingroup edgreasepencil
  */
 
-#include "BLI_rand.hh"
 #include "BLI_vector_set.hh"
 
 #include "BKE_context.h"
@@ -14,18 +13,18 @@
 
 #include "DNA_object_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_curves.h"
-#include "ED_grease_pencil.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_curves.hh"
+#include "ED_grease_pencil.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -35,10 +34,10 @@ static int select_all_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
+  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
         blender::ed::curves::select_all(drawing.strokes_for_write(), selection_domain, action);
       });
 
@@ -86,7 +85,7 @@ static int select_more_less_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
         /* In segment mode, store the pre-change point selection. */
         Array<bool> selection_before;
         if (segment_mode) {
@@ -122,6 +121,7 @@ static void GREASE_PENCIL_OT_select_more(wmOperatorType *ot)
   ot->poll = editable_grease_pencil_point_selection_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
 
   /* Set 'more' as operator property. */
   PropertyRNA *prop;
@@ -153,7 +153,7 @@ static int select_linked_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
         blender::ed::curves::select_linked(drawing.strokes_for_write());
       });
 
@@ -191,7 +191,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   /* Get selection domain from tool settings. */
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
   const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
 
   /* In segment mode, we expand a random point selection to segments.
@@ -203,7 +203,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int drawing_index, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int layer_index, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (segment_mode) {
@@ -212,20 +212,18 @@ static int select_random_exec(bContext *C, wmOperator *op)
               curves,
               drawing_index_2d,
               &curves_2d,
-              blender::get_default_hash_2<int>(seed, drawing_index),
+              blender::get_default_hash_2<int>(seed, layer_index),
               ratio);
 
           drawing_index_2d++;
-        }
         else {
           IndexMaskMemory memory;
           const IndexMask random_elements = ed::curves::random_mask(
               curves,
               selection_domain,
-              blender::get_default_hash_2<int>(seed, drawing_index),
+              blender::get_default_hash_2<int>(seed, layer_index),
               ratio,
               memory);
-
           const bool was_anything_selected = ed::curves::has_anything_selected(curves);
           bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
               curves, selection_domain, CD_PROP_BOOL);
@@ -268,7 +266,7 @@ static int select_alternate_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
         blender::ed::curves::select_alternate(drawing.strokes_for_write(), deselect_ends);
       });
 
@@ -322,7 +320,7 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](const int /*layer_index*/, blender::bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         /* In segment mode, store the pre-change point selection. */
@@ -404,14 +402,15 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
   /* Set new selection mode. */
   const int mode_new = RNA_enum_get(op->ptr, "mode");
   ToolSettings *ts = CTX_data_tool_settings(C);
+
+  bool changed = (mode_new != ts->gpencil_selectmode_edit);
   ts->gpencil_selectmode_edit = mode_new;
 
   /* Convert all drawings of the active GP to the new selection domain. */
-  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
+  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(ts);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-  bool changed = false;
 
   for (const int index : drawings.index_range()) {
     GreasePencilDrawingBase *drawing_base = drawings[index];
@@ -679,11 +678,9 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
 
 }  // namespace blender::ed::greasepencil
 
-eAttrDomain ED_grease_pencil_selection_domain_get(bContext *C)
+eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings)
 {
-  ToolSettings *ts = CTX_data_tool_settings(C);
-
-  switch (ts->gpencil_selectmode_edit) {
+  switch (tool_settings->gpencil_selectmode_edit) {
     case GP_SELECTMODE_POINT:
       return ATTR_DOMAIN_POINT;
       break;

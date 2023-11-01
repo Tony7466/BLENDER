@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,17 +26,17 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_image.h" /* own include */
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h"
+#include "ED_image.hh" /* own include */
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_uvedit.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* NOTE: image_panel_properties() uses pointer to sima->image directly. */
 Image *ED_space_image(const SpaceImage *sima)
@@ -280,10 +280,10 @@ void ED_space_image_get_zoom(SpaceImage *sima,
 
   ED_space_image_get_size(sima, &width, &height);
 
-  *r_zoomx = (float)(BLI_rcti_size_x(&region->winrct) + 1) /
-             (float)(BLI_rctf_size_x(&region->v2d.cur) * width);
-  *r_zoomy = (float)(BLI_rcti_size_y(&region->winrct) + 1) /
-             (float)(BLI_rctf_size_y(&region->v2d.cur) * height);
+  *r_zoomx = float(BLI_rcti_size_x(&region->winrct) + 1) /
+             float(BLI_rctf_size_x(&region->v2d.cur) * width);
+  *r_zoomy = float(BLI_rcti_size_y(&region->winrct) + 1) /
+             float(BLI_rctf_size_y(&region->v2d.cur) * height);
 }
 
 void ED_space_image_get_uv_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy)

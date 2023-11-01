@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -64,7 +64,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_endian_switch.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
@@ -210,6 +210,7 @@ SDNA_DEFAULT_DECL_STRUCT(PointCloud);
 /* DNA_scene_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Scene);
 SDNA_DEFAULT_DECL_STRUCT(ToolSettings);
+SDNA_DEFAULT_DECL_STRUCT(Sculpt);
 
 /* DNA_space_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(SpaceClip);
@@ -222,6 +223,7 @@ SDNA_DEFAULT_DECL_STRUCT(Tex);
 
 /* DNA_userdef_types.h */
 SDNA_DEFAULT_DECL_STRUCT(bUserAssetLibrary);
+SDNA_DEFAULT_DECL_STRUCT(bUserExtensionRepo);
 
 /* DNA_view3d_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(View3D);
@@ -446,6 +448,8 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL_EX(GP_Sculpt_Settings, ToolSettings.gp_sculpt),
     SDNA_DEFAULT_DECL_EX(GP_Sculpt_Guide, ToolSettings.gp_sculpt.guide),
 
+    SDNA_DEFAULT_DECL(Sculpt),
+
     /* DNA_speaker_defaults.h */
     SDNA_DEFAULT_DECL(Speaker),
 
@@ -460,6 +464,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL_EX(UserDef_FileSpaceData, UserDef.file_space_data),
     SDNA_DEFAULT_DECL_EX(WalkNavigation, UserDef.walk_navigation),
     SDNA_DEFAULT_DECL(bUserAssetLibrary),
+    SDNA_DEFAULT_DECL(bUserExtensionRepo),
 
     /* DNA_view3d_defaults.h */
     SDNA_DEFAULT_DECL(View3D),
