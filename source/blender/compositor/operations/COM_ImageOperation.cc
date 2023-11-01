@@ -121,6 +121,7 @@ static void sample_image_at_location(
         break;
     }
     rgba_uchar_to_float(color, byte_color);
+    straight_to_premul_v4(color);
     if (make_linear_rgb) {
       IMB_colormanagement_colorspace_to_scene_linear_v4(
           color, false, ibuf->byte_buffer.colorspace);
@@ -146,7 +147,7 @@ void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                   const rcti &area,
                                                   Span<MemoryBuffer *> /*inputs*/)
 {
-  output->copy_from(buffer_, area, true);
+  output->copy_from(buffer_, area, true, true);
 }
 
 void ImageAlphaOperation::execute_pixel_sampled(float output[4],
