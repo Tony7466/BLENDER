@@ -298,7 +298,7 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
   const bke::AttributeAccessor attributes = pointcloud.attributes();
   const eCustomDataType data_type = request.cd_type;
 
-  GPUVertFormat format = draw::init_format_for_attribute(data_type, "data");
+  GPUVertFormat format = draw::init_format_for_attribute(data_type, "attr");
 
   GPUVertBuf &vbo = *cache.eval_cache.attributes_buf[index];
   GPU_vertbuf_init_with_format_ex(
