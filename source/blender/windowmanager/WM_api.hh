@@ -763,8 +763,11 @@ int WM_operator_repeat(bContext *C, wmOperator *op);
 int WM_operator_repeat_last(bContext *C, wmOperator *op);
 
 /**
- * Clones and executes an operator.  If `properties` is non-null it will be used to
- * initialize the new operator properties, otherwise `op->ptr` will be used.
+ * Clones and executes an operator.  If `properties` is not null it will be cloned
+ * to initialize the new operator properties, otherwise `op->ptr` will be used.
+ *
+ * Note: `properties` will not be owned by the operator, make sure to free it
+ * afterwards.
  */
 int WM_operator_clone_and_repeat(bContext *C, wmOperator *op, PointerRNA *properties = nullptr);
 
