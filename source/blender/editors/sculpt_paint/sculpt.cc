@@ -1529,31 +1529,26 @@ static void paint_mesh_restore_node(Object *ob,
       break;
     }
     case SCULPT_UNDO_FACE_SETS: {
+      const Span<int> face_sets = unode->face_sets;
+      ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
       switch (BKE_pbvh_type(ss->pbvh)) {
         case PBVH_FACES:
         case PBVH_GRIDS: {
-          const Span<int> verts = BKE_pbvh_node_get_unique_vert_indices(node);
-          for (const int i : verts.index_range()) {
-            mask_write.layer[verts[i]] = unode->mask[i];
-          }
+          const Span<int> faces = unode->face_indices;
+          blender::array_utils::scatter(face_sets, faces, {ss->face_sets, ss->faces_num});
           break;
         }
         case PBVH_BMESH: {
-          PBVHVertexIter vd;
-          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-            const float orig_mask = BM_log_original_mask(ss->bm_log, vd.bm_vert);
-            BM_ELEM_CD_SET_FLOAT(vd.bm_vert, mask_write.bm_offset, orig_mask);
+          BMesh *bm = BKE_pbvh_get_bmesh(ss->pbvh);
+          const int offset = CustomData_get_offset_named(
+              &bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+          int i = 0;
+          for (BMFace *face : BKE_pbvh_bmesh_node_faces(node)) {
+            BM_ELEM_CD_SET_INT(face, offset, face_sets[i]);
+            i++;
           }
-          BKE_pbvh_vertex_iter_end;
           break;
         }
-          PBVHVertexIter vd;
-          BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-            *CCG_elem_mask(&vd.key, vd.grid) = unode->mask[vd.i];
-            break;
-          }
-          BKE_pbvh_vertex_iter_end;
-          break;
       }
       BKE_pbvh_node_mark_update_face_sets(node);
       break;

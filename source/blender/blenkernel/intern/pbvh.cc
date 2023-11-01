@@ -1978,6 +1978,40 @@ blender::Span<int> BKE_pbvh_node_get_prim_indices(const PBVHNode *node)
   return node->prim_indices;
 }
 
+blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node)
+{
+  Vector<int> faces;
+  switch (pbvh.header.type) {
+    case PBVH_FACES: {
+      const Span<int> looptri_faces = pbvh.looptri_faces;
+      int prev_face = -1;
+      for (const int tri : node.prim_indices) {
+        const int face = looptri_faces[tri];
+        if (face != prev_face) {
+          faces.append(face);
+        }
+      }
+      break;
+    }
+    case PBVH_GRIDS: {
+      const SubdivCCG &subdiv_ccg = *pbvh.subdiv_ccg;
+      const int prev_face = -1;
+      for (const int prim : node.prim_indices) {
+        const int face = BKE_subdiv_ccg_grid_to_face_index(&subdiv_ccg, prim);
+        if (face != prev_face) {
+          faces.append(face);
+        }
+      }
+      break;
+    }
+    case PBVH_BMESH:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  return faces;
+}
+
 void BKE_pbvh_node_num_verts(const PBVH *pbvh,
                              const PBVHNode *node,
                              int *r_uniquevert,

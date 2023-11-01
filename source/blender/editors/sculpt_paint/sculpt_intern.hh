@@ -233,8 +233,7 @@ struct SculptUndoNode {
   /* Sculpt Face Sets */
   blender::Array<int> face_sets;
 
-  blender::Array<int> face_indices;
-  int faces_num;
+  blender::Vector<int> face_indices;
 
   size_t undo_size;
 };
@@ -1031,7 +1030,6 @@ void SCULPT_orig_vert_data_update(SculptOrigVertData *orig_data, PBVHVertexIter 
  * handles #BMesh, #Mesh, and multi-resolution.
  */
 void SCULPT_orig_vert_data_unode_init(SculptOrigVertData *data, Object *ob, SculptUndoNode *unode);
-
 /** \} */
 
 /* -------------------------------------------------------------------- */

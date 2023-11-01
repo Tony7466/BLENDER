@@ -410,6 +410,8 @@ void BKE_pbvh_node_num_verts(const PBVH *pbvh,
 blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_prim_indices(const PBVHNode *node);
+blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node);
+
 void BKE_pbvh_node_get_loops(PBVH *pbvh,
                              PBVHNode *node,
                              const int **r_loop_indices,
