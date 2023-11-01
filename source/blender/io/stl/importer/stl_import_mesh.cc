@@ -79,11 +79,8 @@ Mesh *STLMeshHelper::to_mesh()
   mesh->vert_positions_for_write().copy_from(verts_);
 
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
-  threading::parallel_for(face_offsets.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      face_offsets[i] = i * 3;
-    }
-  });
+  array_utils::fill_index_range(face_offsets);
+  threading::parallel_transform(face_offsets, 8192, [](const int i) { return i * 3; });
 
   array_utils::copy(tris_.as_span().cast<int>(), mesh->corner_verts_for_write());
 
