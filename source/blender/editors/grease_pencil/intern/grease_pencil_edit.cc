@@ -953,10 +953,10 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Set stroke Thickness
+/** \name Set stroke uniform Thickness
  * \{ */
 
-static int grease_pencil_set_thickness_exec(bContext *C, wmOperator *op)
+static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -990,15 +990,15 @@ static int grease_pencil_set_thickness_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_set_thickness(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_set_uniform_thickness(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Set Thickness";
-  ot->idname = "GREASE_PENCIL_OT_set_thickness";
+  ot->name = "Set Uniform Thickness";
+  ot->idname = "GREASE_PENCIL_OT_set_uniform_thickness";
   ot->description = "Set all stroke points to same thickness";
 
   /* Callbacks. */
-  ot->exec = grease_pencil_set_thickness_exec;
+  ot->exec = grease_pencil_set_uniform_thickness_exec;
   ot->poll = editable_grease_pencil_poll;
 
   /* flags */
@@ -1011,10 +1011,10 @@ static void GREASE_PENCIL_OT_set_thickness(wmOperatorType *ot)
 
 /** \} */
 /* -------------------------------------------------------------------- */
-/** \name Set stroke Opacity
+/** \name Set stroke uniform Opacity
  * \{ */
 
-static int grease_pencil_set_opacity_exec(bContext *C, wmOperator *op)
+static int grease_pencil_set_uniform_opacity_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -1048,15 +1048,15 @@ static int grease_pencil_set_opacity_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_set_opacity(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_set_uniform_opacity(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Set Opacity";
-  ot->idname = "GREASE_PENCIL_OT_set_opacity";
+  ot->name = "Set Uniform Opacity";
+  ot->idname = "GREASE_PENCIL_OT_set_uniform_opacity";
   ot->description = "Set all stroke points to same opacity";
 
   /* Callbacks. */
-  ot->exec = grease_pencil_set_opacity_exec;
+  ot->exec = grease_pencil_set_uniform_opacity_exec;
   ot->poll = editable_grease_pencil_poll;
 
   /* flags */
@@ -1079,8 +1079,8 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_change_color);
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
-  WM_operatortype_append(GREASE_PENCIL_OT_set_thickness);
-  WM_operatortype_append(GREASE_PENCIL_OT_set_opacity);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_thickness);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_opacity);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
