@@ -295,19 +295,30 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
                                          int index)
 {
   using namespace blender;
+
+  GPUVertBuf *&attr_buf = cache.eval_cache.attributes_buf[index];
+
   const bke::AttributeAccessor attributes = pointcloud.attributes();
-  const eCustomDataType data_type = request.cd_type;
 
-  GPUVertFormat format = draw::init_format_for_attribute(data_type, "attr");
+  /* TODO(@kevindietrich): float4 is used for scalar attributes as the implicit conversion done
+   * by OpenGL to vec4 for a scalar `s` will produce a `vec4(s, 0, 0, 1)`. However, following
+   * the Blender convention, it should be `vec4(s, s, s, 1)`. This could be resolved using a
+   * similar texture state swizzle to map the attribute correctly as for volume attributes, so we
+   * can control the conversion ourselves. */
+  bke::AttributeReader<ColorGeometry4f> attribute = attributes.lookup_or_default<ColorGeometry4f>(
+      request.attribute_name, request.domain, {0.0f, 0.0f, 0.0f, 1.0f});
 
-  GPUVertBuf &vbo = *cache.eval_cache.attributes_buf[index];
-  GPU_vertbuf_init_with_format_ex(
-      &vbo, &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  GPU_vertbuf_data_alloc(&vbo, pointcloud.totpoint);
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "attr", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+  }
+  GPUUsageType usage_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
+  GPU_vertbuf_init_with_format_ex(attr_buf, &format, usage_flag);
+  GPU_vertbuf_data_alloc(attr_buf, pointcloud.totpoint);
 
-  const StringRefNull name = request.attribute_name;
-  const GVArraySpan attribute = *attributes.lookup_or_default(name, ATTR_DOMAIN_POINT, data_type);
-  draw::vertbuf_data_extract_direct(attribute, vbo);
+  MutableSpan<ColorGeometry4f> vbo_data{
+      static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(attr_buf)), pointcloud.totpoint};
+  attribute.varray.materialize(vbo_data);
 }
 
 /** \} */

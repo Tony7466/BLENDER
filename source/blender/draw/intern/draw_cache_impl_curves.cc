@@ -321,24 +321,39 @@ static void curves_batch_ensure_attribute(const Curves &curves,
                                           const int subdiv,
                                           const int index)
 {
-  const bke::AttributeAccessor attributes = curves.geometry.wrap().attributes();
-  const StringRefNull name = request.attribute_name;
-  const eCustomDataType data_type = request.cd_type;
-  const eAttrDomain domain = request.domain;
-  const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
-
   GPU_VERTBUF_DISCARD_SAFE(cache.proc_attributes_buf[index]);
 
-  GPUVertFormat format = init_format_for_attribute(data_type, name);
+  char sampler_name[32];
+  drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
+
+  GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);
+  /* All attributes use vec4, see comment below. */
+  GPU_vertformat_attr_add(&format, sampler_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   cache.proc_attributes_buf[index] = GPU_vertbuf_create_with_format_ex(
       &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
   GPUVertBuf *attr_vbo = cache.proc_attributes_buf[index];
 
-  GPU_vertbuf_data_alloc(attr_vbo, attributes.domain_size(domain));
+  GPU_vertbuf_data_alloc(attr_vbo,
+                         request.domain == ATTR_DOMAIN_POINT ? curves.geometry.point_num :
+                                                               curves.geometry.curve_num);
 
-  draw::vertbuf_data_extract_direct(attribute, *attr_vbo);
+  const bke::AttributeAccessor attributes = curves.geometry.wrap().attributes();
+
+  /* TODO(@kevindietrich): float4 is used for scalar attributes as the implicit conversion done
+   * by OpenGL to vec4 for a scalar `s` will produce a `vec4(s, 0, 0, 1)`. However, following
+   * the Blender convention, it should be `vec4(s, s, s, 1)`. This could be resolved using a
+   * similar texture state swizzle to map the attribute correctly as for volume attributes, so we
+   * can control the conversion ourselves. */
+  bke::AttributeReader<ColorGeometry4f> attribute = attributes.lookup_or_default<ColorGeometry4f>(
+      request.attribute_name, request.domain, {0.0f, 0.0f, 0.0f, 1.0f});
+
+  MutableSpan<ColorGeometry4f> vbo_span{
+      static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(attr_vbo)),
+      attributes.domain_size(request.domain)};
+
+  attribute.varray.materialize(vbo_span);
 
   /* Existing final data may have been for a different attribute (with a different name or domain),
    * free the data. */
@@ -346,8 +361,6 @@ static void curves_batch_ensure_attribute(const Curves &curves,
 
   /* Ensure final data for points. */
   if (request.domain == ATTR_DOMAIN_POINT) {
-    char sampler_name[32];
-    drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
     curves_batch_cache_ensure_procedural_final_attr(cache, &format, subdiv, index, sampler_name);
   }
 }
