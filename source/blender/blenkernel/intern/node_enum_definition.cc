@@ -5,7 +5,7 @@
 #include "DNA_node_types.h"
 
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
