@@ -34,7 +34,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_ghash.h"
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
@@ -292,6 +292,7 @@ struct PartialUpdateData {
   bool *modified_mask_verts;
   bool *modified_color_verts;
   bool *modified_face_set_faces;
+  Span<int> looptri_faces;
 };
 
 /**
@@ -349,14 +350,15 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
     }
   }
   if (data->modified_face_set_faces) {
-    PBVHFaceIter fd;
-    BKE_pbvh_face_iter_begin (data->pbvh, node, fd) {
-      if (data->modified_face_set_faces[fd.index]) {
+    const Span<int> tris = BKE_pbvh_node_get_prim_indices(node);
+    const Span<int> looptri_faces = data->looptri_faces;
+    for (const int tri : tris) {
+      const int face = looptri_faces[tri];
+      if (data->modified_face_set_faces[face]) {
         BKE_pbvh_node_mark_update_face_sets(node);
         break;
       }
     }
-    BKE_pbvh_face_iter_end(fd);
   }
 }
 
@@ -620,14 +622,14 @@ static bool sculpt_undo_restore_face_sets(bContext *C,
   SculptSession *ss = ob->sculpt;
 
   ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
-  BKE_pbvh_face_sets_set(ss->pbvh, ss->face_sets);
 
   bool modified = false;
+  const Span<int> face_indices = unode->face_indices;
 
-  for (int i = 0; i < unode->faces_num; i++) {
-    int face_index = unode->faces[i].i;
+  for (const int i : face_indices.index_range()) {
+    int face_index = face_indices[i];
 
-    SWAP(int, unode->face_sets[i], ss->face_sets[face_index]);
+    std::swap(unode->face_sets[i], ss->face_sets[face_index]);
 
     modified_face_set_faces[face_index] = unode->face_sets[i] != ss->face_sets[face_index];
     modified |= modified_face_set_faces[face_index];
@@ -860,6 +862,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
   bool update = false, rebuild = false, update_mask = false, update_visibility = false;
@@ -1035,6 +1038,9 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     data.modified_mask_verts = modified_mask_verts;
     data.modified_color_verts = modified_color_verts;
     data.modified_face_set_faces = modified_face_set_faces;
+    if (data.modified_face_set_faces) {
+      data.looptri_faces = mesh->looptri_faces();
+    }
     BKE_pbvh_search_callback(ss->pbvh, {}, update_cb_partial, &data);
     BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
 
@@ -1227,21 +1233,31 @@ static SculptUndoNode *sculpt_undo_find_or_alloc_node_type(Object *object, Sculp
   return sculpt_undo_alloc_node_type(object, type);
 }
 
-static void sculpt_undo_store_faces(SculptSession *ss, SculptUndoNode *unode)
+static blender::Array<int> gather_node_face_indices(const Mesh &mesh, const PBVHNode &node)
 {
-  unode->faces_num = 0;
+  const Span<int> tris = BKE_pbvh_node_get_prim_indices(&node);
+  const Span<int> looptri_faces = mesh.looptri_faces();
 
-  PBVHFaceIter fd;
-  BKE_pbvh_face_iter_begin (ss->pbvh, static_cast<PBVHNode *>(unode->node), fd) {
-    unode->faces_num++;
-  }
-  BKE_pbvh_face_iter_end(fd);
+  int faces_num = 0;
 
-  unode->faces.reinitialize(unode->faces_num);
-  BKE_pbvh_face_iter_begin (ss->pbvh, static_cast<PBVHNode *>(unode->node), fd) {
-    unode->faces[fd.i] = fd.face;
+  int prev_face = -1;
+  for (const int tri : tris) {
+    const int face = looptri_faces[tri];
+    if (face != prev_face) {
+      faces_num++;
+    }
   }
-  BKE_pbvh_face_iter_end(fd);
+
+  blender::Array<int> faces(faces_num);
+  int i = 0;
+  for (const int tri : tris) {
+    const int face = looptri_faces[tri];
+    if (face != prev_face) {
+      faces[i] = face;
+      i++;
+    }
+  }
+  return faces;
 }
 
 static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, SculptUndoType type)
@@ -1281,8 +1297,14 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
   }
 
   if (need_faces) {
-    sculpt_undo_store_faces(ss, unode);
-    usculpt->undo_size += unode->faces.as_span().size_in_bytes();
+    if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+      unode->faces_num = BKE_pbvh_bmesh_node_faces(node).size();
+    }
+    else {
+      unode->face_indices = gather_node_face_indices(*static_cast<const Mesh *>(ob->data), *node);
+      unode->faces_num = unode->face_indices.size();
+      usculpt->undo_size += unode->face_indices.as_span().size_in_bytes();
+    }
   }
 
   switch (type) {
@@ -1452,15 +1474,25 @@ static SculptUndoNode *sculpt_undo_geometry_push(Object *object, SculptUndoType 
   return unode;
 }
 
-static void sculpt_undo_store_face_sets(SculptSession *ss, SculptUndoNode *unode)
+static void sculpt_undo_store_face_sets(SculptSession *ss, const Mesh *mesh, SculptUndoNode *unode)
 {
-  unode->face_sets.reinitialize(unode->faces_num);
-
-  PBVHFaceIter fd;
-  BKE_pbvh_face_iter_begin (ss->pbvh, static_cast<PBVHNode *>(unode->node), fd) {
-    unode->face_sets[fd.i] = fd.face_set ? *fd.face_set : SCULPT_FACE_SET_NONE;
-  }
-  BKE_pbvh_face_iter_end(fd);
+  const PBVHNode &node = *static_cast<const PBVHNode *>(unode->node);
+  blender::array_utils::gather(
+      *mesh->attributes().lookup_or_default<int>(".sculpt_face_set", ATTR_DOMAIN_FACE, 0),
+      unode->face_indices.as_span(),
+      unode->face_sets.as_mutable_span());
+  // const BMesh *bm = BKE_pbvh_get_bmesh(ss->pbvh);
+  // const int offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+  // if (offset == -1) {
+  //   return unode->face_sets.fill(0);
+  // }
+  // else {
+  //   int i = 0;
+  //   for (const BMFace *face : BKE_pbvh_bmesh_node_faces(&const_cast<PBVHNode &>(node))) {
+  //     unode->face_sets[i] = BM_ELEM_CD_GET_INT(face, offset);
+  //     i++;
+  //   }
+  // }
 }
 
 static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, SculptUndoType type)
@@ -1618,7 +1650,7 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
     case SCULPT_UNDO_GEOMETRY:
       break;
     case SCULPT_UNDO_FACE_SETS:
-      sculpt_undo_store_face_sets(ss, unode);
+      sculpt_undo_store_face_sets(ss, static_cast<const Mesh *>(ob->data), unode);
       break;
   }
 
