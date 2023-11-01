@@ -367,8 +367,7 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
     }
 
     if (displayName_identifier == prop->name) {
-      if (prop->type == IDP_STRING && usd_export_context_.export_params.export_usd_kind &&
-          prop->data.pointer)
+      if (prop->type == IDP_STRING && prop->data.pointer)
       {
         prim.SetDisplayName(static_cast<char*>(prop->data.pointer));
       }
