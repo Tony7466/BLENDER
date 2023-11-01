@@ -56,6 +56,7 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
 
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket);
+void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterfaceSocket &socket);
 
 bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
@@ -64,13 +65,23 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     bke::GeometrySet input_geometry,
     FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
 
+/**
+ * \param allow_slow_updates: Perform updates that might be expensive and should not be executed
+ *        after every change.
+ */
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
                                             bool use_bool_for_use_attribute,
+                                            bool allow_slow_updates,
                                             IDProperty &properties);
 
+/**
+ * \param allow_slow_updates: Perform updates that might be expensive and should not be executed
+ *        after every change.
+ */
 void update_output_properties_from_node_tree(const bNodeTree &tree,
                                              const IDProperty *old_properties,
+                                             bool allow_slow_updates,
                                              IDProperty &properties);
 
 }  // namespace blender::nodes

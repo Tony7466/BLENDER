@@ -383,16 +383,15 @@ class NodeTreeMainUpdater {
 
       this->reset_changed_flags(*ntree);
 
-      if (result.interface_changed) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          relations_.ensure_modifier_users();
-          for (const ObjectModifierPair &pair : relations_.get_modifier_users(ntree)) {
-            Object *object = pair.first;
-            ModifierData *md = pair.second;
+      if (ntree->type == NTREE_GEOMETRY) {
+        relations_.ensure_modifier_users();
+        for (const ObjectModifierPair &pair : relations_.get_modifier_users(ntree)) {
+          Object *object = pair.first;
+          ModifierData *md = pair.second;
 
-            if (md->type == eModifierType_Nodes) {
-              MOD_nodes_update_interface(object, (NodesModifierData *)md);
-            }
+          if (md->type == eModifierType_Nodes) {
+            MOD_nodes_update_interface(
+                object, (NodesModifierData *)md, /*recalc=*/result.interface_changed);
           }
         }
       }

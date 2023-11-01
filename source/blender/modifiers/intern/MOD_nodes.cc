@@ -288,7 +288,7 @@ static bool logging_enabled(const ModifierEvalContext *ctx)
   return true;
 }
 
-static void update_id_properties_from_node_group(NodesModifierData *nmd)
+static void update_id_properties_from_node_group(NodesModifierData *nmd, bool allow_slow_updates)
 {
   if (nmd->node_group == nullptr) {
     if (nmd->settings.properties) {
@@ -306,9 +306,9 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd)
   IDProperty *new_properties = nmd->settings.properties;
 
   nodes::update_input_properties_from_node_tree(
-      *nmd->node_group, old_properties, false, *new_properties);
+      *nmd->node_group, old_properties, false, allow_slow_updates, *new_properties);
   nodes::update_output_properties_from_node_tree(
-      *nmd->node_group, old_properties, *new_properties);
+      *nmd->node_group, old_properties, allow_slow_updates, *new_properties);
 
   if (old_properties != nullptr) {
     IDP_FreeProperty(old_properties);
@@ -397,13 +397,17 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
 }  // namespace blender
 
-void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
+void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd, bool recalc)
 {
   using namespace blender;
-  update_id_properties_from_node_group(nmd);
-  update_bakes_from_node_group(*nmd);
 
-  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  update_id_properties_from_node_group(nmd, /*allow_slow_updates=*/recalc);
+
+  if (recalc) {
+    update_bakes_from_node_group(*nmd);
+
+    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  }
 }
 
 NodesModifierBake *NodesModifierData::find_bake(const int id)

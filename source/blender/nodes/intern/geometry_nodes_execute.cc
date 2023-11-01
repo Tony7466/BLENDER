@@ -157,6 +157,32 @@ bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_ind
   return field_interface.inputs[socket_index] != nodes::InputSocketFieldType::None;
 }
 
+static void id_property_enum_update_items(const bNodeSocketValueEnum *value,
+                                          IDPropertyUIDataEnum *ui_data)
+{
+  if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
+    const int idprop_items_num = enum_def->items_num;
+    IDPropertyUIDataEnumItem *idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(
+        enum_def->items_num, __func__);
+    for (const int i : enum_def->items().index_range()) {
+      const NodeEnumItem &item = enum_def->items()[i];
+      IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
+      idprop_item.value = item.identifier;
+      /* TODO: The name may not be unique!
+       * We require a unique identifier string for IDProperty and RNA enums,
+       * so node enums should probably have this too. */
+      idprop_item.identifier = BLI_strdup_null(item.name);
+      idprop_item.name = BLI_strdup_null(item.name);
+      idprop_item.description = BLI_strdup_null(item.description);
+      idprop_item.icon = ICON_NONE;
+    }
+    /* Node enum definitions should already be valid. */
+    BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
+    ui_data->items = idprop_items;
+    ui_data->items_num = idprop_items_num;
+  }
+}
+
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket)
 {
@@ -258,27 +284,7 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
           socket.socket_data);
       auto property = bke::idprop::create_enum(identifier, value->value);
       IDPropertyUIDataEnum *ui_data = (IDPropertyUIDataEnum *)IDP_ui_data_ensure(property.get());
-      if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
-        const int idprop_items_num = enum_def->items_num;
-        IDPropertyUIDataEnumItem *idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(
-            enum_def->items_num, __func__);
-        for (const int i : enum_def->items().index_range()) {
-          const NodeEnumItem &item = enum_def->items()[i];
-          IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
-          idprop_item.value = item.identifier;
-          /* TODO: The name may not be unique!
-           * We require a unique identifier string for IDProperty and RNA enums,
-           * so node enums should probably have this too. */
-          idprop_item.identifier = BLI_strdup_null(item.name);
-          idprop_item.name = BLI_strdup_null(item.name);
-          idprop_item.description = BLI_strdup_null(item.description);
-          idprop_item.icon = ICON_NONE;
-        }
-        /* Node enum definitions should already be valid. */
-        BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
-        ui_data->items = idprop_items;
-        ui_data->items_num = idprop_items_num;
-      }
+      id_property_enum_update_items(value, ui_data);
       return property;
     }
     case SOCK_OBJECT: {
@@ -478,6 +484,36 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       BLI_assert_unreachable();
       break;
     }
+  }
+}
+
+void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterfaceSocket &socket)
+{
+  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
+  const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+  switch (type) {
+    case SOCK_ENUM: {
+      const bNodeSocketValueEnum *value = static_cast<const bNodeSocketValueEnum *>(
+          socket.socket_data);
+      IDPropertyUIDataEnum *ui_data = (IDPropertyUIDataEnum *)IDP_ui_data_ensure(idprop);
+      id_property_enum_update_items(value, ui_data);
+    }
+    case SOCK_FLOAT:
+    case SOCK_INT:
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+    case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
+    case SOCK_STRING:
+    case SOCK_OBJECT:
+    case SOCK_COLLECTION:
+    case SOCK_TEXTURE:
+    case SOCK_IMAGE:
+    case SOCK_MATERIAL:
+    case SOCK_CUSTOM:
+    case SOCK_GEOMETRY:
+    case SOCK_SHADER:
+      break;
   }
 }
 
@@ -825,6 +861,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
                                             const bool use_bool_for_use_attribute,
+                                            const bool allow_slow_updates,
                                             IDProperty &properties)
 {
   tree.ensure_interface_cache();
@@ -835,6 +872,13 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
+
+    /* Enum sockets get updated every time, because enum item changes do not trigger a full
+     * interface update. */
+    if (!allow_slow_updates && socket_type != SOCK_ENUM) {
+      continue;
+    }
+
     IDProperty *new_prop = nodes::id_property_create_from_socket(socket).release();
     if (new_prop == nullptr) {
       /* Out of the set of supported input sockets, only
@@ -910,6 +954,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
 
 void update_output_properties_from_node_tree(const bNodeTree &tree,
                                              const IDProperty *old_properties,
+                                             const bool allow_slow_updates,
                                              IDProperty &properties)
 {
   tree.ensure_topology_cache();
@@ -920,6 +965,11 @@ void update_output_properties_from_node_tree(const bNodeTree &tree,
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
+    /* Enum sockets get updated every time, because enum item changes do not trigger a full
+     * interface update. */
+    if (!allow_slow_updates && socket_type != SOCK_ENUM) {
+      continue;
+    }
     if (!nodes::socket_type_has_attribute_toggle(socket_type)) {
       continue;
     }
