@@ -1489,9 +1489,8 @@ static void paint_mesh_restore_node(Object *ob,
       switch (BKE_pbvh_type(ss->pbvh)) {
         case PBVH_FACES: {
           const Span<int> verts = BKE_pbvh_node_get_unique_vert_indices(node);
-          for (const int i : verts.index_range()) {
-            mask_write.layer[verts[i]] = unode->mask[i];
-          }
+          blender::array_utils::scatter(
+              unode->mask.as_span(), verts, {mask_write.layer, ss->totvert});
           break;
         }
         case PBVH_BMESH: {
