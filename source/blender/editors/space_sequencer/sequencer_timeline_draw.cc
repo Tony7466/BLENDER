@@ -10,7 +10,7 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -2086,6 +2086,7 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
   draw_seq_strips(&ctx);
   sequencer_draw_retiming(C);
   draw_timeline_markers(&ctx);
+  UI_view2d_view_ortho(ctx.v2d);
   ANIM_draw_previewrange(C, ctx.v2d, 1);
   draw_timeline_gizmos(&ctx);
   draw_timeline_post_view_callbacks(&ctx);
