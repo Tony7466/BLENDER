@@ -1008,7 +1008,6 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
         switch (mode) {
           case NormalizeMode::THICKNESS: {
-
             MutableSpan<float> radii = drawing.radii_for_write();
             bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
             changed = true;
