@@ -266,7 +266,8 @@ static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
 static IDProperty *replace_inputs_evaluated_data_blocks(const IDProperty &op_properties,
                                                         const Depsgraph &depsgraph)
 {
-  IDProperty *properties = IDP_CopyProperty(&op_properties);
+  /* We just create a temporary copy, so don't adjust data-block user count. */
+  IDProperty *properties = IDP_CopyProperty_ex(&op_properties, LIB_ID_CREATE_NO_USER_REFCOUNT);
   IDP_foreach_property(
       properties,
       IDP_TYPE_FILTER_ID,
