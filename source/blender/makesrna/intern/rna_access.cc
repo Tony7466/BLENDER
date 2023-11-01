@@ -442,6 +442,7 @@ static PropertyRNA *typemap[IDP_NUMTYPES] = {
     &rna_PropertyGroupItem_double,
     &rna_PropertyGroupItem_idp_array,
     &rna_PropertyGroupItem_bool,
+    &rna_PropertyGroupItem_enum,
 };
 
 static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
@@ -456,6 +457,7 @@ static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
     &rna_PropertyGroupItem_double_array,
     nullptr,
     (PropertyRNA *)&rna_PropertyGroupItem_bool_array,
+    nullptr,
 };
 
 void rna_property_rna_or_id_get(PropertyRNA *prop,

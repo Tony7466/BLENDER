@@ -199,7 +199,7 @@ typedef enum eIDPropertyType {
   /* Integer value with a list of enum items for selection. */
   IDP_ENUM = 11,
 } eIDPropertyType;
-#define IDP_NUMTYPES 11
+#define IDP_NUMTYPES 12
 
 /** Used by some IDP utils, keep values in sync with type enum above. */
 enum {
