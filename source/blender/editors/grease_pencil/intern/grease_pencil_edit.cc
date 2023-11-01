@@ -976,7 +976,6 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
           object->actcol = materials[selected_curves.first()] + 1;
         }
         changed = true;
-        return;
       });
 
   WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
