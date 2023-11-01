@@ -100,7 +100,7 @@ static void extract_data_mesh_face(const OffsetIndices<int> faces,
 {
   using Converter = AttributeConverter<T>;
   using VBOT = typename Converter::VBOT;
-  MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), attribute.size());
+  MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), faces.total_size());
 
   threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
@@ -206,6 +206,31 @@ static void extract_attr(const MeshRenderData &mr,
                          GPUVertBuf &vbo)
 {
   if (mr.extract_type == MR_EXTRACT_BMESH) {
+    const CustomData &custom_data = *get_custom_data_for_domain(*mr.bm, request.domain);
+    const char *name = request.attribute_name;
+    const int cd_offset = CustomData_get_offset_named(&custom_data, request.cd_type, name);
+
+    bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
+      using T = decltype(dummy);
+      switch (request.domain) {
+        case ATTR_DOMAIN_POINT:
+          extract_data_bmesh_vert<T>(*mr.bm, cd_offset, vbo);
+          break;
+        case ATTR_DOMAIN_EDGE:
+          extract_data_bmesh_edge<T>(*mr.bm, cd_offset, vbo);
+          break;
+        case ATTR_DOMAIN_FACE:
+          extract_data_bmesh_face<T>(*mr.bm, cd_offset, vbo);
+          break;
+        case ATTR_DOMAIN_CORNER:
+          extract_data_bmesh_loop<T>(*mr.bm, cd_offset, vbo);
+          break;
+        default:
+          BLI_assert_unreachable();
+      }
+    });
+  }
+  else {
     const bke::AttributeAccessor attributes = mr.me->attributes();
     const StringRef name = request.attribute_name;
     const eCustomDataType data_type = request.cd_type;
@@ -231,41 +256,15 @@ static void extract_attr(const MeshRenderData &mr,
       }
     });
   }
-  else {
-    const CustomData &custom_data = *get_custom_data_for_domain(*mr.bm, request.domain);
-    const char *name = request.attribute_name;
-    const int cd_offset = CustomData_get_offset_named(&custom_data, request.cd_type, name);
-
-    bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
-      using T = decltype(dummy);
-      switch (request.domain) {
-        case ATTR_DOMAIN_POINT:
-          extract_data_bmesh_vert<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case ATTR_DOMAIN_EDGE:
-          extract_data_bmesh_edge<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case ATTR_DOMAIN_FACE:
-          extract_data_bmesh_face<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case ATTR_DOMAIN_CORNER:
-          extract_data_bmesh_loop<T>(*mr.bm, cd_offset, vbo);
-          break;
-        default:
-          BLI_assert_unreachable();
-      }
-    });
-  }
 }
 
 static void extract_attr_init(
     const MeshRenderData &mr, MeshBatchCache &cache, void *buf, void * /*tls_data*/, int index)
 {
-  init_vbo_for_attribute(mr,
-                         static_cast<GPUVertBuf *>(buf),
-                         cache.attr_used.requests[index],
-                         false,
-                         uint32_t(mr.loop_len));
+  const DRW_AttributeRequest &request = cache.attr_used.requests[index];
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  init_vbo_for_attribute(mr, vbo, request, false, uint32_t(mr.loop_len));
+  extract_attr(mr, request, *vbo);
 }
 
 static void extract_attr_init_subdiv(const DRWSubdivCache &subdiv_cache,
