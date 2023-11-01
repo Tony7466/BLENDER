@@ -410,7 +410,7 @@ typedef struct bNode {
   float offsetx, offsety;
 
   /** Custom user-defined label, MAX_NAME. */
-  char label[64];
+  char label[256];
 
   /** Custom user-defined color. */
   float color[3];

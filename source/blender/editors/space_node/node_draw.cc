@@ -3565,7 +3565,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   const NodeFrame *data = (const NodeFrame *)node.storage;
   const float font_size = data->label_size / aspect;
 
-  char label[MAX_NAME];
+  char label[256];
   bke::nodeLabel(&ntree, &node, label, sizeof(label));
 
   BLF_enable(fontid, BLF_ASPECT);
