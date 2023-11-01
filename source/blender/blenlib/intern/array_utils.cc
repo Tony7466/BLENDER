@@ -78,11 +78,7 @@ void count_indices(const Span<int> indices, MutableSpan<int> counts)
 
 void invert_booleans(MutableSpan<bool> span)
 {
-  threading::parallel_for(span.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      span[i] = !span[i];
-    }
-  });
+  threading::parallel_transform(span, 4096, [&](const bool value) { return !value; });
 }
 
 void invert_booleans(MutableSpan<bool> span, const IndexMask &mask)

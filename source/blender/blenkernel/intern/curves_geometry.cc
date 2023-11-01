@@ -1041,19 +1041,14 @@ void CurvesGeometry::tag_radii_changed() {}
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
 {
-  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position += translation;
-    }
-  });
+  threading::parallel_transform(
+      positions, 2048, [&](const float3 &position) { return position + translation; });
 }
 
 static void transform_positions(MutableSpan<float3> positions, const float4x4 &matrix)
 {
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position = math::transform_point(matrix, position);
-    }
+  threading::parallel_transform(positions, 1024, [&](const float3 &position) {
+    return math::transform_point(matrix, position);
   });
 }
 

@@ -11,6 +11,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_noise.hh"
@@ -285,11 +286,9 @@ static void copy_transformed_positions(const Span<float3> src,
                                        const float4x4 &transform,
                                        MutableSpan<float3> dst)
 {
-  threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst[i] = math::transform_point(transform, src[i]);
-    }
-  });
+  array_utils::copy(src, dst);
+  threading::parallel_transform(
+      dst, 1024, [&](const float3 &src) { return math::transform_point(transform, src); });
 }
 
 static void threaded_copy(const GSpan src, GMutableSpan dst)
@@ -1350,11 +1349,9 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
   /* Copy curve offsets. */
   const Span<int> src_offsets = curves.offsets();
   const MutableSpan<int> dst_offsets = dst_curves.offsets_for_write().slice(dst_curve_range);
-  threading::parallel_for(curves.curves_range(), 2048, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_offsets[i] = task.start_indices.point + src_offsets[i];
-    }
-  });
+  array_utils::copy(src_offsets, dst_offsets);
+  threading::parallel_transform(
+      dst_offsets, 2048, [&](const int offset) { return task.start_indices.point + offset; });
 
   if (!all_dst_ids.is_empty()) {
     create_result_ids(

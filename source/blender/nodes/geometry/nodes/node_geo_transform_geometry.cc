@@ -44,19 +44,14 @@ static bool use_translate(const float3 rotation, const float3 scale)
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
 {
-  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position += translation;
-    }
-  });
+  threading::parallel_transform(
+      positions, 2048, [&](const float3 &position) { return position + translation; });
 }
 
 static void transform_positions(MutableSpan<float3> positions, const float4x4 &matrix)
 {
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position = math::transform_point(matrix, position);
-    }
+  threading::parallel_transform(positions, 1024, [&](const float3 &position) {
+    return math::transform_point(matrix, position);
   });
 }
 
@@ -124,6 +119,7 @@ static void transform_greasepencil(GreasePencil &grease_pencil, const float4x4 &
 static void translate_instances(bke::Instances &instances, const float3 translation)
 {
   MutableSpan<float4x4> transforms = instances.transforms();
+
   threading::parallel_for(transforms.index_range(), 1024, [&](const IndexRange range) {
     for (float4x4 &instance_transform : transforms.slice(range)) {
       add_v3_v3(instance_transform.ptr()[3], translation);
@@ -134,10 +130,8 @@ static void translate_instances(bke::Instances &instances, const float3 translat
 static void transform_instances(bke::Instances &instances, const float4x4 &transform)
 {
   MutableSpan<float4x4> transforms = instances.transforms();
-  threading::parallel_for(transforms.index_range(), 1024, [&](const IndexRange range) {
-    for (float4x4 &instance_transform : transforms.slice(range)) {
-      instance_transform = transform * instance_transform;
-    }
+  threading::parallel_transform(transforms, 1024, [&](const float4x4 &instance_transform) {
+    return transform * instance_transform;
   });
 }
 
@@ -207,11 +201,8 @@ static void transform_curve_edit_hints(bke::CurvesEditHints &edit_hints, const f
   copy_m3_m4(deform_mat.ptr(), transform.ptr());
   if (edit_hints.deform_mats.has_value()) {
     MutableSpan<float3x3> deform_mats = *edit_hints.deform_mats;
-    threading::parallel_for(deform_mats.index_range(), 1024, [&](const IndexRange range) {
-      for (const int64_t i : range) {
-        deform_mats[i] = deform_mat * deform_mats[i];
-      }
-    });
+    threading::parallel_transform(
+        deform_mats, 1024, [&](const float3x3 &deform) { return deform_mat * deform; });
   }
   else {
     edit_hints.deform_mats.emplace(edit_hints.curves_id_orig.geometry.point_num, deform_mat);

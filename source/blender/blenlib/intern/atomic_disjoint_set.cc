@@ -83,11 +83,9 @@ void AtomicDisjointSet::calc_reduced_ids(MutableSpan<int> result) const
   for (const int i : root_occurrences.index_range()) {
     id_by_root.add_new(root_occurrences[i].root, i);
   }
-  threading::parallel_for(IndexRange(size), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      result[i] = id_by_root.lookup(result[i]);
-    }
-  });
+
+  threading::parallel_transform(
+      result, 1024, [&](const int value) { return id_by_root.lookup(value); });
 }
 
 int AtomicDisjointSet::count_sets() const

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
@@ -398,11 +399,9 @@ static void compute_legacy_normal_outputs(const Mesh &mesh,
 
 static void compute_rotation_output(const Span<float3> normals, MutableSpan<float3> r_rotations)
 {
-  threading::parallel_for(normals.index_range(), 256, [&](const IndexRange range) {
-    for (const int i : range) {
-      r_rotations[i] = normal_to_euler_rotation(normals[i]);
-    }
-  });
+  array_utils::copy(normals, r_rotations);
+  threading::parallel_transform(
+      r_rotations, 2048, [&](const float3 &normal) { return normal_to_euler_rotation(normal); });
 }
 
 BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,

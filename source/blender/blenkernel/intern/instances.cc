@@ -265,10 +265,8 @@ void Instances::remove_unused_references()
   }
 
   /* Update handles of instances. */
-  threading::parallel_for(IndexRange(tot_instances), 1000, [&](IndexRange range) {
-    for (const int i : range) {
-      reference_handles_[i] = handle_mapping[reference_handles_[i]];
-    }
+  threading::parallel_transform<int>(reference_handles_, 1000, [&](const int reference_handle_) {
+    return handle_mapping[reference_handle_];
   });
 }
 

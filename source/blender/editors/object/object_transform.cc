@@ -652,10 +652,8 @@ static void transform_positions(blender::MutableSpan<blender::float3> positions,
                                 const blender::float4x4 &matrix)
 {
   using namespace blender;
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position = math::transform_point(matrix, position);
-    }
+  threading::parallel_transform(positions, 2048, [&](const float3 &position) {
+    return math::transform_point(matrix, position);
   });
 }
 
@@ -1274,11 +1272,8 @@ static void translate_positions(blender::MutableSpan<blender::float3> positions,
                                 const blender::float3 &translation)
 {
   using namespace blender;
-  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position += translation;
-    }
-  });
+  threading::parallel_transform(
+      positions, 2048, [&](const float3 &position) { return position + translation; });
 }
 
 static int object_origin_set_exec(bContext *C, wmOperator *op)

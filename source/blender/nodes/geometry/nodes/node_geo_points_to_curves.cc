@@ -77,12 +77,9 @@ static void find_points_by_group_index(const Span<int> indices_of_curves,
 static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
 {
   const VectorSet<int> deduplicated_groups(r_identifiers_to_indices);
-  threading::parallel_for(
-      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
-        for (int &value : r_identifiers_to_indices.slice(range)) {
-          value = deduplicated_groups.index_of(value);
-        }
-      });
+  threading::parallel_transform(r_identifiers_to_indices, 2048, [&](const int identifier) {
+    return deduplicated_groups.index_of(identifier);
+  });
   return deduplicated_groups.size();
 }
 

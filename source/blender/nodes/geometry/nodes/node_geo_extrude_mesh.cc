@@ -675,11 +675,8 @@ static void extrude_mesh_edges(Mesh &mesh,
   MutableSpan<float3> new_positions = mesh.vert_positions_for_write().slice(new_vert_range);
   if (edge_offsets.is_single()) {
     const float3 offset = edge_offsets.get_internal_single();
-    threading::parallel_for(new_positions.index_range(), 1024, [&](const IndexRange range) {
-      for (const int i : range) {
-        new_positions[i] += offset;
-      }
-    });
+    threading::parallel_transform(
+        new_positions, 2048, [&](const float3 &position) { return position + offset; });
   }
   else {
     threading::parallel_for(new_positions.index_range(), 1024, [&](const IndexRange range) {

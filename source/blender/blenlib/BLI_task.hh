@@ -35,6 +35,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
 #include "BLI_lazy_threading.hh"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -206,6 +207,17 @@ template<typename Function> inline void isolate_task(const Function &function)
 #else
   function();
 #endif
+}
+
+template<typename T, typename Function>
+inline void parallel_transform(MutableSpan<T> values,
+                               const int64_t grain_size,
+                               const Function &function)
+{
+  parallel_for(values.index_range(), grain_size, [&](const IndexRange range) {
+    MutableSpan<T> values_range = values.slice(range);
+    std::transform(values_range.begin(), values_range.end(), values_range.begin(), function);
+  });
 }
 
 }  // namespace blender::threading

@@ -1529,11 +1529,8 @@ void BKE_mesh_transform(Mesh *me, const float mat[4][4], bool do_keys)
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
 {
   using namespace blender;
-  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position += translation;
-    }
-  });
+  threading::parallel_transform(
+      positions, 4096, [&](const float3 &position) { return position + translation; });
 }
 
 void BKE_mesh_translate(Mesh *mesh, const float offset[3], const bool do_keys)

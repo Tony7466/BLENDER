@@ -209,13 +209,10 @@ bool has_anything_selected(const GSpan selection)
   return false;
 }
 
-static void invert_selection(MutableSpan<float> selection)
+static void invert_selection(MutableSpan<float> selections)
 {
-  threading::parallel_for(selection.index_range(), 2048, [&](IndexRange range) {
-    for (const int i : range) {
-      selection[i] = 1.0f - selection[i];
-    }
-  });
+  threading::parallel_transform(
+      selections, 2048, [&](const float selection) { return 1.0f - selection; });
 }
 
 static void invert_selection(GMutableSpan selection)
