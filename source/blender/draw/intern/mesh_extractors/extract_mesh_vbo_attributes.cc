@@ -8,14 +8,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <functional>
-
 #include "BLI_array_utils.hh"
-#include "BLI_color.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 
-#include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_mesh.hh"
