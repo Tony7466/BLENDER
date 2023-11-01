@@ -292,7 +292,6 @@ struct PartialUpdateData {
   bool *modified_mask_verts;
   bool *modified_color_verts;
   bool *modified_face_set_faces;
-  Span<int> looptri_faces;
 };
 
 /**
@@ -627,7 +626,7 @@ static bool sculpt_undo_restore_face_sets(bContext *C,
   for (const int i : face_indices.index_range()) {
     int face_index = face_indices[i];
 
-    std::swap(unode->face_sets[i], ss->face_sets[face_index]);
+    SWAP(int, unode->face_sets[i], ss->face_sets[face_index]);
 
     modified_face_set_faces[face_index] = unode->face_sets[i] != ss->face_sets[face_index];
     modified |= modified_face_set_faces[face_index];
@@ -860,7 +859,6 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
-  Mesh *mesh = static_cast<Mesh *>(ob->data);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
   bool update = false, rebuild = false, update_mask = false, update_visibility = false;
@@ -1036,9 +1034,6 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     data.modified_mask_verts = modified_mask_verts;
     data.modified_color_verts = modified_color_verts;
     data.modified_face_set_faces = modified_face_set_faces;
-    if (data.modified_face_set_faces) {
-      data.looptri_faces = mesh->looptri_faces();
-    }
     BKE_pbvh_search_callback(ss->pbvh, {}, update_cb_partial, &data);
     BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
 
