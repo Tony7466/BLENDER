@@ -1574,6 +1574,7 @@ static void IDP_DirectLinkProperty(IDProperty *prop, BlendDataReader *reader)
     case IDP_INT:
     case IDP_FLOAT:
     case IDP_BOOLEAN:
+    case IDP_ENUM:
     case IDP_ID:
       break; /* Nothing special to do here. */
     default:
