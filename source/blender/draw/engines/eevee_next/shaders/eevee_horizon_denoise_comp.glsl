@@ -144,7 +144,7 @@ void main()
       vec3 sample_N = load_normal(sample_texel_fullres);
 
       float depth_weight = bilateral_depth_weight(center_N, center_P, sample_P);
-      float spatial_weight = bilateral_spatial_weight(1.0, vec2(offset));
+      float spatial_weight = bilateral_spatial_weight(1.5, vec2(offset));
       float normal_weight = bilateral_normal_weight(center_N, sample_N);
 
       float weight = depth_weight * spatial_weight * normal_weight;
@@ -156,13 +156,13 @@ void main()
       }
       float occlusion = imageLoad(horizon_occlusion_img, sample_texel).r;
       accum_radiance += to_accumulation_space(radiance) * weight;
-      accum_occlusion += occlusion;
+      accum_occlusion += occlusion * weight;
       accum_weight += weight;
     }
   }
   float occlusion = accum_occlusion * safe_rcp(accum_weight);
-  float radiance = accum_occlusion * safe_rcp(accum_weight);
-  vec4 radiance_horizon = vec4(accum_radiance, 0.0);
+  vec3 radiance = accum_radiance * safe_rcp(accum_weight);
+  vec4 radiance_horizon = vec4(radiance, 0.0);
   vec4 radiance_raytrace = use_raytrace ? imageLoad(radiance_img, texel_fullres) : vec4(0.0);
 
   vec4 radiance_mixed = mix(radiance_raytrace, radiance_horizon, mix_fac);
