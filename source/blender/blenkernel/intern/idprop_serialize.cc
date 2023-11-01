@@ -478,7 +478,7 @@ class IDPEnumSerializer : public IDPropertySerializer {
     if (!extracted_value.has_value()) {
       return nullptr;
     }
-    return create(name->c_str(), *extracted_value, EnumTag{});
+    return create_enum(name->c_str(), *extracted_value);
   }
 };
 

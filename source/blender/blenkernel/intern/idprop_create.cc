@@ -54,7 +54,7 @@ std::unique_ptr<IDProperty, IDPropertyDeleter> create(const StringRefNull prop_n
   return std::unique_ptr<IDProperty, IDPropertyDeleter>(property);
 }
 
-std::unique_ptr<IDProperty, IDPropertyDeleter> create(StringRefNull prop_name, int value, EnumTag)
+std::unique_ptr<IDProperty, IDPropertyDeleter> create_enum(StringRefNull prop_name, int value)
 {
   IDPropertyTemplate prop_template{0};
   prop_template.i = value;
