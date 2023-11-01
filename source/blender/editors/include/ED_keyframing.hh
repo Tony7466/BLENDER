@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_vector.hh"
 #include "DNA_anim_types.h"
 #include "RNA_types.hh"
 
@@ -38,8 +39,7 @@ struct NlaKeyframingContext;
 /** \name Key-Framing Management
  * \{ */
 
-float *ANIM_setting_get_rna_values(
-    PointerRNA *ptr, PropertyRNA *prop, float *buffer, int buffer_size, int *r_count);
+blender::Vector<float> ANIM_setting_get_rna_values(PointerRNA *ptr, PropertyRNA *prop);
 
 /**
  * Get the active settings for key-framing settings from context (specifically the given scene)
@@ -185,7 +185,11 @@ struct KeyingSetInfo {
 /**
  * Add another data source for Relative Keying Sets to be evaluated with.
  */
-void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *srna, void *data);
+void ANIM_relative_keyingset_add_source(blender::Vector<PointerRNA> &sources,
+                                        ID *id,
+                                        StructRNA *srna,
+                                        void *data);
+void ANIM_relative_keyingset_add_source(blender::Vector<PointerRNA> &sources, ID *id);
 
 /* mode for modify_keyframes */
 enum eModifyKey_Modes {
@@ -208,9 +212,13 @@ enum eModifyKey_Returns {
  * where their list of paths is dynamically generated based on the
  * current context info.
  *
+ * \note Passing sources as pointer because it can be a nullptr.
+ *
  * \return 0 if succeeded, otherwise an error code: #eModifyKey_Returns.
  */
-eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks);
+eModifyKey_Returns ANIM_validate_keyingset(bContext *C,
+                                           blender::Vector<PointerRNA> *sources,
+                                           KeyingSet *ks);
 
 /**
  * Use the specified #KeyingSet and context info (if required)
@@ -222,17 +230,17 @@ eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, Keyi
  * \returns the number of channels that key-frames were added or
  * an #eModifyKey_Returns value (always a negative number).
  */
-int ANIM_apply_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks, short mode, float cfra);
+int ANIM_apply_keyingset(
+    bContext *C, blender::Vector<PointerRNA> *sources, KeyingSet *ks, short mode, float cfra);
 
 /* -------- */
 
 /**
  * Find builtin #KeyingSet by name.
  *
- * \return The first builtin #KeyingSet with the given name, which occurs after the given one
- * (or start of list if none given).
+ * \return The first builtin #KeyingSet with the given name
  */
-KeyingSet *ANIM_builtin_keyingset_get_named(KeyingSet *prevKS, const char name[]);
+KeyingSet *ANIM_builtin_keyingset_get_named(const char name[]);
 
 /**
  * Find KeyingSet type info given a name.

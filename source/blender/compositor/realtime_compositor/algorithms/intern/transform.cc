@@ -80,9 +80,9 @@ void transform(Context &context,
                     realization_options);
 
   /* Translate the result, but only if it doesn't wrap as explained before. */
-  const float2 translation = transformation.location() * wrap_mask;
-  const float3x3 translation_matrix = math::from_location<float3x3>(translation);
-  output.transform(translation_matrix);
+  // const float2 translation = transformation.location() * wrap_mask;
+  // const float3x3 translation_matrix = math::from_location<float3x3>(translation);
+  // output.transform(translation_matrix);
 
   output.get_realization_options().interpolation = realization_options.interpolation;
 }

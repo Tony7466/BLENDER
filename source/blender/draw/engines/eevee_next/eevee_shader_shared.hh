@@ -331,7 +331,7 @@ static inline float film_filter_weight(float filter_radius, float sample_distanc
   float weight = expf(fac * r);
 #else
   /* Blackman-Harris filter. */
-  float r = M_2PI * saturate(0.5 + sqrtf(sample_distance_sqr) / (2.0 * filter_radius));
+  float r = M_TAU * saturate(0.5 + sqrtf(sample_distance_sqr) / (2.0 * filter_radius));
   float weight = 0.35875 - 0.48829 * cosf(r) + 0.14128 * cosf(2.0 * r) - 0.01168 * cosf(3.0 * r);
 #endif
   return weight;
@@ -520,12 +520,12 @@ static inline float view_z_to_volume_z(
   }
 }
 
-static inline float3 ndc_to_volume(float4x4 projection_matrix,
-                                   float near,
-                                   float far,
-                                   float distribution,
-                                   float2 coord_scale,
-                                   float3 coord)
+static inline float3 screen_to_volume(float4x4 projection_matrix,
+                                      float near,
+                                      float far,
+                                      float distribution,
+                                      float2 coord_scale,
+                                      float3 coord)
 {
   bool is_persp = projection_matrix[3][3] == 0.0;
 
@@ -621,7 +621,7 @@ static inline float regular_polygon_side_length(float sides_count)
  * Start first corners at theta == 0. */
 static inline float circle_to_polygon_radius(float sides_count, float theta)
 {
-  /* From Graphics Gems from CryENGINE 3 (Siggraph 2013) by Tiago Sousa (slide 36). */
+  /* From Graphics Gems from CryENGINE 3 (SIGGRAPH 2013) by Tiago Sousa (slide 36). */
   float side_angle = (2.0f * M_PI) / sides_count;
   return cosf(side_angle * 0.5f) /
          cosf(theta - side_angle * floorf((sides_count * theta + M_PI) / (2.0f * M_PI)));
