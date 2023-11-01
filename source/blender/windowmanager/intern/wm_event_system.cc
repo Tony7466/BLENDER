@@ -134,6 +134,13 @@ static void wm_event_state_update_and_click_set_ex(wmEvent *event,
                                                    uint64_t *event_state_prev_press_time_ms_p,
                                                    const bool is_keyboard,
                                                    const bool check_double_click);
+static int wm_operator_invoke(bContext *C,
+                              wmOperatorType *ot,
+                              const wmEvent *event,
+                              PointerRNA *properties,
+                              ReportList *reports,
+                              const bool poll_only,
+                              bool use_last_properties);
 
 /* -------------------------------------------------------------------- */
 /** \name Event Management
@@ -1330,6 +1337,16 @@ int WM_operator_repeat_last(bContext *C, wmOperator *op)
   const int ret = wm_operator_exec(C, op, true, true);
   op->flag &= ~op_flag;
   return ret;
+}
+int WM_operator_clone_and_repeat(bContext *C, wmOperator *op, PointerRNA *properties)
+{
+  return wm_operator_invoke(C,
+                            op->type,
+                            nullptr,
+                            properties ? properties : op->ptr,
+                            nullptr,
+                            false,
+                            op->flag & OPTYPE_REGISTER);
 }
 bool WM_operator_repeat_check(const bContext * /*C*/, wmOperator *op)
 {
