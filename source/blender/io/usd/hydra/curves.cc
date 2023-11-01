@@ -238,8 +238,8 @@ void HairData::write_curves()
   float shape = particle_system_->part->shape;
 
   ParticleCacheKey *strand;
-  for (int strand_index = 0; strand_index < particle_system_->totpart; ++strand_index) {
-    strand = cache[strand_index];
+  for (int pa_index = 0; pa_index < particle_system_->totpart; ++pa_index) {
+    strand = cache[pa_index];
 
     int point_count = strand->segments + 1;
     curve_vertex_counts_.push_back(point_count);
@@ -254,29 +254,28 @@ void HairData::write_curves()
     if (particle_system_->part->shape_flag & PART_SHAPE_CLOSE_TIP) {
       widths_[widths_.size() - 1] = 0.0f;
     }
-  }
 
-  if (particle_system_->particles) {
-    ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system_);
-    int num = ELEM(particle_system_->particles->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ?
-                  particle_system_->particles->num :
-                  particle_system_->particles->num_dmcache;
+    if (particle_system_->particles) {
+      ParticleData &pa = particle_system_->particles[pa_index];
+      ParticleSystemModifierData *psmd = psys_get_modifier(object, particle_system_);
+      int num = ELEM(pa.num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ? pa.num : pa.num_dmcache;
 
-    float r_uv[2] = {0.0f, 0.0f};
-    if (ELEM(psmd->psys->part->from, PART_FROM_FACE, PART_FROM_VOLUME) &&
-        !ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD))
-    {
-      const MFace *mface = static_cast<const MFace *>(
-          CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE));
-      const MTFace *mtface = static_cast<const MTFace *>(
-          CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MTFACE));
+      float r_uv[2] = {0.0f, 0.0f};
+      if (ELEM(psmd->psys->part->from, PART_FROM_FACE, PART_FROM_VOLUME) &&
+          !ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD))
+      {
+        const MFace *mface = static_cast<const MFace *>(
+            CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE));
+        const MTFace *mtface = static_cast<const MTFace *>(
+            CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MTFACE));
 
-      if (mface && mtface) {
-        mtface += num;
-        psys_interpolate_uvs(mtface, mface->v4, particle_system_->particles->fuv, r_uv);
+        if (mface && mtface) {
+          mtface += num;
+          psys_interpolate_uvs(mtface, mface->v4, pa.fuv, r_uv);
+        }
       }
+      uvs_.push_back(pxr::GfVec2f(r_uv[0], r_uv[1]));
     }
-    uvs_.push_back(pxr::GfVec2f(r_uv[0], r_uv[1]));
   }
 }
 
