@@ -1192,24 +1192,21 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
       vc->scene->toolsettings);
 
   bool changed = false;
-  ed::greasepencil::foreach_editable_drawing(
-      vc->scene,
-      grease_pencil,
-      [&](const int layer_index,
-          const int frame_number,
-          blender::bke::greasepencil::Drawing &drawing) {
-        bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, layer_index, frame_number);
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
+  for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
-        changed = ed::curves::select_lasso(
-            *vc,
-            drawing.strokes_for_write(),
-            deformation.positions,
-            selection_domain,
-            Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
-            sel_op);
-      });
+    changed = ed::curves::select_lasso(
+        *vc,
+        info.drawing.strokes_for_write(),
+        deformation.positions,
+        selection_domain,
+        Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
+        sel_op);
+  }
 
   if (changed) {
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
@@ -1674,7 +1671,6 @@ static bool object_mouse_select_menu(bContext *C,
                                      const SelectPick_Params *params,
                                      Base **r_basact)
 {
-
   const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   /* Distance from object center to use for selection. */
   const float dist_threshold_sq = square_f(15 * U.pixelsize);
@@ -1710,7 +1706,8 @@ static bool object_mouse_select_menu(bContext *C,
         const float dist_test_sq = len_squared_v2v2(mval_fl, region_co);
         if (dist_test_sq < dist_threshold_sq) {
           ok = true;
-          /* Match GPU depth logic, as the float is always positive, it can be sorted as an int. */
+          /* Match GPU depth logic, as the float is always positive, it can be sorted as an int.
+           */
           depth_id = float_as_uint(dist_test_sq);
         }
       }
@@ -2596,7 +2593,8 @@ static bool ed_object_select_pick(bContext *C,
   Scene *scene = vc.scene;
   View3D *v3d = vc.v3d;
 
-  /* Menu activation may find a base to make active (if it only finds a single item to select). */
+  /* Menu activation may find a base to make active (if it only finds a single item to select).
+   */
   Base *basact_override = nullptr;
 
   const bool is_obedit = (vc.obedit != nullptr);
@@ -2793,7 +2791,8 @@ static bool ed_object_select_pick(bContext *C,
         else {
           /* By convention the armature-object is selected when in pose-mode.
            * While leaving it unselected will work, leaving pose-mode would leave the object
-           * active + unselected which isn't ideal when performing other actions on the object. */
+           * active + unselected which isn't ideal when performing other actions on the object.
+           */
           ED_object_base_select(basact, BA_SELECT);
           changed_object = true;
 
@@ -2801,7 +2800,8 @@ static bool ed_object_select_pick(bContext *C,
           WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, basact->object);
 
           /* In weight-paint, we use selected bone to select vertex-group.
-           * In this case the active object mustn't change as it would leave weight-paint mode. */
+           * In this case the active object mustn't change as it would leave weight-paint mode.
+           */
           if (oldbasact) {
             if (oldbasact->object->mode & OB_MODE_ALL_WEIGHT_PAINT) {
               /* Prevent activating.
@@ -3171,18 +3171,8 @@ static bool ed_grease_pencil_select_pick(bContext *C,
   /* Collect editable drawings. */
   const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obedit));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obedit->data);
-  Vector<blender::bke::greasepencil::Drawing *> drawings;
-  Vector<int> layer_indices;
-  Vector<int> frame_numbers;
-  ed::greasepencil::foreach_editable_drawing(vc.scene,
-                                             grease_pencil,
-                                             [&](const int layer_index,
-                                                 const int frame_number,
-                                                 blender::bke::greasepencil::Drawing &drawing) {
-                                               drawings.append(&drawing);
-                                               layer_indices.append(layer_index);
-                                               frame_numbers.append(frame_number);
-                                             });
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*vc.scene, grease_pencil);
 
   /* Get selection domain from tool settings. */
   const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
@@ -3195,21 +3185,22 @@ static bool ed_grease_pencil_select_pick(bContext *C,
       [&](const IndexRange range, const ClosestGreasePencilDrawing &init) {
         ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
+          ed::greasepencil::MutableDrawingInfo info = drawings[i];
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                  ob_eval, *vc.obedit, layer_indices[i], frame_numbers[i]);
+                  ob_eval, *vc.obedit, info.layer_index, info.frame_number);
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          *vc.obedit,
-                                                         drawings[i]->strokes_for_write(),
+                                                         info.drawing.strokes_for_write(),
                                                          deformation.positions,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
           if (new_closest_elem) {
             new_closest.elem = *new_closest_elem;
-            new_closest.drawing = drawings[i];
+            new_closest.drawing = &info.drawing;
           }
         }
         return new_closest;
@@ -3222,7 +3213,8 @@ static bool ed_grease_pencil_select_pick(bContext *C,
   if (params.deselect_all || params.sel_op == SEL_OP_SET) {
     threading::parallel_for(drawings.index_range(), 1L, [&](const IndexRange range) {
       for (const int i : range) {
-        bke::CurvesGeometry &curves = drawings[i]->geometry.wrap();
+        ed::greasepencil::MutableDrawingInfo info = drawings[i];
+        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
         if (!ed::curves::has_anything_selected(curves)) {
           continue;
         }
@@ -3271,9 +3263,9 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   {
     /* Prevent acting on Grease Pencil (when not in object mode -- or not in weight-paint + pose
      * selection), it implements its own selection operator in other modes. We might still fall
-     * trough to here (because that operator uses OPERATOR_PASS_THROUGH to make tweak work) but if
-     * we don't stop here code below assumes we are in object mode it might falsely toggle object
-     * selection. Alternatively, this could be put in the poll function instead. */
+     * trough to here (because that operator uses OPERATOR_PASS_THROUGH to make tweak work) but
+     * if we don't stop here code below assumes we are in object mode it might falsely toggle
+     * object selection. Alternatively, this could be put in the poll function instead. */
     return OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED;
   }
 
@@ -4200,22 +4192,19 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
   const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   bool changed = false;
-  ed::greasepencil::foreach_editable_drawing(
-      scene,
-      grease_pencil,
-      [&](const int layer_index,
-          const int frame_number,
-          blender::bke::greasepencil::Drawing &drawing) {
-        bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, layer_index, frame_number);
-        changed |= ed::curves::select_box(*vc,
-                                          drawing.strokes_for_write(),
-                                          deformation.positions,
-                                          selection_domain,
-                                          *rect,
-                                          sel_op);
-      });
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+  for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+    changed |= ed::curves::select_box(*vc,
+                                      info.drawing.strokes_for_write(),
+                                      deformation.positions,
+                                      selection_domain,
+                                      *rect,
+                                      sel_op);
+  }
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -5052,24 +5041,21 @@ static bool grease_pencil_circle_select(ViewContext *vc,
       vc->scene->toolsettings);
 
   bool changed = false;
-  ed::greasepencil::foreach_editable_drawing(
-      vc->scene,
-      grease_pencil,
-      [&](const int layer_index,
-          const int frame_number,
-          blender::bke::greasepencil::Drawing &drawing) {
-        bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, layer_index, frame_number);
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
+  for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
-        changed = ed::curves::select_circle(*vc,
-                                            drawing.strokes_for_write(),
-                                            deformation.positions,
-                                            selection_domain,
-                                            int2(mval),
-                                            rad,
-                                            sel_op);
-      });
+    changed = ed::curves::select_circle(*vc,
+                                        info.drawing.strokes_for_write(),
+                                        deformation.positions,
+                                        selection_domain,
+                                        int2(mval),
+                                        rad,
+                                        sel_op);
+  }
 
   if (changed) {
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
