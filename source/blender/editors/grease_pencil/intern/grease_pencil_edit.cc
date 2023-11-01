@@ -961,20 +961,6 @@ enum class NormalizeMode : int8_t {
   OPACITY,
 };
 
-static const EnumPropertyItem prop_normalize_modes[] = {
-    {int(NormalizeMode::THICKNESS),
-     "THICKNESS",
-     0,
-     "Thickness",
-     "Normalizes the stroke thickness by making all points use the same thickness value"},
-    {int(NormalizeMode::OPACITY),
-     "OPACITY",
-     0,
-     "Opacity",
-     "Normalizes the stroke opacity by making all points use the same opacity value"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 static void grease_pencil_stroke_normalize_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
@@ -1020,18 +1006,20 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
         }
 
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        MutableSpan<float> radii = drawing.radii_for_write();
-        MutableSpan<float> opacities = drawing.opacities_for_write();
-
         switch (mode) {
-          case NormalizeMode::THICKNESS:
+          case NormalizeMode::THICKNESS: {
+
+            MutableSpan<float> radii = drawing.radii_for_write();
             bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
             changed = true;
             break;
-          case NormalizeMode::OPACITY:
+          }
+          case NormalizeMode::OPACITY: {
+            MutableSpan<float> opacities = drawing.opacities_for_write();
             bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
             changed = true;
             break;
+          }
         }
       });
 
@@ -1045,6 +1033,20 @@ static int grease_pencil_stroke_normalize_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_stroke_normalize(wmOperatorType *ot)
 {
+  static const EnumPropertyItem prop_normalize_modes[] = {
+      {int(NormalizeMode::THICKNESS),
+       "THICKNESS",
+       0,
+       "Thickness",
+       "Normalizes the stroke thickness by making all points use the same thickness value"},
+      {int(NormalizeMode::OPACITY),
+       "OPACITY",
+       0,
+       "Opacity",
+       "Normalizes the stroke opacity by making all points use the same opacity value"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* Identifiers. */
   ot->name = "Normalize Stroke";
   ot->idname = "GREASE_PENCIL_OT_stroke_normalize";
