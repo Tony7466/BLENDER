@@ -711,9 +711,9 @@ class Mesh(bpy_types.ID):
         Render and display faces uniform, using face normals,
         setting the "sharp_face" attribute true for every face
         """
-        sharp_faces = _name_convention_attribute_ensure(self.attributes, "sharp_face", 'FACE', 'BOOLEAN')
-        for value in sharp_faces.data:
-            value.value = True
+        import numpy as np
+        sharp_faces_data = _name_convention_attribute_ensure(self.attributes, "sharp_face", 'FACE', 'BOOLEAN').data
+        sharp_faces_data.foreach_set("value", np.ones(len(sharp_faces_data), dtype=bool))
 
     def shade_smooth(self):
         """
