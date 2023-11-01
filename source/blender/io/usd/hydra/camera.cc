@@ -6,11 +6,11 @@
 
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_scene_types.h"
 
-#include "hydra/object.h"
+#include "hydra_scene_delegate.h"
 
 namespace blender::io::hydra {
 
@@ -33,7 +33,8 @@ CameraData::CameraData(const Depsgraph *depsgraph,
   transform_ = gf_matrix_from_transform(region_data->viewmat).GetInverse();
 
   switch (region_data->persp) {
-    case RV3D_PERSP: {
+    case RV3D_PERSP:
+      mode_ = CAM_PERSP;
       clip_range_ = pxr::GfRange1f(camera_params_.clip_start, camera_params_.clip_end);
       lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
 
@@ -44,8 +45,8 @@ CameraData::CameraData(const Depsgraph *depsgraph,
         sensor_size_ = pxr::GfVec2f(sensor_size * ratio, sensor_size);
       }
       break;
-    }
     case RV3D_ORTHO: {
+      mode_ = CAM_ORTHO;
       lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
 
       float o_size = region_data->dist * sensor_size / camera_params_.lens;
@@ -85,9 +86,8 @@ CameraData::CameraData(const Depsgraph *depsgraph,
       }
       break;
     }
-
     default:
-      break;
+      BLI_assert_unreachable();
   }
 }
 
@@ -113,7 +113,6 @@ CameraData::CameraData(const Object *camera_obj,
   }
 
   float ratio = float(res[0]) / res[1];
-
   int sensor_fit = BKE_camera_sensor_fit(
       camera_params_.sensor_fit, rd->xasp * rd->xsch, rd->yasp * rd->ysch);
 
@@ -133,8 +132,7 @@ CameraData::CameraData(const Object *camera_obj,
       }
       break;
     default:
-      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
-      break;
+      BLI_assert_unreachable();
   }
 
   lens_shift_ = pxr::GfVec2f(
@@ -143,7 +141,8 @@ CameraData::CameraData(const Object *camera_obj,
 
   switch (camera->type) {
     case CAM_PANO:
-    case CAM_PERSP: {      
+    case CAM_PERSP:
+      mode_ = camera->type == CAM_PERSP ? CAM_PERSP : CAM_PANO;
       switch (sensor_fit) {
         case CAMERA_SENSOR_FIT_VERT:
           sensor_size_ = pxr::GfVec2f(camera_params_.sensor_y * ratio, camera_params_.sensor_y);
@@ -153,52 +152,45 @@ CameraData::CameraData(const Object *camera_obj,
           break;
         case CAMERA_SENSOR_FIT_AUTO:
           if (ratio > 1.0f) {
-            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x,
-                                        camera_params_.sensor_x / ratio);
+            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x, camera_params_.sensor_x / ratio);
           }
           else {
-            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x * ratio,
-                                        camera_params_.sensor_x);
+            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x * ratio, camera_params_.sensor_x);
           }
           break;
         default:
-          sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x, camera_params_.sensor_y);
-          break;
+          BLI_assert_unreachable();
       }
       sensor_size_ = pxr::GfVec2f(sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]);
       break;
-    }
-    case CAM_ORTHO: {
+    case CAM_ORTHO:
+      mode_ = CAM_ORTHO;
       switch (sensor_fit) {
         case CAMERA_SENSOR_FIT_VERT:
           ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale * ratio,
-                                      camera_params_.ortho_scale);
+                                     camera_params_.ortho_scale);
           break;
         case CAMERA_SENSOR_FIT_HOR:
           ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale,
-                                      camera_params_.ortho_scale / ratio);
+                                     camera_params_.ortho_scale / ratio);
           break;
         case CAMERA_SENSOR_FIT_AUTO:
           if (ratio > 1.0f) {
             ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale,
-                                        camera_params_.ortho_scale / ratio);
+                                       camera_params_.ortho_scale / ratio);
           }
           else {
             ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale * ratio,
-                                        camera_params_.ortho_scale);
+                                       camera_params_.ortho_scale);
           }
           break;
         default:
-          ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale, camera_params_.ortho_scale);
-          break;
+          BLI_assert_unreachable();
       }
       ortho_size_ = pxr::GfVec2f(ortho_size_[0] * t_size[0], ortho_size_[1] * t_size[1]);
       break;
-    }
-    default: {
-      sensor_size_ = pxr::GfVec2f(camera_params_.sensor_y * ratio, camera_params_.sensor_y);
-      break;
-    }
+    default:
+      BLI_assert_unreachable();
   }
 }
 
@@ -209,6 +201,9 @@ pxr::GfCamera CameraData::gf_camera()
 
 pxr::GfCamera CameraData::gf_camera(pxr::GfVec4f tile)
 {
+  if (mode_ == CAM_PANO) {
+    CLOG_WARN(LOG_HYDRA_SCENE, "Unsupported camera type: %d, perspective will be used", mode_);
+  }
   float t_pos[2] = {tile[0], tile[1]}, t_size[2] = {tile[2], tile[3]};
 
   pxr::GfCamera gf_camera = pxr::GfCamera();
