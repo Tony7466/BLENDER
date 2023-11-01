@@ -665,6 +665,8 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                                  const float frame_indicator_factor)
 {
   GHOST_ActivateWindowDrawingContext(ghost_window);
+  GPU_render_begin();
+  GPU_render_step();
 
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
@@ -768,6 +770,7 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
   }
 
   GHOST_SwapWindowBuffers(ghost_window);
+  GPU_render_end();
 }
 
 static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
@@ -1104,6 +1107,34 @@ static void playanim_change_frame(PlayState *ps)
   ps->need_frame_update = false;
 }
 
+static void playanim_audio_resume(PlayState *ps)
+{
+#ifdef WITH_AUDASPACE
+  /* TODO: store in ps direct? */
+  const int i = BLI_findindex(&ps->picsbase, ps->picture);
+  if (g_audaspace.playback_handle) {
+    AUD_Handle_stop(g_audaspace.playback_handle);
+  }
+  g_audaspace.playback_handle = AUD_Device_play(g_audaspace.audio_device, g_audaspace.source, 1);
+  if (g_audaspace.playback_handle) {
+    AUD_Handle_setPosition(g_audaspace.playback_handle, i / g_playanim.fps_movie);
+  }
+  update_sound_fps();
+#else
+  UNUSED_VARS(ps);
+#endif
+}
+
+static void playanim_audio_stop(PlayState * /*ps*/)
+{
+#ifdef WITH_AUDASPACE
+  if (g_audaspace.playback_handle) {
+    AUD_Handle_stop(g_audaspace.playback_handle);
+    g_audaspace.playback_handle = nullptr;
+  }
+#endif
+}
+
 static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 {
   PlayState *ps = static_cast<PlayState *>(ps_void);
@@ -1246,6 +1277,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             ps->single_step = true;
             ps->wait = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->picture = static_cast<PlayAnimPict *>(ps->picsbase.first);
               ps->next_frame = 0;
@@ -1258,6 +1291,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         case GHOST_kKeyDownArrow:
           if (val) {
             ps->wait = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->next_frame = ps->direction = -1;
             }
@@ -1271,6 +1306,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             ps->single_step = true;
             ps->wait = false;
+            playanim_audio_stop(ps);
+
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->picture = static_cast<PlayAnimPict *>(ps->picsbase.last);
               ps->next_frame = 0;
@@ -1285,10 +1322,14 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             ps->wait = false;
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
               ps->next_frame = ps->direction = 1;
+              if (ps->single_step == false) {
+                playanim_audio_resume(ps);
+              }
             }
             else {
               ps->next_frame = 10;
               ps->single_step = true;
+              playanim_audio_stop(ps);
             }
           }
           break;
@@ -1327,37 +1368,12 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
           if (val) {
             if (ps->wait || ps->single_step) {
               ps->wait = ps->single_step = false;
-#ifdef WITH_AUDASPACE
-              {
-                PlayAnimPict *picture = static_cast<PlayAnimPict *>(ps->picsbase.first);
-                /* TODO: store in ps direct? */
-                int i = 0;
-
-                while (picture && picture != ps->picture) {
-                  i++;
-                  picture = picture->next;
-                }
-                if (g_audaspace.playback_handle) {
-                  AUD_Handle_stop(g_audaspace.playback_handle);
-                }
-                g_audaspace.playback_handle = AUD_Device_play(
-                    g_audaspace.audio_device, g_audaspace.source, 1);
-                if (g_audaspace.playback_handle) {
-                  AUD_Handle_setPosition(g_audaspace.playback_handle, i / g_playanim.fps_movie);
-                }
-                update_sound_fps();
-              }
-#endif
+              playanim_audio_resume(ps);
             }
             else {
               ps->single_step = true;
               ps->wait = true;
-#ifdef WITH_AUDASPACE
-              if (g_audaspace.playback_handle) {
-                AUD_Handle_stop(g_audaspace.playback_handle);
-                g_audaspace.playback_handle = nullptr;
-              }
-#endif
+              playanim_audio_stop(ps);
             }
           }
           break;
@@ -1365,26 +1381,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
         case GHOST_kKeyNumpadEnter:
           if (val) {
             ps->wait = ps->single_step = false;
-#ifdef WITH_AUDASPACE
-            {
-              PlayAnimPict *picture = static_cast<PlayAnimPict *>(ps->picsbase.first);
-              /* TODO: store in ps direct? */
-              int i = 0;
-              while (picture && picture != ps->picture) {
-                i++;
-                picture = picture->next;
-              }
-              if (g_audaspace.playback_handle) {
-                AUD_Handle_stop(g_audaspace.playback_handle);
-              }
-              g_audaspace.playback_handle = AUD_Device_play(
-                  g_audaspace.audio_device, g_audaspace.source, 1);
-              if (g_audaspace.playback_handle) {
-                AUD_Handle_setPosition(g_audaspace.playback_handle, i / g_playanim.fps_movie);
-              }
-              update_sound_fps();
-            }
-#endif
+            playanim_audio_resume(ps);
           }
           break;
         case GHOST_kKeyPeriod:
@@ -1396,12 +1393,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             else {
               ps->single_step = true;
               ps->wait = !ps->wait;
-#ifdef WITH_AUDASPACE
-              if (g_audaspace.playback_handle) {
-                AUD_Handle_stop(g_audaspace.playback_handle);
-                g_audaspace.playback_handle = nullptr;
-              }
-#endif
+              playanim_audio_stop(ps);
             }
           }
           break;
@@ -1824,6 +1816,10 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
     exit(EXIT_FAILURE);
   }
 
+  /* Select GPU backend. */
+  GPU_backend_type_selection_detect();
+
+  /* Init GHOST and open window. */
   GHOST_EventConsumerHandle ghost_event_consumer = nullptr;
   {
     ghost_event_consumer = GHOST_CreateEventConsumer(ghost_event_proc, &ps);
@@ -1851,7 +1847,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   // GHOST_ActivateWindowDrawingContext(ps.ghost_data.window);
 
-  /* Initialize GPU immediate mode. */
+  /* Init Blender GPU context. */
   ps.ghost_data.gpu_context = GPU_context_create(ps.ghost_data.window, nullptr);
   GPU_init();
 
@@ -1868,6 +1864,8 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   ps.display_ctx.size[0] = ps.ibuf_size[0];
   ps.display_ctx.size[1] = ps.ibuf_size[1];
 
+  GPU_render_begin();
+  GPU_render_step();
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
   {
@@ -1879,6 +1877,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   }
 
   GHOST_SwapWindowBuffers(ps.ghost_data.window);
+  GPU_render_end();
 
   /* One of the frames was invalid or not passed in. */
   if (frame_start == -1 || frame_end == -1) {
