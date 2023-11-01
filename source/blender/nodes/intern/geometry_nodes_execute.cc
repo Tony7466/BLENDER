@@ -27,6 +27,8 @@
 #include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
 
+#include "UI_resources.hh"
+
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 
@@ -254,9 +256,29 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
     case SOCK_ENUM: {
       const bNodeSocketValueEnum *value = static_cast<const bNodeSocketValueEnum *>(
           socket.socket_data);
-      auto property = bke::idprop::create(identifier, value->value);
-      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(property.get());
-      ui_data->default_value = value->value;
+      auto property = bke::idprop::create_enum(identifier, value->value);
+      IDPropertyUIDataEnum *ui_data = (IDPropertyUIDataEnum *)IDP_ui_data_ensure(property.get());
+      if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
+        const int idprop_items_num = enum_def->items_num;
+        IDPropertyUIDataEnumItem *idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(
+            enum_def->items_num, __func__);
+        for (const int i : enum_def->items().index_range()) {
+          const NodeEnumItem &item = enum_def->items()[i];
+          IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
+          idprop_item.value = item.identifier;
+          /* TODO: The name may not be unique!
+           * We require a unique identifier string for IDProperty and RNA enums,
+           * so node enums should probably have this too. */
+          idprop_item.identifier = BLI_strdup_null(item.name);
+          idprop_item.name = BLI_strdup_null(item.name);
+          idprop_item.description = BLI_strdup_null(item.description);
+          idprop_item.icon = ICON_NONE;
+        }
+        /* Node enum definitions should already be valid. */
+        BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
+        ui_data->items = idprop_items;
+        ui_data->items_num = idprop_items_num;
+      }
       return property;
     }
     case SOCK_OBJECT: {
@@ -320,7 +342,7 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_STRING:
       return property.type == IDP_STRING;
     case SOCK_ENUM:
-      return property.type == IDP_INT;
+      return property.type == IDP_ENUM;
     case SOCK_OBJECT:
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
@@ -418,7 +440,7 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       break;
     }
     case SOCK_ENUM: {
-      int value = IDP_Int(&property);
+      int value = IDP_Enum(&property);
       new (r_value) fn::ValueOrField<int>(std::move(value));
       break;
     }
