@@ -14,6 +14,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_rect.h"
 
 #include "ED_keyframes_edit.hh"
 
@@ -23,6 +24,7 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct ToolSettings;
+struct ViewContext;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -44,6 +46,11 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
 eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
+/**
+ * Check if the selection mode for Grease Pencil selection operators is 'segment'.
+ * \return True when the selection mode is 'segment'.
+ */
+bool ED_grease_pencil_segment_selection_mode(const ToolSettings *tool_settings);
 
 /** \} */
 
@@ -137,5 +144,81 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   int samples_max,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
+
+/**
+ * Structure for curves converted to viewport 2D space.
+ */
+struct Curves2DSpace {
+  /* Curve index offset for each drawing (= layer). */
+  Vector<int> curve_offset;
+  /* Point index offset for each curve. */
+  Array<int> point_offset;
+  /* Number of points in each curve. */
+  Array<int> point_size;
+  /* Contiguous array with all point positions in 2D space. */
+  Array<float2> points_2d;
+  /* Bounding box of each curve in 2D space. */
+  Array<rctf> curve_bbox;
+};
+
+/**
+ * Collect all editable strokes in a GP object and convert them to
+ * viewport 2D space.
+ *
+ * \return A struct with the 2D representation of all editable strokes.
+ */
+Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, GreasePencil *grease_pencil);
+/**
+ * Checks if a segment of 2 points is intersected by any of the given 2D strokes.
+ *
+ * \param segment_start: Start coordinates of the segment.
+ * \param segment_end: End coordinates of the segment.
+ * \param segment_curve_index: Index of the segment curve in the `curves_2d` struct.
+ * Used to avoid a false-positive self-intersecting result.
+ * \param curves_2d: A struct with the 2D representation of all editable strokes.
+ * Obtained by #editable_strokes_in_2d_space_get.
+ * \return: True if the segment is intersected by a stroke, else false.
+ */
+bool intersect_segment_strokes_2d(const float2 segment_start,
+                                  const float2 segment_end,
+                                  const int segment_curve_index,
+                                  const Curves2DSpace *curves_2d);
+/**
+ * Get the selection state of all points in a Grease Pencil drawing.
+ *
+ * \return An array with the selection state of all points in curves.
+ */
+Array<bool> point_selection_get(const GreasePencilDrawing *drawing);
+/**
+ * Expand the point selection in a Grease Pencil drawing to stroke segments.
+ * A segment is the part of a stroke between other, intersecting strokes.
+ *
+ * \param old_selection: The selection state of points before the selection change.
+ * Obtained by #point_selection_get.
+ * \param curves: The curves in a Grease Pencil drawing.
+ * \param layer_index_2d: The index of the drawing in the `curves_2d` struct.
+ * \param curves_2d: A struct with the 2D representation of all editable strokes.
+ * Obtained by #editable_strokes_in_2d_space_get.
+ */
+void expand_changed_selection_to_segments(Array<bool> &old_selection,
+                                          bke::CurvesGeometry &curves,
+                                          const int layer_index_2d,
+                                          const Curves2DSpace *curves_2d);
+/**
+ * Expand a random point selection in a Grease Pencil drawing to stroke segments.
+ * A segment is the part of a stroke between other, intersecting strokes.
+ *
+ * \param curves: The curves in a Grease Pencil drawing.
+ * \param layer_index_2d: The index of the drawing in the `curves_2d` struct.
+ * \param curves_2d: A struct with the 2D representation of all editable strokes.
+ * Obtained by #editable_strokes_in_2d_space_get.
+ * \param random_seed: Seed for the random generator.
+ * \param probability: Higher probability means more segments are selected.
+ */
+void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
+                                         const int layer_index_2d,
+                                         const Curves2DSpace *curves_2d,
+                                         const uint32_t random_seed,
+                                         const float probability);
 
 }  // namespace blender::ed::greasepencil

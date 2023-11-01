@@ -6,6 +6,7 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_rand.hh"
 #include "BLI_vector_set.hh"
 
 #include "BKE_context.h"
@@ -66,19 +67,18 @@ static void GREASE_PENCIL_OT_select_all(wmOperatorType *ot)
 static int select_more_less_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   const bool deselect = RNA_boolean_get(op->ptr, "deselect");
 
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
-  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
-  int drawing_index_2d = 0;
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(scene->toolsettings);
+  int layer_index_2d = 0;
   Curves2DSpace curves_2d;
   if (segment_mode) {
     curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
@@ -98,9 +98,9 @@ static int select_more_less_exec(bContext *C, wmOperator *op)
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
           expand_changed_selection_to_segments(
-              selection_before, curves, drawing_index_2d, &curves_2d);
+              selection_before, curves, layer_index_2d, &curves_2d);
         }
-        drawing_index_2d++;
+        layer_index_2d++;
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -121,7 +121,6 @@ static void GREASE_PENCIL_OT_select_more(wmOperatorType *ot)
   ot->poll = editable_grease_pencil_point_selection_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
 
   /* Set 'more' as operator property. */
   PropertyRNA *prop;
@@ -182,21 +181,20 @@ static int select_random_exec(bContext *C, wmOperator *op)
   using namespace blender;
   const float ratio = RNA_float_get(op->ptr, "ratio");
   const int seed = WM_operator_properties_select_random_seed_increment_get(op);
-  ViewContext vc;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   /* Get selection domain from tool settings. */
   const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
-  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(scene->toolsettings);
 
   /* In segment mode, we expand a random point selection to segments.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
-  int drawing_index_2d = 0;
+  int layer_index_2d = 0;
   Curves2DSpace curves_2d;
   if (segment_mode) {
     curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
@@ -208,14 +206,14 @@ static int select_random_exec(bContext *C, wmOperator *op)
 
         if (segment_mode) {
           /* Set random selection values for each segment on all curves. */
-          expand_random_selection_to_segments(
-              curves,
-              drawing_index_2d,
-              &curves_2d,
-              blender::get_default_hash_2<int>(seed, layer_index),
-              ratio);
+          expand_random_selection_to_segments(curves,
+                                              layer_index_2d,
+                                              &curves_2d,
+                                              blender::get_default_hash_2<int>(seed, layer_index),
+                                              ratio);
 
-          drawing_index_2d++;
+          layer_index_2d++;
+        }
         else {
           IndexMaskMemory memory;
           const IndexMask random_elements = ed::curves::random_mask(
@@ -301,19 +299,18 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   const int amount_start = RNA_int_get(op->ptr, "amount_start");
   const int amount_end = RNA_int_get(op->ptr, "amount_end");
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   /* Get selection domain from tool settings. */
-  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(scene->toolsettings);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
-  int drawing_index_2d = 0;
+  int layer_index_2d = 0;
   Curves2DSpace curves_2d;
   if (segment_mode) {
     curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
@@ -351,9 +348,9 @@ static int select_ends_exec(bContext *C, wmOperator *op)
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
           expand_changed_selection_to_segments(
-              selection_before, curves, drawing_index_2d, &curves_2d);
+              selection_before, curves, layer_index_2d, &curves_2d);
         }
-        drawing_index_2d++;
+        layer_index_2d++;
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -460,15 +457,14 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
   }
 
   /* When the new selection mode is 'segment', we expand the point selection to segments. */
-  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(ts);
   if (segment_mode) {
     Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-    ViewContext vc;
     Scene *scene = CTX_data_scene(C);
-    ED_view3d_viewcontext_init(C, &vc, depsgraph);
+    ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
     /* Get viewport 2D representation of editable curves. */
-    int drawing_index_2d = 0;
+    int layer_index_2d = 0;
     Curves2DSpace curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc,
                                                                                  &grease_pencil);
 
@@ -481,8 +477,8 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
 
           /* Expand existing point selection to segments. */
           expand_changed_selection_to_segments(
-              selection_before, curves, drawing_index_2d, &curves_2d);
-          drawing_index_2d++;
+              selection_before, curves, layer_index_2d, &curves_2d);
+          layer_index_2d++;
           changed = true;
         });
   }
@@ -524,7 +520,7 @@ Array<bool> point_selection_get(const GreasePencilDrawing *drawing)
 
   /* Copy selection to array. */
   const VArray<bool> selection = *attributes.lookup_or_default<bool>(
-      ".selection", ATTR_DOMAIN_POINT, false);
+      ".selection", ATTR_DOMAIN_POINT, true);
   Array<bool> point_selection(selection.size());
   selection.materialize(point_selection);
 
@@ -596,7 +592,7 @@ static int expand_changed_selection_point_to_segment(const int segment_curve_ind
 
 void expand_changed_selection_to_segments(Array<bool> &old_selection,
                                           bke::CurvesGeometry &curves,
-                                          const int drawing_index_2d,
+                                          const int layer_index_2d,
                                           const Curves2DSpace *curves_2d)
 {
   /* Compare the new point selection with the stored selection and expand the changed points to
@@ -617,7 +613,7 @@ void expand_changed_selection_to_segments(Array<bool> &old_selection,
       /* Expand to segment when selection is changed. */
       if (old_selection[point_i] != new_selection[point_i]) {
         expand_changed_selection_point_to_segment(curve_i +
-                                                      curves_2d->curve_offset[drawing_index_2d],
+                                                      curves_2d->curve_offset[layer_index_2d],
                                                   point_i,
                                                   points,
                                                   new_selection,
@@ -633,7 +629,7 @@ void expand_changed_selection_to_segments(Array<bool> &old_selection,
 }
 
 void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
-                                         const int drawing_index_2d,
+                                         const int layer_index_2d,
                                          const Curves2DSpace *curves_2d,
                                          const uint32_t random_seed,
                                          const float probability)
@@ -661,7 +657,7 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
       const bool random_value = next_bool_random_value();
 
       point_i = expand_changed_selection_point_to_segment(
-          curve_i + curves_2d->curve_offset[drawing_index_2d],
+          curve_i + curves_2d->curve_offset[layer_index_2d],
           point_i,
           points,
           new_selection,
@@ -694,11 +690,9 @@ eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_setti
   return ATTR_DOMAIN_POINT;
 }
 
-bool ED_grease_pencil_segment_selection_mode(bContext *C)
+bool ED_grease_pencil_segment_selection_mode(const ToolSettings *tool_settings)
 {
-  ToolSettings *ts = CTX_data_tool_settings(C);
-
-  return (ts->gpencil_selectmode_edit == GP_SELECTMODE_SEGMENT);
+  return (tool_settings->gpencil_selectmode_edit == GP_SELECTMODE_SEGMENT);
 }
 
 void ED_operatortypes_grease_pencil_select()
