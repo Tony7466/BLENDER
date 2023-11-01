@@ -94,6 +94,10 @@ void IDP_FreeString(struct IDProperty *prop) ATTR_NONNULL();
 
 const struct IDPropertyUIDataEnumItem *IDP_EnumItemFind(const struct IDProperty *prop);
 
+bool IDP_EnumItemsValidate(const struct IDPropertyUIDataEnumItem *items,
+                           int items_num,
+                           void (*error_fn)(const char *));
+
 /*-------- ID Type -------*/
 
 typedef void (*IDPWalkFunc)(void *user_data, struct IDProperty *idp);

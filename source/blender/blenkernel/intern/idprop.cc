@@ -16,7 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
-#include "BLI_span.hh"
+#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -449,8 +449,20 @@ void IDP_FreeString(IDProperty *prop)
 /** \name Enum Type (IDProperty Enum API)
  * \{ */
 
+static void IDP_enum_ui_data_free_contents(IDPropertyUIDataEnum *ui_data)
+{
+  for (const int64_t i : blender::IndexRange(ui_data->items_num)) {
+    IDPropertyUIDataEnumItem &item = ui_data->items[i];
+    MEM_SAFE_FREE(item.identifier);
+    MEM_SAFE_FREE(item.name);
+    MEM_SAFE_FREE(item.description);
+  }
+  MEM_SAFE_FREE(ui_data->items);
+}
+
 const IDPropertyUIDataEnumItem *IDP_EnumItemFind(const IDProperty *prop)
 {
+  BLI_assert(prop->type == IDP_ENUM);
   const IDPropertyUIDataEnum *ui_data = reinterpret_cast<const IDPropertyUIDataEnum *>(
       prop->ui_data);
 
@@ -461,6 +473,45 @@ const IDPropertyUIDataEnumItem *IDP_EnumItemFind(const IDProperty *prop)
     }
   }
   return nullptr;
+}
+
+bool IDP_EnumItemsValidate(const IDPropertyUIDataEnumItem *items,
+                           const int items_num,
+                           void (*error_fn)(const char *))
+{
+  blender::Set<int> used_values;
+  blender::Set<const char *> used_identifiers;
+  used_values.reserve(items_num);
+  used_identifiers.reserve(items_num);
+
+  bool is_valid = true;
+  for (const int64_t i : blender::IndexRange(items_num)) {
+    const IDPropertyUIDataEnumItem &item = items[i];
+    if (item.identifier == nullptr || item.identifier[0] == '\0') {
+      if (error_fn) {
+        std::string msg = "Item identifier is empty";
+        error_fn(msg.c_str());
+      }
+      is_valid = false;
+    }
+    if (!used_identifiers.add(item.identifier)) {
+      if (error_fn) {
+        std::string msg = std::string("Item identifier '") + std::string(item.identifier) +
+                          "' already used";
+        error_fn(msg.c_str());
+      }
+      is_valid = false;
+    }
+    if (!used_values.add(item.value)) {
+      if (error_fn) {
+        std::string msg = std::string("Item value ") + std::to_string(item.value) + " for item '" +
+                          std::string(item.identifier) + "' already used";
+        error_fn(msg.c_str());
+      }
+      is_valid = false;
+    }
+  }
+  return is_valid;
 }
 
 /** \} */
@@ -1083,13 +1134,7 @@ void IDP_ui_data_free_unique_contents(IDPropertyUIData *ui_data,
       const IDPropertyUIDataEnum *other_enum = (const IDPropertyUIDataEnum *)other;
       IDPropertyUIDataEnum *ui_data_enum = (IDPropertyUIDataEnum *)ui_data;
       if (ui_data_enum->items != other_enum->items) {
-        for (const int64_t i : blender::IndexRange(ui_data_enum->items_num)) {
-          IDPropertyUIDataEnumItem &item = ui_data_enum->items[i];
-          MEM_SAFE_FREE(item.identifier);
-          MEM_SAFE_FREE(item.name);
-          MEM_SAFE_FREE(item.description);
-        }
-        MEM_SAFE_FREE(ui_data_enum->items);
+        IDP_enum_ui_data_free_contents(ui_data_enum);
       }
       break;
     }
@@ -1127,13 +1172,7 @@ void IDP_ui_data_free(IDProperty *prop)
     }
     case IDP_UI_DATA_TYPE_ENUM: {
       IDPropertyUIDataEnum *ui_data_enum = (IDPropertyUIDataEnum *)prop->ui_data;
-      for (const int64_t i : blender::IndexRange(ui_data_enum->items_num)) {
-        IDPropertyUIDataEnumItem &item = ui_data_enum->items[i];
-        MEM_SAFE_FREE(item.identifier);
-        MEM_SAFE_FREE(item.name);
-        MEM_SAFE_FREE(item.description);
-      }
-      MEM_SAFE_FREE(ui_data_enum->items);
+      IDP_enum_ui_data_free_contents(ui_data_enum);
       break;
     }
     case IDP_UI_DATA_TYPE_UNSUPPORTED: {

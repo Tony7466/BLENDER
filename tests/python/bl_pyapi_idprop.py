@@ -364,8 +364,13 @@ class TestRNAData(TestHelper, unittest.TestCase):
             ("RADISHES", "Radishes", "Raphanus raphanistrum"),
         ]
         ui_data_test_prop_enum.update(items=ui_data_test_prop_enum_items)
+        ui_data_test_prop_enum_items_full = [
+            ("TOMATOES", "Tomatoes", "Solanum lycopersicum", 0, 0),
+            ("CUCUMBERS", "Cucumbers", "Cucumis sativus", 0, 1),
+            ("RADISHES", "Radishes", "Raphanus raphanistrum", 0, 2),
+        ]
         rna_data = ui_data_test_prop_enum.as_dict()
-        self.assertEqual(rna_data["items"], ui_data_test_prop_enum_items)
+        self.assertEqual(rna_data["items"], ui_data_test_prop_enum_items_full)
 
 
 if __name__ == '__main__':

@@ -583,6 +583,12 @@ static bool idprop_ui_data_update_enum(IDProperty *idprop, PyObject *args, PyObj
     Py_DECREF(items_fast);
     return false;
   }
+  if (!IDP_EnumItemsValidate(idprop_items, idprop_items_num, [](const char *msg) {
+        PyErr_SetString(PyExc_ValueError, msg);
+      }))
+  {
+    return false;
+  }
   ui_data.items = idprop_items;
   ui_data.items_num = idprop_items_num;
 
