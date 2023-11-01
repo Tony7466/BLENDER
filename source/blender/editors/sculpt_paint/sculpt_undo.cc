@@ -1263,7 +1263,6 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
   }
 
   if (need_faces) {
-    BLI_assert(BKE_pbvh_type(ss->pbvh) != PBVH_BMESH);
     unode->face_indices = BKE_pbvh_node_calc_face_indices(*ss->pbvh, *node);
     usculpt->undo_size += unode->face_indices.as_span().size_in_bytes();
   }
