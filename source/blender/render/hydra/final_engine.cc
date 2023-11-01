@@ -31,19 +31,23 @@ void FinalEngine::render()
   char scene_name[MAX_ID_FULL_NAME];
   BKE_id_full_name_get(scene_name, &scene_->id, 0);
 
-  const RenderData &r = scene_->r;
+  RenderData *r = &scene_->r;
   pxr::GfVec4f border(0, 0, 1, 1);
-  if (r.mode & R_BORDER) {
-    border.Set(r.border.xmin,
-               r.border.ymin,
-               r.border.xmax - r.border.xmin,
-               r.border.ymax - r.border.ymin);
+  if (r->mode & R_BORDER) {
+    border.Set(r->border.xmin,
+               r->border.ymin,
+               r->border.xmax - r->border.xmin,
+               r->border.ymax - r->border.ymin);
   }
-  pxr::GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
+
+  float aspect = r->xasp /r->yasp;
+
+  pxr::GfVec2i image_res(r->xsch * r->size / 100, r->ysch * r->size / 100);
   int width = image_res[0] * border[2];
   int height = image_res[1] * border[3];
+
   pxr::GfCamera camera =
-      io::hydra::CameraData(scene_->camera, image_res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(border);
+      io::hydra::CameraData(scene_->camera, image_res, pxr::GfVec4f(0, 0, 1, 1), r).gf_camera(border);
 
   free_camera_delegate_->SetCamera(camera);
   render_task_delegate_->set_viewport(pxr::GfVec4d(0, 0, width, height));

@@ -8,17 +8,25 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
+#include "DNA_scene_types.h"
 
 #include "hydra/object.h"
 
 namespace blender::io::hydra {
 
-CameraData::CameraData(const View3D *v3d, const ARegion *region)
+CameraData::CameraData(const Depsgraph *depsgraph,
+                       const View3D *v3d,
+                       const ARegion *region,
+                       RenderData *rd)
 {
   const RegionView3D *region_data = (const RegionView3D *)region->regiondata;
 
-  /* TODO: refactor use BKE_camera_params API. */
-  float VIEWPORT_SENSOR_SIZE = DEFAULT_SENSOR_WIDTH * 2.0f;
+  BKE_camera_params_init(&camera_params_);
+  BKE_camera_params_from_view3d(&camera_params_, depsgraph, v3d, region_data);
+
+  int sensor_size = BKE_camera_sensor_size(
+      camera_params_.sensor_fit, camera_params_.sensor_x, camera_params_.sensor_y);
+  sensor_size *= 2.0f;
 
   pxr::GfVec2i res(region->winx, region->winy);
   float ratio = float(res[0]) / res[1];
@@ -26,25 +34,21 @@ CameraData::CameraData(const View3D *v3d, const ARegion *region)
 
   switch (region_data->persp) {
     case RV3D_PERSP: {
-      mode_ = CAM_PERSP;
-      clip_range_ = pxr::GfRange1f(v3d->clip_start, v3d->clip_end);
-      lens_shift_ = pxr::GfVec2f(0.0, 0.0);
-      focal_length_ = v3d->lens;
+      clip_range_ = pxr::GfRange1f(camera_params_.clip_start, camera_params_.clip_end);
+      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
 
-      if (ratio > 1.0) {
-        sensor_size_ = pxr::GfVec2f(VIEWPORT_SENSOR_SIZE, VIEWPORT_SENSOR_SIZE / ratio);
+      if (ratio > 1.0f) {
+        sensor_size_ = pxr::GfVec2f(sensor_size, sensor_size / ratio);
       }
       else {
-        sensor_size_ = pxr::GfVec2f(VIEWPORT_SENSOR_SIZE * ratio, VIEWPORT_SENSOR_SIZE);
+        sensor_size_ = pxr::GfVec2f(sensor_size * ratio, sensor_size);
       }
       break;
     }
-
     case RV3D_ORTHO: {
-      mode_ = CAM_ORTHO;
-      lens_shift_ = pxr::GfVec2f(0.0f, 0.0f);
+      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
 
-      float o_size = region_data->dist * VIEWPORT_SENSOR_SIZE / v3d->lens;
+      float o_size = region_data->dist * sensor_size / camera_params_.lens;
       float o_depth = v3d->clip_end;
 
       clip_range_ = pxr::GfRange1f(-o_depth * 0.5, o_depth * 0.5);
@@ -60,7 +64,7 @@ CameraData::CameraData(const View3D *v3d, const ARegion *region)
 
     case RV3D_CAMOB: {
       pxr::GfMatrix4d mat = transform_;
-      *this = CameraData(v3d->camera, res, pxr::GfVec4f(0, 0, 1, 1));
+      *this = CameraData(v3d->camera, res, pxr::GfVec4f(0, 0, 1, 1), rd);
       transform_ = mat;
 
       /* This formula was taken from previous plugin with corresponded comment.
@@ -70,10 +74,10 @@ CameraData::CameraData(const View3D *v3d, const ARegion *region)
 
       /* Updating l_shift due to viewport zoom and view_camera_offset
        * view_camera_offset should be multiplied by 2. */
-      lens_shift_ = pxr::GfVec2f((lens_shift_[0] + region_data->camdx * 2) / zoom,
-                                 (lens_shift_[1] + region_data->camdy * 2) / zoom);
+      lens_shift_ = pxr::GfVec2f((lens_shift_[0] + camera_params_.offsetx * 2) / zoom,
+                                 (lens_shift_[1] + camera_params_.offsety * 2) / zoom);
 
-      if (mode_ == CAM_ORTHO) {
+      if (camera_params_.is_ortho) {
         ortho_size_ *= zoom;
       }
       else {
@@ -87,52 +91,49 @@ CameraData::CameraData(const View3D *v3d, const ARegion *region)
   }
 }
 
-CameraData::CameraData(const Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile)
+CameraData::CameraData(const Object *camera_obj,
+                       pxr::GfVec2i res,
+                       pxr::GfVec4f tile,
+                       RenderData *rd)
 {
   const Camera *camera = (const Camera *)camera_obj->data;
+
+  BKE_camera_params_init(&camera_params_);
+  BKE_camera_params_from_object(&camera_params_, camera_obj);
 
   float t_pos[2] = {tile[0], tile[1]};
   float t_size[2] = {tile[2], tile[3]};
   transform_ = gf_matrix_from_transform(camera_obj->object_to_world);
-  clip_range_ = pxr::GfRange1f(camera->clip_start, camera->clip_end);
-  mode_ = camera->type;
+  clip_range_ = pxr::GfRange1f(camera_params_.clip_start, camera_params_.clip_end);
 
   if (camera->dof.flag & CAM_DOF_ENABLED) {
-    float focus_distance;
-    if (!camera->dof.focus_object) {
-      focus_distance = camera->dof.focus_distance;
-    }
-    else {
-      pxr::GfVec3f obj_pos(camera->dof.focus_object->object_to_world[0][3],
-                           camera->dof.focus_object->object_to_world[1][3],
-                           camera->dof.focus_object->object_to_world[2][3]);
-      pxr::GfVec3f cam_pos(transform_[0][3], transform_[1][3], transform_[2][3]);
-      focus_distance = (obj_pos - cam_pos).GetLength();
-    }
-
-    dof_data_ = std::tuple(
-        std::max(focus_distance, 0.001f), camera->dof.aperture_fstop, camera->dof.aperture_blades);
+    dof_data_ = std::tuple(BKE_camera_object_dof_distance(camera_obj),
+                           camera->dof.aperture_fstop,
+                           camera->dof.aperture_blades);
   }
 
   float ratio = float(res[0]) / res[1];
 
-  switch (camera->sensor_fit) {
+  int sensor_fit = BKE_camera_sensor_fit(
+      camera_params_.sensor_fit, rd->xasp * rd->xsch, rd->yasp * rd->ysch);
+
+  switch (sensor_fit) {
     case CAMERA_SENSOR_FIT_VERT:
-      lens_shift_ = pxr::GfVec2f(camera->shiftx / ratio, camera->shifty);
+      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx / ratio, camera_params_.shifty);
       break;
     case CAMERA_SENSOR_FIT_HOR:
-      lens_shift_ = pxr::GfVec2f(camera->shiftx, camera->shifty * ratio);
+      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty * ratio);
       break;
     case CAMERA_SENSOR_FIT_AUTO:
       if (ratio > 1.0f) {
-        lens_shift_ = pxr::GfVec2f(camera->shiftx, camera->shifty * ratio);
+        lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty * ratio);
       }
       else {
-        lens_shift_ = pxr::GfVec2f(camera->shiftx / ratio, camera->shifty);
+        lens_shift_ = pxr::GfVec2f(camera_params_.shiftx / ratio, camera_params_.shifty);
       }
       break;
     default:
-      lens_shift_ = pxr::GfVec2f(camera->shiftx, camera->shifty);
+      lens_shift_ = pxr::GfVec2f(camera_params_.shiftx, camera_params_.shifty);
       break;
   }
 
@@ -141,87 +142,61 @@ CameraData::CameraData(const Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f 
       lens_shift_[1] / t_size[1] + (t_pos[1] + t_size[1] * 0.5 - 0.5) / t_size[1]);
 
   switch (camera->type) {
-    case CAM_PERSP: {
-      focal_length_ = camera->lens;
-
-      switch (camera->sensor_fit) {
+    case CAM_PANO:
+    case CAM_PERSP: {      
+      switch (sensor_fit) {
         case CAMERA_SENSOR_FIT_VERT:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_y * ratio, camera->sensor_y);
+          sensor_size_ = pxr::GfVec2f(camera_params_.sensor_y * ratio, camera_params_.sensor_y);
           break;
         case CAMERA_SENSOR_FIT_HOR:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_x / ratio);
+          sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x, camera_params_.sensor_x / ratio);
           break;
         case CAMERA_SENSOR_FIT_AUTO:
           if (ratio > 1.0f) {
-            sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_x / ratio);
+            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x,
+                                        camera_params_.sensor_x / ratio);
           }
           else {
-            sensor_size_ = pxr::GfVec2f(camera->sensor_x * ratio, camera->sensor_x);
+            sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x * ratio,
+                                        camera_params_.sensor_x);
           }
           break;
         default:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_y);
+          sensor_size_ = pxr::GfVec2f(camera_params_.sensor_x, camera_params_.sensor_y);
           break;
       }
       sensor_size_ = pxr::GfVec2f(sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]);
       break;
     }
-
     case CAM_ORTHO: {
-      focal_length_ = 0.0f;
-      switch (camera->sensor_fit) {
+      switch (sensor_fit) {
         case CAMERA_SENSOR_FIT_VERT:
-          ortho_size_ = pxr::GfVec2f(camera->ortho_scale * ratio, camera->ortho_scale);
+          ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale * ratio,
+                                      camera_params_.ortho_scale);
           break;
         case CAMERA_SENSOR_FIT_HOR:
-          ortho_size_ = pxr::GfVec2f(camera->ortho_scale, camera->ortho_scale / ratio);
+          ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale,
+                                      camera_params_.ortho_scale / ratio);
           break;
         case CAMERA_SENSOR_FIT_AUTO:
           if (ratio > 1.0f) {
-            ortho_size_ = pxr::GfVec2f(camera->ortho_scale, camera->ortho_scale / ratio);
+            ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale,
+                                        camera_params_.ortho_scale / ratio);
           }
           else {
-            ortho_size_ = pxr::GfVec2f(camera->ortho_scale * ratio, camera->ortho_scale);
+            ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale * ratio,
+                                        camera_params_.ortho_scale);
           }
           break;
         default:
-          ortho_size_ = pxr::GfVec2f(camera->ortho_scale, camera->ortho_scale);
+          ortho_size_ = pxr::GfVec2f(camera_params_.ortho_scale, camera_params_.ortho_scale);
           break;
       }
       ortho_size_ = pxr::GfVec2f(ortho_size_[0] * t_size[0], ortho_size_[1] * t_size[1]);
       break;
     }
-
-    case CAM_PANO: {
-      /* TODO: Recheck parameters for PANO camera */
-      focal_length_ = camera->lens;
-
-      switch (camera->sensor_fit) {
-        case CAMERA_SENSOR_FIT_VERT:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_y * ratio, camera->sensor_y);
-          break;
-        case CAMERA_SENSOR_FIT_HOR:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_x / ratio);
-          break;
-        case CAMERA_SENSOR_FIT_AUTO:
-          if (ratio > 1.0f) {
-            sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_x / ratio);
-          }
-          else {
-            sensor_size_ = pxr::GfVec2f(camera->sensor_x * ratio, camera->sensor_x);
-          }
-          break;
-        default:
-          sensor_size_ = pxr::GfVec2f(camera->sensor_x, camera->sensor_y);
-          break;
-      }
-      sensor_size_ = pxr::GfVec2f(sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]);
-      break;
-    }
-
     default: {
-      focal_length_ = camera->lens;
-      sensor_size_ = pxr::GfVec2f(camera->sensor_y * ratio, camera->sensor_y);
+      sensor_size_ = pxr::GfVec2f(camera_params_.sensor_y * ratio, camera_params_.sensor_y);
       break;
     }
   }
@@ -243,38 +218,29 @@ pxr::GfCamera CameraData::gf_camera(pxr::GfVec4f tile)
   float l_shift[2] = {(lens_shift_[0] + t_pos[0] + t_size[0] * 0.5f - 0.5f) / t_size[0],
                       (lens_shift_[1] + t_pos[1] + t_size[1] * 0.5f - 0.5f) / t_size[1]};
 
-  switch (mode_) {
-    case CAM_PERSP:
-    case CAM_PANO: {
-      /* TODO: store panoramic camera settings */
-      gf_camera.SetProjection(pxr::GfCamera::Projection::Perspective);
-      gf_camera.SetFocalLength(focal_length_);
+  if (camera_params_.is_ortho) {
+    gf_camera.SetProjection(pxr::GfCamera::Projection::Orthographic);
 
-      float s_size[2] = {sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]};
+    /* Use tenths of a world unit according to USD docs
+     * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
+    float o_size[2] = {ortho_size_[0] * t_size[0] * 10, ortho_size_[1] * t_size[1] * 10};
 
-      gf_camera.SetHorizontalAperture(s_size[0]);
-      gf_camera.SetVerticalAperture(s_size[1]);
+    gf_camera.SetHorizontalAperture(o_size[0]);
+    gf_camera.SetVerticalAperture(o_size[1]);
 
-      gf_camera.SetHorizontalApertureOffset(l_shift[0] * s_size[0]);
-      gf_camera.SetVerticalApertureOffset(l_shift[1] * s_size[1]);
-      break;
-    }
-    case CAM_ORTHO: {
-      gf_camera.SetProjection(pxr::GfCamera::Projection::Orthographic);
+    gf_camera.SetHorizontalApertureOffset(l_shift[0] * o_size[0]);
+    gf_camera.SetVerticalApertureOffset(l_shift[1] * o_size[1]);
+  }
+  else {
+    gf_camera.SetProjection(pxr::GfCamera::Projection::Perspective);
 
-      /* Use tenths of a world unit according to USD docs
-       * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
-      float o_size[2] = {ortho_size_[0] * t_size[0] * 10, ortho_size_[1] * t_size[1] * 10};
+    float s_size[2] = {sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]};
 
-      gf_camera.SetHorizontalAperture(o_size[0]);
-      gf_camera.SetVerticalAperture(o_size[1]);
+    gf_camera.SetHorizontalAperture(s_size[0]);
+    gf_camera.SetVerticalAperture(s_size[1]);
 
-      gf_camera.SetHorizontalApertureOffset(l_shift[0] * o_size[0]);
-      gf_camera.SetVerticalApertureOffset(l_shift[1] * o_size[1]);
-      break;
-    }
-    default:
-      break;
+    gf_camera.SetHorizontalApertureOffset(l_shift[0] * s_size[0]);
+    gf_camera.SetVerticalApertureOffset(l_shift[1] * s_size[1]);
   }
 
   gf_camera.SetTransform(transform_);

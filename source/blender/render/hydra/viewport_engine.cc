@@ -48,7 +48,10 @@ struct ViewSettings {
 };
 
 ViewSettings::ViewSettings(bContext *context)
-    : camera_data(CTX_wm_view3d(context), CTX_wm_region(context))
+    : camera_data(CTX_data_ensure_evaluated_depsgraph(context),
+                  CTX_wm_view3d(context),
+                  CTX_wm_region(context),
+                  &CTX_data_scene(context)->r)
 {
   View3D *view3d = CTX_wm_view3d(context);
   RegionView3D *region_data = static_cast<RegionView3D *>(CTX_wm_region_data(context));
