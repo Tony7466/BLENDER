@@ -2011,10 +2011,21 @@ static bool gpencil_edit_modifier_invoke_properties(bContext *C,
 
 
 
-/*static bool gpencil_surfacedeform_bind_poll(bContext *C)
+static bool gpencil_surfacedeform_bind_poll(bContext *C)
 {
-  return gpencil_edit_modifier_poll_generic(C, &RNA_SurDeformGpencilModifier, 0, true);
-} */
+  Main *bmain = CTX_data_main(C);
+  PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_GpencilModifier);
+  Object *ob = (ptr.owner_id) ? (Object *)ptr.owner_id : ED_object_active_context(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  //TODO: BKE_id_is_editable, lib overrides
+  
+  if (GPENCIL_EDIT_MODE(gpd)) {
+    return false;
+  }
+
+  return true;
+} 
 
 
 static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
@@ -2316,7 +2327,7 @@ void GPENCIL_OT_gpencilsurdeform_bind(wmOperatorType *ot)
   ot->idname = "GPENCIL_OT_gpencilsurdeform_bind";
 
   /* api callbacks */
- // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->poll = gpencil_surfacedeform_bind_poll;
   ot->invoke = gpencil_surfacedeform_bind_invoke;
   ot->exec = gpencil_surfacedeform_bind_exec;
 
@@ -2337,7 +2348,7 @@ void GPENCIL_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
   ot->idname = "GPENCIL_OT_gpencilsurdeform_unbind";
 
   /* api callbacks */
- // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->poll = gpencil_surfacedeform_bind_poll;
   ot->invoke = gpencil_surfacedeform_unbind_invoke;
   ot->exec = gpencil_surfacedeform_unbind_exec;
 
