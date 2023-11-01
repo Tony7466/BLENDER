@@ -48,6 +48,7 @@ struct HorizonScanContextCommon {
   float N_angle;
   float N_length;
   uint bitmask;
+  float weight_accum;
   vec3 light_slice;
   vec4 light_accum;
 };
@@ -56,22 +57,22 @@ struct HorizonScanContext {
 #ifdef HORIZON_OCCLUSION
   ClosureOcclusion occlusion;
   HorizonScanContextCommon occlusion_common;
-  vec3 occlusion_result;
+  vec4 occlusion_result;
 #endif
 #ifdef HORIZON_DIFFUSE
   ClosureDiffuse diffuse;
   HorizonScanContextCommon diffuse_common;
-  vec3 diffuse_result;
+  vec4 diffuse_result;
 #endif
 #ifdef HORIZON_REFLECT
   ClosureReflection reflection;
   HorizonScanContextCommon reflection_common;
-  vec3 reflection_result;
+  vec4 reflection_result;
 #endif
 #ifdef HORIZON_REFRACT
   ClosureRefraction refraction;
   HorizonScanContextCommon refraction_common;
-  vec3 refraction_result;
+  vec4 refraction_result;
 #endif
 };
 
@@ -79,15 +80,19 @@ void horizon_scan_context_accumulation_reset(inout HorizonScanContext context)
 {
 #ifdef HORIZON_OCCLUSION
   context.occlusion_common.light_accum = vec4(0.0);
+  context.occlusion_common.weight_accum = 0.0;
 #endif
 #ifdef HORIZON_DIFFUSE
   context.diffuse_common.light_accum = vec4(0.0);
+  context.diffuse_common.weight_accum = 0.0;
 #endif
 #ifdef HORIZON_REFLECT
   context.reflection_common.light_accum = vec4(0.0);
+  context.reflection_common.weight_accum = 0.0;
 #endif
 #ifdef HORIZON_REFRACT
   context.refraction_common.light_accum = vec4(0.0);
+  context.refraction_common.weight_accum = 0.0;
 #endif
 }
 
@@ -177,47 +182,39 @@ void horizon_scan_context_slice_finish_occlusion(inout HorizonScanContextCommon 
 {
   float slice_occlusion = horizon_scan_bitmask_to_occlusion_cosine(context.bitmask);
   /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-  context.light_accum += vec4(vec3(slice_occlusion), 1.0) * context.N_length;
+  context.light_accum += vec4(slice_occlusion) * context.N_length;
+  context.weight_accum += context.N_length;
 }
 
-void horizon_scan_context_slice_finish_distant_light(HorizonScanContext context,
-                                                     inout HorizonScanContextCommon common_ctx,
-                                                     vec3 vN,
-                                                     vec3 vV,
-                                                     vec3 vT)
+void horizon_scan_context_slice_finish_distant_light(inout HorizonScanContextCommon context)
 {
-  // vec3 N = drw_normal_view_to_world(vN);
-  // vec3 light_distant = spherical_harmonics_evaluate_lambert(N, context.irradiance_distant);
-  // float visibility = horizon_scan_bitmask_to_visibility_uniform(~common_ctx.bitmask);
-
-  /* Add distant lighting. */
-  vec3 slice = common_ctx.light_slice; /* + light_distant * visibility; */
+  /* Use uniform visibility since this is what we use for near field lighting.
+   * Also the lighting we are going to mask is already containing the cosine lobe. */
+  float slice_occlusion = horizon_scan_bitmask_to_visibility_uniform(~context.bitmask);
   /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-  common_ctx.light_accum += vec4(slice, 1.0) * common_ctx.N_length;
+  context.light_accum += vec4(context.light_slice, slice_occlusion) * context.N_length;
+  context.weight_accum += context.N_length;
 }
 
-void horizon_scan_context_slice_finish(inout HorizonScanContext context, vec3 vV, vec3 vT)
+void horizon_scan_context_slice_finish(inout HorizonScanContext context)
 {
 #ifdef HORIZON_OCCLUSION
   horizon_scan_context_slice_finish_occlusion(context.occlusion_common);
 #endif
 #ifdef HORIZON_DIFFUSE
-  horizon_scan_context_slice_finish_distant_light(
-      context, context.diffuse_common, context.diffuse.N, vV, vT);
+  horizon_scan_context_slice_finish_distant_light(context.diffuse_common);
 #endif
 #ifdef HORIZON_REFLECT
-  horizon_scan_context_slice_finish_distant_light(
-      context, context.reflection_common, context.reflection.N, vV, vT);
+  horizon_scan_context_slice_finish_distant_light(context.reflection_common);
 #endif
 #ifdef HORIZON_REFRACT
-  horizon_scan_context_slice_finish_distant_light(
-      context, context.refraction_common, context.refraction.N, vV, vT);
+  horizon_scan_context_slice_finish_distant_light(context.refraction_common);
 #endif
 }
 
-void horizon_scan_context_accumulation_finish(HorizonScanContextCommon context, out vec3 result)
+void horizon_scan_context_accumulation_finish(HorizonScanContextCommon context, out vec4 result)
 {
-  result = context.light_accum.xyz * safe_rcp(context.light_accum.w);
+  result = context.light_accum * safe_rcp(context.weight_accum);
 }
 
 void horizon_scan_context_accumulation_finish(inout HorizonScanContext context)
@@ -353,7 +350,7 @@ void horizon_scan_eval(vec3 vP,
       }
     }
 
-    horizon_scan_context_slice_finish(context, vV, vT);
+    horizon_scan_context_slice_finish(context);
 
     /* Rotate 90 degrees. */
     v_dir = orthogonal(v_dir);

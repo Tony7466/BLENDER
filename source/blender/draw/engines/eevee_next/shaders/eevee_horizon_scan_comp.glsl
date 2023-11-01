@@ -82,16 +82,16 @@ void main()
   float occlusion = 0.0;
   vec4 radiance = vec4(1.0, 0.0, 1.0, 1.0);
 #ifdef HORIZON_DIFFUSE
-  radiance = vec4(ctx.diffuse_result, 1.0);
-  occlusion = horizon_scan_bitmask_to_visibility_uniform(~ctx.diffuse_common.bitmask);
+  radiance.rgb = ctx.diffuse_result.rgb;
+  occlusion = ctx.diffuse_result.a;
 #endif
 #ifdef HORIZON_REFLECT
-  radiance = vec4(ctx.reflection_result, 1.0);
-  occlusion = horizon_scan_bitmask_to_visibility_uniform(~ctx.reflection_common.bitmask);
+  radiance.rgb = ctx.reflection_result.rgb;
+  occlusion = ctx.reflection_result.a;
 #endif
 #ifdef HORIZON_REFRACT
-  radiance = vec4(ctx.refraction_result, 1.0);
-  occlusion = horizon_scan_bitmask_to_visibility_uniform(~ctx.refraction_common.bitmask);
+  radiance.rgb = ctx.refraction_result.rgb;
+  occlusion = ctx.refraction_result.a;
 #endif
 
   imageStore(horizon_radiance_img, texel, radiance);

@@ -162,6 +162,17 @@ void main()
   }
   float occlusion = accum_occlusion * safe_rcp(accum_weight);
   vec3 radiance = accum_radiance * safe_rcp(accum_weight);
+
+  vec3 P = center_P;
+  vec3 N = center_N;
+  vec3 Ng = center_N;
+  vec3 V = drw_world_incident_vector(P);
+  /* Fallback to nearest light-probe. */
+  LightProbeSample samp = lightprobe_load(P, Ng, V);
+  vec3 radiance_probe = spherical_harmonics_evaluate_lambert(N, samp.volume_irradiance);
+  /* Apply missing distant lighting. */
+  radiance += occlusion * radiance_probe;
+
   vec4 radiance_horizon = vec4(radiance, 0.0);
   vec4 radiance_raytrace = use_raytrace ? imageLoad(radiance_img, texel_fullres) : vec4(0.0);
 
