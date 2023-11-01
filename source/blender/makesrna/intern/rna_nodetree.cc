@@ -3907,11 +3907,8 @@ static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
   enum_def->set_item_name(*item, value);
 }
 
-static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id,
-                                                NodeEnumDefinition *enum_def,
-                                                Main *bmain,
-                                                ReportList *reports,
-                                                const char *name)
+static NodeEnumItem *rna_NodeEnumDefinition_new(
+    ID *id, NodeEnumDefinition *enum_def, Main *bmain, ReportList *reports, const char *name)
 {
   NodeEnumItem *item = enum_def->add_item(name);
   if (item == nullptr) {
@@ -3925,11 +3922,8 @@ static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id,
   return item;
 }
 
-static void rna_NodeEnumDefinition_remove(ID *id,
-                                          NodeEnumDefinition *enum_def,
-                                          Main *bmain,
-                                          ReportList *reports,
-                                          NodeEnumItem *item)
+static void rna_NodeEnumDefinition_remove(
+    ID *id, NodeEnumDefinition *enum_def, Main *bmain, ReportList *reports, NodeEnumItem *item)
 {
   if (!enum_def->remove_item(*item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from enum definition", item->name);
@@ -3966,8 +3960,9 @@ static PointerRNA rna_NodeEnumDefinition_active_item_get(PointerRNA *ptr)
   return r_ptr;
 }
 
-static void rna_NodeEnumDefinition_active_item_set(
-  PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
+static void rna_NodeEnumDefinition_active_item_set(PointerRNA *ptr,
+                                                   PointerRNA value,
+                                                   ReportList * /*reports*/)
 {
   NodeEnumDefinition *enum_def = static_cast<NodeEnumDefinition *>(ptr->data);
   NodeEnumItem *item = static_cast<NodeEnumItem *>(value.data);
@@ -9448,7 +9443,7 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeEnumItem_update");
 }
 
-static void rna_def_node_enum_definition_items(BlenderRNA * brna)
+static void rna_def_node_enum_definition_items(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *parm;

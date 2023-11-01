@@ -436,8 +436,6 @@ static bool socket_can_be_viewed(const bNode &node, const bNodeSocket &socket)
               SOCK_ENUM);
 }
 
-    case SOCK_ENUM:
-      return CD_PROP_INT32;
 /**
  * Find the socket to link to in a viewer node.
  */

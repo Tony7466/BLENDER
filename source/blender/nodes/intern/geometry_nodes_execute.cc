@@ -125,8 +125,8 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
 }
 
 void find_node_tree_dependencies(const bNodeTree &tree,
-                           Set<ID *> &r_ids,
-                           bool &r_needs_own_transform_relation)
+                                 Set<ID *> &r_ids,
+                                 bool &r_needs_own_transform_relation)
 {
   Set<const bNodeTree *> checked_groups;
   process_nodes_for_depsgraph(tree, r_ids, r_needs_own_transform_relation, checked_groups);
@@ -255,8 +255,7 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       const bNodeSocketValueEnum *value = static_cast<const bNodeSocketValueEnum *>(
           socket.socket_data);
       auto property = bke::idprop::create(identifier, value->value);
-      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(
-          property.get());
+      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(property.get());
       ui_data->default_value = value->value;
       return property;
     }
