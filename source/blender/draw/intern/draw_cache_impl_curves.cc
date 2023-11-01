@@ -37,7 +37,6 @@
 
 #include "DRW_render.h"
 
-#include "attribute_convert.hh"
 #include "draw_attributes.hh"
 #include "draw_cache_impl.hh" /* own include */
 #include "draw_cache_inline.h"

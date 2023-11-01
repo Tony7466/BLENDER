@@ -28,7 +28,6 @@
 #include "GPU_batch.h"
 #include "GPU_material.h"
 
-#include "attribute_convert.hh"
 #include "draw_attributes.hh"
 #include "draw_cache_impl.hh"
 #include "draw_cache_inline.h"
