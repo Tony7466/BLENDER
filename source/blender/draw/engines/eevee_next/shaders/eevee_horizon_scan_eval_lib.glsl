@@ -40,7 +40,13 @@ vec3 horizon_scan_sample_radiance(vec2 uv)
 
 vec3 horizon_scan_sample_normal(vec2 uv)
 {
+#ifndef HORIZON_OCCLUSION
+  ivec2 texel = ivec2(uv * uniform_buf.raytrace.full_resolution);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  return drw_normal_world_to_view(gbuf.diffuse.N);
+#else
   return vec3(0.0);
+#endif
 }
 
 /* Note: Expects all normals to be in view-space. */
@@ -154,16 +160,15 @@ void horizon_scan_context_sample_finish(
     inout HorizonScanContext context, vec3 L, vec3 V, vec2 sample_uv, vec2 theta, float bias)
 {
   vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
-#if 0
-  /* TODO: Optionally take emitter surface normal into consideration. */
+  /* Take emitter surface normal into consideration. */
   vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
   sample_radiance *= dot(sample_normal, -L);
-#endif
+
 #ifdef HORIZON_OCCLUSION
   horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bxdf_eval(context.diffuse, L, V) * M_PI;
+  sample_radiance *= bxdf_eval(context.diffuse, L, V) * 2.0 * M_PI;
   horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
