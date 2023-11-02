@@ -71,7 +71,6 @@ void main()
 
   horizon_scan_eval(vP,
                     ctx,
-                    hiz_tx,
                     noise,
                     uniform_buf.ao.pixel_size,
                     1.0e16,

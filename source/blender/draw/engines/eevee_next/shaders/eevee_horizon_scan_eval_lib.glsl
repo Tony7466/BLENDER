@@ -147,14 +147,14 @@ float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
   return bsdf_lambert(closure.N, L);
 }
 
-float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
-{
-  return btdf_ggx(closure.N, L, V, closure.roughness, closure.ior);
-}
-
 float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 {
   return bsdf_ggx(closure.N, L, V, closure.roughness);
+}
+
+float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
+{
+  return btdf_ggx(closure.N, L, V, closure.roughness, closure.ior);
 }
 
 void horizon_scan_context_sample_finish(
@@ -169,11 +169,10 @@ void horizon_scan_context_sample_finish(
   horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bxdf_eval(context.diffuse, L, V) * 2.0 * M_PI;
+  sample_radiance *= bxdf_eval(context.diffuse, L, V);
   horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
-  /* TODO(fclem): Loosing energy here. */
   sample_radiance *= bxdf_eval(context.reflection, L, V);
   horizon_scan_context_sample_finish(context.reflection_common, sample_radiance, theta, bias);
 #endif
@@ -184,15 +183,7 @@ void horizon_scan_context_sample_finish(
 #endif
 }
 
-void horizon_scan_context_slice_finish_occlusion(inout HorizonScanContextCommon context)
-{
-  float slice_occlusion = horizon_scan_bitmask_to_occlusion_cosine(context.bitmask);
-  /* Correct normal not on plane (Eq. 8 of GTAO paper). */
-  context.light_accum += vec4(slice_occlusion) * context.N_length;
-  context.weight_accum += context.N_length;
-}
-
-void horizon_scan_context_slice_finish_distant_light(inout HorizonScanContextCommon context)
+void horizon_scan_context_slice_finish(inout HorizonScanContextCommon context)
 {
   /* Use uniform visibility since this is what we use for near field lighting.
    * Also the lighting we are going to mask is already containing the cosine lobe. */
@@ -205,22 +196,30 @@ void horizon_scan_context_slice_finish_distant_light(inout HorizonScanContextCom
 void horizon_scan_context_slice_finish(inout HorizonScanContext context)
 {
 #ifdef HORIZON_OCCLUSION
-  horizon_scan_context_slice_finish_occlusion(context.occlusion_common);
+  float occlusion = horizon_scan_bitmask_to_occlusion_cosine(context.occlusion_common.bitmask);
+  /* Replace light by occlusion. Should eliminate any reference to the radiance texture fetch */
+  context.occlusion_common.light_slice = vec3(occlusion);
+  horizon_scan_context_slice_finish(context.occlusion_common);
 #endif
 #ifdef HORIZON_DIFFUSE
-  horizon_scan_context_slice_finish_distant_light(context.diffuse_common);
+  horizon_scan_context_slice_finish(context.diffuse_common);
 #endif
 #ifdef HORIZON_REFLECT
-  horizon_scan_context_slice_finish_distant_light(context.reflection_common);
+  horizon_scan_context_slice_finish(context.reflection_common);
 #endif
 #ifdef HORIZON_REFRACT
-  horizon_scan_context_slice_finish_distant_light(context.refraction_common);
+  horizon_scan_context_slice_finish(context.refraction_common);
 #endif
 }
 
 void horizon_scan_context_accumulation_finish(HorizonScanContextCommon context, out vec4 result)
 {
   result = context.light_accum * safe_rcp(context.weight_accum);
+#ifndef HORIZON_OCCLUSION
+  /* We integrate over the whole hemisphere. Multiply to hemisphere area.
+   * We only consider visbility for occlusion, so we skip it in this case. */
+  result.rgb *= 2.0 * M_PI;
+#endif
 }
 
 void horizon_scan_context_accumulation_finish(inout HorizonScanContext context)
@@ -275,7 +274,6 @@ void horizon_scan_occluder_intersection_ray_sphere_clip(Ray ray,
  */
 void horizon_scan_eval(vec3 vP,
                        inout HorizonScanContext context,
-                       sampler2D depth_tx,
                        vec2 noise,
                        vec2 pixel_size,
                        float search_distance,
@@ -316,8 +314,7 @@ void horizon_scan_eval(vec3 vP,
         float lod = 1.0 + (float(j >> 2) / (1.0 + uniform_buf.ao.quality));
 
         vec2 sample_uv = ssray.origin.xy + ssray.direction.xy * time;
-        float sample_depth =
-            textureLod(depth_tx, sample_uv * uniform_buf.hiz.uv_scale, floor(lod)).r;
+        float sample_depth = textureLod(hiz_tx, sample_uv * uniform_buf.hiz.uv_scale, lod).r;
 
         if (sample_depth == 1.0) {
           /* Skip background. Avoids making shadow on the geometry near the far plane. */
