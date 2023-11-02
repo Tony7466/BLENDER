@@ -4498,7 +4498,8 @@ static int prop_view_exec(bContext *C, wmOperator *op)
       rctf fcu_bounds;
       get_normalized_fcurve_bounds_foo(
           fcurve, ge, scene, selected_id, include_handles, frame_range, &fcu_bounds);
-      // BKE_fcurve_calc_bounds(fcurve, false, include_handles, frame_range, &fcu_bounds);
+      fcu_bounds.xmin = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmin, NLATIME_CONVERT_MAP);
+      fcu_bounds.xmax = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmax, NLATIME_CONVERT_MAP);
       BLI_rctf_union(&bounds, &fcu_bounds);
     }
   }
@@ -4509,12 +4510,8 @@ static int prop_view_exec(bContext *C, wmOperator *op)
   }
 
   add_region_padding(C, ge_window_region, &bounds);
-  /* Setting the window to the context is needed for the case when the Graph Editor is found in
-   * a different window. Otherwise smooth view wouldn't work. */
-  CTX_wm_window_set(C, found_window);
-  CTX_wm_area_set(C, graph_editor_area);
-  const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-  UI_view2d_smooth_view(C, ge_window_region, &bounds, smooth_viewtx);
+  /* Not using smooth view since that creates issues because the context isn't right. */
+  ge_window_region->v2d.cur = bounds;
   ED_area_tag_redraw(graph_editor_area);
 
   return OPERATOR_FINISHED;
