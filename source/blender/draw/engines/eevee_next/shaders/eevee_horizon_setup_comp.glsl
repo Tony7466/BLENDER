@@ -40,5 +40,8 @@ void main()
 
   vec4 radiance = texture(in_radiance_tx, ssP_prev.xy);
 
+  float luma = max(1e-8, reduce_max(radiance.rgb));
+  radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
+
   imageStore(out_radiance_img, texel, radiance);
 }

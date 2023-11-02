@@ -35,10 +35,7 @@
 vec3 horizon_scan_sample_radiance(vec2 uv)
 {
 #ifndef HORIZON_OCCLUSION
-  vec3 radiance = texture(screen_radiance_tx, uv).rgb;
-  float luma = max(1e-8, reduce_max(radiance));
-  radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
-  return radiance;
+  return texture(screen_radiance_tx, uv).rgb;
 #else
   return vec3(0.0);
 #endif
