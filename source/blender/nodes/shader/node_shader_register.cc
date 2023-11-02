@@ -29,6 +29,7 @@ void register_shader_nodes()
   register_node_type_sh_bsdf_toon();
   register_node_type_sh_bsdf_translucent();
   register_node_type_sh_bsdf_transparent();
+  register_node_type_sh_bsdf_portal();
   register_node_type_sh_bsdf_sheen();
   register_node_type_sh_bump();
   register_node_type_sh_camera();

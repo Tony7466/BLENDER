@@ -572,6 +572,8 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeBsdfTranslucent";
       case SH_NODE_BSDF_TRANSPARENT:
         return "ShaderNodeBsdfTransparent";
+      case SH_NODE_BSDF_PORTAL:
+        return "ShaderNodeBsdfPortal";
       case /*SH_NODE_BSDF_VELVET*/ 139:
         return "ShaderNodeBsdfVelvet";
       case /*SH_NODE_VOLUME_TRANSPARENT*/ 161:

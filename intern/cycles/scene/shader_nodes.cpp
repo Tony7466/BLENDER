@@ -2949,6 +2949,38 @@ void TransparentBsdfNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_transparent_bsdf");
 }
 
+/* Portal BSDF Closure */
+
+NODE_DEFINE(PortalBsdfNode)
+{
+  NodeType *type = NodeType::add("portal_bsdf", create, NodeType::SHADER);
+
+  SOCKET_IN_COLOR(color, "Color", one_float3());
+  SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
+
+  SOCKET_IN_VECTOR(position, "Position", zero_float3(), SocketType::LINK_POSITION);
+  SOCKET_IN_VECTOR(incoming, "Incoming", zero_float3(), SocketType::LINK_INCOMING);
+
+  SOCKET_OUT_CLOSURE(BSDF, "BSDF");
+
+  return type;
+}
+
+PortalBsdfNode::PortalBsdfNode() : BsdfNode(get_node_type())
+{
+  closure = CLOSURE_BSDF_PORTAL_ID;
+}
+
+void PortalBsdfNode::compile(SVMCompiler &compiler)
+{
+  BsdfNode::compile(compiler, NULL, NULL, input("Position"), input("Incoming"));
+}
+
+void PortalBsdfNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_portal_bsdf");
+}
+
 /* Subsurface Scattering Closure */
 
 NODE_DEFINE(SubsurfaceScatteringNode)

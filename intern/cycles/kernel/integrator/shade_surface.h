@@ -460,6 +460,9 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     unguided_bsdf_pdf = bsdf_pdf;
   }
 
+  if (label & LABEL_PORTAL) {
+    INTEGRATOR_STATE_WRITE(state, isect, object) = sd->object;
+  }
   if (label & LABEL_TRANSPARENT) {
     /* Only need to modify start distance for transparent. */
     INTEGRATOR_STATE_WRITE(state, ray, tmin) = intersection_t_offset(sd->ray_length);

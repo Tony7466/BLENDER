@@ -898,6 +898,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_BSDF_TOON:
             case SH_NODE_BSDF_TRANSLUCENT:
             case SH_NODE_BSDF_TRANSPARENT:
+            case SH_NODE_BSDF_PORTAL:
             case SH_NODE_BSDF_SHEEN:
             case SH_NODE_EEVEE_SPECULAR:
             case SH_NODE_EMISSION:
@@ -955,6 +956,7 @@ static bool closure_node_filter(const bNode *node)
     case SH_NODE_BSDF_TOON:
     case SH_NODE_BSDF_TRANSLUCENT:
     case SH_NODE_BSDF_TRANSPARENT:
+    case SH_NODE_BSDF_PORTAL:
     case SH_NODE_BSDF_SHEEN:
     case SH_NODE_EEVEE_SPECULAR:
     case SH_NODE_EMISSION:

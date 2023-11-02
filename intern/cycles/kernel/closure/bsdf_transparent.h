@@ -35,7 +35,13 @@ ccl_device void bsdf_transparent_setup(ccl_private ShaderData *sd,
   }
   else {
     sd->flag |= SD_BSDF | SD_TRANSPARENT;
-    sd->closure_transparent_extinction = weight;
+    if (sd->flag & SD_PORTAL) {
+      /* Portals also count towards transparent extinction. */
+      sd->closure_transparent_extinction += weight;
+    }
+    else {
+      sd->closure_transparent_extinction = weight;
+    }
 
     if (path_flag & PATH_RAY_TERMINATE) {
       /* In this case the number of closures is set to zero to disable

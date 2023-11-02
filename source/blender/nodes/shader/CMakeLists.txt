@@ -44,6 +44,7 @@ set(SRC
   nodes/node_shader_bsdf_toon.cc
   nodes/node_shader_bsdf_translucent.cc
   nodes/node_shader_bsdf_transparent.cc
+  nodes/node_shader_bsdf_portal.cc
   nodes/node_shader_bump.cc
   nodes/node_shader_camera.cc
   nodes/node_shader_clamp.cc

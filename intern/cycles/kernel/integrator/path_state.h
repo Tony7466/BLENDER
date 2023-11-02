@@ -107,7 +107,7 @@ ccl_device_inline void path_state_next(KernelGlobals kg,
 
   /* ray through transparent keeps same flags from previous ray and is
    * not counted as a regular bounce, transparent has separate max */
-  if (label & LABEL_TRANSPARENT) {
+  if (label & LABEL_TRANSPARENT || label & LABEL_PORTAL) {
     uint32_t transparent_bounce = INTEGRATOR_STATE(state, path, transparent_bounce) + 1;
 
     flag |= PATH_RAY_TRANSPARENT;

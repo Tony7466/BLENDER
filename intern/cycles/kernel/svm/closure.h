@@ -441,6 +441,19 @@ ccl_device
       bsdf_transparent_setup(sd, weight, path_flag);
       break;
     }
+    case CLOSURE_BSDF_PORTAL_ID: {
+      Spectrum weight = closure_weight * mix_weight;
+      bsdf_portal_setup(sd, weight, path_flag);
+      float3 new_P = stack_load_float3(stack, data_node.z);
+      if (len_squared(sd->P - new_P) > 1e-9f) {
+        /* if the ray origin is changed, unset the current object,
+         * so we can potentially hit the same polygon again */
+        sd->object = OBJECT_NONE;
+      }
+      sd->P = new_P;
+      sd->wi = stack_load_float3(stack, data_node.w);
+      break;
+    }
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
