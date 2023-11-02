@@ -1671,6 +1671,7 @@ static bool object_mouse_select_menu(bContext *C,
                                      const SelectPick_Params *params,
                                      Base **r_basact)
 {
+
   const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   /* Distance from object center to use for selection. */
   const float dist_threshold_sq = square_f(15 * U.pixelsize);
@@ -1706,8 +1707,7 @@ static bool object_mouse_select_menu(bContext *C,
         const float dist_test_sq = len_squared_v2v2(mval_fl, region_co);
         if (dist_test_sq < dist_threshold_sq) {
           ok = true;
-          /* Match GPU depth logic, as the float is always positive, it can be sorted as an int.
-           */
+          /* Match GPU depth logic, as the float is always positive, it can be sorted as an int. */
           depth_id = float_as_uint(dist_test_sq);
         }
       }
@@ -2593,8 +2593,7 @@ static bool ed_object_select_pick(bContext *C,
   Scene *scene = vc.scene;
   View3D *v3d = vc.v3d;
 
-  /* Menu activation may find a base to make active (if it only finds a single item to select).
-   */
+  /* Menu activation may find a base to make active (if it only finds a single item to select). */
   Base *basact_override = nullptr;
 
   const bool is_obedit = (vc.obedit != nullptr);
@@ -2791,8 +2790,7 @@ static bool ed_object_select_pick(bContext *C,
         else {
           /* By convention the armature-object is selected when in pose-mode.
            * While leaving it unselected will work, leaving pose-mode would leave the object
-           * active + unselected which isn't ideal when performing other actions on the object.
-           */
+           * active + unselected which isn't ideal when performing other actions on the object. */
           ED_object_base_select(basact, BA_SELECT);
           changed_object = true;
 
@@ -3262,9 +3260,9 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   {
     /* Prevent acting on Grease Pencil (when not in object mode -- or not in weight-paint + pose
      * selection), it implements its own selection operator in other modes. We might still fall
-     * trough to here (because that operator uses OPERATOR_PASS_THROUGH to make tweak work) but
-     * if we don't stop here code below assumes we are in object mode it might falsely toggle
-     * object selection. Alternatively, this could be put in the poll function instead. */
+     * trough to here (because that operator uses OPERATOR_PASS_THROUGH to make tweak work) but if
+     * we don't stop here code below assumes we are in object mode it might falsely toggle object
+     * selection. Alternatively, this could be put in the poll function instead. */
     return OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED;
   }
 
