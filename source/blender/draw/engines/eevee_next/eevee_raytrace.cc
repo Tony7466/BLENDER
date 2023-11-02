@@ -365,7 +365,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
   data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
 
-  float roughness_mask_start = 0.2f; /* TODO option. */
+  float roughness_mask_start = options.screen_trace_max_roughness;
   float roughness_mask_fade = 0.2f;
   data_.roughness_mask_scale = 1.0 / roughness_mask_fade;
   data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;

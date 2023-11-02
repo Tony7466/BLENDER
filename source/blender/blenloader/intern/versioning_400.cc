@@ -1841,5 +1841,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         probe->data_display_size = default_probe.data_display_size;
       }
     }
+
+    if (!DNA_struct_member_exists(
+            fd->filesdna, "RaytraceEEVEE", "float", "screen_trace_max_roughness"))
+    {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.reflection_options.screen_trace_max_roughness = 0.2f;
+        scene->eevee.refraction_options.screen_trace_max_roughness = 0.2f;
+        scene->eevee.diffuse_options.screen_trace_max_roughness = 0.2f;
+      }
+    }
   }
 }
