@@ -3,3 +3,4 @@ Referenced by pull request #113646, WIP: Cleanup: Avoid storing redundant state 
 Referenced by issue #114094, Mask by Color brush has stopped working
 Referenced by pull request #114101, Fix #114094: Mask by Color brush has stopped working
 Referenced by commit a48d4184b52878cf27dcccdb124b7d6fc9b4f3eb, Fix #114094: Mask by Color brush has stopped working
+Referenced by pull request #114417, Cleanup: Sculpt: Simplify face and face set iteration
