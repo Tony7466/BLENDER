@@ -4469,10 +4469,16 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     }
     PointerRNA foo_ptr;
     PropertyRNA *foo_prop;
-    const bool resolved = RNA_path_resolve_property(
-        &selected->ptr, id_to_prop_path, &foo_ptr, &foo_prop);
-    if (!resolved) {
-      continue;
+    if (id_to_prop_path != nullptr) {
+      const bool resolved = RNA_path_resolve_property(
+          &selected->ptr, id_to_prop_path, &foo_ptr, &foo_prop);
+      if (!resolved) {
+        continue;
+      }
+    }
+    else {
+      foo_ptr = selected->ptr;
+      foo_prop = prop;
     }
     char *path = RNA_path_from_ID_to_property(&foo_ptr, foo_prop);
 
@@ -4509,6 +4515,9 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     }
   }
   BLI_freelistN(&selection);
+  if (id_to_prop_path != nullptr) {
+    MEM_freeN(id_to_prop_path);
+  }
 
   if (!BLI_rctf_is_valid(&bounds)) {
     return OPERATOR_CANCELLED;
