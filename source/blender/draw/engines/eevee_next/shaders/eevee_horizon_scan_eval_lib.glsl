@@ -149,7 +149,9 @@ float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
 
 float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 {
-  return bsdf_ggx(closure.N, L, V, closure.roughness);
+  /* TODO(fclem): Figure out how to make it work properly. Currently losses too much energy. */
+  // return bsdf_ggx(closure.N, L, V, closure.roughness);
+  return bsdf_lambert(closure.N, L);
 }
 
 float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
