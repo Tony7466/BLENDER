@@ -4405,14 +4405,12 @@ static int prop_view_exec(bContext *C, wmOperator *op)
 
   bool found_graph_editor = false;
 
-  wmWindow *found_window;
-  bScreen *screen;
   ScrArea *graph_editor_area;
   ARegion *ge_window_region;
-  SpaceLink *ge;
+  SpaceLink *ge_space_link;
 
   LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
-    screen = BKE_workspace_active_screen_get(win->workspace_hook);
+    bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
 
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       if (area->spacetype != SPACE_GRAPH) {
@@ -4425,8 +4423,7 @@ static int prop_view_exec(bContext *C, wmOperator *op)
       }
 
       graph_editor_area = area;
-      found_window = win;
-      ge = (SpaceLink *)area->spacedata.first;
+      ge_space_link = (SpaceLink *)area->spacedata.first;
       found_graph_editor = true;
       break;
     }
@@ -4497,7 +4494,7 @@ static int prop_view_exec(bContext *C, wmOperator *op)
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
       get_normalized_fcurve_bounds_foo(
-          fcurve, ge, scene, selected_id, include_handles, frame_range, &fcu_bounds);
+          fcurve, ge_space_link, scene, selected_id, include_handles, frame_range, &fcu_bounds);
       fcu_bounds.xmin = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmin, NLATIME_CONVERT_MAP);
       fcu_bounds.xmax = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmax, NLATIME_CONVERT_MAP);
       BLI_rctf_union(&bounds, &fcu_bounds);
