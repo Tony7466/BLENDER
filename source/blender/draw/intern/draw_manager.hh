@@ -206,8 +206,7 @@ class Manager {
   void sync_layer_attributes();
 };
 
-inline ResourceHandle Manager::resource_handle(const ObjectRef ref,
-                                               float inflate_bounds /* = 0.0f*/)
+inline ResourceHandle Manager::resource_handle(const ObjectRef ref, float inflate_bounds)
 {
   bool is_active_object = (ref.dupli_object ? ref.dupli_parent : ref.object) == object_active;
   matrix_buf.current().get_or_resize(resource_len_).sync(*ref.object);
