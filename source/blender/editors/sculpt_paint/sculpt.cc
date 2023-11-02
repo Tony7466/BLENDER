@@ -1488,9 +1488,9 @@ static void paint_mesh_restore_node(Object *ob,
     case SCULPT_UNDO_MASK: {
       switch (BKE_pbvh_type(ss->pbvh)) {
         case PBVH_FACES: {
-          const Span<int> verts = BKE_pbvh_node_get_unique_vert_indices(node);
-          blender::array_utils::scatter(
-              unode->mask.as_span(), verts, {mask_write.layer, ss->totvert});
+          blender::array_utils::scatter(unode->mask.as_span(),
+                                        BKE_pbvh_node_get_unique_vert_indices(node),
+                                        {mask_write.layer, ss->totvert});
           break;
         }
         case PBVH_BMESH: {
@@ -1534,7 +1534,8 @@ static void paint_mesh_restore_node(Object *ob,
         case PBVH_FACES:
         case PBVH_GRIDS: {
           const Span<int> faces = unode->face_indices;
-          blender::array_utils::scatter(face_sets, faces, {ss->face_sets, ss->faces_num});
+          blender::array_utils::scatter(
+              unode->face_sets, unode->face_indices, {ss->face_sets, ss->faces_num});
           break;
         }
         case PBVH_BMESH: {
