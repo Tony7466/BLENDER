@@ -962,22 +962,14 @@ static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
  * \{ */
 
 enum class CapsMode : int8_t {
-  /* Toggle both ends. */
-  BOTH,
+  /* Switchs both to Flat. */
+  FLAT,
   /* Change only start. */
   START,
   /* Change only end. */
   END,
   /* Switchs both to default rounded. */
   ROUND,
-};
-
-static const EnumPropertyItem prop_caps_types[] = {
-    {int(CapsMode::BOTH), "BOTH", 0, "Both", ""},
-    {int(CapsMode::START), "START", 0, "Start", ""},
-    {int(CapsMode::END), "END", 0, "End", ""},
-    {int(CapsMode::ROUND), "ROUND", 0, "Rounded", "Set as default rounded"},
-    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
@@ -1008,23 +1000,31 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
       index_mask::masked_fill(start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
       index_mask::masked_fill(end_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
     }
+    else if (mode == CapsMode::FLAT) {
+      index_mask::masked_fill(start_caps.span, int8_t(GP_STROKE_CAP_TYPE_FLAT), selected_curves);
+      index_mask::masked_fill(end_caps.span, int8_t(GP_STROKE_CAP_TYPE_FLAT), selected_curves);
+    }
     else {
       selected_curves.foreach_index([&](const int curve_index) {
-        if (mode == CapsMode::BOTH || mode == CapsMode::START) {
-          if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-            start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-          }
-          else {
-            start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-          }
-        }
-        if (mode == CapsMode::BOTH || mode == CapsMode::END) {
-          if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-            end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-          }
-          else {
-            end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-          }
+        switch (mode) {
+          case CapsMode::START:
+            if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+              start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+            }
+            else {
+              start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+            }
+            break;
+          case CapsMode::END:
+            if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+              end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+            }
+            else {
+              end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+            }
+            break;
+          default:
+            break;
         }
       });
     }
@@ -1045,6 +1045,14 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
 {
+  static const EnumPropertyItem prop_caps_types[] = {
+      {int(CapsMode::ROUND), "ROUND", 0, "Rounded", "Set as default rounded"},
+      {int(CapsMode::FLAT), "FLAT", 0, "Flat", ""},
+      {int(CapsMode::START), "START", 0, "Toggle Start", ""},
+      {int(CapsMode::END), "END", 0, "Toggle End", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* Identifiers. */
   ot->name = "Set Curve Caps";
   ot->idname = "GREASE_PENCIL_OT_caps_set";
@@ -1058,7 +1066,7 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Simplify parameters. */
-  ot->prop = RNA_def_enum(ot->srna, "type", prop_caps_types, int(CapsMode::BOTH), "Type", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", prop_caps_types, int(CapsMode::ROUND), "Type", "");
 }
 
 /** \} */
