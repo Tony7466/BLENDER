@@ -795,6 +795,9 @@ static void insert_key_id(PointerRNA *rna_pointer,
     return;
   }
 
+  AnimData *adt = BKE_animdata_from_id(id);
+  const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
+
   for (const std::string &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
@@ -813,7 +816,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
     Vector<float> rna_values = ANIM_setting_get_rna_values(&ptr, prop);
 
     const int inserted_keys = animrig::insert_key_action(
-        action, rna_pointer, rna_path_id_to_prop, scene_frame, rna_values.as_span());
+        action, rna_pointer, rna_path_id_to_prop, nla_frame, rna_values.as_span());
   }
 }
 
