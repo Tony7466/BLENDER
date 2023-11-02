@@ -23,6 +23,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_image_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
@@ -575,10 +576,16 @@ class ImageOperation : public NodeOperation {
   }
 
   /* Compositor image inputs are expected to be always premultiplied, so identify if the GPU
-   * texture returned by the image module is straight and needs to be premultiplied. */
+   * texture returned by the image module is straight and needs to be premultiplied. An exception
+   * is when the image has an alpha mode of channel packed or alpha ignore, in which case, we
+   * always ignore premultiplication. */
   bool should_premultiply_alpha(ImageUser &image_user)
   {
     Image *image = get_image();
+    if (ELEM(image->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE)) {
+      return false;
+    }
+
     ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user, nullptr);
     if (!image_buffer) {
       return false;
