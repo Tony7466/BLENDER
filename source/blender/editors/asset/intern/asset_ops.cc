@@ -472,6 +472,7 @@ static int asset_library_refresh_exec(bContext *C, wmOperator * /*unused*/)
     const AssetLibraryReference *library = CTX_wm_asset_library_ref(C);
     ED_assetlist_clear(library, C);
   }
+  WM_event_add_notifier(C, NC_ASSET | ND_ASSET_LIST_READING, nullptr);
 
   return OPERATOR_FINISHED;
 }

@@ -492,6 +492,8 @@ void ED_assetlist_clear(const AssetLibraryReference *library_reference, bContext
   if (list) {
     list->clear(C);
   }
+  const AssetLibraryReference all_library = asset_system::all_library_reference();
+  ED_assetlist_clear(&all_library, C);
 }
 
 bool ED_assetlist_storage_has_list_for_library(const AssetLibraryReference *library_reference)
