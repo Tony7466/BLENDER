@@ -679,6 +679,8 @@ static void pbvh_draw_args_init(const Mesh &mesh, PBVH *pbvh, PBVH_GPU_Args *arg
     args->hide_poly = pbvh->face_data ? static_cast<const bool *>(CustomData_get_layer_named(
                                             pbvh->face_data, CD_PROP_BOOL, ".hide_poly")) :
                                         nullptr;
+    args->face_sets = static_cast<const int *>(
+        CustomData_get_layer_named(&pbvh->mesh->face_data, CD_PROP_INT32, ".sculpt_face_set"));
   }
 
   args->active_color = mesh.active_color_attribute;
@@ -695,8 +697,6 @@ static void pbvh_draw_args_init(const Mesh &mesh, PBVH *pbvh, PBVH_GPU_Args *arg
       args->face_normals = pbvh->face_normals;
 
       args->prim_indices = node->prim_indices;
-      args->face_sets = static_cast<const int *>(
-          CustomData_get_layer_named(pbvh->face_data, CD_PROP_INT32, ".sculpt_face_set"));
       args->looptri_faces = pbvh->looptri_faces;
       break;
     case PBVH_GRIDS:
@@ -707,8 +707,6 @@ static void pbvh_draw_args_init(const Mesh &mesh, PBVH *pbvh, PBVH_GPU_Args *arg
       args->me = pbvh->mesh;
       args->grid_indices = node->prim_indices;
       args->subdiv_ccg = pbvh->subdiv_ccg;
-      args->face_sets = static_cast<const int *>(
-          CustomData_get_layer_named(pbvh->face_data, CD_PROP_INT32, ".sculpt_face_set"));
       args->faces = pbvh->faces;
 
       args->mesh_grids_num = pbvh->totgrid;
