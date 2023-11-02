@@ -65,6 +65,7 @@ void realize_on_domain(Context &context,
   const Domain input_domain = Domain(input.domain().size, input_transformation);
   if (input_domain == domain) {
     input.pass_through(output);
+    output.set_transformation(domain.transformation);
     return;
   }
 
