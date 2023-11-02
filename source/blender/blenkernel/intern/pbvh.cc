@@ -1982,17 +1982,19 @@ blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBV
         const int face = looptri_faces[tri];
         if (face != prev_face) {
           faces.append(face);
+          prev_face = face;
         }
       }
       break;
     }
     case PBVH_GRIDS: {
       const SubdivCCG &subdiv_ccg = *pbvh.subdiv_ccg;
-      const int prev_face = -1;
+      int prev_face = -1;
       for (const int prim : node.prim_indices) {
         const int face = BKE_subdiv_ccg_grid_to_face_index(&subdiv_ccg, prim);
         if (face != prev_face) {
           faces.append(face);
+          prev_face = face;
         }
       }
       break;
