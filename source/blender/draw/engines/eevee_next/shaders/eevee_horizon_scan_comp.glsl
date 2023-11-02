@@ -51,7 +51,7 @@ void main()
   }
   vec3 Ng = gbuf.reflection.N;
   ctx.reflection = gbuf.reflection;
-  ctx.reflection.roughness = max(ctx.reflection.roughness, 1e-4);
+  ctx.reflection.roughness = max(ctx.reflection.roughness, 0.1);
   ctx.reflection.N = drw_normal_world_to_view(ctx.reflection.N);
 #endif
 #ifdef HORIZON_REFRACT
