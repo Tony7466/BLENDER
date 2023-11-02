@@ -210,35 +210,27 @@ void Instance::object_sync(Object *ob)
   /* TODO cleanup. */
   ObjectRef ob_ref = DRW_object_ref_get(ob);
   ObjectHandle &ob_handle = sync.sync_object(ob);
+  ResourceHandle res_handle = {0};
+  if (is_drawable_type) {
+    res_handle = manager->resource_handle(ob_ref);
+  }
 
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
     auto sync_hair =
         [&](ObjectHandle hair_handle, ModifierData &md, ParticleSystem &particle_sys) {
           ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
-          sync.sync_curves(ob, hair_handle, _res_handle, &md, &particle_sys);
+          sync.sync_curves(ob, hair_handle, _res_handle, ob_ref, &md, &particle_sys);
         };
     foreach_hair_particle_handle(ob, ob_handle, sync_hair);
   }
 
   if (object_is_visible) {
-    ResourceHandle res_handle = {0};
-    float inflate_bounds = 0.0f;
-
-    if (is_drawable_type) {
-      for (auto i : IndexRange(DRW_cache_object_material_count_get(ob))) {
-        if (::Material *material = BKE_object_material_get(ob, i + 1)) {
-          inflate_bounds = math::max(inflate_bounds, material->inflate_bounds);
-        }
-      }
-      res_handle = manager->resource_handle(ob_ref, inflate_bounds);
-    }
-
     switch (ob->type) {
       case OB_LAMP:
         lights.sync_light(ob, ob_handle);
         break;
       case OB_MESH:
-        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref, inflate_bounds)) {
+        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref)) {
           sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
         }
         break;
@@ -249,7 +241,7 @@ void Instance::object_sync(Object *ob)
         sync.sync_volume(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
-        sync.sync_curves(ob, ob_handle, res_handle);
+        sync.sync_curves(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_GPENCIL_LEGACY:
         sync.sync_gpencil(ob, ob_handle, res_handle);
