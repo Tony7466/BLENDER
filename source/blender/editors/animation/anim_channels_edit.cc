@@ -4435,14 +4435,18 @@ static int prop_view_exec(bContext *C, wmOperator *op)
 
   if (!found_graph_editor) {
     WM_report(RPT_WARNING, "No open Graph Editor window found");
+    return OPERATOR_CANCELLED;
   }
 
   ListBase selection = {nullptr, nullptr};
-  if (CTX_data_mode_enum(C) == CTX_MODE_POSE) {
-    CTX_data_selected_pose_bones(C, &selection);
-  }
-  else {
-    CTX_data_selected_objects(C, &selection);
+  bool path_from_id;
+  char *id_to_prop_path;
+  const bool selected_list_success = UI_context_copy_to_selected_list(
+      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
+
+  if (!selected_list_success) {
+    WM_report(RPT_ERROR, "No selection found");
+    return OPERATOR_CANCELLED;
   }
 
   rctf bounds{};
@@ -4463,18 +4467,22 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     if (!BKE_animdata_id_is_animated(selected_id)) {
       continue;
     }
+    PointerRNA foo_ptr;
+    PropertyRNA *foo_prop;
+    const bool resolved = RNA_path_resolve_property(
+        &selected->ptr, id_to_prop_path, &foo_ptr, &foo_prop);
+    if (!resolved) {
+      continue;
+    }
+    char *path = RNA_path_from_ID_to_property(&foo_ptr, foo_prop);
+
     AnimData *anim_data = BKE_animdata_from_id(selected_id);
-    char *path = RNA_path_from_ID_to_property(&selected->ptr, prop);
-    bAction *action;
-    bool driven;
-
     blender::Vector<FCurve *> fcurves;
-
     if (RNA_property_array_check(prop) && whole_array) {
       const int length = RNA_property_array_length(&selected->ptr, prop);
       for (int i = 0; i < length; i++) {
         FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-            anim_data, path, i, &action, &driven);
+            anim_data, path, i, nullptr, nullptr);
         if (fcurve != nullptr) {
           fcurves.append(fcurve);
         }
@@ -4482,7 +4490,7 @@ static int prop_view_exec(bContext *C, wmOperator *op)
     }
     else {
       FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, path, index, &action, &driven);
+          anim_data, path, index, nullptr, nullptr);
       if (fcurve != nullptr) {
         fcurves.append(fcurve);
       }
