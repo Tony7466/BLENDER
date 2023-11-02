@@ -129,13 +129,19 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
   data_evaluator.evaluate();
   const VArray<int> curve_group_ids = data_evaluator.get_evaluated<int>(0);
 
+  Vector<meshintersect::CDT_result<double>> cdt_results;
+
+  if (curve_group_ids.is_single()) {
+    cdt_results.append(do_cdt(curves, output_type));
+    return cdt_results;
+  }
+
   MultiValueMap<int, int64_t> curve_indices_by_group_id;
   for (const int64_t curve_i : curve_group_ids.index_range()) {
     const int group = curve_group_ids[curve_i];
     curve_indices_by_group_id.add(group, curve_i);
   }
 
-  Vector<meshintersect::CDT_result<double>> cdt_results;
   cdt_results.reserve(curve_indices_by_group_id.size());
   for (const Vector<int64_t> &curve_indices : curve_indices_by_group_id.values()) {
     IndexMaskMemory memory;
