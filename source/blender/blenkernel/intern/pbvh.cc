@@ -1971,11 +1971,6 @@ blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node)
   return node->vert_indices.as_span().take_front(node->uniq_verts);
 }
 
-blender::Span<int> BKE_pbvh_node_get_prim_indices(const PBVHNode *node)
-{
-  return node->prim_indices;
-}
-
 blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node)
 {
   Vector<int> faces;
