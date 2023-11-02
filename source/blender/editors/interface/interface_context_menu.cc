@@ -655,7 +655,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       }
     }
 
-    if (is_anim || but->flag & UI_BUT_ANIMATED_KEY) {
+    if (but->flag & UI_BUT_ANIMATED) {
       uiItemS(layout);
       if (is_array_component) {
         uiItemBooleanO(layout,
