@@ -835,7 +835,8 @@ enum ShaderDataFlag {
   SD_PORTAL = (1 << 12),
 
   SD_CLOSURE_FLAGS = (SD_EMISSION | SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSSRDF | SD_HOLDOUT |
-                      SD_EXTINCTION | SD_SCATTER | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION | SD_PORTAL),
+                      SD_EXTINCTION | SD_SCATTER | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION |
+                      SD_PORTAL),
 
   /* Shader flags. */
 
