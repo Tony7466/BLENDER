@@ -238,8 +238,7 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>)
-    {
+                  std::is_same_v<T, float3>) {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -990,53 +989,51 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
   const CapsMode mode = CapsMode(RNA_enum_get(op->ptr, "type"));
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        IndexMaskMemory memory;
-        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-        if (selected_curves.is_empty()) {
-          return;
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    IndexMaskMemory memory;
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+    if (selected_curves.is_empty()) {
+      return;
+    }
+
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+        "start_cap", ATTR_DOMAIN_CURVE);
+    bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+        "end_cap", ATTR_DOMAIN_CURVE);
+
+    if (mode == CapsMode::ROUND) {
+      index_mask::masked_fill(start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
+      index_mask::masked_fill(end_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
+    }
+    else {
+      selected_curves.foreach_index([&](const int curve_index) {
+        if (mode == CapsMode::BOTH || mode == CapsMode::START) {
+          if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+            start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+          }
+          else {
+            start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+          }
         }
-
-        bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-        bke::SpanAttributeWriter<int8_t> start_caps =
-            attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
-        bke::SpanAttributeWriter<int8_t> end_caps =
-            attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
-
-        if (mode == CapsMode::ROUND) {
-          index_mask::masked_fill(
-              start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
-          index_mask::masked_fill(
-              end_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
+        if (mode == CapsMode::BOTH || mode == CapsMode::END) {
+          if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
+            end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
+          }
+          else {
+            end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
+          }
         }
-        else {
-          selected_curves.foreach_index([&](const int curve_index) {
-            if (mode == CapsMode::BOTH || mode == CapsMode::START) {
-              if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-                start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-              }
-              else {
-                start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-              }
-            }
-            if (mode == CapsMode::BOTH || mode == CapsMode::END) {
-              if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-                end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-              }
-              else {
-                end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-              }
-            }
-          });
-        }
-
-        start_caps.finish();
-        end_caps.finish();
-
-        changed = true;
       });
+    }
+
+    start_caps.finish();
+    end_caps.finish();
+
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
