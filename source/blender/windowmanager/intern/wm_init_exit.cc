@@ -120,7 +120,7 @@
 #include "GPU_init_exit.h"
 #include "GPU_material.h"
 
-#include "COM_compositor.h"
+#include "COM_compositor.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -136,19 +136,6 @@ CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_PUB, "wm.msgbus.pub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_SUB, "wm.msgbus.sub");
 
 static void wm_init_scripts_extensions_once(bContext *C);
-
-static void wm_init_reports(bContext *C)
-{
-  ReportList *reports = CTX_wm_reports(C);
-
-  BLI_assert(!reports || BLI_listbase_is_empty(&reports->list));
-
-  BKE_reports_init(reports, RPT_STORE);
-}
-static void wm_free_reports(wmWindowManager *wm)
-{
-  BKE_reports_clear(&wm->reports);
-}
 
 static bool wm_start_with_console = false;
 
@@ -265,10 +252,6 @@ void WM_init(bContext *C, int argc, const char **argv)
   BKE_icons_init(BIFICONID_LAST_STATIC);
   BKE_preview_images_init();
 
-  /* Reports can't be initialized before the window-manager,
-   * but keep before file reading, since that may report errors */
-  wm_init_reports(C);
-
   WM_msgbus_types_init();
 
   /* Studio-lights needs to be init before we read the home-file,
@@ -326,8 +309,7 @@ void WM_init(bContext *C, int argc, const char **argv)
     WM_init_gpu();
 
     if (!WM_platform_support_perform_checks()) {
-      /* No attempt to avoid memory leaks here. */
-      exit(-1);
+      WM_exit(C, -1);
     }
 
     GPU_context_begin_frame(GPU_context_active_get());
@@ -364,14 +346,22 @@ void WM_init(bContext *C, int argc, const char **argv)
     blender::ui::string_search::read_recent_searches_file();
   }
 
-  STRNCPY(G.lib, BKE_main_blendfile_path_from_global());
+  STRNCPY(G.filepath_last_library, BKE_main_blendfile_path_from_global());
 
   CTX_py_init_set(C, true);
+
+  /* Postpone updating the key-configuration until after add-ons have been registered,
+   * needed to properly load user-configured add-on key-maps, see: #113603. */
+  WM_keyconfig_update_postpone_begin();
+
   WM_keyconfig_init(C);
 
   /* Load add-ons after key-maps have been initialized (but before the blend file has been read),
    * important to guarantee default key-maps have been declared & before post-read handlers run. */
   wm_init_scripts_extensions_once(C);
+
+  WM_keyconfig_update_postpone_end();
+  WM_keyconfig_update(static_cast<wmWindowManager *>(G_MAIN->wm.first));
 
   wm_homefile_read_post(C, params_file_read_post);
 }
@@ -434,8 +424,12 @@ void WM_init_splash(bContext *C)
 /** Load add-ons & app-templates once on startup. */
 static void wm_init_scripts_extensions_once(bContext *C)
 {
+#ifdef WITH_PYTHON
   const char *imports[] = {"bpy", nullptr};
   BPY_run_string_eval(C, imports, "bpy.utils.load_scripts_extensions()");
+#else
+  UNUSED_VARS(C);
+#endif
 }
 
 /* free strings of open recent files */
@@ -575,8 +569,11 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
    * passes in `CTX_data_main(C)` to un-registration functions.
    * Further: `addon_utils.disable_all()` may call into functions that expect a valid context,
    * supporting all these code-paths with a null context is quite involved for such a corner-case.
+   *
+   * Check `CTX_py_init_get(C)` in case this function runs before Python has been initialized.
+   * Which can happen when the GPU backend fails to initialize.
    */
-  if (C) {
+  if (C && CTX_py_init_get(C)) {
     const char *imports[2] = {"addon_utils", nullptr};
     BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
   }
@@ -613,17 +610,13 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   ED_preview_restart_queue_free();
   ED_assetlist_storage_exit();
 
-  if (wm) {
-    /* Before BKE_blender_free! - since the ListBases get freed there. */
-    wm_free_reports(wm);
-  }
-
   SEQ_clipboard_free(); /* `sequencer.cc` */
   BKE_tracking_clipboard_free();
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();
   ED_node_clipboard_free();
   UV_clipboard_free();
+  wm_clipboard_free();
 
 #ifdef WITH_COMPOSITOR_CPU
   COM_deinitialize();
