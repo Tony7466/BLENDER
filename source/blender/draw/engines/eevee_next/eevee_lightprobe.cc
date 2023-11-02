@@ -50,7 +50,7 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
     grid.intensity = lightprobe->intensity;
 
     grid.viewport_display = lightprobe->flag & LIGHTPROBE_FLAG_SHOW_DATA;
-    grid.viewport_display_size = lightprobe->show_data_size;
+    grid.viewport_display_size = lightprobe->data_display_size;
 
     /* Force reupload. */
     inst_.irradiance_cache.bricks_free(grid.bricks);

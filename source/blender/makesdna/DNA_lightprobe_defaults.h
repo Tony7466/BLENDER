@@ -42,7 +42,7 @@
     .intensity = 1.0f, \
     .flag = LIGHTPROBE_FLAG_SHOW_INFLUENCE, \
     .grid_flag = LIGHTPROBE_GRID_CAPTURE_INDIRECT | LIGHTPROBE_GRID_CAPTURE_EMISSION, \
-    .show_data_size = 0.1f, \
+    .data_display_size = 0.1f, \
   }
 
 /** \} */

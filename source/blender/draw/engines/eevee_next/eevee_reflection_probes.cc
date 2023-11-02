@@ -319,7 +319,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.parallax_distance = parallax_distance / influence_distance;
 
   probe.viewport_display = light_probe.flag & LIGHTPROBE_FLAG_SHOW_DATA;
-  probe.viewport_display_size = light_probe.show_data_size;
+  probe.viewport_display_size = light_probe.data_display_size;
 }
 
 ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(

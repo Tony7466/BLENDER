@@ -113,8 +113,8 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.separator()
             
             row = col.row(align=True)
-            row.prop(probe, "show_data_size", text="Display Data")
-            row.prop(probe, "show_data", text="", toggle=True)
+            row.prop(probe, "data_display_size", text="Display Data")
+            row.prop(probe, "use_data_display", text="", toggle=True)
             
             col.separator()
 
@@ -167,14 +167,14 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub.prop(probe, "clip_end", text="End")
 
             row = col.row(align=True)
-            row.prop(probe, "show_data_size", text="Display Data")
-            row.prop(probe, "show_data", text="", toggle=True)
+            row.prop(probe, "data_display_size", text="Display Data")
+            row.prop(probe, "use_data_display", text="", toggle=True)
 
         elif probe.type == 'PLANE':
             col = layout.column()
             col.prop(probe, "clip_start", text="Clipping Offset")
             col.prop(probe, "influence_distance", text="Distance")
-            col.prop(probe, "show_data", toggle=True)
+            col.prop(probe, "use_data_display", toggle=True)
             pass
         else:
             # Currently unsupported

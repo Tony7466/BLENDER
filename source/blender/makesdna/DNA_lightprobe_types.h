@@ -79,7 +79,7 @@ typedef struct LightProbe {
   struct Collection *visibility_grp;
 
   /** LIGHTPROBE_FLAG_SHOW_DATA display size. */
-  float show_data_size;
+  float data_display_size;
   char _pad1[4];
 } LightProbe;
 
