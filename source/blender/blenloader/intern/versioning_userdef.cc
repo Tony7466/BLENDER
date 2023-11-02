@@ -133,7 +133,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     memcpy(btheme, &U_theme_default, sizeof(*btheme));
   }
 
-  if (!USER_VERSION_ATLEAST(400, 27)) {
+  if (!USER_VERSION_ATLEAST(401, 4)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.edge_select);
     FROM_DEFAULT_V4_UCHAR(space_view3d.edge_mode_select);
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_select); 
