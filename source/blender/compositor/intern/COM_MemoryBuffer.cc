@@ -375,11 +375,11 @@ void MemoryBuffer::copy_from(const ImBuf *src,
               to_x,
               to_y,
               to_channel_offset);
-    if (ensure_premultiplied) {
-      premultiply_alpha(this, area);
-    }
     if (ensure_linear_space) {
       colorspace_to_scene_linear(this, area, src->byte_buffer.colorspace);
+    }
+    if (ensure_premultiplied) {
+      premultiply_alpha(this, area);
     }
   }
   else {

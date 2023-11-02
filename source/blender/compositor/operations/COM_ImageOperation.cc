@@ -126,12 +126,12 @@ static void sample_image_at_location(ImBuf *ibuf,
         break;
     }
     rgba_uchar_to_float(color, byte_color);
-    if (ensure_premultiplied) {
-      straight_to_premul_v4(color);
-    }
     if (make_linear_rgb) {
       IMB_colormanagement_colorspace_to_scene_linear_v4(
           color, false, ibuf->byte_buffer.colorspace);
+    }
+    if (ensure_premultiplied) {
+      straight_to_premul_v4(color);
     }
   }
 }
