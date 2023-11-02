@@ -1,6 +1,9 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Virtual shadowmapping: Usage tagging
+ * Virtual shadow-mapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
  * This contains the common logic used for tagging shadows for opaque and transparent receivers.
@@ -24,7 +27,7 @@ void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_
   atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
 }
 
-void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radius)
+void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level)
 {
   LightData light = light_buf[l_idx];
 
@@ -34,8 +37,26 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
   vec3 lP = shadow_world_to_local(light, P);
 
-  if (radius == 0) {
-    ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
+  level = clamp(level, light.clipmap_lod_min, light.clipmap_lod_max);
+
+  ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
+  shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
+}
+
+void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radius, int lod_bias)
+{
+  LightData light = light_buf[l_idx];
+
+  if (light.tilemap_index == LIGHT_NO_SHADOW) {
+    return;
+  }
+
+  vec3 lP = shadow_world_to_local(light, P);
+
+  /* TODO(Miguel Pozo): Implement lod_bias support. */
+  if (radius == 0.0) {
+    int level = shadow_directional_level(light, lP - light._position);
+    ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
     shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
   }
   else {
@@ -46,9 +67,9 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
     for (int level = min_level; level <= max_level; level++) {
       ShadowCoordinates coord_min = shadow_directional_coordinates_at_level(
-          light, lP - vec3(radius, radius, 0), level);
+          light, lP - vec3(radius, radius, 0.0), level);
       ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
-          light, lP + vec3(radius, radius, 0), level);
+          light, lP + vec3(radius, radius, 0.0), level);
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
@@ -59,7 +80,8 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
   }
 }
 
-void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to_cam, float radius)
+void shadow_tag_usage_tilemap_punctual(
+    uint l_idx, vec3 P, float dist_to_cam, float radius, int lod_bias)
 {
   LightData light = light_buf[l_idx];
 
@@ -107,6 +129,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
     ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
 
     int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[coord.tilemap_index].lod_bias));
+    lod += lod_bias;
     lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
 
     shadow_tag_usage_tile(light, coord.tile_coord, lod, coord.tilemap_index);
@@ -129,6 +152,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
 
       int tilemap_index = light.tilemap_index + face_id;
       int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[tilemap_index].lod_bias));
+      lod += lod_bias;
       lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
 
       vec3 _lP = shadow_punctual_local_position_to_face_local(face_id, lP);
@@ -148,18 +172,19 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
 
 /**
  * \a radius Radius of the tagging area in world space.
- * Used for downsampled/ray-marched tagging, so all the shadowmap texels covered get correctly
+ * Used for downsampled/ray-marched tagging, so all the shadow-map texels covered get correctly
  * tagged.
  */
-void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel)
+void shadow_tag_usage(
+    vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel, int lod_bias)
 {
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    shadow_tag_usage_tilemap_directional(l_idx, P, V, radius);
+    shadow_tag_usage_tilemap_directional(l_idx, P, V, radius, lod_bias);
   }
   LIGHT_FOREACH_END
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
-    shadow_tag_usage_tilemap_punctual(l_idx, P, V, dist_to_cam, radius);
+    shadow_tag_usage_tilemap_punctual(l_idx, P, dist_to_cam, radius, lod_bias);
   }
   LIGHT_FOREACH_END
 }
@@ -168,5 +193,23 @@ void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
 {
   float dist_to_cam = length(vP);
 
-  shadow_tag_usage(vP, P, vec3(0), 0, dist_to_cam, pixel);
+  shadow_tag_usage(vP, P, vec3(0), 0, dist_to_cam, pixel, 0);
+}
+
+void shadow_tag_usage_surfel(Surfel surfel, int directional_lvl)
+{
+  vec3 P = surfel.position;
+
+  LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
+    shadow_tag_usage_tilemap_directional_at_level(l_idx, P, directional_lvl);
+  }
+  LIGHT_FOREACH_END
+
+  LIGHT_FOREACH_BEGIN_LOCAL_NO_CULL(light_cull_buf, l_idx)
+  {
+    /* Set distance to camera to 1 to avoid changing footprint_ratio. */
+    float dist_to_cam = 1.0;
+    shadow_tag_usage_tilemap_punctual(l_idx, P, dist_to_cam, 0, 0);
+  }
+  LIGHT_FOREACH_END
 }

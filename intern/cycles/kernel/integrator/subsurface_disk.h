@@ -37,7 +37,7 @@ ccl_device_inline bool subsurface_disk(KernelGlobals kg,
 #ifdef __SPECTRAL_RENDERING__
   const Spectrum wavelengths = INTEGRATOR_STATE(state, ray, wavelengths);
 #endif
-  const float3 Ng = INTEGRATOR_STATE(state, subsurface, Ng);
+  const float3 Ng = INTEGRATOR_STATE(state, subsurface, N);
   const int object = INTEGRATOR_STATE(state, isect, object);
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
 

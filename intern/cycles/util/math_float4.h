@@ -600,6 +600,11 @@ ccl_device_inline float4 power(float4 v, float e)
   return make_float4(powf(v.x, e), powf(v.y, e), powf(v.z, e), powf(v.w, e));
 }
 
+ccl_device_inline float4 interp(float4 a, float4 b, float t)
+{
+  return a + t * (b - a);
+}
+
 CCL_NAMESPACE_END
 
 #endif /* __UTIL_MATH_FLOAT4_H__ */

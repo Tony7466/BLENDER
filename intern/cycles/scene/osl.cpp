@@ -166,8 +166,9 @@ void OSLShaderManager::device_update_specific(Device *device,
   for (const auto &[device_type, ss] : ss_shared) {
     OSLRenderServices *services = static_cast<OSLRenderServices *>(ss->renderer());
 
-    services->textures.insert(ustring("@ao"), new OSLTextureHandle(OSLTextureHandle::AO));
-    services->textures.insert(ustring("@bevel"), new OSLTextureHandle(OSLTextureHandle::BEVEL));
+    services->textures.insert(OSLUStringHash("@ao"), new OSLTextureHandle(OSLTextureHandle::AO));
+    services->textures.insert(OSLUStringHash("@bevel"),
+                              new OSLTextureHandle(OSLTextureHandle::BEVEL));
   }
 
   device_update_common(device, dscene, scene, progress);
@@ -703,7 +704,7 @@ OSLCompiler::OSLCompiler(OSLShaderManager *manager, OSL::ShadingSystem *ss, Scen
 string OSLCompiler::id(ShaderNode *node)
 {
   /* assign layer unique name based on pointer address + bump mode */
-  stringstream stream;
+  std::stringstream stream;
 
   /* Ensure that no grouping characters (e.g. commas with en_US locale)
    * are added to the pointer string. */
@@ -895,10 +896,6 @@ void OSLCompiler::add(ShaderNode *node, const char *name, bool isfilepath)
       current_shader->has_volume_spatial_varying = true;
     if (node->has_attribute_dependency())
       current_shader->has_volume_attribute_dependency = true;
-  }
-
-  if (node->has_integrator_dependency()) {
-    current_shader->has_integrator_dependency = true;
   }
 }
 
@@ -1210,7 +1207,7 @@ OSL::ShaderGroupRef OSLCompiler::compile_type(Shader *shader, ShaderGraph *graph
   current_type = type;
 
   /* Use name hash to identify shader group to avoid issues with non-alphanumeric characters */
-  stringstream name;
+  std::stringstream name;
   name.imbue(std::locale("C"));
   name << "shader_" << shader->name.hash();
 
@@ -1261,10 +1258,7 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
                     output->input("Surface")->link && output->input("Displacement")->link;
 
     /* finalize */
-    shader->graph->finalize(scene,
-                            has_bump,
-                            shader->has_integrator_dependency,
-                            shader->get_displacement_method() == DISPLACE_BOTH);
+    shader->graph->finalize(scene, has_bump, shader->get_displacement_method() == DISPLACE_BOTH);
 
     current_shader = shader;
 
@@ -1279,7 +1273,6 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
     shader->has_surface_spatial_varying = false;
     shader->has_volume_spatial_varying = false;
     shader->has_volume_attribute_dependency = false;
-    shader->has_integrator_dependency = false;
 
     /* generate surface shader */
     if (shader->reference_count() && graph && output->input("Surface")->link) {
@@ -1330,7 +1323,7 @@ void OSLCompiler::parameter_texture(const char *name, ustring filename, ustring 
    * case we need to do runtime color space conversion. */
   OSLTextureHandle *handle = new OSLTextureHandle(OSLTextureHandle::OIIO);
   handle->processor = ColorSpaceManager::get_processor(colorspace);
-  services->textures.insert(filename, handle);
+  services->textures.insert(OSLUStringHash(filename), handle);
   parameter(name, filename);
 }
 
@@ -1341,7 +1334,7 @@ void OSLCompiler::parameter_texture(const char *name, const ImageHandle &handle)
    * to get handle again. Note that this name must be unique between multiple
    * render sessions as the render services are shared. */
   ustring filename(string_printf("@svm%d", texture_shared_unique_id++).c_str());
-  services->textures.insert(filename,
+  services->textures.insert(OSLUStringHash(filename),
                             new OSLTextureHandle(OSLTextureHandle::SVM, handle.get_svm_slots()));
   parameter(name, filename);
 }
@@ -1350,7 +1343,8 @@ void OSLCompiler::parameter_texture_ies(const char *name, int svm_slot)
 {
   /* IES light textures stored in SVM. */
   ustring filename(string_printf("@svm%d", texture_shared_unique_id++).c_str());
-  services->textures.insert(filename, new OSLTextureHandle(OSLTextureHandle::IES, svm_slot));
+  services->textures.insert(OSLUStringHash(filename),
+                            new OSLTextureHandle(OSLTextureHandle::IES, svm_slot));
   parameter(name, filename);
 }
 

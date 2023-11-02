@@ -338,8 +338,8 @@ ccl_device_inline float dot(const vfloat8 a, const vfloat8 b)
          (a.g * b.g) + (a.h * b.h);
 #endif
 }
-
-ccl_device_inline vfloat8 pow(vfloat8 v, float e)
+/* Consistent name for this would be pow, but HIP compiler crashes in name mangling. */
+ccl_device_inline vfloat8 power(vfloat8 v, float e)
 {
   return make_vfloat8(powf(v.a, e),
                       powf(v.b, e),
@@ -401,6 +401,11 @@ ccl_device_inline bool isfinite_safe(vfloat8 v)
 {
   return isfinite_safe(v.a) && isfinite_safe(v.b) && isfinite_safe(v.c) && isfinite_safe(v.d) &&
          isfinite_safe(v.e) && isfinite_safe(v.f) && isfinite_safe(v.g) && isfinite_safe(v.h);
+}
+
+ccl_device_inline vfloat8 interp(vfloat8 a, vfloat8 b, float t)
+{
+  return a + t * (b - a);
 }
 
 ccl_device_inline vint8 cast(const vfloat8 a)

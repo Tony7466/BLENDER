@@ -111,9 +111,9 @@ ccl_device float3 wavelength_to_xyz(KernelGlobals kg, float wavelength)
 {
   int table_offset = kernel_data.cam.camera_response_function_offset;
 
-  float position = lerp(0.0f,
-                        WAVELENGTH_CDF_TABLE_SIZE - 1.0f,
-                        inverse_lerp(MIN_WAVELENGTH, MAX_WAVELENGTH, wavelength));
+  float position = mix(0.0f,
+                       WAVELENGTH_CDF_TABLE_SIZE - 1.0f,
+                       inverse_lerp(MIN_WAVELENGTH, MAX_WAVELENGTH, wavelength));
 
   int lower_bound = floor_to_int(position);
   int upper_bound = min(lower_bound + 1, WAVELENGTH_CDF_TABLE_SIZE - 1);
@@ -128,7 +128,7 @@ ccl_device float3 wavelength_to_xyz(KernelGlobals kg, float wavelength)
       kernel_data_fetch(lookup_table, table_offset + 3 * upper_bound + 1),
       kernel_data_fetch(lookup_table, table_offset + 3 * upper_bound + 2));
 
-  return lerp(lower_value, upper_value, progress);
+  return mix(lower_value, upper_value, progress);
 }
 
 template<typename ConstIntegratorGenericState>
