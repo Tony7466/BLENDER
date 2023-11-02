@@ -349,14 +349,12 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
     }
   }
   if (data->modified_face_set_faces) {
-    BKE_pbvh_node_mark_update_face_sets(node);
-    // const Vector<int> faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
-    // for (const int face : faces) {
-    //   if (data->modified_face_set_faces[face]) {
-    //     BKE_pbvh_node_mark_update_face_sets(node);
-    //     break;
-    //   }
-    // }
+    for (const int face : BKE_pbvh_node_calc_face_indices(*data->pbvh, *node)) {
+      if (data->modified_face_set_faces[face]) {
+        BKE_pbvh_node_mark_update_face_sets(node);
+        break;
+      }
+    }
   }
 }
 
@@ -630,13 +628,13 @@ static bool sculpt_undo_restore_face_sets(bContext *C,
 
   for (const int i : face_indices.index_range()) {
     int face_index = face_indices[i];
+    if (unode->face_sets[i] != ss->face_sets[face_index]) {
+      modified_face_set_faces[face_index] = true;
+      modified = true;
+    }
 
     SWAP(int, unode->face_sets[i], ss->face_sets[face_index]);
-
-    modified_face_set_faces[face_index] = unode->face_sets[i] != ss->face_sets[face_index];
-    modified |= modified_face_set_faces[face_index];
   }
-
   return modified;
 }
 
