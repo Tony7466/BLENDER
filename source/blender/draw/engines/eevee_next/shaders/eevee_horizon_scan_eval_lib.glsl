@@ -8,6 +8,9 @@
  * This mostly follows the paper:
  * "Screen Space Indirect Lighting with Visibility Bitmask"
  * by Olivier Therrien, Yannick Levesque, Guillaume Gilet
+ *
+ * Expects `screen_radiance_tx` and `screen_normal_tx` to be bound if `HORIZON_OCCLUSION` is not
+ * defined.
  */
 
 #pragma BLENDER_REQUIRE(common_shape_lib.glsl)
@@ -32,7 +35,10 @@
 vec3 horizon_scan_sample_radiance(vec2 uv)
 {
 #ifndef HORIZON_OCCLUSION
-  return texture(screen_radiance_tx, uv).rgb;
+  vec3 radiance = texture(screen_radiance_tx, uv).rgb;
+  float luma = max(1e-8, reduce_max(radiance));
+  radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
+  return radiance;
 #else
   return vec3(0.0);
 #endif
@@ -310,7 +316,7 @@ void horizon_scan_eval(vec3 vP,
         /* Always cross at least one pixel. */
         float time = 1.0 + square((float(j) + noise.y) / float(sample_count)) * ssray.max_time;
 
-        float lod = float(j >> 2) / (1.0 + uniform_buf.ao.quality);
+        float lod = 1.0 + (float(j >> 2) / (1.0 + uniform_buf.ao.quality));
 
         vec2 sample_uv = ssray.origin.xy + ssray.direction.xy * time;
         float sample_depth =
