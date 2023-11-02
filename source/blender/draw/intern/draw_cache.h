@@ -280,15 +280,15 @@ void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
 
 /* Grease Pencil */
 
-struct GPUBatch *DRW_cache_grease_pencil_get(struct Object *ob, const struct Scene *scene);
-struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(struct Object *ob,
-                                                         const struct Scene *scene);
-struct GPUBatch *DRW_cache_grease_pencil_edit_lines_get(struct Object *ob,
-                                                        const struct Scene *scene);
-struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(struct Object *ob,
-                                                               const struct Scene *scene);
-struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(struct Object *ob,
-                                                            const struct Scene *scene);
+struct GPUBatch *DRW_cache_grease_pencil_get(const struct Scene *scene, struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(const struct Scene *scene,
+                                                         struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_lines_get(const struct Scene *scene,
+                                                        struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(const struct Scene *scene,
+                                                               struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(const struct Scene *scene,
+                                                            struct Object *ob);
 
 #ifdef __cplusplus
 }

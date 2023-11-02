@@ -887,7 +887,7 @@ static void rna_active_grease_pencil_update(bContext *C, PointerRNA * /*ptr*/)
     return;
   }
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(active_object->data);
-  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_SHADING);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
 #  endif

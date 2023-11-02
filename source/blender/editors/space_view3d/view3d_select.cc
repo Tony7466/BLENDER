@@ -2800,8 +2800,7 @@ static bool ed_object_select_pick(bContext *C,
           WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, basact->object);
 
           /* In weight-paint, we use selected bone to select vertex-group.
-           * In this case the active object mustn't change as it would leave weight-paint mode.
-           */
+           * In this case the active object mustn't change as it would leave weight-paint mode. */
           if (oldbasact) {
             if (oldbasact->object->mode & OB_MODE_ALL_WEIGHT_PAINT) {
               /* Prevent activating.

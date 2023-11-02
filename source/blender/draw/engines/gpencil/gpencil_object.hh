@@ -157,9 +157,9 @@ class ObjectModule {
     object_subpass.state_set(state);
     object_subpass.shader_set(shaders_.static_shader_get(GREASE_PENCIL));
 
-    GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(object, scene_);
-    GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, scene_);
-    GPUBatch *geom = DRW_cache_grease_pencil_get(object, scene_);
+    GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(scene_, object);
+    GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(scene_, object);
+    GPUBatch *geom = DRW_cache_grease_pencil_get(scene_, object);
 
     /* TODO(fclem): Pass per frame object matrix here. */
     ResourceHandle handle = manager.resource_handle(object_ref);

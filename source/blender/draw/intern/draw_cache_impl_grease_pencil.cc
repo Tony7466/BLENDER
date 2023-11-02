@@ -547,7 +547,7 @@ void DRW_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
   grease_pencil->runtime->batch_cache = nullptr;
 }
 
-GPUBatch *DRW_cache_grease_pencil_get(Object *ob, const Scene *scene)
+GPUBatch *DRW_cache_grease_pencil_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
@@ -557,7 +557,7 @@ GPUBatch *DRW_cache_grease_pencil_get(Object *ob, const Scene *scene)
   return cache->geom_batch;
 }
 
-GPUBatch *DRW_cache_grease_pencil_edit_points_get(Object *ob, const Scene *scene)
+GPUBatch *DRW_cache_grease_pencil_edit_points_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
@@ -567,7 +567,7 @@ GPUBatch *DRW_cache_grease_pencil_edit_points_get(Object *ob, const Scene *scene
   return cache->edit_points;
 }
 
-GPUBatch *DRW_cache_grease_pencil_edit_lines_get(Object *ob, const Scene *scene)
+GPUBatch *DRW_cache_grease_pencil_edit_lines_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
@@ -577,7 +577,7 @@ GPUBatch *DRW_cache_grease_pencil_edit_lines_get(Object *ob, const Scene *scene)
   return cache->edit_lines;
 }
 
-GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(Object *ob, const Scene *scene)
+GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
@@ -587,7 +587,7 @@ GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(Object *ob, const Scene 
   return cache->vbo;
 }
 
-GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(Object *ob, const Scene *scene)
+GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);

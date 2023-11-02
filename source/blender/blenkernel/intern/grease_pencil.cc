@@ -1827,7 +1827,7 @@ std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() c
 {
   using namespace blender;
   std::optional<Bounds<float3>> bounds;
-  Span<const bke::greasepencil::Layer *> layers = this->layers();
+  const Span<const bke::greasepencil::Layer *> layers = this->layers();
   for (const int layer_i : layers.index_range()) {
     const bke::greasepencil::Layer *layer = layers[layer_i];
     if (!layer->is_visible()) {
