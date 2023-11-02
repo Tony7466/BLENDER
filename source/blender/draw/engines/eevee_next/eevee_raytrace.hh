@@ -117,6 +117,7 @@ class RayTraceModule {
   draw::PassSimple denoise_bilateral_diffuse_ps_ = {"DenoiseBilateral.Diffuse"};
   draw::PassSimple denoise_bilateral_reflect_ps_ = {"DenoiseBilateral.Reflection"};
   draw::PassSimple denoise_bilateral_refract_ps_ = {"DenoiseBilateral.Refraction"};
+  draw::PassSimple horizon_setup_ps_ = {"HorizonScan.Setup"};
   draw::PassSimple horizon_scan_diffuse_ps_ = {"HorizonScan.Diffuse"};
   draw::PassSimple horizon_scan_reflect_ps_ = {"HorizonScan.Reflection"};
   draw::PassSimple horizon_scan_refract_ps_ = {"HorizonScan.Refraction"};
@@ -126,6 +127,8 @@ class RayTraceModule {
   int3 tile_classify_dispatch_size_ = int3(1);
   /** Dispatch with enough tiles for the tile mask. */
   int3 tile_compact_dispatch_size_ = int3(1);
+  /** Dispatch with enough tiles for the tracing resolution. */
+  int3 tracing_dispatch_size_ = int3(1);
   /** 2D tile mask to check which unused adjacent tile we need to clear. */
   TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
   /** Indirect dispatch rays. Avoid dispatching work-groups that will not trace anything.*/
@@ -153,6 +156,10 @@ class RayTraceModule {
   TextureFromPool horizon_occlusion_tx_ = {"horizon_occlusion_tx_"};
   /** Texture containing the horizon local radiance. */
   TextureFromPool horizon_radiance_tx_ = {"horizon_radiance_tx_"};
+  /** Texture containing the input screen radiance but re-projected. */
+  TextureFromPool downsampled_in_radiance_tx_ = {"downsampled_in_radiance_tx_"};
+  /** Texture containing the view space normal. The BSDF normal is arbitrarily chosen. */
+  TextureFromPool downsampled_in_normal_tx_ = {"downsampled_in_normal_tx_"};
   /** Textures containing the ray hit radiance denoised (full-res). One of them is result_tx. */
   GPUTexture *denoised_spatial_tx_ = nullptr;
   GPUTexture *denoised_temporal_tx_ = nullptr;

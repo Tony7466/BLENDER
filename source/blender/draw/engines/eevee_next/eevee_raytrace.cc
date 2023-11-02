@@ -206,6 +206,20 @@ void RayTraceModule::sync()
     pass.dispatch(ray_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
+  {
+    PassSimple &pass = horizon_setup_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(HORIZON_SETUP));
+    inst_.bind_uniform_data(&pass);
+    pass.bind_texture("depth_tx", &depth_tx);
+    pass.bind_texture("in_radiance_tx", &screen_radiance_tx_, GPUSamplerState::default_sampler());
+    pass.bind_image("out_radiance_img", &downsampled_in_radiance_tx_);
+    pass.bind_image("out_normal_img", &downsampled_in_normal_tx_);
+    inst_.bind_uniform_data(&pass);
+    inst_.gbuffer.bind_resources(pass);
+    pass.dispatch(&tracing_dispatch_size_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  }
   for (auto type : IndexRange(3)) {
     PassSimple &pass = PASS_VARIATION(horizon_scan_, type, _ps_);
     pass.init();
@@ -213,7 +227,8 @@ void RayTraceModule::sync()
     pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
     pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_tiles_buf_);
-    pass.bind_texture("screen_radiance_tx", &screen_radiance_tx_);
+    pass.bind_texture("screen_radiance_tx", &downsampled_in_radiance_tx_);
+    pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     inst_.bind_uniform_data(&pass);
     inst_.hiz_buffer.bind_resources(pass);
@@ -321,6 +336,8 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   const int2 extent = inst_.film.render_extent_get();
   const int2 tracing_res = math::divide_ceil(extent, int2(resolution_scale));
   const int2 dummy_extent(1, 1);
+
+  tracing_dispatch_size_ = int3(math::divide_ceil(tracing_res, int2(RAYTRACE_GROUP_SIZE)), 1);
 
   tile_classify_dispatch_size_ = int3(math::divide_ceil(extent, int2(RAYTRACE_GROUP_SIZE)), 1);
   const int denoise_tile_count = tile_classify_dispatch_size_.x * tile_classify_dispatch_size_.y;
@@ -462,10 +479,18 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
+    downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
+    downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8);
+
+    inst_.manager->submit(horizon_setup_ps_, render_view);
+
     horizon_occlusion_tx_.acquire(tracing_res, GPU_R8);
     horizon_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
 
     inst_.manager->submit(*horizon_scan_ps, render_view);
+
+    downsampled_in_radiance_tx_.release();
+    downsampled_in_normal_tx_.release();
 
     horizon_scan_output_tx_ = result.get();
 

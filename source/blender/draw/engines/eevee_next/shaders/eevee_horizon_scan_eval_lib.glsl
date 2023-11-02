@@ -41,9 +41,7 @@ vec3 horizon_scan_sample_radiance(vec2 uv)
 vec3 horizon_scan_sample_normal(vec2 uv)
 {
 #ifndef HORIZON_OCCLUSION
-  ivec2 texel = ivec2(uv * uniform_buf.raytrace.full_resolution);
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
-  return drw_normal_world_to_view(gbuf.diffuse.N);
+  return texture(screen_normal_tx, uv).rgb * 2.0 - 1.0;
 #else
   return vec3(0.0);
 #endif

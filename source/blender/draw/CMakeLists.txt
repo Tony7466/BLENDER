@@ -509,6 +509,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_horizon_scan_comp.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_lib.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_test.glsl
+  engines/eevee_next/shaders/eevee_horizon_setup_comp.glsl
   engines/eevee_next/shaders/eevee_light_culling_debug_frag.glsl
   engines/eevee_next/shaders/eevee_light_culling_select_comp.glsl
   engines/eevee_next/shaders/eevee_light_culling_sort_comp.glsl
