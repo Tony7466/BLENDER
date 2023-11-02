@@ -29,7 +29,7 @@
 #include "BKE_armature.h"
 #include "BKE_deform.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -1227,7 +1227,7 @@ static void get_pchan_color_constraint(const ThemeWireColor *bcolor,
   else if (constflag & PCHAN_HAS_CONST) {
     constraint_color = G_draw.block.color_bone_pose_constraint;
   }
-  interp_v3_v3v3(r_color, solid_color, constraint_color, 0.5f);
+  interp_v4_v4v4(r_color, solid_color, constraint_color, 0.5f);
 }
 
 /** \} */

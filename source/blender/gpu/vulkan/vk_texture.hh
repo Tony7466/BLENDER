@@ -56,6 +56,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;
+  void copy_to(VKTexture &dst_texture, VkImageAspectFlagBits vk_image_aspect);
   void clear(eGPUDataFormat format, const void *data) override;
   void clear_depth_stencil(const eGPUFrameBufferBits buffer,
                            float clear_depth,
@@ -85,8 +86,6 @@ class VKTexture : public Texture, public VKBindableResource {
     return vk_image_;
   }
 
-  void ensure_allocated();
-
  protected:
   bool init_internal() override;
   bool init_internal(GPUVertBuf *vbo) override;
@@ -95,9 +94,6 @@ class VKTexture : public Texture, public VKBindableResource {
  private:
   /** Is this texture a view of another texture. */
   bool is_texture_view() const;
-
-  /** Is this texture already allocated on device. */
-  bool is_allocated() const;
 
   /**
    * Allocate the texture of the device. Result is `true` when texture is successfully allocated
@@ -144,7 +140,10 @@ class VKTexture : public Texture, public VKBindableResource {
    *
    * When texture is already in the requested layout, nothing will be done.
    */
-  void layout_ensure(VKContext &context, VkImageLayout requested_layout);
+  void layout_ensure(VKContext &context,
+                     VkImageLayout requested_layout,
+                     VkAccessFlagBits src_access = VK_ACCESS_MEMORY_WRITE_BIT,
+                     VkAccessFlagBits dst_access = VK_ACCESS_MEMORY_READ_BIT);
 
  private:
   /**
@@ -155,7 +154,9 @@ class VKTexture : public Texture, public VKBindableResource {
   void layout_ensure(VKContext &context,
                      IndexRange mipmap_range,
                      VkImageLayout current_layout,
-                     VkImageLayout requested_layout);
+                     VkImageLayout requested_layout,
+                     VkAccessFlagBits src_access,
+                     VkAccessFlagBits dst_access);
 
   /** \} */
 

@@ -85,6 +85,11 @@ const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
      ICON_EMPTY_AXIS,
      "Instances",
      "Instances of objects or collections"},
+    {int(blender::bke::GeometryComponent::Type::GreasePencil),
+     "GREASEPENCIL",
+     ICON_GREASEPENCIL,
+     "Grease Pencil",
+     "Grease Pencil component containing layers and curves data"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -2507,30 +2512,43 @@ static void rna_SpaceNodeEditor_node_tree_set(PointerRNA *ptr,
   ED_node_tree_start(snode, (bNodeTree *)value.data, nullptr, nullptr);
 }
 
-static bool space_node_node_geometry_nodes_tool_poll(const SpaceNode &snode,
-                                                     const bNodeTree &ntree)
+static bool rna_SpaceNodeEditor_geometry_nodes_tool_tree_poll(PointerRNA * /*ptr*/,
+                                                              const PointerRNA value)
 {
-  if (snode.geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-    if (!ntree.id.asset_data) {
-      /* Only assets can be tools. */
-      return false;
-    }
-    if (!ntree.geometry_node_asset_traits ||
-        (ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0)
-    {
-      /* Only node groups specifically marked as tools can be tools. */
-      return false;
-    }
+  const bNodeTree &ntree = *static_cast<const bNodeTree *>(value.data);
+  if (ntree.type != NTREE_GEOMETRY) {
+    return false;
   }
-  else {
-    if (ntree.geometry_node_asset_traits &&
-        ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL)
-    {
-      /* Tool node groups cannot be modifiers. */
-      return false;
-    }
+  if (!ntree.geometry_node_asset_traits) {
+    return false;
+  }
+  if ((ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0) {
+    return false;
   }
   return true;
+}
+
+static bool space_node_node_geometry_nodes_poll(const SpaceNode &snode, const bNodeTree &ntree)
+{
+  switch (SpaceNodeGeometryNodesType(snode.geometry_nodes_type)) {
+    case SNODE_GEOMETRY_MODIFIER:
+      if (!ntree.geometry_node_asset_traits) {
+        return false;
+      }
+      if ((ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER) == 0) {
+        return false;
+      }
+      return true;
+    case SNODE_GEOMETRY_TOOL:
+      if (!ntree.geometry_node_asset_traits) {
+        return false;
+      }
+      if ((ntree.geometry_node_asset_traits->flag & GEO_NODE_ASSET_TOOL) == 0) {
+        return false;
+      }
+      return true;
+  }
+  return false;
 }
 
 static bool rna_SpaceNodeEditor_node_tree_poll(PointerRNA *ptr, const PointerRNA value)
@@ -2543,27 +2561,11 @@ static bool rna_SpaceNodeEditor_node_tree_poll(PointerRNA *ptr, const PointerRNA
     return false;
   }
   if (ntree->type == NTREE_GEOMETRY) {
-    if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-      if (!space_node_node_geometry_nodes_tool_poll(*snode, *ntree)) {
-        return false;
-      }
+    if (!space_node_node_geometry_nodes_poll(*snode, *ntree)) {
+      return false;
     }
   }
   return true;
-}
-
-static void rna_SpaceNodeEditor_geometry_nodes_type_update(Main * /*bmain*/,
-                                                           Scene * /*scene*/,
-                                                           PointerRNA *ptr)
-{
-  SpaceNode &snode = *static_cast<SpaceNode *>(ptr->data);
-  if (snode.nodetree) {
-    if (snode.nodetree->type == NTREE_GEOMETRY) {
-      if (!space_node_node_geometry_nodes_tool_poll(snode, *snode.nodetree)) {
-        snode.nodetree = nullptr;
-      }
-    }
-  }
 }
 
 static void rna_SpaceNodeEditor_node_tree_update(const bContext *C, PointerRNA * /*ptr*/)
@@ -3319,6 +3321,9 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
       if (!ELEM(item->value, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
         continue;
       }
+    }
+    if (!U.experimental.use_grease_pencil_version3 && item->value == ATTR_DOMAIN_LAYER) {
+      continue;
     }
     if (item->value == ATTR_DOMAIN_POINT &&
         component_type == blender::bke::GeometryComponent::Type::Mesh)
@@ -5460,7 +5465,7 @@ static void rna_def_space_properties(BlenderRNA *brna)
       prop, "Tab Search Results", "Whether or not each visible tab has a search result");
 
   prop = RNA_def_property(srna, "search_filter", PROP_STRING, PROP_NONE);
-  /* The search filter is stored in the property editor's runtime  which
+  /* The search filter is stored in the property editor's runtime which
    * is only defined in an internal header, so use the getter / setter here. */
   RNA_def_property_string_funcs(prop,
                                 "rna_SpaceProperties_search_filter_get",
@@ -5815,6 +5820,11 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
   RNA_def_property_ui_text(
       prop, "Show Color Tags", "Display the strip color tags in the sequencer");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_strip_retiming", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_RETIMING);
+  RNA_def_property_ui_text(prop, "Show Retiming Keys", "Display retiming keys on top of strips");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 }
 
@@ -7507,8 +7517,7 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, geometry_nodes_type_items);
   RNA_def_property_ui_text(prop, "Geometry Nodes Type", "");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
-  RNA_def_property_update(
-      prop, NC_SPACE | ND_SPACE_NODE, "rna_SpaceNodeEditor_geometry_nodes_type_update");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 
   prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -7555,6 +7564,13 @@ static void rna_def_space_node(BlenderRNA *brna)
       prop, "Backdrop", "Use active Viewer Node output as backdrop for compositing nodes");
   RNA_def_property_update(
       prop, NC_SPACE | ND_SPACE_NODE_VIEW, "rna_SpaceNodeEditor_show_backdrop_update");
+
+  prop = RNA_def_property(srna, "geometry_nodes_tool_tree", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, nullptr, nullptr, "rna_SpaceNodeEditor_geometry_nodes_tool_tree_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_CONTEXT_UPDATE);
+  RNA_def_property_ui_text(prop, "Node Tool Tree", "Node group to edit as node tool");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, "rna_SpaceNodeEditor_node_tree_update");
 
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SNODE_SHOW_GPENCIL);
