@@ -37,10 +37,10 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -53,7 +53,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "RE_pipeline.h"
-#include "render_types.h"
+#include "intern/render_types.h"
 
 #include "lineart_intern.h"
 
@@ -2005,10 +2005,6 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   float crease_angle = 0;
   if (orig_ob->lineart.flags & OBJECT_LRT_OWN_CREASE) {
     crease_angle = cosf(M_PI - orig_ob->lineart.crease_threshold);
-  }
-  else if (ob_info->original_me->flag & ME_AUTOSMOOTH) {
-    crease_angle = cosf(ob_info->original_me->smoothresh);
-    use_auto_smooth = true;
   }
   else {
     crease_angle = la_data->conf.crease_threshold;

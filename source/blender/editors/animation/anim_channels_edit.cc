@@ -38,10 +38,10 @@
 #include "BKE_mask.h"
 #include "BKE_nla.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -63,7 +63,7 @@
 
 static bool get_normalized_fcurve_bounds(FCurve *fcu,
                                          bAnimContext *ac,
-                                         const bAnimListElem *ale,
+                                         bAnimListElem *ale,
                                          const bool include_handles,
                                          const float range[2],
                                          rctf *r_bounds)
@@ -91,6 +91,10 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
     r_bounds->ymin -= (min_height - height) / 2;
     r_bounds->ymax += (min_height - height) / 2;
   }
+  AnimData *adt = ANIM_nla_mapping_get(ac, ale);
+  r_bounds->xmin = BKE_nla_tweakedit_remap(adt, r_bounds->xmin, NLATIME_CONVERT_MAP);
+  r_bounds->xmax = BKE_nla_tweakedit_remap(adt, r_bounds->xmax, NLATIME_CONVERT_MAP);
+
   return true;
 }
 
@@ -154,6 +158,7 @@ static void add_region_padding(bContext *C, ARegion *region, rctf *bounds)
                                UI_MARKER_MARGIN_Y;
   BLI_rctf_pad_y(bounds, region->winy, pad_bottom, pad_top);
 }
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1661,30 +1666,31 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = static_cast<Layer *>(ale->data);
 
     switch (mode) {
       case REARRANGE_ANIMCHAN_TOP: {
         if (layer->is_selected()) {
-          layer->parent_group().move_node_top(&layer->as_node());
+          grease_pencil.move_node_top(layer->as_node());
         }
         break;
       }
       case REARRANGE_ANIMCHAN_UP: {
         if (layer->is_selected()) {
-          layer->parent_group().move_node_up(&layer->as_node());
+          grease_pencil.move_node_up(layer->as_node());
         }
         break;
       }
       case REARRANGE_ANIMCHAN_DOWN: {
         if (layer->is_selected()) {
-          layer->parent_group().move_node_down(&layer->as_node());
+          grease_pencil.move_node_down(layer->as_node());
         }
         break;
       }
       case REARRANGE_ANIMCHAN_BOTTOM: {
         if (layer->is_selected()) {
-          layer->parent_group().move_node_bottom(&layer->as_node());
+          grease_pencil.move_node_bottom(layer->as_node());
         }
         break;
       }
@@ -2239,6 +2245,17 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
         /* try to delete the layer's data and the layer itself */
         BKE_gpencil_layer_delete(gpd, gpl);
         ale->update = ANIM_UPDATE_DEPS;
+
+        /* Free Grease Pencil data block when last annotation layer is removed, see: #112683. */
+        if (gpd->flag & GP_DATA_ANNOTATIONS && gpd->layers.first == nullptr) {
+          BKE_gpencil_free_data(gpd, true);
+
+          Scene *scene = CTX_data_scene(C);
+          scene->gpd = nullptr;
+
+          Main *bmain = CTX_data_main(C);
+          BKE_id_free_us(bmain, gpd);
+        }
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {

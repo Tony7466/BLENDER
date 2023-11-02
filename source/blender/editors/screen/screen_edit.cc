@@ -27,7 +27,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
@@ -44,7 +44,7 @@
 #include "WM_message.hh"
 #include "WM_toolsystem.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "screen_intern.h" /* own module include */
 
@@ -805,7 +805,9 @@ void ED_region_exit(bContext *C, ARegion *region)
 
   WM_event_remove_handlers(C, &region->handlers);
   WM_event_modal_handler_region_replace(win, region, nullptr);
-  WM_draw_region_free(region, true);
+  WM_draw_region_free(region);
+  /* The region is not in a state that it can be visible in anymore. Reinitializing is needed. */
+  region->visible = false;
 
   MEM_SAFE_FREE(region->headerstr);
 

@@ -10,7 +10,7 @@
 #include <cstring>
 
 #ifdef WIN32
-#  include "utfconv.h"
+#  include "utfconv.hh"
 #  include <windows.h>
 #endif
 
@@ -61,7 +61,7 @@
 #  include "BLI_args.h"
 #endif
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IMB_imbuf.h" /* For #IMB_init. */
 
@@ -535,9 +535,6 @@ int main(int argc,
 #endif
 
   WM_init(C, argc, (const char **)argv);
-
-  /* Need to be after WM init so that userpref are loaded. */
-  RE_engines_init_experimental();
 
 #ifndef WITH_PYTHON
   printf(
