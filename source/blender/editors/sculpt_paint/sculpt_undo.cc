@@ -349,13 +349,14 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
     }
   }
   if (data->modified_face_set_faces) {
-    const Vector<int> faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
-    for (const int face : faces) {
-      if (data->modified_face_set_faces[face]) {
-        BKE_pbvh_node_mark_update_face_sets(node);
-        break;
-      }
-    }
+    BKE_pbvh_node_mark_update_face_sets(node);
+    // const Vector<int> faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+    // for (const int face : faces) {
+    //   if (data->modified_face_set_faces[face]) {
+    //     BKE_pbvh_node_mark_update_face_sets(node);
+    //     break;
+    //   }
+    // }
   }
 }
 
