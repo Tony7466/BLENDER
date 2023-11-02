@@ -347,10 +347,6 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
   Map<int, NodesModifierBake *> old_bake_by_id;
   for (NodesModifierBake &bake : MutableSpan(nmd.bakes, nmd.bakes_num)) {
     old_bake_by_id.add(bake.id, &bake);
-    if (!nodeSocketIsRegistered(&socket)) {
-      continue;
-    }
-
   }
 
   Vector<int> new_bake_ids;
