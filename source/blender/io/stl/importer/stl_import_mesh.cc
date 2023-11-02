@@ -75,7 +75,6 @@ Mesh *STLMeshHelper::to_mesh()
   }
 
   Mesh *mesh = BKE_mesh_new_nomain(verts_.size(), 0, tris_.size(), tris_.size() * 3);
-
   mesh->vert_positions_for_write().copy_from(verts_);
   offset_indices::fill_constant_group_size(3, 0, mesh->face_offsets_for_write());
   array_utils::copy(tris_.as_span().cast<int>(), mesh->corner_verts_for_write());
