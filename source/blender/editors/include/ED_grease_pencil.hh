@@ -196,6 +196,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
                                      Vector<int> &layer_index,
+                                     const int frame_number,
                                      const bool get_stroke_flag = false);
 
 }  // namespace blender::ed::greasepencil

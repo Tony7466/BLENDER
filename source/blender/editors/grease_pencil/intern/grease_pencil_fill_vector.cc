@@ -3266,7 +3266,8 @@ static bool operator_init(bContext *C, wmOperator *op)
   }
 
   /* Convert curves to viewport 2D space. */
-  vf->curves_2d = curves_in_2d_space_get(&vf->vc, vf->vc.obact, drawings, layer_indices, true);
+  vf->curves_2d = curves_in_2d_space_get(
+      &vf->vc, vf->vc.obact, drawings, layer_indices, vf->vc.scene->r.cfra, true);
 
   /* Calculate epsilon values of all 2D curve segments, used to avoid floating point precision
    * errors. */

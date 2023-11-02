@@ -158,6 +158,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
                                      Vector<GreasePencilDrawing *> &drawings,
                                      Vector<int> &layer_index,
+                                     const int frame_number,
                                      const bool get_stroke_flag)
 {
   /* Get viewport projection matrix and evaluated GP object. */
@@ -199,7 +200,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
       const VArray<bool> cyclic = curves.cyclic();
       const bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *ob, layer_index[drawing_i]);
+              ob_eval, *ob, layer_index[drawing_i], frame_number);
 
       /* Get the curve materials. */
       VArray<int> materials;
