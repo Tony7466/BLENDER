@@ -811,7 +811,7 @@ static int grease_pencil_stroke_change_color_exec(bContext *C, wmOperator * /*op
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         if (curves.points_num() == 0) {
@@ -859,7 +859,7 @@ enum class CyclicalMode : int8_t {
   CLOSE,
   /* Sets all strokes to not cycle. */
   OPEN,
-  /* Switchs the cyclic state of the strokes. */
+  /* Switches the cyclic state of the strokes. */
   TOGGLE,
 };
 
