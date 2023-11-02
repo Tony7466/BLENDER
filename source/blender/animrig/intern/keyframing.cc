@@ -1005,33 +1005,31 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
+/** Try to find an FCurve in the given bAction that matches the given rna_path. Create one if not
+ * found.*/
 static FCurve *action_fcurve_ensure(bAction *action,
-                                    const char group[],
-                                    PointerRNA *ptr,
                                     const std::string &rna_path,
-                                    const int array_index)
+                                    const int array_index,
+                                    const char *group = nullptr,
+                                    PointerRNA *ptr = nullptr)
 {
-  /* try to find f-curve matching for this setting
-   * - add if not found and allowed to add one
-   *   TODO: add auto-grouping support? how this works will need to be resolved
-   */
-  FCurve *fcu = BKE_fcurve_find(&action->curves, rna_path.c_str(), array_index);
-  if (fcu) {
-    return fcu;
+  FCurve *fcurve = BKE_fcurve_find(&action->curves, rna_path.c_str(), array_index);
+  if (fcurve) {
+    return fcurve;
   }
 
-  fcu = BKE_fcurve_create();
+  fcurve = BKE_fcurve_create();
 
-  fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcu->auto_smoothing = U.auto_smoothing_new;
+  fcurve->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
+  fcurve->auto_smoothing = U.auto_smoothing_new;
   if (BLI_listbase_is_empty(&action->curves)) {
-    fcu->flag |= FCURVE_ACTIVE;
+    fcurve->flag |= FCURVE_ACTIVE;
   }
 
   char *fcu_rna_path = static_cast<char *>(MEM_mallocN(rna_path.length() + 1, "fcu_rna_path"));
   std::strcpy(fcu_rna_path, rna_path.c_str());
-  fcu->rna_path = fcu_rna_path;
-  fcu->array_index = array_index;
+  fcurve->rna_path = fcu_rna_path;
+  fcurve->array_index = array_index;
 
   if (group) {
     bActionGroup *action_group = BKE_action_group_find_name(action, group);
@@ -1045,16 +1043,16 @@ static FCurve *action_fcurve_ensure(bAction *action,
       }
     }
 
-    action_groups_add_channel(action, action_group, fcu);
+    action_groups_add_channel(action, action_group, fcurve);
   }
   else {
-    BLI_addtail(&action->curves, fcu);
+    BLI_addtail(&action->curves, fcurve);
   }
 
-  return fcu;
+  return fcurve;
 }
 
-static bool insert_key_fcu_foo(FCurve *fcu, const float frame, const float value)
+static bool insert_key_fcurve(FCurve *fcu, const float frame, const float value)
 {
   if (!BKE_fcurve_is_keyframable(fcu)) {
     return false;
@@ -1072,20 +1070,21 @@ int insert_key_action(bAction *action,
 {
   BLI_assert(action != nullptr);
 
-  std::string group = "Object Transforms";
+  std::string group;
   if (ptr->type == &RNA_PoseBone) {
     bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
     group = pose_channel->name;
+  }
+  else {
+    group = "Object Transforms";
   }
 
   int property_array_index = 0;
   int inserted_keys = 0;
   for (const float value : values) {
-    FCurve *fcu = action_fcurve_ensure(action, group.c_str(), ptr, rna_path, property_array_index);
-    if (!fcu) {
-      continue;
-    }
-    const bool inserted_key = insert_key_fcu_foo(fcu, frame, value);
+    FCurve *fcurve = action_fcurve_ensure(
+        action, rna_path, property_array_index, group.c_str(), ptr);
+    const bool inserted_key = insert_key_fcurve(fcurve, frame, value);
     if (inserted_key) {
       inserted_keys++;
     }
