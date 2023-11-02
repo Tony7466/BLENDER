@@ -440,8 +440,6 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
     inst_.manager->submit(denoise_temporal_ps_, render_view);
 
-    /* Swap after last use. */
-    TextureFromPool::swap(tile_mask_tx_, denoise_buf->tilemask_history_tx);
     /* Save view-projection matrix for next reprojection. */
     denoise_buf->history_persmat = main_view.persmat();
     /* Radiance will be swapped with history in #RayTraceResult::release().
@@ -461,13 +459,10 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   if (use_bilateral_denoise) {
     denoise_buf->denoised_bilateral_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
     denoised_bilateral_tx_ = denoise_buf->denoised_bilateral_tx;
-    /* Swap back for one last use. */
-    TextureFromPool::swap(tile_mask_tx_, denoise_buf->tilemask_history_tx);
 
     inst_.manager->submit(*denoise_bilateral_ps, render_view);
 
     /* Swap after last use. */
-    TextureFromPool::swap(tile_mask_tx_, denoise_buf->tilemask_history_tx);
     TextureFromPool::swap(denoise_buf->denoised_temporal_tx, denoise_buf->radiance_history_tx);
     TextureFromPool::swap(denoise_variance_tx_, denoise_buf->variance_history_tx);
 
@@ -501,6 +496,11 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   }
 
   tile_mask_tx_.release();
+
+  if (tile_mask_tx_.is_valid()) {
+    /* Swap after last use. */
+    TextureFromPool::swap(tile_mask_tx_, denoise_buf->tilemask_history_tx);
+  }
 
   DRW_stats_group_end();
 

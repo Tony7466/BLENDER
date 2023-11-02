@@ -95,7 +95,7 @@ void main()
 
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
 
-  uint closure_bits = texelFetch(gbuf_header_tx, texel, 0).r;
+  uint closure_bits = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
   if (!flag_test(closure_bits, uniform_buf.raytrace.closure_active)) {
     return;
   }

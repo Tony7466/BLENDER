@@ -55,11 +55,13 @@ void main()
   if (flag_test(closure_bits, uniform_buf.raytrace.closure_active)) {
     GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
-    float roughness = (uniform_buf.raytrace.closure_active == CLOSURE_DIFFUSE) ?
-                          1.0 :
-                          ((uniform_buf.raytrace.closure_active == CLOSURE_REFRACTION) ?
-                               gbuf.refraction.roughness :
-                               gbuf.reflection.roughness);
+    float roughness = 1.0;
+    if (uniform_buf.raytrace.closure_active == eClosureBits(CLOSURE_REFLECTION)) {
+      roughness = gbuf.reflection.roughness;
+    }
+    if (uniform_buf.raytrace.closure_active == eClosureBits(CLOSURE_REFRACTION)) {
+      roughness = 0.0; /* TODO(fclem): Apparent roughness. For now, always raytrace. */
+    }
 
     float ray_glossy_factor = ray_glossy_factor(uniform_buf.raytrace, roughness);
     if (ray_glossy_factor > 0.0) {
