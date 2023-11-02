@@ -974,22 +974,22 @@ static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
   const float radius = RNA_float_get(op->ptr, "radius");
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-        IndexMaskMemory memory;
-        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+    IndexMaskMemory memory;
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
-        if (selected_curves.is_empty()) {
-          return;
-        }
+    if (selected_curves.is_empty()) {
+      return;
+    }
 
-        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        MutableSpan<float> radii = drawing.radii_for_write();
-        bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
-        changed = true;
-      });
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    MutableSpan<float> radii = info.drawing.radii_for_write();
+    bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -1032,22 +1032,22 @@ static int grease_pencil_set_uniform_opacity_exec(bContext *C, wmOperator *op)
   const float opacity = RNA_float_get(op->ptr, "opacity");
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-        IndexMaskMemory memory;
-        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+    IndexMaskMemory memory;
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
-        if (selected_curves.is_empty()) {
-          return;
-        }
+    if (selected_curves.is_empty()) {
+      return;
+    }
 
-        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        MutableSpan<float> opacities = drawing.opacities_for_write();
-        bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
-        changed = true;
-      });
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    MutableSpan<float> opacities = info.drawing.opacities_for_write();
+    bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
