@@ -43,9 +43,7 @@ void main()
                                              10);
 
   /* We can have some float imprecision because of the weighted accumulation. */
-  if (ambient_occlusion.r >= 0.98) {
-    ambient_occlusion = vec3(1.0);
-  }
+  ambient_occlusion = saturate(ambient_occlusion * 1.02);
 
   imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), saturate(ambient_occlusion.rrrr));
 }
