@@ -968,22 +968,22 @@ static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator *o
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        
-        IndexMaskMemory memory;
-        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-        if (selected_curves.is_empty()) {
-          return;
-        }
+    IndexMaskMemory memory;
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
 
-        /* Switch stroke direction. */       
-        curves.reverse_curves(selected_curves);
+    if (selected_curves.is_empty()) {
+      return;
+    }
 
-        changed = true;
-      });
+    /* Switch stroke direction. */
+    curves.reverse_curves(selected_curves);
+
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
