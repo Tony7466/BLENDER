@@ -16,7 +16,7 @@ shared uint tile_contains_ray_tracing;
 shared uint tile_contains_horizon_scan;
 
 /* Returns a blend factor between different tracing method. */
-float ray_glossy_factor(RayTraceData raytrace, float roughness)
+float ray_roughness_factor(RayTraceData raytrace, float roughness)
 {
   return saturate(roughness * raytrace.roughness_mask_scale - raytrace.roughness_mask_bias);
 }
@@ -63,12 +63,12 @@ void main()
       roughness = 0.0; /* TODO(fclem): Apparent roughness. For now, always raytrace. */
     }
 
-    float ray_glossy_factor = ray_glossy_factor(uniform_buf.raytrace, roughness);
-    if (ray_glossy_factor > 0.0) {
+    float ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, roughness);
+    if (ray_roughness_fac > 0.0) {
       /* We don't care about race condition here. */
       tile_contains_horizon_scan = 1;
     }
-    if (ray_glossy_factor < 1.0) {
+    if (ray_roughness_fac < 1.0) {
       /* We don't care about race condition here. */
       tile_contains_ray_tracing = 1;
     }
