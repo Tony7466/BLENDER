@@ -26,8 +26,6 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
   else {
     sd->closure_transparent_extinction = weight;
   }
-  // sd->closure_transparent_extinction = one_spectrum();
-  // sd->flag |= SD_TRANSPARENT;
 
   // /* This is kept from the transparent closure, not sure if we want the same for portals. */
   // if (path_flag & PATH_RAY_TERMINATE) {
