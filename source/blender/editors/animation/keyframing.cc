@@ -873,7 +873,7 @@ static void insert_key_pose_mode(bContext *C, wmOperator *op)
   BLI_freelistN(&selected_pose_bones);
 }
 
-static int insert_key_foo(bContext *C, wmOperator *op)
+static int insert_key(bContext *C, wmOperator *op)
 {
   using namespace blender;
 
@@ -911,7 +911,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   if (ks) {
     return insert_key_with_keyingset(C, op, ks);
   }
-  return insert_key_foo(C, op);
+  return insert_key(C, op);
 }
 
 void ANIM_OT_keyframe_insert(wmOperatorType *ot)

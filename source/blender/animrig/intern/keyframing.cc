@@ -1020,46 +1020,37 @@ static FCurve *action_fcurve_ensure(bAction *action,
     return fcu;
   }
 
-  /* use default settings to make a F-Curve */
   fcu = BKE_fcurve_create();
 
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
   fcu->auto_smoothing = U.auto_smoothing_new;
   if (BLI_listbase_is_empty(&action->curves)) {
-    fcu->flag |= FCURVE_ACTIVE; /* first one added active */
+    fcu->flag |= FCURVE_ACTIVE;
   }
 
-  /* store path - make copy, and store that */
   char *fcu_rna_path = static_cast<char *>(MEM_mallocN(rna_path.length() + 1, "fcu_rna_path"));
   std::strcpy(fcu_rna_path, rna_path.c_str());
   fcu->rna_path = fcu_rna_path;
   fcu->array_index = array_index;
 
-  /* if a group name has been provided, try to add or find a group, then add F-Curve to it */
   if (group) {
-    /* try to find group */
     bActionGroup *action_group = BKE_action_group_find_name(action, group);
 
-    /* no matching groups, so add one */
     if (action_group == nullptr) {
       action_group = action_groups_add_new(action, group);
 
-      /* sync bone group colors if applicable */
       if (ptr && (ptr->type == &RNA_PoseBone)) {
         bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
         action_group_colors_set_from_posebone(action_group, pchan);
       }
     }
 
-    /* add F-Curve to group */
     action_groups_add_channel(action, action_group, fcu);
   }
   else {
-    /* just add F-Curve to end of Action's list */
     BLI_addtail(&action->curves, fcu);
   }
 
-  /* return the F-Curve */
   return fcu;
 }
 
