@@ -32,7 +32,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Curve").supported_type(
       {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Int>("Group ID")
-      .default_value(0)
       .supports_field()
       .hide_value()
       .description(
