@@ -1534,8 +1534,7 @@ static void paint_mesh_restore_node(Object *ob,
         case PBVH_FACES:
         case PBVH_GRIDS: {
           const Span<int> faces = unode->face_indices;
-          blender::array_utils::scatter(
-              unode->face_sets, unode->face_indices, {ss->face_sets, ss->faces_num});
+          blender::array_utils::scatter(face_sets, faces, {ss->face_sets, ss->faces_num});
           break;
         }
         case PBVH_BMESH: {
