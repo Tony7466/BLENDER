@@ -864,6 +864,7 @@ static bool is_node_socket_supported(const bNodeSocket *sock)
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
+    case SOCK_ROTATION:
       return true;
   }
   return false;
