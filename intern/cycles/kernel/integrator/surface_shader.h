@@ -634,6 +634,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure_ris(KernelGlobals kg,
     // generate the first RIS candidate using a BSDF sample
     // ----------------------------------------------------
     ris_samples[0].label = bsdf_sample(kg,
+                                       state,
                                        sd,
                                        sc,
                                        INTEGRATOR_STATE(state, path, flag),
@@ -650,6 +651,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure_ris(KernelGlobals kg,
       if (sd->num_closure > 1) {
         float sweight = sc->sample_weight;
         ris_samples[0].bsdf_pdf = _surface_shader_bsdf_eval_mis(kg,
+                                                                state,
                                                                 sd,
                                                                 ris_samples[0].wo,
                                                                 sc,
@@ -679,7 +681,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure_ris(KernelGlobals kg,
     ris_samples[1].incoming_radiance_pdf = guiding_surface_incoming_radiance_pdf(
         kg, state, ris_samples[1].wo);
     ris_samples[1].bsdf_pdf = surface_shader_bsdf_eval_pdfs(
-        kg, sd, ris_samples[1].wo, &ris_samples[1].bsdf_eval, unguided_bsdf_pdfs, 0);
+        kg, state, sd, ris_samples[1].wo, &ris_samples[1].bsdf_eval, unguided_bsdf_pdfs, 0);
     ris_samples[1].label = ris_samples[0].label;
     ris_samples[1].avg_bsdf_eval = average(ris_samples[1].bsdf_eval.sum);
     ris_samples[1].bsdf_pdf = max(0.0f, ris_samples[1].bsdf_pdf);
