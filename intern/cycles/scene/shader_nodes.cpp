@@ -2724,7 +2724,7 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(subsurface_anisotropy, "Subsurface Anisotropy", 0.0f);
 
   SOCKET_IN_FLOAT(specular_ior_level, "Specular IOR Level", 0.0f);
-  SOCKET_IN_COLOR(specular_tint, "Specular Tint", one_float3());
+  SOCKET_IN_SPECTRUM(specular_tint, "Specular Tint", one_float3());
   SOCKET_IN_FLOAT(anisotropic, "Anisotropic", 0.0f);
   SOCKET_IN_FLOAT(anisotropic_rotation, "Anisotropic Rotation", 0.0f);
   SOCKET_IN_NORMAL(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
@@ -3431,7 +3431,7 @@ NODE_DEFINE(PrincipledHairBsdfNode)
   SOCKET_IN_FLOAT(melanin, "Melanin", 0.8f);
   SOCKET_IN_FLOAT(melanin_redness, "Melanin Redness", 1.0f);
   SOCKET_IN_SPECTRUM(tint, "Tint", make_float3(1.f, 1.f, 1.f));
-  SOCKET_IN_VECTOR(
+  SOCKET_IN_SPECTRUM(
       absorption_coefficient, "Absorption Coefficient", make_float3(0.245531f, 0.52f, 1.365f));
 
   SOCKET_IN_FLOAT(aspect_ratio, "Aspect Ratio", 0.85f);
