@@ -271,21 +271,19 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
  * array with values from the input array where the identifier matches. */
 template<typename T> class MenuSwitchFn : public mf::MultiFunction {
   const NodeEnumDefinition &enum_def_;
+  mf::Signature signature_;
 
  public:
   MenuSwitchFn(const NodeEnumDefinition &enum_def) : enum_def_(enum_def)
   {
-    static const mf::Signature signature = [enum_def]() {
-      mf::Signature signature;
-      mf::SignatureBuilder builder{"Menu Switch", signature};
-      builder.single_input<int>("Switch");
-      for (const NodeEnumItem enum_item : enum_def.items()) {
-        builder.single_input<T>(enum_item.name);
-      }
-      builder.single_output<T>("Output");
-      return signature;
-    }();
-    this->set_signature(&signature);
+    mf::SignatureBuilder builder{"Menu Switch", signature_};
+    builder.single_input<int>("Switch");
+    for (const NodeEnumItem enum_item : enum_def.items()) {
+      builder.single_input<T>(enum_item.name);
+    }
+    builder.single_output<T>("Output");
+
+    this->set_signature(&signature_);
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const
@@ -321,6 +319,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   bool can_be_field_ = false;
   const NodeEnumDefinition &enum_def_;
   const CPPType *cpp_type_;
+  std::unique_ptr<MultiFunction> multi_function_;
 
  public:
   LazyFunctionForMenuSwitchNode(const bNode &node) : enum_def_(node_storage(node).enum_definition)
@@ -333,6 +332,15 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
     cpp_type_ = socket_type->geometry_nodes_cpp_type;
+
+    /* Construct multifunction if needed. */
+    if (const fn::ValueOrFieldCPPType *value_or_field_type =
+            fn::ValueOrFieldCPPType::get_from_self(*cpp_type_))
+    {
+      const CPPType &value_type = value_or_field_type->value;
+      multi_function_ = std::unique_ptr<MultiFunction>(
+          this->create_multi_function(value_type, enum_def_));
+    }
 
     debug_name_ = node.name;
     inputs_.append_as("Switch", CPPType::get<ValueOrField<int>>());
@@ -407,26 +415,23 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         *cpp_type_);
-    const CPPType &value_type = value_or_field_type.value;
-    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type,
-                                                                                 enum_def_);
 
     Vector<GField> item_fields(enum_def_.items_num + 1);
     item_fields[0] = std::move(condition);
     for (const int i : IndexRange(enum_def_.items_num)) {
       item_fields[i + 1] = value_or_field_type.as_field(item_value_or_field[i]);
     }
-    GField output_field{FieldOperation::Create(switch_multi_function, std::move(item_fields))};
+    GField output_field{FieldOperation::Create(*multi_function_, std::move(item_fields))};
 
     void *output_ptr = params.get_output_data_ptr(0);
     value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
     params.output_set(0);
   }
 
-  const MultiFunction &get_switch_multi_function(const CPPType &type,
-                                                 const NodeEnumDefinition &enum_def) const
+  MultiFunction *create_multi_function(const CPPType &type,
+                                       const NodeEnumDefinition &enum_def) const
   {
-    const MultiFunction *switch_multi_function = nullptr;
+    MultiFunction *multi_function = nullptr;
     type.to_static_type_tag<float,
                             int,
                             bool,
@@ -435,16 +440,11 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
                             std::string,
                             math::Quaternion>([&](auto type_tag) {
       using T = typename decltype(type_tag)::type;
-      if constexpr (std::is_void_v<T>) {
-        BLI_assert_unreachable();
-      }
-      else {
-        static MenuSwitchFn<T> fn(enum_def);
-        switch_multi_function = &fn;
+      if constexpr (!std::is_void_v<T>) {
+        multi_function = new MenuSwitchFn<T>(enum_def);
       }
     });
-    BLI_assert(switch_multi_function != nullptr);
-    return *switch_multi_function;
+    return multi_function;
   }
 };
 
