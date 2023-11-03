@@ -117,13 +117,13 @@ typedef struct IDPropertyUIDataID {
 } IDPropertyUIDataID;
 
 typedef struct IDPropertyUIDataEnumItem {
-  /* Unique identifier. */
+  /* Unique identifier, used for string lookup. */
   char *identifier;
   /* UI name of the item. */
   char *name;
   /* Optional description. */
   char *description;
-  /* Unique value, generated automatically. */
+  /* Unique integer value, should never change. */
   int value;
   /* Optional icon. */
   int icon;
