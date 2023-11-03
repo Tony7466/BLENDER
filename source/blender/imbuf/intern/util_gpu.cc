@@ -34,8 +34,6 @@ static bool imb_is_grayscale_texture_format_compatible(const ImBuf *ibuf)
   /* The float buffer could in theory be non-linear, but it only happens internally in sequencer.
    * Can consider adding is linear check for float_buffer.color_space. */
   return ibuf->channels == 1;
-
-  return false;
 }
 
 static void imb_gpu_get_format(const ImBuf *ibuf,
